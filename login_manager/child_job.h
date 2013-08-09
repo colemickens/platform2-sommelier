@@ -65,11 +65,12 @@ class ChildJobInterface {
   // Sets extra command line arguments for the job from a string vector.
   virtual void SetExtraArguments(const std::vector<std::string>& arguments) = 0;
 
-  // Adds a single extra argument that may be cleared once needed.
-  virtual void AddOneTimeArgument(const std::string& argument) = 0;
+  // Sets extra arguments that may be cleared once they're no longer needed.
+  virtual void SetOneTimeArguments(
+      const std::vector<std::string>& arguments) = 0;
 
-  // Clears one time extra argument.
-  virtual void ClearOneTimeArgument() = 0;
+  // Clears arguments previously passed to SetOneTimeArguments().
+  virtual void ClearOneTimeArguments() = 0;
 
   // Potential exit codes for Run().
   static const int kCantSetUid;
@@ -113,8 +114,9 @@ class ChildJob : public ChildJobInterface {
   virtual void SetArguments(const std::vector<std::string>& arguments) OVERRIDE;
   virtual void SetExtraArguments(
       const std::vector<std::string>& arguments) OVERRIDE;
-  virtual void AddOneTimeArgument(const std::string& argument) OVERRIDE;
-  virtual void ClearOneTimeArgument() OVERRIDE;
+  virtual void SetOneTimeArguments(
+      const std::vector<std::string>& arguments) OVERRIDE;
+  virtual void ClearOneTimeArguments() OVERRIDE;
 
   // Export a copy of the current argv.
   std::vector<std::string> ExportArgv();
@@ -163,8 +165,8 @@ class ChildJob : public ChildJobInterface {
   // Extra arguments to pass to exec.
   std::vector<std::string> extra_arguments_;
 
-  // Extra one time argument.
-  std::string extra_one_time_argument_;
+  // Extra one time arguments.
+  std::vector<std::string> extra_one_time_arguments_;
 
   // UID to set for job's process before exec is called.
   uid_t desired_uid_;

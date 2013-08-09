@@ -31,6 +31,7 @@
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::AtMost;
+using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -120,8 +121,8 @@ class SessionManagerProcessTest : public ::testing::Test {
     EXPECT_CALL(*liveness_checker_, Stop()).Times(AtLeast(1));
   }
 
-  void ExpectOneTimeArgBoilerplate(MockChildJob* job) {
-    EXPECT_CALL(*job, ClearOneTimeArgument()).Times(AtLeast(1));
+  void ExpectOneTimeArgsBoilerplate(MockChildJob* job) {
+    EXPECT_CALL(*job, ClearOneTimeArguments()).Times(AtLeast(1));
     EXPECT_CALL(*metrics_, HasRecordedChromeExec())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
@@ -129,7 +130,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void ExpectChildJobBoilerplate(MockChildJob* job) {
-    ExpectOneTimeArgBoilerplate(job);
+    ExpectOneTimeArgsBoilerplate(job);
     EXPECT_CALL(*job, RecordTime()).Times(1);
     ExpectLivenessChecking();
   }
@@ -378,7 +379,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
 TEST_F(SessionManagerProcessTest, BadExitChild) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
   ExpectLivenessChecking();
-  ExpectOneTimeArgBoilerplate(job);
+  ExpectOneTimeArgsBoilerplate(job);
 
   EXPECT_CALL(*job, RecordTime()).Times(2);
   EXPECT_CALL(*job, ShouldStop())
@@ -441,9 +442,11 @@ TEST_F(SessionManagerProcessTest, FirstBootFlagUsedOnce) {
       .WillOnce(Return(true));
   EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
       .Times(2);
-  EXPECT_CALL(*job, AddOneTimeArgument(
-      StrEq(SessionManagerService::kFirstBootFlag))).Times(1);
-  EXPECT_CALL(*job, ClearOneTimeArgument()).Times(2);
+  std::vector<std::string> one_time_args;
+  one_time_args.push_back(SessionManagerService::kFirstExecAfterBootFlag);
+  one_time_args.push_back(SessionManagerService::kFirstBootFlag);
+  EXPECT_CALL(*job, SetOneTimeArguments(ContainerEq(one_time_args))).Times(1);
+  EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
 
   ExpectLivenessChecking();
   EXPECT_CALL(*job, RecordTime()).Times(2);
@@ -464,7 +467,7 @@ TEST_F(SessionManagerProcessTest, FirstBootFlagUsedOnce) {
 
 TEST_F(SessionManagerProcessTest, LivenessCheckingStartStop) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectOneTimeArgBoilerplate(job);
+  ExpectOneTimeArgsBoilerplate(job);
   {
     Sequence start_stop;
     EXPECT_CALL(*liveness_checker_, Start()).Times(2);
@@ -551,7 +554,7 @@ TEST_F(SessionManagerProcessTest, InSessionFlagsSpecified) {
       .Times(2).WillRepeatedly(Return(true));
   EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
       .Times(2);
-  EXPECT_CALL(*job, ClearOneTimeArgument()).Times(2);
+  EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
   EXPECT_CALL(*job, SetExtraArguments(_)).Times(1);
 
   ExpectLivenessChecking();

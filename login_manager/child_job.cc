@@ -173,12 +173,12 @@ void ChildJob::SetExtraArguments(const std::vector<std::string>& arguments) {
   extra_arguments_ = arguments;
 }
 
-void ChildJob::AddOneTimeArgument(const std::string& argument) {
-  extra_one_time_argument_ = argument;
+void ChildJob::SetOneTimeArguments(const std::vector<std::string>& arguments) {
+  extra_one_time_arguments_ = arguments;
 }
 
-void ChildJob::ClearOneTimeArgument() {
-  extra_one_time_argument_.clear();
+void ChildJob::ClearOneTimeArguments() {
+  extra_one_time_arguments_.clear();
 }
 
 std::vector<std::string> ChildJob::ExportArgv() {
@@ -207,18 +207,15 @@ char const** ChildJob::CreateArgv() const {
   size_t total_size = (arguments_.size() +
                        login_arguments_.size() +
                        extra_arguments_.size());
-  if (!extra_one_time_argument_.empty())
-    total_size++;
+  if (!extra_one_time_arguments_.empty())
+    total_size += extra_one_time_arguments_.size();
 
   char const** argv = new char const*[total_size + 1];
   size_t index = CopyArgsToArgv(arguments_, argv);
   index += CopyArgsToArgv(login_arguments_, argv + index);
   index += CopyArgsToArgv(extra_arguments_, argv + index);
-  if (!extra_one_time_argument_.empty()) {
-    std::vector<std::string> one_time_argument;
-    one_time_argument.push_back(extra_one_time_argument_);
-    CopyArgsToArgv(one_time_argument, argv + index);
-  }
+  if (!extra_one_time_arguments_.empty())
+    index += CopyArgsToArgv(extra_one_time_arguments_, argv + index);
   // Need to append NULL at the end.
   argv[total_size] = NULL;
   return argv;

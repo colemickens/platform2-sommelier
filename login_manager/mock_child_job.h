@@ -27,8 +27,8 @@ class MockChildJob : public ChildJobInterface {
   MOCK_CONST_METHOD0(GetName, const std::string());
   MOCK_METHOD1(SetArguments, void(const std::vector<std::string>&));
   MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
-  MOCK_METHOD1(AddOneTimeArgument, void(const std::string&));
-  MOCK_METHOD0(ClearOneTimeArgument, void());
+  MOCK_METHOD1(SetOneTimeArguments, void(const std::vector<std::string>&));
+  MOCK_METHOD0(ClearOneTimeArguments, void());
 };
 }  // namespace login_manager
 

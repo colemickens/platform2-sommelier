@@ -115,6 +115,11 @@ void SessionManagerService::SIGTERMHandler(int signal) {
   GracefulShutdownHandler(signal);
 }
 
+const char SessionManagerService::kFirstExecAfterBootFlag[] =
+    "--first-exec-after-boot";
+
+// TODO(derat): Remove this after Chrome is updated to look for
+// kFirstExecAfterBootFlag instead.
 const char SessionManagerService::kFirstBootFlag[] = "--first-boot";
 
 const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
@@ -408,8 +413,12 @@ void SessionManagerService::RunBrowser() {
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
 
   login_metrics_->RecordStats("chrome-exec");
-  if (first_boot)
-    browser_.job->AddOneTimeArgument(kFirstBootFlag);
+  if (first_boot) {
+    std::vector<std::string> one_time_args;
+    one_time_args.push_back(kFirstExecAfterBootFlag);
+    one_time_args.push_back(kFirstBootFlag);
+    browser_.job->SetOneTimeArguments(one_time_args);
+  }
   LOG(INFO) << "Running child " << browser_.job->GetName() << "...";
   browser_.pid = RunChild(browser_.job.get());
   liveness_checker_->Start();
@@ -423,7 +432,7 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
     child_job->Run();
     exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
   }
-  child_job->ClearOneTimeArgument();
+  child_job->ClearOneTimeArguments();
 
   browser_.watcher = g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
                                             pid,

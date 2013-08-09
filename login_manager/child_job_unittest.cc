@@ -221,13 +221,16 @@ TEST_F(ChildJobTest, SetExtraArguments) {
   ExpectArgsToContainAll(job_args, extra_args);
 }
 
-TEST_F(ChildJobTest, AddExtraOneTimeArgument) {
-  std::string argument("--san");
-  job_->AddOneTimeArgument(argument);
+TEST_F(ChildJobTest, SetExtraOneTimeArguments) {
+  std::vector<std::string> arguments;
+  arguments.push_back("--ichi");
+  arguments.push_back("--ni");
+  job_->SetOneTimeArguments(arguments);
 
   std::vector<std::string> job_args = job_->ExportArgv();
   ExpectArgsToContainAll(job_args, argv_);
-  ExpectArgsToContainFlag(job_args, argument.c_str(), "");
+  for (size_t i = 0; i < arguments.size(); ++i)
+    ExpectArgsToContainFlag(job_args, arguments[i].c_str(), "");
 }
 
 TEST_F(ChildJobTest, CreateArgv) {

@@ -206,8 +206,13 @@ class SessionManagerService
   static std::vector<std::string> GetArgList(
       const std::vector<std::string>& args);
 
-  // The flag to pass to chrome on a first boot.
-  // Not passed when Chrome is started after signout.
+
+  // Flag passed to Chrome the first time Chrome is started after the
+  // system boots. Not passed when Chrome is restarted after signout.
+  static const char kFirstExecAfterBootFlag[];
+
+  // TODO(derat): Remove this after Chrome is updated to look for
+  // kFirstExecAfterBootFlag instead.
   static const char kFirstBootFlag[];
 
   // Directory in which per-boot metrics flag files will be stored.
