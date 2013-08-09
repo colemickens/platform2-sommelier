@@ -118,10 +118,6 @@ void SessionManagerService::SIGTERMHandler(int signal) {
 const char SessionManagerService::kFirstExecAfterBootFlag[] =
     "--first-exec-after-boot";
 
-// TODO(derat): Remove this after Chrome is updated to look for
-// kFirstExecAfterBootFlag instead.
-const char SessionManagerService::kFirstBootFlag[] = "--first-boot";
-
 const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
@@ -416,7 +412,6 @@ void SessionManagerService::RunBrowser() {
   if (first_boot) {
     std::vector<std::string> one_time_args;
     one_time_args.push_back(kFirstExecAfterBootFlag);
-    one_time_args.push_back(kFirstBootFlag);
     browser_.job->SetOneTimeArguments(one_time_args);
   }
   LOG(INFO) << "Running child " << browser_.job->GetName() << "...";

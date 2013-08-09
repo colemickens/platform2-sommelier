@@ -211,10 +211,6 @@ class SessionManagerService
   // system boots. Not passed when Chrome is restarted after signout.
   static const char kFirstExecAfterBootFlag[];
 
-  // TODO(derat): Remove this after Chrome is updated to look for
-  // kFirstExecAfterBootFlag instead.
-  static const char kFirstBootFlag[];
-
   // Directory in which per-boot metrics flag files will be stored.
   static const char kFlagFileDir[];
 

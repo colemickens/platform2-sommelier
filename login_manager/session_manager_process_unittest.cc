@@ -432,7 +432,7 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
   SimpleRunManager();
 }
 
-TEST_F(SessionManagerProcessTest, FirstBootFlagUsedOnce) {
+TEST_F(SessionManagerProcessTest, FirstExecAfterBootFlagUsedOnce) {
   // job should run, die, and get run again.  On its first run, it should
   // have a one-time-flag.  That should get cleared and not used again.
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
@@ -444,7 +444,6 @@ TEST_F(SessionManagerProcessTest, FirstBootFlagUsedOnce) {
       .Times(2);
   std::vector<std::string> one_time_args;
   one_time_args.push_back(SessionManagerService::kFirstExecAfterBootFlag);
-  one_time_args.push_back(SessionManagerService::kFirstBootFlag);
   EXPECT_CALL(*job, SetOneTimeArguments(ContainerEq(one_time_args))).Times(1);
   EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
 
