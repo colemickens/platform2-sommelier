@@ -158,6 +158,9 @@ HELP_ADVANCED='
   Enables or disables the auto updates over cellular networks. Run without
   arguments to see the current state.
 
+ upload_crashes
+  Uploads available crash reports to the crash server.
+
  wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
   Set wpa_supplicant debugging level.
 
@@ -984,6 +987,10 @@ cmd_update_over_cellular() {
       ;;
   esac
   /usr/bin/update_engine_client $param -show_update_over_cellular
+}
+
+cmd_upload_crashes() {
+  sudo SECONDS_SEND_SPREAD=1 /sbin/crash_sender
 }
 
 cmd_tpcontrol() {
