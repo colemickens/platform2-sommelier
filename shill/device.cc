@@ -993,7 +993,16 @@ void Device::SetEnabled(bool enable) {
   SLOG(Device, 2) << __func__ << "(" << enable << ")";
   Error error;
   SetEnabledInternal(enable, false, &error, ResultCallback());
-  LOG_IF(ERROR, error.IsFailure() && !error.IsOngoing())
+
+  // SetEnabledInternal might fail here if there is an unfinished enable or
+  // disable operation. Don't log error in this case, as this method is only
+  // called when the underlying device is already in the target state and the
+  // pending operation should eventually bring the device to the expected
+  // state.
+  LOG_IF(ERROR,
+         error.IsFailure() &&
+         !error.IsOngoing() &&
+         error.type() != Error::kInProgress)
       << "Enabled failed, but no way to report the failure.";
 }
 
