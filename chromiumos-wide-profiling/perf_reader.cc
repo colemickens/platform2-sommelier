@@ -535,10 +535,10 @@ bool PerfReader::ReadFile(const string& filename) {
   std::vector<char> data;
   if (!ReadFileToData(filename, &data))
     return false;
-  return ReadFileData(data);
+  return ReadFromVector(data);
 }
 
-bool PerfReader::ReadFileData(const std::vector<char>& data) {
+bool PerfReader::ReadFromVector(const std::vector<char>& data) {
   if (data.empty())
     return false;
   if (!ReadHeader(data))
@@ -564,6 +564,11 @@ bool PerfReader::ReadFileData(const std::vector<char>& data) {
 }
 
 bool PerfReader::WriteFile(const string& filename) {
+  std::vector<char> data;
+  return WriteToVector(&data) && WriteDataToFile(data, filename);
+}
+
+bool PerfReader::WriteToVector(std::vector<char>* data) {
   if (!RegenerateHeader())
     return false;
 
@@ -590,16 +595,15 @@ bool PerfReader::WriteFile(const string& filename) {
   total_size += GetNUMATopologyMetadataSize();
 
   // Write all data into a vector.
-  std::vector<char> data;
-  data.resize(total_size);
-  if (!WriteHeader(&data) ||
-      !WriteAttrs(&data) ||
-      !WriteEventTypes(&data) ||
-      !WriteData(&data) ||
-      !WriteMetadata(&data)) {
+  data->resize(total_size);
+  if (!WriteHeader(data) ||
+      !WriteAttrs(data) ||
+      !WriteEventTypes(data) ||
+      !WriteData(data) ||
+      !WriteMetadata(data)) {
     return false;
   }
-  return WriteDataToFile(data, filename);
+  return true;
 }
 
 bool PerfReader::RegenerateHeader() {

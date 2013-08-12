@@ -39,7 +39,7 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
 
   perf_serializer.SetOptions(options);
 
-  return (perf_serializer.ReadFileData(raw_perf_data) &&
+  return (perf_serializer.ReadFromVector(raw_perf_data) &&
           perf_serializer.Serialize(perf_data));
 }
 

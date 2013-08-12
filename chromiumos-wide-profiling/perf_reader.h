@@ -82,8 +82,9 @@ class PerfReader {
   static void PerfizeBuildIDString(string* build_id);
 
   bool ReadFile(const string& filename);
-  bool ReadFileData(const std::vector<char>& data);
+  bool ReadFromVector(const std::vector<char>& data);
   bool WriteFile(const string& filename);
+  bool WriteToVector(std::vector<char>* data);
   bool RegenerateHeader();
 
   // Stores the mapping from filenames to build ids in build_id_events_.
