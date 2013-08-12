@@ -473,6 +473,17 @@ const char FrameTxStatusMessage::kCommandString[] =
 const uint8_t GetRegMessage::kCommand = NL80211_CMD_GET_REG;
 const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 
+const uint8_t GetStationMessage::kCommand = NL80211_CMD_GET_STATION;
+const char GetStationMessage::kCommandString[] = "NL80211_CMD_GET_STATION";
+
+GetStationMessage::GetStationMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+}
+
 const uint8_t GetWiphyMessage::kCommand = NL80211_CMD_GET_WIPHY;
 const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
 
@@ -599,6 +610,8 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new GetInterfaceMessage();
     case GetRegMessage::kCommand:
       return new GetRegMessage();
+    case GetStationMessage::kCommand:
+      return new GetStationMessage();
     case GetWiphyMessage::kCommand:
       return new GetWiphyMessage();
     case JoinIbssMessage::kCommand:

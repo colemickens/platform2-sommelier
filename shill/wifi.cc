@@ -79,6 +79,7 @@ const int WiFi::kNumFastScanAttempts = 3;
 const int WiFi::kFastScanIntervalSeconds = 10;
 const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
+const int WiFi::kRequestStationInfoPeriodSeconds = 20;
 const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
 const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFlagFile[] = "/home/chronos/.progressive_scan";
@@ -300,6 +301,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   SetScanState(kScanIdle, kScanMethodNone, __func__);
   StopPendingTimer();
   StopReconnectTimer();
+  StopRequestingStationInfo();
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -511,6 +513,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 
   SetPendingService(NULL);
   StopReconnectTimer();
+  StopRequestingStationInfo();
 
   if (!supplicant_present_) {
     LOG(ERROR) << "In " << __func__ << "(): "
@@ -699,6 +702,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   // connectivity.  We no longer need to track any previously pending
   // reconnect.
   StopReconnectTimer();
+  StopRequestingStationInfo();
 
   if (new_bss == WPASupplicant::kCurrentBSSNull) {
     HandleDisconnect();
@@ -1543,6 +1547,7 @@ void WiFi::OnConnected() {
     // this earlier when the association process succeeded.
     current_service_->ResetSuspectedCredentialFailures();
   }
+  RequestStationInfo();
 }
 
 void WiFi::OnIPConfigFailure() {
@@ -2143,6 +2148,101 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
                              result,
                              Metrics::kScanResultMax);
   }
+}
+
+void WiFi::RequestStationInfo() {
+  if (!current_service_ || !current_service_->IsConnected()) {
+    LOG(ERROR) << "Not collecting station info because we are not connected.";
+    return;
+  }
+
+  EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(supplicant_bss_);
+  if (endpoint_it == endpoint_by_rpcid_.end()) {
+    LOG(ERROR) << "Can't get endpoint for current supplicant BSS "
+               << supplicant_bss_;
+    return;
+  }
+
+  GetStationMessage get_station;
+  if (!get_station.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                                      interface_index())) {
+    LOG(ERROR) << "Could not add IFINDEX attribute for GetStation message.";
+    return;
+  }
+
+  const WiFiEndpointConstRefPtr endpoint(endpoint_it->second);
+  if (!get_station.attributes()->SetRawAttributeValue(
+          NL80211_ATTR_MAC,
+          ByteString::CreateFromHexString(endpoint->bssid_hex()))) {
+    LOG(ERROR) << "Could not add MAC attribute for GetStation message.";
+    return;
+  }
+
+  netlink_manager_->SendNl80211Message(
+      &get_station,
+      Bind(&WiFi::OnReceivedStationInfo, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
+
+  request_station_info_callback_.Reset(
+      Bind(&WiFi::RequestStationInfo, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(request_station_info_callback_.callback(),
+                                kRequestStationInfoPeriodSeconds * 1000);
+}
+
+void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
+  // Verify NL80211_CMD_NEW_STATION
+  if (nl80211_message.command() != NewStationMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command:"
+               << nl80211_message.command();
+    return;
+  }
+
+  if (!current_service_ || !current_service_->IsConnected()) {
+    LOG(ERROR) << "Not accepting station info because we are not connected.";
+    return;
+  }
+
+  EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(supplicant_bss_);
+  if (endpoint_it == endpoint_by_rpcid_.end()) {
+    LOG(ERROR) << "Can't get endpoint for current supplicant BSS."
+               << supplicant_bss_;
+    return;
+  }
+
+  ByteString station_bssid;
+  if (!nl80211_message.const_attributes()->GetRawAttributeValue(
+          NL80211_ATTR_MAC, &station_bssid)) {
+    LOG(ERROR) << "Unable to get MAC attribute from received station info.";
+    return;
+  }
+
+  WiFiEndpointRefPtr endpoint(endpoint_it->second);
+
+  if (!station_bssid.Equals(
+          ByteString::CreateFromHexString(endpoint->bssid_hex()))) {
+    LOG(ERROR) << "Received station info for a non-current BSS.";
+    return;
+  }
+
+  AttributeListConstRefPtr station_info;
+  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+      NL80211_ATTR_STA_INFO, &station_info)) {
+    LOG(ERROR) << "Received station info had no NL80211_ATTR_STA_INFO.";
+    return;
+  }
+
+  uint8_t signal;
+  if (!station_info->GetU8AttributeValue(NL80211_STA_INFO_SIGNAL, &signal)) {
+    LOG(ERROR) << "Received station info had no NL80211_STA_INFO_SIGNAL.";
+    return;
+  }
+
+  endpoint->UpdateSignalStrength(static_cast<signed char>(signal));
+}
+
+void WiFi::StopRequestingStationInfo() {
+  SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
+  request_station_info_callback_.Cancel();
 }
 
 }  // namespace shill

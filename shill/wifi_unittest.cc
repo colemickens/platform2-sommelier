@@ -610,6 +610,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const base::CancelableClosure &GetReconnectTimeoutCallback() {
     return wifi_->reconnect_timeout_callback_;
   }
+  const string &GetSupplicantBSS() {
+    return wifi_->supplicant_bss_;
+  }
+  void SetSupplicantBSS(const string &bss) {
+    wifi_->supplicant_bss_ = bss;
+  }
   int GetReconnectTimeoutSeconds() {
     return WiFi::kReconnectTimeoutSeconds;
   }
@@ -686,6 +692,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
   void ReportWiFiDebugScopeChanged(bool enabled) {
     wifi_->OnWiFiDebugScopeChanged(enabled);
+  }
+  void RequestStationInfo() {
+    wifi_->RequestStationInfo();
+  }
+  void ReportReceivedStationInfo(const Nl80211Message &nl80211_message) {
+    wifi_->OnReceivedStationInfo(nl80211_message);
   }
   void SetPendingService(const WiFiServiceRefPtr &service) {
     wifi_->SetPendingService(service);
@@ -2546,6 +2558,76 @@ TEST_F(WiFiTimerTest, ReconnectTimer) {
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
       _, GetReconnectTimeoutSeconds() * 1000)).Times(0);
   StartReconnectTimer();
+}
+
+TEST_F(WiFiTimerTest, RequestStationInfo) {
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(AnyNumber());
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(AnyNumber());
+
+  // Setup a connected service here while we have the expectations above set.
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(DBus::Path(), NULL, NULL);
+  string connected_bss = GetSupplicantBSS();
+  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
+
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _)).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  NiceScopedMockLog log;
+
+  // There is no current_service_.
+  EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
+  SetCurrentService(NULL);
+  RequestStationInfo();
+
+  // current_service_ is not connnected.
+  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(false));
+  SetCurrentService(service);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
+  RequestStationInfo();
+
+  // Endpoint does not exist in endpoint_by_rpcid_.
+  EXPECT_CALL(*service, IsConnected()).WillRepeatedly(Return(true));
+  SetSupplicantBSS("/some/path/that/does/not/exist/in/endpoint_by_rpcid");
+  EXPECT_CALL(log, Log(_, _, HasSubstr(
+      "Can't get endpoint for current supplicant BSS")));
+  RequestStationInfo();
+  Mock::VerifyAndClearExpectations(&netlink_manager_);
+  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
+
+  // We successfully trigger a request to get the station and start a timer
+  // for the next call.
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION), _, _));
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, WiFi::kRequestStationInfoPeriodSeconds * 1000));
+  SetSupplicantBSS(connected_bss);
+  RequestStationInfo();
+
+  // Now test that a properly formatted New Station message updates strength.
+  NewStationMessage new_station;
+  new_station.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
+
+  // Use a reference to the endpoint instance in the WiFi device instead of
+  // the copy returned by SetupConnectedService().
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
+  new_station.attributes()->SetRawAttributeValue(
+      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
+  new_station.attributes()->CreateNestedAttribute(
+      NL80211_ATTR_STA_INFO, "Station Info");
+  AttributeListRefPtr station_info;
+  new_station.attributes()->GetNestedAttributeList(
+      NL80211_ATTR_STA_INFO, &station_info);
+  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
+  const int16_t kSignalValue = -20;
+  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, kSignalValue);
+  new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
+
+  EXPECT_NE(kSignalValue, endpoint->signal_strength());
+  EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
+  AttributeListConstRefPtr station_info_prime;
+  ReportReceivedStationInfo(new_station);
+  EXPECT_EQ(kSignalValue, endpoint->signal_strength());
 }
 
 TEST_F(WiFiMainTest, EAPCertification) {

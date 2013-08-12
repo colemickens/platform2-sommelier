@@ -215,6 +215,17 @@ class GetRegMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetRegMessage);
 };
 
+class GetStationMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetStationMessage();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetStationMessage);
+};
+
 class GetWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;

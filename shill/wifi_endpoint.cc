@@ -124,6 +124,16 @@ void WiFiEndpoint::PropertiesChanged(
   }
 }
 
+void WiFiEndpoint::UpdateSignalStrength(int16 strength) {
+  if (signal_strength_ == strength ) {
+    return;
+  }
+
+  SLOG(WiFi, 2) << __func__ << ": signal strength "
+                << signal_strength_ << " -> " << strength;
+  signal_strength_ = strength;
+  device_->NotifyEndpointChanged(this);
+}
 
 map<string, string> WiFiEndpoint::GetVendorInformation() const {
   map<string, string> vendor_information;

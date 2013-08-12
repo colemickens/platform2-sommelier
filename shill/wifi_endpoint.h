@@ -62,6 +62,9 @@ class WiFiEndpoint : public Endpoint {
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties);
 
+  // Called by WiFi when it polls for signal strength from the kernel.
+  void UpdateSignalStrength(int16 strength);
+
   // Maps mode strings from flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h, to uints used by supplicant
   static uint32_t ModeStringToUint(const std::string &mode_string);

@@ -245,6 +245,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, VerifyPaths);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
@@ -263,6 +264,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kFastScanIntervalSeconds;
   static const int kPendingTimeoutSeconds;
   static const int kReconnectTimeoutSeconds;
+  static const int kRequestStationInfoPeriodSeconds;
   static const size_t kMinumumFrequenciesToScan;
   static const float kDefaultFractionPerScan;
   static const char kProgressiveScanFlagFile[];
@@ -411,6 +413,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // on the initial association and every reassociation afterward.
   void EnableHighBitrates();
 
+  // Request and retrieve information about the currently connected station.
+  void RequestStationInfo();
+  void OnReceivedStationInfo(const Nl80211Message &nl80211_message);
+  void StopRequestingStationInfo();
+
   void ConnectToSupplicant();
 
   void Restart();
@@ -471,6 +478,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes when a reconnecting service timer expires. Calls
   // ReconnectTimeoutHandler.
   base::CancelableClosure reconnect_timeout_callback_;
+  // Executes periodically while a service is connected, to update the
+  // signal strength from the currently connected AP.
+  base::CancelableClosure request_station_info_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
   // Indicates that the current BSS has reached the completed state according
