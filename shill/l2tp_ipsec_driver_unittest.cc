@@ -572,6 +572,16 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_CALL(*mock_ppp_device_factory,
               CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
       .WillOnce(Return(device_));
+
+  // Make sure that a notification of an intermediate state doesn't cause
+  // the driver to fail the connection.
+  ASSERT_TRUE(driver_->service_);
+  VPNServiceConstRefPtr service = driver_->service_;
+  InvokeNotify(kPPPReasonAuthenticating, config);
+  InvokeNotify(kPPPReasonAuthenticated, config);
+  EXPECT_TRUE(driver_->service_);
+  EXPECT_FALSE(service->IsFailed());
+
   ExpectDeviceConnected(config);
   ExpectMetricsReported();
   InvokeNotify(kPPPReasonConnect, config);

@@ -386,6 +386,12 @@ void L2TPIPSecDriver::Notify(
     const string &reason, const map<string, string> &dict) {
   LOG(INFO) << "IP configuration received: " << reason;
 
+  if (reason == kPPPReasonAuthenticating ||
+      reason == kPPPReasonAuthenticated) {
+    // These are uninteresting intermediate states that do not indicate failure.
+    return;
+  }
+
   if (reason != kPPPReasonConnect) {
     DCHECK_EQ(kPPPReasonDisconnect, reason);
     // DestroyLater, rather than while on stack.
