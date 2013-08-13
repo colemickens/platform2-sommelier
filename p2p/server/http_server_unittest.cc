@@ -23,16 +23,20 @@
 using testing::_;
 using testing::StrictMock;
 
-using p2p::testutil::SetupTestDir;
-using p2p::testutil::TeardownTestDir;
 using p2p::testutil::ExpectCommand;
 using p2p::testutil::ExpectFileSize;
-using p2p::testutil::RunGMainLoop;
+using p2p::testutil::kDefaultMainLoopTimeoutMs;
+using p2p::testutil::RunGMainLoopMaxIterations;
+using p2p::testutil::RunGMainLoopUntil;
+using p2p::testutil::SetupTestDir;
+using p2p::testutil::TeardownTestDir;
 
 using std::string;
 using std::vector;
 
+using base::Bind;
 using base::FilePath;
+using base::Unretained;
 
 namespace p2p {
 
@@ -56,10 +60,25 @@ class HttpServerListener {
 class MockHttpServerListener : public HttpServerListener {
  public:
   explicit MockHttpServerListener(HttpServer* server)
-      : HttpServerListener(server) {}
+      : HttpServerListener(server),
+      num_calls_(0) {
+    ON_CALL(*this, NumConnectionsCallback(_))
+      .WillByDefault(testing::InvokeWithoutArgs(
+          this, &MockHttpServerListener::OnCall));
+  }
+
   MOCK_METHOD1(NumConnectionsCallback, void(int));
 
+  // NumCallsReached() returns true when the number of calls to |this|
+  // is at least |num_calls|. This is used to terminate the GLib main loop
+  // excecution and verify the expectations.
+  bool NumCallsReached(int num_calls) const { return num_calls_ >= num_calls; }
+
  private:
+  void OnCall() { num_calls_++; }
+
+  int num_calls_;
+
   DISALLOW_COPY_AND_ASSIGN(MockHttpServerListener);
 };
 
@@ -176,22 +195,34 @@ TEST(HttpServer, Basic) {
   }
 
   // Allow clients to start - this ensures that the server reaches
-  // the number of connections
-  RunGMainLoop(500);
+  // the number of connections kMultipleTestNumFiles.
+  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
+                    Bind(&MockHttpServerListener::NumCallsReached,
+                         base::Unretained(&listener),
+                         kMultipleTestNumFiles /* num_calls */));
 
-  // Now, complete the file. This causes each client to finish up
+  // Now, complete the file. This causes each client to finish up.
   ExpectCommand(0,
                 "dd if=/dev/zero of=%s/file.p2p conv=notrunc "
                 "oflag=append bs=1000 count=1",
                 testdir.value().c_str());
 
-  // Wait for all downloads to finish
+  // Catch again all the disconnection events.
+  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
+                    Bind(&MockHttpServerListener::NumCallsReached,
+                         base::Unretained(&listener),
+                         2 * kMultipleTestNumFiles /* num_calls */));
+
+  // Wait for all downloads to finish.
   for (auto& t : threads) {
     t->Join();
     delete t;
   }
 
-  RunGMainLoop(2000);
+  // Dispatch messages that could remain in the main loop after the last
+  // "{NumConnections: 0}" is received. This could happen if the metrics are
+  // sent after the NumConnections message.
+  RunGMainLoopMaxIterations(100);
 
   server->Stop();
   delete server;

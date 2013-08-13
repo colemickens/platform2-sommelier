@@ -63,16 +63,34 @@ void TeardownTestDir(const FilePath& dir_path) {
 }
 
 static gboolean RunGMainLoopOnTimeout(gpointer user_data) {
-  GMainLoop* loop = static_cast<GMainLoop*>(user_data);
-  g_main_loop_quit(loop);
+  bool* timeout = static_cast<bool*>(user_data);
+  *timeout = true;
   return FALSE;  // Remove timeout source
 }
 
-void RunGMainLoop(int timeout_msec) {
+void RunGMainLoopUntil(int timeout_msec,
+                                         base::Callback<bool()> terminate) {
   GMainLoop* loop = g_main_loop_new(NULL, FALSE);
-  g_timeout_add(timeout_msec, p2p::testutil::RunGMainLoopOnTimeout, loop);
-  g_main_loop_run(loop);
+  GMainContext* context = g_main_context_default();
+
+  bool timeout = false;
+  guint source_id = g_timeout_add(
+      timeout_msec, p2p::testutil::RunGMainLoopOnTimeout, &timeout);
+
+  while (!timeout && (terminate.is_null() || !terminate.Run()))
+    g_main_context_iteration(context, TRUE);
+
+  g_source_remove(source_id);
   g_main_loop_unref(loop);
+}
+
+int RunGMainLoopMaxIterations(int iterations) {
+  int result;
+  GMainContext* context = g_main_context_default();
+  for (result = 0;
+      result < iterations && g_main_context_iteration(context, FALSE);
+      result++);
+  return result;
 }
 
 size_t FileSize(const FilePath& dir,

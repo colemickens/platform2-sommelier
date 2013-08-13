@@ -8,12 +8,15 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/file_path.h>
 #include <gtest/gtest.h>
 
 namespace p2p {
 
 namespace testutil {
+
+constexpr int kDefaultMainLoopTimeoutMs = 60000;
 
 // Utility function to to run the command expressed by the
 // printf()-style string |format| using the system(3) utility
@@ -32,21 +35,19 @@ base::FilePath SetupTestDir(const std::string& test_name);
 // previously created by SetupTestDir().
 void TeardownTestDir(const base::FilePath& dir_path);
 
-// Runs the default GLib main loop for |timeout_msec|.
-void RunGMainLoop(int timeout_msec);
+// Runs the default GLib main loop for at most |timeout_msec| or util the
+// function |terminate| returns true, wichever happens first. The function
+// |terminate| is called before every GLib main loop iteration and its value is
+// checked.
+void RunGMainLoopUntil(int timeout_msec, base::Callback<bool()> terminate);
 
-// Utility function to determine if two vectors are equal.
-template <class T>
-bool VectorsEqual(const std::vector<T>& a, const std::vector<T>& b) {
-  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
-}
-
-// Utility function that asserts unless the given vectors |a| and |b|
-// are equal.
-template <class T>
-void ExpectVectorsEqual(const std::vector<T>& a, const std::vector<T>& b) {
-  EXPECT_TRUE(VectorsEqual(a, b));
-}
+// Runs the default GLib main loop at most |iterations| times. This
+// dispatches all the events that are already waiting in the main loop and
+// those that get scheduled as a result of these events being attended.
+// Returns the number of iterations the main loop was ran. If there are more
+// than |iterations| events to attend, then this function returns |iterations|
+// and the remaining events are not dispatched.
+int RunGMainLoopMaxIterations(int iterations);
 
 // Utility function to get the size of the file given by |file_name| in
 // the directory given by |dir|. If the file does not exist, 0 is

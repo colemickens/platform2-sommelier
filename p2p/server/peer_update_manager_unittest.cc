@@ -8,19 +8,22 @@
 
 #include "common/testutil.h"
 
-#include "server/peer_update_manager.h"
+#include "server/fake_file_watcher.h"
 #include "server/mock_http_server.h"
 #include "server/mock_service_publisher.h"
+#include "server/peer_update_manager.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <string>
 
-#include <base/logging.h>
 #include <base/bind.h>
+#include <base/logging.h>
 #include <metrics/metrics_library_mock.h>
+
+using base::Bind;
 
 using testing::_;
 using testing::AtLeast;
@@ -28,39 +31,39 @@ using testing::StrictMock;
 
 using base::FilePath;
 
+using p2p::testutil::ExpectCommand;
+using p2p::testutil::kDefaultMainLoopTimeoutMs;
+using p2p::testutil::RunGMainLoopMaxIterations;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
-using p2p::testutil::ExpectCommand;
-using p2p::testutil::RunGMainLoop;
 
 namespace p2p {
 
 namespace server {
 
 // If there are no files present, ensure that we don't publish
-// anything and don't start the HTTP server
+// anything and don't start the HTTP server.
 TEST(PeerUpdateManager, NoFilesPresent) {
   FilePath testdir = SetupTestDir("no-files-present");
 
   StrictMock<MockHttpServer> server;
   StrictMock<MockServicePublisher> publisher;
   StrictMock<MetricsLibraryMock> metrics_lib;
+  FakeFileWatcher watcher(testdir, ".p2p");
 
-  EXPECT_CALL(server, SetNumConnectionsCallback(_)).Times(1);
+  EXPECT_CALL(server, SetNumConnectionsCallback(_));
   EXPECT_CALL(publisher, files()).Times(AtLeast(0));
 
-  FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
+  PeerUpdateManager manager(&watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
-  RunGMainLoop(2000);
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
 
-  delete watcher;
   TeardownTestDir(testdir);
 }
 
 // If there are files present at startup, ensure that we publish them
-// and start the HTTP server
+// and start the HTTP server.
 TEST(PeerUpdateManager, FilesPresent) {
   FilePath testdir = SetupTestDir("files-present");
 
@@ -68,32 +71,35 @@ TEST(PeerUpdateManager, FilesPresent) {
   StrictMock<MockServicePublisher> publisher;
   StrictMock<MetricsLibraryMock> metrics_lib;
 
-  ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
-  ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
-  ExpectCommand(0, "echo -n xyz > %s", testdir.Append("c.p2p").value().c_str());
+  FakeFileWatcher watcher(testdir, ".p2p");
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("a.p2p"), 0));
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("b.p2p"), 0));
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("c.p2p"), 3));
 
-  EXPECT_CALL(server, SetNumConnectionsCallback(_)).Times(1);
+  EXPECT_CALL(server, SetNumConnectionsCallback(_));
   EXPECT_CALL(publisher, files()).Times(AtLeast(0));
 
-  EXPECT_CALL(publisher, AddFile("a", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("b", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("c", 3)).Times(1);
+  EXPECT_CALL(publisher, AddFile("a", 0));
+  EXPECT_CALL(publisher, AddFile("b", 0));
+  EXPECT_CALL(publisher, AddFile("c", 3));
 
   EXPECT_CALL(server, IsRunning()).Times((AtLeast(1)));
-  EXPECT_CALL(server, Start()).Times((1));
+  EXPECT_CALL(server, Start());
 
-  FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
+  // Process all the pending file additions before the manager gets notified.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
+
+  PeerUpdateManager manager(&watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
-  RunGMainLoop(2000);
+  // Run the main loop to process the manager actions.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
 
-  delete watcher;
   TeardownTestDir(testdir);
 }
 
 // If there are files present at startup and we remove one of them,
-// check that the one we remove is subsequently removed from the publisher
+// check that the one we remove is subsequently removed from the publisher.
 TEST(PeerUpdateManager, RemoveFile) {
   FilePath testdir = SetupTestDir("remove-file");
 
@@ -101,36 +107,38 @@ TEST(PeerUpdateManager, RemoveFile) {
   StrictMock<MockServicePublisher> publisher;
   StrictMock<MetricsLibraryMock> metrics_lib;
 
-  ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
-  ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
-  ExpectCommand(0, "echo -n xyz > %s", testdir.Append("c.p2p").value().c_str());
+  FakeFileWatcher watcher(testdir, ".p2p");
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("a.p2p"), 0));
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("b.p2p"), 0));
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("c.p2p"), 3));
 
-  EXPECT_CALL(server, SetNumConnectionsCallback(_)).Times(1);
+  EXPECT_CALL(server, SetNumConnectionsCallback(_));
   EXPECT_CALL(publisher, files()).Times(AtLeast(0));
 
-  EXPECT_CALL(publisher, AddFile("a", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("b", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("c", 3)).Times(1);
-  EXPECT_CALL(publisher, RemoveFile("c")).Times(1);
+  EXPECT_CALL(publisher, AddFile("a", 0));
+  EXPECT_CALL(publisher, AddFile("b", 0));
+  EXPECT_CALL(publisher, AddFile("c", 3));
+  EXPECT_CALL(publisher, RemoveFile("c"));
 
   EXPECT_CALL(server, IsRunning()).Times((AtLeast(1)));
-  EXPECT_CALL(server, Start()).Times((1));
+  EXPECT_CALL(server, Start());
 
-  FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
+  // Process all the pending file additions before the manager gets notified.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
+
+  PeerUpdateManager manager(&watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
   EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.FileCount", 2, _, _, _));
-  ExpectCommand(0, "rm -f %s", testdir.Append("c.p2p").value().c_str());
+  ASSERT_TRUE(watcher.RemoveFile(testdir.Append("c.p2p")));
 
-  RunGMainLoop(2000);
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
 
-  delete watcher;
   TeardownTestDir(testdir);
 }
 
 // If there are files present at startup and we remove all of them,
-// check that they're removed and the HTTP server is stopped
+// check that they're removed and the HTTP server is stopped.
 TEST(PeerUpdateManager, RemoveLastFile) {
   FilePath testdir = SetupTestDir("remove-file");
 
@@ -138,38 +146,41 @@ TEST(PeerUpdateManager, RemoveLastFile) {
   StrictMock<MockServicePublisher> publisher;
   StrictMock<MetricsLibraryMock> metrics_lib;
 
-  ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
-  ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
+  FakeFileWatcher watcher(testdir, ".p2p");
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("a.p2p"), 0));
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("b.p2p"), 0));
 
-  EXPECT_CALL(server, SetNumConnectionsCallback(_)).Times(1);
+  EXPECT_CALL(server, SetNumConnectionsCallback(_));
   EXPECT_CALL(publisher, files()).Times(AtLeast(0));
 
-  EXPECT_CALL(publisher, AddFile("a", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("b", 0)).Times(1);
-  EXPECT_CALL(publisher, RemoveFile("b")).Times(1);
-  EXPECT_CALL(publisher, RemoveFile("a")).Times(1);
+  EXPECT_CALL(publisher, AddFile("a", 0));
+  EXPECT_CALL(publisher, AddFile("b", 0));
+  EXPECT_CALL(publisher, RemoveFile("b"));
+  EXPECT_CALL(publisher, RemoveFile("a"));
 
   EXPECT_CALL(server, IsRunning()).Times((AtLeast(1)));
-  EXPECT_CALL(server, Start()).Times((1));
-  EXPECT_CALL(server, Stop()).Times((1));
+  EXPECT_CALL(server, Start());
+  EXPECT_CALL(server, Stop());
 
-  FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
+  // Process all the pending file additions before the manager gets notified.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
+
+  PeerUpdateManager manager(&watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
   EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.FileCount", 1, _, _, _));
   EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.FileCount", 0, _, _, _));
 
-  ExpectCommand(0, "rm -f %s", testdir.Append("a.p2p").value().c_str());
-  ExpectCommand(0, "rm -f %s", testdir.Append("b.p2p").value().c_str());
+  ASSERT_TRUE(watcher.RemoveFile(testdir.Append("a.p2p")));
+  ASSERT_TRUE(watcher.RemoveFile(testdir.Append("b.p2p")));
 
-  RunGMainLoop(2000);
+  // Run the main loop to process the manager actions.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
 
-  delete watcher;
   TeardownTestDir(testdir);
 }
 
-// Check that we propagate number of connections to the publisher
+// Check that we propagate number of connections to the publisher.
 TEST(PeerUpdateManager, HttpNumConnections) {
   FilePath testdir = SetupTestDir("http-num-connections");
 
@@ -177,27 +188,26 @@ TEST(PeerUpdateManager, HttpNumConnections) {
   StrictMock<MockServicePublisher> publisher;
   StrictMock<MetricsLibraryMock> metrics_lib;
 
-  ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
-  ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
-  ExpectCommand(0, "echo -n xyz > %s", testdir.Append("c.p2p").value().c_str());
+  FakeFileWatcher watcher(testdir, ".p2p");
+  ASSERT_TRUE(watcher.AddFile(testdir.Append("a.p2p"), 5));
 
-  EXPECT_CALL(server, SetNumConnectionsCallback(_)).Times(1);
+  EXPECT_CALL(server, SetNumConnectionsCallback(_));
   EXPECT_CALL(publisher, files()).Times(AtLeast(0));
 
-  EXPECT_CALL(publisher, AddFile("a", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("b", 0)).Times(1);
-  EXPECT_CALL(publisher, AddFile("c", 3)).Times(1);
+  EXPECT_CALL(publisher, AddFile("a", 5));
 
   EXPECT_CALL(server, IsRunning()).Times((AtLeast(1)));
-  EXPECT_CALL(server, Start()).Times((1));
+  EXPECT_CALL(server, Start());
 
-  EXPECT_CALL(publisher, SetNumConnections(1)).Times(1);
-  EXPECT_CALL(publisher, SetNumConnections(2)).Times(1);
-  EXPECT_CALL(publisher, SetNumConnections(5)).Times(1);
-  EXPECT_CALL(publisher, SetNumConnections(0)).Times(1);
+  EXPECT_CALL(publisher, SetNumConnections(1));
+  EXPECT_CALL(publisher, SetNumConnections(2));
+  EXPECT_CALL(publisher, SetNumConnections(5));
+  EXPECT_CALL(publisher, SetNumConnections(0));
 
-  FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
+  // Process all the pending file additions before the manager gets notified.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
+
+  PeerUpdateManager manager(&watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
   server.fake().SetNumConnections(1);
@@ -205,9 +215,9 @@ TEST(PeerUpdateManager, HttpNumConnections) {
   server.fake().SetNumConnections(5);
   server.fake().SetNumConnections(0);
 
-  RunGMainLoop(2000);
+  // Run the main loop to process the manager actions.
+  EXPECT_LT(RunGMainLoopMaxIterations(100), 100);
 
-  delete watcher;
   TeardownTestDir(testdir);
 }
 

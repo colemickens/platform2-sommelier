@@ -80,54 +80,6 @@ TEST(TestUtil, FileSize) {
   TeardownTestDir(testdir);
 }
 
-TEST(TestUtil, VectorsEquals) {
-  vector<string> vec1;
-  vec1.push_back("foo");
-  vec1.push_back("bar");
-  vec1.push_back("baz");
-  vector<string> vec2;
-  vec2.push_back("foo");
-  vec2.push_back("bar");
-  vec2.push_back("baz");
-  vec2.push_back("extra");
-  vector<string> vec3;
-  vec3.push_back("extra");
-  vec3.push_back("foo");
-  vec3.push_back("bar");
-  vec3.push_back("baz");
-  vector<string> vec4;
-  vec4.push_back("a");
-  vec4.push_back("b");
-  vec4.push_back("c");
-  vector<string> vec5;
-  vec5.push_back("d");
-  vec5.push_back("e");
-  vector<string> vec6;
-  vector<string> vec7;
-  vec7.push_back("foo");
-  vec7.push_back("bar");
-  vec7.push_back("baz");
-  vector<vector<string>*> vectors;
-  vectors.push_back(&vec1);
-  vectors.push_back(&vec2);
-  vectors.push_back(&vec3);
-  vectors.push_back(&vec4);
-  vectors.push_back(&vec5);
-  vectors.push_back(&vec6);
-  vectors.push_back(&vec7);
-
-  for (vector<string>* v1 : vectors) {
-    for (vector<string>* v2 : vectors) {
-      if ((v1 == v2) || (v1 == &vec1 && v2 == &vec7) ||
-          (v2 == &vec1 && v1 == &vec7)) {
-        EXPECT_TRUE(VectorsEqual(*v1, *v2));
-      } else {
-        EXPECT_FALSE(VectorsEqual(*v1, *v2));
-      }
-    }
-  }
-}
-
 }  // namespace testutil
 
 }  // namespace p2p

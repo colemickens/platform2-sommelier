@@ -7,6 +7,7 @@
 #endif
 
 #include "common/struct_serializer.h"
+#include "common/testutil.h"
 
 #include <glib.h>
 #include <unistd.h>
@@ -16,6 +17,7 @@
 #include <gtest/gtest-spi.h>
 
 using std::string;
+using p2p::testutil::RunGMainLoopMaxIterations;
 
 namespace {
 
@@ -110,9 +112,7 @@ TEST(StructSerializer, WatchNoMessages) {
   close(fds[1]);
 
   // Run the main loop until all the events are dispatched.
-  int iterations;
-  for (iterations = 0; g_main_context_iteration(NULL, FALSE) && iterations < 10;
-      iterations++);
+  int iterations = RunGMainLoopMaxIterations(10);
 
   // No call is received but the callback is called once due to the hangup.
   EXPECT_EQ(iterations, 1);
@@ -133,9 +133,7 @@ TEST(StructSerializer, WatchPartialMessage) {
   ASSERT_EQ(sizeof(int), write(fds[1], &x, sizeof(x)));
 
   // Run the main loop until all the events are dispatched.
-  int iterations;
-  for (iterations = 0; g_main_context_iteration(NULL, FALSE) && iterations < 10;
-      iterations++);
+  int iterations = RunGMainLoopMaxIterations(10);
   EXPECT_EQ(iterations, 1);
 
   // Write the second part of the message.
@@ -144,9 +142,8 @@ TEST(StructSerializer, WatchPartialMessage) {
   x = 4;
   ASSERT_EQ(sizeof(int), write(fds[1], &x, sizeof(x)));
 
-  for (; g_main_context_iteration(NULL, FALSE) && iterations < 10;
-      iterations++);
-  EXPECT_EQ(iterations, 2);
+  iterations = RunGMainLoopMaxIterations(10);
+  EXPECT_EQ(iterations, 1);
 
   EXPECT_EQ(calls.num_calls, 1);
   const TestStruct result = {-1, 2, 4};
