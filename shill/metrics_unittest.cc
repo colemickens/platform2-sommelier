@@ -14,6 +14,7 @@
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
 #include "shill/mock_wifi_service.h"
@@ -737,6 +738,36 @@ TEST_F(MetricsTest, CorruptedProfile) {
                                       Metrics::kCorruptedProfile,
                                       Metrics::kCorruptedProfileMax));
   metrics_.NotifyCorruptedProfile();
+}
+
+TEST_F(MetricsTest, Logging) {
+  NiceScopedMockLog log;
+  const int kVerboseLevel5 = -5;
+  ScopeLogger::GetInstance()->EnableScopesByName("+metrics");
+  ScopeLogger::GetInstance()->set_verbose_level(-kVerboseLevel5);
+
+  const string kEnumName("fake-enum");
+  const int kEnumValue = 1;
+  const int kEnumMax = 12;
+  EXPECT_CALL(log, Log(kVerboseLevel5, _,
+                       "Sending enum fake-enum with value 1."));
+  EXPECT_CALL(library_, SendEnumToUMA(kEnumName, kEnumValue, kEnumMax));
+  metrics_.SendEnumToUMA(kEnumName, kEnumValue, kEnumMax);
+
+  const string kMetricName("fake-metric");
+  const int kMetricValue = 2;
+  const int kHistogramMin = 0;
+  const int kHistogramMax = 100;
+  const int kHistogramBuckets = 10;
+  EXPECT_CALL(log, Log(kVerboseLevel5, _,
+                       "Sending metric fake-metric with value 2."));
+  EXPECT_CALL(library_, SendToUMA(kMetricName, kMetricValue, kHistogramMin,
+                                  kHistogramMax, kHistogramBuckets));
+  metrics_.SendToUMA(kMetricName, kMetricValue,
+                     kHistogramMin, kHistogramMax, kHistogramBuckets);
+
+  ScopeLogger::GetInstance()->EnableScopesByName("-metrics");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
 #ifndef NDEBUG

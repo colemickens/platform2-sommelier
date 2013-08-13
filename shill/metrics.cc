@@ -1019,11 +1019,15 @@ void Metrics::NotifyCorruptedProfile() {
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
+  SLOG(Metrics, 5)
+      << "Sending enum " << name << " with value " << sample << ".";
   return library_->SendEnumToUMA(name, sample, max);
 }
 
 bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
                         int num_buckets) {
+  SLOG(Metrics, 5)
+      << "Sending metric " << name << " with value " << sample << ".";
   return library_->SendToUMA(name, sample, min, max, num_buckets);
 }
 
