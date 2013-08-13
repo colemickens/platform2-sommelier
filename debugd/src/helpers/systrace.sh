@@ -43,6 +43,7 @@ gfx_events="
     i915:i915_gem_object_pwrite
     exynos:exynos_flip_request
     exynos:exynos_flip_complete
+    exynos:exynos_page_flip_state
     drm:drm_vblank_event
 "
 power_events="
