@@ -199,7 +199,11 @@ void DiskManager::ProcessBlockDeviceEvents(
 
 void DiskManager::ProcessScsiDeviceEvents(
     struct udev_device* dev, const char* action, DeviceEventList* events) {
-  string device_path = UdevDevice(dev).NativePath();
+  UdevDevice device(dev);
+  if (device.IsMobileBroadbandDevice())
+    return;
+
+  string device_path = device.NativePath();
   if (strcmp(action, kUdevAddAction) == 0) {
     if (ContainsKey(devices_detected_, device_path)) {
       events->push_back(DeviceEvent(DeviceEvent::kDeviceScanned, device_path));
