@@ -8,6 +8,12 @@ getfield() {
   echo $1
 }
 
+# Converts a floating point number of seconds to a properly rounded
+# number of integer milliseconds.
+seconds_to_ms() {
+  echo $1 | awk '{ print int($1 * 1000.0 + 0.5)}'
+}
+
 EVENT=$1
 shift
 if [ $# -eq 0 ]; then
@@ -19,6 +25,12 @@ while [ $# -gt 0 ]; do
     time)
       TAG=uptime
       FIELD=1
+    ;;
+    # Emit time in milliseconds instead of fractional seconds.
+    time-ms)
+      TAG=uptime
+      FIELD=1
+      EMIT_MS=1
     ;;
     read-sectors)
       TAG=disk
@@ -38,7 +50,11 @@ while [ $# -gt 0 ]; do
   # the requested event doesn't exist.
   EVENTFILE="/tmp/${TAG}-${EVENT}"
   if [ -f "$EVENTFILE" ]; then
-    getfield $FIELD $(tail -1 "$EVENTFILE")
+    result=$(getfield $FIELD $(tail -1 "$EVENTFILE"))
+    if [ -n "$EMIT_MS" ]; then
+      result=$(seconds_to_ms $result)
+    fi
+    echo $result
   fi
   shift
 done

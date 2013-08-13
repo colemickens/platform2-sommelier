@@ -7,7 +7,7 @@ NCPU=$(grep '^processor' /proc/cpuinfo | wc -l)
 
 SUMMARIZE_TIME='
   BEGIN {
-    printf "%5s %4s %5s %4s  %s\n", "time", "%cpu", "dt", "%dt", "event"
+    printf "%8s %4s %8s %4s  %s\n", "time", "%cpu", "dt", "%dt", "event"
   }
 
   {
@@ -19,9 +19,13 @@ SUMMARIZE_TIME='
     uptime = $1 ; idle = $2
     cum_util = (200 * (uptime - idle) / uptime + 1) / 2
     delta = uptime - prev
-    util = (200 * (delta - idle + prev_idle) / delta + 1) / 2
+    if (delta != 0) {
+      util = (200 * (delta - idle + prev_idle) / delta + 1) / 2
+    } else {
+      util = 100
+    }
+    printf "%8d %3d%% %8d %3d%%  %s\n", uptime, cum_util, delta, util, $3
     prev = uptime ; prev_idle = idle
-    printf "%5d %3d%% %5d %3d%%  %s\n", uptime, cum_util, delta, util, $3
   }
 '
 
