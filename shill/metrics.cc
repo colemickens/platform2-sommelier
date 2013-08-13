@@ -331,7 +331,8 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
   if (channel == kWiFiChannelUndef)
     LOG(WARNING) << "no mapping for frequency " << frequency;
   else
-    SLOG(Metrics, 3) << "map " << frequency << " to " << channel;
+    SLOG(Metrics, 3) << "mapped frequency " << frequency
+                     << " to enum bucket " << channel;
 
   return channel;
 }
@@ -486,6 +487,7 @@ void Metrics::Stop() {
 }
 
 void Metrics::RegisterService(const Service *service) {
+  SLOG(Metrics, 2) << __func__;
   shared_ptr<ServiceMetrics> service_metrics(new ServiceMetrics);
   services_metrics_[service] = service_metrics;
   service_metrics->service = service;
@@ -502,6 +504,9 @@ void Metrics::AddServiceStateTransitionTimer(
     const string &histogram_name,
     Service::ConnectState start_state,
     Service::ConnectState stop_state) {
+  SLOG(Metrics, 2) << __func__ << ": adding " << histogram_name << " for "
+                   << Service::ConnectStateToString(start_state) << " -> "
+                   << Service::ConnectStateToString(stop_state);
   ServiceMetricsLookupMap::iterator it = services_metrics_.find(service);
   if (it == services_metrics_.end()) {
     SLOG(Metrics, 1) << "service not found";
@@ -1057,15 +1062,22 @@ void Metrics::InitializeCommonServiceMetrics(const Service *service) {
 void Metrics::UpdateServiceStateTransitionMetrics(
     ServiceMetrics *service_metrics,
     Service::ConnectState new_state) {
+  const char *state_string = Service::ConnectStateToString(new_state);
+  SLOG(Metrics, 5) << __func__ << ": new_state=" << state_string;
   TimerReportersList::iterator it;
   TimerReportersList &start_timers = service_metrics->start_on_state[new_state];
-  for (it = start_timers.begin(); it != start_timers.end(); ++it)
-    (*it)->Start();
+  for (auto &start_timer : start_timers) {
+    SLOG(Metrics, 5) << "Starting timer for " << start_timer->histogram_name()
+                     << " due to new state " << state_string << ".";
+    start_timer->Start();
+  }
 
   TimerReportersList &stop_timers = service_metrics->stop_on_state[new_state];
-  for (it = stop_timers.begin(); it != stop_timers.end(); ++it) {
-    if ((*it)->Stop())
-      (*it)->ReportMilliseconds();
+  for (auto &stop_timer: stop_timers) {
+    SLOG(Metrics, 5) << "Stopping timer for " << stop_timer->histogram_name()
+                     << " due to new state " << state_string << ".";
+    if (stop_timer->Stop())
+      stop_timer->ReportMilliseconds();
   }
 }
 
