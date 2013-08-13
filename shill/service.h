@@ -289,9 +289,6 @@ class Service : public base::RefCounted<Service> {
   // Clear all EAP certification elements.
   virtual void ClearEAPCertification();
 
-  // The inherited class should register any custom metrics in this method.
-  virtual void InitializeCustomMetrics() const {}
-
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
   // |time_resume_to_ready_milliseconds| holds the elapsed time from when

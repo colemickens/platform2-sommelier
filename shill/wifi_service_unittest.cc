@@ -34,6 +34,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
+#include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
@@ -362,6 +363,16 @@ class WiFiServiceFixupStorageTest : public WiFiServiceTest {
   StrictMock<MockStore> store_;
   set<string> groups_;
 };
+
+TEST_F(WiFiServiceTest, Constructor) {
+  string histogram = metrics()->GetFullMetricName(
+      Metrics::kMetricTimeToJoinMilliseconds, Technology::kWifi);
+  EXPECT_CALL(*metrics(), AddServiceStateTransitionTimer(_, _, _, _))
+      .Times(AnyNumber());
+  EXPECT_CALL(*metrics(), AddServiceStateTransitionTimer(
+      _, histogram, Service::kStateAssociating, Service::kStateConfiguring));
+  MakeSimpleService(flimflam::kSecurityNone);
+}
 
 TEST_F(WiFiServiceTest, StorageId) {
   WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityNone);

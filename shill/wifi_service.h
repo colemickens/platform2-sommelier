@@ -122,7 +122,7 @@ class WiFiService : public Service {
   bool hidden_ssid() const { return hidden_ssid_; }
   bool ieee80211w_required() const { return ieee80211w_required_; }
 
-  virtual void InitializeCustomMetrics() const;
+  void InitializeCustomMetrics() const;
   virtual void SendPostReadyStateMetrics(
       int64 time_resume_to_ready_milliseconds) const;
 

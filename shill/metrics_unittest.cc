@@ -126,7 +126,6 @@ TEST_F(MetricsTest, TimeToConfig) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateConfiguring);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
 }
@@ -137,7 +136,6 @@ TEST_F(MetricsTest, TimeToPortal) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
   metrics_.NotifyServiceStateChanged(service_, Service::kStatePortal);
 }
@@ -148,7 +146,6 @@ TEST_F(MetricsTest, TimeToOnline) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateOnline);
 }
@@ -159,7 +156,6 @@ TEST_F(MetricsTest, ServiceFailure) {
   EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricNetworkServiceErrors,
                                       Service::kFailureBadPassphrase,
                                       Metrics::kMetricNetworkServiceErrorsMax));
-  metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateFailure);
 }
 
@@ -169,7 +165,6 @@ TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.RegisterService(open_wifi_service_);
   metrics_.NotifyServiceStateChanged(open_wifi_service_,
                                      Service::kStateAssociating);
   metrics_.NotifyServiceStateChanged(open_wifi_service_,
@@ -197,7 +192,6 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   wep_wifi_service_->frequency_ = 2412;
   wep_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wep_wifi_service_->raw_signal_strength_ = kStrength;
-  metrics_.RegisterService(wep_wifi_service_);
   metrics_.NotifyServiceStateChanged(wep_wifi_service_,
                                      Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);
@@ -245,7 +239,6 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
   EXPECT_CALL(*eap_, OutputConnectionMetrics(&metrics_, Technology::kWifi));
-  metrics_.RegisterService(eap_wifi_service_);
   metrics_.NotifyServiceStateChanged(eap_wifi_service_,
                                      Service::kStateConnected);
 }
@@ -270,7 +263,6 @@ TEST_F(MetricsTest, WiFiServicePostReadyAdHoc) {
   adhoc_wifi_service->frequency_ = 2412;
   adhoc_wifi_service->physical_mode_ = Metrics::kWiFiNetworkPhyMode11b;
   adhoc_wifi_service->raw_signal_strength_ = kStrength;
-  metrics_.RegisterService(adhoc_wifi_service);
   metrics_.NotifyServiceStateChanged(adhoc_wifi_service,
                                      Service::kStateConnected);
 }

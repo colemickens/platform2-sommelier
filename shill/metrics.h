@@ -454,10 +454,9 @@ class Metrics {
 
   // Tracks the time it takes |service| to go from |start_state| to
   // |stop_state|.  When |stop_state| is reached, the time is sent to UMA.
-  void AddServiceStateTransitionTimer(const Service *service,
-                                      const std::string &histogram_name,
-                                      Service::ConnectState start_state,
-                                      Service::ConnectState stop_state);
+  virtual void AddServiceStateTransitionTimer(
+      const Service *service, const std::string &histogram_name,
+      Service::ConnectState start_state, Service::ConnectState stop_state);
 
   // Specializes |metric_name| for the specified |technology_id|.
   std::string GetFullMetricName(const char *metric_name,
@@ -599,10 +598,6 @@ class Metrics {
   typedef std::map<Service::ConnectState, TimerReportersList>
       TimerReportersByState;
   struct ServiceMetrics {
-    ServiceMetrics() : service(NULL) {}
-    // The service is registered/deregistered in the Service
-    // constructor/destructor, therefore there is no need to keep a ref count.
-    const Service *service;
     // All TimerReporter objects are stored in |timers| which owns the objects.
     // |start_on_state| and |stop_on_state| contain pointers to the
     // TimerReporter objects and control when to start and stop the timers.

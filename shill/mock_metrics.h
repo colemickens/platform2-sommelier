@@ -18,6 +18,10 @@ class MockMetrics : public Metrics {
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD4(AddServiceStateTransitionTimer,
+               void(const Service *service, const std::string &histogram_name,
+                    Service::ConnectState start_state,
+                    Service::ConnectState stop_state));
   MOCK_METHOD1(NotifyDeviceScanStarted, void (int interface_index));
   MOCK_METHOD1(NotifyDeviceScanFinished, void(int interface_index));
   MOCK_METHOD1(ResetScanTimer, void(int interface_index));

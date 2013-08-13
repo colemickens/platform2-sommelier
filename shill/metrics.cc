@@ -488,11 +488,11 @@ void Metrics::Stop() {
 
 void Metrics::RegisterService(const Service *service) {
   SLOG(Metrics, 2) << __func__;
-  shared_ptr<ServiceMetrics> service_metrics(new ServiceMetrics);
+  LOG_IF(WARNING, service && ContainsKey(services_metrics_, service))
+      << "Repeatedly registering " << service->unique_name();
+  shared_ptr<ServiceMetrics> service_metrics(new ServiceMetrics());
   services_metrics_[service] = service_metrics;
-  service_metrics->service = service;
   InitializeCommonServiceMetrics(service);
-  service->InitializeCustomMetrics();
 }
 
 void Metrics::DeregisterService(const Service *service) {

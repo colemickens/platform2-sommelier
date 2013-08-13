@@ -141,6 +141,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kSSIDProperty);
   IgnoreParameterForConfigure(flimflam::kSecurityProperty);
 
+  InitializeCustomMetrics();
+
   // Log the |unique_name| to |friendly_name| mapping for debugging purposes.
   // The latter will be tagged for scrubbing.
   LOG(INFO) << "Constructed WiFi service " << unique_name()
@@ -363,9 +365,10 @@ void WiFiService::ResetSuspectedCredentialFailures() {
 }
 
 void WiFiService::InitializeCustomMetrics() const {
+  SLOG(Metrics, 2) << __func__ << " for " << unique_name();
   string histogram = metrics()->GetFullMetricName(
-                         Metrics::kMetricTimeToJoinMilliseconds,
-                         technology());
+      Metrics::kMetricTimeToJoinMilliseconds,
+      technology());
   metrics()->AddServiceStateTransitionTimer(this,
                                             histogram,
                                             Service::kStateAssociating,

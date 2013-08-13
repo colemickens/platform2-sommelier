@@ -219,8 +219,8 @@ Service::Service(ControlInterface *control_interface,
 }
 
 Service::~Service() {
-  LOG(INFO) << "Service " << unique_name_ << " destroyed.";
   metrics_->DeregisterService(this);
+  LOG(INFO) << "Service " << unique_name_ << " destroyed.";
 }
 
 void Service::AutoConnect() {
