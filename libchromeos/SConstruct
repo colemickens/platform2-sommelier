@@ -79,6 +79,11 @@ all_base_libs = []
 all_pc_libs = ''
 all_libs = []
 all_scons_libs = []
+# Asan does not want this link flag.
+if '-fsanitize=address' in env['CXXFLAGS']:
+  LDFLAGS_defs = ''
+else:
+  LDFLAGS_defs = '-Wl,-z,defs'
 
 # Build all the shared libraries.
 for lib in base_libs:
@@ -101,7 +106,7 @@ for lib in base_libs:
   e.Append(
     LIBS = Split(libs),
     LIBPATH = ['.'],
-    LINKFLAGS = ['-Wl,--as-needed', '-Wl,-z,defs',
+    LINKFLAGS = ['-Wl,--as-needed', LDFLAGS_defs,
                  '-Wl,-soname,lib%s.so' % name],
   )
   if pc_libs:
@@ -175,7 +180,7 @@ env.Append(
     LIBS = [libchromeos, 'protobuf-lite', 'pthread', 'rt'],
     LIBPATH = ['.', '../third_party/chrome'],
     CCFLAGS = ['-fvisibility=hidden'],
-    LINKFLAGS = ['-Wl,--as-needed', '-Wl,-z,defs',
+    LINKFLAGS = ['-Wl,--as-needed', LDFLAGS_defs,
                  '-Wl,-soname,lib%s.so' % libpolicy,
                  '-Wl,--version-script,libpolicy.ver'],
   )
