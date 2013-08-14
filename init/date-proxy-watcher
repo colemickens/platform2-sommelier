@@ -54,8 +54,15 @@ monitor_net_change() {
 monitor_proxy_change() {
   # listen for responses to our proxy-request signal; when we get a response,
   # send it to stdout.
+  # Match Chromium's PAC output from
+  #   src/net/proxy/proxy_server.cc:ProxyServer::ToPacString()
   dbus-monitor --system "${RCV_FILTER}" |
-    grep --line-buffered -o -e DIRECT -e "PROXY [a-zA-Z0-9\-\.]\+:[0-9]\+"
+    grep --line-buffered -o \
+      -e "DIRECT" \
+      -e "PROXY [a-zA-Z0-9\-\.]\+:[0-9]\+" \
+      -e "SOCKS [a-zA-Z0-9\-\.]\+:[0-9]\+" \
+      -e "SOCKS5 [a-zA-Z0-9\-\.]\+:[0-9]\+" \
+      -e "HTTPS [a-zA-Z0-9\-\.]\+:[0-9]\+"
 }
 
 mkfifo -m 600 "$WORK_DIR/proxy-fifo"
@@ -81,7 +88,19 @@ trap "kill -TERM $MON_PID $NET_PID" EXIT INT QUIT TERM
       ;;
     PROXY* )
       $LOG "proxy ${PROXY_SETTINGS}"
-      proxy="${PROXY_SETTINGS#PROXY }"
+      proxy="http://${PROXY_SETTINGS#PROXY }"
+      ;;
+    SOCKS* )
+      $LOG "proxy ${PROXY_SETTINGS}"
+      proxy="socks4://${PROXY_SETTINGS#SOCKS }"
+      ;;
+    SOCKS5* )
+      $LOG "proxy ${PROXY_SETTINGS}"
+      proxy="socks5://${PROXY_SETTINGS#SOCKS5 }"
+      ;;
+    HTTPS* )
+      $LOG "proxy ${PROXY_SETTINGS}"
+      proxy="https://${PROXY_SETTINGS#HTTPS }"
       ;;
   esac
   if [ "${proxy}" != "${proxy_current}" ]; then
