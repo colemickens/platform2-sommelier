@@ -19,6 +19,10 @@ static void PPPOnPhaseChange(void *data, int arg) {
   } else if (arg == PHASE_NETWORK) {
     // Either no authentication was required, or authentication has
     // completed.
+    //
+    // TODO(quiche): We can also transition backwards to PHASE_NETWORK,
+    // when disconnecting. In such cases, the may want to omit this
+    // (spurious) call.
     PPPOnAuthenticateDone();
   } else if (arg == PHASE_DISCONNECT || arg == PHASE_DEAD) {
     PPPOnDisconnect();

@@ -320,6 +320,20 @@ class CellularTest : public testing::Test {
     EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
   }
 
+  void ExpectDisconnectCapabilityUniversal() {
+    SetCellularType(Cellular::kTypeUniversal);
+    device_->state_ = Cellular::kStateConnected;
+    EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _, _))
+        .WillOnce(Invoke(this, &CellularTest::InvokeDisconnectMM1));
+    GetCapabilityUniversal()->modem_simple_proxy_.reset(
+        mm1_simple_proxy_.release());
+    GetCapabilityUniversal()->bearer_path_ = "/fake/path";
+  }
+
+  void VerifyDisconnect() {
+    EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+  }
+
   void StartPPP(int pid) {
     MockGLib &mock_glib(*dynamic_cast<MockGLib *>(modem_info_.glib()));
     EXPECT_CALL(mock_glib, ChildWatchAdd(pid, _, _));
@@ -1206,9 +1220,12 @@ TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
   const map<string, string> kEmptyArgs;
   MockCellularService *service = SetMockService();
   StartPPP(kPID);
+
+  ExpectDisconnectCapabilityUniversal();
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
+  VerifyDisconnect();
 }
 
 TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
@@ -1219,10 +1236,13 @@ TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
   const map<string, string> kEmptyArgs;
   MockCellularService *service = SetMockService();
   StartPPP(kPID);
+
+  ExpectDisconnectCapabilityUniversal();
   EXPECT_CALL(*service, SetFailure(Service::kFailurePPPAuth));
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
+  VerifyDisconnect();
 }
 
 TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
@@ -1234,26 +1254,22 @@ TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
   const map<string, string> kEmptyArgs;
   MockCellularService *service = SetMockService();
   StartPPP(kPID);
+
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  ExpectDisconnectCapabilityUniversal();
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
   device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
+  VerifyDisconnect();
 }
 
 TEST_F(CellularTest, OnPPPDied) {
   const int kPID = 1234;
   const int kExitStatus = 5;
-  SetCellularType(Cellular::kTypeUniversal);
-  device_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _, _))
-      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnectMM1));
-  GetCapabilityUniversal()->modem_simple_proxy_.reset(
-      mm1_simple_proxy_.release());
-  GetCapabilityUniversal()->bearer_path_ = "/fake/path";
-
+  ExpectDisconnectCapabilityUniversal();
   device_->OnPPPDied(kPID, kExitStatus);
-  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+  VerifyDisconnect();
 }
 
 TEST_F(CellularTest, DropConnection) {

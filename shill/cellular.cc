@@ -949,13 +949,13 @@ void Cellular::OnPPPDisconnected() {
     // TODO(quiche): Don't set failure if we disconnected intentionally.
     SetServiceFailure(Service::kFailureUnknown);
   }
-  return;
+  Error error;
+  Disconnect(&error);
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {
   LOG(INFO) << __func__ << " on " << link_name();
-  Error error;
-  Disconnect(&error);
+  OnPPPDisconnected();
 }
 
 }  // namespace shill
