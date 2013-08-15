@@ -40,14 +40,14 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
   // does not result in one range being completely covered by another
   MappingList::iterator iter;
   MappingList mappings_to_delete;
-  MappedRange* covering_range = NULL;
-  MappingList::iterator covering_range_iter;
+  bool old_range_found = false;
+  MappedRange old_range;
   for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
     if (!iter->Intersects(range))
       continue;
-    if (!covering_range && iter->Covers(range) && iter->size > range.size) {
-      covering_range = &(*iter);
-      covering_range_iter = iter;
+    if (!old_range_found && iter->Covers(range) && iter->size > range.size) {
+      old_range_found = true;
+      old_range = *iter;
       continue;
     }
     // Quit if existing ranges that collide aren't supposed to be removed.
@@ -64,8 +64,7 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
 
   // Otherwise check for this range being covered by another range.  If that
   // happens, split or reduce the existing range to make room.
-  if (covering_range) {
-    MappedRange old_range = *covering_range;
+  if (old_range_found) {
     CHECK(Unmap(old_range));
 
     uint64 gap_before = range.real_addr - old_range.real_addr;
