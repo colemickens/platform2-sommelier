@@ -31,19 +31,24 @@ KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
 SAFE_WIPE=$(echo "$@" | grep -sq safe && echo "safe")
 FACTORY_WIPE_FIRMWARE_PID=""
 
-# List of files to preserve relative to /mnt/stateful_partition/
-PRESERVED_FILES="
-  unencrypted/preserve/attestation.epb
-  unencrypted/preserve/powerwash_count
-  unencrypted/preserve/enrollment_state.epb
-  unencrypted/preserve/update_engine/prefs/rollback-version
-  home/.shadow/install_attributes.pb
-"
 PRESERVED_TAR="/tmp/preserve.tar"
 STATE_PATH="/mnt/stateful_partition"
-PRESERVED_LIST=""
 POWERWASH_COUNT="/mnt/stateful_partition/unencrypted/preserve/powerwash_count"
+
+# List of files to preserve relative to /mnt/stateful_partition/
+PRESERVED_FILES=""
+
+# Preserve these files in safe mode.
 if [ "$SAFE_WIPE" = "safe" ]; then
+  PRESERVED_FILES="
+    unencrypted/preserve/attestation.epb
+    unencrypted/preserve/powerwash_count
+    unencrypted/preserve/enrollment_state.epb
+    unencrypted/preserve/update_engine/prefs/rollback-version
+    home/.shadow/install_attributes.pb
+  "
+
+  # Powerwash count is only preserved for "safe" powerwashes.
   COUNT=1
   if [ -f $POWERWASH_COUNT ]; then
     COUNT_UNSANITIZED=$(head -1 $POWERWASH_COUNT | cut -c1-4)
@@ -52,6 +57,19 @@ if [ "$SAFE_WIPE" = "safe" ]; then
     fi
   fi
   echo $COUNT > $POWERWASH_COUNT
+fi
+
+# For a factory wipe (and only factory) preserve seed for CRX cache.
+if [ "$FACTORY_WIPE" = "factory" ]; then
+  IMPORT_FILES="$(cd ${STATE_PATH};
+                  echo unencrypted/import_extensions/*.crx)"
+  if [ "$IMPORT_FILES" != "unencrypted/import_extensions/*.crx" ]; then
+    PRESERVED_FILES="${PRESERVED_FILES} ${IMPORT_FILES}"
+  fi
+fi
+
+PRESERVED_LIST=""
+if [ -n "$PRESERVED_FILES" ]; then
   # We want to preserve permissions and recreate the directory structure
   # for all of the files in the PRESERVED_FILES variable. In order to do
   # so we run tar --no-recurison and specify the names of each of the
@@ -67,7 +85,7 @@ if [ "$SAFE_WIPE" = "safe" ]; then
       path=$(dirname $path)
     done
   done
-  tar cf $PRESERVED_TAR -C $STATE_PATH --no-recursion $PRESERVED_LIST
+  tar cf $PRESERVED_TAR -C $STATE_PATH --no-recursion -- $PRESERVED_LIST
 fi
 
 wipedev() {
@@ -239,8 +257,8 @@ fi
 mount -n -t ext4 "${STATE_DEV}" "${STATE_PATH}"
 
 
-# If /tmp/preserve.tar exists copy over its contents to the proper location.
-if [ "$SAFE_WIPE" = "safe" ]; then
+# If there were preserved files, restore them.
+if [ -n "$PRESERVED_LIST" ]; then
   tar xfp $PRESERVED_TAR -C $STATE_PATH
   touch /mnt/stateful_partition/unencrypted/.powerwash_completed
 fi
