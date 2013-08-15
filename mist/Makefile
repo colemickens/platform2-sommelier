@@ -36,6 +36,8 @@ clean: CLEAN($(MIST_PROTO_HEADERS))
 clean: CLEAN($(MIST_PROTO_OBJS))
 $(eval $(call add_object_rules,$(MIST_PROTO_OBJS),CXX,cc))
 
+$(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): $(MIST_PROTO_HEADERS)
+
 CXX_BINARY(mist): \
 	$(filter-out mock_%.o testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
 	$(MIST_PROTO_OBJS)
