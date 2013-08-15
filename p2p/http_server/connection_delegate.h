@@ -5,6 +5,8 @@
 #ifndef P2P_HTTP_SERVER_CONNECTION_DELEGATE_H__
 #define P2P_HTTP_SERVER_CONNECTION_DELEGATE_H__
 
+#include "common/server_message.h"
+
 #include <string>
 #include <map>
 
@@ -17,7 +19,7 @@ namespace p2p {
 
 namespace http_server {
 
-class Server;
+class ServerInterface;
 
 // Class used for handling a single HTTP connection.
 class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
@@ -29,7 +31,7 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
   ConnectionDelegate(int dirfd,
                      int fd,
                      const std::string& pretty_addr,
-                     Server* server,
+                     ServerInterface* server,
                      int64_t max_download_rate);
 
   virtual ~ConnectionDelegate();
@@ -42,7 +44,8 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
   // and appends the data to |str| (including the '\n' character)
   // and returns true on success.
   //
-  // Fails if the line is longer than kMaxLineLength.
+  // Fails if the line is longer than kMaxLineLength or no complete
+  // line was read and the socket is closed.
   bool ReadLine(std::string* str);
 
   // Reads data from the other peer and - if the data is a valid HTTP 1.1
@@ -123,7 +126,7 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
 
   // A pointer to the Server object to call ConenectionTerminated()
   // on when done serving.
-  Server* server_;
+  ServerInterface* server_;
 
   // The maximum allowed download rate (in bytes/second) or 0 if there
   // is no limit.

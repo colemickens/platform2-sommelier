@@ -19,6 +19,7 @@
 #include <cinttypes>
 #include <cstdlib>
 
+#include <base/logging.h>
 #include <gtest/gtest.h>
 
 using std::string;
@@ -28,6 +29,37 @@ using base::FilePath;
 namespace p2p {
 
 namespace testutil {
+
+// This is the message to be displayed if the TimeBombAbort timeout is
+// reached.
+static const char* time_bomb_abort_message_ = NULL;
+
+TimeBombAbort::TimeBombAbort(int timeout_seconds, const char* message) {
+  CHECK(time_bomb_abort_message_ == NULL);
+  time_bomb_abort_message_ = message;
+  // Install the signal handler keeping the previous one.
+  struct sigaction time_bomb_action;
+  time_bomb_action.sa_flags = 0;
+  time_bomb_action.sa_handler = TimeoutHandler;
+  sigaction(SIGALRM, &time_bomb_action, &previous_);
+  alarm(timeout_seconds);
+}
+
+TimeBombAbort::~TimeBombAbort() {
+  // Restore the previous sigaction.
+  alarm(0);
+  sigaction(SIGALRM, &previous_, NULL);
+  time_bomb_abort_message_ = NULL;
+}
+
+void TimeBombAbort::TimeoutHandler(int signal) {
+  // Does a "best-effort" write but fails silently.
+  const char* msg = "\n\nTimeBombAbort::TimeoutHandler reached.\n";
+  if (write(STDERR_FILENO, msg, strlen(msg)));
+  if (write(STDERR_FILENO, time_bomb_abort_message_,
+            strlen(time_bomb_abort_message_)));
+  exit(1);
+}
 
 void ExpectCommand(int expected_exit_status,
                    const char* format,

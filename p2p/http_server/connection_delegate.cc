@@ -55,7 +55,7 @@ namespace http_server {
 ConnectionDelegate::ConnectionDelegate(int dirfd,
                                        int fd,
                                        const string& pretty_addr,
-                                       Server* server,
+                                       ServerInterface* server,
                                        int64_t max_download_rate)
     : base::DelegateSimpleThread::Delegate(),
       dirfd_(dirfd),
@@ -84,6 +84,12 @@ bool ConnectionDelegate::ReadLine(string* str) {
       return false;
     }
     CHECK_GE(num_recv, 0);
+
+    // When num_recv is 0 the other end has closed the socket. If we reach this
+    // point, even with a partial line in str, we didn't get a full line and
+    // should return since no fruther data will come from the file descriptor.
+    if (num_recv == 0)
+      return false;
 
     for (n = 0; n < num_recv; ++n) {
       str->push_back(buf[n]);
@@ -365,9 +371,8 @@ static bool ParseRange(const string& range_str,
   CHECK(range_start != NULL);
   CHECK(range_end != NULL);
 
-  if (sscanf(s, "bytes=%" SCNu64 "-%" SCNu64, range_start, range_end) == 2 &&
-      *range_start <= *range_end) {
-    return true;
+  if (sscanf(s, "bytes=%" SCNu64 "-%" SCNu64, range_start, range_end) == 2) {
+    return *range_start <= *range_end;
   } else if (sscanf(s, "bytes=%" SCNu64 "-", range_start) == 1 &&
              *range_start <= file_size - 1) {
     *range_end = file_size - 1;
@@ -472,8 +477,11 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
 void ConnectionDelegate::ReportSendFileMetrics(bool send_file_result) {
   // Report P2P.Server.DownloadSpeedKBps with the average speed at wich the
   // download was served at, every time a file was served, interrupted or not.
-  int average_speed_kbps = total_bytes_sent_ / total_time_spent_.InSecondsF() /
-      kBytesPerKB;
+  int average_speed_kbps = 0;
+  if (total_time_spent_.InSecondsF() > 0.) {
+    average_speed_kbps = total_bytes_sent_ / total_time_spent_.InSecondsF() /
+        kBytesPerKB;
+  }
   server_->ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps,
                                average_speed_kbps);
 

@@ -5,6 +5,8 @@
 #ifndef P2P_SERVER_UTIL_H__
 #define P2P_SERVER_UTIL_H__
 
+#include <signal.h>
+
 #include <string>
 #include <vector>
 
@@ -17,6 +19,27 @@ namespace p2p {
 namespace testutil {
 
 constexpr int kDefaultMainLoopTimeoutMs = 60000;
+
+// This class will call exit() if the object is not destroyed before
+// a given timeout. Useful to cancel a test in deadlock when no other
+// mechanism is available to detect the deadlock and make the test fail.
+class TimeBombAbort {
+ public:
+  // Configures the TimeBombAbort to call exit() after |timeout_seconds|
+  // seconds if the object is not destroyed before. If the timeout is
+  // reached, the |message| string will be printed in stderr right before
+  // finishing the program. This class uses SIGALRM and should not be used
+  // together with sleep(2).
+  TimeBombAbort(int timeout_seconds, const char* message);
+  ~TimeBombAbort();
+
+ private:
+  static void TimeoutHandler(int signal);
+
+  struct sigaction previous_;
+
+  DISALLOW_COPY_AND_ASSIGN(TimeBombAbort);
+};
 
 // Utility function to to run the command expressed by the
 // printf()-style string |format| using the system(3) utility

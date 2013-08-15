@@ -45,6 +45,7 @@ TESTS = p2p-http-server-unittests
 
 p2p_http_server_unittests_SOURCES = 			\
 	testrunner.cc					\
+	connection_delegate_unittest.cc			\
 	server_unittest.cc				\
 	$(p2p_http_server_sources)			\
 	$(NULL)

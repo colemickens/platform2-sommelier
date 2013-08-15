@@ -5,7 +5,9 @@
 #ifndef P2P_HTTP_SERVER_SERVER_H__
 #define P2P_HTTP_SERVER_SERVER_H__
 
+#include "http_server/server_interface.h"
 #include "common/server_message.h"
+#include "common/clock_interface.h"
 
 #include <string>
 #include <map>
@@ -17,7 +19,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/simple_thread.h>
 
-#include "common/clock_interface.h"
 
 namespace p2p {
 
@@ -25,7 +26,7 @@ namespace http_server {
 
 class ConnectionDelegate;
 
-class Server {
+class Server : public ServerInterface {
  public:
   // Constructs a new Server object.
   //
@@ -33,38 +34,18 @@ class Server {
   // the socket, the Start() method will need to be called.
   Server(const base::FilePath& directory, uint16 port);
 
-  ~Server();
+  virtual ~Server();
 
-  // Starts the server. Returns false on failure.
-  bool Start();
-
-  // Stops the server.
-  //
-  // Note that it is considered a programming error to delete the
-  // object without stopping it.
-  void Stop();
-
-  // Sets the maximum download rate. The special value 0 means there
-  // is no limit. Note that this is per connection.
-  void SetMaxDownloadRate(int64_t bytes_per_sec);
-
-  // Gets the port number the server listens on.
-  uint16 Port();
-
-  // Gets the current number of connected clients.
-  int NumConnections();
-
-  // Gets the clock used by the server.
-  p2p::common::ClockInterface* Clock();
-
-  // Method called in by |delegate|, in its own thread.
-  void ConnectionTerminated(ConnectionDelegate* delegate);
-
-  // Sends a P2PServerMessage to the stdout. This is used to report various
-  // metrics and to report the number of current connections. This method is
-  // thread safe and is intended to be use by the ConnectionDelegates.
-  void ReportServerMessage(p2p::util::P2PServerMessageType msg_type,
-                           int64_t value);
+  // ServerInterface override methods.
+  virtual bool Start();
+  virtual void Stop();
+  virtual void SetMaxDownloadRate(int64_t bytes_per_sec);
+  virtual uint16 Port();
+  virtual int NumConnections();
+  virtual p2p::common::ClockInterface* Clock();
+  virtual void ConnectionTerminated(ConnectionDelegate* delegate);
+  virtual void ReportServerMessage(p2p::util::P2PServerMessageType msg_type,
+                                   int64_t value);
 
  private:
   // Callback used clients connect to our listening socket.

@@ -31,6 +31,7 @@ bool StructSerializerWrite(int fd, const T& data) {
       return false;
     }
     to_write -= res;
+    p += res;
   } while (to_write > 0);
   return true;
 }
