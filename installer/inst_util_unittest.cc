@@ -46,6 +46,43 @@ TEST(UtilTest, SplitStringTest) {
   ASSERT_THAT(result, testing::ElementsAre("My", "Stuff", ""));
 }
 
+TEST(UtilTest, JoinStringsTest) {
+  std::string result;
+
+  std::vector<std::string> empty;
+  JoinStrings(empty, " ", &result);
+  EXPECT_EQ(result, "");
+
+  std::vector<std::string> one;
+  one.push_back("One");
+  JoinStrings(one, " ", &result);
+  EXPECT_EQ(result, "One");
+
+  std::vector<std::string> three;
+  three.push_back("One");
+  three.push_back("Two");
+  three.push_back("Three");
+
+  JoinStrings(three, " ", &result);
+  EXPECT_EQ(result, "One Two Three");
+
+  JoinStrings(three, ", ", &result);
+  EXPECT_EQ(result, "One, Two, Three");
+
+  std::string initial;
+  std::vector<std::string> intermediate;
+
+  initial = "One Two Three";
+  SplitString(initial, ' ', &intermediate);
+  JoinStrings(intermediate, " ", &result);
+  EXPECT_EQ(initial, result);
+
+  initial = "One Two Three ";
+  SplitString(initial, ' ', &intermediate);
+  JoinStrings(intermediate, " ", &result);
+  EXPECT_EQ(initial, result);
+}
+
 TEST(UtilTest, RunCommandTest) {
   // Note that RunCommand returns the raw system() result, including signal
   // values. WEXITSTATUS would be needed to check clean result codes.

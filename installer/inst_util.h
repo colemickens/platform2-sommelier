@@ -26,6 +26,10 @@ void SplitString(const std::string& str,
                  char split,
                  std::vector<std::string>* output);
 
+void JoinStrings(const std::vector<std::string>& strs,
+                const std::string& split,
+                std::string* output);
+
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.
 int RunCommand(const std::string& command);

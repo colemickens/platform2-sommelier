@@ -96,6 +96,26 @@ void SplitString(const string& str,
   output->push_back(str.substr(i));
 }
 
+void JoinStrings(const std::vector<std::string>& strs,
+                const string& split,
+                std::string* output) {
+  output->clear();
+
+  bool first_line = true;
+
+  for (std::vector<string>::const_iterator line = strs.begin();
+       line != strs.end();
+       line++) {
+
+    if (first_line)
+      first_line = false;
+    else
+      output->append(split);
+
+    output->append(*line);
+  }
+}
+
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.
 // If you are passing more than one command in cmdoptions you need it to be
