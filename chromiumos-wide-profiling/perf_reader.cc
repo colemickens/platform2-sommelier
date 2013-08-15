@@ -18,6 +18,19 @@
 
 namespace quipper {
 
+struct BufferWithSize {
+  char* ptr;
+  size_t size;
+};
+
+// If the buffer is read-only, it is not sufficient to mark the previous struct
+// as const, as this only means that the pointer cannot be changed, and says
+// nothing about the contents of the buffer.  So, we need another struct.
+struct ConstBufferWithSize {
+  const char* ptr;
+  size_t size;
+};
+
 namespace {
 
 // The type of the number of string data, found in the command line metadata in
@@ -174,74 +187,77 @@ build_id_event* CreateOrUpdateBuildID(const string& build_id,
   return event;
 }
 
-// Reads |size| bytes from |data| into |dest| and advances |src_offset|.
-bool ReadDataFromVector(const std::vector<char>& data,
+// Reads |size| bytes from |buffer| into |dest| and advances |src_offset|.
+bool ReadDataFromBuffer(const ConstBufferWithSize& buffer,
                         size_t size,
                         const string& value_name,
                         size_t* src_offset,
                         void* dest) {
-  size_t end_offset = *src_offset + size / sizeof(data[*src_offset]);
-  if (data.size() < end_offset) {
+  size_t end_offset = *src_offset + size / sizeof(*buffer.ptr);
+  if (buffer.size < end_offset) {
     LOG(ERROR) << "Not enough bytes to read " << value_name;
     return false;
   }
-  memcpy(dest, &data[*src_offset], size);
+  memcpy(dest, buffer.ptr + *src_offset, size);
   *src_offset = end_offset;
   return true;
 }
 
-// Reads |size| bytes from |data| into |dest| and advances |dest_offset|.
-bool WriteDataToVector(const void* data,
+// Reads |size| bytes from |data| into |buffer| and advances |buffer_offset|.
+bool WriteDataToBuffer(const void* data,
                        size_t size,
                        const string& value_name,
-                       size_t* dest_offset,
-                       std::vector<char>* dest) {
-  size_t end_offset = *dest_offset + size / sizeof(dest->at(*dest_offset));
-  if (dest->size() < end_offset) {
+                       size_t* buffer_offset,
+                       const BufferWithSize& buffer) {
+  size_t end_offset = *buffer_offset + size / sizeof(*buffer.ptr);
+  if (buffer.size < end_offset) {
     LOG(ERROR) << "No space in buffer to write " << value_name;
     return false;
   }
-  memcpy(&(*dest)[*dest_offset], data, size);
-  *dest_offset = end_offset;
+  memcpy(buffer.ptr + *buffer_offset, data, size);
+  *buffer_offset = end_offset;
   return true;
 }
 
-// Reads a CStringWithLength from |data| into |dest|, and advances the offset.
-bool ReadStringFromVector(const std::vector<char>& data, bool is_cross_endian,
-                          size_t* offset, CStringWithLength* dest) {
-  if (!ReadDataFromVector(data, sizeof(dest->len), "string length",
+// Reads a CStringWithLength from |buffer| into |dest|, and advances the offset.
+bool ReadStringFromBuffer(const ConstBufferWithSize& buffer,
+                          bool is_cross_endian,
+                          size_t* offset,
+                          CStringWithLength* dest) {
+  if (!ReadDataFromBuffer(buffer, sizeof(dest->len), "string length",
                           offset, &dest->len)) {
     return false;
   }
   if (is_cross_endian)
     ByteSwap(&dest->len);
 
-  if (data.size() < *offset + dest->len) {
+  if (buffer.size < *offset + dest->len) {
     LOG(ERROR) << "Not enough bytes to read string";
     return false;
   }
-  dest->str = string(&data[*offset]);
-  *offset += dest->len / sizeof(data[*offset]);
+  dest->str = string(buffer.ptr + *offset);
+  *offset += dest->len / sizeof(*buffer.ptr);
   return true;
 }
 
-// Writes a CStringWithLength from |src| to |dest|, and advances the offset.
-bool WriteStringToVector(const CStringWithLength& src, std::vector<char>* dest,
+// Writes a CStringWithLength from |src| to |buffer|, and advances the offset.
+bool WriteStringToBuffer(const CStringWithLength& src,
+                         const BufferWithSize& buffer,
                          size_t* offset) {
-  const size_t kDestUnitSize = sizeof(dest->at(*offset));
+  const size_t kDestUnitSize = sizeof(*buffer.ptr);
   size_t final_offset = *offset + src.len + sizeof(src.len) / kDestUnitSize;
-  if (dest->size() < final_offset) {
+  if (buffer.size < final_offset) {
     LOG(ERROR) << "Not enough space to write string";
     return false;
   }
 
-  if (!WriteDataToVector(&src.len, sizeof(src.len), "length of string metadata",
-                         offset, dest)) {
+  if (!WriteDataToBuffer(&src.len, sizeof(src.len),
+                         "length of string metadata", offset, buffer)) {
     return false;
   }
 
-  memset(&dest->at(*offset), 0, src.len * kDestUnitSize);
-  CHECK_GT(snprintf(&dest->at(*offset), src.len, "%s", src.str.c_str()), 0);
+  memset(buffer.ptr + *offset, 0, src.len * kDestUnitSize);
+  CHECK_GT(snprintf(buffer.ptr + *offset, src.len, "%s", src.str.c_str()), 0);
   *offset += src.len;
   return true;
 }
@@ -540,7 +556,17 @@ bool PerfReader::ReadFile(const string& filename) {
 }
 
 bool PerfReader::ReadFromVector(const std::vector<char>& data) {
-  if (data.empty())
+  return ReadFromPointer(&data[0], data.size());
+}
+
+bool PerfReader::ReadFromString(const string& str) {
+  return ReadFromPointer(str.c_str(), str.size());
+}
+
+bool PerfReader::ReadFromPointer(const char* perf_data, size_t size) {
+  const ConstBufferWithSize data = { perf_data, size };
+
+  if (data.size == 0)
     return false;
   if (!ReadHeader(data))
     return false;
@@ -570,11 +596,44 @@ bool PerfReader::WriteFile(const string& filename) {
 }
 
 bool PerfReader::WriteToVector(std::vector<char>* data) {
-  if (!RegenerateHeader())
-    return false;
+  data->resize(GetSize());
+  return WriteToPointerWithoutCheckingSize(&data->at(0), data->size());
+}
 
-  // Compute the total perf file data to be written;
+bool PerfReader::WriteToString(string* str) {
+  str->resize(GetSize());
+  return WriteToPointerWithoutCheckingSize(&str->at(0), str->size());
+}
+
+bool PerfReader::WriteToPointer(char* buffer, size_t size) {
+  size_t required_size = GetSize();
+  if (size < required_size) {
+    LOG(ERROR) << "Buffer is too small - buffer size is " << size
+               << " and required size is " << required_size;
+    return false;
+  }
+  return WriteToPointerWithoutCheckingSize(buffer, size);
+}
+
+
+bool PerfReader::WriteToPointerWithoutCheckingSize(char* buffer, size_t size) {
+  BufferWithSize data = { buffer, size };
+  if (!WriteHeader(data) ||
+      !WriteAttrs(data) ||
+      !WriteEventTypes(data) ||
+      !WriteData(data) ||
+      !WriteMetadata(data)) {
+    return false;
+  }
+  return true;
+}
+
+size_t PerfReader::GetSize() {
+  // TODO(rohinmshah): This is not a good CHECK.  See TODO in perf_reader.h.
+  CHECK(RegenerateHeader());
+
   size_t total_size = 0;
+  total_size = 0;
   total_size += out_header_.size;
   total_size += out_header_.attrs.size;
   total_size += out_header_.event_types.size;
@@ -594,17 +653,7 @@ bool PerfReader::WriteToVector(std::vector<char>* data) {
   total_size += GetEventDescMetadataSize();
   total_size += GetCPUTopologyMetadataSize();
   total_size += GetNUMATopologyMetadataSize();
-
-  // Write all data into a vector.
-  data->resize(total_size);
-  if (!WriteHeader(data) ||
-      !WriteAttrs(data) ||
-      !WriteEventTypes(data) ||
-      !WriteData(data) ||
-      !WriteMetadata(data)) {
-    return false;
-  }
-  return true;
+  return total_size;
 }
 
 bool PerfReader::RegenerateHeader() {
@@ -766,10 +815,10 @@ void PerfReader::GetFilenamesToBuildIDs(
   }
 }
 
-bool PerfReader::ReadHeader(const std::vector<char>& data) {
+bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
   CheckNoEventHeaderPadding();
   size_t offset = 0;
-  if (!ReadDataFromVector(data, sizeof(header_), "header data",
+  if (!ReadDataFromBuffer(data, sizeof(header_), "header data",
                           &offset, &header_)) {
     return false;
   }
@@ -798,7 +847,7 @@ bool PerfReader::ReadHeader(const std::vector<char>& data) {
   return true;
 }
 
-bool PerfReader::ReadAttrs(const std::vector<char>& data) {
+bool PerfReader::ReadAttrs(const ConstBufferWithSize& data) {
   size_t num_attrs = header_.attrs.size / header_.attr_size;
   CHECK_EQ(sizeof(struct perf_file_attr), header_.attr_size);
   size_t offset = header_.attrs.offset;
@@ -809,13 +858,13 @@ bool PerfReader::ReadAttrs(const std::vector<char>& data) {
   return true;
 }
 
-bool PerfReader::ReadAttr(const std::vector<char>& data, size_t* offset) {
+bool PerfReader::ReadAttr(const ConstBufferWithSize& data, size_t* offset) {
   PerfFileAttr attr;
   if (!ReadEventAttr(data, offset, &attr.attr))
     return false;
 
   perf_file_section ids;
-  if (!ReadDataFromVector(data, sizeof(ids), "ID section info", offset, &ids))
+  if (!ReadDataFromBuffer(data, sizeof(ids), "ID section info", offset, &ids))
     return false;
   if (is_cross_endian_) {
     ByteSwap(&ids.offset);
@@ -831,10 +880,10 @@ bool PerfReader::ReadAttr(const std::vector<char>& data, size_t* offset) {
   return true;
 }
 
-bool PerfReader::ReadEventAttr(const std::vector<char>& data, size_t* offset,
+bool PerfReader::ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
                                perf_event_attr* attr) {
   CheckNoPerfEventAttrPadding();
-  if (!ReadDataFromVector(data, sizeof(*attr), "attribute", offset, attr))
+  if (!ReadDataFromBuffer(data, sizeof(*attr), "attribute", offset, attr))
     return false;
 
   if (is_cross_endian_) {
@@ -863,11 +912,11 @@ bool PerfReader::ReadEventAttr(const std::vector<char>& data, size_t* offset,
   return true;
 }
 
-bool PerfReader::ReadUniqueIDs(const std::vector<char>& data, size_t num_ids,
+bool PerfReader::ReadUniqueIDs(const ConstBufferWithSize& data, size_t num_ids,
                                size_t* offset, std::vector<u64>* ids) {
   ids->resize(num_ids);
   for (size_t j = 0; j < num_ids; j++) {
-    if (!ReadDataFromVector(data, sizeof(ids->at(j)), "ID", offset,
+    if (!ReadDataFromBuffer(data, sizeof(ids->at(j)), "ID", offset,
                             &ids->at(j))) {
       return false;
     }
@@ -877,7 +926,7 @@ bool PerfReader::ReadUniqueIDs(const std::vector<char>& data, size_t num_ids,
   return true;
 }
 
-bool PerfReader::ReadEventTypes(const std::vector<char>& data) {
+bool PerfReader::ReadEventTypes(const ConstBufferWithSize& data) {
   size_t num_event_types = header_.event_types.size /
       sizeof(struct perf_trace_event_type);
   CHECK_EQ(sizeof(perf_trace_event_type) * num_event_types,
@@ -890,62 +939,63 @@ bool PerfReader::ReadEventTypes(const std::vector<char>& data) {
   return true;
 }
 
-bool PerfReader::ReadEventType(const std::vector<char>& data, size_t* offset) {
+bool PerfReader::ReadEventType(const ConstBufferWithSize& data,
+                               size_t* offset) {
   CheckNoEventTypePadding();
   perf_trace_event_type type;
   memset(&type, 0, sizeof(type));
-  if (!ReadDataFromVector(data, sizeof(type.event_id), "event id",
+  if (!ReadDataFromBuffer(data, sizeof(type.event_id), "event id",
                           offset, &type.event_id)) {
     return false;
   }
-  const char* event_name = reinterpret_cast<const char*>(&data[*offset]);
+  const char* event_name = reinterpret_cast<const char*>(data.ptr + *offset);
   CHECK_GT(snprintf(type.name, sizeof(type.name), "%s", event_name), 0);
   *offset += sizeof(type.name);
   event_types_.push_back(type);
   return true;
 }
 
-bool PerfReader::ReadData(const std::vector<char>& data) {
+bool PerfReader::ReadData(const ConstBufferWithSize& data) {
   u64 data_remaining_bytes = header_.data.size;
   size_t offset = header_.data.offset;
   while (data_remaining_bytes != 0) {
-    if (data.size() < offset) {
+    if (data.size < offset) {
       LOG(ERROR) << "Not enough data to read a perf event.";
       return false;
     }
 
-    const event_t* event_data = reinterpret_cast<const event_t*>(&data[offset]);
-    if (!ReadPerfEventBlock(*event_data))
+    const event_t* event = reinterpret_cast<const event_t*>(data.ptr + offset);
+    if (!ReadPerfEventBlock(*event))
       return false;
-    data_remaining_bytes -= event_data->header.size;
-    offset += event_data->header.size;
+    data_remaining_bytes -= event->header.size;
+    offset += event->header.size;
   }
 
   LOG(INFO) << "Number of events stored: "<< events_.size();
   return true;
 }
 
-bool PerfReader::ReadMetadata(const std::vector<char>& data) {
+bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
   size_t offset = header_.data.offset + header_.data.size;
 
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
     if ((metadata_mask_ & (1 << type)) == 0)
       continue;
 
-    if (data.size() < offset) {
+    if (data.size < offset) {
       LOG(ERROR) << "Not enough data to read offset and size of metadata.";
       return false;
     }
 
     u64 metadata_offset, metadata_size;
-    if (!ReadDataFromVector(data, sizeof(metadata_offset), "metadata offset",
+    if (!ReadDataFromBuffer(data, sizeof(metadata_offset), "metadata offset",
                             &offset, &metadata_offset) ||
-        !ReadDataFromVector(data, sizeof(metadata_size), "metadata size",
+        !ReadDataFromBuffer(data, sizeof(metadata_size), "metadata size",
                             &offset, &metadata_size)) {
       return false;
     }
 
-    if (data.size() < metadata_offset + metadata_size) {
+    if (data.size < metadata_offset + metadata_size) {
       LOG(ERROR) << "Not enough data to read metadata.";
       return false;
     }
@@ -996,31 +1046,31 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
   return true;
 }
 
-bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
+bool PerfReader::ReadBuildIDMetadata(const ConstBufferWithSize& data, u32 type,
                                      size_t offset, size_t size) {
   CheckNoBuildIDEventPadding();
   while (size > 0) {
     // Make sure there is enough data for everything but the filename.
-    if (data.size() < offset + sizeof(build_id_event) / sizeof(data[offset])) {
+    if (data.size < offset + sizeof(build_id_event) / sizeof(*data.ptr)) {
       LOG(ERROR) << "Not enough bytes to read build id event";
       return false;
     }
 
     const build_id_event* temp_ptr =
-        reinterpret_cast<const build_id_event*>(&data[offset]);
+        reinterpret_cast<const build_id_event*>(data.ptr + offset);
     u16 event_size = temp_ptr->header.size;
     if (is_cross_endian_)
       ByteSwap(&event_size);
 
     // Make sure there is enough data for the rest of the event.
-    if (data.size() < offset + event_size / sizeof(data[offset])) {
+    if (data.size < offset + event_size / sizeof(*data.ptr)) {
       LOG(ERROR) << "Not enough bytes to read build id event";
       return false;
     }
 
     // Allocate memory for the event and copy over the bytes.
     build_id_event* event = CallocMemoryForBuildID(event_size);
-    if (!ReadDataFromVector(data, event_size, "build id event",
+    if (!ReadDataFromBuffer(data, event_size, "build id event",
                             &offset, event)) {
       return false;
     }
@@ -1041,7 +1091,7 @@ bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
   return true;
 }
 
-bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
+bool PerfReader::ReadStringMetadata(const ConstBufferWithSize& data, u32 type,
                                     size_t offset, size_t size) {
   PerfStringMetadata str_data;
   str_data.type = type;
@@ -1049,11 +1099,11 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
   size_t start_offset = offset;
   // Skip the number of string data if it is present.
   if (NeedsNumberOfStringData(type))
-    offset += sizeof(num_string_data_type) / sizeof(data[offset]);
+    offset += sizeof(num_string_data_type) / sizeof(*data.ptr);
 
   while ((offset - start_offset) < size) {
     CStringWithLength single_string;
-    if (!ReadStringFromVector(data, is_cross_endian_, &offset, &single_string))
+    if (!ReadStringFromBuffer(data, is_cross_endian_, &offset, &single_string))
       return false;
     str_data.data.push_back(single_string);
   }
@@ -1062,7 +1112,7 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
   return true;
 }
 
-bool PerfReader::ReadUint32Metadata(const std::vector<char>& data, u32 type,
+bool PerfReader::ReadUint32Metadata(const ConstBufferWithSize& data, u32 type,
                                     size_t offset, size_t size) {
   PerfUint32Metadata uint32_data;
   uint32_data.type = type;
@@ -1070,7 +1120,7 @@ bool PerfReader::ReadUint32Metadata(const std::vector<char>& data, u32 type,
   size_t start_offset = offset;
   while (size > offset - start_offset) {
     uint32 item;
-    if (!ReadDataFromVector(data, sizeof(item), "uint32 data", &offset, &item))
+    if (!ReadDataFromBuffer(data, sizeof(item), "uint32 data", &offset, &item))
       return false;
     if (is_cross_endian_)
       ByteSwap(&item);
@@ -1081,7 +1131,7 @@ bool PerfReader::ReadUint32Metadata(const std::vector<char>& data, u32 type,
   return true;
 }
 
-bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
+bool PerfReader::ReadUint64Metadata(const ConstBufferWithSize& data, u32 type,
                                     size_t offset, size_t size) {
   PerfUint64Metadata uint64_data;
   uint64_data.type = type;
@@ -1089,7 +1139,7 @@ bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
   size_t start_offset = offset;
   while (size > offset - start_offset) {
     uint64 item;
-    if (!ReadDataFromVector(data, sizeof(item), "uint64 data", &offset, &item))
+    if (!ReadDataFromBuffer(data, sizeof(item), "uint64 data", &offset, &item))
       return false;
     if (is_cross_endian_)
       ByteSwap(&item);
@@ -1101,9 +1151,9 @@ bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
 }
 
 bool PerfReader::ReadCPUTopologyMetadata(
-    const std::vector<char>& data, u32 type, size_t offset, size_t size) {
+    const ConstBufferWithSize& data, u32 type, size_t offset, size_t size) {
   num_siblings_type num_core_siblings;
-  if (!ReadDataFromVector(data, sizeof(num_core_siblings), "num cores",
+  if (!ReadDataFromBuffer(data, sizeof(num_core_siblings), "num cores",
                           &offset, &num_core_siblings)) {
     return false;
   }
@@ -1112,14 +1162,14 @@ bool PerfReader::ReadCPUTopologyMetadata(
 
   cpu_topology_.core_siblings.resize(num_core_siblings);
   for (size_t i = 0; i < num_core_siblings; ++i) {
-    if (!ReadStringFromVector(data, is_cross_endian_, &offset,
+    if (!ReadStringFromBuffer(data, is_cross_endian_, &offset,
                               &cpu_topology_.core_siblings[i])) {
       return false;
     }
   }
 
   num_siblings_type num_thread_siblings;
-  if (!ReadDataFromVector(data, sizeof(num_thread_siblings), "num threads",
+  if (!ReadDataFromBuffer(data, sizeof(num_thread_siblings), "num threads",
                           &offset, &num_thread_siblings)) {
     return false;
   }
@@ -1128,7 +1178,7 @@ bool PerfReader::ReadCPUTopologyMetadata(
 
   cpu_topology_.thread_siblings.resize(num_thread_siblings);
   for (size_t i = 0; i < num_thread_siblings; ++i) {
-    if (!ReadStringFromVector(data, is_cross_endian_, &offset,
+    if (!ReadStringFromBuffer(data, is_cross_endian_, &offset,
                               &cpu_topology_.thread_siblings[i])) {
       return false;
     }
@@ -1138,9 +1188,9 @@ bool PerfReader::ReadCPUTopologyMetadata(
 }
 
 bool PerfReader::ReadNUMATopologyMetadata(
-    const std::vector<char>& data, u32 type, size_t offset, size_t size) {
+    const ConstBufferWithSize& data, u32 type, size_t offset, size_t size) {
   numa_topology_num_nodes_type num_nodes;
-  if (!ReadDataFromVector(data, sizeof(num_nodes), "num nodes",
+  if (!ReadDataFromBuffer(data, sizeof(num_nodes), "num nodes",
                           &offset, &num_nodes)) {
     return false;
   }
@@ -1149,13 +1199,14 @@ bool PerfReader::ReadNUMATopologyMetadata(
 
   for (size_t i = 0; i < num_nodes; ++i) {
     PerfNodeTopologyMetadata node;
-    if (!ReadDataFromVector(data, sizeof(node.id), "node id",
+    if (!ReadDataFromBuffer(data, sizeof(node.id), "node id",
                             &offset, &node.id) ||
-        !ReadDataFromVector(data, sizeof(node.total_memory),
-                            "node total memory", &offset, &node.total_memory) ||
-        !ReadDataFromVector(data, sizeof(node.free_memory),
+        !ReadDataFromBuffer(data, sizeof(node.total_memory),
+                            "node total memory", &offset,
+                            &node.total_memory) ||
+        !ReadDataFromBuffer(data, sizeof(node.free_memory),
                             "node free memory", &offset, &node.free_memory) ||
-        !ReadStringFromVector(data, is_cross_endian_, &offset,
+        !ReadStringFromBuffer(data, is_cross_endian_, &offset,
                               &node.cpu_list)) {
       return false;
     }
@@ -1169,33 +1220,33 @@ bool PerfReader::ReadNUMATopologyMetadata(
   return true;
 }
 
-bool PerfReader::ReadPipedData(const std::vector<char>& data) {
+bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   size_t offset = piped_header_.size;
   bool result = true;
   metadata_mask_ = 0;
   CheckNoEventHeaderPadding();
 
-  while (offset < data.size() && result) {
+  while (offset < data.size && result) {
     perf_event_header header;
-    if (offset + sizeof(header) > data.size()) {
+    if (offset + sizeof(header) > data.size) {
       LOG(ERROR) << "Not enough bytes left in data to read header.  Required: "
                  << sizeof(header) << " bytes.  Available: "
-                 << data.size() - offset << " bytes.";
+                 << data.size - offset << " bytes.";
       return true;
     }
 
     // Copy the header and swap bytes if necessary.
-    header = *reinterpret_cast<const perf_event_header*>(&data[offset]);
+    header = *reinterpret_cast<const perf_event_header*>(data.ptr + offset);
     if (is_cross_endian_) {
       ByteSwap(&header.type);
       ByteSwap(&header.misc);
       ByteSwap(&header.size);
     }
 
-    if (data.size() < offset + header.size) {
+    if (data.size < offset + header.size) {
       LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
                  << header.size << " bytes.  Available: "
-                 << data.size() - offset << " bytes.";
+                 << data.size - offset << " bytes.";
       return true;
     }
 
@@ -1203,7 +1254,8 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     size_t size_without_header = header.size - sizeof(header);
 
     if (header.type < PERF_RECORD_MAX) {
-      const event_t* event = reinterpret_cast<const event_t*>(&data[offset]);
+      const event_t* event =
+          reinterpret_cast<const event_t*>(data.ptr + offset);
       result = ReadPerfEventBlock(*event);
       offset += header.size;
       continue;
@@ -1293,14 +1345,14 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   return result;
 }
 
-bool PerfReader::WriteHeader(std::vector<char>* data) const {
+bool PerfReader::WriteHeader(const BufferWithSize& data) const {
   CheckNoEventHeaderPadding();
   size_t size = sizeof(out_header_);
   size_t offset = 0;
-  return WriteDataToVector(&out_header_, size, "file header", &offset, data);
+  return WriteDataToBuffer(&out_header_, size, "file header", &offset, data);
 }
 
-bool PerfReader::WriteAttrs(std::vector<char>* data) const {
+bool PerfReader::WriteAttrs(const BufferWithSize& data) const {
   CheckNoPerfEventAttrPadding();
   size_t offset = out_header_.attrs.offset;
   size_t id_offset = out_header_.size;
@@ -1313,20 +1365,20 @@ bool PerfReader::WriteAttrs(std::vector<char>* data) const {
 
     for (size_t j = 0; j < attr.ids.size(); j++) {
       const uint64 id = attr.ids[j];
-      if (!WriteDataToVector(&id, sizeof(id), "ID info", &id_offset, data))
+      if (!WriteDataToBuffer(&id, sizeof(id), "ID info", &id_offset, data))
         return false;
     }
 
-    if (!WriteDataToVector(&attr.attr, sizeof(attr.attr), "attribute",
+    if (!WriteDataToBuffer(&attr.attr, sizeof(attr.attr), "attribute",
                            &offset, data) ||
-        !WriteDataToVector(&ids, sizeof(ids), "ID section", &offset, data)) {
+        !WriteDataToBuffer(&ids, sizeof(ids), "ID section", &offset, data)) {
       return false;
     }
   }
   return true;
 }
 
-bool PerfReader::WriteData(std::vector<char>* data) const {
+bool PerfReader::WriteData(const BufferWithSize& data) const {
   size_t offset = out_header_.data.offset;
   for (size_t i = 0; i < events_.size(); ++i) {
     // First write to a local event object.
@@ -1339,13 +1391,13 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
       return false;
     }
     // Then write that local event object to the data buffer.
-    if (!WriteDataToVector(&event, event_size, "event data", &offset, data))
+    if (!WriteDataToBuffer(&event, event_size, "event data", &offset, data))
       return false;
   }
   return true;
 }
 
-bool PerfReader::WriteMetadata(std::vector<char>* data) const {
+bool PerfReader::WriteMetadata(const BufferWithSize& data) const {
   size_t header_offset = out_header_.data.offset + out_header_.data.size;
 
   // Before writing the metadata, there is one header for each piece
@@ -1355,8 +1407,8 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
       header_offset + (GetNumMetadata() + 1) * 2 * sizeof(u64);
 
   // Zero out the memory used by the headers
-  memset(&(*data)[header_offset], 0,
-         (metadata_offset - header_offset) * sizeof((*data)[header_offset]));
+  memset(data.ptr + header_offset, 0,
+         (metadata_offset - header_offset) * sizeof(*data.ptr));
 
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
     if ((out_header_.adds_features[0] & (1 << type)) == 0)
@@ -1407,16 +1459,16 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
 
     // Write metadata offset and size to address header_offset.
     u64 metadata_size = metadata_offset - start_offset;
-    if (!WriteDataToVector(&start_offset, sizeof(start_offset),
+    if (!WriteDataToBuffer(&start_offset, sizeof(start_offset),
                            "metadata offset", &header_offset, data) ||
-        !WriteDataToVector(&metadata_size, sizeof(metadata_size),
+        !WriteDataToBuffer(&metadata_size, sizeof(metadata_size),
                            "metadata size", &header_offset, data)) {
       return false;
     }
   }
 
   // Write the last entry - a pointer to the end of the file
-  if (!WriteDataToVector(&metadata_offset, sizeof(metadata_offset),
+  if (!WriteDataToBuffer(&metadata_offset, sizeof(metadata_offset),
                          "metadata offset", &header_offset, data)) {
     return false;
   }
@@ -1425,11 +1477,11 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
 }
 
 bool PerfReader::WriteBuildIDMetadata(u32 type, size_t* offset,
-                                      std::vector<char>* data) const {
+                                      const BufferWithSize& data) const {
   CheckNoBuildIDEventPadding();
   for (size_t i = 0; i < build_id_events_.size(); ++i) {
     const build_id_event* event = build_id_events_[i];
-    if (!WriteDataToVector(event, event->header.size, "Build ID metadata",
+    if (!WriteDataToBuffer(event, event->header.size, "Build ID metadata",
                            offset, data)) {
       return false;
     }
@@ -1438,20 +1490,20 @@ bool PerfReader::WriteBuildIDMetadata(u32 type, size_t* offset,
 }
 
 bool PerfReader::WriteStringMetadata(u32 type, size_t* offset,
-                                     std::vector<char>* data) const {
+                                     const BufferWithSize& data) const {
   for (size_t i = 0; i < string_metadata_.size(); ++i) {
     const PerfStringMetadata& str_data = string_metadata_[i];
     if (str_data.type == type) {
       num_string_data_type num_strings = str_data.data.size();
       if (NeedsNumberOfStringData(type) &&
-          !WriteDataToVector(&num_strings, sizeof(num_strings),
+          !WriteDataToBuffer(&num_strings, sizeof(num_strings),
                              "number of string metadata", offset, data)) {
         return false;
       }
 
       for (size_t j = 0; j < num_strings; ++j) {
         const CStringWithLength& single_string = str_data.data[j];
-        if (!WriteStringToVector(single_string, data, offset))
+        if (!WriteStringToBuffer(single_string, data, offset))
           return false;
       }
 
@@ -1463,14 +1515,14 @@ bool PerfReader::WriteStringMetadata(u32 type, size_t* offset,
 }
 
 bool PerfReader::WriteUint32Metadata(u32 type, size_t* offset,
-                                     std::vector<char>* data) const {
+                                     const BufferWithSize& data) const {
   for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
     const PerfUint32Metadata& uint32_data = uint32_metadata_[i];
     if (uint32_data.type == type) {
       const std::vector<uint32>& int_vector = uint32_data.data;
 
       for (size_t j = 0; j < int_vector.size(); ++j) {
-        if (!WriteDataToVector(&int_vector[j], sizeof(int_vector[j]),
+        if (!WriteDataToBuffer(&int_vector[j], sizeof(int_vector[j]),
                                "uint32 metadata", offset, data)) {
           return false;
         }
@@ -1484,14 +1536,14 @@ bool PerfReader::WriteUint32Metadata(u32 type, size_t* offset,
 }
 
 bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
-                                     std::vector<char>* data) const {
+                                     const BufferWithSize& data) const {
   for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
     const PerfUint64Metadata& uint64_data = uint64_metadata_[i];
     if (uint64_data.type == type) {
       const std::vector<uint64>& int_vector = uint64_data.data;
 
       for (size_t j = 0; j < int_vector.size(); ++j) {
-        if (!WriteDataToVector(&int_vector[j], sizeof(int_vector[j]),
+        if (!WriteDataToBuffer(&int_vector[j], sizeof(int_vector[j]),
                                "uint64 metadata", offset, data)) {
           return false;
         }
@@ -1505,18 +1557,18 @@ bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
 }
 
 bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
-                                        std::vector<char>* data) const {
+                                        const BufferWithSize& data) const {
   CheckNoPerfEventAttrPadding();
   // There should be an attribute for each event type.
   CHECK_EQ(event_types_.size(), attrs_.size());
 
   event_desc_num_events num_events = event_types_.size();
-  if (!WriteDataToVector(&num_events, sizeof(num_events),
+  if (!WriteDataToBuffer(&num_events, sizeof(num_events),
                          "event_desc num_events", offset, data)) {
     return false;
   }
   event_desc_attr_size attr_size = sizeof(perf_event_attr);
-  if (!WriteDataToVector(&attr_size, sizeof(attr_size),
+  if (!WriteDataToBuffer(&attr_size, sizeof(attr_size),
                          "event_desc attr_size", offset, data)) {
     return false;
   }
@@ -1524,13 +1576,13 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
   for (size_t i = 0; i < num_events; ++i) {
     const perf_trace_event_type event_type = event_types_[i];
     const PerfFileAttr& attr = attrs_[i];
-    if (!WriteDataToVector(&attr.attr, sizeof(attr.attr),
+    if (!WriteDataToBuffer(&attr.attr, sizeof(attr.attr),
                            "event_desc attribute", offset, data)) {
       return false;
     }
 
     event_desc_num_unique_ids num_ids = attr.ids.size();
-    if (!WriteDataToVector(&num_ids, sizeof(num_ids),
+    if (!WriteDataToBuffer(&num_ids, sizeof(num_ids),
                            "event_desc num_unique_ids", offset, data)) {
       return false;
     }
@@ -1538,10 +1590,10 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
     CStringWithLength container;
     container.len = GetUint64AlignedStringLength(event_type.name);
     container.str = string(event_type.name);
-    if (!WriteStringToVector(container, data, offset))
+    if (!WriteStringToBuffer(container, data, offset))
       return false;
 
-    if (!WriteDataToVector(&attr.ids[0], num_ids * sizeof(attr.ids[0]),
+    if (!WriteDataToBuffer(&attr.ids[0], num_ids * sizeof(attr.ids[0]),
                            "event_desc unique_ids", offset, data)) {
       return false;
     }
@@ -1550,26 +1602,26 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
 }
 
 bool PerfReader::WriteCPUTopologyMetadata(u32 type, size_t* offset,
-                                          std::vector<char>* data) const {
+                                          const BufferWithSize& data) const {
   const std::vector<CStringWithLength>& cores = cpu_topology_.core_siblings;
   num_siblings_type num_cores = cores.size();
-  if (!WriteDataToVector(&num_cores, sizeof(num_cores), "num cores",
+  if (!WriteDataToBuffer(&num_cores, sizeof(num_cores), "num cores",
                          offset, data)) {
     return false;
   }
   for (size_t i = 0; i < num_cores; ++i) {
-    if (!WriteStringToVector(cores[i], data, offset))
+    if (!WriteStringToBuffer(cores[i], data, offset))
       return false;
   }
 
   const std::vector<CStringWithLength>& threads = cpu_topology_.thread_siblings;
   num_siblings_type num_threads = threads.size();
-  if (!WriteDataToVector(&num_threads, sizeof(num_threads), "num threads",
+  if (!WriteDataToBuffer(&num_threads, sizeof(num_threads), "num threads",
                          offset, data)) {
     return false;
   }
   for (size_t i = 0; i < num_threads; ++i) {
-    if (!WriteStringToVector(threads[i], data, offset))
+    if (!WriteStringToBuffer(threads[i], data, offset))
       return false;
   }
 
@@ -1577,34 +1629,34 @@ bool PerfReader::WriteCPUTopologyMetadata(u32 type, size_t* offset,
 }
 
 bool PerfReader::WriteNUMATopologyMetadata(u32 type, size_t* offset,
-                                           std::vector<char>* data) const {
+                                           const BufferWithSize& data) const {
   numa_topology_num_nodes_type num_nodes = numa_topology_.size();
-  if (!WriteDataToVector(&num_nodes, sizeof(num_nodes), "num nodes",
-                           offset, data)) {
+  if (!WriteDataToBuffer(&num_nodes, sizeof(num_nodes), "num nodes",
+                         offset, data)) {
     return false;
   }
 
   for (size_t i = 0; i < num_nodes; ++i) {
     const PerfNodeTopologyMetadata& node = numa_topology_[i];
-    if (!WriteDataToVector(&node.id, sizeof(node.id), "node id",
+    if (!WriteDataToBuffer(&node.id, sizeof(node.id), "node id",
                            offset, data) ||
-        !WriteDataToVector(&node.total_memory, sizeof(node.total_memory),
+        !WriteDataToBuffer(&node.total_memory, sizeof(node.total_memory),
                            "node total memory", offset, data) ||
-        !WriteDataToVector(&node.free_memory, sizeof(node.free_memory),
+        !WriteDataToBuffer(&node.free_memory, sizeof(node.free_memory),
                            "node free memory", offset, data) ||
-        !WriteStringToVector(node.cpu_list, data, offset)) {
+        !WriteStringToBuffer(node.cpu_list, data, offset)) {
       return false;
     }
   }
   return true;
 }
 
-bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
+bool PerfReader::WriteEventTypes(const BufferWithSize& data) const {
   CheckNoEventTypePadding();
   size_t offset = out_header_.event_types.offset;
   for (size_t i = 0; i < event_types_.size(); ++i) {
     const struct perf_trace_event_type& event_type = event_types_[i];
-    if (!WriteDataToVector(&event_type, sizeof(event_type), "event type info",
+    if (!WriteDataToBuffer(&event_type, sizeof(event_type), "event type info",
                            &offset, data)) {
       return false;
     }
@@ -1612,7 +1664,7 @@ bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
   return true;
 }
 
-bool PerfReader::ReadAttrEventBlock(const std::vector<char>& data,
+bool PerfReader::ReadAttrEventBlock(const ConstBufferWithSize& data,
                                     size_t offset, size_t size) {
   PerfFileAttr attr;
   if (!ReadEventAttr(data, &offset, &attr.attr))

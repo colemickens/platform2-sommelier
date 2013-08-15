@@ -73,6 +73,9 @@ struct PerfNodeTopologyMetadata {
   CStringWithLength cpu_list;
 };
 
+struct BufferWithSize;
+struct ConstBufferWithSize;
+
 class PerfReader {
  public:
   PerfReader() : sample_type_(0),
@@ -83,8 +86,23 @@ class PerfReader {
 
   bool ReadFile(const string& filename);
   bool ReadFromVector(const std::vector<char>& data);
+  bool ReadFromString(const string& str);
+  bool ReadFromPointer(const char* perf_data, size_t size);
+
+  // TODO(rohinmshah): GetSize should not use RegenerateHeader (so that it can
+  // be const).  Ideally, RegenerateHeader would be deleted and instead of
+  // having out_header_ as an instance variable, it would be computed
+  // dynamically whenever needed.
+
+  // Returns the size in bytes that would be written by any of the methods that
+  // write the entire perf data file (WriteFile, WriteToPointer, etc).
+  size_t GetSize();
+
   bool WriteFile(const string& filename);
   bool WriteToVector(std::vector<char>* data);
+  bool WriteToString(string* str);
+  bool WriteToPointer(char* buffer, size_t size);
+
   bool RegenerateHeader();
 
   // Stores the mapping from filenames to build ids in build_id_events_.
@@ -133,62 +151,65 @@ class PerfReader {
   }
 
  protected:
-  bool ReadHeader(const std::vector<char>& data);
+  bool ReadHeader(const ConstBufferWithSize& data);
 
-  bool ReadAttrs(const std::vector<char>& data);
-  bool ReadAttr(const std::vector<char>& data, size_t* offset);
-  bool ReadEventAttr(const std::vector<char>& data, size_t* offset,
+  bool ReadAttrs(const ConstBufferWithSize& data);
+  bool ReadAttr(const ConstBufferWithSize& data, size_t* offset);
+  bool ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
                      perf_event_attr* attr);
-  bool ReadUniqueIDs(const std::vector<char>& data, size_t num_ids,
+  bool ReadUniqueIDs(const ConstBufferWithSize& data, size_t num_ids,
                      size_t* offset, std::vector<u64>* ids);
 
-  bool ReadEventTypes(const std::vector<char>& data);
-  bool ReadEventType(const std::vector<char>& data, size_t* offset);
+  bool ReadEventTypes(const ConstBufferWithSize& data);
+  bool ReadEventType(const ConstBufferWithSize& data, size_t* offset);
 
-  bool ReadData(const std::vector<char>& data);
+  bool ReadData(const ConstBufferWithSize& data);
 
   // Reads metadata in normal mode.
-  bool ReadMetadata(const std::vector<char>& data);
-  bool ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
+  bool ReadMetadata(const ConstBufferWithSize& data);
+  bool ReadBuildIDMetadata(const ConstBufferWithSize& data, u32 type,
                            size_t offset, size_t size);
-  bool ReadStringMetadata(const std::vector<char>& data, u32 type,
+  bool ReadStringMetadata(const ConstBufferWithSize& data, u32 type,
                           size_t offset, size_t size);
-  bool ReadUint32Metadata(const std::vector<char>& data, u32 type,
+  bool ReadUint32Metadata(const ConstBufferWithSize& data, u32 type,
                           size_t offset, size_t size);
-  bool ReadUint64Metadata(const std::vector<char>& data, u32 type,
+  bool ReadUint64Metadata(const ConstBufferWithSize& data, u32 type,
                           size_t offset, size_t size);
-  bool ReadCPUTopologyMetadata(const std::vector<char>& data, u32 type,
+  bool ReadCPUTopologyMetadata(const ConstBufferWithSize& data, u32 type,
                                size_t offset, size_t size);
-  bool ReadNUMATopologyMetadata(const std::vector<char>& data, u32 type,
+  bool ReadNUMATopologyMetadata(const ConstBufferWithSize& data, u32 type,
                                 size_t offset, size_t size);
 
   // Read perf data from piped perf output data.
-  bool ReadPipedData(const std::vector<char>& data);
+  bool ReadPipedData(const ConstBufferWithSize& data);
 
-  bool WriteHeader(std::vector<char>* data) const;
-  bool WriteAttrs(std::vector<char>* data) const;
-  bool WriteEventTypes(std::vector<char>* data) const;
-  bool WriteData(std::vector<char>* data) const;
-  bool WriteMetadata(std::vector<char>* data) const;
+  // Like WriteToPointer, but does not check if the buffer is large enough.
+  bool WriteToPointerWithoutCheckingSize(char* buffer, size_t size);
+
+  bool WriteHeader(const BufferWithSize& data) const;
+  bool WriteAttrs(const BufferWithSize& data) const;
+  bool WriteEventTypes(const BufferWithSize& data) const;
+  bool WriteData(const BufferWithSize& data) const;
+  bool WriteMetadata(const BufferWithSize& data) const;
 
   // For writing the various types of metadata.
   bool WriteBuildIDMetadata(u32 type, size_t* offset,
-                            std::vector<char>* data) const;
+                            const BufferWithSize& data) const;
   bool WriteStringMetadata(u32 type, size_t* offset,
-                           std::vector<char>* data) const;
+                           const BufferWithSize& data) const;
   bool WriteUint32Metadata(u32 type, size_t* offset,
-                           std::vector<char>* data) const;
+                           const BufferWithSize& data) const;
   bool WriteUint64Metadata(u32 type, size_t* offset,
-                           std::vector<char>* data) const;
+                           const BufferWithSize& data) const;
   bool WriteEventDescMetadata(u32 type, size_t* offset,
-                              std::vector<char>* data) const;
+                              const BufferWithSize& data) const;
   bool WriteCPUTopologyMetadata(u32 type, size_t* offset,
-                                std::vector<char>* data) const;
+                                const BufferWithSize& data) const;
   bool WriteNUMATopologyMetadata(u32 type, size_t* offset,
-                                 std::vector<char>* data) const;
+                                 const BufferWithSize& data) const;
 
   // For reading event blocks within piped perf data.
-  bool ReadAttrEventBlock(const std::vector<char>& data, size_t offset,
+  bool ReadAttrEventBlock(const ConstBufferWithSize& data, size_t offset,
                           size_t size);
   bool ReadPerfEventBlock(const event_t& event);
 
