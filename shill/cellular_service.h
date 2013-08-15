@@ -152,6 +152,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
 
   static const char kAutoConnActivating[];
+  static const char kAutoConnBadPPPCredentials[];
   static const char kAutoConnDeviceDisabled[];
   static const char kAutoConnOutOfCredits[];
   static const char kAutoConnOutOfCreditsDetectionInProgress[];

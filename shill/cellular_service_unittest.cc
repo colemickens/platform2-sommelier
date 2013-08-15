@@ -361,6 +361,14 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
       MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
+  // A PPP authentication failure means the Service is not auto-connectable.
+  service_->SetFailure(Service::kFailurePPPAuth);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+
+  // Reset failure state, to make the Service auto-connectable again.
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
   // The following test cases are copied from ServiceTest.IsAutoConnectable
 
   service_->SetConnectable(true);

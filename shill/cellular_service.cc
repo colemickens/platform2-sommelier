@@ -19,6 +19,8 @@ using std::string;
 namespace shill {
 
 const char CellularService::kAutoConnActivating[] = "activating";
+const char CellularService::kAutoConnBadPPPCredentials[] =
+    "bad PPP credentials";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kAutoConnOutOfCredits[] = "device out of credits";
 const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
@@ -149,6 +151,10 @@ bool CellularService::IsAutoConnectable(const char **reason) const {
   }
   if (cellular_->IsActivating()) {
     *reason = kAutoConnActivating;
+    return false;
+  }
+  if (failure() == kFailurePPPAuth) {
+    *reason = kAutoConnBadPPPCredentials;
     return false;
   }
   if (out_of_credits_detection_in_progress_) {
