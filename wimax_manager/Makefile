@@ -84,13 +84,14 @@ clean: CLEAN($(SYSTEM_API_PROTO_HEADERS))
 clean: CLEAN($(SYSTEM_API_PROTO_OBJS))
 $(eval $(call add_object_rules,$(SYSTEM_API_PROTO_OBJS),CXX,cc))
 
-# Require DBus binding headers to be generated first.
+# Require DBus and protobuf binding headers to be generated first.
 $(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): \
 	GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/device.h) \
 	GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/manager.h) \
 	GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/network.h) \
 	GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/dbus_service.h) \
-	GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/power_manager.h)
+	GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/power_manager.h) \
+	$(LOCAL_PROTO_HEADERS) $(SYSTEM_API_PROTO_HEADERS)
 
 CXX_BINARY(wimax-manager): \
 	$(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
