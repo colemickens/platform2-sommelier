@@ -641,47 +641,10 @@ TEST_F(MetricsTest, CellularDrop) {
                   Metrics::kMetricCellularSignalStrengthBeforeDropMin,
                   Metrics::kMetricCellularSignalStrengthBeforeDropMax,
                   Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets));
-    metrics_.NotifyCellularDeviceDrop(kInterfaceIndex,
-                                      kUMATechnologyStrings[index],
+    metrics_.NotifyCellularDeviceDrop(kUMATechnologyStrings[index],
                                       signal_strength);
     Mock::VerifyAndClearExpectations(&library_);
   }
-}
-
-TEST_F(MetricsTest, CellularDropsPerHour) {
-  const int kInterfaceIndex = 1;
-  const int kSignalStrength = 33;
-  const int kNumDrops = 3;
-  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
-  EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricCellularDrop,
-                    Metrics::kCellularDropTechnologyLte,
-                    Metrics::kCellularDropTechnologyMax))
-      .Times(kNumDrops);
-  EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricCellularSignalStrengthBeforeDrop,
-                kSignalStrength,
-                Metrics::kMetricCellularSignalStrengthBeforeDropMin,
-                Metrics::kMetricCellularSignalStrengthBeforeDropMax,
-                Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets))
-      .Times(kNumDrops);
-  EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricCellularDropsPerHour,
-                kNumDrops,
-                Metrics::kMetricCellularDropsPerHourMin,
-                Metrics::kMetricCellularDropsPerHourMax,
-                Metrics::kMetricCellularDropsPerHourNumBuckets));
-  for (int count = 0; count < kNumDrops; ++count)
-    metrics_.NotifyCellularDeviceDrop(kInterfaceIndex,
-                                      flimflam::kNetworkTechnologyLte,
-                                      kSignalStrength);
-  metrics_.HourlyTimeoutHandler();
-
-  // Make sure the number of drops gets resetted after each hour.
-  EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricCellularDropsPerHour, _, _, _, _))
-      .Times(0);
-  metrics_.HourlyTimeoutHandler();
 }
 
 TEST_F(MetricsTest, CellularDeviceFailure) {

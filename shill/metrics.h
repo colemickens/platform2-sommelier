@@ -553,8 +553,7 @@ class Metrics {
 
   // Notifies this object that a cellular device has been dropped by the
   // network.
-  void NotifyCellularDeviceDrop(int interface_index,
-                                const std::string &network_technology,
+  void NotifyCellularDeviceDrop(const std::string &network_technology,
                                 uint16 signal_strength);
 
   // Notifies this object about 3GPP registration drop events.
@@ -609,7 +608,7 @@ class Metrics {
       ServiceMetricsLookupMap;
 
   struct DeviceMetrics {
-    DeviceMetrics() : auto_connect_tries(0), num_drops(0) {}
+    DeviceMetrics() : auto_connect_tries(0) {}
     Technology::Identifier technology;
     scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> enable_timer;
@@ -619,7 +618,6 @@ class Metrics {
     scoped_ptr<chromeos_metrics::TimerReporter> scan_connect_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
     int auto_connect_tries;
-    int num_drops;
   };
   typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;
@@ -639,8 +637,6 @@ class Metrics {
   static const uint16 kWiFiFrequency5745;
   static const uint16 kWiFiFrequency5825;
 
-  static const int kHourlyTimeoutMilliseconds;
-
   void InitializeCommonServiceMetrics(const Service *service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,
                                            Service::ConnectState new_state);
@@ -648,8 +644,6 @@ class Metrics {
 
   DeviceMetrics *GetDeviceMetrics(int interface_index) const;
   void AutoConnectMetricsReset(DeviceMetrics *device_metrics);
-
-  void HourlyTimeoutHandler();
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);
@@ -697,7 +691,6 @@ class Metrics {
   scoped_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
-  base::CancelableClosure hourly_timeout_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };
