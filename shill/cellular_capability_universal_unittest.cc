@@ -367,10 +367,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
   EXPECT_CALL(*modem_proxy_, State())
       .WillOnce(Return(Cellular::kModemStateInitializing));
 
-  // After setup we lose pointers to the proxies, so it is hard to set
-  // expectations.
-  SetUp();
-
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   ResultCallback callback =
@@ -410,7 +406,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemFail) {
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
-  SetUp();
 
   Error error;
   capability_->StartModem(&error, callback);
@@ -420,7 +415,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemFail) {
 TEST_F(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled) {
   EXPECT_CALL(*modem_proxy_, State())
           .WillOnce(Return(Cellular::kModemStateEnabled));
-  SetUp();
   capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
 
   // Make sure the call to StartModem() doesn't attempt to complete the
@@ -433,7 +427,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled) {
 TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
-  SetUp();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -472,7 +465,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemConnected) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
-  SetUp();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -561,7 +553,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(1);
 
-  SetUp();
   InitProviderDB();
 
   EXPECT_FALSE(capability_->sim_present_);
@@ -655,13 +646,9 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   // Set up mock modem sim properties
   DBusPropertiesMap sim_properties;
 
-  // After setup we lose pointers to the proxies, so it is hard to set
-  // expectations.
   EXPECT_CALL(*properties_proxy_,
               GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
-
-  SetUp();
 
   EXPECT_EQ("", capability_->imei_);
   EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
@@ -730,7 +717,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
   data._2 = true;
   EXPECT_CALL(*modem_proxy_, SignalQuality()).WillRepeatedly(Return(data));
 
-  SetUp();
   InitProviderDB();
   capability_->InitProxies();
 
@@ -772,7 +758,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
-  SetUp();
   InitProviderDB();
   capability_->InitProxies();
 
@@ -908,7 +893,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
 
 TEST_F(CellularCapabilityUniversalMainTest,
        UpdateRegistrationStateModemNotConnected) {
-  SetUp();
   InitProviderDB();
   capability_->InitProxies();
   SetService();
@@ -1060,9 +1044,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(0);
-  // After setup we lose pointers to the proxies, so it is hard to set
-  // expectations.
-  SetUp();
   InitProviderDB();
 
   EXPECT_TRUE(cellular_->home_provider().GetName().empty());
@@ -1119,7 +1100,6 @@ MATCHER_P(SizeIs, value, "") {
 TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
-  SetUp();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -1517,7 +1497,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
 TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   // mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
-  SetUp();
   //EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -1576,7 +1555,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
 }
 
 TEST_F(CellularCapabilityUniversalTimerTest, UpdateScanningPropertyTimeout) {
-  SetUp();
   capability_->InitProxies();
 
   EXPECT_FALSE(capability_->scanning_or_searching_);
