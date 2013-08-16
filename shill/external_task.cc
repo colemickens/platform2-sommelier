@@ -4,6 +4,9 @@
 
 #include "shill/external_task.h"
 
+#include <signal.h>
+#include <sys/prctl.h>
+
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 
@@ -45,6 +48,7 @@ void ExternalTask::DestroyLater(EventDispatcher *dispatcher) {
 bool ExternalTask::Start(const FilePath &program,
                          const vector<string> &arguments,
                          const map<string, string> &environment,
+                         bool terminate_with_parent,
                          Error *error) {
   CHECK(!pid_);
   CHECK(!child_watch_tag_);
@@ -74,11 +78,14 @@ bool ExternalTask::Start(const FilePath &program,
   }
   process_env.push_back(NULL);
 
+  GSpawnChildSetupFunc child_setup_func =
+      terminate_with_parent ? SetupTermination : NULL;
+
   if (!glib_->SpawnAsync(NULL,
                          process_args.data(),
                          process_env.data(),
                          G_SPAWN_DO_NOT_REAP_CHILD,
-                         NULL,
+                         child_setup_func,
                          NULL,
                          &pid_,
                          NULL)) {
@@ -125,6 +132,11 @@ void ExternalTask::OnTaskDied(GPid pid, gint status, gpointer data) {
 // static
 void ExternalTask::Destroy(ExternalTask *task) {
   delete task;
+}
+
+// static
+void ExternalTask::SetupTermination(gpointer /*glib_user_data*/) {
+  prctl(PR_SET_PDEATHSIG, SIGTERM);
 }
 
 }  // namespace shill

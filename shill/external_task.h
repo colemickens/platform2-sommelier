@@ -58,6 +58,10 @@ class ExternalTask : public RPCTaskDelegate {
   // arguments |arguments|, and the environment variables specified in
   // |environment|.
   //
+  // If |terminate_with_parent| is true, the child process will be
+  // configured to terminate itself if this process dies. Otherwise,
+  // the child process will retain its default behavior.
+  //
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
   //
@@ -67,6 +71,7 @@ class ExternalTask : public RPCTaskDelegate {
   virtual bool Start(const base::FilePath &program,
                      const std::vector<std::string> &arguments,
                      const std::map<std::string, std::string> &environment,
+                     bool terminate_with_parent,
                      Error *error);
   virtual void Stop();
 
@@ -89,6 +94,11 @@ class ExternalTask : public RPCTaskDelegate {
   static void OnTaskDied(GPid pid, gint status, gpointer data);
 
   static void Destroy(ExternalTask *task);
+
+  // This method is run in the child process (i.e. after fork(), but
+  // before exec()). It configures the child to receive a SIGTERM when
+  // the parent exits.
+  static void SetupTermination(gpointer glib_user_data);
 
   ControlInterface *control_;
   GLib *glib_;

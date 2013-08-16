@@ -19,10 +19,11 @@ public:
                    const base::Callback<void(pid_t, int)> &death_callback);
   virtual ~MockExternalTask();
 
-  MOCK_METHOD4(Start,
+  MOCK_METHOD5(Start,
                bool(const base::FilePath &file,
                     const std::vector<std::string> &arguments,
                     const std::map<std::string, std::string> &environment,
+                    bool terminate_with_parent,
                     Error *error));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(OnDelete, void());

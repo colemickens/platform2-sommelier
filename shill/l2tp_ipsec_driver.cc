@@ -199,7 +199,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
   LOG(INFO) << "L2TP/IPSec VPN process options: " << JoinString(options, ' ');
 
   if (external_task_local->Start(
-          FilePath(kL2TPIPSecVPNPath), options, environment, error)) {
+          FilePath(kL2TPIPSecVPNPath), options, environment, true, error)) {
     external_task_ = external_task_local.Pass();
     return true;
   }

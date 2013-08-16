@@ -859,7 +859,7 @@ void Cellular::StartPPP(const string &serial_device) {
                        weak_ptr_factory_.GetWeakPtr(),
                        death_callback));
   if (new_ppp_task->Start(
-          FilePath(PPPDevice::kDaemonPath), args, environment, &error)) {
+          FilePath(PPPDevice::kDaemonPath), args, environment, true, &error)) {
     LOG(INFO) << "Forked pppd process.";
     ppp_task_ = new_ppp_task.Pass();
   }

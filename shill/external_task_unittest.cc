@@ -211,16 +211,14 @@ TEST_F(ExternalTaskTest, Start) {
               ChildWatchAdd(
                   kPID, &external_task_->OnTaskDied, external_task_.get()))
       .WillOnce(Return(kTag));
-  EXPECT_FALSE(
-      external_task_->Start(
-          base::FilePath(kCommand), kCommandOptions, kCommandEnv, &error));
+  EXPECT_FALSE(external_task_->Start(
+      base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
   EXPECT_FALSE(external_task_->rpc_task_);
 
   error.Reset();
-  EXPECT_TRUE(
-      external_task_->Start(
-          base::FilePath(kCommand), kCommandOptions, kCommandEnv, &error));
+  EXPECT_TRUE(external_task_->Start(
+      base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kPID, external_task_->pid_);
   EXPECT_EQ(kTag, external_task_->child_watch_tag_);
