@@ -1370,7 +1370,8 @@ TEST_F(WiFiProviderTest, IncrementConnectCount) {
 
   EXPECT_CALL(time_, GetSecondsSinceEpoch()).WillOnce(Return(kThisWeekSeconds));
   EXPECT_CALL(manager_, UpdateWiFiProvider());
-  EXPECT_CALL(metrics_, SendToUMA(_, _, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricFrequenciesConnectedEver,
+                                  _, _, _, _));
   time_t newest_week_at_start =
       provider_.connect_count_by_frequency_dated_.crbegin()->first;
   provider_.IncrementConnectCount(6002);
@@ -1401,7 +1402,8 @@ TEST_F(WiFiProviderTest, IncrementConnectCountCreateNew) {
   EXPECT_CALL(time_, GetSecondsSinceEpoch()).
       WillOnce(Return(this_week * kSecondsPerWeek));
   EXPECT_CALL(manager_, UpdateWiFiProvider());
-  EXPECT_CALL(metrics_, SendToUMA(_, _, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricFrequenciesConnectedEver,
+                                  _, _, _, _));
   time_t newest_week_at_start =
       provider_.connect_count_by_frequency_dated_.crbegin()->first;
   provider_.IncrementConnectCount(6001);

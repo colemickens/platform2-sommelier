@@ -580,6 +580,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
     EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
     EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+    EXPECT_CALL(wifi_provider_, IncrementConnectCount(_));
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
     Mock::VerifyAndClearExpectations(service);
 
@@ -1971,6 +1972,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   ReportCurrentBSSChanged(bss_path1);
   EXPECT_CALL(*service1, SetState(Service::kStateConfiguring));
   EXPECT_CALL(*service1, ResetSuspectedCredentialFailures());
+  EXPECT_CALL(*wifi_provider(), IncrementConnectCount(_));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service1.get(), GetCurrentService().get());
   Mock::VerifyAndClearExpectations(service0);

@@ -852,7 +852,6 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
                 << " " << LogSSID(endpoint->ssid_string());
 
   service->NotifyCurrentEndpoint(endpoint);
-  provider_->IncrementConnectCount(endpoint->frequency());
 
   if (pending_service_.get() &&
       service.get() != pending_service_.get()) {
@@ -1304,21 +1303,24 @@ void WiFi::StateChanged(const string &new_state) {
       EnableHighBitrates();
     } else if (has_already_completed_) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
-    } else if (AcquireIPConfigWithLeaseName(
-                   GetServiceLeaseName(*affected_service))) {
-      LOG(INFO) << link_name() << " is up; started L3 configuration.";
-      affected_service->SetState(Service::kStateConfiguring);
-      if (affected_service->IsSecurityMatch(flimflam::kSecurityWep)) {
-        // With the overwhelming majority of WEP networks, we cannot assume
-        // our credentials are correct just because we have successfully
-        // connected.  It is more useful to track received data as the L3
-        // configuration proceeds to see if we can decrypt anything.
-        receive_byte_count_at_connect_ = GetReceiveByteCount();
-      } else {
-        affected_service->ResetSuspectedCredentialFailures();
-      }
     } else {
-      LOG(ERROR) << "Unable to acquire DHCP config.";
+      provider_->IncrementConnectCount(affected_service->frequency());
+      if (AcquireIPConfigWithLeaseName(
+              GetServiceLeaseName(*affected_service))) {
+        LOG(INFO) << link_name() << " is up; started L3 configuration.";
+        affected_service->SetState(Service::kStateConfiguring);
+        if (affected_service->IsSecurityMatch(flimflam::kSecurityWep)) {
+          // With the overwhelming majority of WEP networks, we cannot assume
+          // our credentials are correct just because we have successfully
+          // connected.  It is more useful to track received data as the L3
+          // configuration proceeds to see if we can decrypt anything.
+          receive_byte_count_at_connect_ = GetReceiveByteCount();
+        } else {
+          affected_service->ResetSuspectedCredentialFailures();
+        }
+      } else {
+        LOG(ERROR) << "Unable to acquire DHCP config.";
+      }
     }
     has_already_completed_ = true;
   } else if (new_state == WPASupplicant::kInterfaceStateAssociated) {

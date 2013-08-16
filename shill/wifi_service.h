@@ -91,6 +91,7 @@ class WiFiService : public Service {
   const std::string &bssid() const { return bssid_; }
   const std::vector<uint16> &frequency_list() const { return frequency_list_; }
   uint16 physical_mode() const { return physical_mode_; }
+  uint16 frequency() const { return frequency_; }
 
   // WiFi services can load from profile entries other than their current
   // storage identifier.  Override the methods from the parent Service
