@@ -2320,4 +2320,22 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, UpdateBearerPath) {
+  // No crash before proxies are initialized.
+  EXPECT_CALL(*modem_proxy_, ListBearers(_, _, _)).Times(0);
+  capability_->UpdateBearerPath();
+
+  // Normal case.
+  EXPECT_CALL(*modem_proxy_, ListBearers(_, _, _));
+  capability_->InitProxies();
+  capability_->UpdateBearerPath();
+}
+
+TEST_F(CellularCapabilityUniversalMainTest,
+       ListBearersOnModemStateChangedToConnected) {
+  EXPECT_CALL(*modem_proxy_, ListBearers(_, _, _));
+  capability_->InitProxies();
+  capability_->OnModemStateChanged(Cellular::kModemStateConnected);
+}
+
 }  // namespace shill

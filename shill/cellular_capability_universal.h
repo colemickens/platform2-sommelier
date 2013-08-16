@@ -209,6 +209,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              ListBearersOnModemStateChangedToConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, NormalizeMdn);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockRetriesChanged);
@@ -230,6 +232,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateBearerPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,

@@ -1079,6 +1079,14 @@ void CellularCapabilityUniversal::UpdateBearerPath() {
   DBusPathsCallback cb = Bind(&CellularCapabilityUniversal::OnListBearersReply,
                               weak_ptr_factory_.GetWeakPtr());
   Error error;
+  if (!modem_proxy_) {
+    // This can be a perfectly legitimate state to be in, as this
+    // function can be called before StartModem. In particular, this
+    // happens when a Cellular object is contructed in
+    // Modem::CreateDeviceFromModemProperties.
+    LOG(INFO) << "Skipping ListBearers due to uninitialized modem_proxy_.";
+    return;
+  }
   modem_proxy_->ListBearers(&error, cb, kTimeoutDefault);
 }
 
@@ -1783,6 +1791,10 @@ void CellularCapabilityUniversal::OnModemStateChanged(
       cellular()->state() == Cellular::kStateDisabled &&
       cellular()->IsUnderlyingDeviceEnabled()) {
     cellular()->SetEnabled(true);
+  }
+  if (state == Cellular::kModemStateConnected) {
+    SLOG(Cellular, 2) << "Updating bearer path to reflect the active bearer.";
+    UpdateBearerPath();
   }
   UpdateScanningProperty();
 }
