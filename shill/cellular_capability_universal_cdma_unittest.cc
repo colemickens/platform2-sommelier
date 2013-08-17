@@ -294,7 +294,7 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
       .WillOnce(Return((const CellularOperatorInfo::CellularOperator *)NULL));
 
   capability_->UpdateOperatorInfo();
-  EXPECT_EQ("", capability_->provider_.GetCode());
+  EXPECT_EQ("1", capability_->provider_.GetCode());
   EXPECT_EQ("", capability_->provider_.GetName());
   EXPECT_EQ("", capability_->provider_.GetCountry());
   EXPECT_TRUE(capability_->activation_code_.empty());
@@ -324,6 +324,18 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
   EXPECT_EQ("Test", cellular_->service()->serving_operator().GetName());
   EXPECT_EQ("us", cellular_->service()->serving_operator().GetCountry());
   EXPECT_EQ("Test", cellular_->service()->friendly_name());
+
+  capability_->sid_ = 1;
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
+              GetCellularOperatorBySID(_))
+      .WillOnce(Return(nullptr));
+
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ("1", capability_->provider_.GetCode());
+  EXPECT_EQ("", capability_->provider_.GetName());
+  EXPECT_EQ("", capability_->provider_.GetCountry());
+  EXPECT_TRUE(capability_->activation_code_.empty());
+
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, CreateFriendlyServiceName) {

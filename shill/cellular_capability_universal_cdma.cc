@@ -293,16 +293,21 @@ void CellularCapabilityUniversalCDMA::UpdateOperatorInfo() {
     SLOG(Cellular, 2) << "CDMA provider with "
                       << FormattedSID(sid)
                       << " not found.";
-    return;
-  }
+    // If a matching provider is not found, shill should update the
+    // Cellular.ServingOperator property to to display the Sid.
+    provider_.SetCode(sid);
+    provider_.SetCountry("");
+    provider_.SetName("");
+    activation_code_.clear();
+  } else {
+    if (!provider->name_list().empty()) {
+      provider_.SetName(provider->name_list()[0].name);
+    }
+    provider_.SetCode(sid);
+    provider_.SetCountry(provider->country());
 
-  if (!provider->name_list().empty()) {
-    provider_.SetName(provider->name_list()[0].name);
+    activation_code_ = provider->activation_code();
   }
-  provider_.SetCode(sid);
-  provider_.SetCountry(provider->country());
-
-  activation_code_ = provider->activation_code();
 
   // TODO(armansito): The CDMA interface only returns information about the
   // current serving carrier, so for now both the home provider and the
@@ -310,7 +315,6 @@ void CellularCapabilityUniversalCDMA::UpdateOperatorInfo() {
   // out if there is a way to (and whether or not it is necessary to)
   // determine if we're roaming.
   cellular()->set_home_provider(provider_);
-
   UpdateServingOperator();
 }
 
