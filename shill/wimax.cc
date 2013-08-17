@@ -21,6 +21,29 @@ using std::string;
 
 namespace shill {
 
+namespace {
+
+const char *DeviceStatusToString(wimax_manager::DeviceStatus status) {
+  switch (status) {
+    case wimax_manager::kDeviceStatusUninitialized:
+      return "Uninitialized";
+    case wimax_manager::kDeviceStatusDisabled:
+      return "Disabled";
+    case wimax_manager::kDeviceStatusReady:
+      return "Ready";
+    case wimax_manager::kDeviceStatusScanning:
+      return "Scanning";
+    case wimax_manager::kDeviceStatusConnecting:
+      return "Connecting";
+    case wimax_manager::kDeviceStatusConnected:
+      return "Connected";
+    default:
+      return "Unknown";
+  }
+}
+
+}  // namespace
+
 const int WiMax::kDefaultConnectTimeoutSeconds = 60;
 const int WiMax::kDefaultRPCTimeoutSeconds = 30;
 
@@ -239,7 +262,8 @@ void WiMax::OnNetworksChanged(const RpcIdentifiers &networks) {
 }
 
 void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
-  SLOG(WiMax, 2) << "WiMAX device " << link_name() << " status: " << status;
+  SLOG(WiMax, 2) << "WiMAX device " << link_name()
+                 << " status: " << DeviceStatusToString(status);
   wimax_manager::DeviceStatus old_status = status_;
   status_ = status;
   switch (status) {
@@ -271,7 +295,8 @@ void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
       if (old_status == wimax_manager::kDeviceStatusConnecting ||
           old_status == wimax_manager::kDeviceStatusConnected) {
         LOG(INFO) << "WiMAX device " << link_name()
-                  << " status: " << old_status << " -> " << status;
+                  << " status: " << DeviceStatusToString(old_status)
+                  << " -> " << DeviceStatusToString(status);
         if (pending_service_) {
           // For now, assume that failing to connect to a live network indicates
           // bad user credentials. Reset the password to trigger the
