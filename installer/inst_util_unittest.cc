@@ -330,6 +330,12 @@ TEST(UtilTest, ReplaceInFileTest) {
   EXPECT_EQ(ReadFileToString(file, &finish), true);
   EXPECT_EQ(finish, "Fuzzy Wuzzy wasn't a lamb");
 
+  // Change middle, longer, could match again
+  EXPECT_EQ(WriteStringToFile(start, file), true);
+  EXPECT_EQ(ReplaceInFile("was", "was was", file), true);
+  EXPECT_EQ(ReadFileToString(file, &finish), true);
+  EXPECT_EQ(finish, "Fuzzy Wuzzy was was a lamb");
+
   // Change middle, shorter
   EXPECT_EQ(WriteStringToFile(start, file), true);
   EXPECT_EQ(ReplaceInFile("Wuzzy", "Wuz", file), true);

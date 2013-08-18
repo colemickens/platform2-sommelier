@@ -438,7 +438,7 @@ void ReplaceAll(string& target, const string& pattern, const string& value) {
     if (offset == string::npos)
       return;
     target.replace(offset, pattern.length(), value);
-    offset += pattern.length();
+    offset += value.length();
   }
 }
 

@@ -47,7 +47,7 @@ class Partition {
     return GetPartitionFromPartitionDev(device());
   }
 
-  std::string uuid() const;
+  virtual std::string uuid() const;
 
   // The mount point for this device or "" if unmounted/unknown
   std::string mount() const { return mount_; }

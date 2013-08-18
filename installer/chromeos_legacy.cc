@@ -11,6 +11,33 @@
 
 using std::string;
 
+bool UpdateLegacyKernel(const InstallConfig& install_config) {
+  string kernel_from = StringPrintf("%s/boot/vmlinuz",
+                                    install_config.root.mount().c_str());
+
+  string kernel_to = StringPrintf("%s/syslinux/vmlinuz.%s",
+                                  install_config.boot.mount().c_str(),
+                                  install_config.slot.c_str());
+
+  return CopyFile(kernel_from, kernel_to);
+}
+
+std::string ExplandVerityArguments(const std::string& kernel_config,
+                                   const std::string& root_uuid) {
+  string kernel_config_dm = ExtractKernelArg(kernel_config, "dm");
+
+  // The verity config from the kernel contains short hand symbols for
+  // partition names that we have to expand to specific UUIDs.
+
+  // %U+1 -> XXX-YYY-ZZZ
+  ReplaceAll(kernel_config_dm, "%U+1", root_uuid);
+
+  // PARTUUID=%U/PARTNROFF=1 -> PARTUUID=XXX-YYY-ZZZ
+  ReplaceAll(kernel_config_dm, "%U/PARTNROFF=1", root_uuid);
+
+  return kernel_config_dm;
+}
+
 bool RunLegacyPostInstall(const InstallConfig& install_config) {
   printf("Running LegacyPostInstall\n");
 
@@ -22,30 +49,11 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
     return false;
   }
 
-  string kernel_from = StringPrintf("%s/boot/vmlinuz",
-                                    install_config.root.mount().c_str());
-
-  string kernel_to = StringPrintf("%s/syslinux/vmlinuz.%s",
-                                  install_config.boot.mount().c_str(),
-                                  install_config.slot.c_str());
-
-  if (!CopyFile(kernel_from, kernel_to))
+  if (!UpdateLegacyKernel(install_config))
     return false;
 
   string kernel_config = DumpKernelConfig(install_config.kernel.device());
   string kernel_config_root = ExtractKernelArg(kernel_config, "root");
-  string kernel_config_dm = ExtractKernelArg(kernel_config, "dm");
-
-  // Of the form: PARTUUID=XXX-YYY-ZZZ
-  string root_uuid = StringPrintf("PARTUUID=%s",
-                                  install_config.root.uuid().c_str());
-
-  // The verity config from the kernel contains short hand symbols for
-  // partition names that we can't get away with.
-  // %U+1 -> XXX-YYY-ZZZ
-  ReplaceAll(kernel_config_dm, "%U+1", install_config.root.uuid());
-  // PARTUUID=%U/PARTNROFF=1 -> PARTUUID=XXX-YYY-ZZZ
-  ReplaceAll(kernel_config_dm, "PARTUUID=%U/PARTNROFF=1", root_uuid);
 
   // Prepare the new default.cfg
 
@@ -80,6 +88,14 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
                      root_cfg_file))
     return false;
 
+  string kernel_config_dm = ExplandVerityArguments(kernel_config,
+                                                   install_config.root.uuid());
+
+  if (kernel_config_dm.empty()) {
+    printf("Failed to extract Verity arguments.");
+    return false;
+  }
+
   // Insert the proper verity options for verity boots
   if (!ReplaceInFile(StringPrintf("DMTABLE%s", install_config.slot.c_str()),
                      kernel_config_dm,
@@ -112,85 +128,96 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
 
 bool RunEfiPostInstall(const InstallConfig& install_config) {
   printf("Running EfiPostInstall\n");
-  printf("Editing grubpart%s PARTUUID to %s in %s using template in %s\n",
-      install_config.slot.c_str(),
-      install_config.root.uuid().c_str(),
-      install_config.boot.mount().c_str(),
-      install_config.root.mount().c_str());
-  string grub_from = StringPrintf("%s/boot/efi/boot/grub.cfg",
-                                  install_config.root.mount().c_str());
-  string grub_to = StringPrintf("%s/efi/boot/grub.cfg",
-                                install_config.boot.mount().c_str());
 
-  // Find the line we want from the template.
-  string grub_from_str;
-  if (!ReadFileToString(grub_from, &grub_from_str)) {
+  // Update the kernel we are about to use.
+  if (!UpdateLegacyKernel(install_config))
+    return false;
+
+  // Of the form: PARTUUID=XXX-YYY-ZZZ
+  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string root_uuid = install_config.root.uuid();
+  string kernel_config_dm = ExplandVerityArguments(kernel_config, root_uuid);
+
+  string grub_filename = StringPrintf("%s/efi/boot/grub.cfg",
+                                      install_config.boot.mount().c_str());
+
+  // Read in the grub.cfg to be updated.
+  string grub_src;
+  if (!ReadFileToString(grub_filename,  &grub_src)) {
     printf("Unable to read grub template file %s\n",
-           grub_from.c_str());
+           grub_filename.c_str());
     return false;
   }
-  // Unfortunately std::regex is "experimental" at this time, so we have to
-  // approximate the behavior of a regular-expression such as
-  // "grubpartA.*linuxpartA".
-  string s1 = StringPrintf("grubpart%s",
-                           install_config.slot.c_str());
-  string s2 = StringPrintf("linuxpart%s",
-                           install_config.slot.c_str());
-  string kernel_line;
+
+  string output;
+  if (!EfiGrubUpdate(grub_src,
+                     install_config.slot,
+                     root_uuid,
+                     kernel_config_dm,
+                     &output)) {
+    return false;
+  }
+
+  // Write out the new grub.cfg.
+  if (!WriteStringToFile(output, grub_filename)) {
+    printf("Unable to write boot menu file %s\n", grub_filename.c_str());
+    return false;
+  }
+
+  // We finished.
+  return true;
+}
+
+bool EfiGrubUpdate(const std::string& input,
+                   const std::string& slot,
+                   const std::string& root_uuid,
+                   const std::string& verity_args,
+                  std::string* output) {
+
+
+
+  // Split the file contents into lines.
   std::vector<string> file_lines;
-  SplitString(grub_from_str, '\n', &file_lines);
-  std::vector<string>::iterator line;
-  for (line = file_lines.begin(); line < file_lines.end(); line++) {
-    if ((line->find(s1) != string::npos) &&
-        (line->find(s2) != string::npos)) {
-      kernel_line = *line;
-      break;
+  SplitString(input, '\n', &file_lines);
+
+  // Search pattern for lines are related to our slot.
+  string kernel_pattern = StringPrintf("/syslinux/vmlinuz.%s", slot.c_str());
+
+
+  for (std::vector<string>::iterator line = file_lines.begin();
+       line < file_lines.end();
+       line++) {
+
+    if (line->find(kernel_pattern) != string::npos) {
+
+      if (ExtractKernelArg(*line, "dm").empty()) {
+        // If it's an unverified boot line, just set the root partition to boot.
+        if (!SetKernelArg("root",
+                          StringPrintf("PARTUUID=%s", root_uuid.c_str()),
+                          &(*line))) {
+          printf("Unable to update unverified root flag in %s.\n",
+                 line->c_str());
+          return false;
+        }
+      } else {
+
+        // Unescape quotes in the line.
+        ReplaceAll(*line, "\\\"", "\"");
+
+        if (!SetKernelArg("dm", verity_args, &(*line))) {
+          printf("Unable to update verified dm flag.\n");
+          return false;
+        }
+
+        // Escape quotes in the line.
+        ReplaceAll(*line, "\"", "\\\"");
+      }
     }
   }
-  if (kernel_line.empty()) {
-    printf("error - bad grub.cfg template\n");
-    return false;
-  }
 
-  // Substitute-in the correct UUID.
-  string new_val = StringPrintf("PARTUUID=%s",
-                                install_config.root.uuid().c_str());
-  if (!SetKernelArg("root", new_val, &kernel_line)) {
-    printf("error - setting new key value for root\n");
-    return false;
-  }
+  // Join the lines back into file contents.
+  JoinStrings(file_lines, "\n", output);
 
-  // Overwrite the corresponding line in the actual boot menu.
-  string new_boot_str;
-  string grub_to_str;
-  if (!ReadFileToString(grub_to, &grub_to_str)) {
-    printf("Unable to read boot menu file %s\n",
-           grub_to.c_str());
-    return false;
-  }
-  // These search strings approximate the behavior of a regular-expression such
-  // as "grubpartA.*PARTUUID".
-  s1 = StringPrintf("grubpart%s",
-                           install_config.slot.c_str());
-  s2 = "PARTUUID";
-  SplitString(grub_to_str, '\n', &file_lines);
-  for (line = file_lines.begin(); line < file_lines.end(); line++) {
-    if ((line->find(s1) != string::npos) &&
-        (line->find(s2) != string::npos)) {
-      new_boot_str += kernel_line;
-      printf("Replaced:\n    %s\n  with:\n    %s\n",
-             line->c_str(),
-             kernel_line.c_str());
-    } else {
-      new_boot_str += *line;
-    }
-    new_boot_str += "\n";
-  }
-  if (!WriteStringToFile(new_boot_str, grub_to)) {
-    printf("Unable to write boot menu file %s\n",
-            grub_to.c_str());
-    return false;
-  }
   // Other EFI post-install actions, if any, go here.
   return true;
 }

@@ -19,4 +19,12 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config);
 // (grub config files) on the boot partition. Returns false on error.
 bool RunEfiPostInstall(const InstallConfig& install_config);
 
+// Exported to make it testable.
+bool EfiGrubUpdate(const std::string& input,
+                   const std::string& slot,
+                   const std::string& root_uuid,
+                   const std::string& verity_args,
+                   std::string* output);
+
+
 #endif  // CHROMEOS_LEGACY_H_
