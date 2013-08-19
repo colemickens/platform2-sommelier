@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "base/file_util.h"
@@ -14,14 +13,6 @@
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/test_main_loop_runner.h"
-
-using ::testing::_;
-using ::testing::DoAll;
-using ::testing::NotNull;
-using ::testing::Return;
-using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
-using ::testing::Test;
 
 namespace {
 
@@ -78,7 +69,7 @@ class TestPrefsObserver : public PrefsObserver {
   DISALLOW_COPY_AND_ASSIGN(TestPrefsObserver);
 };
 
-class PrefsTest : public Test {
+class PrefsTest : public testing::Test {
  public:
   PrefsTest() : test_api_(&prefs_) {}
 

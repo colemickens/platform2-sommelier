@@ -46,7 +46,7 @@ CXX_STATIC_LIBRARY(common/libutil_test.pie.a): LDLIBS += $(LIBUTIL_TEST_LIBS)
 clean: CLEAN(common/libutil_test.pie.a)
 
 UTIL_UNITTEST_FLAGS = $(LIBUTIL_FLAGS)
-UTIL_UNITTEST_LIBS = $(LIBUTIL_LIBS) -lgtest -lgmock
+UTIL_UNITTEST_LIBS = $(LIBUTIL_LIBS) -lgtest
 UTIL_UNITTEST_OBJS = common/util_unittest.o common/util.o
 CXX_BINARY(common/util_unittest): $(UTIL_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a)
@@ -56,7 +56,7 @@ clean: CXX_BINARY(common/util_unittest)
 tests: TEST(CXX_BINARY(common/util_unittest))
 
 PREFS_UNITTEST_FLAGS = $(GLIB_FLAGS)
-PREFS_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
+PREFS_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest
 PREFS_UNITTEST_OBJS = common/inotify.o \
                       common/prefs_unittest.o \
                       common/prefs.o

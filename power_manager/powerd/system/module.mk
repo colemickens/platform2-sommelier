@@ -44,6 +44,6 @@ CXX_BINARY(powerd/system_unittest): \
 CXX_BINARY(powerd/system_unittest): \
 	CPPFLAGS += $(GLIB_FLAGS)
 CXX_BINARY(powerd/system_unittest): \
-	LDLIBS += $(GLIB_LIBS) -lgtest -lgmock -lrt -ludev -lprotobuf-lite
+	LDLIBS += $(GLIB_LIBS) -lgtest -lrt -ludev -lprotobuf-lite
 clean: CXX_BINARY(powerd/system_unittest)
 tests: TEST(CXX_BINARY(powerd/system_unittest))
