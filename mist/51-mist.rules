@@ -9,7 +9,11 @@
 # Extract the vendor/product IDs of supported devices from default.conf and
 # creates corresponding udev rules in this file.
 
-ACTION!="add", GOTO="mist_end"
+# If MIST_SUPPORTED_DEVICE is set to 1, the device has already been handled once
+# due to a prior udev add or change event.
+ENV{MIST_SUPPORTED_DEVICE}=="1", GOTO="mist_end"
+
+ACTION!="add|change", GOTO="mist_end"
 SUBSYSTEM!="usb", GOTO="mist_end"
 ENV{DEVTYPE}!="usb_device", GOTO="mist_end"
 
