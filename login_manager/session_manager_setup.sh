@@ -299,6 +299,8 @@ if use_flag_is_set disable_login_animations; then
   ASH_FLAGS="$ASH_FLAGS --disable-login-animations"
   ASH_FLAGS="$ASH_FLAGS --disable-boot-animation"
   ASH_FLAGS="$ASH_FLAGS --ash-copy-host-background-at-boot"
+elif use_flag_is_set fade_boot_splash_screen; then
+  ASH_FLAGS="$ASH_FLAGS --ash-animate-from-boot-splash-screen"
 fi
 add_ash_wallpaper_flag default large
 add_ash_wallpaper_flag default small
