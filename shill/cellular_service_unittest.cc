@@ -27,6 +27,7 @@ using testing::InSequence;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgumentPointee;
 
 namespace shill {
 
@@ -539,6 +540,44 @@ TEST_F(CellularServiceTest, OutOfCreditsNotEnforced) {
   // There should not be any pending connect requests but dispatch pending
   // events anyway to be sure.
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+
+  const string kDefaultUser;
+  const string kDefaultPass;
+  const string kNewUser("new-username");
+  const string kNewPass("new-password");
+  for (const auto change_username : { false, true }) {
+    for (const auto change_password : { false, true }) {
+      service_->ppp_username_ = kDefaultUser;
+      service_->ppp_password_ = kDefaultPass;
+      service_->SetFailure(Service::kFailurePPPAuth);
+      EXPECT_TRUE(service_->IsFailed());
+      EXPECT_EQ(Service::kFailurePPPAuth, service_->failure());
+      if (change_username) {
+        EXPECT_CALL(storage,
+                    GetString(_, CellularService::kStoragePPPUsername, _))
+            .WillOnce(DoAll(SetArgumentPointee<2>(kNewUser), Return(true)))
+            .RetiresOnSaturation();
+      }
+      if (change_password) {
+        EXPECT_CALL(storage,
+                    GetString(_, CellularService::kStoragePPPPassword, _))
+            .WillOnce(DoAll(SetArgumentPointee<2>(kNewPass), Return(true)))
+            .RetiresOnSaturation();
+      }
+      EXPECT_TRUE(service_->Load(&storage));
+      if (change_username || change_password) {
+        EXPECT_NE(Service::kFailurePPPAuth, service_->failure());
+      } else {
+        EXPECT_EQ(Service::kFailurePPPAuth, service_->failure());
+      }
+    }
+  }
 }
 
 // Some of these tests duplicate signals tested above. However, it's

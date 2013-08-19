@@ -18,6 +18,7 @@ using std::string;
 
 namespace shill {
 
+// statics
 const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnBadPPPCredentials[] =
     "bad PPP credentials";
@@ -28,6 +29,8 @@ const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
 const int64 CellularService::kOutOfCreditsConnectionDropSeconds = 15;
 const int CellularService::kOutOfCreditsMaxConnectAttempts = 3;
 const int64 CellularService::kOutOfCreditsResumeIgnoreSeconds = 5;
+const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
+const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 
 // TODO(petkov): Add these to system_api/dbus/service_constants.h
 namespace {
@@ -41,8 +44,6 @@ const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
 namespace {
 const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
-const char kStoragePPPUsername[] = "Cellular.PPP.Username";
-const char kStoragePPPPassword[] = "Cellular.PPP.Password";
 }  // namespace
 
 static bool GetNonEmptyField(const Stringmap &stringmap,
@@ -254,8 +255,15 @@ bool CellularService::Load(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   LoadApn(storage, id, kStorageAPN, &apn_info_);
   LoadApn(storage, id, kStorageLastGoodAPN, &last_good_apn_info_);
+
+  const string old_username = ppp_username_;
+  const string old_password = ppp_password_;
   storage->GetString(id, kStoragePPPUsername, &ppp_username_);
   storage->GetString(id, kStoragePPPPassword, &ppp_password_);
+  if (IsFailed() && failure() == kFailurePPPAuth &&
+      (old_username != ppp_username_ || old_password != ppp_password_)) {
+    SetState(kStateIdle);
+  }
   return true;
 }
 

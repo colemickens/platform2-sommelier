@@ -137,6 +137,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
+  FRIEND_TEST(CellularServiceTest, LoadResetsPPPAuthFailure);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsDetected);
   FRIEND_TEST(CellularServiceTest,
@@ -159,6 +160,8 @@ class CellularService : public Service {
   static const int64 kOutOfCreditsConnectionDropSeconds;
   static const int kOutOfCreditsMaxConnectAttempts;
   static const int64 kOutOfCreditsResumeIgnoreSeconds;
+  static const char kStoragePPPUsername[];
+  static const char kStoragePPPPassword[];
 
   void HelpRegisterDerivedStringmap(
       const std::string &name,
