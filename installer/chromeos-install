@@ -712,7 +712,7 @@ mount_on_loop_dev readwrite
 # When adding to the whitelist, consider the need for related changes in
 # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
 #
-DIRLIST=""
+DIRLIST="unencrypted/import_extensions"
 
 if [ -f "${ROOT}"/root/.dev_mode ]; then
   DIRLIST="
