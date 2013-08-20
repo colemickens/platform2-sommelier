@@ -209,6 +209,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   enum ScanState {
     kScanIdle,
     kScanScanning,
+    kScanBackgroundScanning,
     kScanTransitionToConnecting,
     kScanConnecting,
     kScanConnected,
@@ -219,6 +220,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   friend class WiFiMainTest;  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
+  FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToWithError);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState

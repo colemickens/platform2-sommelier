@@ -1161,7 +1161,9 @@ void WiFi::ScanDoneTask() {
 }
 
 void WiFi::UpdateScanStateAfterScanDone() {
-  if (scan_state_ != kScanIdle && IsIdle()) {
+  if (scan_state_ == kScanBackgroundScanning) {
+    SetScanState(kScanIdle, kScanMethodNone, __func__);
+  } else if (scan_state_ != kScanIdle && IsIdle()) {
     SetScanState(kScanFoundNothing, scan_method_, __func__);
   }
 }
@@ -1210,7 +1212,8 @@ void WiFi::ScanTask() {
     // scratch.  Keep the existing method if this is a failover from a
     // progressive scan.
     if (scan_state_ != kScanScanning) {
-      SetScanState(kScanScanning, kScanMethodFull, __func__);
+      SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
+                   kScanMethodFull, __func__);
     }
     supplicant_interface_proxy_->Scan(scan_args);
   } catch (const DBus::Error &e) {  // NOLINT
@@ -1641,7 +1644,9 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
     //     from a service during a scan (scan_state_ == kScanScanning or
     //     kScanConnecting).  This is an odd case -- let's discard any
     //     statistics we're gathering by transitioning directly into kScanIdle.
-    if (scan_state_ == kScanScanning || scan_state_ == kScanConnecting) {
+    if (scan_state_ == kScanScanning ||
+        scan_state_ == kScanBackgroundScanning ||
+        scan_state_ == kScanConnecting) {
       SetScanState(kScanIdle, kScanMethodNone, __func__);
     }
     if (pending_service_) {
@@ -1937,7 +1942,7 @@ void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
 }
 
 bool WiFi::GetScanPending(Error */* error */) {
-  return scan_state_ == kScanScanning;
+  return scan_state_ == kScanScanning || scan_state_ == kScanBackgroundScanning;
 }
 
 void WiFi::SetScanState(ScanState new_state,
@@ -1966,7 +1971,7 @@ void WiFi::SetScanState(ScanState new_state,
   }
 
   base::TimeDelta elapsed_time;
-  if (new_state == kScanScanning) {
+  if (new_state == kScanScanning || new_state == kScanBackgroundScanning) {
     if (!scan_timer_.Start()) {
       LOG(ERROR) << "Scan start unreliable";
     }
@@ -1986,15 +1991,13 @@ void WiFi::SetScanState(ScanState new_state,
     return;
 
   // Actually change the state.
-  ScanState old_state = scan_state_;
   ScanMethod old_method = scan_method_;
+  bool old_scan_pending = GetScanPending(NULL);
   scan_state_ = new_state;
   scan_method_ = new_method;
-  if (new_state != old_state &&
-      (new_state == kScanScanning || old_state == kScanScanning)) {
-    Error error;
-    adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
-                               GetScanPending(&error));
+  bool new_scan_pending = GetScanPending(NULL);
+  if (old_scan_pending != new_scan_pending) {
+    adaptor()->EmitBoolChanged(flimflam::kScanningProperty, new_scan_pending);
   }
   switch (new_state) {
     case kScanIdle:
@@ -2053,6 +2056,8 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
         default:
           NOTREACHED();
       }
+    case kScanBackgroundScanning:
+      return "BACKGROUND_START";
     case kScanTransitionToConnecting:
       return "TRANSITION_TO_CONNECTING";
     case kScanConnecting:

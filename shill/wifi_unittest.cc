@@ -3068,4 +3068,19 @@ TEST_F(WiFiMainTest, ConnectWhileNotScanning) {
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 }
 
+TEST_F(WiFiMainTest, BackgroundScan) {
+  StartWiFi();
+  SetupConnectedService(DBus::Path(), NULL, NULL);
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
+  TriggerFullScan();
+  dispatcher_.DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanBackgroundScanning, WiFi::kScanMethodFull);
+
+  ReportScanDone();
+  dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+}
+
 }  // namespace shill
