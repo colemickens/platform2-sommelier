@@ -260,8 +260,12 @@ for file in $(find $PEPPER_PATH -name '*.info'); do
     # Flash is treated specially.
     FLASH_FLAGS="--ppapi-flash-path=${FILE_NAME}"
     FLASH_FLAGS="${FLASH_FLAGS} --ppapi-flash-version=${VERSION}"
-    PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=1"
-    PPAPI_FLASH_FLAGS="${PPAPI_FLASH_FLAGS},enable_trace_to_console=0"
+    # TODO(ihf): Remove this once crbug.com/276738 is fixed.
+    if [[ is_board x86-mario || is_board x86-alex || is_board x86-zgb ]] ; then
+      PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=0"
+    else
+      PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=1"
+    fi
   else
     PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
     REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
