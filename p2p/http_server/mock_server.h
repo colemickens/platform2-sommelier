@@ -24,7 +24,7 @@ class MockServer : public ServerInterface {
   MOCK_METHOD0(Port, uint16());
   MOCK_METHOD0(NumConnections, int());
   MOCK_METHOD0(Clock, p2p::common::ClockInterface*());
-  MOCK_METHOD1(ConnectionTerminated, void(ConnectionDelegate*));
+  MOCK_METHOD1(ConnectionTerminated, void(ConnectionDelegateInterface*));
   MOCK_METHOD2(ReportServerMessage,
                void(p2p::util::P2PServerMessageType, int64_t));
 

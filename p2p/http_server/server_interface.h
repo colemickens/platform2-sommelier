@@ -7,12 +7,11 @@
 
 #include "common/clock_interface.h"
 #include "common/server_message.h"
+#include "http_server/connection_delegate_interface.h"
 
 namespace p2p {
 
 namespace http_server {
-
-class ConnectionDelegate;
 
 class ServerInterface {
  public:
@@ -41,7 +40,7 @@ class ServerInterface {
   virtual p2p::common::ClockInterface* Clock() = 0;
 
   // Method called in by |delegate|, in its own thread.
-  virtual void ConnectionTerminated(ConnectionDelegate* delegate) = 0;
+  virtual void ConnectionTerminated(ConnectionDelegateInterface* delegate) = 0;
 
   // Sends a P2PServerMessage to the stdout. This is used to report various
   // metrics and to report the number of current connections. This method is

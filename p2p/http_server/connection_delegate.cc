@@ -57,7 +57,7 @@ ConnectionDelegate::ConnectionDelegate(int dirfd,
                                        const string& pretty_addr,
                                        ServerInterface* server,
                                        int64_t max_download_rate)
-    : base::DelegateSimpleThread::Delegate(),
+    : ConnectionDelegateInterface(),
       dirfd_(dirfd),
       fd_(fd),
       pretty_addr_(pretty_addr),
@@ -66,6 +66,16 @@ ConnectionDelegate::ConnectionDelegate(int dirfd,
       total_bytes_sent_(0) {
   CHECK(fd_ != -1);
   CHECK(server_ != NULL);
+}
+
+ConnectionDelegateInterface* ConnectionDelegate::Construct(
+    int dirfd,
+    int fd,
+    const string& pretty_addr,
+    ServerInterface* server,
+    int64_t max_download_rate) {
+  return new ConnectionDelegate(dirfd, fd, pretty_addr, server,
+      max_download_rate);
 }
 
 ConnectionDelegate::~ConnectionDelegate() { CHECK(fd_ == -1); }

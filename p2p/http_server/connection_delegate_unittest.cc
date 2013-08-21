@@ -98,11 +98,11 @@ class ConnectionDelegateTest : public ::testing::Test {
     server_addr.sin_port = htons(0); // any port
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     ASSERT_NE(-1, bind(servsock,
-                       reinterpret_cast<struct sockaddr *>(&server_addr),
+                       reinterpret_cast<struct sockaddr*>(&server_addr),
                        sizeof(server_addr)));
     // Read back the selected address and port.
     ASSERT_NE(-1, getsockname(servsock,
-                              reinterpret_cast<struct sockaddr *>(&server_addr),
+                              reinterpret_cast<struct sockaddr*>(&server_addr),
                               &server_len));
 
     ASSERT_NE(listen(servsock, 1), -1);
@@ -112,11 +112,11 @@ class ConnectionDelegateTest : public ::testing::Test {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
     ASSERT_NE(-1, connect(client_fd_,
-                          reinterpret_cast<struct sockaddr *>(&server_addr),
+                          reinterpret_cast<struct sockaddr*>(&server_addr),
                           sizeof(server_addr)));
 
     server_fd_ = accept(servsock,
-                        reinterpret_cast<struct sockaddr *>(&client_addr),
+                        reinterpret_cast<struct sockaddr*>(&client_addr),
                         &client_len);
     if (server_fd_ == -1)
       PLOG(ERROR) << "Accepting the client connection.";
@@ -316,22 +316,36 @@ class HTTPResponse {
   vector<string> raw_headers_;
 };
 
-// Read a HTTP response from the file descriptor until the connection is closed
-// or the "content" part of the HTTP response is at least |min_content_size|.
+// Read or continue reading a HTTP response from the file descriptor until the
+// connection is closed or the "content" part of the HTTP response is at least
+// |min_content_size|. If more than |min_content_size| bytes are available to
+// read on the file descriptor those will be included in the |response| as well.
 // A value of -1 in |min_content_size| will block until the connection is
 // closed.
-static HTTPResponse ReadHTTPResponse(int fd, int min_content_size = -1) {
+// Returns wether the response was successfully read from the file descriptor
+// and the socked was properly close from the other end or the
+// |min_content_size| reached.
+// The bytes read from the file descriptor are appended to the |response|
+// string, allowing the caller to do a partial read of a HTTP response and then
+// continue it. For example:
+//
+//   string resp;
+//   // This will at least read the headers:
+//   ReadHTTPResponse(some_sock, &resp, 0);
+//   // ... do some checking of the headers, read the Content-Length if present.
+//   ReadHTTPResponse(some_sock, &resp, expect_content_size);
+static bool ReadHTTPResponse(int fd, string* response,
+                             int min_content_size = -1) {
   char buf[16 * 1024]; // 16KiB is a reasonable buffer for recv().
-  string response;
   int res;
   do {
     if (min_content_size >= 0) {
       res = recv(fd, buf, sizeof(buf), MSG_DONTWAIT);
       if (res == -1 && errno == EWOULDBLOCK) {
-        HTTPResponse ret(response);
+        HTTPResponse ret(*response);
         if (ret.valid_ &&
             ret.content_.size() >= static_cast<size_t>(min_content_size))
-          return ret;
+          return true;
         // Re-read but block this time.
         res = recv(fd, buf, sizeof(buf), 0);
       }
@@ -342,13 +356,13 @@ static HTTPResponse ReadHTTPResponse(int fd, int min_content_size = -1) {
       continue;
     if (res == -1) {
       PLOG(ERROR) << "Reading HTTPResponse from fd " << fd;
-      return HTTPResponse("");
+      return false;
     }
     if (res == 0)
       break;
-    response.append(buf, res);
+    response->append(buf, res);
   } while (true);
-  return HTTPResponse(response);
+  return true;
 }
 
 // Generates undefined but deterministic printable data.
@@ -380,7 +394,7 @@ TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   EXPECT_EQ(0, close(client_fd_));
@@ -394,7 +408,7 @@ TEST_F(ConnectionDelegateTest, RequestIndexClosesTheConnection) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultIndex));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   // Send an index request.
@@ -403,9 +417,11 @@ TEST_F(ConnectionDelegateTest, RequestIndexClosesTheConnection) {
   // This call will block until the server side of the client_fd_ is closed.
   // The server should send the index, close the conection and free the
   // resources.
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   // Check that we got a valid response.
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(200, resp.http_code_);
@@ -416,7 +432,7 @@ TEST_F(ConnectionDelegateTest, RequestIndexThenClose) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultIndex));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   // Send an index request and close the socket right after that.
@@ -430,7 +446,7 @@ TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   // Send a HEAD request.
@@ -438,9 +454,11 @@ TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
   req.method_ = "HEAD";
   req.uri_ = "/non-existent";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(501, resp.http_code_); // Not Implemented.
 }
@@ -458,15 +476,17 @@ TEST_F(ConnectionDelegateTest, GetExistentFile) {
       p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 0));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "/hello";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(200, resp.http_code_);
   EXPECT_EQ(content, resp.content_);
@@ -488,16 +508,18 @@ TEST_F(ConnectionDelegateTest, PostExistentFile) {
       p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 0));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.method_ = "POST";
   req.uri_ = "/a.foo";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   ASSERT_EQ(200, resp.http_code_);
   EXPECT_EQ(content, resp.content_);
@@ -517,15 +539,17 @@ TEST_F(ConnectionDelegateTest, GetEmptyFile) {
       p2p::util::kP2PServerDownloadSpeedKBps, 0));
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 0));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "/empty";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(200, resp.http_code_);
   EXPECT_EQ("", resp.content_);
@@ -547,7 +571,7 @@ TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
       p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 25));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
@@ -557,9 +581,11 @@ TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
   // An extra header shouldn't affect.
   req.headers_["X-Hello"] = "World";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   ASSERT_EQ(206, resp.http_code_); // Partial content.
   EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
@@ -575,7 +601,7 @@ TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
@@ -583,9 +609,11 @@ TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
   // The range starts in the file but the end is after the end of the file.
   req.headers_["Range"] = "bytes=60000-70000";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(416, resp.http_code_); // Requested Range Not Satisfiable.
   EXPECT_EQ("", resp.content_);
@@ -605,7 +633,7 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
       p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 80));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
@@ -618,9 +646,11 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
   req.headers_["raNGE"] = "bytes=4000-";
   req.headers_["RangE"] = "bytes=4000-";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   ASSERT_EQ(206, resp.http_code_); // Partial content.
   EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
@@ -643,19 +673,21 @@ TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
       p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 0));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "/data";
   req.Send(client_fd_);
   // Request the whole file (100KB), but try to read only the first 50KB.
-  HTTPResponse resp = ReadHTTPResponse(client_fd_, 50 * 1000);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp, 50 * 1000));
   // Disconnect.
   close(client_fd_);
   client_fd_ = -1;
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   ASSERT_EQ(200, resp.http_code_);
   EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
@@ -680,19 +712,21 @@ TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
   // at 2KB should be reported as 20%.
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRangeBeginPercentage, 20));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "/data";
   req.headers_["Range"] = "bytes=2000-4999";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   // Disconnect.
   close(client_fd_);
   client_fd_ = -1;
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   ASSERT_EQ(206, resp.http_code_);
   EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
@@ -704,15 +738,17 @@ TEST_F(ConnectionDelegateTest, GetNonExistentFile) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultNotFound));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "/hello";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(404, resp.http_code_);
 }
@@ -724,15 +760,17 @@ TEST_F(ConnectionDelegateTest, URIArgumentsNotParsed) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultNotFound));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "/hello?world";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(404, resp.http_code_);
 }
@@ -741,15 +779,17 @@ TEST_F(ConnectionDelegateTest, URIUsesRelativePath) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
   req.uri_ = "//etc/passwd";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(400, resp.http_code_); // Bad request.
 }
@@ -761,7 +801,7 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(_));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
   HTTPRequest req;
@@ -769,11 +809,167 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
   // Request an inverted range.
   req.headers_["Range"] = "bytes=9-5";
   req.Send(client_fd_);
-  HTTPResponse resp = ReadHTTPResponse(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
   thread_->Join();
 
+  HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
   EXPECT_EQ(400, resp.http_code_); // Bad request.
+}
+
+// Tests that the ConnectionDelegate properly blocks when the end of the file
+// is missing and continues serving the file when more data is available.
+TEST_F(ConnectionDelegateTest, Waiting) {
+  // The file starts with 50kB on disk, but expected total size of 100kB. The
+  // file is then extended to 75kB and finally to 100kB.
+  string content;
+  GeneratePrintableData(100 * 1000, &content);
+  WriteFile(testdir_path_.Append("wait.p2p"), content.c_str(), 50 * 1000);
+  SetExpectedFileSize(testdir_path_.Append("wait.p2p"), 100 * 1000);
+
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerRequestResult,
+      p2p::util::kP2PRequestResultResponseSent));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerServedSuccessfullyMB, 0));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerDownloadSpeedKBps, _));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerRangeBeginPercentage, 0));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
+
+  thread_->Start();
+  HTTPRequest req;
+  req.uri_ = "/wait";
+  req.Send(client_fd_);
+  string text_resp;
+  // Expect to read the first 50kB with a valid HTTP response for the
+  // total size of 100kB.
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp, 50 * 1000));
+
+  HTTPResponse resp(text_resp);
+  ASSERT_TRUE(resp.valid_);
+  ASSERT_EQ(200, resp.http_code_);
+  EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
+  EXPECT_EQ("100000", resp.headers_["Content-Length"]);
+
+  // Extend the file to 75kB.
+  int fd = open(testdir_path_.Append("wait.p2p").value().c_str(),
+                O_WRONLY | O_APPEND);
+  EXPECT_NE(fd, -1);
+  EXPECT_EQ(25 * 1000, write(fd, content.c_str() + 50 * 1000, 25 * 1000));
+
+  // Expect to reach 75kB on the reader side.
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp, 75 * 1000));
+
+  HTTPResponse middle_resp(text_resp);
+  ASSERT_TRUE(middle_resp.valid_);
+  EXPECT_EQ(middle_resp.content_.size(), 75 * 1000);
+
+  // Extend the file to its total expected size and expect the server to close
+  // the connection right after serving the total size.
+  EXPECT_EQ(25 * 1000, write(fd, content.c_str() + 75 * 1000, 25 * 1000));
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
+
+  EXPECT_EQ(0, close(fd));
+  thread_->Join();
+
+  HTTPResponse full_resp(text_resp);
+  ASSERT_TRUE(full_resp.valid_);
+  EXPECT_EQ(full_resp.content_.size(), 100 * 1000);
+  EXPECT_EQ(full_resp.content_, content);
+}
+
+TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
+  string content;
+  GeneratePrintableData(50 * 1000 * 1000, &content);
+  WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
+  SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), content.size());
+
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerRequestResult,
+      p2p::util::kP2PRequestResultResponseSent));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerServedSuccessfullyMB, 50));
+  // The reported download speed should be the maximum default speed used in
+  // this test (kDefaultDownloadRate).
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerDownloadSpeedKBps, 5000));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerRangeBeginPercentage, 0));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
+
+  thread_->Start();
+  HTTPRequest req;
+  req.uri_ = "/50mb";
+  req.Send(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
+  thread_->Join();
+
+  // Don't need to parse the response. Just expect it to have the 50MB plus the
+  // header size.
+  EXPECT_GE(text_resp.size(), 50 * 1000 * 1000);
+
+  // Since the file was already complete at the begining of the test, the
+  // sleeping time should be only 10s (50MB / 5 MB/s). A minimum tolerance is
+  // added to avoid floating-point errors.
+  EXPECT_GE(clock_.GetSleptTime().InSecondsF(), 9.999);
+  EXPECT_LE(clock_.GetSleptTime().InSecondsF(), 10.001);
+}
+
+TEST_F(ConnectionDelegateTest, DisregardTimeWaitingFromTransferBudget) {
+  string content;
+  GeneratePrintableData(25 * 1000 * 1000, &content);
+  WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
+  SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), 50 * 1000 * 1000);
+
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerRequestResult,
+      p2p::util::kP2PRequestResultResponseSent));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerServedSuccessfullyMB, 50));
+  // The reported download speed should be the maximum default speed used in
+  // this test (kDefaultDownloadRate).
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerDownloadSpeedKBps, 5000));
+  EXPECT_CALL(mock_server_, ReportServerMessage(
+      p2p::util::kP2PServerRangeBeginPercentage, 0));
+  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
+
+  thread_->Start();
+  HTTPRequest req;
+  req.uri_ = "/50mb";
+  req.Send(client_fd_);
+  string text_resp;
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp, 25 * 1000 * 1000));
+
+  // At this point, the ConnectionDelegate is waiting on data to be read from
+  // the file, but EOF is reached so it will try to call clock->Sleep() to
+  // sleep for a second waiting for data to be ready. After the last byte is
+  // sent to the socket, the ConnectionDelegate waits to reach the right
+  // speed and once EOF on the input is reached it will wait again until some
+  // data is ready to read from there. To ensure we saw at least one Sleep()
+  // call because of the later condition, block twice until Sleep() is called.
+  clock_.BlockUntilSleepIsCalled();
+  clock_.BlockUntilSleepIsCalled();
+
+  // Extend the file to its total expected size and expect the server to close
+  // the connection right after serving the total size.
+  int fd = open(testdir_path_.Append("50mb.p2p").value().c_str(),
+                O_WRONLY | O_APPEND);
+  EXPECT_NE(fd, -1);
+  EXPECT_EQ(content.size(), write(fd, content.c_str(), content.size()));
+  EXPECT_EQ(0, close(fd));
+
+  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
+
+  thread_->Join();
+
+  // Don't need to parse the response. Just expect it to have the 50MB plus the
+  // header size.
+  EXPECT_GE(text_resp.size(), 50 * 1000 * 1000);
 }
 
 }  // namespace http_server

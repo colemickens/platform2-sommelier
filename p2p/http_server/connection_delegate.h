@@ -6,6 +6,7 @@
 #define P2P_HTTP_SERVER_CONNECTION_DELEGATE_H__
 
 #include "common/server_message.h"
+#include "http_server/connection_delegate_interface.h"
 
 #include <string>
 #include <map>
@@ -22,7 +23,7 @@ namespace http_server {
 class ServerInterface;
 
 // Class used for handling a single HTTP connection.
-class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
+class ConnectionDelegate : public ConnectionDelegateInterface {
  public:
   // Constructs a new ConnectionDelegate object.
   //
@@ -35,6 +36,14 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
                      int64_t max_download_rate);
 
   virtual ~ConnectionDelegate();
+
+  // A ConnectionDelegate factory.
+  static ConnectionDelegateInterface* Construct(
+      int dirfd,
+      int fd,
+      const std::string& pretty_addr,
+      ServerInterface* server,
+      int64_t max_download_rate);
 
   // Overrides DelegateSimpleThread::Delegate
   virtual void Run();

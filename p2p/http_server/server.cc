@@ -10,7 +10,7 @@
 #include "common/server_message.h"
 #include "common/struct_serializer.h"
 #include "http_server/server.h"
-#include "http_server/connection_delegate.h"
+#include "http_server/connection_delegate_interface.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -46,16 +46,19 @@ namespace p2p {
 
 namespace http_server {
 
-Server::Server(const FilePath& directory, uint16_t port)
+Server::Server(const FilePath& directory, uint16_t port, int message_fd,
+    ConnectionDelegateFactory delegate_factory)
     : thread_pool_("p2p-http-server", 10),
       directory_(directory),
       dirfd_(-1),
       port_(port),
+      message_fd_(message_fd),
       max_download_rate_(0),
       started_(false),
       listen_fd_(-1),
       listen_source_id_(0),
-      num_connections_(0) {
+      num_connections_(0),
+      delegate_factory_(delegate_factory) {
   clock_.reset(new p2p::common::Clock);
 }
 
@@ -106,14 +109,14 @@ bool Server::Start() {
   CHECK(!started_);
   started_ = true;
 
+  thread_pool_.Start();
+
   dirfd_ = open(directory_.value().c_str(), O_DIRECTORY);
   if (dirfd_ == -1) {
     LOG(ERROR) << "Error opening directory: " << strerror(errno);
     Stop();
     return false;
   }
-
-  thread_pool_.Start();
 
   listen_fd_ =
       socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
@@ -262,7 +265,7 @@ void Server::ReportServerMessage(P2PServerMessageType msg_type, int64_t value) {
   };
   LOG(INFO) << "Sending message " << ToString(msg);
   lock_.Acquire();
-  p2p::util::StructSerializerWrite<P2PServerMessage>(STDOUT_FILENO, msg);
+  p2p::util::StructSerializerWrite<P2PServerMessage>(message_fd_, msg);
   lock_.Release();
 }
 
@@ -274,7 +277,7 @@ void Server::UpdateNumConnections(int delta_num_connections) {
   ReportServerMessage(p2p::util::kP2PServerNumConnections, num_connections);
 }
 
-void Server::ConnectionTerminated(ConnectionDelegate* delegate) {
+void Server::ConnectionTerminated(ConnectionDelegateInterface* delegate) {
   UpdateNumConnections(-1);
 }
 
@@ -293,12 +296,12 @@ gboolean Server::OnIOChannelActivity(GIOChannel* source,
   if (fd == -1) {
     LOG(ERROR) << "accept failed: " << strerror(errno);
   } else {
-    ConnectionDelegate* delegate =
-        new ConnectionDelegate(server->dirfd_,
-                               fd,
-                               PrintAddress(addr, addr_len),
-                               server,
-                               server->max_download_rate_);
+    ConnectionDelegateInterface* delegate = server->delegate_factory_(
+        server->dirfd_,
+        fd,
+        PrintAddress(addr, addr_len),
+        server,
+        server->max_download_rate_);
     server->UpdateNumConnections(1);
 
     // Report P2P.Server.ClientCount every time a client connects.
@@ -314,5 +317,3 @@ gboolean Server::OnIOChannelActivity(GIOChannel* source,
 }  // namespace http_server
 
 }  // namespace p2p
-
-/* ------------------------------------------------------------------------ */

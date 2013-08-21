@@ -9,6 +9,7 @@
 #include "common/constants.h"
 #include "common/util.h"
 #include "http_server/server.h"
+#include "http_server/connection_delegate.h"
 
 #include <iostream>
 #include <string>
@@ -78,7 +79,9 @@ int main(int argc, char* argv[]) {
     directory = FilePath(FilePath::kCurrentDirectory);
   }
 
-  p2p::http_server::Server server(directory, port);
+  p2p::http_server::Server server(
+      directory, port, STDOUT_FILENO,
+      p2p::http_server::ConnectionDelegate::Construct);
   LOG(INFO) << "Maximum download rate per connection set to "
             << p2p::constants::kMaxSpeedPerDownload << " bytes/sec";
   server.SetMaxDownloadRate(p2p::constants::kMaxSpeedPerDownload);
