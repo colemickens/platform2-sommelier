@@ -73,9 +73,9 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
   reader->GetFilenamesAsSet(&filename_set);
 
   // Make sure all MMAP filenames are in the set.
-  std::vector<PerfEventAndSampleInfo> events = reader->events();
+  const std::vector<event_t*>& events = reader->events();
   for (size_t i = 0; i < events.size(); ++i) {
-    const event_t& event = *events[i].event;
+    const event_t& event = *events[i];
     if (event.header.type == PERF_RECORD_MMAP) {
       EXPECT_TRUE(filename_set.find(event.mmap.filename) != filename_set.end())
           << event.mmap.filename << " is not present in the filename set";

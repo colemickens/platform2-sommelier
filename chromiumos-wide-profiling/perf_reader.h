@@ -22,16 +22,6 @@ struct PerfFileAttr {
   std::vector<u64> ids;
 };
 
-struct PerfEventAndSampleInfo {
-  struct perf_sample sample_info;
-  event_t* event;
-
-  PerfEventAndSampleInfo() {
-    memset(&sample_info, 0, sizeof(sample_info));
-    memset(&event, 0, sizeof(event));
-  }
-};
-
 // Based on code in tools/perf/util/header.c, the metadata are of the following
 // formats:
 
@@ -133,12 +123,28 @@ class PerfReader {
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
+  static bool IsSupportedEventType(uint32 type);
+
+  // If a program using PerfReader calls events(), it could work with the
+  // resulting events by importing kernel/perf_internals.h.  This would also
+  // apply to other forms of data (attributes, event types, build ids, etc.)
+  // However, there is no easy way to work with the sample info within events.
+  // The following two methods have been added for this purpose.
+
+  // Extracts from a perf event |event| info about the perf sample that
+  // contains the event.  Stores info in |sample|.
+  bool ReadPerfSampleInfo(const event_t& event,
+                          struct perf_sample* sample) const;
+  // Writes |sample| info back to a perf event |event|.
+  bool WritePerfSampleInfo(const perf_sample& sample,
+                           event_t* event) const;
+
   // Accessor funcs.
   const std::vector<PerfFileAttr>& attrs() const {
     return attrs_;
   }
 
-  const std::vector<PerfEventAndSampleInfo>& events() const {
+  const std::vector<event_t*>& events() const {
     return events_;
   }
 
@@ -235,7 +241,7 @@ class PerfReader {
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;
-  std::vector<PerfEventAndSampleInfo> events_;
+  std::vector<event_t*> events_;
   std::vector<build_id_event*> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;

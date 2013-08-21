@@ -21,11 +21,8 @@ namespace quipper {
 namespace {
 
 void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
-  for (unsigned int i = 1; i < events.size(); ++i) {
-    uint64 time = events[i]->sample_info->time;
-    uint64 prev_time = events[i - 1]->sample_info->time;
-    CHECK_LE(prev_time, time);
-  }
+  for (unsigned int i = 1; i < events.size(); ++i)
+    CHECK_LE(events[i - 1]->time, events[i]->time);
 }
 
 void ReadFileAndCheckInternals(const string& input_perf_data,

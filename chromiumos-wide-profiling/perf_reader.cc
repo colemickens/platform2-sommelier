@@ -113,26 +113,6 @@ void CheckNoBuildIDEventPadding() {
            sizeof(event.build_id));
 }
 
-bool ShouldWriteSampleInfoForEventType(uint32 type) {
-  switch (type) {
-  case PERF_RECORD_SAMPLE:
-  case PERF_RECORD_MMAP:
-  case PERF_RECORD_FORK:
-  case PERF_RECORD_EXIT:
-  case PERF_RECORD_COMM:
-    return true;
-  case PERF_RECORD_LOST:
-  case PERF_RECORD_THROTTLE:
-  case PERF_RECORD_UNTHROTTLE:
-  case PERF_RECORD_READ:
-  case PERF_RECORD_MAX:
-    return false;
-  default:
-    LOG(FATAL) << "Unknown event type " << type;
-    return false;
-  }
-}
-
 // Creates/updates a build id event with |build_id| and |filename|.
 // Passing "" to |build_id| or |filename| will leave the corresponding field
 // unchanged (in which case |event| must be non-null).
@@ -466,77 +446,12 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
   return num_values_written * sizeof(uint64);
 }
 
-// Extracts from a perf event |event| info about the perf sample that contains
-// the event.  Stores info in |sample|.
-bool ReadPerfSampleInfo(const event_t& event,
-                        uint64 sample_type,
-                        bool swap_bytes,
-                        struct perf_sample* sample) {
-  CHECK(sample);
-
-  uint64 sample_format = GetSampleFieldsForEventType(event.header.type,
-                                                     sample_type);
-  uint64 offset = GetPerfSampleDataOffset(event);
-  memset(sample, 0, sizeof(*sample));
-  size_t size_read = ReadPerfSampleFromData(
-      reinterpret_cast<const uint64*>(&event) + offset / sizeof(uint64),
-      sample_format,
-      swap_bytes,
-      sample);
-
-  if (event.header.type == PERF_RECORD_SAMPLE) {
-    sample->pid = event.ip.pid;
-    sample->tid = event.ip.tid;
-    if (swap_bytes) {
-      ByteSwap(&sample->pid);
-      ByteSwap(&sample->tid);
-    }
-  }
-
-  size_t expected_size = event.header.size - offset;
-  if (size_read != expected_size) {
-    LOG(ERROR) << "Read " << size_read << " bytes, expected "
-               << expected_size << " bytes.";
-  }
-
-  return (size_read == expected_size);
-}
-
-// Writes |sample| info back to a perf event |event|.
-bool WritePerfSampleInfo(const perf_sample& sample,
-                         uint64 sample_type,
-                         event_t* event) {
-  CHECK(event);
-
-  uint64 sample_format = GetSampleFieldsForEventType(event->header.type,
-                                                     sample_type);
-  uint64 offset = GetPerfSampleDataOffset(*event);
-
-  size_t expected_size = event->header.size - offset;
-  memset(reinterpret_cast<uint8*>(event) + offset, 0, expected_size);
-  size_t size_written = WritePerfSampleToData(
-      sample,
-      sample_format,
-      reinterpret_cast<uint64*>(event) + offset / sizeof(uint64));
-  if (size_written != expected_size) {
-    LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
-               << expected_size << " bytes.";
-  }
-
-  return (size_written == expected_size);
-}
-
 }  // namespace
 
 PerfReader::~PerfReader() {
   // Free allocated memory.
-  for (size_t i = 0; i < events_.size(); ++i) {
-    if (events_[i].sample_info.callchain)
-      delete [] events_[i].sample_info.callchain;
-    if (events_[i].sample_info.branch_stack)
-      delete [] events_[i].sample_info.branch_stack;
-    free(events_[i].event);
-  }
+  for (size_t i = 0; i < events_.size(); ++i)
+    free(events_[i]);
 
   for (size_t i = 0; i < build_id_events_.size(); ++i)
     free(build_id_events_[i]);
@@ -673,7 +588,7 @@ bool PerfReader::RegenerateHeader() {
   out_header_.attr_size = sizeof(attrs_[0].attr) + sizeof(perf_file_section);
   out_header_.attrs.size = out_header_.attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
-    out_header_.data.size += events_[i].event->header.size;
+    out_header_.data.size += events_[i]->header.size;
   out_header_.event_types.size = event_types_.size() * sizeof(event_types_[0]);
 
   u64 current_offset = 0;
@@ -799,7 +714,7 @@ void PerfReader::GetFilenames(std::vector<string>* filenames) const {
 void PerfReader::GetFilenamesAsSet(std::set<string>* filenames) const {
   filenames->clear();
   for (size_t i = 0; i < events_.size(); ++i) {
-    const event_t& event = *events_[i].event;
+    const event_t& event = *events_[i];
     if (event.header.type == PERF_RECORD_MMAP)
       filenames->insert(event.mmap.filename);
   }
@@ -813,6 +728,90 @@ void PerfReader::GetFilenamesToBuildIDs(
     string build_id = HexToString(event.build_id, kBuildIDArraySize);
     (*filenames_to_build_ids)[event.filename] = build_id;
   }
+}
+
+bool PerfReader::IsSupportedEventType(uint32 type) {
+  switch (type) {
+  case PERF_RECORD_SAMPLE:
+  case PERF_RECORD_MMAP:
+  case PERF_RECORD_FORK:
+  case PERF_RECORD_EXIT:
+  case PERF_RECORD_COMM:
+    return true;
+  case PERF_RECORD_LOST:
+  case PERF_RECORD_THROTTLE:
+  case PERF_RECORD_UNTHROTTLE:
+  case PERF_RECORD_READ:
+  case PERF_RECORD_MAX:
+    return false;
+  default:
+    LOG(FATAL) << "Unknown event type " << type;
+    return false;
+  }
+}
+
+bool PerfReader::ReadPerfSampleInfo(const event_t& event,
+                                    struct perf_sample* sample) const {
+  CHECK(sample);
+
+  if (!IsSupportedEventType(event.header.type)) {
+    LOG(ERROR) << "Unsupported event type " << event.header.type;
+    return false;
+  }
+
+  uint64 sample_format = GetSampleFieldsForEventType(event.header.type,
+                                                     sample_type_);
+  uint64 offset = GetPerfSampleDataOffset(event);
+  memset(sample, 0, sizeof(*sample));
+  size_t size_read = ReadPerfSampleFromData(
+      reinterpret_cast<const uint64*>(&event) + offset / sizeof(uint64),
+      sample_format,
+      is_cross_endian_,
+      sample);
+
+  if (event.header.type == PERF_RECORD_SAMPLE) {
+    sample->pid = event.ip.pid;
+    sample->tid = event.ip.tid;
+    if (is_cross_endian_) {
+      ByteSwap(&sample->pid);
+      ByteSwap(&sample->tid);
+    }
+  }
+
+  size_t expected_size = event.header.size - offset;
+  if (size_read != expected_size) {
+    LOG(ERROR) << "Read " << size_read << " bytes, expected "
+               << expected_size << " bytes.";
+  }
+
+  return (size_read == expected_size);
+}
+
+bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
+                                     event_t* event) const {
+  CHECK(event);
+
+  if (!IsSupportedEventType(event->header.type)) {
+    LOG(ERROR) << "Unsupported event type " << event->header.type;
+    return false;
+  }
+
+  uint64 sample_format = GetSampleFieldsForEventType(event->header.type,
+                                                     sample_type_);
+  uint64 offset = GetPerfSampleDataOffset(*event);
+
+  size_t expected_size = event->header.size - offset;
+  memset(reinterpret_cast<uint8*>(event) + offset, 0, expected_size);
+  size_t size_written = WritePerfSampleToData(
+      sample,
+      sample_format,
+      reinterpret_cast<uint64*>(event) + offset / sizeof(uint64));
+  if (size_written != expected_size) {
+    LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
+               << expected_size << " bytes.";
+  }
+
+  return (size_written == expected_size);
 }
 
 bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
@@ -1381,18 +1380,10 @@ bool PerfReader::WriteAttrs(const BufferWithSize& data) const {
 bool PerfReader::WriteData(const BufferWithSize& data) const {
   size_t offset = out_header_.data.offset;
   for (size_t i = 0; i < events_.size(); ++i) {
-    // First write to a local event object.
-    event_t event;
-    memcpy(&event, events_[i].event, events_[i].event->header.size);
-    size_t event_size = event.header.size;
-    const struct perf_sample& sample_info = events_[i].sample_info;
-    if (ShouldWriteSampleInfoForEventType(event.header.type) &&
-        !WritePerfSampleInfo(sample_info, sample_type_, &event)) {
+    if (!WriteDataToBuffer(events_[i], events_[i]->header.size, "event data",
+                           &offset, data)) {
       return false;
     }
-    // Then write that local event object to the data buffer.
-    if (!WriteDataToBuffer(&event, event_size, "event data", &offset, data))
-      return false;
   }
   return true;
 }
@@ -1702,50 +1693,40 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
     return false;
   }
 
-  PerfEventAndSampleInfo event_and_sample;
   // Copy only the part of the event that is needed.
-  event_and_sample.event = CallocMemoryForEvent(size);
-  memcpy(event_and_sample.event, &event, size);
-  event_t& event_copy = *event_and_sample.event;
+  event_t* event_copy = CallocMemoryForEvent(size);
+  memcpy(event_copy, &event, size);
   if (is_cross_endian_) {
-    ByteSwap(&event_copy.header.type);
-    ByteSwap(&event_copy.header.misc);
-    ByteSwap(&event_copy.header.size);
+    ByteSwap(&event_copy->header.type);
+    ByteSwap(&event_copy->header.misc);
+    ByteSwap(&event_copy->header.size);
   }
 
-  uint32 type = event_copy.header.type;
-  if (ShouldWriteSampleInfoForEventType(type) &&
-      !ReadPerfSampleInfo(event_copy,
-                          sample_type_,
-                          is_cross_endian_,
-                          &event_and_sample.sample_info)) {
-    return false;
-  }
-
+  uint32 type = event_copy->header.type;
   if (is_cross_endian_) {
     switch (type) {
     case PERF_RECORD_SAMPLE:
-      ByteSwap(&event_copy.ip.ip);
-      ByteSwap(&event_copy.ip.pid);
-      ByteSwap(&event_copy.ip.tid);
+      ByteSwap(&event_copy->ip.ip);
+      ByteSwap(&event_copy->ip.pid);
+      ByteSwap(&event_copy->ip.tid);
       break;
     case PERF_RECORD_MMAP:
-      ByteSwap(&event_copy.mmap.pid);
-      ByteSwap(&event_copy.mmap.tid);
-      ByteSwap(&event_copy.mmap.start);
-      ByteSwap(&event_copy.mmap.len);
-      ByteSwap(&event_copy.mmap.pgoff);
+      ByteSwap(&event_copy->mmap.pid);
+      ByteSwap(&event_copy->mmap.tid);
+      ByteSwap(&event_copy->mmap.start);
+      ByteSwap(&event_copy->mmap.len);
+      ByteSwap(&event_copy->mmap.pgoff);
       break;
     case PERF_RECORD_FORK:
     case PERF_RECORD_EXIT:
-      ByteSwap(&event_copy.fork.pid);
-      ByteSwap(&event_copy.fork.tid);
-      ByteSwap(&event_copy.fork.ppid);
-      ByteSwap(&event_copy.fork.ptid);
+      ByteSwap(&event_copy->fork.pid);
+      ByteSwap(&event_copy->fork.tid);
+      ByteSwap(&event_copy->fork.ppid);
+      ByteSwap(&event_copy->fork.ptid);
       break;
     case PERF_RECORD_COMM:
-      ByteSwap(&event_copy.comm.pid);
-      ByteSwap(&event_copy.comm.tid);
+      ByteSwap(&event_copy->comm.pid);
+      ByteSwap(&event_copy->comm.tid);
       break;
     case PERF_RECORD_LOST:
     case PERF_RECORD_THROTTLE:
@@ -1758,7 +1739,7 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
     }
   }
 
-  events_.push_back(event_and_sample);
+  events_.push_back(event_copy);
 
   return true;
 }
@@ -1866,7 +1847,7 @@ bool PerfReader::LocalizeMMapFilenames(
     const std::map<string, string>& filename_map) {
   // Search for mmap events for which the filename needs to be updated.
   for (size_t i = 0; i < events_.size(); ++i) {
-    event_t* event = events_[i].event;
+    event_t* event = events_[i];
     if (event->header.type != PERF_RECORD_MMAP)
       continue;
 
@@ -1899,7 +1880,7 @@ bool PerfReader::LocalizeMMapFilenames(
       memcpy(new_addr + new_offset, old_addr + old_offset, sample_size);
 
       free(old_event);
-      events_[i].event = event;
+      events_[i] = event;
     } else if (size_increase < 0) {
       // Move the perf sample data to its new location.
       // Since source and dest could overlap, use memmove instead of memcpy.

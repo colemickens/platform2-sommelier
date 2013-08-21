@@ -25,7 +25,7 @@ const uint32 kKernelPid = kuint32max;
 // calling std::stable_sort.
 bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
                              const quipper::ParsedEvent* e2) {
-  return (e1->sample_info->time < e2->sample_info->time);
+  return (e1->time < e2->time);
 }
 
 // Name of the kernel swapper process.
@@ -52,8 +52,17 @@ bool PerfParser::ParseRawEvents() {
   parsed_events_.resize(events_.size());
   for (size_t i = 0; i < events_.size(); ++i) {
     ParsedEvent& parsed_event = parsed_events_[i];
-    parsed_event.raw_event = &events_[i].event;
-    parsed_event.sample_info = &events_[i].sample_info;
+    parsed_event.raw_event = &events_[i];
+    if (IsSupportedEventType(events_[i]->header.type)) {
+      perf_sample sample_info;
+      if (!ReadPerfSampleInfo(*events_[i], &sample_info)) {
+        LOG(ERROR) << "Unable to read sample info to get timestamp";
+        return false;
+      }
+      parsed_event.time = sample_info.time;
+    } else {
+      parsed_event.time = kuint64max;
+    }
   }
   SortParsedEvents();
   ProcessEvents();
@@ -164,8 +173,11 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
 
   // Find the associated command.
-  uint32 pid = parsed_event->sample_info->pid;
-  uint32 tid = parsed_event->sample_info->tid;
+  perf_sample sample_info;
+  if (!ReadPerfSampleInfo(*(*parsed_event->raw_event), &sample_info))
+    return false;
+  uint32 pid = sample_info.pid;
+  uint32 tid = sample_info.tid;
   PidTid pidtid = std::make_pair(pid, tid);
   if (pidtid_to_comm_map_.find(pidtid) != pidtid_to_comm_map_.end()) {
     parsed_event->command = pidtid_to_comm_map_[pidtid];
@@ -190,9 +202,8 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     mapping_failed = true;
   }
 
-  struct ip_callchain* callchain = parsed_event->sample_info->callchain;
-
   // Map the callchain IPs, if any.
+  struct ip_callchain* callchain = sample_info.callchain;
   if (callchain) {
     parsed_event->callchain.resize(callchain->nr);
     for (unsigned int j = 0; j < callchain->nr; ++j) {
@@ -208,7 +219,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   }
 
   // Map branch stack addresses.
-  struct branch_stack* branch_stack = parsed_event->sample_info->branch_stack;
+  struct branch_stack* branch_stack = sample_info.branch_stack;
   if (branch_stack) {
     parsed_event->branch_stack.resize(branch_stack->nr);
     for (unsigned int i = 0; i < branch_stack->nr; ++i) {
@@ -234,7 +245,8 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     }
   }
 
-  return !mapping_failed;
+  return !mapping_failed &&
+         WritePerfSampleInfo(sample_info, *parsed_event->raw_event);
 }
 
 bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
