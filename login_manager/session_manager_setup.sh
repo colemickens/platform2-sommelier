@@ -260,8 +260,8 @@ for file in $(find $PEPPER_PATH -name '*.info'); do
     # Flash is treated specially.
     FLASH_FLAGS="--ppapi-flash-path=${FILE_NAME}"
     FLASH_FLAGS="${FLASH_FLAGS} --ppapi-flash-version=${VERSION}"
-    # TODO(ihf): Remove this once crbug.com/276738 is fixed.
-    if [[ is_board x86-mario || is_board x86-alex || is_board x86-zgb ]] ; then
+    # TODO(ihf): Remove once crbug.com/237380 and crbug.com/276738 are fixed.
+    if is_board x86-alex || is_board x86-mario || is_board x86-zgb ; then
       PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=0"
     else
       PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=1"
