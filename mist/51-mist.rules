@@ -23,7 +23,9 @@ ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="14fe", GOTO="mist_switch_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1505", GOTO="mist_switch_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1526", GOTO="mist_switch_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1f01", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0101", GOTO="mist_switch_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1201", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fff5", GOTO="mist_switch_device"
 
 # Supported USB devices after switching into a modem
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1001", GOTO="mist_mark_device"
@@ -43,7 +45,11 @@ ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="150a", GOTO="mist_mark_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="150f", GOTO="mist_mark_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1511", GOTO="mist_mark_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1c1e", GOTO="mist_mark_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0104", GOTO="mist_mark_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1203", GOTO="mist_mark_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fff1", GOTO="mist_mark_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fffe", GOTO="mist_mark_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="ffff", GOTO="mist_mark_device"
 
 GOTO="mist_end"
 
