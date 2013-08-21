@@ -109,19 +109,22 @@ enum CertificateProfile {
   // subjectName fields:
   //   CN=<stable device identifier>
   //   OU=state:[verified|developer]
-  //   O=Chrome Device
+  //   O=Chrome Device Enterprise
   ENTERPRISE_MACHINE_CERTIFICATE = 0;
   // A certificate intended for enterprise-owned user accounts.  It has the
   // following subjectName fields:
   //   OU=state:[verified|developer]
-  //   O=Chrome Device
+  //   O=Chrome Device Enterprise
   ENTERPRISE_USER_CERTIFICATE = 1;
   // A certificate intended for platform verification by providers of protected
   // content.  It has the following subjectName fields:
+  //   O=Chrome Device Content Protection
+  CONTENT_PROTECTION_CERTIFICATE = 2;
+  // Like above, but it also includes a stable ID and origin.
   //   CN=<origin-specific device identifier>
   //   OU=<origin>
   //   O=Chrome Device Content Protection
-  CONTENT_PROTECTION_CERTIFICATE = 2;
+  CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID = 3;
 }
 
 // The certificate request to be sent to the attestation server.
