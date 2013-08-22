@@ -27,13 +27,13 @@ const char kErrorGprsNotSubscribedMM[] =
     "org.freedesktop.ModemManager.Modem.Gsm.GprsNotSubscribed";
 
 const char kErrorIncorrectPasswordMM1[] =
-    "org.freedesktop.ModemManager1.MobileEquipment.IncorrectPassword";
+    "org.freedesktop.ModemManager1.Error.MobileEquipment.IncorrectPassword";
 
 const char kErrorSimPinMM1[] =
-    "org.freedesktop.ModemManager1.MobileEquipment.SimPin";
+    "org.freedesktop.ModemManager1.Error.MobileEquipment.SimPin";
 
 const char kErrorSimPukMM1[] =
-    "org.freedesktop.ModemManager1.MobileEquipment.SimPuk";
+    "org.freedesktop.ModemManager1.Error.MobileEquipment.SimPuk";
 
 const char kErrorMessage[] = "Some error message.";
 

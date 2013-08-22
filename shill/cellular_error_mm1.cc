@@ -19,13 +19,13 @@ namespace shill {
 namespace {
 
 const char *kErrorIncorrectPassword =
-    MM_DBUS_INTERFACE ".MobileEquipment.IncorrectPassword";
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
 
 const char *kErrorSimPuk =
-    MM_DBUS_INTERFACE ".MobileEquipment.SimPuk";
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
 
 const char *kErrorSimPin =
-    MM_DBUS_INTERFACE ".MobileEquipment.SimPin";
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
 
 }  // namespace
 
