@@ -100,6 +100,7 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
   FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity);
+  FRIEND_TEST(WiFiProviderTest, OnEndpointUpdated);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);

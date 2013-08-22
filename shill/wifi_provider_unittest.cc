@@ -1076,6 +1076,55 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedWhileStopped) {
   provider_.OnEndpointRemoved(endpoint);
 }
 
+TEST_F(WiFiProviderTest, OnEndpointUpdated) {
+  provider_.Start();
+
+  // Create an endpoint and associate it with a mock service.
+  const string ssid("an_ssid");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+
+  const vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
+  MockWiFiServiceRefPtr open_service = AddMockService(ssid_bytes,
+                                                      flimflam::kModeManaged,
+                                                      flimflam::kSecurityNone,
+                                                      false);
+  EXPECT_CALL(*open_service, AddEndpoint(RefPtrMatch(endpoint)));
+  EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
+  provider_.OnEndpointAdded(endpoint);
+  Mock::VerifyAndClearExpectations(open_service);
+
+  // WiFiProvider is running and endpoint matches this service.
+  EXPECT_CALL(*open_service, NotifyEndpointUpdated(RefPtrMatch(endpoint)));
+  EXPECT_CALL(*open_service, AddEndpoint(_)).Times(0);
+  provider_.OnEndpointUpdated(endpoint);
+  Mock::VerifyAndClearExpectations(open_service);
+
+  // If the endpoint is changed in a way that causes it to match a different
+  // service, the provider should transfer the endpoint from one service to
+  // the other.
+  MockWiFiServiceRefPtr rsn_service = AddMockService(ssid_bytes,
+                                                     flimflam::kModeManaged,
+                                                     flimflam::kSecurityRsn,
+                                                     false);
+  EXPECT_CALL(*open_service, RemoveEndpoint(RefPtrMatch(endpoint)));
+  // We are playing out a scenario where the open service is not removed
+  // since it still claims to have more endpoints remaining.
+  EXPECT_CALL(*open_service, HasEndpoints()).WillOnce(Return(true));
+  EXPECT_CALL(*rsn_service, AddEndpoint(RefPtrMatch(endpoint)));
+  EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
+  EXPECT_CALL(manager_, UpdateService(RefPtrMatch(rsn_service)));
+  endpoint->set_security_mode(flimflam::kSecurityRsn);
+  provider_.OnEndpointUpdated(endpoint);
+}
+
+TEST_F(WiFiProviderTest, OnEndpointUpdatedWhileStopped) {
+  // If we don't call provider_.Start(), OnEndpointUpdated should not
+  // cause a crash even if a service matching the endpoint does not exist.
+  const string ssid("an_ssid");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  provider_.OnEndpointUpdated(endpoint);
+}
+
 TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   // This function should never unregister services itself -- the Manager
   // will automatically deregister the service if OnServiceUnloaded()
