@@ -72,7 +72,15 @@ class PerfReader {
                  is_cross_endian_(0) {}
   ~PerfReader();
 
+  // Makes |build_id| fit the perf format, by either truncating it or adding
+  // zeros to the end so that it has length kBuildIDStringLength.
   static void PerfizeBuildIDString(string* build_id);
+
+  // Changes |build_id| to the best guess of what the build id was before going
+  // through perf.  Specifically, it keeps removing trailing sequences of four
+  // zero bytes (or eight '0' characters) until there are no more such
+  // sequences, or the build id would be empty if the process were repeated.
+  static void UnperfizeBuildIDString(string* build_id);
 
   bool ReadFile(const string& filename);
   bool ReadFromVector(const std::vector<char>& data);

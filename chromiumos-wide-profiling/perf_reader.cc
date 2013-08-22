@@ -457,10 +457,20 @@ PerfReader::~PerfReader() {
     free(build_id_events_[i]);
 }
 
-// Makes |build_id| fit the perf format, by either truncating it or adding zeros
-// to the end so that it has length kBuildIDStringLength.
 void PerfReader::PerfizeBuildIDString(string* build_id) {
   build_id->resize(kBuildIDStringLength, '0');
+}
+
+void PerfReader::UnperfizeBuildIDString(string* build_id) {
+  const size_t kPaddingSize = 8;
+  const string kBuildIDPadding = string(kPaddingSize, '0');
+
+  // Remove kBuildIDPadding from the end of build_id until we cannot remove any
+  // more, or removing more would cause the build id to be empty.
+  while (build_id->size() > kPaddingSize &&
+         build_id->substr(build_id->size() - kPaddingSize) == kBuildIDPadding) {
+    build_id->resize(build_id->size() - kPaddingSize);
+  }
 }
 
 bool PerfReader::ReadFile(const string& filename) {
