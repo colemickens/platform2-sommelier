@@ -293,6 +293,10 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
 }
 
 void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint) {
+  if (!running_) {
+    return;
+  }
+
   WiFiService *service = FindServiceForEndpoint(endpoint);
   CHECK(service);
 
