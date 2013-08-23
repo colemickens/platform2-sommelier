@@ -421,16 +421,17 @@ void Manager::PushProfileInternal(
   profiles_.push_back(profile);
 
   // Offer each registered Service the opportunity to join this new Profile.
-  for (vector<ServiceRefPtr>::iterator it = services_.begin();
-       it != services_.end(); ++it) {
-    profile->ConfigureService(*it);
+  for (ServiceRefPtr &service : services_) {
+    if (profile->ConfigureService(service)) {
+      LOG(INFO) << "(Re-)configured service " << service->unique_name()
+                << " from new profile.";
+    }
   }
 
   // Shop the Profile contents around to Devices which may have configuration
   // stored in these profiles.
-  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
-       it != devices_.end(); ++it) {
-    profile->ConfigureDevice(*it);
+  for (DeviceRefPtr &device : devices_) {
+    profile->ConfigureDevice(device);
   }
 
   // Offer the Profile contents to the service providers which will
@@ -477,14 +478,37 @@ void Manager::PopProfileInternal() {
   CHECK(!profiles_.empty());
   ProfileRefPtr active_profile = profiles_.back();
   profiles_.pop_back();
-  vector<ServiceRefPtr>::iterator it;
-  for (it = services_.begin(); it != services_.end();) {
-    if ((*it)->profile().get() != active_profile.get() ||
-        MatchProfileWithService(*it) ||
-        !UnloadService(&it)) {
-      LOG(ERROR) << "Skipping unload of service";
+  for (auto it = services_.begin(); it != services_.end();) {
+    if (IsServiceEphemeral(*it)) {
+      // Not affected, since the EphemeralProfile isn't on the stack.
+      // Not logged, since ephemeral services aren't that interesting.
       ++it;
+      continue;
     }
+
+    if ((*it)->profile().get() != active_profile.get()) {
+      LOG(INFO) << "Skipping unload of service " << (*it)->unique_name()
+                << ": wasn't using this profile.";
+      ++it;
+      continue;
+    }
+
+    if (MatchProfileWithService(*it)) {
+      LOG(INFO) << "Skipping unload of service " << (*it)->unique_name()
+                << ": re-configured from another profile.";
+      ++it;
+      continue;
+    }
+
+    if (!UnloadService(&it)) {
+      LOG(INFO) << "Service " << (*it)->unique_name()
+                << "not completely unloaded.";
+      ++it;
+      continue;
+    }
+
+    // Service was totally unloaded. No advance of iterator in this
+    // case, as UnloadService has updated the iterator for us.
   }
   SortServices();
   OnProfilesChanged();
