@@ -95,6 +95,24 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_ForkEvent& sample,
       ParsedEvent* event) const;
 
+  bool SerializeLostSample(const ParsedEvent& event,
+                           quipper::PerfDataProto_LostEvent* sample) const;
+  bool DeserializeLostSample(
+      const quipper::PerfDataProto_LostEvent& sample,
+      ParsedEvent* event) const;
+
+  bool SerializeThrottleSample(const ParsedEvent& event,
+                           quipper::PerfDataProto_ThrottleEvent* sample) const;
+  bool DeserializeThrottleSample(
+      const quipper::PerfDataProto_ThrottleEvent& sample,
+      ParsedEvent* event) const;
+
+  bool SerializeReadSample(const ParsedEvent& event,
+                           quipper::PerfDataProto_ReadEvent* sample) const;
+  bool DeserializeReadSample(
+      const quipper::PerfDataProto_ReadEvent& sample,
+      ParsedEvent* event) const;
+
   bool SerializeSampleInfo(
       const ParsedEvent& event,
       quipper::PerfDataProto_SampleInfo* sample_info) const;

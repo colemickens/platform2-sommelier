@@ -590,8 +590,9 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   case PERF_RECORD_LOST:
   case PERF_RECORD_THROTTLE:
   case PERF_RECORD_UNTHROTTLE:
+    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_CPU;
+    break;
   case PERF_RECORD_READ:
-  case PERF_RECORD_MAX:
     break;
   default:
     LOG(FATAL) << "Unknown event type " << event_type;
@@ -618,11 +619,14 @@ uint64 GetPerfSampleDataOffset(const event_t& event) {
              GetUint64AlignedStringLength(event.comm.comm);
     break;
   case PERF_RECORD_LOST:
+    offset = sizeof(event.lost);
+    break;
   case PERF_RECORD_THROTTLE:
   case PERF_RECORD_UNTHROTTLE:
+    offset = sizeof(event.throttle);
+    break;
   case PERF_RECORD_READ:
-  case PERF_RECORD_MAX:
-    offset = sizeof(event.header);
+    offset = sizeof(event.read);
     break;
   default:
     LOG(FATAL) << "Unknown event type " << event.header.type;

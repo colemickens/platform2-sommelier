@@ -291,11 +291,22 @@ bool PerfSerializer::SerializeEvent(
         return false;
       break;
     case PERF_RECORD_LOST:
+      if (!SerializeLostSample(event, event_proto->mutable_lost_event()))
+        return false;
+      break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
+      if (!SerializeThrottleSample(event,
+                                   event_proto->mutable_throttle_event())) {
+        return false;
+      }
+      break;
     case PERF_RECORD_READ:
-    case PERF_RECORD_MAX:
+      if (!SerializeReadSample(event, event_proto->mutable_read_event()))
+        return false;
+      break;
     default:
+      LOG(ERROR) << "Unknown event type: " << header.type;
       break;
   }
   return true;
@@ -331,9 +342,18 @@ bool PerfSerializer::DeserializeEvent(
         return false;
       break;
     case PERF_RECORD_LOST:
+      if (!DeserializeLostSample(event_proto.lost_event(), event))
+        return false;
+      break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
+      if (!DeserializeThrottleSample(event_proto.throttle_event(), event))
+        return false;
+      break;
     case PERF_RECORD_READ:
+      if (!DeserializeReadSample(event_proto.read_event(), event))
+        return false;
+      break;
     case PERF_RECORD_MAX:
     default:
       break;
@@ -546,6 +566,76 @@ bool PerfSerializer::DeserializeForkSample(
   fork.time = sample.fork_time_ns();
 
   return DeserializeSampleInfo(sample.sample_info(), event);
+}
+
+bool PerfSerializer::SerializeLostSample(
+    const ParsedEvent& event,
+    PerfDataProto_LostEvent* sample) const {
+  const struct lost_event& lost = (*event.raw_event)->lost;
+  sample->set_id(lost.id);
+  sample->set_lost(lost.lost);
+
+  return SerializeSampleInfo(event, sample->mutable_sample_info());
+}
+
+bool PerfSerializer::DeserializeLostSample(
+    const PerfDataProto_LostEvent& sample,
+    ParsedEvent* event) const {
+  struct lost_event& lost = (*event->raw_event)->lost;
+  lost.id = sample.id();
+  lost.lost = sample.lost();
+
+  return DeserializeSampleInfo(sample.sample_info(), event);
+}
+
+bool PerfSerializer::SerializeThrottleSample(
+    const ParsedEvent& event,
+    PerfDataProto_ThrottleEvent* sample) const {
+  const struct throttle_event& throttle = (*event.raw_event)->throttle;
+  sample->set_time(throttle.time);
+  sample->set_id(throttle.id);
+  sample->set_stream_id(throttle.stream_id);
+
+  return SerializeSampleInfo(event, sample->mutable_sample_info());
+}
+
+bool PerfSerializer::DeserializeThrottleSample(
+    const PerfDataProto_ThrottleEvent& sample,
+    ParsedEvent* event) const {
+  struct throttle_event& throttle = (*event->raw_event)->throttle;
+  throttle.time = sample.time();
+  throttle.id = sample.id();
+  throttle.stream_id = sample.stream_id();
+
+  return DeserializeSampleInfo(sample.sample_info(), event);
+}
+
+bool PerfSerializer::SerializeReadSample(
+    const ParsedEvent& event,
+    PerfDataProto_ReadEvent* sample) const {
+  const struct read_event& read = (*event.raw_event)->read;
+  sample->set_pid(read.pid);
+  sample->set_tid(read.tid);
+  sample->set_value(read.value);
+  sample->set_time_enabled(read.time_enabled);
+  sample->set_time_running(read.time_running);
+  sample->set_id(read.id);
+
+  return true;
+}
+
+bool PerfSerializer::DeserializeReadSample(
+    const PerfDataProto_ReadEvent& sample,
+    ParsedEvent* event) const {
+  struct read_event& read = (*event->raw_event)->read;
+  read.pid = sample.pid();
+  read.tid = sample.tid();
+  read.value = sample.value();
+  read.time_enabled = sample.time_enabled();
+  read.time_running = sample.time_running();
+  read.id = sample.id();
+
+  return true;
 }
 
 bool PerfSerializer::SerializeSampleInfo(

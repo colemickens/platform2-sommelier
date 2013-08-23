@@ -747,10 +747,10 @@ bool PerfReader::IsSupportedEventType(uint32 type) {
   case PERF_RECORD_FORK:
   case PERF_RECORD_EXIT:
   case PERF_RECORD_COMM:
-    return true;
   case PERF_RECORD_LOST:
   case PERF_RECORD_THROTTLE:
   case PERF_RECORD_UNTHROTTLE:
+    return true;
   case PERF_RECORD_READ:
   case PERF_RECORD_MAX:
     return false;
@@ -1739,10 +1739,22 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
       ByteSwap(&event_copy->comm.tid);
       break;
     case PERF_RECORD_LOST:
+      ByteSwap(&event_copy->lost.id);
+      ByteSwap(&event_copy->lost.lost);
+      break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
+      ByteSwap(&event_copy->throttle.time);
+      ByteSwap(&event_copy->throttle.id);
+      ByteSwap(&event_copy->throttle.stream_id);
+      break;
     case PERF_RECORD_READ:
-    case PERF_RECORD_MAX:
+      ByteSwap(&event_copy->read.pid);
+      ByteSwap(&event_copy->read.tid);
+      ByteSwap(&event_copy->read.value);
+      ByteSwap(&event_copy->read.time_enabled);
+      ByteSwap(&event_copy->read.time_running);
+      ByteSwap(&event_copy->read.id);
       break;
     default:
       LOG(FATAL) << "Unknown event type: " << type;

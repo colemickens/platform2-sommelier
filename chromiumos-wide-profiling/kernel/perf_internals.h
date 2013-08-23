@@ -171,6 +171,15 @@ struct lost_event {
 	u64 lost;
 };
 
+// This struct is found in comments in perf_event.h, and can be found as a
+// struct in tools/perf/util/python.c in the kernel.
+struct throttle_event {
+        struct perf_event_header header;
+        u64                      time;
+        u64                      id;
+        u64                      stream_id;
+};
+
 /*
  * PERF_FORMAT_ENABLED | PERF_FORMAT_RUNNING | PERF_FORMAT_ID
  */
@@ -206,6 +215,8 @@ struct build_id_event {
 #undef __ALIGN_MASK
 #undef BUILD_ID_SIZE
 
+// The addition of throttle_event is a custom addition for quipper.
+// It is used for both THROTTLE and UNTHROTTLE events.
 typedef union event_union {
 	struct perf_event_header	header;
 	struct ip_event			ip;
@@ -213,6 +224,7 @@ typedef union event_union {
 	struct comm_event		comm;
 	struct fork_event		fork;
 	struct lost_event		lost;
+	struct throttle_event		throttle;
 	struct read_event		read;
 	struct sample_event		sample;
 	struct build_id_event		build_id;
