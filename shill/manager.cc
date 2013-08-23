@@ -442,6 +442,8 @@ void Manager::PushProfileInternal(
   *path = profile->GetRpcIdentifier();
   SortServices();
   OnProfilesChanged();
+  LOG(INFO) << __func__ << " finished; " << profiles_.size()
+            << " profile(s) now present.";
 }
 
 void Manager::PushProfile(const string &name, string *path, Error *error) {
@@ -486,6 +488,8 @@ void Manager::PopProfileInternal() {
   }
   SortServices();
   OnProfilesChanged();
+  LOG(INFO) << __func__ << " finished; " << profiles_.size()
+            << " profile(s) still present.";
 }
 
 void Manager::OnProfilesChanged() {

@@ -34,6 +34,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_ethernet_eap_provider.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
@@ -64,6 +65,7 @@ using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
+using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::Mock;
@@ -4041,6 +4043,52 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
+}
+
+TEST_F(ManagerTest, ProfileStackChangeLogging) {
+  // We use a real glib here, since Manager and Profile don't provide an
+  // easy way to mock out KeyFileStore.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  scoped_ptr<Manager> manager;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  manager.reset(new Manager(control_interface(),
+                            dispatcher(),
+                            metrics(),
+                            &glib,
+                            run_path(),
+                            temp_dir.path().value(),
+                            temp_dir.path().value()));
+
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("1 profile(s)")));
+  manager->InitializeProfiles();
+
+  const char kProfile0[] = "~user/profile0";
+  const char kProfile1[] = "~user/profile1";
+  const char kProfile2[] = "~user/profile2";
+  TestCreateProfile(manager.get(), kProfile0);
+  TestCreateProfile(manager.get(), kProfile1);
+  TestCreateProfile(manager.get(), kProfile2);
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("2 profile(s)")));
+  TestPushProfile(manager.get(), kProfile0);
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("3 profile(s)")));
+  TestInsertUserProfile(manager.get(), kProfile1, "not-so-random-string");
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("4 profile(s)")));
+  TestInsertUserProfile(manager.get(), kProfile2, "very-random-string");
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("3 profile(s)")));
+  TestPopProfile(manager.get(), kProfile2);
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("2 profile(s)")));
+  TestPopAnyProfile(manager.get());
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("1 profile(s)")));
+  TestPopAllUserProfiles(manager.get());
 }
 
 // Custom property setters should return false, and make no changes, if
