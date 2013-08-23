@@ -297,12 +297,9 @@ void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
         LOG(INFO) << "WiMAX device " << link_name()
                   << " status: " << DeviceStatusToString(old_status)
                   << " -> " << DeviceStatusToString(status);
-        if (pending_service_) {
-          // For now, assume that failing to connect to a live network indicates
-          // bad user credentials. Reset the password to trigger the
-          // user/password dialog in the UI.
-          pending_service_->ClearPassphrase();
-        }
+        // TODO(benchan): Investigate a method to determine if the connection
+        // failure is due to incorrect EAP credentials and indicate that via
+        // Service::kFailureBadPassphrase (crosbug.com/p/16324).
         DropService(Service::kStateFailure);
       }
       break;

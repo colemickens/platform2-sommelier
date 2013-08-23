@@ -193,7 +193,7 @@ TEST_F(WiMaxTest, OnStatusChanged) {
 
   device_->status_ = wimax_manager::kDeviceStatusConnecting;
   EXPECT_CALL(*service, SetState(Service::kStateFailure));
-  EXPECT_CALL(*service, ClearPassphrase());
+  EXPECT_CALL(*service, ClearPassphrase()).Times(0);
   device_->OnStatusChanged(wimax_manager::kDeviceStatusScanning);
   EXPECT_FALSE(device_->pending_service_);
 
