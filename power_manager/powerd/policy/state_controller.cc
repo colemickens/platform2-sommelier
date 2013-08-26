@@ -151,6 +151,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       saw_user_activity_soon_after_screen_dim_or_off_(false),
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
+      avoid_suspend_when_headphone_jack_plugged_(false),
       disable_idle_suspend_(false),
       allow_docked_mode_(false),
       ignore_external_policy_(false),
@@ -534,7 +535,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff() const {
   base::TimeTicks last_time = last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
-  if (keep_screen_on_for_audio_)
+  if (keep_screen_on_for_audio_ || delegate_->IsHdmiAudioActive())
     last_time = std::max(last_time, last_audio_activity_time_);
   return last_time;
 }
@@ -548,6 +549,8 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kRequireUsbInputDeviceToSuspendPref,
                   &require_usb_input_device_to_suspend_);
   prefs_->GetBool(kKeepBacklightOnForAudioPref, &keep_screen_on_for_audio_);
+  prefs_->GetBool(kAvoidSuspendWhenHeadphoneJackPluggedPref,
+                  &avoid_suspend_when_headphone_jack_plugged_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
   prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
@@ -758,7 +761,8 @@ void StateController::UpdateState() {
         idle_action_to_perform = DO_NOTHING;
       }
       if (idle_action_to_perform == SUSPEND &&
-          delegate_->ShouldAvoidSuspendForHeadphoneJack()) {
+          avoid_suspend_when_headphone_jack_plugged_ &&
+          delegate_->IsHeadphoneJackPlugged()) {
         VLOG(1) << "Not suspending for idle due to headphone jack";
         idle_action_to_perform = DO_NOTHING;
       }

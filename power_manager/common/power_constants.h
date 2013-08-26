@@ -29,6 +29,7 @@ extern const char kMinVisibleBacklightLevelPref[];
 extern const char kInstantTransitionsBelowMinLevelPref[];
 extern const char kDisableALSPref[];
 extern const char kKeepBacklightOnForAudioPref[];
+extern const char kAvoidSuspendWhenHeadphoneJackPluggedPref[];
 extern const char kWakeupInputPref[];
 extern const char kPowerSupplyFullFactorPref[];
 extern const char kInternalBacklightAlsLimitsPref[];

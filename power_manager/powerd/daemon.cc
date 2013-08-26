@@ -166,12 +166,12 @@ class Daemon::StateControllerDelegate
     return util::OOBECompleted();
   }
 
-  virtual bool ShouldAvoidSuspendForHeadphoneJack() OVERRIDE {
-#ifdef STAY_AWAKE_PLUGGED_DEVICE
-    return daemon_->audio_client_->IsHeadphoneJackConnected();
-#else
-    return false;
-#endif
+  virtual bool IsHdmiAudioActive() OVERRIDE {
+    return daemon_->audio_client_->hdmi_active();
+  }
+
+  virtual bool IsHeadphoneJackPlugged() OVERRIDE {
+    return daemon_->audio_client_->headphone_plugged();
   }
 
   virtual LidState QueryLidState() OVERRIDE {
@@ -429,12 +429,7 @@ void Daemon::Init() {
   CHECK(input_->Init(wakeup_inputs, use_lid));
 
   input_controller_->Init(prefs_);
-
-  std::string headphone_device;
-#ifdef STAY_AWAKE_PLUGGED_DEVICE
-  headphone_device = STAY_AWAKE_PLUGGED_DEVICE;
-#endif
-  audio_client_->Init(headphone_device);
+  audio_client_->Init();
 
   PowerSource power_source =
       plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
@@ -739,6 +734,16 @@ void Daemon::RegisterDBusMessageHandler() {
       update_engine::kStatusUpdate,
       base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
                  base::Unretained(this)));
+  dbus_handler_.AddSignalHandler(
+      cras::kCrasControlInterface,
+      cras::kNodesChanged,
+      base::Bind(&Daemon::HandleCrasNodesChangedSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddSignalHandler(
+      cras::kCrasControlInterface,
+      cras::kActiveOutputNodeChanged,
+      base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
+                 base::Unretained(this)));
 
   dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
@@ -884,6 +889,16 @@ bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
   }
   state_controller_->HandleUpdaterStateChange(state);
 
+  return false;
+}
+
+bool Daemon::HandleCrasNodesChangedSignal(DBusMessage* message) {
+  audio_client_->UpdateDevices();
+  return false;
+}
+
+bool Daemon::HandleCrasActiveOutputNodeChangedSignal(DBusMessage* message) {
+  audio_client_->UpdateDevices();
   return false;
 }
 

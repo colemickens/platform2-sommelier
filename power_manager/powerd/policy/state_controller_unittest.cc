@@ -73,7 +73,8 @@ class TestDelegate : public StateController::Delegate {
       : record_metrics_actions_(false),
         usb_input_device_connected_(false),
         oobe_completed_(true),
-        avoid_suspend_for_headphones_(false),
+        hdmi_audio_active_(false),
+        headphone_jack_plugged_(false),
         lid_state_(LID_OPEN) {
   }
   ~TestDelegate() {}
@@ -87,8 +88,9 @@ class TestDelegate : public StateController::Delegate {
   void set_oobe_completed(bool completed) {
     oobe_completed_ = completed;
   }
-  void set_avoid_suspend_for_headphones(bool avoid_suspend) {
-    avoid_suspend_for_headphones_ = avoid_suspend;
+  void set_hdmi_audio_active(bool active) { hdmi_audio_active_ = active; }
+  void set_headphone_jack_plugged(bool plugged) {
+    headphone_jack_plugged_ = plugged;
   }
   void set_lid_state(LidState state) { lid_state_ = state; }
 
@@ -109,8 +111,9 @@ class TestDelegate : public StateController::Delegate {
     return lid_state_;
   }
   virtual bool IsOobeCompleted() OVERRIDE { return oobe_completed_; }
-  virtual bool ShouldAvoidSuspendForHeadphoneJack() OVERRIDE {
-    return avoid_suspend_for_headphones_;
+  virtual bool IsHdmiAudioActive() OVERRIDE { return hdmi_audio_active_; }
+  virtual bool IsHeadphoneJackPlugged() OVERRIDE {
+    return headphone_jack_plugged_;
   }
   virtual void DimScreen() OVERRIDE { AppendAction(kScreenDim); }
   virtual void UndimScreen() OVERRIDE { AppendAction(kScreenUndim); }
@@ -154,8 +157,11 @@ class TestDelegate : public StateController::Delegate {
   // Should IsOobeCompleted() return true?
   bool oobe_completed_;
 
-  // Should ShouldAvoidSuspendForHeadphoneJack() return true?
-  bool avoid_suspend_for_headphones_;
+  // Should IsHdmiAudioActive() return true?
+  bool hdmi_audio_active_;
+
+  // Should IsHeadphoneJackPlugged() return true?
+  bool headphone_jack_plugged_;
 
   // Lid state to be returned by QueryLidState().
   LidState lid_state_;
@@ -182,6 +188,7 @@ class StateControllerTest : public testing::Test {
         default_disable_idle_suspend_(0),
         default_require_usb_input_device_to_suspend_(0),
         default_keep_screen_on_for_audio_(0),
+        default_avoid_suspend_when_headphone_jack_plugged_(0),
         default_ignore_external_policy_(0),
         default_allow_docked_mode_(1),
         initial_power_source_(POWER_AC),
@@ -208,6 +215,8 @@ class StateControllerTest : public testing::Test {
                     default_require_usb_input_device_to_suspend_);
     prefs_.SetInt64(kKeepBacklightOnForAudioPref,
                     default_keep_screen_on_for_audio_);
+    prefs_.SetInt64(kAvoidSuspendWhenHeadphoneJackPluggedPref,
+                    default_avoid_suspend_when_headphone_jack_plugged_);
     prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
@@ -295,6 +304,7 @@ class StateControllerTest : public testing::Test {
   int64 default_disable_idle_suspend_;
   int64 default_require_usb_input_device_to_suspend_;
   int64 default_keep_screen_on_for_audio_;
+  int64 default_avoid_suspend_when_headphone_jack_plugged_;
   int64 default_ignore_external_policy_;
   int64 default_allow_docked_mode_;
 
@@ -724,10 +734,9 @@ TEST_F(StateControllerTest, SimultaneousIdleAndLidActions) {
 
 // Tests that the screen stays on while audio is playing if
 // |kKeepBacklightOnForAudioPref| is set.
-TEST_F(StateControllerTest, KeepScreenOnForAudio) {
+TEST_F(StateControllerTest, KeepScreenOnForAudioPref) {
   default_keep_screen_on_for_audio_ = 1;
   Init();
-  const base::TimeDelta kHalfScreenOffDelay = default_ac_screen_off_delay_ / 2;
 
   // The screen should be dimmed as usual.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
@@ -740,6 +749,7 @@ TEST_F(StateControllerTest, KeepScreenOnForAudio) {
   // Continue reporting audio activity; the screen should stay on.
   controller_.HandleAudioActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+  const base::TimeDelta kHalfScreenOffDelay = default_ac_screen_off_delay_ / 2;
   AdvanceTime(kHalfScreenOffDelay);
   controller_.HandleAudioActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -762,6 +772,34 @@ TEST_F(StateControllerTest, KeepScreenOnForAudio) {
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
+}
+
+// Tests that the screen stays on while audio is playing if an HDMI output is
+// active.
+TEST_F(StateControllerTest, KeepScreenOnForHdmiAudio) {
+  Init();
+
+  delegate_.set_hdmi_audio_active(true);
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // The screen should be dimmed but stay on while HDMI is active and audio is
+  // playing.
+  controller_.HandleAudioActivity();
+  const base::TimeDelta kHalfScreenOffDelay = default_ac_screen_off_delay_ / 2;
+  AdvanceTime(kHalfScreenOffDelay);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  controller_.HandleAudioActivity();
+  AdvanceTime(kHalfScreenOffDelay);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // After audio stops, the screen should turn off after the usual delay.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfScreenOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+
+  // Audio activity should turn the screen back on.
+  controller_.HandleAudioActivity();
+  EXPECT_EQ(kScreenOn, delegate_.GetActions());
 }
 
 // Tests that the |kRequireUsbInputDeviceToSuspendPref| pref is honored.
@@ -943,15 +981,16 @@ TEST_F(StateControllerTest, ReportMetrics) {
 // Tests that we avoid suspending while headphones are connected when so
 // requested.
 TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
+  default_avoid_suspend_when_headphone_jack_plugged_ = 1;
   Init();
 
   // With headphones connected, we shouldn't suspend.
-  delegate_.set_avoid_suspend_for_headphones(true);
+  delegate_.set_headphone_jack_plugged(true);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // Without headphones, we should.
-  delegate_.set_avoid_suspend_for_headphones(false);
+  delegate_.set_headphone_jack_plugged(false);
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
@@ -961,7 +1000,7 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
   // Non-suspend actions should still be performed while headphones are
   // connected.
   controller_.HandleResume();
-  delegate_.set_avoid_suspend_for_headphones(true);
+  delegate_.set_headphone_jack_plugged(true);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   PowerManagementPolicy policy;
   policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);

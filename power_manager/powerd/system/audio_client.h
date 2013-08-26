@@ -29,16 +29,16 @@ class AudioClient {
   AudioClient();
   ~AudioClient();
 
+  bool headphone_plugged() const { return headphone_plugged_; }
+  bool hdmi_active() const { return hdmi_active_; }
+
   // Starts attempting to connect to CRAS.  Note that the connection may
   // happen asynchronously if the server is initially unavailable.
-  void Init(const std::string& headphone_device);
+  void Init();
 
   // Adds or removes an observer.
   void AddObserver(AudioObserver* observer);
   void RemoveObserver(AudioObserver* observer);
-
-  // Returns true if the device passed to Init() is currently connected.
-  bool IsHeadphoneJackConnected();
 
   // Updates |time_out| to contain the time at which CRAS reports that
   // audio was last played or recorded.  If no audio activity has been
@@ -52,6 +52,9 @@ class AudioClient {
   // Restores the muted state the system had before the call to MuteSystem.
   // Multiple calls to MuteSystem do not stack.
   void RestoreMutedState();
+
+  // Updates the client's view of connected audio devices.
+  void UpdateDevices();
 
  private:
   // Attempts to connect to the CRAS server, allocating |cras_client_| if
@@ -72,6 +75,15 @@ class AudioClient {
   // server.
   bool connected_to_cras_;
 
+  // Number of attempts to connect to the CRAS server made so far.
+  int num_connection_attempts_;
+
+  // Is something plugged in to a headphone jack?
+  bool headphone_plugged_;
+
+  // Is an HDMI output active?
+  bool hdmi_active_;
+
   // Indicates whether the muted state was successfully stored by a call to
   // MuteSystem().
   bool mute_stored_;
@@ -84,9 +96,6 @@ class AudioClient {
 
   // GLib timeout ID for running PollForActivity(), or 0 if unset.
   guint poll_for_activity_timeout_id_;
-
-  // Device used for IsHeadphoneJackConnected().
-  std::string headphone_device_;
 
   ObserverList<AudioObserver> observers_;
 

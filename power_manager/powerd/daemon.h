@@ -160,6 +160,8 @@ class Daemon : public policy::BacklightControllerObserver,
   // Callbacks for handling dbus messages.
   bool HandleSessionStateChangedSignal(DBusMessage* message);
   bool HandleUpdateEngineStatusUpdateSignal(DBusMessage* message);
+  bool HandleCrasNodesChangedSignal(DBusMessage* message);
+  bool HandleCrasActiveOutputNodeChangedSignal(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
   DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
   DBusMessage* HandleRequestSuspendMethod(DBusMessage* message);

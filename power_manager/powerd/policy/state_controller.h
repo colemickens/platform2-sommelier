@@ -45,10 +45,12 @@ class StateController : public PrefsObserver {
     // completed.
     virtual bool IsOobeCompleted() = 0;
 
-    // Returns true if the system should not be suspended due to something
-    // being connected to the headphone jack (as a workaround for hardware
-    // that produces noise over the jack while suspended).
-    virtual bool ShouldAvoidSuspendForHeadphoneJack() = 0;
+    // Returns true if an HDMI audio output is active. This method does not need
+    // to check whether audio is actually currently playing.
+    virtual bool IsHdmiAudioActive() = 0;
+
+    // Returns true if a cable is currently plugged in to the headphone jack.
+    virtual bool IsHeadphoneJackPlugged() = 0;
 
     // Returns the current lid state.
     virtual LidState QueryLidState() = 0;
@@ -315,10 +317,16 @@ class StateController : public PrefsObserver {
   // doesn't wake in response to Bluetooth input devices.
   bool require_usb_input_device_to_suspend_;
 
-  // Should the screen be kept on while audio is playing?  This controlled
+  // Should the screen be kept on while audio is playing?  This is controlled
   // by the |kKeepBacklightOnForAudioPref| pref and set for hardware that
   // is unable to produce audio while the screen is turned off.
   bool keep_screen_on_for_audio_;
+
+  // Should the system avoid suspending when something is plugged in to the
+  // headphone jack? This is controlled by the
+  // |kAvoidSuspendWhenHeadphoneJackPluggedPref| pref and set for hardware that
+  // generates noise on the headphone jack when suspended.
+  bool avoid_suspend_when_headphone_jack_plugged_;
 
   // Should the system be prevented from suspending in response to
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref

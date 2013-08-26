@@ -18,14 +18,26 @@ namespace {
 // Delay before retrying connecting to Chrome OS audio server.
 const int kRetryConnectToCrasMs = 1000;
 
+// Number of failed connection attempts to CRAS before AudioClient will start
+// logging warnings. powerd and CRAS start in parallel, so this helps avoid
+// spamming the logs unnecessarily at boot.
+const int kNumConnectionAttemptsBeforeLogging = 10;
+
 // Frequency with which audio activity should be checked, in milliseconds.
 const int kPollForActivityMs = 5000;
+
+// Types assigned to headphone and HDMI nodes by CRAS.
+const char kHeadphoneNodeType[] = "HEADPHONE";
+const char kHdmiNodeType[] = "HDMI";
 
 }  // namespace
 
 AudioClient::AudioClient()
     : cras_client_(NULL),
       connected_to_cras_(false),
+      num_connection_attempts_(0),
+      headphone_plugged_(false),
+      hdmi_active_(false),
       mute_stored_(false),
       originally_muted_(false),
       retry_connect_to_cras_timeout_id_(0),
@@ -42,8 +54,7 @@ AudioClient::~AudioClient() {
   }
 }
 
-void AudioClient::Init(const std::string& headphone_device) {
-  headphone_device_ = headphone_device;
+void AudioClient::Init() {
   if (!ConnectToCras()) {
     retry_connect_to_cras_timeout_id_ =
         g_timeout_add(kRetryConnectToCrasMs, RetryConnectToCrasThunk, this);
@@ -58,12 +69,6 @@ void AudioClient::AddObserver(AudioObserver* observer) {
 void AudioClient::RemoveObserver(AudioObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
-}
-
-bool AudioClient::IsHeadphoneJackConnected() {
-  return connected_to_cras_ &&
-      !headphone_device_.empty() &&
-      cras_client_output_dev_plugged(cras_client_, headphone_device_.c_str());
 }
 
 bool AudioClient::GetLastAudioActivityTime(base::TimeTicks* time_out) {
@@ -122,19 +127,61 @@ void AudioClient::RestoreMutedState() {
   cras_client_set_system_mute(cras_client_, originally_muted_);
 }
 
+void AudioClient::UpdateDevices() {
+  if (!connected_to_cras_)
+    return;
+
+  cras_ionode_info nodes[CRAS_MAX_IONODES];
+  size_t num_devs = 0;
+  size_t num_nodes = arraysize(nodes);
+  if (cras_client_get_output_devices(
+          cras_client_, NULL, nodes, &num_devs, &num_nodes) != 0) {
+    LOG(WARNING) << "cras_client_get_output_devices() failed";
+    return;
+  }
+
+  headphone_plugged_ = false;
+  hdmi_active_ = false;
+
+  for (size_t i = 0; i < num_nodes; ++i) {
+    const cras_ionode_info& node = nodes[i];
+    VLOG(1) << "Node " << i << ":"
+            << " type=" << node.type
+            << " name=" << node.name
+            << " plugged=" << node.plugged
+            << " active=" << node.active;
+    if (strcmp(node.type, kHeadphoneNodeType) == 0 && node.plugged)
+      headphone_plugged_ = true;
+    else if (strcmp(node.type, kHdmiNodeType) == 0 && node.active)
+      hdmi_active_ = true;
+  }
+
+  LOG(INFO) << "Updated audio devices: "
+            << "headphones " << (headphone_plugged_ ? "" : "un") << "plugged, "
+            << "HDMI " << (hdmi_active_ ? "" : "in") << "active";
+}
+
 bool AudioClient::ConnectToCras() {
   if (connected_to_cras_)
     return true;
 
-  if (!cras_client_ && cras_client_create(&cras_client_)) {
+  if (!cras_client_ && cras_client_create(&cras_client_) != 0) {
     LOG(ERROR) << "Couldn't create CRAS client";
     cras_client_ = NULL;
     return false;
   }
 
-  if (cras_client_connect(cras_client_) ||
-      cras_client_run_thread(cras_client_)) {
-    LOG(WARNING) << "CRAS client couldn't connect to server";
+  num_connection_attempts_++;
+  if (cras_client_connect(cras_client_) != 0 ||
+      cras_client_run_thread(cras_client_) != 0) {
+    if (num_connection_attempts_ > kNumConnectionAttemptsBeforeLogging)
+      LOG(WARNING) << "CRAS client couldn't connect to server";
+    return false;
+  }
+
+  LOG(INFO) << "Waiting for connection to CRAS server";
+  if (cras_client_connected_wait(cras_client_) != 0) {
+    LOG(WARNING) << "cras_client_connected_wait() failed";
     return false;
   }
 
@@ -144,6 +191,7 @@ bool AudioClient::ConnectToCras() {
   DCHECK(!poll_for_activity_timeout_id_);
   poll_for_activity_timeout_id_ =
       g_timeout_add(kPollForActivityMs, PollForActivityThunk, this);
+  UpdateDevices();
 
   return true;
 }
@@ -159,6 +207,9 @@ gboolean AudioClient::RetryConnectToCras() {
 }
 
 gboolean AudioClient::PollForActivity() {
+  // TODO(derat): Once CRAS emits D-Bus signals in response to
+  // active-stream-count changes, listen for them instead of polling:
+  // http://crbug.com/280712
   base::TimeTicks last_activity_time;
   if (GetLastAudioActivityTime(&last_activity_time)) {
     base::TimeDelta time_since_activity =
