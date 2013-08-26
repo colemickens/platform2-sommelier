@@ -1586,12 +1586,18 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
 
   // false -> false
+  EXPECT_FALSE(service_->favorite());
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   SetAutoConnectFull(false, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
+  EXPECT_TRUE(service_->favorite());
   EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // Clear the |favorite_| flag for the next test.
+  service_->Unload();
+  ASSERT_FALSE(service_->favorite());
 
   // false -> true
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
@@ -1599,6 +1605,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
+  EXPECT_FALSE(service_->favorite());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // true -> true
@@ -1607,6 +1614,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
+  EXPECT_FALSE(service_->favorite());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // true -> false
@@ -1615,6 +1623,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_TRUE(service_->favorite());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 

@@ -421,7 +421,6 @@ bool Service::Load(StoreInterface *storage) {
   }
 
   explicitly_disconnected_ = false;
-  favorite_ = true;
 
   return true;
 }
@@ -1190,12 +1189,20 @@ bool Service::GetAutoConnect(Error */*error*/) {
 bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
             << auto_connect() << "->" << connect;
-  if (auto_connect() == connect) {
-    return false;
+  bool has_value_updated = false;
+  if (auto_connect() != connect) {
+    SetAutoConnect(connect);
+    manager_->UpdateService(this);
+    has_value_updated = true;
   }
-  SetAutoConnect(connect);
-  manager_->UpdateService(this);
-  return true;
+
+  // In order to protect this user-set value from changing automatically
+  // when connected, set the favorite flag now.
+  if (!connect && !favorite_) {
+    MarkAsFavorite();
+  }
+
+  return has_value_updated;
 }
 
 string Service::GetCheckPortal(Error *error) {

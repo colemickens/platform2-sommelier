@@ -107,9 +107,7 @@ Methods		dict GetProperties()
 		void Remove()
 
 			Disconnect and remove all recorded state of a
-			service.  The service must have previously had
-			a success connection so that the Favorite property
-			is marked "true".
+			service.
 
 			This method is not permitted for Ethernet devices;
 			it will generate a NotSupported error response.
@@ -199,6 +197,11 @@ Properties	boolean AutoConnect [readwrite]
 			when no other connection is available.  If multiple
 			services are marked for auto-connect then the highest
 			priority available service will be selected.
+
+			On a successful connection, this property may be
+			set to true automatically, depending on the service
+			type and the Favorite property (see the documentation
+			for the Favorite property for details).
 
 		boolean Cellular.ActivateOverNonCellularNetwork [readonly]
 
@@ -575,12 +578,14 @@ Properties	boolean AutoConnect [readwrite]
 
 		boolean Favorite [readonly]
 
-			Will be true if a cable is plugged in or the user
-			selected and successfully connected to this service.
-
-			This value is automatically changed and to revert
-			it back to false the Remove() method needs to be
-			used.
+			This indicates to the UI if the AutoConnect property
+			is in its final state, and will not be set to true on
+			a successful connection.  This value will be set to
+			true after the first successful connection, or if the
+			AutoConnect property has explicitly been set to false.
+			As an exception to this rule, VPN services are never
+			automatically set to auto-connect, regardless of the
+			Favorite state.
 
 		string GUID [readwrite]
 
