@@ -235,11 +235,8 @@ class Suspender : public SuspendDelayObserver {
   uint64 wakeup_count_;
   bool wakeup_count_valid_;
 
-  // Wakeup count optionally read by another process and passed to
-  // RequestSuspendWithExternalWakeupCount().
-  uint64 external_wakeup_count_;
-
-  // Is |external_wakeup_count_| set?
+  // Did |wakeup_count_| come from an external process via
+  // RequestSuspendWithExternalWakeupCount()?
   bool got_external_wakeup_count_;
 
   // The duration the machine should suspend for.

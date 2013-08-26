@@ -52,7 +52,6 @@ Suspender::Suspender(Delegate* delegate,
       suspend_id_(0),
       wakeup_count_(0),
       wakeup_count_valid_(false),
-      external_wakeup_count_(0),
       got_external_wakeup_count_(false),
       max_retries_(0),
       num_retries_(0),
@@ -76,13 +75,13 @@ void Suspender::Init(PrefsInterface* prefs) {
 
 void Suspender::RequestSuspend() {
   got_external_wakeup_count_ = false;
-  external_wakeup_count_ = 0;
   StartSuspendAttempt();
 }
 
 void Suspender::RequestSuspendWithExternalWakeupCount(uint64 wakeup_count) {
+  wakeup_count_ = wakeup_count;
+  wakeup_count_valid_ = true;
   got_external_wakeup_count_ = true;
-  external_wakeup_count_ = wakeup_count;
   StartSuspendAttempt();
 }
 
@@ -163,17 +162,8 @@ void Suspender::StartSuspendAttempt() {
     return;
 
   util::RemoveTimeout(&retry_suspend_timeout_id_);
-  wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
-
-  // If an external wakeup count was supplied and it's already been
-  // surpassed, don't bother trying to suspend.
-  if (got_external_wakeup_count_ && wakeup_count_valid_ &&
-      wakeup_count_ > external_wakeup_count_) {
-    LOG(WARNING) << "Canceling suspend attempt with external wakeup count "
-                 << external_wakeup_count_ << " since current wakeup count is "
-                 << wakeup_count_;
-    return;
-  }
+  if (!got_external_wakeup_count_)
+    wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
 
   suspend_id_++;
   waiting_for_readiness_ = true;
@@ -182,11 +172,14 @@ void Suspender::StartSuspendAttempt() {
 }
 
 void Suspender::Suspend() {
-  bool dark_resume = false;
-  bool success = false;
   // Note: If this log message is changed, the power_AudioDetector test
   // must be updated.
   LOG(INFO) << "Starting suspend";
+
+  bool dark_resume = false;
+  Delegate::SuspendResult result = Delegate::SUSPEND_SUCCESSFUL;
+  bool success = false;
+
   SendSuspendStateChangedSignal(
       SuspendState_Type_SUSPEND_TO_MEMORY, clock_->GetCurrentWallTime());
   delegate_->PrepareForSuspend();
@@ -215,7 +208,7 @@ void Suspender::Suspend() {
     // kernel may not have initialized some of the devices to make the dark
     // resume as inconspicuous as possible, so allowing the user to use the
     // system in this state would be bad.
-    Delegate::SuspendResult result = delegate_->Suspend(
+    result = delegate_->Suspend(
         wakeup_count_, wakeup_count_valid_ && !dark_resume, suspend_duration);
     success = result == Delegate::SUSPEND_SUCCESSFUL;
     dark_resume = dark_resume_policy_->IsDarkResume();
@@ -238,8 +231,20 @@ void Suspender::Suspend() {
     }
   } while (dark_resume);
 
-  if (success) {
-    LOG(INFO) << "Resumed successfully from suspend attempt " << suspend_id_;
+  // Don't retry if an external wakeup count was supplied and the suspend
+  // attempt failed due to a wakeup count mismatch -- a test probably triggered
+  // this suspend attempt after setting a wake alarm, and if we retry later,
+  // it's likely that the alarm will have already fired and the system will
+  // never wake up.
+  const bool done = success ||
+      (got_external_wakeup_count_ && result == Delegate::SUSPEND_CANCELED);
+  if (done) {
+    if (success) {
+      LOG(INFO) << "Resumed successfully from suspend attempt " << suspend_id_;
+    } else {
+      LOG(WARNING) << "Giving up after canceled suspend attempt with external "
+                   << "wakeup count";
+    }
     num_retries_ = 0;
     SendSuspendStateChangedSignal(
         SuspendState_Type_RESUME, clock_->GetCurrentWallTime());
