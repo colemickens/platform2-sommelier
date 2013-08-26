@@ -120,7 +120,7 @@ static const Log common_logs[] = {
   { "lsusb", "lsusb" },
   {
       "mali_memory",
-      "/bin/cat /sys/devices/platform/mali.0/memory 2> /dev/null"
+      "/bin/cat /sys/class/misc/mali0/device/memory 2> /dev/null"
   },
   { "meminfo", "cat /proc/meminfo" },
   { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
