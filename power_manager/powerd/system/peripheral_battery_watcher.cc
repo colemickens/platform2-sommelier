@@ -30,7 +30,7 @@ const base::FilePath::CharType kDefaultPeripheralBatteryPath[] =
     FILE_PATH_LITERAL("/sys/class/power_supply/");
 
 // Default interval for polling the device battery info.
-const int kDefaultPollIntervalMs = 10000;
+const int kDefaultPollIntervalMs = 30000;
 
 }  // namespace
 
