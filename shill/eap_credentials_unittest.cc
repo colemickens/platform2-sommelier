@@ -59,6 +59,9 @@ class EapCredentialsTest : public testing::Test {
   void SetCertId(const string &cert_id) {
     eap_.cert_id_ = cert_id;
   }
+  void SetCACertId(const string &ca_cert_id) {
+    eap_.ca_cert_id_ = ca_cert_id;
+  }
   void SetEap(const string &eap) {
     eap_.eap_ = eap;
   }
@@ -347,12 +350,46 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
   SetIdentity("testidentity");
   SetKeyId("key_id");
   SetPin("xxxx");
+  SetEap("PEAP");
   PopulateSupplicantProperties();
-  // Test that EAP engine parameters set if key_id is set.
+  // Test that EAP engine parameters are not set if the authentication type
+  // is not one that accepts a client certificate.
+  EXPECT_FALSE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_FALSE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapKeyId));
+  EXPECT_FALSE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngine));
+  EXPECT_FALSE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngineId));
+
+  // Test that EAP engine parameters are set if key_id is set and the
+  // authentication type accepts a client certificate.
+  params_.clear();
+  SetEap("TLS");
+  PopulateSupplicantProperties();
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapKeyId));
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngine));
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngineId));
+
+  // An empty EAP parameter should be considered to be possibly "TLS".
+  params_.clear();
+  SetEap("");
+  PopulateSupplicantProperties();
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapKeyId));
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngine));
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngineId));
+
+  // Test that EAP engine parameters are set if ca_cert_id is set even if the
+  // authentication type does not accept a client certificate.  However,
+  // the client key id should not be provided.
+  params_.clear();
+  SetEap("PEAP");
+  SetCACertId("certid");
+  PopulateSupplicantProperties();
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_FALSE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapKeyId));
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngine));
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngineId));
+  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapCaCertId));
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNSS) {
@@ -423,6 +460,7 @@ TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(IsReset());
   EXPECT_TRUE(GetKeyManagement().empty());
   SetAnonymousIdentity("foo");
+  SetCACertId("foo");
   SetCACertNSS("foo");
   SetCACertPEM(vector<string>{ "foo" });
   SetClientCert("foo");

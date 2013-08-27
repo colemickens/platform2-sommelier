@@ -113,6 +113,11 @@ class EapCredentials {
  private:
   friend class EapCredentialsTest;
 
+  // Returns true if the current EAP authentication type requires certificate
+  // authentication and any of the client credentials are provided via
+  // referencea cypto token.
+  bool ClientAuthenticationUsesCryptoToken() const;
+
   // Expose a property in |store|, with the name |name|.
   //
   // Reads of the property will be handled by invoking |get|.

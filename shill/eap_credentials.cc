@@ -87,11 +87,9 @@ void EapCredentials::PopulateSupplicantProperties(
     // Authentication properties.
     KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
            anonymous_identity_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapCertId, cert_id_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapClientCert,
            client_cert_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapIdentity, identity_.c_str()),
-    KeyVal(WPASupplicant::kNetworkPropertyEapKeyId, key_id_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapCaPassword,
            password_.c_str()),
     KeyVal(WPASupplicant::kNetworkPropertyEapPrivateKey,
@@ -122,8 +120,14 @@ void EapCredentials::PopulateSupplicantProperties(
                  << " unconditionally.";
   }
 
-  if (!cert_id_.empty() || !key_id_.empty() ||
-      !ca_cert_id_.empty()) {
+  if (ClientAuthenticationUsesCryptoToken()) {
+    propertyvals.push_back(KeyVal(
+        WPASupplicant::kNetworkPropertyEapCertId, cert_id_.c_str()));
+    propertyvals.push_back(KeyVal(
+        WPASupplicant::kNetworkPropertyEapKeyId, key_id_.c_str()));
+  }
+
+  if (ClientAuthenticationUsesCryptoToken() || !ca_cert_id_.empty()) {
     propertyvals.push_back(KeyVal(
         WPASupplicant::kNetworkPropertyEapPin, pin_.c_str()));
     propertyvals.push_back(KeyVal(
@@ -233,7 +237,7 @@ bool EapCredentials::IsConnectable() const {
   }
 
   // For EAP-TLS, a client certificate is required.
-  if (eap_.empty() || eap_ == "TLS") {
+  if (eap_.empty() || eap_ == flimflam::kEapMethodTLS) {
     if ((!client_cert_.empty() || !cert_id_.empty()) &&
         (!private_key_.empty() || !key_id_.empty())) {
       SLOG(Service, 2) << "Connectable: EAP-TLS with a client cert and key.";
@@ -243,7 +247,7 @@ bool EapCredentials::IsConnectable() const {
 
   // For EAP types other than TLS (e.g. EAP-TTLS or EAP-PEAP, password is the
   // minimum requirement), at least an identity + password is required.
-  if (eap_.empty() || eap_ != "TLS") {
+  if (eap_.empty() || eap_ != flimflam::kEapMethodTLS) {
     if (!password_.empty()) {
       SLOG(Service, 2) << "Connectable. !EAP-TLS and has a password.";
       return true;
@@ -462,6 +466,12 @@ bool EapCredentials::SetKeyManagement(const std::string &key_management,
   }
   key_management_ = key_management;
   return true;
+}
+
+bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
+  return (eap_.empty() || eap_ == flimflam::kEapMethodTLS ||
+          inner_eap_ == flimflam::kEapMethodTLS) &&
+         (!cert_id_.empty() || !key_id_.empty());
 }
 
 void EapCredentials::HelpRegisterDerivedString(
