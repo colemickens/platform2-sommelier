@@ -1997,6 +1997,7 @@ void WiFi::SetScanState(ScanState new_state,
     return;
 
   // Actually change the state.
+  ScanState old_state = scan_state_;
   ScanMethod old_method = scan_method_;
   bool old_scan_pending = GetScanPending(NULL);
   scan_state_ = new_state;
@@ -2013,8 +2014,11 @@ void WiFi::SetScanState(ScanState new_state,
         scan_session_.reset();
       }
       break;
-    case kScanScanning:
-      metrics()->NotifyDeviceScanStarted(interface_index());
+    case kScanScanning:  // FALLTHROUGH
+    case kScanBackgroundScanning:
+      if (new_state != old_state) {
+        metrics()->NotifyDeviceScanStarted(interface_index());
+      }
       break;
     case kScanConnecting:
       metrics()->NotifyDeviceScanFinished(interface_index());

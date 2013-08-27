@@ -1812,7 +1812,6 @@ TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (finds nothing).
-  EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
   EXPECT_CALL(*scan_session_, InitiateScan());
   EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_)).Times(0);
   dispatcher_.DispatchPendingEvents();
