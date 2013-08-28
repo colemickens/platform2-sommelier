@@ -112,7 +112,6 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       clock_(new Clock),
       power_status_initialized_(false),
       power_supply_path_(power_supply_path),
-      low_battery_shutdown_time_(base::TimeDelta::FromSeconds(180)),
       low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
       current_stabilized_delay_(base::TimeDelta::FromMilliseconds(
@@ -148,8 +147,12 @@ void PowerSupply::Init() {
         base::TimeDelta::FromSeconds(shutdown_time_sec);
   }
 
-  prefs_->GetDouble(kLowBatteryShutdownPercentPref,
-                    &low_battery_shutdown_percent_);
+  // The percentage-based threshold takes precedence over the time-based
+  // threshold.
+  if (prefs_->GetDouble(kLowBatteryShutdownPercentPref,
+                        &low_battery_shutdown_percent_)) {
+    low_battery_shutdown_time_ = base::TimeDelta();
+  }
 
   // This log message is needed by the power_LoadTest autotest.
   LOG(INFO) << "Using low battery time threshold of "
@@ -478,6 +481,7 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   DCHECK(status);
   status->battery_time_to_full = base::TimeDelta();
   status->battery_time_to_empty = base::TimeDelta();
+  status->battery_time_to_shutdown = base::TimeDelta();
 
   if (clock_->GetCurrentTime() < current_stabilized_timestamp_)
     return false;
@@ -498,10 +502,22 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
     case PowerSupplyProperties_BatteryState_DISCHARGING:
       if (average_current <= kEpsilon) {
         status->battery_time_to_empty = base::TimeDelta::FromSeconds(-1);
+        status->battery_time_to_shutdown = base::TimeDelta::FromSeconds(-1);
       } else {
         status->battery_time_to_empty = base::TimeDelta::FromSeconds(
             roundl(3600 * (status->battery_charge * status->nominal_voltage) /
                    (average_current * status->battery_voltage)));
+
+        const double shutdown_charge =
+            status->battery_charge_full * low_battery_shutdown_percent_ / 100.0;
+        const double available_charge = std::max(0.0,
+            status->battery_charge - shutdown_charge);
+        status->battery_time_to_shutdown = base::TimeDelta::FromSeconds(
+            roundl(3600 * (available_charge * status->nominal_voltage) /
+                   (average_current * status->battery_voltage))) -
+            low_battery_shutdown_time_;
+        status->battery_time_to_shutdown =
+            std::max(base::TimeDelta(), status->battery_time_to_shutdown);
       }
       break;
     case PowerSupplyProperties_BatteryState_FULL:

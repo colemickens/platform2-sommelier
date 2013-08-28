@@ -87,10 +87,15 @@ struct PowerStatus {
   // signal that the time value maybe inaccurate.
   bool is_calculating_battery_time;
 
-  // Time until the battery is empty (while discharging) or full (while
-  // charging).
+  // Estimated time until the battery is empty (while discharging) or full
+  // (while charging).
   base::TimeDelta battery_time_to_empty;
   base::TimeDelta battery_time_to_full;
+
+  // If discharging, estimated time until the battery is at a low-enough level
+  // that the system will shut down automatically. This will be less than
+  // |battery_time_to_empty| if a shutdown threshold is set.
+  base::TimeDelta battery_time_to_shutdown;
 
   // Battery charge in the range [0.0, 100.0], i.e. |battery_charge| /
   // |battery_charge_full| * 100.0.
@@ -265,7 +270,14 @@ class PowerSupply {
   base::FilePath line_power_path_;
   base::FilePath battery_path_;
 
+  // Remaining battery time at which the system will shut down automatically.
+  // Empty if unset.
   base::TimeDelta low_battery_shutdown_time_;
+
+  // Remaining battery charge (as a percentage of |battery_charge_full| in the
+  // range [0.0, 100.0]) at which the system will shut down automatically. 0.0
+  // if unset. If both |low_battery_shutdown_time_| and this setting are
+  // supplied, only |low_battery_shutdown_percent_| will take effect.
   double low_battery_shutdown_percent_;
 
   bool is_suspended_;

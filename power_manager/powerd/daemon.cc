@@ -69,8 +69,10 @@ void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
   proto->set_external_power(status.external_power);
   proto->set_battery_state(status.battery_state);
   proto->set_battery_percent(status.display_battery_percentage);
+  // Show the user the time until powerd will shut down the system automatically
+  // rather than the time until the battery is completely empty.
   proto->set_battery_time_to_empty_sec(
-      status.battery_time_to_empty.InSeconds());
+      status.battery_time_to_shutdown.InSeconds());
   proto->set_battery_time_to_full_sec(
       status.battery_time_to_full.InSeconds());
   proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
@@ -125,8 +127,13 @@ std::string GetPowerStatusBatteryDebugString(
       if (status.battery_time_to_empty >= base::TimeDelta()) {
         output += ", " + util::TimeDeltaToString(status.battery_time_to_empty) +
             " until empty";
-        if (status.is_calculating_battery_time)
+        if (status.is_calculating_battery_time) {
           output += " (calculating)";
+        } else if (status.battery_time_to_shutdown !=
+                   status.battery_time_to_empty) {
+          output += StringPrintf(" (%s until shutdown)",
+              util::TimeDeltaToString(status.battery_time_to_shutdown).c_str());
+        }
       }
       break;
     case PowerSupplyProperties_BatteryState_NOT_PRESENT:

@@ -423,6 +423,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // Set the current such that it'll take an hour to charge fully and
@@ -433,6 +434,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(3600, status.battery_time_to_full.InSeconds());
 
   // Let half an hour pass and report that the battery is 75% full.
@@ -442,6 +444,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(1800, status.battery_time_to_full.InSeconds());
 
   // After a current reading of 1.25, the averaged current should be (0.5 +
@@ -451,6 +454,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(1200, status.battery_time_to_full.InSeconds());
 
   // Fifteen minutes later, set the current to 0.25 (giving an average of
@@ -464,6 +468,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(720, status.battery_time_to_full.InSeconds());
 
   // Disconnect the charger and report an immediate drop in charge and
@@ -474,6 +479,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // After the current has had time to stabilize, the average should be
@@ -483,6 +489,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(3600, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(3600 - kLowBatteryShutdownTimeSec,
+            status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // Thirty minutes later, decrease the charge and report a significantly
@@ -494,6 +502,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(900, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(900 - kLowBatteryShutdownTimeSec,
+            status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // A current report of 0 should be ignored.
@@ -501,6 +511,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(900, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(900 - kLowBatteryShutdownTimeSec,
+            status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // Suspend, change the current, and resume. The average current should be
@@ -513,6 +525,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // Wait for the current to stabilize.
@@ -521,6 +534,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(1800, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(1800 - kLowBatteryShutdownTimeSec,
+            status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // When a charger is connected but the kernel reports the battery's state
@@ -534,6 +549,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(1800, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(1800 - kLowBatteryShutdownTimeSec,
+            status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 }
 
@@ -551,6 +568,7 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(-1, status.battery_time_to_full.InSeconds());
 
   WriteValue("ac/online", kOffline);
@@ -562,6 +580,7 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(-1, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(-1, status.battery_time_to_shutdown.InSeconds());
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 }
 
@@ -648,9 +667,6 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
 }
 
 TEST_F(PowerSupplyTest, CheckForLowBattery) {
-  base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
-  test_api_->SetCurrentTime(kStartTime);
-
   const double kShutdownPercent = 5.0;
   prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
 
@@ -736,6 +752,50 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
             status.battery_state);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
             status.external_power);
+}
+
+TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {
+  static const double kShutdownPercent = 10.0;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
+  static const double kShutdownSec = 3200;
+  prefs_.SetDouble(kLowBatteryShutdownTimePref, kShutdownSec);
+
+  WriteDefaultValues(POWER_BATTERY, REPORT_CHARGE);
+  WriteDoubleValue("battery/charge_full", 1.0);
+  WriteDoubleValue("battery/charge_now", 0.5);
+  WriteDoubleValue("battery/current_now", -1.0);
+  prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
+  power_supply_->Init();
+  test_api_->SetCurrentTime(
+      kStartTime + power_supply_->current_stabilized_delay());
+
+  // The reported time until shutdown should be based only on the charge that's
+  // available before shutdown. Note also that the time-based shutdown threshold
+  // is ignored since a percent-based threshold is set.
+  static const double kShutdownCharge = kShutdownPercent / 100.0 * 1.0;
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(1800, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(roundl((0.5 - kShutdownCharge) * 3600),
+            status.battery_time_to_shutdown.InSeconds());
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  // The reported time should be zero once the threshold is reached.
+  WriteDoubleValue("battery/charge_now", kShutdownCharge);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(roundl(kShutdownCharge / 1.0 * 3600),
+            status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
+  EXPECT_TRUE(status.battery_below_shutdown_threshold);
+
+  // It should remain zero if the threshold is passed.
+  static const double kLowerCharge = kShutdownCharge / 2.0;
+  WriteDoubleValue("battery/charge_now", kLowerCharge);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(roundl(kLowerCharge / 1.0 * 3600),
+            status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
+  EXPECT_TRUE(status.battery_below_shutdown_threshold);
 }
 
 }  // namespace system
