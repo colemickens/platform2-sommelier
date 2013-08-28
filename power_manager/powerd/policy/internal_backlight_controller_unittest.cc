@@ -605,25 +605,33 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
 
 TEST_F(InternalBacklightControllerTest, DockedMode) {
   Init(POWER_AC);
+  const int64 initial_level = backlight_.current_level();
+  ASSERT_GT(initial_level, 0);
 
-  display_power_setter_.reset_num_power_calls();
   controller_->SetDocked(true);
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+  EXPECT_EQ(0, backlight_.current_level());
 
   // Increasing the brightness or dimming the backlight shouldn't change
   // the displays' power settings while docked.
   controller_->IncreaseUserBrightness();
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
+  EXPECT_EQ(0, backlight_.current_level());
   controller_->SetDimmedForInactivity(true);
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
+  EXPECT_EQ(0, backlight_.current_level());
 
+  // After exiting docked mode, the displays should be turned back on and the
+  // backlight should be at the dimmed level.
   controller_->SetDocked(false);
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+  EXPECT_GT(backlight_.current_level(), 0);
+  EXPECT_LT(backlight_.current_level(), initial_level);
 }
 
 TEST_F(InternalBacklightControllerTest, TurnDisplaysOnAtInit) {

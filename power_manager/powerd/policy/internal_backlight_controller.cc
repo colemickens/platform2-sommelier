@@ -472,32 +472,26 @@ void InternalBacklightController::UpdateState() {
     resume_percent = GetUndimmedBrightnessPercent();
     // Chrome puts displays into the correct power state before suspend.
     set_display_power = false;
+  } else if (docked_) {
+    brightness_percent = 0.0;
+    display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
   } else if (off_for_inactivity_) {
     brightness_percent = 0.0;
     brightness_transition = TRANSITION_FAST;
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
     display_transition = TRANSITION_FAST;
-  } else if (dimmed_for_inactivity_) {
+  } else {
     brightness_percent = std::min(GetUndimmedBrightnessPercent(),
-                                  dimmed_brightness_percent_);
-    brightness_transition = TRANSITION_FAST;
-    display_power = (docked_ || brightness_percent <= kEpsilon) ?
+        dimmed_for_inactivity_ ? dimmed_brightness_percent_ : 100.0);
+    const bool turning_on =
+        display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
+        current_level_ == 0;
+    brightness_transition = turning_on ? TRANSITION_INSTANT : TRANSITION_FAST;
+
+    // Keep the external display(s) on if the brightness was manually set to 0.
+    display_power = (brightness_percent <= kEpsilon) ?
         chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON :
         chromeos::DISPLAY_POWER_ALL_ON;
-    display_transition = TRANSITION_INSTANT;
-  } else {
-    brightness_percent = GetUndimmedBrightnessPercent();
-    brightness_transition =
-        (display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
-         current_level_ == 0) ? TRANSITION_INSTANT : TRANSITION_FAST;
-    // Keep the external display(s) on if the brightness was manually set to 0.
-    if (docked_ || brightness_percent <= kEpsilon) {
-      display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
-      display_transition = docked_ ? TRANSITION_INSTANT : TRANSITION_FAST;
-    } else {
-      display_power = chromeos::DISPLAY_POWER_ALL_ON;
-      display_transition = TRANSITION_INSTANT;
-    }
   }
 
   ApplyBrightnessPercent(brightness_percent, brightness_transition,
@@ -520,14 +514,14 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
     ApplyResumeBrightnessPercent(percent);
 
   // Don't apply the change if we're in a state that overrides the new level.
-  if (shutting_down_ || suspended_ || off_for_inactivity_ ||
+  if (shutting_down_ || suspended_ || docked_ || off_for_inactivity_ ||
       dimmed_for_inactivity_)
     return false;
 
   if (!ApplyBrightnessPercent(percent, style, cause))
     return false;
 
-  if (docked_ || percent <= kEpsilon) {
+  if (percent <= kEpsilon) {
     // Keep the external display(s) on if the brightness was manually set to 0.
     SetDisplayPower(
         chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
