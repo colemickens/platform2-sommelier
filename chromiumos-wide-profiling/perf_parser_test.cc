@@ -19,9 +19,19 @@ namespace quipper {
 
 namespace {
 
-void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
-  for (unsigned int i = 1; i < events.size(); ++i)
-    CHECK_LE(events[i - 1]->time, events[i]->time);
+void CheckChronologicalOrderOfEvents(const PerfReader& reader,
+                                     const std::vector<ParsedEvent*>& events) {
+  // Here a valid PerfReader is needed to read the sample info because
+  // ReadPerfSampleInfo() uses the |sample_type_| member of PerfReader to
+  // determine which sample info fields are present.
+  for (unsigned int i = 1; i < events.size(); ++i) {
+    struct perf_sample sample_info;
+    CHECK(reader.ReadPerfSampleInfo(**events[i - 1]->raw_event, &sample_info));
+    uint64 prev_time = sample_info.time;
+    CHECK(reader.ReadPerfSampleInfo(**events[i]->raw_event, &sample_info));
+    uint64 curr_time = sample_info.time;
+    CHECK_LE(prev_time, curr_time);
+  }
 }
 
 void ReadFileAndCheckInternals(const string& input_perf_data,
@@ -54,7 +64,7 @@ TEST(PerfParserTest, Test1Cycle) {
     parser.ParseRawEvents();
 
     CHECK_GT(parser.GetEventsSortedByTime().size(), 0U);
-    CheckChronologicalOrderOfEvents(parser.GetEventsSortedByTime());
+    CheckChronologicalOrderOfEvents(parser, parser.GetEventsSortedByTime());
 
     // Check perf event stats.
     const PerfEventStats& stats = parser.stats();

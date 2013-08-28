@@ -22,10 +22,6 @@ struct ParsedEvent {
   // copies of pointers returned by calloc.
   event_t** raw_event;
 
-  // Time, extracted from sample info.  This is the only field that is copied
-  // from the sample info, to make sorting the events simpler.
-  uint64 time;
-
   // For mmap events, use this to count the number of samples that are in this
   // region.
   uint32 num_samples_in_mmap_region;

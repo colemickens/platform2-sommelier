@@ -666,10 +666,8 @@ bool PerfSerializer::DeserializeSampleInfo(
     sample_info.pid = sample.pid();
     sample_info.tid = sample.tid();
   }
-  if (sample.has_sample_time_ns()) {
-    event->time = sample.sample_time_ns();
-    sample_info.time = event->time;
-  }
+  if (sample.has_sample_time_ns())
+    sample_info.time = sample.sample_time_ns();
   if (sample.has_id())
     sample_info.id = sample.id();
   if (sample.has_cpu())
