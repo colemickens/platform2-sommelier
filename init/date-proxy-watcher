@@ -59,10 +59,10 @@ monitor_proxy_change() {
   dbus-monitor --system "${RCV_FILTER}" |
     grep --line-buffered -o \
       -e "DIRECT" \
-      -e "PROXY [a-zA-Z0-9\-\.]\+:[0-9]\+" \
-      -e "SOCKS [a-zA-Z0-9\-\.]\+:[0-9]\+" \
-      -e "SOCKS5 [a-zA-Z0-9\-\.]\+:[0-9]\+" \
-      -e "HTTPS [a-zA-Z0-9\-\.]\+:[0-9]\+"
+      -e "PROXY [-a-zA-Z0-9.]\+:[0-9]\+" \
+      -e "SOCKS [-a-zA-Z0-9.]\+:[0-9]\+" \
+      -e "SOCKS5 [-a-zA-Z0-9.]\+:[0-9]\+" \
+      -e "HTTPS [-a-zA-Z0-9.]\+:[0-9]\+"
 }
 
 mkfifo -m 600 "$WORK_DIR/proxy-fifo"
