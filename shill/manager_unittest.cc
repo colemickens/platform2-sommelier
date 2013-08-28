@@ -20,6 +20,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/geolocation_info.h"
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
@@ -60,6 +61,7 @@ using std::vector;
 namespace shill {
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::AtLeast;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::InSequence;
@@ -4067,6 +4069,51 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
     EXPECT_TRUE(error.IsSuccess());
     Mock::VerifyAndClearExpectations(&resolver);
   }
+}
+
+TEST_F(ManagerTest, GeoLocation) {
+  EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
+
+  auto device = make_scoped_refptr(new NiceMock<MockDevice>(control_interface(),
+                                                            dispatcher(),
+                                                            metrics(),
+                                                            manager(),
+                                                            "null",
+                                                            "addr",
+                                                            0));
+
+  // Manager should ignore gelocation info from technologies it does not know.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kEthernet));
+  EXPECT_CALL(*device, GetGeolocationObjects()).Times(0);
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  Mock::VerifyAndClearExpectations(device);
+  EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
+
+  // Manager should add WiFi geolocation info.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*device, GetGeolocationObjects())
+      .WillOnce(Return(vector<GeolocationInfo>()));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  Mock::VerifyAndClearExpectations(device);
+  auto location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(1, location_infos.size());
+  EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
+
+  // Manager should inclusively add cellular info.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*device, GetGeolocationObjects())
+      .WillOnce(Return(vector<GeolocationInfo>()));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+  EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(ContainsKey(location_infos, kGeoCellTowersProperty));
 }
 
 }  // namespace shill

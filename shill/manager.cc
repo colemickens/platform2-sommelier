@@ -1876,31 +1876,32 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore &args,
   return NULL;
 }
 
-map<string, GeolocationInfos> Manager::GetNetworksForGeolocation() {
-  map<string, GeolocationInfos> networks;
-  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
-       it != devices_.end(); ++it) {
-    switch ((*it)->technology()) {
-      // TODO(gauravsh): crbug.com/217833 Need a strategy for combining
-      // geolocation objects from multiple devices of the same technolgy.
-      // Currently, we just pick the geolocation objects from the first found
-      // device of each supported technology type.
-      case Technology::kWifi:
-        if (!ContainsKey(networks, kGeoWifiAccessPointsProperty))
-          networks[kGeoWifiAccessPointsProperty] =
-              (*it)->GetGeolocationObjects();
-        break;
-      case Technology::kCellular:
-        if (!ContainsKey(networks, kGeoCellTowersProperty))
-          networks[kGeoCellTowersProperty] = (*it)->GetGeolocationObjects();
-        break;
-      default:
-        // Ignore other technologies.
-        break;
-    };
+const map<string, GeolocationInfos>
+    &Manager::GetNetworksForGeolocation() const {
+  return networks_for_geolocation_;
+}
+
+void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr &device) {
+  SLOG(Manager, 2) << __func__ << " for technology "
+                   << Technology::NameFromIdentifier(device->technology());
+  switch (device->technology()) {
+    // TODO(gauravsh): crbug.com/217833 Need a strategy for combining
+    // geolocation objects from multiple devices of the same technolgy.
+    // Currently, we just override the any previously acquired
+    // geolocation objects for the retrieved technology type.
+    case Technology::kWifi:
+      networks_for_geolocation_[kGeoWifiAccessPointsProperty] =
+          device->GetGeolocationObjects();
+      break;
+    case Technology::kCellular:
+      networks_for_geolocation_[kGeoCellTowersProperty] =
+          device->GetGeolocationObjects();
+      break;
+    default:
+      // Ignore other technologies.
+      break;
   }
-  return networks;
-};
+}
 
 void Manager::RecheckPortal(Error */*error*/) {
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();

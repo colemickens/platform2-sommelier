@@ -1772,6 +1772,7 @@ TEST_F(WiFiMainTest, ProgressiveScanFound) {
 
   // Do the first scan (finds nothing).
   StartScan(WiFi::kScanMethodProgressive);
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_)).Times(0);
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (connects afterwards).
@@ -1813,6 +1814,7 @@ TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
   // Do the second scan (finds nothing).
   EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
   EXPECT_CALL(*scan_session_, InitiateScan());
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_)).Times(0);
   dispatcher_.DispatchPendingEvents();
   VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
   ReportScanDoneKeepScanSession();
@@ -1850,6 +1852,7 @@ TEST_F(WiFiMainTest, ProgressiveScanError) {
   dispatcher_.DispatchPendingEvents();
 
   ReportScanDoneKeepScanSession();
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
   dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 }
@@ -2186,6 +2189,7 @@ TEST_F(WiFiMainTest, ScanTimerIdle_FullScan) {
   CancelScanTimer();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
   dispatcher_.DispatchPendingEvents();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
   FireScanTimer();
@@ -2871,6 +2875,7 @@ TEST_F(WiFiMainTest, FullScanFindsNothing) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("FULL_NOCONNECTION ->")));
   EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
   dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 
@@ -3079,6 +3084,7 @@ TEST_F(WiFiMainTest, BackgroundScan) {
   VerifyScanState(WiFi::kScanBackgroundScanning, WiFi::kScanMethodFull);
 
   ReportScanDone();
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
   dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 }

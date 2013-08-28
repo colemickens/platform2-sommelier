@@ -43,6 +43,8 @@ class MockManager : public Manager {
   MOCK_METHOD1(DeregisterDefaultServiceCallback, void(int tag));
   MOCK_METHOD1(UpdateDevice, void(const DeviceRefPtr &to_update));
   MOCK_METHOD0(UpdateWiFiProvider, void());
+  MOCK_METHOD1(OnDeviceGeolocationInfoUpdated,
+               void(const DeviceRefPtr &device));
   MOCK_METHOD1(RecheckPortalOnService, void(const ServiceRefPtr &service));
   MOCK_METHOD2(HandleProfileEntryDeletion,
                bool(const ProfileRefPtr &profile,

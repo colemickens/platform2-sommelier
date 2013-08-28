@@ -136,7 +136,14 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const KeyValueStore &args,
       Error *error);
   ServiceRefPtr FindMatchingService(const KeyValueStore &args, Error *error);
-  std::map<std::string, GeolocationInfos> GetNetworksForGeolocation();
+
+  // Retrieve geolocation data from the Manager.
+  const std::map<std::string, GeolocationInfos>
+      &GetNetworksForGeolocation() const;
+
+  // Called by Device when its geolocation data has been updated.
+  virtual void OnDeviceGeolocationInfoUpdated(const DeviceRefPtr &device);
+
   void ConnectToBestServices(Error *error);
 
   // Request portal detection checks on each registered device until a portal
@@ -583,6 +590,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // connections. ConnectionHealthChecker uses these IPs.
   // The store resides in Manager so that it persists across Device reset.
   scoped_ptr<IPAddressStore> health_checker_remote_ips_;
+
+  // Stores the most recent copy of geolocation information for each
+  // technology type.
+  std::map<std::string, GeolocationInfos> networks_for_geolocation_;
 };
 
 }  // namespace shill

@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/device.h"
+#include "shill/geolocation_info.h"
 
 namespace shill {
 
@@ -51,6 +52,7 @@ class MockDevice : public Device {
   MOCK_METHOD0(OnBeforeSuspend, void());
   MOCK_METHOD0(OnAfterResume, void());
   MOCK_METHOD0(OnConnectionUpdated, void());
+  MOCK_CONST_METHOD0(GetGeolocationObjects, std::vector<GeolocationInfo>());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

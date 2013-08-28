@@ -1161,6 +1161,12 @@ void WiFi::ScanDoneTask() {
 }
 
 void WiFi::UpdateScanStateAfterScanDone() {
+  if (scan_method_ == kScanMethodFull) {
+    // Only notify the Manager on completion of full scans, since the manager
+    // will replace any cached geolocation info with the BSSes we have right
+    // now.
+    manager()->OnDeviceGeolocationInfoUpdated(this);
+  }
   if (scan_state_ == kScanBackgroundScanning) {
     SetScanState(kScanIdle, kScanMethodNone, __func__);
   } else if (scan_state_ != kScanIdle && IsIdle()) {
