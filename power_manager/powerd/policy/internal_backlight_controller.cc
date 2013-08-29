@@ -376,7 +376,8 @@ bool InternalBacklightController::IncreaseUserBrightness() {
   double old_percent = GetUndimmedBrightnessPercent();
   double new_percent =
       (old_percent < kMinVisiblePercent - kEpsilon) ? kMinVisiblePercent :
-      ClampPercentToVisibleRange(old_percent + step_percent_);
+      ClampPercentToVisibleRange(
+          SnapBrightnessPercentToNearestStep(old_percent + step_percent_));
   return SetUserBrightnessPercent(new_percent, TRANSITION_FAST);
 }
 
@@ -385,7 +386,8 @@ bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
   // the minimum visible level.
   double old_percent = GetUndimmedBrightnessPercent();
   double new_percent = old_percent <= kMinVisiblePercent + kEpsilon ? 0.0 :
-      ClampPercentToVisibleRange(old_percent - step_percent_);
+      ClampPercentToVisibleRange(
+          SnapBrightnessPercentToNearestStep(old_percent - step_percent_));
 
   if (!allow_off && new_percent <= kEpsilon) {
     user_adjustment_count_++;
@@ -414,6 +416,11 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
         TRANSITION_SLOW : TRANSITION_FAST;
     UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
   }
+}
+
+double InternalBacklightController::SnapBrightnessPercentToNearestStep(
+    double percent) const {
+  return round(percent / step_percent_) * step_percent_;
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {

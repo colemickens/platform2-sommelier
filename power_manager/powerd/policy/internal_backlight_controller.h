@@ -91,6 +91,9 @@ class InternalBacklightController : public BacklightController,
       AmbientLightHandler::BrightnessChangeCause cause) OVERRIDE;
 
  private:
+  // Snaps |percent| to the nearest step, as defined by |step_percent_|.
+  double SnapBrightnessPercentToNearestStep(double percent) const;
+
   // Returns the brightness percent that should be used when the system is
   // in an undimmed state (|ambient_light_brightness_percent_| if
   // |use_ambient_light_| is true or a user-set level otherwise).

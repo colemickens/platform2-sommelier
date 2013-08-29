@@ -160,6 +160,27 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
   controller_->IncreaseUserBrightness();
   EXPECT_GT(backlight_.current_level(), default_min_visible_level_);
+
+  // Start at 3/4 of a step above the middle step. After a decrease request, the
+  // brightness should be snapped to the middle step.
+  const double kStep = 100.0 / InternalBacklightController::kMaxBrightnessSteps;
+  const double kMiddlePercent =
+      kStep * InternalBacklightController::kMaxBrightnessSteps / 2;
+  controller_->SetUserBrightnessPercent(
+      kMiddlePercent + 0.75 * kStep, BacklightController::TRANSITION_INSTANT);
+  ASSERT_EQ(PercentToLevel(kMiddlePercent + 0.75 * kStep),
+            backlight_.current_level());
+  controller_->DecreaseUserBrightness(true);
+  EXPECT_EQ(PercentToLevel(kMiddlePercent), backlight_.current_level());
+
+  // Start at 1/4 of a step below the middle step. After an increase request,
+  // the brightness should be snapped to one step above the middle step.
+  controller_->SetUserBrightnessPercent(
+      kMiddlePercent - 0.25 * kStep, BacklightController::TRANSITION_INSTANT);
+  ASSERT_EQ(PercentToLevel(kMiddlePercent - 0.25 * kStep),
+            backlight_.current_level());
+  controller_->IncreaseUserBrightness();
+  EXPECT_EQ(PercentToLevel(kMiddlePercent + kStep), backlight_.current_level());
 }
 
 // Test that InternalBacklightController notifies its observer in response to
