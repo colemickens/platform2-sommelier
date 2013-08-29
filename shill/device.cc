@@ -1020,6 +1020,15 @@ void Device::SetEnabledInternal(bool enable,
   SLOG(Device, 2) << "Device " << link_name_ << " "
                   << (enable ? "starting" : "stopping");
   if (enable == enabled_) {
+    if (enable != enabled_pending_ && persist) {
+      // Return an error, as there is an ongoing operation to achieve the
+      // opposite.
+      Error::PopulateAndLog(
+          error, Error::kOperationFailed,
+          enable ? "Cannot enable while the device is disabling." :
+                   "Cannot disable while the device is enabling.");
+      return;
+    }
     error->Reset();
     return;
   }

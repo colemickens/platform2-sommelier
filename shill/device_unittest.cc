@@ -401,6 +401,44 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   device_->SetEnabledPersistent(true, &error, ResultCallback());
   EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
+
+  // Enable while already enabled.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_persistent_ = false;
+  device_->enabled_pending_ = true;
+  device_->enabled_ = true;
+  device_->SetEnabledPersistent(true, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_pending_);
+  EXPECT_TRUE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Enable while enabled but disabling.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_pending_ = false;
+  device_->SetEnabledPersistent(true, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  EXPECT_TRUE(device_->enabled_);
+  EXPECT_EQ(Error::kOperationFailed, error.type());
+
+  // Disable while already disabled.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_ = false;
+  device_->SetEnabledPersistent(false, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Disable while already enabling.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_pending_ = true;
+  device_->SetEnabledPersistent(false, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_pending_);
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
 TEST_F(DeviceTest, Start) {

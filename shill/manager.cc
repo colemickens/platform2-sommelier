@@ -829,7 +829,7 @@ void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
   bool deferred = false;
   auto result_aggregator(make_scoped_refptr(new ResultAggregator(callback)));
   for (auto &device : devices_) {
-    if (device->technology() != id || device->enabled() == enabled_state)
+    if (device->technology() != id)
       continue;
 
     Error device_error(Error::kOperationInitiated);

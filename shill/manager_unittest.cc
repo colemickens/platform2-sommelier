@@ -445,6 +445,10 @@ void SetErrorPermissionDenied(Error *error) {
   error->Populate(Error::kPermissionDenied);
 }
 
+void SetErrorSuccess(Error *error) {
+  error->Reset();
+}
+
 TEST_F(ManagerTest, Contains) {
   EXPECT_TRUE(manager()->store().Contains(flimflam::kStateProperty));
   EXPECT_FALSE(manager()->store().Contains(""));
@@ -3299,6 +3303,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   manager()->RegisterDevice(mock_devices_[1]);
 
   // Ethernet Device is disabled, so disable succeeds immediately.
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
   error.Populate(Error::kOperationInitiated);
   manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
                                           &error, disable_technology_callback);
