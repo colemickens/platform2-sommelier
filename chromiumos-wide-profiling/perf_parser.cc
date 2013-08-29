@@ -266,7 +266,12 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
     mapped = true;
     mapper = kernel_mapper_;
   } else {
+    size_t loop_count = 0;
     while (process_mappers_.find(pid) != process_mappers_.end()) {
+      if (loop_count++ > child_to_parent_pid_map_.size()) {
+        LOG(FATAL) << "Looped too many times searching for mapper.";
+        return false;
+      }
       mapper = process_mappers_[pid];
       if (mapper->GetMappedAddress(ip, &mapped_addr)) {
         mapped = true;
@@ -376,6 +381,11 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
                << "process.";
     return false;
   }
+
+  // If the parent and child pids are the same, this is just a new thread
+  // within the same process, so don't do anything.
+  if (event.ppid == pid)
+    return true;
 
   process_mappers_[pid] = new AddressMapper;
   child_to_parent_pid_map_[pid] = event.ppid;
