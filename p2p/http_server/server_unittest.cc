@@ -29,10 +29,12 @@
 #include <tuple>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
+#include <base/synchronization/condition_variable.h>
 #include <base/threading/simple_thread.h>
 #include <gtest/gtest.h>
 
@@ -43,11 +45,10 @@ using std::vector;
 using base::FilePath;
 
 using p2p::constants::kBytesPerMB;
-using p2p::testutil::ExpectCommand;
-using p2p::testutil::ExpectFileSize;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
 using p2p::testutil::RunGMainLoopMaxIterations;
+using p2p::testutil::RunGMainLoopUntil;
 using p2p::util::P2PServerMessage;
 using p2p::util::StructSerializerWatcher;
 
@@ -82,6 +83,34 @@ static int ConnectToLocalPort(uint16_t port) {
   }
   return sock;
 }
+
+// Implements a barrier that blocks until |n| threads call Wait() and then
+// releases them all.
+class Barrier {
+ public:
+  Barrier(int n) : n_(n), cond_(&lock_) {}
+
+  // Wait on the barrier. This function is thread-safe.
+  void Wait() {
+    lock_.Acquire();
+    n_--;
+    // Any call to wait after |n_| reaches 0 will not block.
+    if (n_ <= 0) {
+      cond_.Broadcast();
+    } else {
+      while (n_ > 0)
+        cond_.Wait();
+    }
+    lock_.Release();
+  }
+
+ private:
+  int n_;
+  base::Lock lock_;
+  base::ConditionVariable cond_;
+
+  DISALLOW_COPY_AND_ASSIGN(Barrier);
+};
 
 TEST(P2PHttpServer, InvalidDirectoryFails) {
   FilePath testdir_path("/path/to/invalid/directory");
@@ -152,124 +181,97 @@ TEST(P2PHttpServer, ReportServerMessageTest) {
 
 // ------------------------------------------------------------------------
 
-static const int kMultipleTestNumFiles = 5;
+static const int kMultipleTestNumConnections = 5;
 
 class MultipleClientThread : public base::SimpleThread {
  public:
-  MultipleClientThread(FilePath testdir_path, uint16_t port, int num)
+  MultipleClientThread(uint16_t port, int id, ServerInterface* server,
+                       Barrier* pre_check, Barrier* post_check)
       : base::SimpleThread("test-multiple", base::SimpleThread::Options()),
-        testdir_path_(testdir_path),
         port_(port),
-        num_(num) {}
+        id_(id),
+        server_(server),
+        pre_check_(pre_check),
+        post_check_(post_check) {}
 
  private:
   virtual void Run() {
-    const char* dir = testdir_path_.value().c_str();
-    // Use --no-buffer, otherwise the target file will be zero bytes
-    // when comparing in the function below
-    ExpectCommand(0,
-                  "curl --no-buffer -s -o %s/file%d "
-                  "http://127.0.0.1:%d/file%d",
-                  dir,
-                  num_,
-                  port_,
-                  num_);
-    ExpectCommand(0, "cmp -l -b %s/file%d.p2p %s/file%d", dir, num_, dir, num_);
+    // Connect to the Server and wait until all the threads reached that point.
+    int sock = ConnectToLocalPort(port_);
+    ASSERT_NE(-1, sock);
 
-    string name = StringPrintf("file%d", num_);
-    ExpectFileSize(testdir_path_, name.c_str(), 2000);
+    EXPECT_EQ(5, write(sock, "ping\n", 5));
+    char msg[5];
+    EXPECT_EQ(5, read(sock, msg, 5));
+    EXPECT_EQ(0, memcmp(msg, "pong\n", 5));
+
+    pre_check_->Wait();
+    // At this point the server is not handling any request since all the
+    // threads passed the pre_check point. We check the test conditions only
+    // in one thread (id == 0)
+    if (id_ == 0) {
+      EXPECT_EQ(server_->NumConnections(), kMultipleTestNumConnections);
+    }
+
+    post_check_->Wait();
+    // Instruct the server to finish and wait until it closes the socket.
+    EXPECT_EQ(5, write(sock, "quit\n", 5));
+    EXPECT_EQ(0, read(sock, msg, 1));
+    close(sock);
   }
 
-  FilePath testdir_path_;
   uint16_t port_;
-  int num_;
+  int id_;
+  ServerInterface* server_;
+  Barrier* pre_check_;
+  Barrier* post_check_;
 
   DISALLOW_COPY_AND_ASSIGN(MultipleClientThread);
 };
 
-static gboolean p2p_multiple_test_check(gpointer user_data) {
-  tuple<const FilePath*, GMainLoop*, Server*>* tuple_val =
-    static_cast<tuple<const FilePath*, GMainLoop*, Server*>*>(user_data);
-  const FilePath* testdir_path = std::get<0>(*tuple_val);
-  GMainLoop* loop = std::get<1>(*tuple_val);
-  Server* server = std::get<2>(*tuple_val);
-
-  EXPECT_EQ(server->NumConnections(), 5);
-
-  for (int n = 0; n < kMultipleTestNumFiles; n++) {
-    // Check the _downloaded_ file exists and matches the 1000 bytes
-    // of the original file.
-    ExpectCommand(0,
-                  "cmp -b -n 1000 %s/file%d.p2p %s/file%d",
-                  testdir_path->value().c_str(),
-                  n,
-                  testdir_path->value().c_str(),
-                  n);
-    // OK, complete it
-    ExpectCommand(0,
-                  "dd if=/dev/zero of=%s/file%d.p2p conv=notrunc oflag=append "
-                  "bs=1000 count=1",
-                  testdir_path->value().c_str(),
-                  n);
-  }
-
-  g_main_loop_quit(loop);
-
-  return FALSE;  // Remove timeout source
+bool ConnectionsReached(ServerInterface* server, int conns) {
+  return server->NumConnections() >= conns;
 }
 
-TEST(P2PHttpServer, Multiple) {
+// This test verifies that the Server can handle multiple simultaneous
+// connections up to |kMultipleTestNumConnections|.
+TEST(P2PHttpServer, MultipleConnections) {
   FilePath testdir_path = SetupTestDir("multiple");
+  int dev_null = open("/dev/null", O_RDWR);
+  EXPECT_NE(dev_null, -1);
 
-  // Create N 1000 byte files with EAs indicating length of 2000 bytes.
-  // Put random content in them.
-  for (int n = 0; n < kMultipleTestNumFiles; n++) {
-    ExpectCommand(0,
-                  "dd if=/dev/urandom of=%s/file%d.p2p bs=1000 count=1",
-                  testdir_path.value().c_str(),
-                  n);
-    ExpectCommand(0,
-                  "setfattr -n user.cros-p2p-filesize -v 2000 %s/file%d.p2p",
-                  testdir_path.value().c_str(),
-                  n);
-  }
-
-  // Bring up the HTTP server
-  Server server(testdir_path, 0, STDOUT_FILENO, ConnectionDelegate::Construct);
+  // Bring up the HTTP server.
+  Server server(testdir_path, 0, dev_null, FakeConnectionDelegate::Construct);
   EXPECT_TRUE(server.Start());
 
-  GMainLoop* loop = g_main_loop_new(NULL, FALSE);
-
-  // Then start N threads for downloading, one for each file.
+  // Start N threads, one for each connection.
+  Barrier pre_check(kMultipleTestNumConnections);
+  Barrier post_check(kMultipleTestNumConnections);
   vector<MultipleClientThread*> threads;
-  for (int n = 0; n < kMultipleTestNumFiles; n++) {
+  for (int n = 0; n < kMultipleTestNumConnections; n++) {
     MultipleClientThread* thread =
-        new MultipleClientThread(testdir_path, server.Port(), n);
+        new MultipleClientThread(server.Port(), n,
+                                 &server, &pre_check, &post_check);
     thread->Start();
     threads.push_back(thread);
   }
 
-  // Schedule a timeout one second away - here we'll check that that
-  // each download has begun ... this proves that the HTTP server is
-  // capable of handling multiple requests, concurrently.
-  //
-  // Once we've done that, we'll quit the loop
-  //
-  tuple<const FilePath*, GMainLoop*, Server*> tuple_val =
-      std::make_tuple(&testdir_path, loop, &server);
-  g_timeout_add(1000, p2p_multiple_test_check, &tuple_val);
+  // Run the main loop until all the connections are established. After that,
+  // there's no need to run the main loop, all the work is done by the
+  // ConnectionDelegate threads.
+  RunGMainLoopUntil(30000, base::Bind(&ConnectionsReached, &server,
+      kMultipleTestNumConnections));
 
-  g_main_loop_run(loop);
-
-  // Wait for all downloads to finish
+  // Wait for all threads to finish the work.
   for (auto& t : threads) {
     t->Join();
     delete t;
   }
+  EXPECT_EQ(server.NumConnections(), 0);
 
   // Cleanup
-  g_main_loop_unref(loop);
   server.Stop();
+  close(dev_null);
   TeardownTestDir(testdir_path);
 }
 

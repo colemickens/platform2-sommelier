@@ -36,8 +36,22 @@ class FakeConnectionDelegate : public ConnectionDelegateInterface {
 
   // Overrides ConnectionDelegateInterface.
   virtual void Run() {
+    FILE* f = fdopen(fd_, "r+");
+    char* cmd = NULL;
+    size_t cmd_len = 0;
+    // Run a very simple server for testing.
+    while (getline(&cmd, &cmd_len, f) != -1) {
+      if (!strcmp("ping\n", cmd)) {
+        ASSERT_EQ(fwrite("pong\n", 5, 1, f), 1);
+        fflush(f);
+      } else if (!strcmp("quit\n", cmd)) {
+        break;
+      }
+    }
+    free(cmd);
+
     server_->ConnectionTerminated(this);
-    close(fd_);
+    fclose(f); // This closes fd_
   }
 
  private:
