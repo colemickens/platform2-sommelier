@@ -1117,6 +1117,57 @@ TEST_F(ManagerTest, RemoveProfile) {
   }
 }
 
+TEST_F(ManagerTest, RemoveService) {
+  MockServiceRefPtr mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  // Used in expectations which cannot accept a mock refptr.
+  const ServiceRefPtr &service = mock_service;
+
+  manager()->RegisterService(service);
+  EXPECT_EQ(GetEphemeralProfile(manager()), service->profile().get());
+
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+  AdoptProfile(manager(), profile);
+
+  // If service is ephemeral, it should be unloaded and left ephemeral.
+  EXPECT_CALL(*profile, AbandonService(service)).Times(0);
+  EXPECT_CALL(*profile, ConfigureService(service)).Times(0);
+  EXPECT_CALL(*mock_service, Unload()).WillOnce(Return(false));
+  manager()->RemoveService(service);
+  Mock::VerifyAndClearExpectations(mock_service);
+  Mock::VerifyAndClearExpectations(profile);
+  EXPECT_EQ(GetEphemeralProfile(manager()), service->profile().get());
+  EXPECT_TRUE(manager()->HasService(service));  // Since Unload() was false.
+
+  // If service is not ephemeral and the Manager finds a profile to assign
+  // the service to, the service should be re-parented.  Note that since we
+  // are using a MockProfile, ConfigureService() never actually changes the
+  // Service's profile.
+  service->set_profile(profile);
+  EXPECT_CALL(*profile, AbandonService(service));
+  EXPECT_CALL(*profile, ConfigureService(service)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, Unload()).Times(0);
+  manager()->RemoveService(service);
+  Mock::VerifyAndClearExpectations(mock_service);
+  Mock::VerifyAndClearExpectations(profile);
+  EXPECT_TRUE(manager()->HasService(service));
+  EXPECT_EQ(profile.get(), service->profile().get());
+
+  // If service becomes ephemeral since there is no profile to support it,
+  // it should be unloaded.
+  EXPECT_CALL(*profile, AbandonService(service));
+  EXPECT_CALL(*profile, ConfigureService(service)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_service, Unload()).WillOnce(Return(true));
+  manager()->RemoveService(service);
+  EXPECT_FALSE(manager()->HasService(service));
+}
+
 TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
   // It's much easier to use real Glib in creating a Manager for this
   // test here since we want the storage side-effects.

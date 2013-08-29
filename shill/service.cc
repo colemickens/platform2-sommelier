@@ -447,7 +447,8 @@ bool Service::Unload() {
 }
 
 void Service::Remove(Error */*error*/) {
-  Unload();
+  manager()->RemoveService(this);
+  // |this| may no longer be valid now.
 }
 
 bool Service::Save(StoreInterface *storage) {

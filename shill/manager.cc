@@ -583,6 +583,24 @@ void Manager::RemoveProfile(const string &name, Error *error) {
   return;
 }
 
+void Manager::RemoveService(const ServiceRefPtr &service) {
+  LOG(INFO) << __func__ << " for service " << service->unique_name();
+  if (!IsServiceEphemeral(service)) {
+    service->profile()->AbandonService(service);
+    if (MatchProfileWithService(service)) {
+      // We found another profile to adopt the service; no need to unload.
+      UpdateService(service);
+      return;
+    }
+  }
+  auto service_it = std::find(services_.begin(), services_.end(), service);
+  CHECK(service_it != services_.end());
+  if (!UnloadService(&service_it)) {
+    UpdateService(service);
+  }
+  SortServices();
+}
+
 bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
                                          const std::string &entry_name) {
   bool moved_services = false;

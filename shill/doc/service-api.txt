@@ -106,8 +106,10 @@ Methods		dict GetProperties()
 
 		void Remove()
 
-			Disconnect and remove all recorded state of a
-			service.
+			Disconnect and remove the configuration of a
+			service.  This disassociates the service from
+			its current profile.  If another profile supports
+			this service, it will be re-configured there.
 
 			This method is not permitted for Ethernet devices;
 			it will generate a NotSupported error response.
