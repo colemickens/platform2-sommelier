@@ -93,6 +93,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                   cryptohome::Mount* m) {
     mounts_[username] = m;
   }
+  virtual void set_crypto(Crypto* crypto) {
+      crypto_ = crypto;
+  }
   virtual void set_mount_factory(cryptohome::MountFactory* mf) {
     mount_factory_ = mf;
   }

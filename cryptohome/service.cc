@@ -396,7 +396,7 @@ bool Service::Initialize() {
   //           tpm->IsEnabled() is true.
   if (tpm_ && initialize_tpm_) {
     tpm_init_->set_tpm(tpm_);
-    tpm_init_->Init(this);
+    tpm_init_->Init(this, crypto_);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }

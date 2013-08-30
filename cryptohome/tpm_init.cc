@@ -64,7 +64,8 @@ TpmInit::TpmInit(Platform* platform)
       task_done_(false),
       initialize_took_ownership_(false),
       initialization_time_(0),
-      platform_(platform) {
+      platform_(platform),
+      crypto_(NULL) {
 }
 
 TpmInit::~TpmInit() {
@@ -91,15 +92,16 @@ Attestation* TpmInit::get_attestation() {
   if (!attestation_.get()) {
     Tpm* tpm = get_tpm();
     if (tpm && IsTpmReady()) {
-      attestation_.reset(new Attestation(tpm, platform_));
+      attestation_.reset(new Attestation(tpm, platform_, crypto_));
       attestation_->Initialize();
     }
   }
   return attestation_.get();
 }
 
-void TpmInit::Init(TpmInitCallback* notify_callback) {
+void TpmInit::Init(TpmInitCallback* notify_callback, Crypto* crypto) {
   notify_callback_ = notify_callback;
+  crypto_ = crypto;
   tpm_init_task_->Init(this);
   Tpm* tpm = get_tpm();
   // We only want to kick off attestation work if the TPM is owned but the owner

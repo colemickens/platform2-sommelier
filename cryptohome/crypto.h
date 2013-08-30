@@ -120,6 +120,47 @@ class Crypto {
   // Ensures that the TPM is connected
   CryptoError EnsureTpm(bool disconnect_first) const;
 
+  // Seals arbitrary-length data to the TPM's PCR0.
+  // Parameters
+  //   data - Data to encrypt with tpm.
+  //   encrypted_data (OUT) - Encrypted data as a string.
+  // Returns true if we succeeded in creating the encrypted data blob.
+  virtual bool EncryptWithTpm(const chromeos::SecureBlob& data,
+                              std::string* encrypted_data) const;
+
+  // Decrypts data previously sealed to the TPM's PCR0.
+  // Parameters
+  //   encrypted_data - Encrypted data previously sealed with EncryptWithTPM.
+  //   data (OUT) - Decrypted data as a blob.
+  // Returns true if we succeeded to decrypt the data blob.
+  virtual bool DecryptWithTpm(const std::string& encrypted_data,
+                              chromeos::SecureBlob* data) const;
+
+  // Note the following 4 methods are only to be used if there is a strong
+  // reason to avoid talking to the TPM e.g. needing to flush some encrypted
+  // data periodically to disk and you don't want to reseal a key each time.
+
+  // Creates a randomly generated aes key and seals it to the TPM's PCR0.
+  bool CreateSealedKey(chromeos::SecureBlob* aes_key,
+                       chromeos::SecureBlob* sealed_key) const;
+
+  // Encrypts the given data using the aes_key. Sealed key is necessary to
+  // wrap into the returned data to allow for decryption.
+  bool EncryptData(const chromeos::SecureBlob& data,
+                   const chromeos::SecureBlob& aes_key,
+                   const chromeos::SecureBlob& sealed_key,
+                   std::string* encrypted_data) const;
+
+  // Returns the sealed and unsealed aes_key wrapped in the encrypted_data.
+  bool UnsealKey(const std::string& encrypted_data,
+                 chromeos::SecureBlob* aes_key,
+                 chromeos::SecureBlob* sealed_key) const;
+
+  // Decrypts encrypted_data using the aes_key.
+  bool DecryptData(const std::string& encrypted_data,
+                   const chromeos::SecureBlob& aes_key,
+                   chromeos::SecureBlob* data) const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's

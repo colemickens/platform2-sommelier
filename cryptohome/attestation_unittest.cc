@@ -13,6 +13,7 @@
 #include <openssl/x509.h>
 
 #include "attestation.pb.h"
+#include "crypto.h"
 #include "cryptolib.h"
 #include "mock_keystore.h"
 #include "mock_platform.h"
@@ -34,7 +35,12 @@ static const char* kTestPath = "/tmp/attestation_test.epb";
 
 class AttestationTest : public testing::Test {
  public:
-  AttestationTest() : attestation_(&tpm_, &platform_), rsa_(NULL) { }
+  AttestationTest() : crypto_(&platform_),
+                      attestation_(&tpm_, &platform_, &crypto_),
+                      rsa_(NULL) {
+    crypto_.set_tpm(&tpm_);
+    crypto_.set_use_tpm(true);
+  }
   virtual ~AttestationTest() {
     if (rsa_)
       RSA_free(rsa_);
@@ -63,6 +69,7 @@ class AttestationTest : public testing::Test {
  protected:
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
+  Crypto crypto_;
   NiceMock<MockKeyStore> key_store_;
   Attestation attestation_;
   RSA* rsa_;  // Access with rsa().
@@ -254,7 +261,7 @@ class AttestationTest : public testing::Test {
 };
 
 TEST(AttestationTest_, NullTpm) {
-  Attestation without_tpm(NULL, NULL);
+  Attestation without_tpm(NULL, NULL, new Crypto(NULL));
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify());

@@ -9,10 +9,13 @@
 #include <base/file_path.h>
 #include <chromeos/secure_blob.h>
 
+#include "attestation.pb.h"
+
 namespace cryptohome {
 
 extern const unsigned int kDefaultPasswordRounds;
 extern const unsigned int kWellKnownExponent;
+extern const unsigned int kAesBlockSize;
 
 class CryptoLib {
  public:
@@ -105,6 +108,15 @@ class CryptoLib {
   //   include_newlines - Whether to include PEM-style newlines.
   static std::string Base64Encode(const std::string& blob,
                                   bool include_newlines);
+
+  // Computes an HMAC over the iv and encrypted_data fields of an EncryptedData
+  // protobuf.
+  // Parameters
+  //   encrypted_data - encrypted data protobuf..
+  //   hmac_key - secret key to use in hmac computation.
+  static std::string ComputeEncryptedDataHMAC(
+      const EncryptedData& encrypted_data,
+      const chromeos::SecureBlob& hmac_key);
 };
 
 }  // namespace cryptohome

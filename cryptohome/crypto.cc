@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 extern "C" {
@@ -22,6 +23,7 @@ extern "C" {
 #include <scrypt/scryptenc.h>
 }
 
+#include "attestation.pb.h"
 #include "cryptohome_common.h"
 #include "cryptolib.h"
 #include "platform.h"
@@ -555,6 +557,131 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
 
   serialized->set_salt(vault_key_salt.const_data(),
                        vault_key_salt.size());
+  return true;
+}
+
+
+bool Crypto::EncryptWithTpm(const SecureBlob& data,
+                            string* encrypted_data) const {
+  SecureBlob aes_key;
+  SecureBlob sealed_key;
+  if (!CreateSealedKey(&aes_key, &sealed_key))
+    return false;
+  return EncryptData(data, aes_key, sealed_key, encrypted_data);
+}
+
+bool Crypto::DecryptWithTpm(const string& encrypted_data,
+                            SecureBlob* data) const {
+  SecureBlob aes_key;
+  SecureBlob sealed_key;
+  if (!UnsealKey(encrypted_data, &aes_key, &sealed_key)) {
+    return false;
+  }
+  return DecryptData(encrypted_data, aes_key, data);
+}
+
+bool Crypto::CreateSealedKey(SecureBlob* aes_key,
+                             SecureBlob* sealed_key) const {
+  if (!use_tpm_)
+    return false;
+  if (!tpm_->GetRandomData(kDefaultAesKeySize, aes_key)) {
+    LOG(ERROR) << "GetRandomData failed.";
+    return false;
+  }
+  if (!tpm_->SealToPCR0(*aes_key, sealed_key)) {
+    LOG(ERROR) << "Failed to seal cipher key.";
+    return false;
+  }
+  return true;
+}
+
+bool Crypto::EncryptData(const SecureBlob& data,
+                         const SecureBlob& aes_key,
+                         const SecureBlob& sealed_key,
+                         string* encrypted_data) const {
+  if (!use_tpm_)
+    return false;
+  SecureBlob iv;
+  if (!tpm_->GetRandomData(kAesBlockSize, &iv)) {
+    LOG(ERROR) << "GetRandomData failed.";
+    return false;
+  }
+  SecureBlob encrypted_data_blob;
+  if (!CryptoLib::AesEncryptSpecifyBlockMode(data, 0, data.size(), aes_key, iv,
+                                             CryptoLib::kPaddingStandard,
+                                             CryptoLib::kCbc,
+                                             &encrypted_data_blob)) {
+    LOG(ERROR) << "Failed to encrypt serial data.";
+    return false;
+  }
+  EncryptedData encrypted_pb;
+  encrypted_pb.set_wrapped_key(sealed_key.const_data(), sealed_key.size());
+  encrypted_pb.set_iv(iv.data(), iv.size());
+  encrypted_pb.set_encrypted_data(encrypted_data_blob.data(),
+                                  encrypted_data_blob.size());
+  encrypted_pb.set_mac(CryptoLib::ComputeEncryptedDataHMAC(encrypted_pb,
+                                                           aes_key));
+  if (!encrypted_pb.SerializeToString(encrypted_data)) {
+    LOG(ERROR) << "Could not serialize data to string.";
+    return false;
+  }
+  return true;
+}
+
+bool Crypto::UnsealKey(const string& encrypted_data,
+                       SecureBlob* aes_key,
+                       SecureBlob* sealed_key) const {
+  if (!use_tpm_)
+    return false;
+  EncryptedData encrypted_pb;
+  if (!encrypted_pb.ParseFromString(encrypted_data)) {
+    LOG(ERROR) << "Could not decrypt data as it was not an EncryptedData "
+               << "protobuf";
+    return false;
+  }
+  SecureBlob tmp(encrypted_pb.wrapped_key().data(),
+                 encrypted_pb.wrapped_key().length());
+  sealed_key->swap(tmp);
+  if (!tpm_->Unseal(*sealed_key, aes_key)) {
+    LOG(ERROR) << "Cannot unseal aes key.";
+    return false;
+  }
+  return true;
+}
+
+bool Crypto::DecryptData(const string& encrypted_data,
+                         const chromeos::SecureBlob& aes_key,
+                         chromeos::SecureBlob* data) const {
+  EncryptedData encrypted_pb;
+  if (!encrypted_pb.ParseFromString(encrypted_data)) {
+    LOG(ERROR) << "Could not decrypt data as it was not an EncryptedData "
+               << "protobuf";
+    return false;
+  }
+  std::string mac = CryptoLib::ComputeEncryptedDataHMAC(encrypted_pb, aes_key);
+  if (mac.length() != encrypted_pb.mac().length()) {
+    LOG(ERROR) << "Corrupted data in encrypted pb.";
+    return false;
+  }
+  if (0 != chromeos::SafeMemcmp(mac.data(), encrypted_pb.mac().data(),
+                                mac.length())) {
+    LOG(ERROR) << "Corrupted data in encrypted pb.";
+    return false;
+  }
+  SecureBlob iv(encrypted_pb.iv().data(), encrypted_pb.iv().length());
+  SecureBlob encrypted_data_blob(encrypted_pb.encrypted_data().data(),
+                                 encrypted_pb.encrypted_data().length());
+  if (!CryptoLib::AesDecryptSpecifyBlockMode(encrypted_data_blob,
+                                             0,
+                                             encrypted_data_blob.size(),
+                                             aes_key,
+                                             iv,
+                                             CryptoLib::kPaddingStandard,
+                                             CryptoLib::kCbc,
+                                             data)) {
+    LOG(ERROR) << "Failed to decrypt encrypted data.";
+    return false;
+  }
   return true;
 }
 

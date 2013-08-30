@@ -16,6 +16,7 @@
 #include <openssl/evp.h>
 
 #include "attestation.pb.h"
+#include "crypto.h"
 
 namespace cryptohome {
 
@@ -31,7 +32,7 @@ class Tpm;
 // thread-safe.
 class Attestation : public base::PlatformThread::Delegate {
  public:
-  Attestation(Tpm* tpm, Platform* platform);
+  Attestation(Tpm* tpm, Platform* platform, Crypto* crypto);
   virtual ~Attestation();
 
   // Must be called before any other method.
@@ -279,7 +280,6 @@ class Attestation : public base::PlatformThread::Delegate {
   };
   static const size_t kQuoteExternalDataSize;
   static const size_t kCipherKeySize;
-  static const size_t kCipherBlockSize;
   static const size_t kNonceSize;
   static const size_t kDigestSize;
   static const char kDefaultDatabasePath[];
@@ -303,10 +303,12 @@ class Attestation : public base::PlatformThread::Delegate {
 
   Tpm* tpm_;
   Platform* platform_;
+  Crypto* crypto_;
   // A lock to protect all data members except |tpm_| and |platform_| which are
   // not owned by this class.
   base::Lock lock_;
   chromeos::SecureBlob database_key_;
+  chromeos::SecureBlob sealed_database_key_;
   FilePath database_path_;
   AttestationDatabase database_pb_;
   base::PlatformThreadHandle thread_;
@@ -330,21 +332,17 @@ class Attestation : public base::PlatformThread::Delegate {
 
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,
-                       EncryptedData* encrypted_db);
+                       std::string* serial_encrypted_db);
 
   // Decrypts and parses an attestation database.
-  bool DecryptDatabase(const EncryptedData& encrypted_db,
+  bool DecryptDatabase(const std::string& serial_encrypted_db,
                        AttestationDatabase* db);
 
-  // Computes an encrypted database HMAC.
-  std::string ComputeHMAC(const EncryptedData& encrypted_data,
-                          const chromeos::SecureBlob& hmac_key);
-
   // Writes an encrypted database to a persistent storage location.
-  bool StoreDatabase(const EncryptedData& encrypted_db);
+  bool StoreDatabase(const std::string& serial_encrypted_db);
 
   // Reads a database from a persistent storage location.
-  bool LoadDatabase(EncryptedData* encrypted_db);
+  bool LoadDatabase(std::string* serial_encrypted_db);
 
   // Persists any changes made to database_pb_.
   bool PersistDatabaseChanges();

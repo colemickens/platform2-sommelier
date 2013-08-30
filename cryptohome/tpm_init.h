@@ -9,6 +9,7 @@
 #include <chromeos/utility.h>
 
 #include "attestation.h"
+#include "crypto.h"
 #include "tpm.h"
 
 #ifndef CRYPTOHOME_TPM_INIT_H_
@@ -35,7 +36,7 @@ class TpmInit {
 
   virtual ~TpmInit();
 
-  virtual void Init(TpmInitCallback* notify_callback);
+  virtual void Init(TpmInitCallback* notify_callback, Crypto* crypto);
 
   // Gets random data from the TPM
   //
@@ -103,6 +104,7 @@ class TpmInit {
   int64_t initialization_time_;
   scoped_ptr<Attestation> attestation_;
   Platform* platform_;
+  Crypto* crypto_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);
 };

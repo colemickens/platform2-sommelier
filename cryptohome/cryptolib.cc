@@ -15,6 +15,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/utility.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
@@ -73,6 +74,9 @@ const unsigned int kDefaultPasswordRounds = 1337;
 // (FEK).  Larger than 128-bit has too great of a CPU overhead on unaccelerated
 // architectures.
 const unsigned int kDefaultAesKeySize = 32;
+
+// AES block size in bytes.
+const unsigned int  kAesBlockSize = 16;
 
 // Maximum size of the salt file.
 const int64 kSaltMax = (1 << 20);  // 1 MB
@@ -525,6 +529,20 @@ string CryptoLib::Base64Encode(const string& input, bool include_newlines) {
   chromeos::SecureMemset(data, 0, length);
   BIO_free_all(bio);
   return output;
+}
+
+string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
+                                           const SecureBlob& hmac_key) {
+  SecureBlob blob1(encrypted_data.iv().data(), encrypted_data.iv().length());
+  SecureBlob blob2(encrypted_data.encrypted_data().data(),
+                   encrypted_data.encrypted_data().length());
+  SecureBlob result(blob1.size() + blob2.size());
+  unsigned char* buffer = vector_as_array(&result);
+  memcpy(buffer, blob1.const_data(), blob1.size());
+  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
+
+  SecureBlob hmac = HmacSha512(hmac_key, result);
+  return string(reinterpret_cast<const char*>(&hmac.front()), hmac.size());
 }
 
 }  // namespace cryptohome

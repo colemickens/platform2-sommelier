@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+#include "attestation.pb.h"
 #include "cryptolib.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
@@ -475,6 +476,126 @@ TEST_F(CryptoTest, GetSha256FipsTest) {
                                     vectors.output(i)->size());
     EXPECT_EQ(expected, computed);
   }
+}
+
+TEST_F(CryptoTest, ComputeEncryptedDataHMAC) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  EncryptedData pb;
+  string data = "iamsoawesome";
+  string iv = "123456";
+  pb.set_encrypted_data(data.data(), data.size());
+  pb.set_iv(iv.data(), iv.size());
+
+  // Create hash key.
+  SecureBlob hmac_key(32);
+  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(hmac_key.data()),
+                             hmac_key.size());
+
+  // Perturb iv and data slightly. Verify hashes are all different.
+  string hmac1 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  data = "iamsoawesomf";
+  pb.set_encrypted_data(data.data(), data.size());
+  string hmac2 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  iv = "123457";
+  pb.set_iv(iv.data(), iv.size());
+  string hmac3 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+
+  EXPECT_NE(hmac1, hmac2);
+  EXPECT_NE(hmac2, hmac3);
+  EXPECT_NE(hmac1, hmac3);
+}
+
+TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+
+  NiceMock<MockTpm> tpm;
+  crypto.set_tpm(&tpm);
+  crypto.set_use_tpm(true);
+  EXPECT_CALL(tpm, Init(_, _))
+      .WillOnce(Return(true));
+  crypto.Init();
+
+  string data = "iamsomestufftoencrypt";
+  SecureBlob data_blob(data.data(), data.size());
+
+  string encrypted_data;
+  SecureBlob output_blob;
+
+  chromeos::Blob aes_key(32, 'A');
+  chromeos::Blob sealed_key(32, 'S');
+  chromeos::Blob iv(16, 'I');
+
+  // Setup the data from the above blobs.
+  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(DoAll(
+      SetArgumentPointee<1>(aes_key), Return(true)));
+  EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
+        SetArgumentPointee<1>(sealed_key), Return(true)));
+  EXPECT_CALL(tpm, GetRandomData(16,_)).WillOnce(DoAll(
+        SetArgumentPointee<1>(iv), Return(true)));
+
+  // Matching calls of encrypt/decrypt should give me back the same data.
+  EXPECT_TRUE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
+
+  // Unseal for the tpm.
+  EXPECT_CALL(tpm, Unseal(sealed_key, _)).WillOnce(DoAll(
+        SetArgumentPointee<1>(aes_key), Return(true)));
+
+  EXPECT_TRUE(crypto.DecryptWithTpm(encrypted_data, &output_blob));
+  EXPECT_EQ(data_blob, output_blob);
+
+  // Perturb the data a little and verify we can no longer decrypt it.
+  encrypted_data = encrypted_data + "Z";
+  EXPECT_FALSE(crypto.DecryptWithTpm(encrypted_data, &output_blob));
+}
+
+TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+
+  NiceMock<MockTpm> tpm;
+  crypto.set_tpm(&tpm);
+  crypto.set_use_tpm(true);
+  EXPECT_CALL(tpm, Init(_, _))
+      .WillOnce(Return(true));
+  crypto.Init();
+
+  string data = "iamsomestufftoencrypt";
+  SecureBlob data_blob(data.data(), data.size());
+
+  string encrypted_data;
+  SecureBlob output_blob;
+
+  chromeos::Blob aes_key(32, 'A');
+  chromeos::Blob sealed_key(32, 'S');
+  chromeos::Blob iv(16, 'I');
+
+  // Setup the data from the above blobs and fail to seal the key with the tpm.
+  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(DoAll(
+      SetArgumentPointee<1>(aes_key), Return(true)));
+  EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(Return(false));
+  EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
+
+  // Failed to get random data.
+  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(Return(false));
+  EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
+
+  // Now setup successful encrypt data but fail to unseal.
+  // Setup the data from the above blobs.
+  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(DoAll(
+      SetArgumentPointee<1>(aes_key), Return(true)));
+  EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
+        SetArgumentPointee<1>(sealed_key), Return(true)));
+  EXPECT_CALL(tpm, GetRandomData(16,_)).WillOnce(DoAll(
+        SetArgumentPointee<1>(iv), Return(true)));
+
+  // Matching calls of encrypt/decrypt should give me back the same data.
+  EXPECT_TRUE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
+
+  // Tpm be crazy and failing to unseal a valid key.
+  EXPECT_CALL(tpm, Unseal(sealed_key, _)).WillOnce(Return(false));
+  EXPECT_FALSE(crypto.DecryptWithTpm(encrypted_data, &output_blob));
 }
 
 }  // namespace cryptohome
