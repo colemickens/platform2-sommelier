@@ -658,7 +658,9 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
   EXPECT_EQ(content.substr(4000, 1000), resp.content_);
 }
 
-TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
+// TODO(deymo): Re-enable test once glucid builders are updated.
+// See crbug.com/281496
+TEST_F(ConnectionDelegateTest, DISABLED_GetIncompleteFile) {
   string content;
   GeneratePrintableData(50 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -695,7 +697,9 @@ TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
   EXPECT_EQ(content, resp.content_);
 }
 
-TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
+// TODO(deymo): Re-enable test once glucid builders are updated.
+// See crbug.com/281496
+TEST_F(ConnectionDelegateTest, DISABLED_GetPartOfIncompleteFile) {
   string content;
   GeneratePrintableData(5 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -818,9 +822,12 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
   EXPECT_EQ(400, resp.http_code_); // Bad request.
 }
 
+// TODO(deymo): Re-enable test once glucid builders are updated.
+// See crbug.com/281496
+
 // Tests that the ConnectionDelegate properly blocks when the end of the file
 // is missing and continues serving the file when more data is available.
-TEST_F(ConnectionDelegateTest, Waiting) {
+TEST_F(ConnectionDelegateTest, DISABLED_Waiting) {
   // The file starts with 50kB on disk, but expected total size of 100kB. The
   // file is then extended to 75kB and finally to 100kB.
   string content;
@@ -881,7 +888,9 @@ TEST_F(ConnectionDelegateTest, Waiting) {
   EXPECT_EQ(full_resp.content_, content);
 }
 
-TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
+// TODO(deymo): Re-enable test once glucid builders are updated.
+// See crbug.com/281496
+TEST_F(ConnectionDelegateTest, DISABLED_LimitDownloadSpeed) {
   string content;
   GeneratePrintableData(50 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
@@ -919,7 +928,10 @@ TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
   EXPECT_LE(clock_.GetSleptTime().InSecondsF(), 10.001);
 }
 
-TEST_F(ConnectionDelegateTest, DisregardTimeWaitingFromTransferBudget) {
+// TODO(deymo): Re-enable test once glucid builders are updated.
+// See crbug.com/281496
+TEST_F(ConnectionDelegateTest,
+       DISABLED_DisregardTimeWaitingFromTransferBudget) {
   string content;
   GeneratePrintableData(25 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
