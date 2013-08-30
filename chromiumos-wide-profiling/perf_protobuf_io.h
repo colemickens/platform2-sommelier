@@ -7,6 +7,7 @@
 
 #include <string>
 #include "perf_data.pb.h"
+#include "quipper_proto.h"
 #include "quipper_string.h"
 
 namespace quipper {

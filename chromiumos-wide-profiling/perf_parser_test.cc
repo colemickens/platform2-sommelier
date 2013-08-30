@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-
 #include <map>
 #include <set>
 #include <string>
@@ -14,6 +12,7 @@
 #include "perf_reader.h"
 #include "perf_test_files.h"
 #include "quipper_string.h"
+#include "quipper_test.h"
 #include "utils.h"
 
 namespace quipper {

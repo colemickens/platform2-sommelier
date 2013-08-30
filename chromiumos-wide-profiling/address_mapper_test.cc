@@ -4,12 +4,12 @@
 
 #include "address_mapper.h"
 
-#include <gtest/gtest.h>
-
 #include <algorithm>
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+
+#include "quipper_test.h"
 
 namespace {
 

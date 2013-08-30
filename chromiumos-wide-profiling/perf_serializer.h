@@ -11,7 +11,7 @@
 #include "base/basictypes.h"
 
 #include "perf_parser.h"
-#include "perf_data.pb.h"
+#include "quipper_proto.h"
 
 namespace quipper {
 
@@ -104,11 +104,11 @@ class PerfSerializer : public PerfParser {
 
   bool SerializeBuildIDs(
       const std::vector<build_id_event*>& from,
-      ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
+      RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
       const;
   bool DeserializeBuildIDs(
       const
-      ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
+      RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
       std::vector<build_id_event*>* to) const;
 
   bool SerializeBuildIDEvent(build_id_event* const& from,
@@ -157,7 +157,7 @@ class PerfSerializer : public PerfParser {
 
 #define SERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
 bool name(const std::vector<vec_type>& from, \
-          ::google::protobuf::RepeatedPtrField<proto_type>* to) const { \
+          RepeatedPtrField<proto_type>* to) const { \
   to->Reserve(from.size()); \
   for (size_t i = 0; i < from.size(); i++) { \
     proto_type* to_element = to->Add(); \
@@ -170,7 +170,7 @@ bool name(const std::vector<vec_type>& from, \
 }
 
 #define DESERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
-bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
+bool name(const RepeatedPtrField<proto_type>& from, \
           std::vector<vec_type>* to) const { \
   to->resize(from.size()); \
   for (int i = 0; i < from.size(); i++) { \

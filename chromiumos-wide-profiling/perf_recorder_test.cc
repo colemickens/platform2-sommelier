@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 
 #include <string>
-#include <gtest/gtest.h>
 
 #include "perf_reader.h"
 #include "perf_serializer.h"
 #include "perf_protobuf_io.h"
 #include "perf_recorder.h"
 #include "quipper_string.h"
+#include "quipper_test.h"
 #include "utils.h"
 
 namespace quipper{

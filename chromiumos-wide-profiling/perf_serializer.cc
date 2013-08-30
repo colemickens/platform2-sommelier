@@ -589,12 +589,12 @@ bool PerfSerializer::DeserializeSampleInfo(
 
 bool PerfSerializer::SerializeBuildIDs(
     const std::vector<build_id_event*>& from,
-    ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
+    RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
   return SerializeBuildIDEvents(from, to);
 }
 
 bool PerfSerializer::DeserializeBuildIDs(
-    const ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
+    const RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
     std::vector<build_id_event*>* to) const {
   // Free any existing build id events.
   for (size_t i = 0; i < to->size(); ++i)
