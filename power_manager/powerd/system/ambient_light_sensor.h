@@ -52,7 +52,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
 
   // Starts polling.  This is separate from c'tor so that tests can call
   // set_*_for_testing() first.
-  virtual void Init();
+  void Init();
 
   // AmbientLightSensorInterface implementation:
   virtual void AddObserver(AmbientLightObserver* observer) OVERRIDE;
@@ -67,8 +67,8 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   void ReadCallback(const std::string& data);
   void ErrorCallback();
 
-  // Deferred init for the als in case the light sensor starts late.
-  bool DeferredInit();
+  // Initializes |als_file_|. Returns true on success.
+  bool InitAlsFile();
 
   // Path containing backlight devices.  Typically under /sys, but can be
   // overridden by tests.
@@ -88,12 +88,8 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // occured yet this variable is set to -1.
   int lux_value_;
 
-  // Issue reasonable diagnostics about the deferred lux file open.
-  // Flag indicating whether a valid ALS device lux value file has been found.
-  bool still_deferring_;
-
-  // Flag indicating whether a valid ALS device lux value file has been found.
-  bool als_found_;
+  // Number of attempts to find and open the lux file made so far.
+  int num_init_attempts_;
 
   // This is the ambient light sensor asynchronous file I/O object.
   AsyncFileReader als_file_;

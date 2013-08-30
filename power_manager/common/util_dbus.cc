@@ -40,8 +40,6 @@ bool GetSessionState(std::string* state) {
     g_free(state_arg);
     return true;
   }
-  LOG(ERROR) << "Unable to retrieve session state from session manager: "
-             << error->message;
   g_error_free(error);
   return false;
 }

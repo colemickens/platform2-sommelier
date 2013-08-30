@@ -835,6 +835,11 @@ void Daemon::RegisterDBusMessageHandler() {
 void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
                                         const std::string& old_owner,
                                         const std::string& new_owner) {
+  if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
+    std::string session_state;
+    if (util::GetSessionState(&session_state))
+      OnSessionStateChange(session_state);
+  }
   suspender_.HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 

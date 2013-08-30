@@ -31,6 +31,10 @@ const base::FilePath::CharType kDefaultDeviceListPath[] =
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;
 
+// Number of failed init attempts before AmbientLightSensor will start logging
+// warnings.
+const int kNumInitAttemptsBeforeLogging = 5;
+
 }  // namespace
 
 AmbientLightSensor::AmbientLightSensor()
@@ -38,8 +42,7 @@ AmbientLightSensor::AmbientLightSensor()
       poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs),
       lux_value_(-1),
-      still_deferring_(false),
-      als_found_(false),
+      num_init_attempts_(0),
       read_cb_(base::Bind(&AmbientLightSensor::ReadCallback,
                           base::Unretained(this))),
       error_cb_(base::Bind(&AmbientLightSensor::ErrorCallback,
@@ -71,7 +74,7 @@ int AmbientLightSensor::GetAmbientLightLux() {
 gboolean AmbientLightSensor::ReadAls() {
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
-  if (!als_file_.HasOpenedFile() && !DeferredInit())
+  if (!als_file_.HasOpenedFile() && !InitAlsFile())
     return TRUE;  // Keep the timeout alive.
 
   // StartRead() can call |error_cb_| synchronously, so clear |poll_timeout_id_|
@@ -99,12 +102,13 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
 }
 
 void AmbientLightSensor::ErrorCallback() {
-  LOG(ERROR) << "Error reading ALS file.";
+  LOG(ERROR) << "Error reading ALS file";
   poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
-bool AmbientLightSensor::DeferredInit() {
+bool AmbientLightSensor::InitAlsFile() {
   CHECK(!als_file_.HasOpenedFile());
+
   // Search the iio/devices directory for a subdirectory (eg "device0" or
   // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
   file_util::FileEnumerator dir_enumerator(
@@ -115,13 +119,15 @@ bool AmbientLightSensor::DeferredInit() {
       "illuminance0_input",
   };
 
+  num_init_attempts_++;
   for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
     for (unsigned int i = 0; i < arraysize(input_names); i++) {
       base::FilePath als_path = check_path.Append(input_names[i]);
+      if (!file_util::PathExists(als_path))
+        continue;
       if (als_file_.Init(als_path.value())) {
-        if (still_deferring_)
-          LOG(INFO) << "Finally found the lux file";
+        LOG(INFO) << "Using lux file " << als_path.value();
         return true;
       }
     }
@@ -129,10 +135,8 @@ bool AmbientLightSensor::DeferredInit() {
 
   // If the illuminance file is not immediately found, issue a deferral
   // message and try again later.
-  if (still_deferring_)
-    return false;
-  LOG(WARNING) << "Deferring lux: " << strerror(errno);
-  still_deferring_ = true;
+  if (num_init_attempts_ > kNumInitAttemptsBeforeLogging)
+    PLOG(ERROR) << "lux file initialization failed";
   return false;
 }
 
