@@ -7,6 +7,7 @@
 
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -17,6 +18,16 @@
 namespace quipper {
 
 extern const char* kSupportedMetadata[];
+
+// Path to the perf executable.
+extern const char kPerfPath[];
+
+// Input and perf data file path.
+extern const char kPerfDataInputPath[];
+
+// Converts a perf data filename to the full path.
+string GetTestInputFilePath(const string& filename);
+string GetTestOutputFilePath(const string& filename);
 
 event_t* CallocMemoryForEvent(size_t size);
 
@@ -32,7 +43,23 @@ bool CompareFileContents(const string& file1, const string& file2);
 
 uint64 Md5Prefix(const string& input);
 
-bool CreateNamedTempFile(string* name);
+class ScopedTempPath {
+ public:
+  // Create a temporary file or directory, respectively.
+  // Returns true on success.  The path is stored in |path_|.
+  // TODO(sque): Add tests for this class.
+  // TODO(sque): Make this into a hierarchy, with ScopedTemp{Path|File} as
+  // derived classes. Get rid of the Create*() functions. The copy constructor
+  // should be private.
+  bool CreateNamedTempFile();
+  bool CreateNamedTempDir();
+  const string path() const {
+    return path_;
+  }
+  ~ScopedTempPath();
+ private:
+  string path_;
+};
 
 // Returns true if the perf reports show the same summary.  Metadata
 // is compared if it is present in kSupportedMetadata in utils.cc.

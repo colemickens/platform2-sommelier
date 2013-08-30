@@ -53,10 +53,15 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
 }  // namespace
 
 TEST(PerfParserTest, Test1Cycle) {
+  ScopedTempPath output_dir;
+  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  string output_path = output_dir.path();
+
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
-    string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    const string test_file = perf_test_files::kPerfDataFiles[i];
+    string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
     PerfParser parser;
@@ -73,7 +78,7 @@ TEST(PerfParserTest, Test1Cycle) {
     EXPECT_GT(stats.num_sample_events_mapped, 0U);
     EXPECT_FALSE(stats.did_remap);
 
-    string output_perf_data = input_perf_data + ".parse.out";
+    string output_perf_data = output_path + test_file + ".parse.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
@@ -82,16 +87,21 @@ TEST(PerfParserTest, Test1Cycle) {
 }
 
 TEST(PerfParserTest, TestNormalProcessing) {
+  ScopedTempPath output_dir;
+  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  string output_path = output_dir.path();
+
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
-    string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    const string test_file = perf_test_files::kPerfDataFiles[i];
+    string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
     PerfParser parser;
     ReadFileAndCheckInternals(input_perf_data, &parser);
 
-    string output_perf_data = input_perf_data + ".parse.remap.out";
+    string output_perf_data = output_path + test_file + ".parse.remap.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     // Remapped addresses should not match the original addresses.
@@ -99,7 +109,7 @@ TEST(PerfParserTest, TestNormalProcessing) {
 
     PerfParser remap_parser;
     ReadFileAndCheckInternals(output_perf_data, &remap_parser);
-    string output_perf_data2 = input_perf_data + ".parse.remap2.out";
+    string output_perf_data2 = output_path + test_file + ".parse.remap2.out";
     ASSERT_TRUE(remap_parser.WriteFile(output_perf_data2));
 
     // Remapping again should produce the same addresses.
@@ -112,7 +122,8 @@ TEST(PerfParserTest, TestPipedProcessing) {
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
-    string input_perf_data = perf_test_files::kPerfPipedDataFiles[i];
+    string input_perf_data =
+        GetTestInputFilePath(perf_test_files::kPerfPipedDataFiles[i]);
     LOG(INFO) << "Testing " << input_perf_data;
 
     PerfParser parser;

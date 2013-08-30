@@ -180,13 +180,18 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
 }  // namespace
 
 TEST(PerfReaderTest, Test1Cycle) {
+  ScopedTempPath output_dir;
+  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  string output_path = output_dir.path();
+
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
-    PerfReader pr;
-    string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    const char* test_file = perf_test_files::kPerfDataFiles[i];
+    string input_perf_data = string(kPerfDataInputPath) + test_file;
     LOG(INFO) << "Testing " << input_perf_data;
-    string output_perf_data = input_perf_data + ".pr.out";
+    string output_perf_data = output_path + test_file + ".pr.out";
+    PerfReader pr;
     ASSERT_TRUE(pr.ReadFile(input_perf_data));
     ASSERT_TRUE(pr.WriteFile(output_perf_data));
 
@@ -199,10 +204,11 @@ TEST(PerfReaderTest, Test1Cycle) {
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
-    PerfReader pr;
-    string input_perf_data = perf_test_files::kPerfPipedDataFiles[i];
+    const char* test_file = perf_test_files::kPerfPipedDataFiles[i];
+    string input_perf_data = string(kPerfDataInputPath) + test_file;
     LOG(INFO) << "Testing " << input_perf_data;
-    string output_perf_data = input_perf_data + ".pr.out";
+    string output_perf_data = output_path + test_file + ".pr.out";
+    PerfReader pr;
     ASSERT_TRUE(pr.ReadFile(input_perf_data));
     ASSERT_TRUE(pr.WriteFile(output_perf_data));
 

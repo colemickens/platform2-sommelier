@@ -67,9 +67,12 @@ void SerializeToFileAndBack(const string& input,
   EXPECT_LE(input_perf_data_proto.timestamp_sec(), post_serialize_time.tv_sec);
 
   // Now store the protobuf into a file.
-  string input_filename, output_filename;
-  EXPECT_TRUE(CreateNamedTempFile(&input_filename));
-  EXPECT_TRUE(CreateNamedTempFile(&output_filename));
+  ScopedTempPath input_file;
+  EXPECT_TRUE(input_file.CreateNamedTempFile());
+  string input_filename = input_file.path();
+  ScopedTempPath output_file;
+  EXPECT_TRUE(output_file.CreateNamedTempFile());
+  string output_filename = output_file.path();
 
   EXPECT_TRUE(WriteProtobufToFile(input_perf_data_proto, input_filename));
 
@@ -87,9 +90,14 @@ void SerializeToFileAndBack(const string& input,
   remove(input_filename.c_str());
   remove(output_filename.c_str());
 }
+
 }  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
+  ScopedTempPath output_dir;
+  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  string output_path = output_dir.path();
+
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
@@ -101,9 +109,10 @@ TEST(PerfSerializerTest, Test1Cycle) {
                output_perf_reader2;
     quipper::PerfDataProto perf_data_proto, perf_data_proto1;
 
-    string input_perf_data = perf_test_files::kPerfDataFiles[i];
-    string output_perf_data = input_perf_data + ".serialized.out";
-    string output_perf_data1 = input_perf_data + ".serialized.1.out";
+    const char* test_file = perf_test_files::kPerfDataFiles[i];
+    string input_perf_data = GetTestInputFilePath(test_file);
+    string output_perf_data = output_path + test_file + ".serialized.out";
+    string output_perf_data1 = output_path + test_file + ".serialized.1.out";
 
     LOG(INFO) << "Testing " << input_perf_data;
     input_perf_reader.ReadFile(input_perf_data);
@@ -119,7 +128,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
 
     ASSERT_TRUE(CompareFileContents(output_perf_data, output_perf_data1));
 
-    string output_perf_data2 = input_perf_data + ".io.out";
+    string output_perf_data2 = output_path + test_file + ".io.out";
     SerializeToFileAndBack(input_perf_data, output_perf_data2);
     output_perf_reader2.ReadFile(output_perf_data2);
 
@@ -145,35 +154,46 @@ TEST(PerfSerializerTest, Test1Cycle) {
 }
 
 TEST(PerfSerializerTest, TestRemap) {
+  ScopedTempPath output_dir;
+  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  string output_path = output_dir.path();
+
   // Read perf data using the PerfReader class with address remapping.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
-    const string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    const string test_file = perf_test_files::kPerfDataFiles[i];
+    const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
-    const string output_perf_data = input_perf_data + ".ser.remap.out";
+    const string output_perf_data = output_path + test_file + ".ser.remap.out";
     SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
 
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
-    const string input_perf_data = perf_test_files::kPerfPipedDataFiles[i];
+    const string test_file = perf_test_files::kPerfPipedDataFiles[i];
+    const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
-    const string output_perf_data = input_perf_data + ".ser.remap.out";
+    const string output_perf_data = output_path + test_file + ".ser.remap.out";
     SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
 }
 
 TEST(PerfSerializeTest, TestCommMd5s) {
+  ScopedTempPath output_dir;
+  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  string output_path = output_dir.path();
+
   // Replace command strings with their Md5sums.  Test size adjustment for
   // command strings.
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
-    const string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    const string test_file = perf_test_files::kPerfDataFiles[i];
+    const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
     quipper::PerfDataProto perf_data_proto;
@@ -199,7 +219,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
     }
 
     PerfSerializer deserializer;
-    const string output_perf_data = input_perf_data + ".ser.comm.out";
+    const string output_perf_data = output_path + test_file + ".ser.comm.out";
     EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
                                                output_perf_data));
     // Compare only DSO names, since the commands will not match.
