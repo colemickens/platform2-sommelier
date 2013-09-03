@@ -204,7 +204,8 @@ scoped_ptr<ScopedDBusPendingCall> SystemUtils::CallAsyncMethodOnChromium(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   DBusPendingCall* to_return = NULL;
   // Only fails on OOM conditions.
-  CHECK(dbus_connection_send_with_reply(connection, method, &to_return, -1));
+  CHECK(dbus_connection_send_with_reply(connection, method, &to_return,
+                                        DBUS_TIMEOUT_INFINITE));
   dbus_message_unref(method);
   return ScopedDBusPendingCall::Create(to_return);
 }
