@@ -163,6 +163,9 @@ class InternalBacklightController : public BacklightController,
   bool got_ambient_light_brightness_percent_;
   bool got_power_source_;
 
+  // Has UpdateState() already set the initial state?
+  bool already_set_initial_state_;
+
   // Number of ambient-light- and user-triggered brightness adjustments.
   int als_adjustment_count_;
   int user_adjustment_count_;

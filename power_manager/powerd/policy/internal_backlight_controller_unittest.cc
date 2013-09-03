@@ -675,5 +675,22 @@ TEST_F(InternalBacklightControllerTest, UserAdjustmentBeforeAmbientLight) {
   EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
 }
 
+TEST_F(InternalBacklightControllerTest,
+       DockedNotificationReceivedBeforeAmbientLight) {
+  // Send a docked-mode request before the first ambient light reading.
+  report_initial_als_reading_ = false;
+  Init(POWER_AC);
+  controller_->SetDocked(true);
+  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
+
+  // Check that the system goes into docked mode after an ambient light
+  // reading is received.
+  light_sensor_.NotifyObservers();
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+}
+
 }  // namespace policy
 }  // namespace power_manager

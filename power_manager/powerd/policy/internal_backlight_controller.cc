@@ -106,6 +106,7 @@ InternalBacklightController::InternalBacklightController(
       docked_(false),
       got_ambient_light_brightness_percent_(false),
       got_power_source_(false),
+      already_set_initial_state_(false),
       als_adjustment_count_(0),
       user_adjustment_count_(0),
       ambient_light_brightness_percent_(kMaxPercent),
@@ -192,8 +193,9 @@ bool InternalBacklightController::Init() {
   dimmed_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kDimmedBrightnessFraction * max_level_)));
 
-  // Ensure that the screen isn't stuck in an off state if powerd got
-  // restarted for some reason.
+  // Ensure that the screen isn't stuck in an off state if powerd got restarted
+  // for some reason. If the system was previously in docked mode, this may
+  // briefly bring it out of it, but it will re-enter soon afterward.
   SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
 
   init_time_ = clock_->GetCurrentTime();
@@ -411,11 +413,18 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
     AmbientLightHandler::BrightnessChangeCause cause) {
   ambient_light_brightness_percent_ = brightness_percent;
   got_ambient_light_brightness_percent_ = true;
+
   if (use_ambient_light_) {
-    TransitionStyle transition =
-        cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
-        TRANSITION_SLOW : TRANSITION_FAST;
-    UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
+    if (!already_set_initial_state_) {
+      // UpdateState() defers doing anything until the first ambient light
+      // reading has been received, so it may need to be called at this point.
+      UpdateState();
+    } else {
+      TransitionStyle transition =
+          cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
+          TRANSITION_SLOW : TRANSITION_FAST;
+      UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
+    }
   }
 }
 
@@ -487,7 +496,8 @@ void InternalBacklightController::UpdateState() {
     const bool turning_on =
         display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
         current_level_ == 0;
-    brightness_transition = turning_on ? TRANSITION_INSTANT : TRANSITION_FAST;
+    brightness_transition = turning_on ? TRANSITION_INSTANT :
+        (already_set_initial_state_ ? TRANSITION_FAST : TRANSITION_SLOW);
 
     // Keep the external display(s) on if the brightness was manually set to 0.
     display_power = (brightness_percent <= kEpsilon) ?
@@ -505,6 +515,8 @@ void InternalBacklightController::UpdateState() {
     SetDisplayPower(display_power,
                     TransitionStyleToTimeDelta(display_transition));
   }
+
+  already_set_initial_state_ = true;
 }
 
 bool InternalBacklightController::UpdateUndimmedBrightness(

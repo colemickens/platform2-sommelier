@@ -21,6 +21,9 @@ namespace policy {
 
 namespace {
 
+// Time in milliseconds to wait for the display mode after Init() is called.
+const int kInitialDisplayModeTimeoutMs = 10000;
+
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
 std::string MsToString(int64 time_ms) {
@@ -114,19 +117,33 @@ void StateController::TestApi::SetCurrentTime(base::TimeTicks current_time) {
   controller_->clock_->set_current_time_for_testing(current_time);
 }
 
-base::TimeTicks StateController::TestApi::GetTimeoutTime() {
-  return controller_->timeout_time_for_testing_;
+base::TimeTicks StateController::TestApi::GetActionTimeoutTime() {
+  return controller_->action_timeout_time_for_testing_;
 }
 
-void StateController::TestApi::TriggerTimeout() {
-  CHECK(controller_->timeout_id_);
-  guint scheduled_id = controller_->timeout_id_;
-  if (!controller_->HandleTimeout()) {
+void StateController::TestApi::TriggerActionTimeout() {
+  CHECK(controller_->action_timeout_id_);
+  guint scheduled_id = controller_->action_timeout_id_;
+  if (!controller_->HandleActionTimeout()) {
     // Since the GLib timeout didn't actually fire, we need to remove it
     // manually to ensure it won't be leaked.
-    CHECK(controller_->timeout_id_ != scheduled_id);
+    CHECK(controller_->action_timeout_id_ != scheduled_id);
     util::RemoveTimeout(&scheduled_id);
   }
+}
+
+bool StateController::TestApi::TriggerInitialDisplayModeTimeout() {
+  if (!controller_->initial_display_mode_timeout_id_)
+    return false;
+
+  guint scheduled_id = controller_->initial_display_mode_timeout_id_;
+  if (!controller_->HandleInitialDisplayModeTimeout()) {
+    // Since the GLib timeout didn't actually fire, we need to remove it
+    // manually to ensure it won't be leaked.
+    CHECK(controller_->initial_display_mode_timeout_id_ != scheduled_id);
+    util::RemoveTimeout(&scheduled_id);
+  }
+  return true;
 }
 
 const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
@@ -136,7 +153,8 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       prefs_(prefs),
       clock_(new Clock),
       initialized_(false),
-      timeout_id_(0),
+      action_timeout_id_(0),
+      initial_display_mode_timeout_id_(0),
       power_source_(POWER_AC),
       lid_state_(LID_NOT_PRESENT),
       updater_state_(UPDATER_IDLE),
@@ -163,19 +181,21 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
 }
 
 StateController::~StateController() {
-  util::RemoveTimeout(&timeout_id_);
+  util::RemoveTimeout(&action_timeout_id_);
+  util::RemoveTimeout(&initial_display_mode_timeout_id_);
   prefs_->RemoveObserver(this);
 }
 
-void StateController::Init(PowerSource power_source,
-                           LidState lid_state,
-                           DisplayMode display_mode) {
+void StateController::Init(PowerSource power_source, LidState lid_state) {
   LoadPrefs();
 
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
   lid_state_ = lid_state;
-  display_mode_ = display_mode;
+
+  initial_display_mode_timeout_id_ = g_timeout_add(
+      kInitialDisplayModeTimeoutMs,
+      &StateController::HandleInitialDisplayModeTimeoutThunk, this);
 
   UpdateSettingsAndState();
   initialized_ = true;
@@ -224,12 +244,19 @@ void StateController::HandleUpdaterStateChange(UpdaterState state) {
 
 void StateController::HandleDisplayModeChange(DisplayMode mode) {
   DCHECK(initialized_);
-  if (mode == display_mode_)
+  if (mode == display_mode_ && !waiting_for_initial_display_mode())
     return;
 
   VLOG(1) << "Display mode changed to " << DisplayModeToString(mode);
   display_mode_ = mode;
-  UpdateLastUserActivityTime();
+
+  if (waiting_for_initial_display_mode()) {
+    util::RemoveTimeout(&initial_display_mode_timeout_id_);
+    DCHECK(!waiting_for_initial_display_mode());
+  } else {
+    UpdateLastUserActivityTime();
+  }
+
   UpdateSettingsAndState();
 }
 
@@ -776,7 +803,11 @@ void StateController::UpdateState() {
   }
 
   Action lid_closed_action_to_perform = DO_NOTHING;
-  if (lid_state_ == LID_CLOSED) {
+  // Hold off on the lid-closed action if the initial display mode hasn't been
+  // received. powerd starts before Chrome's gotten a chance to configure the
+  // displays, and we don't want to shut down immediately if the user rebooted
+  // with the lid closed for docked mode.
+  if (lid_state_ == LID_CLOSED && !waiting_for_initial_display_mode()) {
     if (!lid_closed_action_performed_) {
       lid_closed_action_to_perform = lid_closed_action_;
       VLOG(1) << "Ready to perform lid-closed action ("
@@ -801,10 +832,10 @@ void StateController::UpdateState() {
     PerformAction(lid_closed_action_to_perform);
   }
 
-  ScheduleTimeout(now);
+  ScheduleActionTimeout(now);
 }
 
-void StateController::ScheduleTimeout(base::TimeTicks now) {
+void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   base::TimeDelta timeout_delay;
 
   // Find the minimum of the delays that hasn't yet occurred.
@@ -829,18 +860,27 @@ void StateController::ScheduleTimeout(base::TimeTicks now) {
                          *pending_idle_notifications_.begin()));
   }
 
-  util::RemoveTimeout(&timeout_id_);
-  timeout_time_for_testing_ = base::TimeTicks();
+  util::RemoveTimeout(&action_timeout_id_);
+  action_timeout_time_for_testing_ = base::TimeTicks();
   if (timeout_delay > base::TimeDelta()) {
-    timeout_id_ = g_timeout_add(timeout_delay.InMilliseconds(),
-                                &StateController::HandleTimeoutThunk, this);
-    timeout_time_for_testing_ = now + timeout_delay;
+    action_timeout_id_ = g_timeout_add(
+        timeout_delay.InMilliseconds(),
+        &StateController::HandleActionTimeoutThunk, this);
+    action_timeout_time_for_testing_ = now + timeout_delay;
   }
 }
 
-gboolean StateController::HandleTimeout() {
-  timeout_id_ = 0;
-  timeout_time_for_testing_ = base::TimeTicks();
+gboolean StateController::HandleActionTimeout() {
+  action_timeout_id_ = 0;
+  action_timeout_time_for_testing_ = base::TimeTicks();
+  UpdateState();
+  return FALSE;
+}
+
+gboolean StateController::HandleInitialDisplayModeTimeout() {
+  LOG(INFO) << "Didn't receive initial notification about display mode; using "
+            << DisplayModeToString(display_mode_);
+  initial_display_mode_timeout_id_ = 0;
   UpdateState();
   return FALSE;
 }

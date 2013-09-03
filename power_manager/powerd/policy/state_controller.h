@@ -107,13 +107,17 @@ class StateController : public PrefsObserver {
     // Sets a fake current time for |controller_|.
     void SetCurrentTime(base::TimeTicks current_time);
 
-    // Returns the time at which |controller_|'s timeout is next scheduled to
-    // fire, or base::TimeTicks() if it's unscheduled.
-    base::TimeTicks GetTimeoutTime();
+    // Returns the time at which |controller_|'s action timeout is next
+    // scheduled to fire, or base::TimeTicks() if it's unscheduled.
+    base::TimeTicks GetActionTimeoutTime();
 
-    // Runs StateController::HandleTimeout().  May only be called if a timeout
-    // is actually registered.
-    void TriggerTimeout();
+    // Runs StateController::HandleActionTimeout(). May only be called if a
+    // timeout is actually registered.
+    void TriggerActionTimeout();
+
+    // Runs StateController::HandleInitialDisplayModeTimeout(). Returns false if
+    // no timeout was scheduled.
+    bool TriggerInitialDisplayModeTimeout() WARN_UNUSED_RESULT;
 
    private:
     StateController* controller_;  // not owned
@@ -133,9 +137,7 @@ class StateController : public PrefsObserver {
     return last_user_activity_time_;
   }
 
-  void Init(PowerSource power_source,
-            LidState lid_state,
-            DisplayMode display_mode);
+  void Init(PowerSource power_source, LidState lid_state);
 
   // Handles various changes to external state.
   void HandlePowerSourceChange(PowerSource source);
@@ -219,6 +221,12 @@ class StateController : public PrefsObserver {
         lid_state_ == LID_CLOSED;
   }
 
+  // Is StateController currently waiting for HandleDisplayModeChange() to be
+  // called for the first time after Init() was called?
+  bool waiting_for_initial_display_mode() const {
+    return initial_display_mode_timeout_id_ != 0;
+  }
+
   // Returns the last time at which activity occurred that should defer
   // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
   // |use_video_activity_| into account.
@@ -249,19 +257,23 @@ class StateController : public PrefsObserver {
   // Instructs |delegate_| to perform |action|.
   void PerformAction(Action action);
 
-  // Ensures that the system is in the correct state, given the times at
-  // which activity was last seen, the lid state, the currently-set delays,
-  // etc.  Invokes ScheduleTimeout() when done.  If something that affects
-  // the current settings has changed, UpdateSettingsAndState() should be
-  // called instead.
+  // Ensures that the system is in the correct state, given the times at which
+  // activity was last seen, the lid state, the currently-set delays, etc.
+  // Invokes ScheduleActionTimeout() when done. If something that affects the
+  // current settings has changed, UpdateSettingsAndState() should be called
+  // instead.
   void UpdateState();
 
-  // Cancels |timeout_id_| and creates a new timeout that will fire when
+  // Cancels |action_timeout_id_| and creates a new timeout that will fire when
   // action is next needed, given a current time of |now|.
-  void ScheduleTimeout(base::TimeTicks now);
+  void ScheduleActionTimeout(base::TimeTicks now);
 
-  // Invoked by |timeout_id_| when it's time to perform an action.
-  SIGNAL_CALLBACK_0(StateController, gboolean, HandleTimeout);
+  // Invoked by |action_timeout_id_| when it's time to perform an action.
+  SIGNAL_CALLBACK_0(StateController, gboolean, HandleActionTimeout);
+
+  // Invoked by |initial_display_mode_timeout_id_| if the current display mode
+  // wasn't received in a reasonable amount of time after Init() was called.
+  SIGNAL_CALLBACK_0(StateController, gboolean, HandleInitialDisplayModeTimeout);
 
   Delegate* delegate_;  // not owned
 
@@ -272,11 +284,14 @@ class StateController : public PrefsObserver {
   // Has Init() been called?
   bool initialized_;
 
-  // GLib source ID for running HandleTimeout().  0 if unset.
-  guint timeout_id_;
+  // GLib source ID for running HandleActionTimeout(). 0 if unset.
+  guint action_timeout_id_;
 
-  // Time at which |timeout_id_| has been scheduled to fire.
-  base::TimeTicks timeout_time_for_testing_;
+  // GLib source ID for running HandleInitialDisplayModeTimeout(). 0 if unset.
+  guint initial_display_mode_timeout_id_;
+
+  // Time at which |action_timeout_id_| has been scheduled to fire.
+  base::TimeTicks action_timeout_time_for_testing_;
 
   // Current power source.
   PowerSource power_source_;

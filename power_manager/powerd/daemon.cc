@@ -440,8 +440,7 @@ void Daemon::Init() {
 
   PowerSource power_source =
       plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
-  state_controller_->Init(power_source, input_->QueryLidState(),
-                          DISPLAY_NORMAL);
+  state_controller_->Init(power_source, input_->QueryLidState());
   state_controller_initialized_ = true;
 
   peripheral_battery_watcher_->Init();

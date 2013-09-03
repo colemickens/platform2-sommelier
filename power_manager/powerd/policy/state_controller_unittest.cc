@@ -193,7 +193,8 @@ class StateControllerTest : public testing::Test {
         default_allow_docked_mode_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
-        initial_display_mode_(DISPLAY_NORMAL) {
+        initial_display_mode_(DISPLAY_NORMAL),
+        send_initial_display_mode_(true) {
   }
 
  protected:
@@ -221,8 +222,10 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.SetCurrentTime(now_);
-    controller_.Init(initial_power_source_, initial_lid_state_,
-                     initial_display_mode_);
+    controller_.Init(initial_power_source_, initial_lid_state_);
+
+    if (send_initial_display_mode_)
+      controller_.HandleDisplayModeChange(initial_display_mode_);
   }
 
   // Advances |now_| by |interval_|.
@@ -231,11 +234,11 @@ class StateControllerTest : public testing::Test {
     test_api_.SetCurrentTime(now_);
   }
 
-  // Checks that |controller_|'s timeout is scheduled for |now_| and then
-  // runs it.  Returns false if the timeout isn't scheduled or is scheduled
-  // for a different time.
+  // Checks that |controller_|'s action timeout is scheduled for |now_| and then
+  // runs it.  Returns false if the timeout isn't scheduled or is scheduled for
+  // a different time.
   bool TriggerTimeout() WARN_UNUSED_RESULT {
-    base::TimeTicks timeout_time = test_api_.GetTimeoutTime();
+    base::TimeTicks timeout_time = test_api_.GetActionTimeoutTime();
     if (timeout_time == base::TimeTicks()) {
       LOG(ERROR) << "Ignoring request to trigger unscheduled timeout at "
                  << now_.ToInternalValue();
@@ -247,7 +250,7 @@ class StateControllerTest : public testing::Test {
                  << now_.ToInternalValue();
       return false;
     }
-    test_api_.TriggerTimeout();
+    test_api_.TriggerActionTimeout();
     return true;
   }
 
@@ -311,7 +314,10 @@ class StateControllerTest : public testing::Test {
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
   LidState initial_lid_state_;
+
+  // Initial display mode to send in Init().
   DisplayMode initial_display_mode_;
+  bool send_initial_display_mode_;
 };
 
 // Tests the basic operation of the different delays.
@@ -334,7 +340,7 @@ TEST_F(StateControllerTest, BasicDelays) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // No further timeouts should be scheduled at this point.
-  EXPECT_TRUE(test_api_.GetTimeoutTime().is_null());
+  EXPECT_TRUE(test_api_.GetActionTimeoutTime().is_null());
 
   // When the system resumes, the screen should be undimmed and turned back
   // on.
@@ -1354,12 +1360,44 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
-// Tests that the system is suspended immediately if the lid is closed at
-// startup (e.g. due to powerd crashing during a suspend attempt and
-// getting restarted).
-TEST_F(StateControllerTest, SuspendImmediatelyIfLidClosedAtStartup) {
+// Tests that the system is suspended as soon as the display mode is received if
+// the lid is closed at startup (e.g. due to powerd crashing during a suspend
+// attempt and getting restarted or the user closing the lid while the system is
+// booting).
+TEST_F(StateControllerTest, SuspendIfLidClosedAtStartup) {
+  // Nothing should happen yet; we need to wait to see if the system is about to
+  // go into docked mode.
   initial_lid_state_ = LID_CLOSED;
+  send_initial_display_mode_ = false;
   Init();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerInitialDisplayModeTimeout());
+}
+
+// If the lid is already closed at startup but a notification about presentation
+// mode is received soon afterwards, the system should go into docked mode
+// instead of suspending (http://crbug.com/277091).
+TEST_F(StateControllerTest, EnterDockedModeAtStartup) {
+  initial_lid_state_ = LID_CLOSED;
+  initial_display_mode_ = DISPLAY_PRESENTATION;
+  Init();
+  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerInitialDisplayModeTimeout());
+}
+
+// If the lid is already closed at startup but a display-mode notification never
+// arrives, StateController should give up eventually and just suspend the
+// system.
+TEST_F(StateControllerTest, TimeOutIfInitialDisplayModeNotReceived) {
+  initial_lid_state_ = LID_CLOSED;
+  send_initial_display_mode_ = false;
+  Init();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  EXPECT_TRUE(test_api_.TriggerInitialDisplayModeTimeout());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
