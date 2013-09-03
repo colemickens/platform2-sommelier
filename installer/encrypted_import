@@ -4,16 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-. "/usr/share/misc/shflags" || exit 1
-
-DEFINE_string from "" \
-  "Directory to install validated files from."
-DEFINE_string to "" \
-  "Directory to install validated files to."
-DEFINE_string validation "" \
-  "File to contain directory validation information."
-
-FLAGS_HELP="USAGE: encrypted_import [flags].
+HELP="USAGE: encrypted_import [flags]
 This script can either be used to create validation information for a directory
 full of files, or to copy files validated with existing information to a
 new directory. The caller is expected to create and manage both the source
@@ -21,64 +12,67 @@ and target directories as needed, mostly to make sure permissions are handled
 correctly.
 
 To create a validation file for a directory:
-  encrypted_import --from /path/foo --validation /output/validation
+  encrypted_import /path/from /output/validation
 
 To move files from one directory to another while validating them:
-  encrypted_import --from /path/foo --validation /output/valid --to /path/bar
+  encrypted_import /path/from /output/validation /path/to
 
 This is intended for safely importing files from the unencrypted to encrypted
 portions of the stateful partition.
 "
 
-# Parse flags
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
-
-if [ -z "${FLAGS_from}" -o -z "${FLAGS_validation}" ]; then
- echo "${FLAGS_HELP}"
- exit 1
-fi
-
 # Die on error
 set -e
 
+export LC_ALL=C
+
 generate_validation_information() {
-  local from=$(readlink -m "${1}")
-  local validation=$(readlink -m "${2}")
+  local from validation
+
+  from="$(readlink -m "$1")"
+  validation="$(readlink -m "$2")"
 
   echo "Create validation for ${from} in ${validation}."
 
   cd "${from}"
-  sha256sum * > "${validation}"
+  sha256sum *.crx > "${validation}"
 }
 
 copy_with_validation() {
-  local from=$(readlink -m "${1}")
-  local to=$(readlink -m "${2}")
-  local validation=$(readlink -m "${3}")
+  local from validation to
+
+  from="$(readlink -m "$1")"
+  validation="$(readlink -m "$2")"
+  to="$(readlink -m "$3")"
 
   echo "Copy ${from} -> ${to}, validated by ${validation}."
 
   # Move files into protected temp location for validation.
-  local processing=$(mktemp -d "${to}/import_tmp.XXXXXXXXXX")
-  trap "rm -rf ${processing}" EXIT
+  local processing
+  processing="$(mktemp -d "${to}/import_tmp.XXXXXXXXXX")"
+  trap "rm -rf '${processing}'" EXIT
 
-  cat "${validation}" | \
-      awk '{ print $2 }' | \
-      xargs -i -n 1 cp -- "${from}/{}" "${processing}"
+  awk '{ print $2 }' "${validation}" | \
+    xargs -i -n 1 cp -- "${from}/{}" "${processing}"
 
   # Validate the files being imported.
   cd "${processing}"
   sha256sum --check --strict --quiet "${validation}"
 
   # Move the files we just validated.
-  cat "${validation}" | \
-      awk '{ print $2 }' | \
-      xargs -i -n 1 mv -- "${processing}/{}" "${to}"
+  awk '{ print $2 }' "${validation}" | \
+    xargs -i -n 1 mv -- "${processing}/{}" "${to}"
 }
 
-if [ -z "${FLAGS_to}" ]; then
-  generate_validation_information "${FLAGS_from}" "${FLAGS_validation}"
-else
-  copy_with_validation "${FLAGS_from}" "${FLAGS_to}" "${FLAGS_validation}"
-fi
+case "$#" in
+"2")
+  generate_validation_information "$@"
+  ;;
+"3")
+  copy_with_validation "$@"
+  ;;
+*)
+  echo "${HELP}"
+  exit 1
+  ;;
+esac

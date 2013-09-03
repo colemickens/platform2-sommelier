@@ -35,9 +35,9 @@ setup_from() {
   mkdir "${from}"
 
   # Create files to test with.
-  touch "${from}/empty"
-  dd if=/dev/zero of="${from}/zero" bs=1K count=10 >& /dev/null
-  echo "KNOWN TEXT" > "${from}/text"
+  touch "${from}/empty.crx"
+  dd if=/dev/zero of="${from}/zero.crx" bs=1K count=10 >& /dev/null
+  echo "KNOWN TEXT" > "${from}/text.crx"
 }
 
 setup_test() {
@@ -50,19 +50,19 @@ setup_test() {
   mkdir -p "${TO_DIR}"
 
   # Create validation file.
-  ./encrypted_import --from "${FROM_DIR}" --validation "${VALIDATION}" ||
-      die_notrace "Creating validation file failed."
+  ./encrypted_import "${FROM_DIR}" "${VALIDATION}" ||
+      die "Creating validation file failed."
   verify_validation_file
 }
 
 verify_validation_file() {
-  [ -e "${VALIDATION}" ] || die_notrace "Validation file not created."
+  [ -e "${VALIDATION}" ] || die "Validation file not created."
 
   diff "${VALIDATION}" - << EOF || \
       die "Validation file has unexpected contents."
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  empty
-df724c08965bd130263806c9b2a57cb249bbe6bdec7b22916fe00bf0a022d7d6  text
-84ff92691f909a05b224e1c56abb4864f01b4f8e3c854e4bb4c7baf1d3f6d652  zero
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  empty.crx
+df724c08965bd130263806c9b2a57cb249bbe6bdec7b22916fe00bf0a022d7d6  text.crx
+84ff92691f909a05b224e1c56abb4864f01b4f8e3c854e4bb4c7baf1d3f6d652  zero.crx
 EOF
 }
 
@@ -88,8 +88,8 @@ test_simple_copy() {
   setup_test "Running test_simple_copy"
 
   # Do validated import.
-  ./encrypted_import --from "${FROM_DIR}" --validation "${VALIDATION}" \
-      --to "${TO_DIR}" || die "Valid Import Failed."
+  ./encrypted_import "${FROM_DIR}" "${VALIDATION}" \
+     "${TO_DIR}" || die "Valid Import Failed."
   verify_full_contents
 }
 
@@ -98,11 +98,11 @@ test_modified_file() {
   setup_test "Running test_modified_file"
 
   # Modify a file.
-  echo "DISTORTED TEXT" > "${FROM_DIR}/text"
+  echo "DISTORTED TEXT" > "${FROM_DIR}/text.crx"
 
   # Do validated import.
-  ./encrypted_import --from "${FROM_DIR}" --validation "${VALIDATION}" \
-      --to "${TO_DIR}" && die "Bad import succeeded."
+  ./encrypted_import "${FROM_DIR}" "${VALIDATION}" \
+     "${TO_DIR}" && die "Bad import succeeded."
   verify_no_contents
 }
 
@@ -111,11 +111,11 @@ test_missing_file() {
   setup_test "Running test_missing_file"
 
   # Remove a file.
-  rm "${FROM_DIR}/empty"
+  rm "${FROM_DIR}/empty.crx"
 
   # Do validated import.
-  ./encrypted_import --from "${FROM_DIR}" --validation "${VALIDATION}" \
-      --to "${TO_DIR}" && die "Bad import succeeded."
+  ./encrypted_import "${FROM_DIR}" "${VALIDATION}" \
+     "${TO_DIR}" && die "Bad import succeeded."
   verify_no_contents
 }
 
@@ -127,8 +127,8 @@ test_extra_file() {
   touch "${FROM_DIR}/malicious"
 
   # Do validated import.
-  ./encrypted_import --from "${FROM_DIR}" --validation "${VALIDATION}" \
-      --to "${TO_DIR}" || die "Valid Import Failed."
+  ./encrypted_import "${FROM_DIR}" "${VALIDATION}" \
+     "${TO_DIR}" || die "Valid Import Extra File Failed."
   verify_full_contents
 }
 
@@ -137,3 +137,5 @@ test_simple_copy
 test_modified_file
 test_missing_file
 test_extra_file
+echo
+echo "Success!"
