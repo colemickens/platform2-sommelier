@@ -359,7 +359,6 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
               << " (progressive scan "
               << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED")
               << ") from " << reason;
-    LOG(INFO) << scan_configuration_;
     // Needs to send a D-Bus message, but may be called from D-Bus
     // signal handler context (via Manager::RequestScan). So defer work
     // to event loop.
