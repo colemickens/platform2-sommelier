@@ -3,6 +3,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. /usr/share/misc/shflags || exit 1
+
+DEFINE_string directory /tmp "Bootstat archive directory" d
+
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
 NCPU=$(grep '^processor' /proc/cpuinfo | wc -l)
 
 SUMMARIZE_TIME='
@@ -33,10 +40,10 @@ SUMMARIZE_TIME='
 # events.  If there are arguments, summarize only the named events.
 # Error checking is deliberately minimal, to keep this script simple.
 if [ $# -eq 0 ]; then
-  EVENTS="$(ls /tmp/uptime-*)"
+  EVENTS="$(ls ${FLAGS_directory}/uptime-*)"
 else
   for EV in "$@"; do
-    EVENTS="$EVENTS /tmp/uptime-$EV"
+    EVENTS="$EVENTS ${FLAGS_directory}/uptime-$EV"
   done
 fi
 

@@ -1,0 +1,27 @@
+#!/bin/sh
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ $# -ne 1 ]; then
+  echo "usage: $(basename $0) <archive-dir>" >&2
+  exit 1
+fi
+
+ARCHIVE="$1"
+mkdir -p $ARCHIVE
+
+# All uptime values are recorded as "time since boot".  To
+# facilitate comparing archived times against other times measured
+# against a different boot time, we capture timestamps with both
+# `date` and `bootstat` so we can reconstruct times in UTC later.
+# Since the two gathered times will be slightly different, we run
+# `date` at both the start and end of the operation, so as to put a
+# bound on the measurement error.
+
+date '+%s.%N' >$ARCHIVE/timestamp
+bootstat archive
+# -fPp: overwrite pre-existing files; don't follow symlinks;
+#   preserve mode, owner and file times.
+cp -fPp /tmp/uptime-* /tmp/disk-* $ARCHIVE
+date '+%s.%N' >>$ARCHIVE/timestamp
