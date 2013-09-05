@@ -5,14 +5,10 @@
 # found in the LICENSE file.
 
 HELP="USAGE: encrypted_import [flags]
-This script can either be used to create validation information for a directory
-full of files, or to copy files validated with existing information to a
-new directory. The caller is expected to create and manage both the source
+This script is used to copy files validated with the output of sha256sum to
+a new directory. The caller is expected to create and manage both the source
 and target directories as needed, mostly to make sure permissions are handled
 correctly.
-
-To create a validation file for a directory:
-  encrypted_import /path/from /output/validation
 
 To move files from one directory to another while validating them:
   encrypted_import /path/from /output/validation /path/to
@@ -26,20 +22,8 @@ set -e
 
 export LC_ALL=C
 
-generate_validation_information() {
-  local from validation
-
-  from="$(readlink -m "$1")"
-  validation="$(readlink -m "$2")"
-
-  echo "Create validation for ${from} in ${validation}."
-
-  cd "${from}"
-  sha256sum *.crx > "${validation}"
-}
-
 copy_with_validation() {
-  local from validation to
+  local from validation to file
 
   from="$(readlink -m "$1")"
   validation="$(readlink -m "$2")"
@@ -52,27 +36,25 @@ copy_with_validation() {
   processing="$(mktemp -d "${to}/import_tmp.XXXXXXXXXX")"
   trap "rm -rf '${processing}'" EXIT
 
-  awk '{ print $2 }' "${validation}" | \
-    xargs -i -n 1 cp -- "${from}/{}" "${processing}"
+  for file in $(awk '{ print $2 }' "${validation}"); do
+    mkdir -p "${processing}/$(dirname "${file}")"
+    cp -- "${from}/${file}" "${processing}/${file}"
+  done
 
-  # Validate the files being imported.
+  # Validate the files being imported. Note that we will exit
+  # on failure because of the "set -e" above.
   cd "${processing}"
   sha256sum --check --strict --quiet "${validation}"
 
-  # Move the files we just validated.
-  awk '{ print $2 }' "${validation}" | \
-    xargs -i -n 1 mv -- "${processing}/{}" "${to}"
+  for file in $(awk '{ print $2 }' "${validation}"); do
+    mkdir -p "${to}/$(dirname "${file}")"
+    mv -- "${processing}/${file}" "${to}/${file}"
+  done
 }
 
-case "$#" in
-"2")
-  generate_validation_information "$@"
-  ;;
-"3")
+if [ $# -eq 3 ]; then
   copy_with_validation "$@"
-  ;;
-*)
+else
   echo "${HELP}"
   exit 1
-  ;;
-esac
+fi
