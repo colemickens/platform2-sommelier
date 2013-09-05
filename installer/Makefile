@@ -6,8 +6,10 @@ OUT ?= $(PWD)/build
 
 include common.mk
 
-CXXFLAGS += -DCHROMEOS_ENVIRONMENT
-CFLAGS += -I$(SRC)/.. -I$(SRC)/../verity/include
+CPPFLAGS += \
+	-DCHROMEOS_ENVIRONMENT \
+	-I$(SRC)/.. \
+	-I$(SRC)/../verity/include
 
 LDLIBS += -lvboot_host -ldm-bht
 
