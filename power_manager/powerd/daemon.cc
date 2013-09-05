@@ -171,7 +171,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual bool IsHeadphoneJackPlugged() OVERRIDE {
-    return daemon_->audio_client_->headphone_plugged();
+    return daemon_->audio_client_->headphone_jack_plugged();
   }
 
   virtual LidState QueryLidState() OVERRIDE {
@@ -410,8 +410,13 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
 
   std::string session_state;
-  if (util::GetSessionState(&session_state))
+  if (util::IsDBusServiceConnected(login_manager::kSessionManagerServiceName,
+                                   login_manager::kSessionManagerServicePath,
+                                   login_manager::kSessionManagerInterface,
+                                   NULL) &&
+      util::GetSessionState(&session_state)) {
     OnSessionStateChange(session_state);
+  }
 
   power_supply_->Init();
   power_supply_->RefreshImmediately();
@@ -429,7 +434,12 @@ void Daemon::Init() {
   CHECK(input_->Init(wakeup_inputs, use_lid));
 
   input_controller_->Init(prefs_);
-  audio_client_->Init();
+
+  if (util::IsDBusServiceConnected(cras::kCrasServiceName,
+                                   cras::kCrasServicePath,
+                                   cras::kCrasControlInterface, NULL)) {
+    audio_client_->LoadInitialState();
+  }
 
   PowerSource power_source =
       plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
@@ -651,7 +661,8 @@ void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
 }
 
 void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
-  state_controller_->HandleAudioActivity();
+  if (state_controller_initialized_)
+    state_controller_->HandleAudioActivity();
 }
 
 void Daemon::OnPowerStatusUpdate() {
@@ -743,6 +754,11 @@ void Daemon::RegisterDBusMessageHandler() {
       cras::kCrasControlInterface,
       cras::kActiveOutputNodeChanged,
       base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddSignalHandler(
+      cras::kCrasControlInterface,
+      cras::kNumberOfActiveStreamsChanged,
+      base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
                  base::Unretained(this)));
 
   dbus_handler_.AddMethodHandler(
@@ -836,9 +852,13 @@ void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
                                         const std::string& old_owner,
                                         const std::string& new_owner) {
   if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     std::string session_state;
     if (util::GetSessionState(&session_state))
       OnSessionStateChange(session_state);
+  } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
+    audio_client_->LoadInitialState();
   }
   suspender_.HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
@@ -904,6 +924,11 @@ bool Daemon::HandleCrasNodesChangedSignal(DBusMessage* message) {
 
 bool Daemon::HandleCrasActiveOutputNodeChangedSignal(DBusMessage* message) {
   audio_client_->UpdateDevices();
+  return false;
+}
+
+bool Daemon::HandleCrasNumberOfActiveStreamsChanged(DBusMessage* message) {
+  audio_client_->UpdateNumActiveStreams();
   return false;
 }
 

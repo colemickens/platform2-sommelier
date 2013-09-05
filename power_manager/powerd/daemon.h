@@ -162,6 +162,7 @@ class Daemon : public policy::BacklightControllerObserver,
   bool HandleUpdateEngineStatusUpdateSignal(DBusMessage* message);
   bool HandleCrasNodesChangedSignal(DBusMessage* message);
   bool HandleCrasActiveOutputNodeChangedSignal(DBusMessage* message);
+  bool HandleCrasNumberOfActiveStreamsChanged(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
   DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
   DBusMessage* HandleRequestSuspendMethod(DBusMessage* message);

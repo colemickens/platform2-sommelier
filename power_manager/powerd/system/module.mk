@@ -16,10 +16,8 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	powerd/system/peripheral_battery_watcher.o \
 	powerd/system/power_supply.o \
 	powerd/system/rolling_average.o
-CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): CPPFLAGS += \
-	$(GLIB_FLAGS) $(shell $(PKG_CONFIG) --cflags libcras)
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
-	$(GLIB_LIBS) -lrt -ludev $(shell $(PKG_CONFIG) --libs libcras) -lprotobuf-lite
+	$(GLIB_LIBS) -lrt -ludev -lprotobuf-lite
 clean: CLEAN(powerd/libsystem.pie.a)
 
 CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \

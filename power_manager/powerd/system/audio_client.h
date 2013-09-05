@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 
-#include <string>
-
 #include "base/basictypes.h"
 #include "base/observer_list.h"
 #include "base/time.h"
@@ -14,8 +12,6 @@
 
 typedef int gboolean;
 typedef unsigned int guint;
-
-struct cras_client;
 
 namespace power_manager {
 namespace system {
@@ -29,22 +25,12 @@ class AudioClient {
   AudioClient();
   ~AudioClient();
 
-  bool headphone_plugged() const { return headphone_plugged_; }
+  bool headphone_jack_plugged() const { return headphone_jack_plugged_; }
   bool hdmi_active() const { return hdmi_active_; }
-
-  // Starts attempting to connect to CRAS.  Note that the connection may
-  // happen asynchronously if the server is initially unavailable.
-  void Init();
 
   // Adds or removes an observer.
   void AddObserver(AudioObserver* observer);
   void RemoveObserver(AudioObserver* observer);
-
-  // Updates |time_out| to contain the time at which CRAS reports that
-  // audio was last played or recorded.  If no audio activity has been
-  // observed, an empty base::TimeTicks will be used.  Returns false on
-  // failure.
-  bool GetLastAudioActivityTime(base::TimeTicks* time_out);
 
   // Mutes the system.
   void MuteSystem();
@@ -53,33 +39,26 @@ class AudioClient {
   // Multiple calls to MuteSystem do not stack.
   void RestoreMutedState();
 
+  // Calls Update*() to load the initial state from CRAS.
+  void LoadInitialState();
+
   // Updates the client's view of connected audio devices.
   void UpdateDevices();
 
+  // Updates |num_active_streams_|. Starts or stops
+  // |notify_observers_timeout_id_| on changes between zero and nonzero counts.
+  void UpdateNumActiveStreams();
+
  private:
-  // Attempts to connect to the CRAS server, allocating |cras_client_| if
-  // needed.  Starts |poll_for_activity_timeout_id_| on success.  Returns
-  // false if unable to connect.
-  bool ConnectToCras();
+  // Called periodically while |num_active_streams_| is nonzero to notify
+  // |observers_| about audio playback.
+  SIGNAL_CALLBACK_0(AudioClient, gboolean, NotifyObservers);
 
-  // Invoked by |retry_connect_to_cras_timeout_id_|.  Calls ConnectToCras()
-  // and continues or stops the timeout as needed.
-  SIGNAL_CALLBACK_0(AudioClient, gboolean, RetryConnectToCras);
-
-  SIGNAL_CALLBACK_0(AudioClient, gboolean, PollForActivity);
-
-  // Client object for communicating with the server component of CRAS.
-  cras_client* cras_client_;
-
-  // Indicates whether |cras_client_| is initialized and connected to the
-  // server.
-  bool connected_to_cras_;
-
-  // Number of attempts to connect to the CRAS server made so far.
-  int num_connection_attempts_;
+  // Number of audio streams (either input or output) currently active.
+  int num_active_streams_;
 
   // Is something plugged in to a headphone jack?
-  bool headphone_plugged_;
+  bool headphone_jack_plugged_;
 
   // Is an HDMI output active?
   bool hdmi_active_;
@@ -91,11 +70,8 @@ class AudioClient {
   // The state the system was in before the call to MuteSystem().
   bool originally_muted_;
 
-  // GLib timeout ID for running RetryConnectToCras(), or 0 if unset.
-  guint retry_connect_to_cras_timeout_id_;
-
-  // GLib timeout ID for running PollForActivity(), or 0 if unset.
-  guint poll_for_activity_timeout_id_;
+  // GLib timeout ID for running NotifyObservers(), or 0 if unset.
+  guint notify_observers_timeout_id_;
 
   ObserverList<AudioObserver> observers_;
 

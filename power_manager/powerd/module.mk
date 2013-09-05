@@ -5,7 +5,7 @@
 include common.mk
 
 powerd/powerd.o.depends: power_manager/power_supply_properties.pb.h
-LIBPOWERD_DEPS = libchromeos-$(BASE_VER) libcras
+LIBPOWERD_DEPS = libchromeos-$(BASE_VER)
 LIBPOWERD_FLAGS = \
 	$(GLIB_FLAGS) $(DBUS_FLAGS) \
 	$(shell $(PKG_CONFIG) --cflags $(LIBPOWERD_DEPS))
