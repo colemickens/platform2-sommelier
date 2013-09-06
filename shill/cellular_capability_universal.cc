@@ -250,9 +250,16 @@ void CellularCapabilityUniversal::StartModem(Error *error,
   InitProxies();
 
   // ModemManager must be in the disabled state to accept the Enable command.
+  // If the modem state is unknown, proceed with the Enable command as if the
+  // modem is disabled.
+  //
+  // TODO(benchan): Simply invoke the 'Enable' command regardless of the modem
+  // state and handle the DBus error returned by ModemManager accordingly
+  // (crbug.com/287667).
   Cellular::ModemState state =
-      static_cast<Cellular::ModemState>(modem_proxy_->State());
-  if (state == Cellular::kModemStateDisabled) {
+      static_cast<Cellular::ModemState>(modem_proxy_->State(NULL));
+  if (state == Cellular::kModemStateUnknown ||
+      state == Cellular::kModemStateDisabled) {
     EnableModem(error, callback);
   } else if (!cellular()->IsUnderlyingDeviceEnabled()) {
     SLOG(Cellular, 2) << "Enabling of modem deferred because state is "

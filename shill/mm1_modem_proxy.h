@@ -88,7 +88,7 @@ class ModemProxy : public ModemProxyInterface {
   virtual const std::string EquipmentIdentifier();
   virtual uint32_t UnlockRequired();
   virtual const std::map<uint32_t, uint32_t> UnlockRetries();
-  virtual uint32_t State();
+  virtual uint32_t State(Error *error);
   virtual uint32_t AccessTechnologies();
   virtual const ::DBus::Struct<uint32_t, bool> SignalQuality();
   virtual const std::vector<std::string> OwnNumbers();

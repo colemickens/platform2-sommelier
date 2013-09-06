@@ -364,7 +364,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
 
   // Let the modem report that it is initializing.  StartModem() should defer
   // enabling the modem until its state changes to disabled.
-  EXPECT_CALL(*modem_proxy_, State())
+  EXPECT_CALL(*modem_proxy_, State(_))
       .WillOnce(Return(Cellular::kModemStateInitializing));
 
   Error error;
@@ -397,7 +397,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, StartModemFail) {
-  EXPECT_CALL(*modem_proxy_, State())
+  EXPECT_CALL(*modem_proxy_, State(_))
           .WillOnce(Return(Cellular::kModemStateDisabled));
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
@@ -412,8 +412,24 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemFail) {
   EXPECT_TRUE(error.IsOngoing());
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, StartModemAndModemDisappears) {
+  EXPECT_CALL(*modem_proxy_, State(_))
+          .WillOnce(Return(Cellular::kModemStateUnknown));
+  EXPECT_CALL(*modem_proxy_,
+              Enable(true, _, _, CellularCapability::kTimeoutEnable))
+      .WillOnce(
+          Invoke(this, &CellularCapabilityUniversalTest::InvokeEnableFail));
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+
+  Error error;
+  capability_->StartModem(&error, callback);
+  EXPECT_TRUE(error.IsOngoing());
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled) {
-  EXPECT_CALL(*modem_proxy_, State())
+  EXPECT_CALL(*modem_proxy_, State(_))
           .WillOnce(Return(Cellular::kModemStateEnabled));
   capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
 

@@ -85,7 +85,7 @@ class MockModemProxy : public ModemProxyInterface {
   MOCK_METHOD0(UnlockRequired, uint32_t());
   typedef std::map<uint32_t, uint32_t> RetryData;
   MOCK_METHOD0(UnlockRetries, const RetryData());
-  MOCK_METHOD0(State, uint32_t());
+  MOCK_METHOD1(State, uint32_t(Error *error));
   MOCK_METHOD0(AccessTechnologies, uint32_t());
   typedef ::DBus::Struct<uint32_t, bool> SignalQualityData;
   MOCK_METHOD0(SignalQuality, const SignalQualityData());

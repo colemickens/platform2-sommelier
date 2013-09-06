@@ -4,6 +4,8 @@
 
 #include "shill/mm1_modem_proxy.h"
 
+#include <ModemManager/ModemManager.h>
+
 #include "shill/cellular_error.h"
 #include "shill/logging.h"
 
@@ -342,13 +344,14 @@ const std::map<uint32_t, uint32_t> ModemProxy::UnlockRetries() {
   }
 }
 
-uint32_t ModemProxy::State() {
+uint32_t ModemProxy::State(Error *error) {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.State();
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return 0;  // Make the compiler happy.
+    if (error)
+      CellularError::FromMM1DBusError(e, error);
+    return MM_MODEM_STATE_UNKNOWN;
   }
 }
 
