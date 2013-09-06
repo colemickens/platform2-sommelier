@@ -94,22 +94,26 @@ class NetfilterQueueProcessor {
           port(0),
           device_index(0),
           address(0),
-          netmask(0) {}
+          netmask(0),
+          destination(0) {}
     ListenerEntry(time_t last_transmission_in,
                   uint16_t port_in,
                   int device_index_in,
                   uint32_t address_in,
-                  uint32_t netmask_in)
+                  uint32_t netmask_in,
+                  uint32_t destination_in)
         : last_transmission(last_transmission_in),
           port(port_in),
           device_index(device_index_in),
           address(address_in),
-          netmask(netmask_in) {}
+          netmask(netmask_in),
+          destination(destination_in) {}
     time_t last_transmission;
     uint16_t port;
     int device_index;
     uint32_t address;
     uint32_t netmask;
+    uint32_t destination;
   };
 
   typedef std::tr1::shared_ptr<ListenerEntry> ListenerEntryPtr;
@@ -134,15 +138,23 @@ class NetfilterQueueProcessor {
   // Expire listener that are no longer valid |now|.
   void ExpireListeners(time_t now);
 
-  // Find a listener entry with port |port| and device index |device_index|.
+  // Find a listener entry with port |port|, device index |device_index|
+  // and local address |address|.
   std::deque<ListenerEntryPtr>::iterator FindListener(
       uint16_t port, int device_index, uint32_t address);
+
+  // Find a listener entry with port |port| and device index |device_index|
+  // which transmitted to multicast destination |destination|.
+  std::deque<ListenerEntryPtr>::iterator FindDestination(
+      uint16_t port, int device_index, uint32_t destination);
 
   // Returns true if incoming packet |packet| should be allowed to pass.
   bool IsIncomingPacketAllowed(const Packet &packet, time_t now);
 
   // Log the transmission of an outgoing packet.
   void LogOutgoingPacket(const Packet &packet, time_t now);
+
+  static std::string AddressAndPortToString(uint32_t ip, uint16_t port);
 
   // Size of the packet buffer passed to the netlink queue library.
   static int kBufferSize;

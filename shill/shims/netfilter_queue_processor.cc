@@ -21,6 +21,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/stringprintf.h>
 
 using std::deque;
 
@@ -47,6 +48,13 @@ NetfilterQueueProcessor::Packet::Packet()
       destination_port_(0) {}
 
 NetfilterQueueProcessor::Packet::~Packet() {}
+
+std::string NetfilterQueueProcessor::AddressAndPortToString(uint32_t ip,
+                                                            uint16_t port) {
+  struct in_addr addr;
+  addr.s_addr = htonl(ip);
+  return StringPrintf("%s:%d", inet_ntoa(addr), port);
+}
 
 bool NetfilterQueueProcessor::Packet::ParseNetfilterData(
     struct nfq_data *netfilter_data) {
@@ -299,6 +307,9 @@ void NetfilterQueueProcessor::ExpireListeners(time_t now) {
         listeners_.size() <= kMaxListenerEntries) {
       break;
     }
+    VLOG(2) << "Expired listener for "
+            << AddressAndPortToString(last_listener->address,
+                                      last_listener->port);
     listeners_.pop_back();
   }
 }
@@ -318,16 +329,32 @@ deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
   return it;
 }
 
+deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
+    NetfilterQueueProcessor::FindDestination(uint16_t port,
+                                             int device_index,
+                                             uint32_t destination) {
+  deque<ListenerEntryPtr>::iterator it;
+  for (it = listeners_.begin(); it != listeners_.end(); ++it) {
+    if ((*it)->port == port &&
+        (*it)->device_index == device_index &&
+        (*it)->destination == destination) {
+      break;
+    }
+  }
+  return it;
+}
+
 bool NetfilterQueueProcessor::IsIncomingPacketAllowed(
     const Packet &packet, time_t now) {
   VLOG(2) << __func__ << " entered.";
+  VLOG(3) << "Incoming packet is from "
+          << AddressAndPortToString(packet.source_ip(),
+                                    packet.source_port())
+          << " and to "
+          << AddressAndPortToString(packet.destination_ip(),
+                                    packet.destination_port());
   if (!packet.is_udp()) {
     VLOG(2) << "Incoming packet is not udp.";
-    return false;
-  }
-
-  if (IN_MULTICAST(packet.destination_ip())) {
-    VLOG(2) << "Incoming packet is multicast.";
     return false;
   }
 
@@ -337,15 +364,21 @@ bool NetfilterQueueProcessor::IsIncomingPacketAllowed(
   uint32_t address = packet.destination_ip();
   int device_index = packet.in_device();
 
-  std::deque<ListenerEntryPtr>::iterator entry_ptr =
-      FindListener(port, device_index, address);
+  deque<ListenerEntryPtr>::iterator entry_ptr = listeners_.end();
+  if (IN_MULTICAST(address)) {
+    VLOG(2) << "Incoming packet is multicast.";
+    entry_ptr = FindDestination(port, device_index, address);
+  } else {
+    entry_ptr = FindListener(port, device_index, address);
+  }
+
   if (entry_ptr == listeners_.end()) {
     VLOG(2) << "Incoming does not match any listener.";
     return false;
   }
 
   uint32_t netmask = (*entry_ptr)->netmask;
-  if ((packet.source_ip() & netmask) != (address & netmask)) {
+  if ((packet.source_ip() & netmask) != ((*entry_ptr)->address & netmask)) {
     VLOG(2) << "Incoming packet is from a non-local address.";
     return false;
   }
@@ -372,6 +405,12 @@ void NetfilterQueueProcessor::LogOutgoingPacket(
   }
   uint16_t port = packet.source_port();
   uint32_t address = packet.source_ip();
+  uint32_t destination = 0;
+  // Allow multicast replies if the destination port of the packet is the
+  // same as the port the sender transmitted from;
+  if (packet.source_port() == packet.destination_port()) {
+    destination = packet.destination_ip();
+  }
   deque<ListenerEntryPtr>::iterator entry_it =
       FindListener(port, device_index, address);
   if (entry_it != listeners_.end()) {
@@ -386,8 +425,12 @@ void NetfilterQueueProcessor::LogOutgoingPacket(
   } else {
     uint32_t netmask = GetNetmaskForDevice(device_index);
     ListenerEntryPtr entry_ptr(
-        new ListenerEntry(now, port, device_index, address, netmask));
+        new ListenerEntry(now, port, device_index,
+                          address, netmask, destination));
     listeners_.push_front(entry_ptr);
+    VLOG(2) << "Added listener for " << AddressAndPortToString(address, port)
+            << " with destination "
+            << AddressAndPortToString(destination, port);
   }
 
   // Perform expiration at the end, so that we don't end up expiring something

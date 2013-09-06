@@ -40,6 +40,7 @@ namespace switches {
 static const char kHelp[] = "help";
 static const char kInputQueue[] = "input-queue";
 static const char kOutputQueue[] = "output-queue";
+static const char kVerbose[] = "verbose";
 
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\n"
@@ -50,7 +51,9 @@ static const char kHelpMessage[] = "\n"
     "    Set the netfilter queue number for incoming UDP packets.\n"
     "  --output-queue=<output queue number>\n"
     "    Set the netfilter queue number for outgoing UDP packets for which\n"
-    "    input replies will be enabled.\n";
+    "    input replies will be enabled.\n"
+    "  --verbose\n"
+    "    Show debug messages.\n";
 
 }  // namespace switches
 
@@ -96,6 +99,10 @@ int main(int argc, char **argv)
       output_queue < 0) {
     LOG(ERROR) << "Unable to get mandatory output queue option.";
     return 1;
+  }
+
+  if (cl->HasSwitch(switches::kVerbose)) {
+    logging::SetMinLogLevel(-3);
   }
 
   if (output_queue == input_queue) {

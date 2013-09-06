@@ -41,6 +41,9 @@ class NetfilterQueueProcessorTest : public testing::Test {
   int GetExpirationInterval() {
     return NetfilterQueueProcessor::kExpirationIntervalSeconds;
   }
+  string AddressAndPortToString(uint32_t ip, uint16_t port) {
+    return NetfilterQueueProcessor::AddressAndPortToString(ip, port);
+  }
 
   void SetPacketValues(int in_device,
                        int out_device,
@@ -166,7 +169,7 @@ TEST_F(NetfilterQueueProcessorTest, LogOutgoingPacket) {
   EXPECT_EQ(kUnicastAddress, GetListener(0).address);
 }
 
-TEST_F(NetfilterQueueProcessorTest, IsIncomingPacketAllowed) {
+TEST_F(NetfilterQueueProcessorTest, IsIncomingPacketAllowedUnicast) {
   const int kDevice1 = 1000;
   const int kDevice2 = 2000;
   const int kPacketId = 0;
@@ -189,6 +192,9 @@ TEST_F(NetfilterQueueProcessorTest, IsIncomingPacketAllowed) {
   // Set the netmask manually since we don't have the mocks to do so.
   GetListener(0).netmask = kNetmask;
 
+  // Expect that this listener entry will not allow incoming multicasts.
+  EXPECT_EQ(0, GetListener(0).destination);
+
   // Packet is not UDP.
   SetPacketValues(kDevice2, kDevice1, false, kPacketId,
                   kNeighborAddress, kLocalAddress, kPort2, kPort1);
@@ -199,9 +205,14 @@ TEST_F(NetfilterQueueProcessorTest, IsIncomingPacketAllowed) {
                   kNeighborAddress, kLocalAddress, kPort2, kPort1);
   EXPECT_FALSE(IsIncomingPacketAllowed(kTime0));
 
-  // Packet arrives addressed to a multicast address.
+  // Packet arrives addressed to a multicast address.  Ensure that since
+  // the source and destination address of the listener do not match,
+  // multicast traffic to neither port will work.
   SetPacketValues(kDevice2, kDevice1, true, kPacketId,
                   kNeighborAddress, kMulticastAddress, kPort2, kPort1);
+  EXPECT_FALSE(IsIncomingPacketAllowed(kTime0));
+  SetPacketValues(kDevice2, kDevice1, true, kPacketId,
+                  kNeighborAddress, kMulticastAddress, kPort1, kPort2);
   EXPECT_FALSE(IsIncomingPacketAllowed(kTime0));
 
   // Packet arrives addressed to an address other than the address associated
@@ -231,6 +242,57 @@ TEST_F(NetfilterQueueProcessorTest, IsIncomingPacketAllowed) {
 
   // Moreover the expiration has removed the listener entry.
   EXPECT_TRUE(GetListeners().empty());
+}
+
+TEST_F(NetfilterQueueProcessorTest, IsIncomingPacketAllowedMulticast) {
+  const int kDevice1 = 1000;
+  const int kDevice2 = 2000;
+  const int kPacketId = 0;
+  const uint32_t kMulticastAddress1 = ntohl(inet_addr("224.0.0.1"));
+  const uint32_t kMulticastAddress2 = ntohl(inet_addr("224.0.0.2"));
+  const uint32_t kLocalAddress = ntohl(inet_addr("10.0.0.1"));
+  const uint32_t kNeighborAddress = ntohl(inet_addr("10.0.0.2"));
+  const uint16_t kPort1 = 100;
+  const uint16_t kPort2 = 200;
+  const time_t kTime0 = 0;
+
+  // Send a packet to a multicast address where the source and destination
+  // ports match.  This will create a non-zero "destination" listener.
+  SetPacketValues(kDevice1, kDevice2, true, kPacketId,
+                  kLocalAddress, kMulticastAddress1, kPort1, kPort1);
+  LogOutgoingPacket(kTime0);
+  const uint32_t kNetmask = ntohl(inet_addr("255.255.255.0"));
+  // Set the netmask manually since we don't have the mocks to do so.
+  GetListener(0).netmask = kNetmask;
+
+  // Expect that this listener entry will allow incoming multicasts.
+  EXPECT_EQ(kMulticastAddress1, GetListener(0).destination);
+
+  // Packet arrives addressed to a different multicast address.
+  SetPacketValues(kDevice2, kDevice1, true, kPacketId,
+                  kNeighborAddress, kMulticastAddress2, kPort1, kPort1);
+  EXPECT_FALSE(IsIncomingPacketAllowed(kTime0));
+
+  // Packet arrives addressed to a different port.
+  SetPacketValues(kDevice2, kDevice1, true, kPacketId,
+                  kNeighborAddress, kMulticastAddress1, kPort1, kPort2);
+  EXPECT_FALSE(IsIncomingPacketAllowed(kTime0));
+
+  // This packet should successfully be accepted.
+  SetPacketValues(kDevice2, kDevice1, true, kPacketId,
+                  kNeighborAddress, kMulticastAddress1, kPort2, kPort1);
+  EXPECT_TRUE(IsIncomingPacketAllowed(kTime0));
+
+  // So will a unicast packet (other unicast cases are tested above in
+  // IsIncomingPacketAllowedUnicast).
+  SetPacketValues(kDevice2, kDevice1, true, kPacketId,
+                  kNeighborAddress, kLocalAddress, kPort1, kPort1);
+  EXPECT_TRUE(IsIncomingPacketAllowed(kTime0));
+}
+
+
+TEST_F(NetfilterQueueProcessorTest, AddressAndPortToString) {
+  EXPECT_EQ("1.2.3.4:5678", AddressAndPortToString(0x01020304, 5678));
 }
 
 }  // namespace shims
