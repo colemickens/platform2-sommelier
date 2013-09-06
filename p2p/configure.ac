@@ -33,7 +33,7 @@ if test "x$GCC" = "xyes"; then
 fi
 AC_SUBST(GCC_CFLAGS)
 
-CXXFLAGS="$CXXFLAGS -Wall -std=gnu++0x -fno-rtti"
+CXXFLAGS="$CXXFLAGS -Wall -std=gnu++0x"
 
 AC_ARG_ENABLE(tests,
               AS_HELP_STRING([--enable-tests],
