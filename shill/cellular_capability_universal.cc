@@ -248,39 +248,14 @@ void CellularCapabilityUniversal::StartModem(Error *error,
                                              const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   InitProxies();
-
-  // ModemManager must be in the disabled state to accept the Enable command.
-  // If the modem state is unknown, proceed with the Enable command as if the
-  // modem is disabled.
-  //
-  // TODO(benchan): Simply invoke the 'Enable' command regardless of the modem
-  // state and handle the DBus error returned by ModemManager accordingly
-  // (crbug.com/287667).
-  Cellular::ModemState state =
-      static_cast<Cellular::ModemState>(modem_proxy_->State(NULL));
-  if (state == Cellular::kModemStateUnknown ||
-      state == Cellular::kModemStateDisabled) {
-    EnableModem(error, callback);
-  } else if (!cellular()->IsUnderlyingDeviceEnabled()) {
-    SLOG(Cellular, 2) << "Enabling of modem deferred because state is "
-                      << state;
-    deferred_enable_modem_callback_ =
-        Bind(&CellularCapabilityUniversal::EnableModem,
-             weak_ptr_factory_.GetWeakPtr(), static_cast<Error *>(NULL),
-             callback);
-  } else {
-    // This request cannot be completed synchronously here because a method
-    // reply requires a continuation tag that is not created until the message
-    // handler returns, see DBus-C++ ObjectAdapter::handle_message().
-    cellular()->dispatcher()->PostTask(
-        Bind(&CellularCapabilityUniversal::Start_ModemAlreadyEnabled,
-             weak_ptr_factory_.GetWeakPtr(), callback));
-  }
+  deferred_enable_modem_callback_.Reset();
+  EnableModem(true, error, callback);
 }
 
-void CellularCapabilityUniversal::EnableModem(Error *error,
+void CellularCapabilityUniversal::EnableModem(bool deferrable,
+                                              Error *error,
                                               const ResultCallback &callback) {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(Cellular, 2) << __func__ << "(deferrable=" << deferrable << ")";
   CHECK(!callback.is_null());
   Error local_error(Error::kOperationInitiated);
   modem_info()->metrics()->NotifyDeviceEnableStarted(
@@ -288,8 +263,8 @@ void CellularCapabilityUniversal::EnableModem(Error *error,
   modem_proxy_->Enable(
       true,
       &local_error,
-      Bind(&CellularCapabilityUniversal::Start_EnableModemCompleted,
-           weak_ptr_factory_.GetWeakPtr(), callback),
+      Bind(&CellularCapabilityUniversal::EnableModemCompleted,
+           weak_ptr_factory_.GetWeakPtr(), deferrable, callback),
       kTimeoutEnable);
   if (local_error.IsFailure()) {
     SLOG(Cellular, 2) << __func__ << "Call to modem_proxy_->Enable() failed";
@@ -299,18 +274,38 @@ void CellularCapabilityUniversal::EnableModem(Error *error,
   }
 }
 
-void CellularCapabilityUniversal::Start_ModemAlreadyEnabled(
-    const ResultCallback &callback) {
-  // Call GetProperties() here to sync up with the modem state
-  GetProperties();
-  callback.Run(Error());
-}
+void CellularCapabilityUniversal::EnableModemCompleted(
+    bool deferrable, const ResultCallback &callback, const Error &error) {
+  SLOG(Cellular, 2) << __func__ << "(deferrable=" << deferrable
+                    << ", error=" << error << ")";
 
-void CellularCapabilityUniversal::Start_EnableModemCompleted(
-    const ResultCallback &callback, const Error &error) {
-  SLOG(Cellular, 2) << __func__ << ": " << error;
+  // If the enable operation failed with Error::kWrongState, the modem is not
+  // in the expected state (i.e. disabled). If |deferrable| indicates that the
+  // enable operation can be deferred, we defer the operation until the modem
+  // goes into the expected state (see OnModemStateChangedSignal).
+  //
+  // Note that when the SIM is locked, the enable operation also fails with
+  // Error::kWrongState. The enable operation is deferred until the modem goes
+  // into the disabled state after the SIM is unlocked. We may choose not to
+  // defer the enable operation when the SIM is locked, but the UI needs to
+  // trigger the enable operation after the SIM is unlocked, which is currently
+  // not the case.
   if (error.IsFailure()) {
-    callback.Run(error);
+    if (!deferrable || error.type() != Error::kWrongState) {
+      callback.Run(error);
+      return;
+    }
+
+    if (deferred_enable_modem_callback_.is_null()) {
+      SLOG(Cellular, 2) << "Defer enable operation.";
+      // The Enable operation to be deferred should not be further deferrable.
+      deferred_enable_modem_callback_ =
+          Bind(&CellularCapabilityUniversal::EnableModem,
+               weak_ptr_factory_.GetWeakPtr(),
+               false,  // non-deferrable
+               static_cast<Error*>(NULL),
+               callback);
+    }
     return;
   }
 

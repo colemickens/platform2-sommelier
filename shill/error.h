@@ -43,6 +43,7 @@ class Error {
     kPinRequired,
     kPinBlocked,
     kInvalidApn,
+    kWrongState,
     kPermissionDenied,
     kNumErrors
   };

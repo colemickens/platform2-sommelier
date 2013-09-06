@@ -230,6 +230,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemFailure);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemInWrongState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateBearerPath);
@@ -271,10 +275,12 @@ class CellularCapabilityUniversal : public CellularCapability {
   };
 
   // Methods used in starting a modem
-  void EnableModem(Error *error, const ResultCallback &callback);
-  void Start_ModemAlreadyEnabled(const ResultCallback &callback);
-  void Start_EnableModemCompleted(const ResultCallback &callback,
-                                  const Error &error);
+  void EnableModem(bool deferralbe,
+                   Error *error,
+                   const ResultCallback& callback);
+  void EnableModemCompleted(bool deferrable,
+                            const ResultCallback &callback,
+                            const Error &error);
 
   // Methods used in stopping a modem
   void Stop_DisconnectCompleted(const ResultCallback &callback,

@@ -30,6 +30,8 @@ const char *kErrorSimPin =
 const char *kErrorSimPuk =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
 
+const char* kErrorWrongState = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
+
 }  // namespace
 
 // static
@@ -55,6 +57,8 @@ void CellularError::FromMM1DBusError(const DBus::Error &dbus_error,
     type = Error::kPinBlocked;
   else if (name == kErrorGprsNotSubscribed)
     type = Error::kInvalidApn;
+  else if (name == kErrorWrongState)
+    type = Error::kWrongState;
   else
     type = Error::kOperationFailed;
 

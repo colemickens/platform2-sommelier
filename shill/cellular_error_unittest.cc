@@ -39,6 +39,10 @@ const char kErrorGprsNotSubscribedMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "GprsServiceOptionNotSubscribed";
 
+const char kErrorWrongStateMM1[] =
+    "org.freedesktop.ModemManager1.Error.Core.WrongState";
+
+
 const char kErrorMessage[] = "Some error message.";
 
 }  // namespace
@@ -111,6 +115,11 @@ TEST_F(CellularErrorTest, FromMM1DBusError) {
       DBus::Error(kErrorGprsNotSubscribedMM1, kErrorMessage),
       &shill_error);
   EXPECT_EQ(Error::kInvalidApn, shill_error.type());
+
+  CellularError::FromMM1DBusError(
+      DBus::Error(kErrorWrongStateMM1, kErrorMessage),
+      &shill_error);
+  EXPECT_EQ(Error::kWrongState, shill_error.type());
 
   CellularError::FromMM1DBusError(
       DBus::Error(kErrorIncorrectPasswordMM, kErrorMessage),
