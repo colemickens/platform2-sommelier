@@ -416,6 +416,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
     $CHROME --allow-webui-compositing \
             --device-management-url="$DMSERVER" \
             --enable-chrome-audio-switching \
+            --enable-fixed-position-compositing \
             --enable-logging \
             --enable-partial-swap \
             --max-tiles-for-interest-area=512 \
