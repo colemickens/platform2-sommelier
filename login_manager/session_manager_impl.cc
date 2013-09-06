@@ -486,27 +486,29 @@ gboolean SessionManagerImpl::LockScreen(GError** error) {
     LOG(WARNING) << "Attempt to lock screen during Guest session.";
     return FALSE;
   }
-  screen_locked_ = true;
-  system_->EmitSignal(chromium::kLockScreenSignal);
-  LOG(INFO) << "LockScreen";
+  if (!screen_locked_) {
+    screen_locked_ = true;
+    system_->EmitSignal(chromium::kLockScreenSignal);
+  }
+  LOG(INFO) << "LockScreen() method called.";
   return TRUE;
 }
 
 gboolean SessionManagerImpl::HandleLockScreenShown(GError** error) {
-  LOG(INFO) << "HandleLockScreenShown";
+  LOG(INFO) << "HandleLockScreenShown() method called.";
   system_->EmitSignal(login_manager::kScreenIsLockedSignal);
   return TRUE;
 }
 
 gboolean SessionManagerImpl::UnlockScreen(GError** error) {
   system_->EmitSignal(chromium::kUnlockScreenSignal);
-  LOG(INFO) << "UnlockScreen";
+  LOG(INFO) << "UnlockScreen() method called.";
   return TRUE;
 }
 
 gboolean SessionManagerImpl::HandleLockScreenDismissed(GError** error) {
   screen_locked_ = false;
-  LOG(INFO) << "HandleLockScreenDismissed";
+  LOG(INFO) << "HandleLockScreenDismissed() method called.";
   system_->EmitSignal(login_manager::kScreenIsUnlockedSignal);
   return TRUE;
 }

@@ -84,7 +84,7 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "    Optionally accepts a period value in seconds.  Default is 60.\n"
 "    If it fails to respond, SIGABRT and restart it."
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
-    "    Supplies the required program to execute and its arguments.\n";
+"    Supplies the required program to execute and its arguments.\n";
 
 }  // namespace switches
 
