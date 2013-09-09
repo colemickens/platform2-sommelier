@@ -103,6 +103,10 @@ int main(int argc, char* argv[]) {
 
   p2p::server::ServicePublisher* service_publisher =
       p2p::server::ServicePublisher::Construct(http_port);
+  if (service_publisher == NULL) {
+    cerr << "Error constructing ServicePublisher." << endl;
+    exit(1);
+  }
 
   p2p::server::PeerUpdateManager manager(
       file_watcher, service_publisher, http_server, &metrics_lib);
