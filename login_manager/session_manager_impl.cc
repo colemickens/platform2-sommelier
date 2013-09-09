@@ -332,6 +332,7 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
           error);
 
   if (*OUT_done) {
+    LOG(INFO) << "Starting user session";
     manager_->SetBrowserSessionForUser(email_string, user_session->userhash);
     session_started_ = true;
     user_sessions_[email_string] = user_session.release();
@@ -357,6 +358,7 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
 gboolean SessionManagerImpl::StopSession(gchar* unique_identifier,
                                          gboolean* OUT_done,
                                          GError** error) {
+  LOG(INFO) << "Stopping all sessions";
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
   // likely a DBUS message. See dbus_glib_shim.cc for that call.
