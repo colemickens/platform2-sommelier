@@ -394,23 +394,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a ! -e $OOBE_COMPLETE ]; then
   if [ -x /usr/sbin/dump_vpd_log ]; then
     /usr/sbin/dump_vpd_log
   fi
-
-  # TODO(yjlou): We are developing a more generic hook mechanism
-  #              (i.e. pre-OOBE-oem.sh), and will move this block
-  #              to new hook point.
-  #
-  # The activate_date script is installed in partner's
-  # board-specific private overlay. Hence the vpd utility
-  # dependency is described in private overlay, instead of
-  # chromeos-init.
-  #
-  # If the activate date script is executable (installed from
-  # the private overlay), run it.
-  if [ -x /usr/sbin/activate_date ]; then
-    # Since this script will invoke flash read/write (around 20 secs),
-    # run it in background.
-    (/usr/sbin/activate_date ; /usr/sbin/dump_vpd_log --force) &
-  fi
 fi
 
 bootstat post-startup
