@@ -16,7 +16,9 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/daemon.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
@@ -31,22 +33,17 @@
 
 using std::string;
 
-DEFINE_string(prefs_dir, "",
-              "Directory to store settings.");
-DEFINE_string(default_prefs_dir, "",
-              "Directory to read default settings (Read Only).");
-DEFINE_string(log_dir, "",
-              "Directory to store logs.");
-DEFINE_string(run_dir, "",
-              "Directory to store stateful data for daemon.");
+DEFINE_string(prefs_dir, power_manager::kReadWritePrefsDir,
+              "Directory holding read/write preferences.");
+DEFINE_string(default_prefs_dir, power_manager::kReadOnlyPrefsDir,
+              "Directory holding read-only default settings.");
+DEFINE_string(log_dir, "", "Directory where logs are written.");
+DEFINE_string(run_dir, "", "Directory where stateful data is written.");
 // This flag is handled by libbase/libchrome's logging library instead of
 // directly by powerd, but it is defined here so gflags won't abort after
 // seeing an unexpected flag.
 DEFINE_string(vmodule, "",
               "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
-
-// TODO(derat): Remove this once the init script isn't passing it.
-DEFINE_bool(use_state_controller, true, "Deprecated");
 
 namespace {
 
@@ -93,16 +90,9 @@ int main(int argc, char* argv[]) {
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   LOG(INFO) << "vcsid " << VCSID;
 
-  base::FilePath prefs_dir(FLAGS_prefs_dir);
-  base::FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
-                             "/usr/share/power_manager" :
-                             FLAGS_default_prefs_dir);
-  std::vector<base::FilePath> pref_paths;
-  pref_paths.push_back(prefs_dir);
-  pref_paths.push_back(default_prefs_dir.Append("board_specific"));
-  pref_paths.push_back(default_prefs_dir);
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(pref_paths));
+  CHECK(prefs.Init(power_manager::util::GetPrefPaths(FLAGS_prefs_dir,
+                                                     FLAGS_default_prefs_dir)));
   g_type_init();
 
   scoped_ptr<power_manager::system::AmbientLightSensor> light_sensor;

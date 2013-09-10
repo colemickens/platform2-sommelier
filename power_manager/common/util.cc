@@ -19,6 +19,7 @@
 #include "base/stringprintf.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "power_manager/common/power_constants.h"
 
 namespace {
 
@@ -118,6 +119,16 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
     output += StringPrintf("%" PRId64 "s", seconds);
 
   return output;
+}
+
+std::vector<base::FilePath> GetPrefPaths(const std::string& read_write_path,
+                                         const std::string& read_only_path) {
+  std::vector<base::FilePath> paths;
+  paths.push_back(base::FilePath(read_write_path));
+  paths.push_back(
+      base::FilePath(read_only_path).Append(kBoardSpecificPrefsSubdir));
+  paths.push_back(base::FilePath(read_only_path));
+  return paths;
 }
 
 }  // namespace util

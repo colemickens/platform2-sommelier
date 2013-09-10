@@ -11,7 +11,6 @@
 #include "base/logging.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"
-
 #include "power_manager/powerd/system/internal_backlight.h"
 
 DEFINE_bool(get_brightness, false, "Get current brightness level.");

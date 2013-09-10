@@ -61,16 +61,27 @@ CXX_BINARY(tools/set_power_policy): LDLIBS += -lgflags -lprotobuf-lite \
 clean: CXX_BINARY(tools/set_power_policy)
 all: CXX_BINARY(tools/set_power_policy)
 
+CXX_BINARY(tools/get_powerd_initial_backlight_level): \
+	tools/get_powerd_initial_backlight_level.o \
+	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a) \
+	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil.pie.a)
+CXX_BINARY(tools/get_powerd_initial_backlight_level): CPPFLAGS += $(GLIB_FLAGS)
+CXX_BINARY(tools/get_powerd_initial_backlight_level): LDLIBS += $(GLIB_LIBS)
+clean: CXX_BINARY(tools/get_powerd_initial_backlight_level)
+all: CXX_BINARY(tools/get_powerd_initial_backlight_level)
+
 CXX_BINARY(tools/suspend_delay_sample): \
 	tools/suspend_delay_sample.o \
 	common/dbus_handler.o \
 	common/power_constants.o \
 	common/util_dbus.o \
 	power_manager/suspend.pb.o
-CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(LIBPOWERMAN_FLAGS) \
-	$(DBUS_FLAGS) $(GLIB_FLAGS)
-CXX_BINARY(tools/suspend_delay_sample): LDLIBS += $(LIBPOWERMAN_LIBS) \
-	$(DBUS_LIBS) $(GLIB_LIBS) -lgflags -lprotobuf-lite
+CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(DBUS_FLAGS) $(GLIB_FLAGS)
+CXX_BINARY(tools/suspend_delay_sample): \
+	LDLIBS += $(DBUS_LIBS) $(GLIB_LIBS) -lgflags -lprotobuf-lite
 clean: CXX_BINARY(tools/suspend_delay_sample)
 all: CXX_BINARY(tools/suspend_delay_sample)
 

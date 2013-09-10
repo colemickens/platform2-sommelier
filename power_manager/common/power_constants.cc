@@ -56,10 +56,14 @@ const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
 const char kAllowDockedModePref[] = "allow_docked_mode";
 
 // Miscellaneous constants.
+const char kReadWritePrefsDir[] = "/var/lib/power_manager";
+const char kReadOnlyPrefsDir[] = "/usr/share/power_manager";
+const char kBoardSpecificPrefsSubdir[] = "board_specific";
 const char kInternalBacklightPath[] = "/sys/class/backlight";
 const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
+const char kPowerStatusPath[] = "/sys/class/power_supply";
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";

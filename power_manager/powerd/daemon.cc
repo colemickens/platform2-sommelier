@@ -47,9 +47,6 @@ namespace {
 // the battery charge reaching zero).
 const char kSuspendedStatePath[] = "/var/lib/power_manager/powerd_suspended";
 
-// Path to power supply info.
-const char kPowerStatusPath[] = "/sys/class/power_supply";
-
 // Power supply subsystem for udev events.
 const char kPowerSupplyUdevSubsystem[] = "power_supply";
 

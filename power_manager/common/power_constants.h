@@ -58,10 +58,18 @@ extern const char kAllowDockedModePref[];
 extern const char kNumSessionsOnCurrentChargePref[];
 
 // Miscellaneous constants.
+// Default directories where read/write and read-only powerd preference files
+// are stored.
+extern const char kReadWritePrefsDir[];
+extern const char kReadOnlyPrefsDir[];
+// Subdirectory within the read-only prefs dir where board-specific prefs are
+// stored.
+extern const char kBoardSpecificPrefsSubdir[];
 extern const char kInternalBacklightPath[];
 extern const char kInternalBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
+extern const char kPowerStatusPath[];
 
 // Broadcast signals.
 extern const char kPowerStateChanged[];

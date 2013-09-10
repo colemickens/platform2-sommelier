@@ -6,7 +6,9 @@
 #define POWER_MANAGER_COMMON_UTIL_H_
 
 #include <string>
+#include <vector>
 
+#include "base/file_path.h"
 #include "base/time.h"
 
 typedef unsigned int guint;
@@ -46,6 +48,12 @@ double ClampPercent(double percent);
 
 // Returns |delta| as a string of the format "4h3m45s".
 std::string TimeDeltaToString(base::TimeDelta delta);
+
+// Returns a list of paths to pass when creating a Prefs object. For a given
+// preference, |read_write_path| will be checked first, then the board-specific
+// subdirectory within |read_only_path|, and finally |read_only_path|.
+std::vector<base::FilePath> GetPrefPaths(const std::string& read_write_path,
+                                         const std::string& read_only_path);
 
 }  // namespace util
 }  // namespace power_manager
