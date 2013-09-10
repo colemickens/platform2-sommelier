@@ -6,7 +6,6 @@
 #define PERF_PROTOBUF_IO_H_
 
 #include <string>
-#include "perf_data.pb.h"
 #include "quipper_proto.h"
 #include "quipper_string.h"
 
