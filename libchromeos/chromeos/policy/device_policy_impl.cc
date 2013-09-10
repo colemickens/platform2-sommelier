@@ -425,6 +425,17 @@ bool DevicePolicyImpl::GetHttpDownloadsEnabled(
   return true;
 }
 
+bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const enterprise_management::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+
+  *au_p2p_enabled = proto.p2p_enabled();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!file_util::PathExists(policy_path_) ||

@@ -141,6 +141,10 @@ class DevicePolicy {
   // |http_downloads_enabled|. Returns true on success.
   virtual bool GetHttpDownloadsEnabled(bool* http_downloads_enabled) const = 0;
 
+  // Writes the value of au_p2p_enabled policy in
+  // |au_p2p_enabled|. Returns true on success.
+  virtual bool GetAuP2PEnabled(bool* au_p2p_enabled) const = 0;
+
  private:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles() = 0;
