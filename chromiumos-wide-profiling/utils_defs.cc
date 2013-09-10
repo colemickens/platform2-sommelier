@@ -8,6 +8,6 @@ namespace quipper {
 
 extern const char kPerfPath[] = "/usr/sbin/perf";
 
-extern const char kPerfDataInputPath[] = "";
+extern const char kPerfDataInputPath[] = "testdata/";
 
 }  // namespace quipper
