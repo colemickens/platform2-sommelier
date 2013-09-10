@@ -148,6 +148,7 @@ bool InternalBacklightController::Init() {
   min_visible_level_ = std::min(min_visible_level_, max_level_);
 
   const double initial_percent = LevelToPercent(current_level_);
+  ambient_light_brightness_percent_ = initial_percent;
   plugged_user_brightness_percent_ = initial_percent;
   unplugged_user_brightness_percent_ = initial_percent;
   prefs_->GetDouble(kInternalBacklightNoAlsAcBrightnessPref,

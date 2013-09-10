@@ -662,5 +662,18 @@ TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
   EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
 }
 
+TEST_F(InternalBacklightControllerTest, UserAdjustmentBeforeAmbientLight) {
+  report_initial_als_reading_ = false;
+  Init(POWER_AC);
+  ASSERT_EQ(initial_backlight_level_, backlight_.current_level());
+
+  // Check that a decrease request actually decreases the brightness (i.e. the
+  // initial backlight level, rather than 100%, is used as the starting point
+  // when the ambient light level hasn't been received yet). See
+  // http://crosbug.com/p/22380.
+  controller_->DecreaseUserBrightness(true);
+  EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
+}
+
 }  // namespace policy
 }  // namespace power_manager
