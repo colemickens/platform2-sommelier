@@ -65,8 +65,18 @@ bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
 # Lazy umount the tmpfs dirs under /var so we can immediately umount it.
 umount -n -l /var/run /var/lock
 if [ -e /dev/mapper/encstateful ]; then
-  mount-encrypted umount >/tmp/umount-encrypted.log 2>&1
-  if [ $? -ne 0 ] ; then
+  # Give mount-encrypted umount 10 times to retry, otherwise
+  # it will fail with 'device is busy' because lazy umount does not finish
+  # clearing all reference points yet. Check crosbug.com/p/21345.
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    mount-encrypted umount > /tmp/umount-encrypted.log 2>&1
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      break
+    fi
+    sleep 0.1
+  done
+  if [ $rc -ne 0 ] ; then
     mv /tmp/umount-encrypted.log /mnt/stateful_partition/
   fi
   umount -n /usr/local /home /mnt/stateful_partition
