@@ -55,11 +55,11 @@ TimeBombAbort::~TimeBombAbort() {
 }
 
 void TimeBombAbort::TimeoutHandler(int signal) {
-  // Does a "best-effort" write but fails silently.
+  // Does a "best-effort" write.
   const char* msg = "\n\nTimeBombAbort::TimeoutHandler reached.\n";
-  if (write(STDERR_FILENO, msg, strlen(msg)));
+  if (write(STDERR_FILENO, msg, strlen(msg))) {} // Ignore the return value.
   if (write(STDERR_FILENO, time_bomb_abort_message_,
-            strlen(time_bomb_abort_message_)));
+            strlen(time_bomb_abort_message_))) {} // Ignore the return value.
   exit(1);
 }
 
