@@ -86,6 +86,11 @@ void ExpectFileSize(const base::FilePath& dir,
                     const std::string& file_name,
                     size_t expected_size);
 
+// Sets the expected total file size for the given |filename| file in the
+// xattr of it. This is consumed by the connection_delegate to know the total
+// file size regardless the current file size.
+bool SetExpectedFileSize(const base::FilePath& filename, size_t size);
+
 }  // namespace testutil
 
 }  // namespace p2p

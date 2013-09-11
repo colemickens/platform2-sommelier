@@ -8,6 +8,7 @@
 
 #include "common/testutil.h"
 
+#include <attr/xattr.h>
 #include <stdarg.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -20,6 +21,7 @@
 #include <cstdlib>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <gtest/gtest.h>
 
 using std::string;
@@ -123,6 +125,21 @@ void ExpectFileSize(const FilePath& dir,
                     const string& file_name,
                     size_t expected_size) {
   EXPECT_EQ(FileSize(dir, file_name), expected_size);
+}
+
+bool SetExpectedFileSize(const FilePath& filename, size_t size) {
+  int fd = open(filename.value().c_str(), O_RDWR);
+  if (fd == -1)
+    return false;
+
+  string decimal_size = base::UintToString(size);
+  if (fsetxattr(fd, "user.cros-p2p-filesize",
+                decimal_size.c_str(), decimal_size.size(), 0) != 0) {
+    close(fd);
+    return false;
+  }
+  close(fd);
+  return true;
 }
 
 }  // namespace testutil

@@ -27,6 +27,7 @@ using p2p::testutil::ExpectFileSize;
 using p2p::testutil::kDefaultMainLoopTimeoutMs;
 using p2p::testutil::RunGMainLoopMaxIterations;
 using p2p::testutil::RunGMainLoopUntil;
+using p2p::testutil::SetExpectedFileSize;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
 
@@ -180,9 +181,7 @@ TEST(HttpServer, DISABLED_Basic) {
   EXPECT_COMMAND(0,
                  "dd if=/dev/urandom of=%s/file.p2p bs=1000 count=1",
                  testdir.value().c_str());
-  EXPECT_COMMAND(0,
-                 "setfattr -n user.cros-p2p-filesize -v 2000 %s/file.p2p",
-                 testdir.value().c_str());
+  ASSERT_TRUE(SetExpectedFileSize(testdir.Append("file.p2p"), 2000));
 
   // Start N threads for downloading, one for each file.
   vector<ClientThread*> threads;

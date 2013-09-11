@@ -14,7 +14,6 @@
 #include "http_server/mock_server.h"
 
 #include <arpa/inet.h>
-#include <attr/xattr.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -40,6 +39,7 @@ using base::FilePath;
 using file_util::WriteFile;
 
 using p2p::common::FakeClock;
+using p2p::testutil::SetExpectedFileSize;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
 
@@ -376,19 +376,6 @@ static void GeneratePrintableData(size_t size, string* output) {
     output->at(i) = static_cast<char>(32 + (45 + i * 131 + i * i * 17) % 95);
 }
 
-// Sets the expected total file size for the given |filename| file in the
-// xattr of it. This is consumed by the connection_delegate to know the total
-// file size regardless the current file size.
-static void SetExpectedFileSize(const FilePath& filename, size_t size) {
-  int fd = open(filename.value().c_str(), O_RDWR);
-  ASSERT_NE(fd, -1);
-
-  string decimal_size = base::UintToString(size);
-  ASSERT_EQ(fsetxattr(fd, "user.cros-p2p-filesize",
-                      decimal_size.c_str(), decimal_size.size(), 0), 0);
-  close(fd);
-}
-
 TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
   p2p::testutil::TimeBombAbort bomb(60, "Test NoRequestAndClose timeout\n");
   EXPECT_CALL(mock_server_, ReportServerMessage(
@@ -664,7 +651,8 @@ TEST_F(ConnectionDelegateTest, DISABLED_GetIncompleteFile) {
   string content;
   GeneratePrintableData(50 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
-  SetExpectedFileSize(testdir_path_.Append("data.p2p"), 100 * 1000);
+  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("data.p2p"),
+                                  100 * 1000));
 
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
@@ -703,7 +691,7 @@ TEST_F(ConnectionDelegateTest, DISABLED_GetPartOfIncompleteFile) {
   string content;
   GeneratePrintableData(5 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
-  SetExpectedFileSize(testdir_path_.Append("data.p2p"), 10 * 1000);
+  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("data.p2p"), 10 * 1000));
 
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
@@ -833,7 +821,8 @@ TEST_F(ConnectionDelegateTest, DISABLED_Waiting) {
   string content;
   GeneratePrintableData(100 * 1000, &content);
   WriteFile(testdir_path_.Append("wait.p2p"), content.c_str(), 50 * 1000);
-  SetExpectedFileSize(testdir_path_.Append("wait.p2p"), 100 * 1000);
+  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("wait.p2p"),
+                                  100 * 1000));
 
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
@@ -894,7 +883,8 @@ TEST_F(ConnectionDelegateTest, DISABLED_LimitDownloadSpeed) {
   string content;
   GeneratePrintableData(50 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
-  SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), content.size());
+  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("50mb.p2p"),
+                                  content.size()));
 
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
@@ -935,7 +925,8 @@ TEST_F(ConnectionDelegateTest,
   string content;
   GeneratePrintableData(25 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
-  SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), 50 * 1000 * 1000);
+  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("50mb.p2p"),
+                                  50 * 1000 * 1000));
 
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
