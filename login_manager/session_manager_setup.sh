@@ -261,11 +261,13 @@ for file in $(find $PEPPER_PATH -name '*.info'); do
     FLASH_FLAGS="--ppapi-flash-path=${FILE_NAME}"
     FLASH_FLAGS="${FLASH_FLAGS} --ppapi-flash-version=${VERSION}"
     # TODO(ihf): Remove once crbug.com/237380 and crbug.com/276738 are fixed.
-    if is_board x86-alex || is_board x86-mario || is_board x86-zgb ; then
+    if is_board x86-alex || is_board x86-alex_he || is_board x86-mario ||
+        is_board x86-zgb || is_board x86-zgb_he ; then
       PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=0"
     else
       PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=1"
     fi
+    PPAPI_FLASH_FLAGS="${PPAPI_FLASH_FLAGS},enable_low_latency_audio=0"
   else
     PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
     REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
