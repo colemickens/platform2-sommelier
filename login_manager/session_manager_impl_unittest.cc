@@ -796,10 +796,6 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_CALL(utils_, EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
       .Times(1);
   EXPECT_EQ(TRUE, impl_.HandleLockScreenShown(&error));
-
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kUnlockScreenSignal)))
-      .Times(1);
-  EXPECT_EQ(TRUE, impl_.UnlockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
   EXPECT_CALL(utils_, EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))

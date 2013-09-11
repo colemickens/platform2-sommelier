@@ -47,7 +47,6 @@ class MockSessionManager : public SessionManagerInterface {
   MOCK_METHOD1(LockScreen, gboolean(GError**));
   MOCK_METHOD1(HandleLockScreenShown, gboolean(GError**));
 
-  MOCK_METHOD1(UnlockScreen, gboolean(GError**));
   MOCK_METHOD1(HandleLockScreenDismissed, gboolean(GError**));
 
   MOCK_METHOD4(RestartJob,

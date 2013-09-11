@@ -502,12 +502,6 @@ gboolean SessionManagerImpl::HandleLockScreenShown(GError** error) {
   return TRUE;
 }
 
-gboolean SessionManagerImpl::UnlockScreen(GError** error) {
-  system_->EmitSignal(chromium::kUnlockScreenSignal);
-  LOG(INFO) << "UnlockScreen() method called.";
-  return TRUE;
-}
-
 gboolean SessionManagerImpl::HandleLockScreenDismissed(GError** error) {
   screen_locked_ = false;
   LOG(INFO) << "HandleLockScreenDismissed() method called.";

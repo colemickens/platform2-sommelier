@@ -103,7 +103,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   gboolean LockScreen(GError** error) OVERRIDE;
   gboolean HandleLockScreenShown(GError** error) OVERRIDE;
 
-  gboolean UnlockScreen(GError** error) OVERRIDE;
   gboolean HandleLockScreenDismissed(GError** error) OVERRIDE;
 
   gboolean RestartJob(gint pid,

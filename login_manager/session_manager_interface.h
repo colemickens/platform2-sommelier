@@ -159,12 +159,6 @@ class SessionManagerInterface {
   // and broadcasts ScreenIsLocked signal over DBus.
   virtual gboolean HandleLockScreenShown(GError** error) = 0;
 
-  // Handles UnlockScreen request from Chromium. It emits UnlockScreen
-  // signal to Chromium Browser to tell it to unlock the screen. The browser
-  // should call the HandleScreenUnlocked method when the screen is actually
-  // unlocked.
-  virtual gboolean UnlockScreen(GError** error) = 0;
-
   // Intended to be called by Chromium. Updates canonical system-locked state,
   // and broadcasts ScreenIsUnlocked signal over DBus.
   virtual gboolean HandleLockScreenDismissed(GError** error) = 0;
