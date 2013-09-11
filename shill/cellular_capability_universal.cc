@@ -332,34 +332,11 @@ void CellularCapabilityUniversal::StopModem(Error *error,
     SLOG(Cellular, 2) << __func__ << " Cancelled delayed deregister.";
   }
 
-  Cellular::ModemState state = cellular()->modem_state();
-  SLOG(Cellular, 2) << __func__ << "(" << state << ")";
-
-  if (cellular()->IsModemRegistered()) {
-    string all_bearers("/");  // "/" means all bearers.  See Modemanager docs.
-    modem_simple_proxy_->Disconnect(
-        all_bearers,
-        error,
-        Bind(&CellularCapabilityUniversal::Stop_DisconnectCompleted,
-             weak_ptr_factory_.GetWeakPtr(), callback),
-        kTimeoutDisconnect);
-    if (error->IsFailure())
-      callback.Run(*error);
-  } else {
-    Closure task = Bind(&CellularCapabilityUniversal::Stop_Disable,
-                        weak_ptr_factory_.GetWeakPtr(),
-                        callback);
-    cellular()->dispatcher()->PostTask(task);
-  }
+  Closure task = Bind(&CellularCapabilityUniversal::Stop_Disable,
+                      weak_ptr_factory_.GetWeakPtr(),
+                      callback);
+  cellular()->dispatcher()->PostTask(task);
   deferred_enable_modem_callback_.Reset();
-}
-
-void CellularCapabilityUniversal::Stop_DisconnectCompleted(
-    const ResultCallback &callback, const Error &error) {
-  SLOG(Cellular, 2) << __func__;
-
-  LOG_IF(ERROR, error.IsFailure()) << "Disconnect failed.  Ignoring.";
-  Stop_Disable(callback);
 }
 
 void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {

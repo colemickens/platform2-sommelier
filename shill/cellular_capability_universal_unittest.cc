@@ -533,45 +533,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   set_power_state_callback.Run(Error(Error::kOperationFailed));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StopModemConnected) {
-  // Save pointers to proxies before they are lost by the call to InitProxies
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
-  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
-  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
-  capability_->InitProxies();
-
-  ResultCallback disconnect_callback;
-  Error error;
-  ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
-  EXPECT_CALL(*modem_simple_proxy,
-              Disconnect(::DBus::Path("/"), _, _,
-                         CellularCapability::kTimeoutDisconnect))
-      .WillOnce(SaveArg<2>(&disconnect_callback));
-  capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
-  capability_->StopModem(&error, callback);
-  EXPECT_TRUE(error.IsSuccess());
-
-  ResultCallback disable_callback;
-  EXPECT_CALL(*modem_proxy,
-              Enable(false, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(SaveArg<2>(&disable_callback));
-  disconnect_callback.Run(Error(Error::kSuccess));
-
-  ResultCallback set_power_state_callback;
-  EXPECT_CALL(
-      *modem_proxy,
-      SetPowerState(
-          MM_MODEM_POWER_STATE_LOW, _, _,
-          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
-      .WillOnce(SaveArg<2>(&set_power_state_callback));
-
-  disable_callback.Run(Error(Error::kSuccess));
-
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  set_power_state_callback.Run(Error(Error::kSuccess));
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {
   Error error;
   ResultCallback disconnect_callback;

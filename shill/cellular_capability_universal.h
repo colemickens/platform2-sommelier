@@ -283,8 +283,6 @@ class CellularCapabilityUniversal : public CellularCapability {
                             const Error &error);
 
   // Methods used in stopping a modem
-  void Stop_DisconnectCompleted(const ResultCallback &callback,
-                               const Error &error);
   void Stop_Disable(const ResultCallback &callback);
   void Stop_DisableCompleted(const ResultCallback &callback,
                              const Error &error);
