@@ -26,9 +26,6 @@ class MockModemTimeProxy : public ModemTimeProxyInterface {
   MOCK_METHOD1(set_network_time_changed_callback,
                void(const NetworkTimeChangedSignalCallback &callback));
 
-  // Inherited properties from ModemTimeProxyInterface.
-  MOCK_METHOD0(NetworkTimezone, const DBusPropertiesMap());
-
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemTimeProxy);
 };

@@ -28,13 +28,6 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
                           const DBusPropertyMapsCallback &callback,
                           int timeout));
 
-  // Properties.
-  MOCK_METHOD0(Imei, std::string());
-  MOCK_METHOD0(RegistrationState, uint32_t());
-  MOCK_METHOD0(OperatorCode, std::string());
-  MOCK_METHOD0(OperatorName, std::string());
-  MOCK_METHOD0(EnabledFacilityLocks, uint32_t());
-
   DISALLOW_COPY_AND_ASSIGN(MockModemModem3gppProxy);
 };
 

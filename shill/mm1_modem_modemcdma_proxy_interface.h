@@ -37,15 +37,6 @@ class ModemModemCdmaProxyInterface {
 
   virtual void set_activation_state_callback(
       const ActivationStateSignalCallback &callback) = 0;
-
-  // Properties.
-  virtual std::string Meid() = 0;
-  virtual std::string Esn() = 0;
-  virtual uint32_t ActivationState() = 0;
-  virtual uint32_t Sid() = 0;
-  virtual uint32_t Nid() = 0;
-  virtual uint32_t Cdma1xRegistrationState() = 0;
-  virtual uint32_t EvdoRegistrationState() = 0;
 };
 
 }  // namespace mm1

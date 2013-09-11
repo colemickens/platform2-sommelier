@@ -33,15 +33,6 @@ class BearerProxy : public BearerProxyInterface {
                           const ResultCallback &callback,
                           int timeout);
 
-  // Inherited properties from BearerProxyInterface
-  virtual const std::string Interface();
-  virtual bool Connected();
-  virtual bool Suspended();
-  virtual const DBusPropertiesMap Ip4Config();
-  virtual const DBusPropertiesMap Ip6Config();
-  virtual uint32_t IpTimeout();
-  virtual const DBusPropertiesMap Properties();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Bearer_proxy,
                 public DBus::ObjectProxy {

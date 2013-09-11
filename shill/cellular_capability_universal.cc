@@ -1525,11 +1525,11 @@ string CellularCapabilityUniversal::GetRoamingStateString() const {
   return flimflam::kRoamingStateUnknown;
 }
 
+// TODO(armansito): Remove this method once cromo is deprecated.
 void CellularCapabilityUniversal::GetSignalQuality() {
-  // TODO(njw): Switch to asynchronous calls (crbug.com/200687).
-  const DBus::Struct<unsigned int, bool> quality =
-      modem_proxy_->SignalQuality();
-  OnSignalQualityChanged(quality._1);
+  // ModemManager always returns the cached value, so there is no need to
+  // trigger an update here. The true value is updated through a property
+  // change signal.
 }
 
 string CellularCapabilityUniversal::GetTypeString() const {

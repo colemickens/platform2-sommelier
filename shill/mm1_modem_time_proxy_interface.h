@@ -33,9 +33,6 @@ class ModemTimeProxyInterface {
 
   virtual void set_network_time_changed_callback(
       const NetworkTimeChangedSignalCallback &callback) = 0;
-
-  // Properties
-  virtual const DBusPropertiesMap NetworkTimezone() = 0;
 };
 
 }  // namespace mm1

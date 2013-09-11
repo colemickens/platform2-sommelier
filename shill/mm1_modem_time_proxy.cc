@@ -39,16 +39,6 @@ void ModemTimeProxy::GetNetworkTime(Error *error,
   }
 }
 
-const DBusPropertiesMap ModemTimeProxy::NetworkTimezone() {
-  SLOG(DBus, 2) << __func__;
-  try {
-    return proxy_.NetworkTimezone();
-  } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return DBusPropertiesMap();  // Make the compiler happy.
-  }
-}
-
 ModemTimeProxy::Proxy::Proxy(DBus::Connection *connection,
                              const string &path,
                              const string &service)

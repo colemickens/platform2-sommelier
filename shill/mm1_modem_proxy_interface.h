@@ -74,34 +74,6 @@ class ModemProxyInterface {
 
   virtual void set_state_changed_callback(
       const ModemStateChangedSignalCallback &callback) = 0;
-
-  // Properties.
-  virtual const ::DBus::Path Sim() = 0;
-  virtual const std::vector<uint32_t> SupportedCapabilities() = 0;
-  virtual uint32_t CurrentCapabilities() = 0;
-  virtual uint32_t MaxBearers() = 0;
-  virtual uint32_t MaxActiveBearers() = 0;
-  virtual const std::string Manufacturer() = 0;
-  virtual const std::string Model() = 0;
-  virtual const std::string Revision() = 0;
-  virtual const std::string DeviceIdentifier() = 0;
-  virtual const std::string Device() = 0;
-  virtual const std::vector<std::string> Drivers() = 0;
-  virtual const std::string Plugin() = 0;
-  virtual const std::string EquipmentIdentifier() = 0;
-  virtual uint32_t UnlockRequired() = 0;
-  virtual const std::map<uint32_t, uint32_t> UnlockRetries() = 0;
-  virtual uint32_t State(Error *error) = 0;
-  virtual uint32_t AccessTechnologies() = 0;
-  virtual const ::DBus::Struct<uint32_t, bool> SignalQuality() = 0;
-  virtual const std::vector<std::string> OwnNumbers() = 0;
-  virtual const std::vector<::DBus::Struct<uint32_t, uint32_t>>
-      SupportedModes() = 0;
-  virtual const ::DBus::Struct<uint32_t, uint32_t> CurrentModes() = 0;
-  virtual const std::vector<uint32_t> SupportedBands() = 0;
-  virtual const std::vector<uint32_t> CurrentBands() = 0;
-  virtual uint32_t SupportedIpFamilies() = 0;
-  virtual uint32_t PowerState() = 0;
 };
 
 }  // namespace mm1

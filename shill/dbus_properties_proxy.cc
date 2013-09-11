@@ -29,6 +29,20 @@ DBusPropertiesMap DBusPropertiesProxy::GetAll(const string &interface_name) {
   return DBusPropertiesMap();
 }
 
+DBus::Variant DBusPropertiesProxy::Get(const string &interface_name,
+                                       const string &property) {
+  SLOG(DBus, 2) << __func__ << "(" << interface_name << ", "
+                << property << ")";
+  try {
+    return proxy_.Get(interface_name, property);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface name: " << interface_name
+               << ", property: " << property;
+  }
+  return DBus::Variant();
+}
+
 void DBusPropertiesProxy::set_properties_changed_callback(
     const PropertiesChangedCallback &callback) {
   proxy_.set_properties_changed_callback(callback);

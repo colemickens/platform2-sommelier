@@ -72,34 +72,6 @@ class ModemProxy : public ModemProxyInterface {
   virtual void set_state_changed_callback(
       const ModemStateChangedSignalCallback &callback);
 
-  // Inherited properties from ModemProxyInterface.
-  virtual const ::DBus::Path Sim();
-  virtual const std::vector<uint32_t> SupportedCapabilities();
-  virtual uint32_t CurrentCapabilities();
-  virtual uint32_t MaxBearers();
-  virtual uint32_t MaxActiveBearers();
-  virtual const std::string Manufacturer();
-  virtual const std::string Model();
-  virtual const std::string Revision();
-  virtual const std::string DeviceIdentifier();
-  virtual const std::string Device();
-  virtual const std::vector<std::string> Drivers();
-  virtual const std::string Plugin();
-  virtual const std::string EquipmentIdentifier();
-  virtual uint32_t UnlockRequired();
-  virtual const std::map<uint32_t, uint32_t> UnlockRetries();
-  virtual uint32_t State(Error *error);
-  virtual uint32_t AccessTechnologies();
-  virtual const ::DBus::Struct<uint32_t, bool> SignalQuality();
-  virtual const std::vector<std::string> OwnNumbers();
-  virtual const std::vector<::DBus::Struct<uint32_t, uint32_t>>
-      SupportedModes();
-  virtual const ::DBus::Struct<uint32_t, uint32_t> CurrentModes();
-  virtual const std::vector<uint32_t> SupportedBands();
-  virtual const std::vector<uint32_t> CurrentBands();
-  virtual uint32_t SupportedIpFamilies();
-  virtual uint32_t PowerState();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem_proxy,
                 public DBus::ObjectProxy {

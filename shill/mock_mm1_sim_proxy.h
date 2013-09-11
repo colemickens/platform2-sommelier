@@ -40,11 +40,7 @@ class MockSimProxy : public SimProxyInterface {
                                const ResultCallback &callback,
                                int timeout));
 
-  MOCK_METHOD0(SimIdentifier, const std::string());
-  MOCK_METHOD0(Imsi, const std::string());
-  MOCK_METHOD0(OperatorIdentifier, const std::string());
-  MOCK_METHOD0(OperatorName, const std::string());
-
+private:
   DISALLOW_COPY_AND_ASSIGN(MockSimProxy);
 };
 

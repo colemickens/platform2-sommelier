@@ -52,46 +52,6 @@ void ModemLocationProxy::GetLocation(Error *error,
   }
 }
 
-uint32_t ModemLocationProxy::Capabilities() {
-  SLOG(Modem, 2) << __func__;
-  try {
-    return proxy_.Capabilities();
-  } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return 0;  // Make the compiler happy.
-  }
-}
-
-uint32_t ModemLocationProxy::Enabled(){
-  SLOG(Modem, 2) << __func__;
-  try {
-    return proxy_.Enabled();
-  } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return 0;  // Make the compiler happy.
-  }
-}
-
-bool ModemLocationProxy::SignalsLocation() {
-  SLOG(Modem, 2) << __func__;
-  try {
-    return proxy_.SignalsLocation();
-  } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return false;  // Make the compiler happy.
-  }
-}
-
-const DBusEnumValueMap ModemLocationProxy::Location() {
-  SLOG(Modem, 2) << __func__;
-  try {
-    return proxy_.Location();
-  } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return DBusEnumValueMap();  // Make the compiler happy.
-  }
-}
-
 ModemLocationProxy::Proxy::Proxy(DBus::Connection *connection,
                                  const string &path,
                                  const string &service)

@@ -35,15 +35,6 @@ class MockModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   MOCK_METHOD1(set_activation_state_callback,
                void(const ActivationStateSignalCallback &callback));
 
-  // Properties.
-  MOCK_METHOD0(Meid, std::string());
-  MOCK_METHOD0(Esn, std::string());
-  MOCK_METHOD0(ActivationState, uint32_t());
-  MOCK_METHOD0(Sid, uint32_t());
-  MOCK_METHOD0(Nid, uint32_t());
-  MOCK_METHOD0(Cdma1xRegistrationState, uint32_t());
-  MOCK_METHOD0(EvdoRegistrationState, uint32_t());
-
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemModemCdmaProxy);
 };

@@ -38,15 +38,6 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   virtual void set_activation_state_callback(
       const ActivationStateSignalCallback &callback);
 
-  // Inherited properties from ModemCdmaProxyInterface.
-  virtual std::string Meid();
-  virtual std::string Esn();
-  virtual uint32_t ActivationState();
-  virtual uint32_t Sid();
-  virtual uint32_t Nid();
-  virtual uint32_t Cdma1xRegistrationState();
-  virtual uint32_t EvdoRegistrationState();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::ModemCdma_proxy,
                 public DBus::ObjectProxy {

@@ -21,6 +21,8 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
 
   // Inherited from DBusPropertiesProxyInterface.
   virtual DBusPropertiesMap GetAll(const std::string &interface_name);
+  virtual DBus::Variant Get(const std::string &interface_name,
+                            const std::string &property);
 
   virtual void set_properties_changed_callback(
       const PropertiesChangedCallback &callback);

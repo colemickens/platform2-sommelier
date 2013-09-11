@@ -31,15 +31,6 @@ class BearerProxyInterface {
   virtual void Disconnect(Error *error,
                           const ResultCallback &callback,
                           int timeout) = 0;
-
-  // Properties
-  virtual const std::string Interface() = 0;
-  virtual bool Connected() = 0;
-  virtual bool Suspended() = 0;
-  virtual const DBusPropertiesMap Ip4Config() = 0;
-  virtual const DBusPropertiesMap Ip6Config() = 0;
-  virtual uint32_t IpTimeout() = 0;
-  virtual const DBusPropertiesMap Properties() = 0;
 };
 
 }  // namespace mm1

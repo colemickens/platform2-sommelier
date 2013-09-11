@@ -44,12 +44,6 @@ class SimProxyInterface {
                          Error *error,
                          const ResultCallback &callback,
                          int timeout) = 0;
-
-  // Properties.
-  virtual const std::string SimIdentifier() = 0;
-  virtual const std::string Imsi() = 0;
-  virtual const std::string OperatorIdentifier() = 0;
-  virtual const std::string OperatorName() = 0;
 };
 
 }  // namespace mm1

@@ -446,7 +446,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
 
   // Change the state to kModemStateEnabling and verify that it still has not
   // been enabled.
-  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   capability_->OnModemStateChangedSignal(Cellular::kModemStateInitializing,
                                          Cellular::kModemStateEnabling, 0);
   EXPECT_TRUE(capability_->imei_.empty());
@@ -788,7 +787,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
   ::DBus::Struct<uint32_t, bool> data;
   data._1 = 100;
   data._2 = true;
-  EXPECT_CALL(*modem_proxy_, SignalQuality()).WillRepeatedly(Return(data));
+  ::DBus::Variant v;
+  ::DBus::MessageIter writer = v.writer();
+  writer << data;
+  EXPECT_CALL(*properties_proxy_, Get(_, MM_MODEM_PROPERTY_SIGNALQUALITY))
+      .WillRepeatedly(Return(v));
 
   InitProviderDB();
   capability_->InitProxies();

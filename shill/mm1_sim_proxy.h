@@ -45,12 +45,6 @@ class SimProxy : public SimProxyInterface {
                          const ResultCallback &callback,
                          int timeout);
 
-  // Inherited properties from SimProxyInterface.
-  virtual const std::string SimIdentifier();
-  virtual const std::string Imsi();
-  virtual const std::string OperatorIdentifier();
-  virtual const std::string OperatorName();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Sim_proxy,
                 public DBus::ObjectProxy {

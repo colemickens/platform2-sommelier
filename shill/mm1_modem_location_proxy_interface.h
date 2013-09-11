@@ -31,12 +31,6 @@ class ModemLocationProxyInterface {
   virtual void GetLocation(Error *error,
                            const DBusEnumValueMapCallback &callback,
                            int timeout) = 0;
-
-  // Properties
-  virtual uint32_t Capabilities() = 0;
-  virtual uint32_t Enabled() = 0;
-  virtual bool SignalsLocation() = 0;
-  virtual const DBusEnumValueMap Location() = 0;
 };
 
 }  // namespace mm1

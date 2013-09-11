@@ -29,12 +29,6 @@ class MockModemLocationProxy : public ModemLocationProxyInterface {
                                  const DBusEnumValueMapCallback &callback,
                                  int timeout));
 
-  // Inherited properties from ModemLocationProxyInterface.
-  MOCK_METHOD0(Capabilities, uint32_t());
-  MOCK_METHOD0(Enabled, uint32_t());
-  MOCK_METHOD0(SignalsLocation, bool());
-  MOCK_METHOD0(Location, const DBusEnumValueMap());
-
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemLocationProxy);
 };

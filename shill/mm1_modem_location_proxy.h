@@ -36,12 +36,6 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
                            const DBusEnumValueMapCallback &callback,
                            int timeout);
 
-  // Inherited properties from ModemLocationProxyInterface.
-  virtual uint32_t Capabilities();
-  virtual uint32_t Enabled();
-  virtual bool SignalsLocation();
-  virtual const DBusEnumValueMap Location();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Location_proxy,
                 public DBus::ObjectProxy {

@@ -26,14 +26,6 @@ class MockBearerProxy : public BearerProxyInterface {
   MOCK_METHOD3(Disconnect, void(Error *error,
                                 const ResultCallback &callback,
                                 int timeout));
-
-  MOCK_METHOD0(Interface, const std::string());
-  MOCK_METHOD0(Connected, bool());
-  MOCK_METHOD0(Suspended, bool());
-  MOCK_METHOD0(Ip4Config, const DBusPropertiesMap());
-  MOCK_METHOD0(Ip6Config, const DBusPropertiesMap());
-  MOCK_METHOD0(IpTimeout, uint32_t());
-  MOCK_METHOD0(Properties, const DBusPropertiesMap());
 };
 
 }  // namespace mm1

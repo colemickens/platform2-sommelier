@@ -175,6 +175,7 @@ class CellularCapability {
 
   virtual std::string GetRoamingStateString() const = 0;
 
+  // TODO(armansito): Remove this method once cromo is deprecated.
   virtual void GetSignalQuality() = 0;
 
   virtual std::string GetTypeString() const = 0;

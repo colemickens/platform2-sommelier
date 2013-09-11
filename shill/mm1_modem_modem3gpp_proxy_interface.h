@@ -32,13 +32,6 @@ class ModemModem3gppProxyInterface {
   virtual void Scan(Error *error,
                     const DBusPropertyMapsCallback &callback,
                     int timeout) = 0;
-
-  // Properties.
-  virtual std::string Imei() = 0;
-  virtual uint32_t RegistrationState() = 0;
-  virtual std::string OperatorCode() = 0;
-  virtual std::string OperatorName() = 0;
-  virtual uint32_t EnabledFacilityLocks() = 0;
 };
 
 }  // namespace mm1

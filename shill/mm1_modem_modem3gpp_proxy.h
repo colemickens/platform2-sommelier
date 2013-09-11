@@ -32,13 +32,6 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
                     const DBusPropertyMapsCallback &callback,
                     int timeout);
 
-  // Inherited properties from Modem3gppProxyInterface.
-  virtual std::string Imei();
-  virtual uint32_t RegistrationState();
-  virtual std::string OperatorCode();
-  virtual std::string OperatorName();
-  virtual uint32_t EnabledFacilityLocks();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Modem3gpp_proxy,
                 public DBus::ObjectProxy {

@@ -32,9 +32,6 @@ class ModemTimeProxy : public ModemTimeProxyInterface {
   virtual void set_network_time_changed_callback(
       const NetworkTimeChangedSignalCallback &callback);
 
-  // Inherited properties from ModemTimeProxyInterface.
-  virtual const DBusPropertiesMap NetworkTimezone();
-
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Time_proxy,
                 public DBus::ObjectProxy {
