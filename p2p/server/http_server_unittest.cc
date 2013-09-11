@@ -116,7 +116,7 @@ class ClientThread : public base::SimpleThread {
   DISALLOW_COPY_AND_ASSIGN(ClientThread);
 };
 
-TEST(HttpServer, Basic) {
+TEST(HttpServer, DISABLED_Basic) {
   FilePath testdir = SetupTestDir("http-server");
   StrictMock<MetricsLibraryMock> metrics_lib;
 
