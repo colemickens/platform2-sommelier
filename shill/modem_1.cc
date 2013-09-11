@@ -4,77 +4,50 @@
 
 #include "shill/modem.h"
 
-#include <base/file_util.h>
-#include <base/stl_util.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular.h"
 #include "shill/device_info.h"
 
-using base::FilePath;
 using std::string;
+using std::vector;
 
 namespace shill {
-
-namespace {
-
-// The default place where the system keeps symbolic links for network device
-const char kDefaultNetfilesPath[] = "/sys/class/net";
-
-}  // namespace
 
 Modem1::Modem1(const string &owner,
                const string &service,
                const string &path,
                ModemInfo *modem_info)
-    : Modem(owner, service, path, modem_info),
-      netfiles_path_(kDefaultNetfilesPath) {}
+    : Modem(owner, service, path, modem_info) {}
 
 Modem1::~Modem1() {}
 
 bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
                          string *name) const {
-  string device_prop;
-  if (!DBusProperties::GetString(modem_props,
-                                 MM_MODEM_PROPERTY_DEVICE,
-                                 &device_prop)) {
-    LOG(ERROR) << "Device missing property: " << MM_MODEM_PROPERTY_DEVICE;
+  DBusPropertiesMap::const_iterator props_it;
+  string net_port;
+
+  props_it = modem_props.find(MM_MODEM_PROPERTY_PORTS);
+  if (props_it == modem_props.end()) {
+    LOG(ERROR) << "Device missing property: " << MM_MODEM_PROPERTY_PORTS;
     return false;
   }
 
-  if (device_prop.find(DeviceInfo::kModemPseudoDeviceNamePrefix) == 0) {
-    *name = device_prop;
-    return true;
-  }
-
-  // |device_prop| will be a sysfs path such as:
-  //  /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2
-  FilePath device_path(device_prop);
-
-  // Each entry in |netfiles_path_" (typically /sys/class/net)
-  // has the name of a network interface and is a symlink into the
-  // actual device structure:
-  //  eth0 -> ../../devices/pci0000:00/0000:00:1c.5/0000:01:00.0/net/eth0
-  // Iterate over all of these and see if any of them point into
-  // subdirectories of the sysfs path from the Device property.
-  // FileEnumerator warns that it is a blocking interface; that
-  // shouldn't be a problem here.
-  file_util::FileEnumerator netfiles(netfiles_path_,
-                                     false,  // don't recurse
-                                     file_util::FileEnumerator::DIRECTORIES);
-  for (FilePath link = netfiles.Next(); !link.empty(); link = netfiles.Next()) {
-    FilePath target;
-    if (!file_util::ReadSymbolicLink(link, &target))
-      continue;
-    if (!target.IsAbsolute())
-      target = netfiles_path_.Append(target);
-    if (file_util::ContainsPath(device_path, target)) {
-      *name = link.BaseName().value();
-      return true;
+  vector<DBus::Struct<string, uint32>> ports = props_it->second;
+  for (const auto &port_pair: ports) {
+    if (port_pair._2 == MM_MODEM_PORT_TYPE_NET) {
+      net_port = port_pair._1;
+      break;
     }
   }
-  LOG(ERROR) << "No link name found for: " << device_prop;
-  return false;
+
+  if (net_port.empty()) {
+    LOG(ERROR) << "Could not find net port used by the device.";
+    return false;
+  }
+
+  *name = net_port;
+  return true;
 }
 
 void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &properties) {

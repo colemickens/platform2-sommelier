@@ -23,6 +23,7 @@
 
 using base::FilePath;
 using std::string;
+using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -88,19 +89,9 @@ class Modem1Test : public Test {
   scoped_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
-  base::ScopedTempDir temp_dir_;
-  string device_;
 };
 
 void Modem1Test::SetUp() {
-  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  modem_->netfiles_path_ = temp_dir_.path();
-  device_ = temp_dir_.path().Append("devices").Append(kLinkName).value();
-  FilePath device_dir = FilePath(device_).Append("1-2/3-4");
-  ASSERT_TRUE(file_util::CreateDirectory(device_dir));
-  FilePath symlink(temp_dir_.path().Append(kLinkName));
-  ASSERT_TRUE(file_util::CreateSymbolicLink(device_dir, symlink));
-
   EXPECT_EQ(kOwner, modem_->owner_);
   EXPECT_EQ(kService, modem_->service_);
   EXPECT_EQ(kPath, modem_->path_);
@@ -127,9 +118,17 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
   DBus::Variant lock;
   lock.writer().append_uint32(MM_MODEM_LOCK_NONE);
   modem_properties[MM_MODEM_PROPERTY_UNLOCKREQUIRED] = lock;
-  DBus::Variant device_variant;
-  device_variant.writer().append_string(device_.c_str());
-  modem_properties[MM_MODEM_PROPERTY_DEVICE] = device_variant;
+
+  DBus::Variant ports_variant;
+  DBus::MessageIter ports_message_iter = ports_variant.writer();
+  DBus::MessageIter ports_array_iter = ports_message_iter.new_array("(su)");
+  DBus::MessageIter port_struct_iter = ports_array_iter.new_struct();
+  port_struct_iter.append_string(kLinkName);
+  port_struct_iter.append_uint32(MM_MODEM_PORT_TYPE_NET);
+  ports_array_iter.close_container(port_struct_iter);
+  ports_message_iter.close_container(ports_array_iter);
+  modem_properties[MM_MODEM_PROPERTY_PORTS] = ports_variant;
+
   properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;
 
   DBusPropertiesMap modem3gpp_properties;
