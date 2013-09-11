@@ -31,7 +31,6 @@ using testing::StrictMock;
 
 using base::FilePath;
 
-using p2p::testutil::ExpectCommand;
 using p2p::testutil::kDefaultMainLoopTimeoutMs;
 using p2p::testutil::RunGMainLoopMaxIterations;
 using p2p::testutil::SetupTestDir;

@@ -61,22 +61,6 @@ void TimeBombAbort::TimeoutHandler(int signal) {
   exit(1);
 }
 
-void ExpectCommand(int expected_exit_status,
-                   const char* format,
-                   ...) {
-  va_list args;
-  char buf[8192];
-
-  va_start(args, format);
-  vsnprintf(buf, sizeof buf, format, args);
-  va_end(args);
-
-  int rc = system(buf);
-
-  EXPECT_TRUE(WIFEXITED(rc));
-  EXPECT_EQ(WEXITSTATUS(rc), expected_exit_status);
-}
-
 FilePath SetupTestDir(const string& test_name) {
   // Create testing directory
   FilePath ret;
@@ -91,7 +75,7 @@ FilePath SetupTestDir(const string& test_name) {
 void TeardownTestDir(const FilePath& dir_path) {
   // Sanity check
   EXPECT_TRUE(dir_path.value().find("/tmp/p2p-testing-") == 0);
-  ExpectCommand(0, "rm -rf %s", dir_path.value().c_str());
+  EXPECT_COMMAND(0, "rm -rf %s", dir_path.value().c_str());
 }
 
 static gboolean RunGMainLoopOnTimeout(gpointer user_data) {

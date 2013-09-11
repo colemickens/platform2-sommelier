@@ -23,7 +23,6 @@
 using testing::_;
 using testing::StrictMock;
 
-using p2p::testutil::ExpectCommand;
 using p2p::testutil::ExpectFileSize;
 using p2p::testutil::kDefaultMainLoopTimeoutMs;
 using p2p::testutil::RunGMainLoopMaxIterations;
@@ -97,13 +96,12 @@ class ClientThread : public base::SimpleThread {
  private:
   virtual void Run() {
     const char* dir = testdir_path_.value().c_str();
-    ExpectCommand(0,
-                  "curl -s -o %s/dl_%d "
-                  "http://127.0.0.1:%d/file",
-                  dir,
-                  num_,
-                  port_);
-    ExpectCommand(0, "cmp -l -b %s/file.p2p %s/dl_%d", dir, dir, num_);
+    EXPECT_COMMAND(0,
+                   "curl -s -o %s/dl_%d http://127.0.0.1:%d/file",
+                   dir,
+                   num_,
+                   port_);
+    EXPECT_COMMAND(0, "cmp -l -b %s/file.p2p %s/dl_%d", dir, dir, num_);
 
     string name = StringPrintf("dl_%d", num_);
     ExpectFileSize(testdir_path_, name.c_str(), 2000);
@@ -179,12 +177,12 @@ TEST(HttpServer, DISABLED_Basic) {
   // indicating that it's 2000 bytes. This will make clients hang
   // and thus enable us to reliably get the NumConnections count
   // to N.
-  ExpectCommand(0,
-                "dd if=/dev/urandom of=%s/file.p2p bs=1000 count=1",
-                testdir.value().c_str());
-  ExpectCommand(0,
-                "setfattr -n user.cros-p2p-filesize -v 2000 %s/file.p2p",
-                testdir.value().c_str());
+  EXPECT_COMMAND(0,
+                 "dd if=/dev/urandom of=%s/file.p2p bs=1000 count=1",
+                 testdir.value().c_str());
+  EXPECT_COMMAND(0,
+                 "setfattr -n user.cros-p2p-filesize -v 2000 %s/file.p2p",
+                 testdir.value().c_str());
 
   // Start N threads for downloading, one for each file.
   vector<ClientThread*> threads;
@@ -202,10 +200,10 @@ TEST(HttpServer, DISABLED_Basic) {
                          kMultipleTestNumFiles /* num_calls */));
 
   // Now, complete the file. This causes each client to finish up.
-  ExpectCommand(0,
-                "dd if=/dev/zero of=%s/file.p2p conv=notrunc "
-                "oflag=append bs=1000 count=1",
-                testdir.value().c_str());
+  EXPECT_COMMAND(0,
+                 "dd if=/dev/zero of=%s/file.p2p conv=notrunc "
+                 "oflag=append bs=1000 count=1",
+                 testdir.value().c_str());
 
   // Catch again all the disconnection events.
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,

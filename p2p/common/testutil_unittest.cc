@@ -48,14 +48,14 @@ TEST(TestUtil, TestDir) {
 }
 
 TEST(TestUtil, ExpectCommandSimple) {
-  ExpectCommand(0, "true");
-  ExpectCommand(1, "false");
+  EXPECT_COMMAND(0, "true");
+  EXPECT_COMMAND(1, "false");
 }
 
 TEST(TestUtil, ExpectCommandSideEffects) {
   FilePath testdir = SetupTestDir("expect-command-side-effects");
 
-  ExpectCommand(
+  EXPECT_COMMAND(
       0, "echo -n xyz > %s", testdir.Append("file.txt").value().c_str());
 
   string contents;
@@ -69,9 +69,9 @@ TEST(TestUtil, ExpectCommandSideEffects) {
 TEST(TestUtil, FileSize) {
   FilePath testdir = SetupTestDir("expect-file-size");
 
-  ExpectCommand(0, "echo -n 1 > %s", testdir.Append("a").value().c_str());
-  ExpectCommand(0, "echo -n 11 > %s", testdir.Append("b").value().c_str());
-  ExpectCommand(0, "echo -n 111 > %s", testdir.Append("c").value().c_str());
+  EXPECT_COMMAND(0, "echo -n 1 > %s", testdir.Append("a").value().c_str());
+  EXPECT_COMMAND(0, "echo -n 11 > %s", testdir.Append("b").value().c_str());
+  EXPECT_COMMAND(0, "echo -n 111 > %s", testdir.Append("c").value().c_str());
 
   ExpectFileSize(testdir, "a", 1);
   ExpectFileSize(testdir, "b", 2);

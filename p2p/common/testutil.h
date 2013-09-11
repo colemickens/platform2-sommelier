@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include <base/file_path.h>
+#include <base/stringprintf.h>
 #include <gtest/gtest.h>
 
 namespace p2p {
@@ -41,12 +42,14 @@ class TimeBombAbort {
   DISALLOW_COPY_AND_ASSIGN(TimeBombAbort);
 };
 
-// Utility function to to run the command expressed by the
-// printf()-style string |format| using the system(3) utility
-// function. Will assert unless the command exits normally
-// with exit status |expected_exit_status|.
-void ExpectCommand(int expected_exit_status, const char* format, ...)
-    __attribute__((__format__(__printf__, 2, 3)));
+// Utility macro to run the command expressed by the printf()-style string
+// |command_format| using the system(3) utility function. Will assert unless
+// the command exits normally with exit status |expected_exit_status|.
+#define EXPECT_COMMAND(expected_exit_status, command_format, ...) do { \
+  int rc = system(base::StringPrintf(command_format, ## __VA_ARGS__).c_str()); \
+  EXPECT_TRUE(WIFEXITED(rc)); \
+  EXPECT_EQ(WEXITSTATUS(rc), expected_exit_status); \
+} while (0);
 
 // Creates a unique and empty directory and returns the
 // path. Your code should call TeardownTestDir() when
