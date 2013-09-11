@@ -75,6 +75,8 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalFail);
+  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalGatewayArp);
+  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalGatewayArpNak);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalSuccess);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalUnknown);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
@@ -115,8 +117,9 @@ class DHCPConfig : public IPConfig {
   static const char kDHCPCDUser[];
 
   static const char kReasonBound[];
-  static const char kReasonGatewayArp[];
   static const char kReasonFail[];
+  static const char kReasonGatewayArp[];
+  static const char kReasonNak[];
   static const char kReasonRebind[];
   static const char kReasonReboot[];
   static const char kReasonRenew[];
@@ -195,6 +198,9 @@ class DHCPConfig : public IPConfig {
 
   // Whether a lease has been acquired from the DHCP server or gateway ARP.
   bool is_lease_active_;
+
+  // Whether it is valid to retain the lease acquired via gateway ARP.
+  bool is_gateway_arp_active_;
 
   // The proxy for communicating with the DHCP client.
   scoped_ptr<DHCPProxyInterface> proxy_;

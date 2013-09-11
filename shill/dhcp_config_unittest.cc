@@ -439,6 +439,70 @@ TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
+TEST_F(DHCPConfigTest, ProcessEventSignalGatewayArp) {
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+      0x01020304);
+  UpdateCallbackTest success_callback_test(DHCPConfig::kReasonGatewayArp,
+                                           config_, true);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&success_callback_test)));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
+  config_->Start();
+  config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
+  EXPECT_TRUE(success_callback_test.called());
+  EXPECT_EQ("4.3.2.1", config_->properties().address);
+  EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(config_->is_gateway_arp_active_);
+
+  // If the timeout gets called, we shouldn't lose the lease since GatewayArp
+  // is active.
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, ::testing::EndsWith(
+      "Continuing to use our previous lease, due to gateway-ARP.")));
+  UpdateCallbackTest failure_callback_test("Timeout", config_, true);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&failure_callback_test)));
+  config_->lease_acquisition_timeout_callback_.callback().Run();
+  EXPECT_FALSE(failure_callback_test.called());
+  EXPECT_TRUE(config_->is_gateway_arp_active_);
+
+  // An official reply from a DHCP server should reset our GatewayArp state.
+  UpdateCallbackTest renew_callback_test(DHCPConfig::kReasonRenew,
+                                           config_, true);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&renew_callback_test)));
+  config_->ProcessEventSignal(DHCPConfig::kReasonRenew, conf);
+  EXPECT_TRUE(renew_callback_test.called());
+  EXPECT_FALSE(config_->is_gateway_arp_active_);
+}
+
+TEST_F(DHCPConfigTest, ProcessEventSignalGatewayArpNak) {
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+      0x01020304);
+  UpdateCallbackTest success_callback_test(DHCPConfig::kReasonGatewayArp,
+                                           config_, true);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&success_callback_test)));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
+  config_->Start();
+  config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
+  EXPECT_TRUE(config_->is_gateway_arp_active_);
+
+  // Sending a NAK should clear is_gateway_arp_active_.
+  config_->ProcessEventSignal(DHCPConfig::kReasonNak, conf);
+  EXPECT_FALSE(config_->is_gateway_arp_active_);
+
+  // If the timeout gets called, we should lose the lease since GatewayArp
+  // is not active any more.
+  UpdateCallbackTest failure_callback_test("Timeout", config_, false);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&failure_callback_test)));
+  config_->lease_acquisition_timeout_callback_.callback().Run();
+  EXPECT_TRUE(failure_callback_test.called());
+}
 
 TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.

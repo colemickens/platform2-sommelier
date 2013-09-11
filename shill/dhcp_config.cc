@@ -51,6 +51,7 @@ const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";
 const char DHCPConfig::kReasonGatewayArp[] = "GATEWAY-ARP";
+const char DHCPConfig::kReasonNak[] = "NAK";
 const char DHCPConfig::kReasonRebind[] = "REBIND";
 const char DHCPConfig::kReasonReboot[] = "REBOOT";
 const char DHCPConfig::kReasonRenew[] = "RENEW";
@@ -75,6 +76,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       pid_(0),
       child_watch_tag_(0),
       is_lease_active_(false),
+      is_gateway_arp_active_(false),
       lease_acquisition_timeout_seconds_(kDHCPTimeoutSeconds),
       root_("/"),
       weak_ptr_factory_(this),
@@ -158,8 +160,14 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
     LOG(ERROR) << "Received failure event from DHCP client.";
     UpdateProperties(IPConfig::Properties(), false);
     return;
-  }
-  if (reason != kReasonBound &&
+  } else if (reason == kReasonNak) {
+    // If we got a NAK, this means the DHCP server is active, and any
+    // Gateway ARP state we have is no longer sufficient.
+    LOG_IF(ERROR, is_gateway_arp_active_)
+        << "Received NAK event for our gateway-ARP lease.";
+    is_gateway_arp_active_ = false;
+    return;
+  } else if (reason != kReasonBound &&
       reason != kReasonRebind &&
       reason != kReasonReboot &&
       reason != kReasonRenew &&
@@ -182,8 +190,10 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
     // until that completes.  In the meantime, however, we can tentatively
     // configure our network in anticipation of successful completion.
     IPConfig::UpdateProperties(properties, true);
+    is_gateway_arp_active_ = true;
   } else {
     UpdateProperties(properties, true);
+    is_gateway_arp_active_ = false;
   }
 }
 
@@ -483,7 +493,11 @@ void DHCPConfig::StopDHCPTimeout() {
 void DHCPConfig::ProcessDHCPTimeout() {
   LOG(ERROR) << "Timed out waiting for DHCP lease on " << device_name() << " "
              << "(after " << lease_acquisition_timeout_seconds_ << " seconds).";
-  UpdateProperties(IPConfig::Properties(), false);
+  if (is_gateway_arp_active_) {
+    LOG(INFO) << "Continuing to use our previous lease, due to gateway-ARP.";
+  } else {
+    UpdateProperties(IPConfig::Properties(), false);
+  }
 }
 
 }  // namespace shill
