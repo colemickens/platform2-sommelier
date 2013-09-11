@@ -53,8 +53,8 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
 }  // namespace
 
 TEST(PerfParserTest, Test1Cycle) {
-  ScopedTempPath output_dir;
-  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
   for (unsigned int i = 0;
@@ -87,8 +87,8 @@ TEST(PerfParserTest, Test1Cycle) {
 }
 
 TEST(PerfParserTest, TestNormalProcessing) {
-  ScopedTempPath output_dir;
-  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
   for (unsigned int i = 0;

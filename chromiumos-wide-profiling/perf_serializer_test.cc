@@ -67,11 +67,11 @@ void SerializeToFileAndBack(const string& input,
   EXPECT_LE(input_perf_data_proto.timestamp_sec(), post_serialize_time.tv_sec);
 
   // Now store the protobuf into a file.
-  ScopedTempPath input_file;
-  EXPECT_TRUE(input_file.CreateNamedTempFile());
+  ScopedTempFile input_file;
+  EXPECT_FALSE(input_file.path().empty());
   string input_filename = input_file.path();
-  ScopedTempPath output_file;
-  EXPECT_TRUE(output_file.CreateNamedTempFile());
+  ScopedTempFile output_file;
+  EXPECT_FALSE(output_file.path().empty());
   string output_filename = output_file.path();
 
   EXPECT_TRUE(WriteProtobufToFile(input_perf_data_proto, input_filename));
@@ -94,8 +94,8 @@ void SerializeToFileAndBack(const string& input,
 }  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
-  ScopedTempPath output_dir;
-  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
   // Read perf data using the PerfReader class.
@@ -154,8 +154,8 @@ TEST(PerfSerializerTest, Test1Cycle) {
 }
 
 TEST(PerfSerializerTest, TestRemap) {
-  ScopedTempPath output_dir;
-  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
   // Read perf data using the PerfReader class with address remapping.
@@ -183,8 +183,8 @@ TEST(PerfSerializerTest, TestRemap) {
 }
 
 TEST(PerfSerializeTest, TestCommMd5s) {
-  ScopedTempPath output_dir;
-  ASSERT_TRUE(output_dir.CreateNamedTempDir());
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
   // Replace command strings with their Md5sums.  Test size adjustment for

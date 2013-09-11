@@ -402,23 +402,21 @@ bool CompareFileContents(const string& file1, const string& file2) {
   return file_infos[0].contents == file_infos[1].contents;
 }
 
-bool ScopedTempPath::CreateNamedTempFile() {
+ScopedTempFile::ScopedTempFile() {
   char filename[] = "/tmp/XXXXXX";
   int fd = mkstemp(filename);
   if (fd == -1)
-    return false;
+    return;
   close(fd);
   path_ = filename;
-  return true;
 }
 
-bool ScopedTempPath::CreateNamedTempDir() {
+ScopedTempDir::ScopedTempDir() {
   char dirname[] = "/tmp/XXXXXX";
   const char* name = mkdtemp(dirname);
   if (!name)
-    return false;
+    return;
   path_ = string(name) + "/";
-  return true;
 }
 
 ScopedTempPath::~ScopedTempPath() {

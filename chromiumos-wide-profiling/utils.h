@@ -43,22 +43,34 @@ bool CompareFileContents(const string& file1, const string& file2);
 
 uint64 Md5Prefix(const string& input);
 
+// Used to create a temporary file or directory.
+// TODO(cwp-team): Move it to a different file and add unit tests to this class.
 class ScopedTempPath {
  public:
-  // Create a temporary file or directory, respectively.
-  // Returns true on success.  The path is stored in |path_|.
-  // TODO(sque): Add tests for this class.
-  // TODO(sque): Make this into a hierarchy, with ScopedTemp{Path|File} as
-  // derived classes. Get rid of the Create*() functions. The copy constructor
-  // should be private.
-  bool CreateNamedTempFile();
-  bool CreateNamedTempDir();
+  ScopedTempPath() {}
+  // The temporary path will be removed when the object is destroyed.
+  virtual ~ScopedTempPath();
   const string path() const {
     return path_;
   }
-  ~ScopedTempPath();
- private:
+ protected:
   string path_;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ScopedTempPath);
+};
+
+class ScopedTempFile : public ScopedTempPath {
+ public:
+  // Create a temporary file.  If successful, the path will be stored in
+  // |path_|.  If not, |path_| will be an empty string.
+  ScopedTempFile();
+};
+
+class ScopedTempDir : public ScopedTempPath {
+ public:
+  // Create a temporary directory.  If successful, the path will be stored in
+  // |path_|.  If not, |path_| will be an empty string.
+  ScopedTempDir();
 };
 
 // Returns true if the perf reports show the same summary.  Metadata
