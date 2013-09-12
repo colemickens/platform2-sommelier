@@ -772,7 +772,6 @@ bool PerfReader::ReadPerfSampleInfo(const event_t& event,
   uint64 sample_format = GetSampleFieldsForEventType(event.header.type,
                                                      sample_type_);
   uint64 offset = GetPerfSampleDataOffset(event);
-  memset(sample, 0, sizeof(*sample));
   size_t size_read = ReadPerfSampleFromData(
       reinterpret_cast<const uint64*>(&event) + offset / sizeof(uint64),
       sample_format,

@@ -268,6 +268,19 @@ struct perf_sample {
 	void *raw_data;
 	struct ip_callchain *callchain;
 	struct branch_stack *branch_stack;
+
+	perf_sample() : callchain(NULL),
+			branch_stack(NULL) {}
+	~perf_sample() {
+	  if (callchain) {
+	    delete [] callchain;
+	    callchain = NULL;
+	  }
+	  if (branch_stack) {
+	    delete [] branch_stack;
+	    branch_stack = NULL;
+	  }
+	}
 };
 
 // End data structures copied from the kernel.
