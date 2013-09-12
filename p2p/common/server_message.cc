@@ -77,6 +77,7 @@ std::string ToString(P2PServerMessageType message_type) {
     case kP2PServerDownloadSpeedKBps:     return "DownloadSpeedKBps";
     case kP2PServerPeakDownloadSpeedKBps: return "PeakDownloadSpeedKBps";
     case kP2PServerClientCount:           return "ClientCount";
+    case kP2PServerPortNumber:            return "PortNumber";
 
     case kNumP2PServerMessageTypes:       return "Unknown";
     // Don't add a default case to let the compiler warn about newly added

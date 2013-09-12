@@ -42,6 +42,10 @@ namespace p2p {
 
 namespace server {
 
+bool PortNonZero(HttpServer* server) {
+  return server->Port() != 0;
+}
+
 // ------------------------------------------------------------------------
 
 class HttpServerListener {
@@ -222,6 +226,28 @@ TEST(HttpServer, DISABLED_Basic) {
   RunGMainLoopMaxIterations(100);
 
   server->Stop();
+  delete server;
+  TeardownTestDir(testdir);
+}
+
+TEST(HttpServer, PortNumberTest) {
+  FilePath testdir = SetupTestDir("http-server-port");
+  StrictMock<MetricsLibraryMock> metrics_lib;
+
+  // Forces HttpServer to run p2p-http-server from the build directory.
+  setenv("RUN_UNINSTALLED", "1", 1);
+
+  HttpServer* server = HttpServer::Construct(&metrics_lib, testdir, 0);
+  EXPECT_EQ(server->Port(), 0);
+  server->Start();
+
+  // Run for 60s (failure) or until the Port number is not 0.
+  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs, Bind(&PortNonZero, server));
+  EXPECT_NE(server->Port(), 0);
+
+  server->Stop();
+  EXPECT_EQ(server->Port(), 0);
+
   delete server;
   TeardownTestDir(testdir);
 }

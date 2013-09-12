@@ -181,6 +181,10 @@ bool Server::Start() {
   CHECK(listen_source_id_ != 0);
   g_io_channel_unref(io_channel);
 
+  // Report the port number back to the p2p-server once we are accepting
+  // connections on that port.
+  ReportServerMessage(p2p::util::kP2PServerPortNumber, port_);
+
   return true;
 }
 

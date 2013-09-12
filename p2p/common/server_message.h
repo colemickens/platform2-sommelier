@@ -24,6 +24,7 @@ enum P2PServerMessageType {
   kP2PServerDownloadSpeedKBps,
   kP2PServerPeakDownloadSpeedKBps,
   kP2PServerClientCount,
+  kP2PServerPortNumber,
 
   // Add new P2PServerMessageTypes above this line.
   kNumP2PServerMessageTypes

@@ -45,6 +45,8 @@ class HttpServerExternalProcess : public HttpServer {
 
   virtual bool IsRunning();
 
+  virtual uint16_t Port();
+
   virtual void SetNumConnectionsCallback(NumConnectionsCallback callback);
 
  private:
@@ -64,7 +66,13 @@ class HttpServerExternalProcess : public HttpServer {
   // The path to serve files from.
   FilePath root_dir_;
 
-  // The TCP port number for the HTTP server.
+  // The TCP port number for the HTTP server is requested to run on. A value
+  // of 0 means that the HTTP server should pick the port number.
+  uint16_t requested_port_;
+
+  // The TCP port number reported from the HTTP server. This is the actual
+  // port number where the HTTP server is listening, while |requested_port_|
+  // can be 0 to indicate the HTTP server should pick the port number.
   uint16_t port_;
 
   // The current number of connections to the HTTP server.
@@ -86,7 +94,8 @@ HttpServerExternalProcess::HttpServerExternalProcess(
     uint16_t port)
     : metrics_lib_(metrics_lib),
       root_dir_(root_dir),
-      port_(port),
+      requested_port_(port),
+      port_(0),
       num_connections_(0),
       pid_(0),
       child_stdout_fd_(-1) {}
@@ -114,9 +123,10 @@ bool HttpServerExternalProcess::Start() {
 
   vector<const char*> args;
   string dir_arg = string("--directory=") + root_dir_.value();
-  string port_arg = string("--port=") + std::to_string(port_);
+  string requested_port_arg = string("--port=") +
+      std::to_string(requested_port_);
   string http_binary_path = string(PACKAGE_SBIN_DIR "/") +
-    p2p::constants::kHttpServerBinaryName;
+      p2p::constants::kHttpServerBinaryName;
 
   if (getenv("RUN_UNINSTALLED") != NULL) {
     http_binary_path = string(TOP_BUILDDIR "/http_server/") +
@@ -125,7 +135,7 @@ bool HttpServerExternalProcess::Start() {
 
   args.push_back(http_binary_path.c_str());
   args.push_back(dir_arg.c_str());
-  args.push_back(port_arg.c_str());
+  args.push_back(requested_port_arg.c_str());
   args.push_back(NULL);
 
   GError* error = NULL;
@@ -239,6 +249,10 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
           metric, msg.value, 0 /* min */, 50 /* max */, 50);
       break;
 
+    case p2p::util::kP2PServerPortNumber:
+      server->port_ = msg.value;
+      break;
+
     // ParseP2PServerMessageType ensures this case is not reached.
     case p2p::util::kNumP2PServerMessageTypes:
       NOTREACHED();
@@ -276,10 +290,14 @@ bool HttpServerExternalProcess::Stop() {
   }
   pid_ = 0;
 
+  port_ = 0;
+
   return true;
 }
 
 bool HttpServerExternalProcess::IsRunning() { return pid_ != 0; }
+
+uint16_t HttpServerExternalProcess::Port() { return port_; }
 
 void HttpServerExternalProcess::SetNumConnectionsCallback(
     NumConnectionsCallback callback) {

@@ -35,6 +35,8 @@ class FakeHttpServer : public HttpServer {
 
   virtual bool IsRunning() { return is_running_; }
 
+  virtual uint16_t Port() { return 1234; }
+
   virtual void SetNumConnectionsCallback(NumConnectionsCallback callback) {
     callback_ = callback;
   }

@@ -29,6 +29,8 @@ class MockHttpServer : public HttpServer {
         .WillByDefault(testing::Invoke(&fake_, &FakeHttpServer::Stop));
     ON_CALL(*this, IsRunning())
         .WillByDefault(testing::Invoke(&fake_, &FakeHttpServer::IsRunning));
+    ON_CALL(*this, Port())
+        .WillByDefault(testing::Invoke(&fake_, &FakeHttpServer::Port));
     ON_CALL(*this, SetNumConnectionsCallback(testing::_)).WillByDefault(
         testing::Invoke(&fake_, &FakeHttpServer::SetNumConnectionsCallback));
   }
@@ -36,6 +38,7 @@ class MockHttpServer : public HttpServer {
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, bool());
   MOCK_METHOD0(IsRunning, bool());
+  MOCK_METHOD0(Port, uint16_t());
   MOCK_METHOD1(SetNumConnectionsCallback, void(NumConnectionsCallback));
 
   FakeHttpServer& fake() { return fake_; }

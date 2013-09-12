@@ -34,6 +34,10 @@ class HttpServer {
   // Returns true the HTTP has been started.
   virtual bool IsRunning() = 0;
 
+  // Returns the port number where the HTTP server is listening. A value of 0
+  // means that the HTTP server is not yet listening on any port.
+  virtual uint16_t Port() = 0;
+
   // Sets the callback function used for reporting number of connections.
   // In order to receive callbacks, you need to run the default
   // GLib main-loop.

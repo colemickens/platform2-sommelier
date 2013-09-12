@@ -33,6 +33,7 @@
 #include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/threading/simple_thread.h>
@@ -121,15 +122,17 @@ TEST(P2PHttpServer, InvalidDirectoryFails) {
 
 TEST(P2PHttpServer, AlreadyUsedPortFails) {
   FilePath testdir_path = SetupTestDir("reuse-port");
+  int dev_null = open("/dev/null", O_RDWR);
+  EXPECT_NE(dev_null, -1);
 
   // Create a server on a port number provided by the kernel.
-  Server server1(testdir_path, 0, STDOUT_FILENO,
+  Server server1(testdir_path, 0, dev_null,
       FakeConnectionDelegate::Construct);
   EXPECT_TRUE(server1.Start());
   EXPECT_NE(server1.Port(), 0);
 
   // Attempt to create a server on the same port must fail.
-  Server server2(testdir_path, server1.Port(), STDOUT_FILENO,
+  Server server2(testdir_path, server1.Port(), dev_null,
       FakeConnectionDelegate::Construct);
   EXPECT_FALSE(server2.Start());
 
@@ -139,6 +142,7 @@ TEST(P2PHttpServer, AlreadyUsedPortFails) {
   EXPECT_TRUE(server2.Start());
   server2.Stop();
 
+  close(dev_null);
   TeardownTestDir(testdir_path);
 }
 
@@ -170,10 +174,11 @@ TEST(P2PHttpServer, ReportServerMessageTest) {
   TeardownTestDir(testdir_path);
 
   // Check the messages reported by the Server.
-  ASSERT_EQ(messages.size(), 3);
-  EXPECT_EQ(messages[0], "{NumConnections: 1}");
-  EXPECT_EQ(messages[1], "{ClientCount: 1}");
-  EXPECT_EQ(messages[2], "{NumConnections: 0}");
+  ASSERT_EQ(messages.size(), 4);
+  EXPECT_TRUE(StartsWithASCII(messages[0], "{PortNumber: ", false));
+  EXPECT_EQ(messages[1], "{NumConnections: 1}");
+  EXPECT_EQ(messages[2], "{ClientCount: 1}");
+  EXPECT_EQ(messages[3], "{NumConnections: 0}");
 
   EXPECT_EQ(0, close(pipefd[0]));
   EXPECT_EQ(0, close(pipefd[1]));
