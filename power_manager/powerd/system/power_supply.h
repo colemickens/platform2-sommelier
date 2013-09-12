@@ -297,8 +297,8 @@ class PowerSupply {
   // such as resuming from suspend or the power source being changed.
   RollingAverage current_samples_;
 
-  // The fraction of full charge at which the battery can be considered "full"
-  // if there is no more charging current.  Should be in the range (0, 100].
+  // The fraction of full charge at which the battery is considered "full", in
+  // the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.
   double full_factor_;
 
   // Amount of time to wait before updating |power_status_| after a

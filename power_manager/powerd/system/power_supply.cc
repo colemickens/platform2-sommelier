@@ -24,10 +24,6 @@ namespace {
 // up by 10^6.  This factor scales them back down accordingly.
 const double kDoubleScaleFactor = 0.000001;
 
-// Report batteries as full if they're at or above this level (out of a max of
-// 1.0).
-const double kDefaultFullFactor = 0.97;
-
 // Default time interval between polls, in milliseconds.
 const int kDefaultPollMs = 30000;
 
@@ -116,7 +112,7 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       is_suspended_(false),
       current_stabilized_delay_(base::TimeDelta::FromMilliseconds(
           kDefaultCurrentStabilizedDelayMs)),
-      full_factor_(kDefaultFullFactor),
+      full_factor_(1.0),
       poll_timeout_id_(0),
       notify_observers_timeout_id_(0) {
   DCHECK(prefs);
