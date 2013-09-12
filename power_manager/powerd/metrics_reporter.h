@@ -6,13 +6,17 @@
 #define POWER_MANAGER_POWERD_METRICS_REPORTER_H_
 #pragma once
 
+#include <gtest/gtest_prod.h>
+
 #include <string>
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/time.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 typedef int gboolean;
 typedef unsigned int guint;
@@ -27,20 +31,11 @@ namespace policy {
 class BacklightController;
 }
 
-namespace system {
-struct PowerStatus;
-}
-
 // Used by Daemon to report metrics by way of Chrome.
 class MetricsReporter {
  public:
-  // Checks if |now| is the time to generate a new sample of a given
-  // metric. Returns true if the last metric sample was generated at least
-  // |interval| seconds ago (or if there is a clock jump back in time).
-  static bool CheckMetricInterval(time_t now, time_t last, time_t interval);
-
   // Returns a copy of |enum_name| with a suffix describing |power_source|
-  // appended to it.
+  // appended to it. Public so it can be called by tests.
   static std::string AppendPowerSourceToEnumName(
       const std::string& enum_name,
       PowerSource power_source);
@@ -52,52 +47,17 @@ class MetricsReporter {
                   policy::BacklightController* keyboard_backlight_controller);
   ~MetricsReporter();
 
-  PowerSource power_source() const { return power_source_; }
-
   // Initializes the object and starts various timers.
-  void Init();
+  void Init(const system::PowerStatus& power_status);
 
   // Records changes to system state.
   void HandleScreenDimmedChange(bool dimmed,
                                 base::TimeTicks last_user_activity_time);
   void HandleScreenOffChange(bool off, base::TimeTicks last_user_activity_time);
-  void HandlePowerSourceChange(PowerSource power_source);
-  void PrepareForSuspend(const system::PowerStatus& status, base::Time now);
+  void HandleSessionStateChange(SessionState state);
+  void HandlePowerStatusUpdate(const system::PowerStatus& status);
+  void PrepareForSuspend();
   void HandleResume();
-
-  // Sends a regular (exponential) histogram sample to Chrome for transport
-  // to UMA. Returns true on success. See MetricsLibrary::SendToUMA in
-  // metrics/metrics_library.h for a description of the arguments.
-  bool SendMetric(const std::string& name,
-                  int sample,
-                  int min,
-                  int max,
-                  int nbuckets);
-
-  // Sends an enumeration (linear) histogram sample to Chrome for transport
-  // to UMA. Returns true on success. See MetricsLibrary::SendEnumToUMA in
-  // metrics/metrics_library.h for a description of the arguments.
-  bool SendEnumMetric(const std::string& name,
-                      int sample,
-                      int max);
-
-  // Sends a regular (exponential) histogram sample to Chrome for transport
-  // to UMA. Appends the current power state to the name of the metric.
-  // Returns true on success. See MetricsLibrary::SendToUMA in
-  // metrics/metrics_library.h for a description of the arguments.
-  bool SendMetricWithPowerSource(const std::string& name,
-                                 int sample,
-                                 int min,
-                                 int max,
-                                 int nbuckets);
-
-  // Sends an enumeration (linear) histogram sample to Chrome for transport
-  // to UMA. Appends the current power state to the name of the metric.
-  // Returns true on success. See MetricsLibrary::SendEnumToUMA in
-  // metrics/metrics_library.h for a description of the arguments.
-  bool SendEnumMetricWithPowerSource(const std::string& name,
-                                     int sample,
-                                     int max);
 
   // Sends a metric describing a suspend attempt that didn't succeed on its
   // first attempt.  Doesn't send anything if |num_retries| is 0.
@@ -106,93 +66,84 @@ class MetricsReporter {
   // Generates UMA metrics on when leaving the idle state.
   void GenerateUserActivityMetrics();
 
-  // Generates UMA metrics on every power event based on the current
-  // power status.
-  void GenerateMetricsOnPowerEvent(const system::PowerStatus& info);
-
   // Generates UMA metrics about the current backlight level.
   // Always returns true.
   SIGNAL_CALLBACK_0(MetricsReporter, gboolean, GenerateBacklightLevelMetric);
 
+  // Handles the power button being pressed or released.
+  void HandlePowerButtonEvent(ButtonState state);
+
+ private:
+  friend class MetricsReporterTest;
+  FRIEND_TEST(MetricsReporterTest, BacklightLevel);
+  FRIEND_TEST(MetricsReporterTest, SendEnumMetric);
+  FRIEND_TEST(MetricsReporterTest, SendMetric);
+  FRIEND_TEST(MetricsReporterTest, SendMetricWithPowerSource);
+
+  // See MetricsLibrary::SendToUMA in metrics/metrics_library.h for a
+  // description of the arguments in the below methods.
+
+  // Sends a regular (exponential) histogram sample.
+  bool SendMetric(const std::string& name,
+                  int sample,
+                  int min,
+                  int max,
+                  int nbuckets);
+
+  // Sends an enumeration (linear) histogram sample.
+  bool SendEnumMetric(const std::string& name,
+                      int sample,
+                      int max);
+
+  // These methods also append the current power source to |name|.
+  bool SendMetricWithPowerSource(const std::string& name,
+                                 int sample,
+                                 int min,
+                                 int max,
+                                 int nbuckets);
+  bool SendEnumMetricWithPowerSource(const std::string& name,
+                                     int sample,
+                                     int max);
+
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryDischargeRateMetric(const system::PowerStatus& info,
-                                          time_t now);
+  void GenerateBatteryDischargeRateMetric();
 
   // Sends a histogram sample containing the rate at which the battery
   // discharged while the system was suspended if the system was on battery
   // power both before suspending and after resuming.  Called by
   // GenerateMetricsOnPowerEvent().  Returns true if the sample was sent.
-  bool GenerateBatteryDischargeRateWhileSuspendedMetric(
-      const system::PowerStatus& status,
-      base::Time now);
-
-  // Generates a remaining battery charge and percent of full charge when charge
-  // starts UMA metric sample if the current state is correct. Returns true if a
-  // sample was sent to UMA, false otherwise.
-  void GenerateBatteryInfoWhenChargeStartsMetric(
-      const system::PowerStatus& info);
-
-  // Calls all of the metric generation functions that need to be called at the
-  // end of a session.
-  void GenerateEndOfSessionMetrics(const system::PowerStatus& info,
-                                   const base::TimeTicks& now,
-                                   const base::TimeTicks& start);
-
-  // Generates a remaining battery charge at end of session UMA metric
-  // sample. Returns true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryRemainingAtEndOfSessionMetric(
-      const system::PowerStatus& info);
-
-  // Generates a remaining battery charge at start of session UMA metric
-  // sample. Returns true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryRemainingAtStartOfSessionMetric(
-      const system::PowerStatus& info);
-
-  // Generates a number of times the ALS adjusted the backlight during a
-  // session UMA metric sample. Returns true if a sample was sent to UMA, false
-  // otherwise.
-  bool GenerateNumberOfAlsAdjustmentsPerSessionMetric();
-
-  // Generates a number of times the user adjusted the backlight during a
-  // session UMA metric sample. Returns true if a sample was sent to UMA, false
-  // otherwise.
-  bool GenerateUserBrightnessAdjustmentsPerSessionMetric();
-
-  // Generates length of session UMA metric sample. Returns true if a
-  // sample was sent to UMA, false otherwise.
-  bool GenerateLengthOfSessionMetric(const base::TimeTicks& now,
-                                     const base::TimeTicks& start);
+  void GenerateBatteryDischargeRateWhileSuspendedMetric();
 
   // Increments the number of user sessions that have been active on the
   // current battery charge.
   void IncrementNumOfSessionsPerChargeMetric();
 
   // Generates number of sessions per charge UMA metric sample if the current
-  // stored value is greater then 0. The stored value being 0 are spurious and
-  // shouldn't be occuring, since they indicate we are on AC. Returns true if
-  // a sample was sent to UMA or a 0 is silently ignored, false otherwise.
-  bool GenerateNumOfSessionsPerChargeMetric();
+  // stored value is greater then 0.
+  void GenerateNumOfSessionsPerChargeMetric();
 
-  // Generates a metric describing power button activity.
-  void GeneratePowerButtonMetric(bool down, base::TimeTicks timestamp);
-
- private:
   PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   policy::BacklightController* display_backlight_controller_;
   policy::BacklightController* keyboard_backlight_controller_;
 
-  PowerSource power_source_;
+  Clock clock_;
 
-  // False until HandlePowerSourceChange() has been called.
-  bool saw_initial_power_source_;
+  // Last power status passed to HandlePowerStatusUpdate().
+  system::PowerStatus last_power_status_;
+
+  // Current session state.
+  SessionState session_state_;
+
+  // Time at which the current session (if any) started.
+  base::TimeTicks session_start_time_;
 
   // GLib timeout for running GenerateBacklightLevelMetric() or 0 if unset.
   guint generate_backlight_metrics_timeout_id_;
 
   // Timestamp of the last generated battery discharge rate metric.
-  time_t battery_discharge_rate_metric_last_;
+  base::TimeTicks last_battery_discharge_rate_metric_timestamp_;
 
   // Timestamp of the last time the power button was down.
   base::TimeTicks last_power_button_down_timestamp_;

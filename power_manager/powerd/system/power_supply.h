@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 #define POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
 #include <string>
 
 #include "base/basictypes.h"

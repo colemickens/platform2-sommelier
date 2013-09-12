@@ -14,16 +14,18 @@ namespace power_manager {
 extern const char kMetricACSuffix[];
 extern const char kMetricBatterySuffix[];
 
+// Default histogram parameters for percent-based metrics. Percents are reported
+// as enums instead of regular exponential histograms so they'll get a linear
+// scale.
+extern const int kMetricMaxPercent;
+
 extern const char kMetricRetrySuspendCountName[];
 extern const int kMetricRetrySuspendCountMin;
 extern const int kMetricRetrySuspendCountBuckets;
 
 extern const char kMetricBacklightLevelName[];
-extern const int kMetricBacklightLevelMax;
-extern const time_t kMetricBacklightLevelIntervalMs;
-
 extern const char kMetricKeyboardBacklightLevelName[];
-extern const int kMetricKeyboardBacklightLevelMax;
+extern const time_t kMetricBacklightLevelIntervalMs;
 
 extern const char kMetricIdleAfterScreenOffName[];
 extern const int kMetricIdleAfterScreenOffMin;
@@ -56,12 +58,8 @@ extern const int kMetricBatteryDischargeRateWhileSuspendedBuckets;
 extern const int kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec;
 
 extern const char kMetricBatteryRemainingWhenChargeStartsName[];
-extern const int kMetricBatteryRemainingWhenChargeStartsMax;
-
 extern const char kMetricBatteryRemainingAtEndOfSessionName[];
-extern const int kMetricBatteryRemainingAtEndOfSessionMax;
 extern const char kMetricBatteryRemainingAtStartOfSessionName[];
-extern const int kMetricBatteryRemainingAtStartOfSessionMax;
 
 extern const char kMetricNumberOfAlsAdjustmentsPerSessionName[];
 extern const int kMetricNumberOfAlsAdjustmentsPerSessionMin;

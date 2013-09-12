@@ -15,29 +15,15 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
-#include "power_manager/powerd/system/power_supply.h"
 
 namespace power_manager {
-
-// static
-bool MetricsReporter::CheckMetricInterval(time_t now,
-                                          time_t last,
-                                          time_t interval) {
-  return now < last || now - last >= interval;
-}
 
 // static
 std::string MetricsReporter::AppendPowerSourceToEnumName(
     const std::string& enum_name,
     PowerSource power_source) {
-  switch (power_source) {
-    case POWER_AC:
-      return enum_name + kMetricACSuffix;
-    case POWER_BATTERY:
-      return enum_name + kMetricBatterySuffix;
-  }
-  NOTREACHED() << "Unhandled power source " << power_source;
-  return enum_name;
+  return enum_name +
+      (power_source == POWER_AC ? kMetricACSuffix : kMetricBatterySuffix);
 }
 
 MetricsReporter::MetricsReporter(
@@ -49,10 +35,8 @@ MetricsReporter::MetricsReporter(
       metrics_lib_(metrics_lib),
       display_backlight_controller_(display_backlight_controller),
       keyboard_backlight_controller_(keyboard_backlight_controller),
-      power_source_(POWER_AC),
-      saw_initial_power_source_(false),
+      session_state_(SESSION_STOPPED),
       generate_backlight_metrics_timeout_id_(0),
-      battery_discharge_rate_metric_last_(0),
       battery_energy_before_suspend_(0.0),
       on_line_power_before_suspend_(false),
       report_battery_discharge_rate_while_suspended_(false) {
@@ -62,7 +46,8 @@ MetricsReporter::~MetricsReporter() {
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
 }
 
-void MetricsReporter::Init() {
+void MetricsReporter::Init(const system::PowerStatus& power_status) {
+  last_power_status_ = power_status;
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timeout_id_ = g_timeout_add(
         kMetricBacklightLevelIntervalMs,
@@ -74,7 +59,7 @@ void MetricsReporter::HandleScreenDimmedChange(
     bool dimmed,
     base::TimeTicks last_user_activity_time) {
   if (dimmed) {
-    base::TimeTicks now = base::TimeTicks::Now();
+    base::TimeTicks now = clock_.GetCurrentTime();
     screen_dim_timestamp_ = now;
     last_idle_event_timestamp_ = now;
     last_idle_timedelta_ = now - last_user_activity_time;
@@ -87,7 +72,7 @@ void MetricsReporter::HandleScreenOffChange(
     bool off,
     base::TimeTicks last_user_activity_time) {
   if (off) {
-    base::TimeTicks now = base::TimeTicks::Now();
+    base::TimeTicks now = clock_.GetCurrentTime();
     screen_off_timestamp_ = now;
     last_idle_event_timestamp_ = now;
     last_idle_timedelta_ = now - last_user_activity_time;
@@ -96,59 +81,107 @@ void MetricsReporter::HandleScreenOffChange(
   }
 }
 
-void MetricsReporter::HandlePowerSourceChange(PowerSource power_source) {
-  power_source_ = power_source;
-  saw_initial_power_source_ = true;
+void MetricsReporter::HandleSessionStateChange(SessionState state) {
+  if (state == session_state_)
+    return;
+
+  session_state_ = state;
+
+  switch (state) {
+    case SESSION_STARTED:
+      session_start_time_ = clock_.GetCurrentTime();
+      if (!last_power_status_.line_power_on)
+        IncrementNumOfSessionsPerChargeMetric();
+      if (last_power_status_.battery_is_present) {
+        // Enum to avoid exponential histogram's varyingly-sized buckets.
+        SendEnumMetricWithPowerSource(
+            kMetricBatteryRemainingAtStartOfSessionName,
+            static_cast<int>(round(last_power_status_.battery_percentage)),
+            kMetricMaxPercent);
+      }
+      break;
+    case SESSION_STOPPED: {
+      if (last_power_status_.battery_is_present) {
+        // Enum to avoid exponential histogram's varyingly-sized buckets.
+        SendEnumMetricWithPowerSource(
+            kMetricBatteryRemainingAtEndOfSessionName,
+            static_cast<int>(round(last_power_status_.battery_percentage)),
+            kMetricMaxPercent);
+      }
+
+      const int session_length_sec = std::min(kMetricLengthOfSessionMax,
+          static_cast<int>(
+              (clock_.GetCurrentTime() - session_start_time_).InSeconds()));
+      SendMetric(kMetricLengthOfSessionName,
+                 session_length_sec,
+                 kMetricLengthOfSessionMin,
+                 kMetricLengthOfSessionMax,
+                 kMetricLengthOfSessionBuckets);
+
+      if (display_backlight_controller_) {
+        SendMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
+                   display_backlight_controller_->
+                       GetNumAmbientLightSensorAdjustments(),
+                   kMetricNumberOfAlsAdjustmentsPerSessionMin,
+                   kMetricNumberOfAlsAdjustmentsPerSessionMax,
+                   kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+        SendMetricWithPowerSource(
+            kMetricUserBrightnessAdjustmentsPerSessionName,
+            display_backlight_controller_->GetNumUserAdjustments(),
+            kMetricUserBrightnessAdjustmentsPerSessionMin,
+            kMetricUserBrightnessAdjustmentsPerSessionMax,
+            kMetricUserBrightnessAdjustmentsPerSessionBuckets);
+      }
+      break;
+    }
+  }
 }
 
-void MetricsReporter::PrepareForSuspend(const system::PowerStatus& status,
-                                        base::Time now) {
-  battery_energy_before_suspend_ = status.battery_energy;
-  on_line_power_before_suspend_ = status.line_power_on;
-  time_before_suspend_ = now;
+void MetricsReporter::HandlePowerStatusUpdate(
+    const system::PowerStatus& status) {
+  const bool previously_on_line_power = last_power_status_.line_power_on;
+  last_power_status_ = status;
+
+  if (status.line_power_on && !previously_on_line_power) {
+    GenerateNumOfSessionsPerChargeMetric();
+    if (status.battery_is_present) {
+      // Enum to avoid exponential histogram's varyingly-sized buckets.
+      SendEnumMetric(kMetricBatteryRemainingWhenChargeStartsName,
+                     static_cast<int>(round(status.battery_percentage)),
+                     kMetricMaxPercent);
+      SendEnumMetric(kMetricBatteryChargeHealthName,
+                     static_cast<int>(round(100.0 * status.battery_charge_full /
+                                            status.battery_charge_full_design)),
+                     kMetricBatteryChargeHealthMax);
+    }
+  } else if (!status.line_power_on && previously_on_line_power) {
+    if (session_state_ == SESSION_STARTED)
+      IncrementNumOfSessionsPerChargeMetric();
+  }
+
+  GenerateBatteryDischargeRateMetric();
+  GenerateBatteryDischargeRateWhileSuspendedMetric();
+
+  SendEnumMetric(kMetricBatteryInfoSampleName,
+                 BATTERY_INFO_READ,
+                 BATTERY_INFO_MAX);
+  // TODO(derat): Continue sending BATTERY_INFO_BAD in some situations?
+  // Remove this metric entirely?
+  SendEnumMetric(kMetricBatteryInfoSampleName,
+                 BATTERY_INFO_GOOD,
+                 BATTERY_INFO_MAX);
+}
+
+void MetricsReporter::PrepareForSuspend() {
+  battery_energy_before_suspend_ = last_power_status_.battery_energy;
+  on_line_power_before_suspend_ = last_power_status_.line_power_on;
+  time_before_suspend_ = clock_.GetCurrentWallTime();
 }
 
 void MetricsReporter::HandleResume() {
   // Report the discharge rate in response to the next
-  // GenerateMetricsOnPowerEvent() call.
+  // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
-}
-
-bool MetricsReporter::SendMetric(const std::string& name,
-                                 int sample,
-                                 int min,
-                                 int max,
-                                 int nbuckets) {
-  VLOG(1) << "Sending metric: " << name << " " << sample << " "
-          << min << " " << max << " " << nbuckets;
-  return metrics_lib_->SendToUMA(name, sample, min, max, nbuckets);
-}
-
-bool MetricsReporter::SendEnumMetric(const std::string& name,
-                                     int sample,
-                                     int max) {
-  VLOG(1) << "Sending enum metric: " << name << " " << sample << " " << max;
-  return metrics_lib_->SendEnumToUMA(name, sample, max);
-}
-
-bool MetricsReporter::SendMetricWithPowerSource(const std::string& name,
-                                                int sample,
-                                                int min,
-                                                int max,
-                                                int nbuckets) {
-  if (!saw_initial_power_source_)
-    return false;
-  return SendMetric(AppendPowerSourceToEnumName(name, power_source_),
-                    sample, min, max, nbuckets);
-}
-
-bool MetricsReporter::SendEnumMetricWithPowerSource(const std::string& name,
-                                                    int sample,
-                                                    int max) {
-  if (!saw_initial_power_source_)
-    return false;
-  return SendEnumMetric(AppendPowerSourceToEnumName(name, power_source_),
-                        sample, max);
 }
 
 void MetricsReporter::GenerateRetrySuspendMetric(int num_retries,
@@ -165,7 +198,7 @@ void MetricsReporter::GenerateUserActivityMetrics() {
   if (last_idle_event_timestamp_.is_null())
     return;
 
-  base::TimeTicks current_time = base::TimeTicks::Now();
+  base::TimeTicks current_time = clock_.GetCurrentTime();
   base::TimeDelta event_delta = current_time - last_idle_event_timestamp_;
   base::TimeDelta total_delta = event_delta + last_idle_timedelta_;
   last_idle_event_timestamp_ = base::TimeTicks();
@@ -194,214 +227,168 @@ void MetricsReporter::GenerateUserActivityMetrics() {
   }
 }
 
-void MetricsReporter::GenerateMetricsOnPowerEvent(
-    const system::PowerStatus& info) {
-  GenerateBatteryDischargeRateMetric(info, time(NULL));
-  GenerateBatteryDischargeRateWhileSuspendedMetric(info, base::Time::Now());
-
-  SendEnumMetric(kMetricBatteryInfoSampleName,
-                 BATTERY_INFO_READ,
-                 BATTERY_INFO_MAX);
-  // TODO(derat): Continue sending BATTERY_INFO_BAD in some situations?
-  // Remove this metric entirely?
-  SendEnumMetric(kMetricBatteryInfoSampleName,
-                 BATTERY_INFO_GOOD,
-                 BATTERY_INFO_MAX);
-}
-
 gboolean MetricsReporter::GenerateBacklightLevelMetric() {
   if (screen_dim_timestamp_.is_null() && screen_off_timestamp_.is_null()) {
     double percent = 0.0;
     if (display_backlight_controller_ &&
         display_backlight_controller_->GetBrightnessPercent(&percent)) {
+      // Enum to avoid exponential histogram's varyingly-sized buckets.
       SendEnumMetricWithPowerSource(kMetricBacklightLevelName, lround(percent),
-                                    kMetricBacklightLevelMax);
+                                    kMetricMaxPercent);
     }
     if (keyboard_backlight_controller_ &&
         keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
+      // Enum to avoid exponential histogram's varyingly-sized buckets.
       SendEnumMetric(kMetricKeyboardBacklightLevelName, lround(percent),
-                     kMetricKeyboardBacklightLevelMax);
+                     kMetricMaxPercent);
     }
   }
   return TRUE;
 }
 
-bool MetricsReporter::GenerateBatteryDischargeRateMetric(
-    const system::PowerStatus& info,
-    time_t now) {
-  // The battery discharge rate metric is relevant and collected only
-  // when running on battery.
-  if (!saw_initial_power_source_ || power_source_ != POWER_BATTERY)
-    return false;
+void MetricsReporter::HandlePowerButtonEvent(ButtonState state) {
+  // Just keep track of the time when the button was pressed.
+  if (state == BUTTON_DOWN) {
+    if (!last_power_button_down_timestamp_.is_null())
+      LOG(ERROR) << "Got power-button-down event while button was already down";
+    last_power_button_down_timestamp_ = clock_.GetCurrentTime();
+    return;
+  }
 
-  // Converts the discharge rate from W to mW.
-  int rate = static_cast<int>(round(info.battery_energy_rate * 1000));
-  if (rate <= 0)
-    return false;
+  // Metrics are sent after the button is released.
+  if (last_power_button_down_timestamp_.is_null()) {
+    LOG(ERROR) << "Got power-button-up event while button was already up";
+    return;
+  }
+  base::TimeDelta delta =
+      clock_.GetCurrentTime() - last_power_button_down_timestamp_;
+  last_power_button_down_timestamp_ = base::TimeTicks();
+  SendMetric(kMetricPowerButtonDownTimeName,
+             delta.InMilliseconds(),
+             kMetricPowerButtonDownTimeMin,
+             kMetricPowerButtonDownTimeMax,
+             kMetricPowerButtonDownTimeBuckets);
+}
 
-  // Ensures that the metric is not generated too frequently.
-  if (!CheckMetricInterval(now, battery_discharge_rate_metric_last_,
-                           kMetricBatteryDischargeRateInterval))
-    return false;
+bool MetricsReporter::SendMetric(const std::string& name,
+                                 int sample,
+                                 int min,
+                                 int max,
+                                 int nbuckets) {
+  VLOG(1) << "Sending metric " << name << " (sample=" << sample << " min="
+          << min << " max=" << max << " nbuckets=" << nbuckets << ")";
 
-  if (!SendMetric(kMetricBatteryDischargeRateName, rate,
-                  kMetricBatteryDischargeRateMin,
-                  kMetricBatteryDischargeRateMax,
-                  kMetricBatteryDischargeRateBuckets))
-    return false;
+  if (sample < min) {
+    LOG(WARNING) << name << " sample " << sample << " is less than " << min;
+    sample = min;
+  } else if (sample > max) {
+    LOG(WARNING) << name << " sample " << sample << " is greater than " << max;
+    sample = max;
+  }
 
-  battery_discharge_rate_metric_last_ = now;
+  if (!metrics_lib_->SendToUMA(name, sample, min, max, nbuckets)) {
+    LOG(ERROR) << "Failed to send metric " << name;
+    return false;
+  }
   return true;
 }
 
-bool MetricsReporter::GenerateBatteryDischargeRateWhileSuspendedMetric(
-    const system::PowerStatus& status,
-    base::Time now) {
+bool MetricsReporter::SendEnumMetric(const std::string& name,
+                                     int sample,
+                                     int max) {
+  VLOG(1) << "Sending enum metric " << name << " (sample=" << sample
+          << " max=" << max << ")";
+
+  if (sample > max) {
+    LOG(WARNING) << name << " sample " << sample << " is greater than " << max;
+    sample = max;
+  }
+
+  if (!metrics_lib_->SendEnumToUMA(name, sample, max)) {
+    LOG(ERROR) << "Failed to send enum metric " << name;
+    return false;
+  }
+  return true;
+}
+
+bool MetricsReporter::SendMetricWithPowerSource(const std::string& name,
+                                                int sample,
+                                                int min,
+                                                int max,
+                                                int nbuckets) {
+  const std::string full_name = AppendPowerSourceToEnumName(
+      name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
+  return SendMetric(full_name, sample, min, max, nbuckets);
+}
+
+bool MetricsReporter::SendEnumMetricWithPowerSource(const std::string& name,
+                                                    int sample,
+                                                    int max) {
+  const std::string full_name = AppendPowerSourceToEnumName(
+      name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
+  return SendEnumMetric(full_name, sample, max);
+}
+
+void MetricsReporter::GenerateBatteryDischargeRateMetric() {
+  // The battery discharge rate metric is relevant and collected only
+  // when running on battery.
+  if (!last_power_status_.battery_is_present ||
+      last_power_status_.line_power_on)
+    return;
+
+  // Converts the discharge rate from W to mW.
+  int rate = static_cast<int>(
+      round(last_power_status_.battery_energy_rate * 1000));
+  if (rate <= 0)
+    return;
+
+  // Ensures that the metric is not generated too frequently.
+  if (!last_battery_discharge_rate_metric_timestamp_.is_null() &&
+      (clock_.GetCurrentTime() -
+       last_battery_discharge_rate_metric_timestamp_).InSeconds() <
+      kMetricBatteryDischargeRateInterval) {
+    return;
+  }
+
+  if (SendMetric(kMetricBatteryDischargeRateName, rate,
+                 kMetricBatteryDischargeRateMin,
+                 kMetricBatteryDischargeRateMax,
+                 kMetricBatteryDischargeRateBuckets))
+    last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
+}
+
+void MetricsReporter::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   // Do nothing unless this is the first time we're called after resuming.
   if (!report_battery_discharge_rate_while_suspended_)
-    return false;
+    return;
   report_battery_discharge_rate_while_suspended_ = false;
 
-  if (on_line_power_before_suspend_ || status.line_power_on)
-    return false;
+  if (!last_power_status_.battery_is_present ||
+      on_line_power_before_suspend_ ||
+      last_power_status_.line_power_on)
+    return;
 
-  base::TimeDelta elapsed_time = now - time_before_suspend_;
+  base::TimeDelta elapsed_time =
+      clock_.GetCurrentWallTime() - time_before_suspend_;
   if (elapsed_time.InSeconds() <
       kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec)
-    return false;
+    return;
 
   double discharged_watt_hours =
-      battery_energy_before_suspend_ - status.battery_energy;
+      battery_energy_before_suspend_ - last_power_status_.battery_energy;
   double discharge_rate_watts =
       discharged_watt_hours / (elapsed_time.InSecondsF() / 3600);
 
   // Maybe the charger was connected while the system was suspended but
   // disconnected before it resumed.
   if (discharge_rate_watts < 0.0)
-    return false;
-
-  return SendMetric(kMetricBatteryDischargeRateWhileSuspendedName,
-                    static_cast<int>(round(discharge_rate_watts * 1000)),
-                    kMetricBatteryDischargeRateWhileSuspendedMin,
-                    kMetricBatteryDischargeRateWhileSuspendedMax,
-                    kMetricBatteryDischargeRateWhileSuspendedBuckets);
-}
-
-void MetricsReporter::GenerateBatteryInfoWhenChargeStartsMetric(
-    const system::PowerStatus& power_status) {
-  // Need to make sure that we are actually charging a battery
-  if (!power_status.line_power_on || !power_status.battery_is_present)
     return;
 
-  int charge = static_cast<int>(round(power_status.battery_percentage));
-  LOG_IF(ERROR, !SendEnumMetric(kMetricBatteryRemainingWhenChargeStartsName,
-                                charge,
-                                kMetricBatteryRemainingWhenChargeStartsMax))
-      << "Unable to send battery remaining when charge starts metric!";
-
-  charge = static_cast<int>(round(power_status.battery_charge_full /
-                                  power_status.battery_charge_full_design *
-                                  100));
-
-  LOG_IF(ERROR, !SendEnumMetric(kMetricBatteryChargeHealthName, charge,
-                            kMetricBatteryChargeHealthMax))
-      << "Unable to send battery charge health metric!";
-}
-
-void MetricsReporter::GenerateEndOfSessionMetrics(
-    const system::PowerStatus& info,
-    const base::TimeTicks& now,
-    const base::TimeTicks& start) {
-  if (!GenerateBatteryRemainingAtEndOfSessionMetric(info))
-    LOG(ERROR) << "Unable to generate battery remaining metric";
-  if (!GenerateNumberOfAlsAdjustmentsPerSessionMetric())
-    LOG(ERROR) << "Unable to generate ALS adjustments per session";
-  if (!GenerateUserBrightnessAdjustmentsPerSessionMetric())
-    LOG(ERROR) << "Unable to generate user brightness adjustments per session";
-  if (!GenerateLengthOfSessionMetric(now, start))
-    LOG(ERROR) << "Unable to generate length of session metric";
-}
-
-bool MetricsReporter::GenerateBatteryRemainingAtEndOfSessionMetric(
-    const system::PowerStatus& info) {
-  int charge = static_cast<int>(round(info.battery_percentage));
-  return SendEnumMetricWithPowerSource(
-      kMetricBatteryRemainingAtEndOfSessionName, charge,
-      kMetricBatteryRemainingAtEndOfSessionMax);
-}
-
-bool MetricsReporter::GenerateBatteryRemainingAtStartOfSessionMetric(
-    const system::PowerStatus& info) {
-  int charge = static_cast<int>(round(info.battery_percentage));
-  return SendEnumMetricWithPowerSource(
-      kMetricBatteryRemainingAtStartOfSessionName, charge,
-      kMetricBatteryRemainingAtStartOfSessionMax);
-}
-
-bool MetricsReporter::GenerateNumberOfAlsAdjustmentsPerSessionMetric() {
-  if (!display_backlight_controller_)
-    return false;
-
-  int num_of_adjustments =
-      display_backlight_controller_->GetNumAmbientLightSensorAdjustments();
-
-  if (num_of_adjustments < 0) {
-    LOG(ERROR) <<
-        "Generated negative value for NumberOfAlsAdjustmentsPerSession Metrics";
-    return false;
-  } else if (num_of_adjustments > kMetricNumberOfAlsAdjustmentsPerSessionMax) {
-    LOG(INFO) << "Clamping value for NumberOfAlsAdjustmentsPerSession to "
-              << kMetricNumberOfAlsAdjustmentsPerSessionMax;
-    num_of_adjustments = kMetricNumberOfAlsAdjustmentsPerSessionMax;
-  }
-
-  return SendMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
-                    num_of_adjustments,
-                    kMetricNumberOfAlsAdjustmentsPerSessionMin,
-                    kMetricNumberOfAlsAdjustmentsPerSessionMax,
-                    kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
-}
-
-bool MetricsReporter::GenerateUserBrightnessAdjustmentsPerSessionMetric() {
-  if (!display_backlight_controller_)
-    return false;
-
-  int adjustment_count = display_backlight_controller_->GetNumUserAdjustments();
-  if (adjustment_count < 0) {
-    LOG(ERROR) << "Calculation for user brightness adjustments per session "
-               << "returned a negative value";
-    return false;
-  } else if (adjustment_count > kMetricUserBrightnessAdjustmentsPerSessionMax) {
-    adjustment_count = kMetricUserBrightnessAdjustmentsPerSessionMax;
-  }
-
-  return SendMetricWithPowerSource(
-      kMetricUserBrightnessAdjustmentsPerSessionName, adjustment_count,
-      kMetricUserBrightnessAdjustmentsPerSessionMin,
-      kMetricUserBrightnessAdjustmentsPerSessionMax,
-      kMetricUserBrightnessAdjustmentsPerSessionBuckets);
-}
-
-bool MetricsReporter::GenerateLengthOfSessionMetric(
-    const base::TimeTicks& now,
-    const base::TimeTicks& start) {
-  int session_length = (now - start).InSeconds();
-  if (session_length < 0) {
-    LOG(ERROR) << "Calculation for length of session returned a negative value";
-
-    return false;
-  } else if (session_length > kMetricLengthOfSessionMax) {
-    LOG(INFO) << "Clamping LengthOfSession metric to "
-              << kMetricLengthOfSessionMax;
-
-    session_length = kMetricLengthOfSessionMax;
-  }
-
-  return SendMetric(kMetricLengthOfSessionName,
-                    session_length,
-                    kMetricLengthOfSessionMin,
-                    kMetricLengthOfSessionMax,
-                    kMetricLengthOfSessionBuckets);
+  SendMetric(kMetricBatteryDischargeRateWhileSuspendedName,
+             static_cast<int>(round(discharge_rate_watts * 1000)),
+             kMetricBatteryDischargeRateWhileSuspendedMin,
+             kMetricBatteryDischargeRateWhileSuspendedMax,
+             kMetricBatteryDischargeRateWhileSuspendedBuckets);
 }
 
 void MetricsReporter::IncrementNumOfSessionsPerChargeMetric() {
@@ -411,50 +398,20 @@ void MetricsReporter::IncrementNumOfSessionsPerChargeMetric() {
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, num + 1);
 }
 
-bool MetricsReporter::GenerateNumOfSessionsPerChargeMetric() {
+void MetricsReporter::GenerateNumOfSessionsPerChargeMetric() {
   int64 sample = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &sample);
   if (sample <= 0)
-    return true;
+    return;
 
   sample = std::min(
       sample, static_cast<int64>(kMetricNumOfSessionsPerChargeMax));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
-  return SendMetric(kMetricNumOfSessionsPerChargeName,
-                    sample,
-                    kMetricNumOfSessionsPerChargeMin,
-                    kMetricNumOfSessionsPerChargeMax,
-                    kMetricNumOfSessionsPerChargeBuckets);
-}
-
-void MetricsReporter::GeneratePowerButtonMetric(bool down,
-                                                base::TimeTicks timestamp) {
-  // Just keep track of the time when the button was pressed.
-  if (down) {
-    if (!last_power_button_down_timestamp_.is_null())
-      LOG(ERROR) << "Got power-button-down event while button was already down";
-    last_power_button_down_timestamp_ = timestamp;
-    return;
-  }
-
-  // Metrics are sent after the button is released.
-  if (last_power_button_down_timestamp_.is_null()) {
-    LOG(ERROR) << "Got power-button-up event while button was already up";
-    return;
-  }
-  base::TimeDelta delta = timestamp - last_power_button_down_timestamp_;
-  if (delta.InMilliseconds() < 0) {
-    LOG(ERROR) << "Negative duration between power button events";
-    return;
-  }
-  last_power_button_down_timestamp_ = base::TimeTicks();
-  if (!SendMetric(kMetricPowerButtonDownTimeName,
-                  delta.InMilliseconds(),
-                  kMetricPowerButtonDownTimeMin,
-                  kMetricPowerButtonDownTimeMax,
-                  kMetricPowerButtonDownTimeBuckets)) {
-    LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
-  }
+  SendMetric(kMetricNumOfSessionsPerChargeName,
+             sample,
+             kMetricNumOfSessionsPerChargeMin,
+             kMetricNumOfSessionsPerChargeMax,
+             kMetricNumOfSessionsPerChargeBuckets);
 }
 
 }  // namespace power_manager

@@ -366,12 +366,11 @@ Daemon::Daemon(PrefsInterface* prefs,
           state_controller_delegate_.get(), prefs_)),
       input_controller_(new policy::InputController(
           input_.get(), this, backlight_controller, state_controller_.get(),
-          dbus_sender_.get(), run_dir)),
+          metrics_reporter_.get(), dbus_sender_.get(), run_dir)),
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
       shutting_down_(false),
-      plugged_state_(PLUGGED_STATE_UNKNOWN),
       power_supply_(
           new system::PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
       dark_resume_policy_(
@@ -401,10 +400,12 @@ Daemon::~Daemon() {
 }
 
 void Daemon::Init() {
-  metrics_reporter_->Init();
-
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
+
+  power_supply_->Init();
+  power_supply_->RefreshImmediately();
+  metrics_reporter_->Init(power_supply_->power_status());
 
   std::string session_state;
   if (util::IsDBusServiceConnected(login_manager::kSessionManagerServiceName,
@@ -415,8 +416,6 @@ void Daemon::Init() {
     OnSessionStateChange(session_state);
   }
 
-  power_supply_->Init();
-  power_supply_->RefreshImmediately();
   OnPowerStatusUpdate();
 
   dark_resume_policy_->Init();
@@ -438,8 +437,8 @@ void Daemon::Init() {
     audio_client_->LoadInitialState();
   }
 
-  PowerSource power_source =
-      plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
+  const PowerSource power_source =
+      power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;
   state_controller_->Init(power_source, input_->QueryLidState());
   state_controller_initialized_ = true;
 
@@ -449,39 +448,6 @@ void Daemon::Init() {
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_main_loop_run(loop);
-}
-
-void Daemon::SetPlugged(bool plugged) {
-  if (plugged == plugged_state_)
-    return;
-
-  // TODO(derat): Move all of this logic into MetricsReporter and make
-  // Daemon just notify it about session state changes, power source
-  // changes, and so on.
-  if (plugged)
-    metrics_reporter_->GenerateNumOfSessionsPerChargeMetric();
-  else if (session_state_ == SESSION_STARTED)
-    metrics_reporter_->IncrementNumOfSessionsPerChargeMetric();
-
-  // If we are moving from PLUGGED_STATE_UNKNOWN then we don't know how
-  // long the device has been on AC for and thus our metric would not tell
-  // us anything about the battery state when the user decided to charge.
-  if (plugged_state_ != PLUGGED_STATE_UNKNOWN) {
-    metrics_reporter_->GenerateBatteryInfoWhenChargeStartsMetric(
-        power_supply_->power_status());
-  }
-
-  plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
-      PLUGGED_STATE_DISCONNECTED;
-
-  PowerSource power_source = plugged ? POWER_AC : POWER_BATTERY;
-  metrics_reporter_->HandlePowerSourceChange(power_source);
-  if (backlight_controller_)
-    backlight_controller_->HandlePowerSourceChange(power_source);
-  if (keyboard_controller_)
-    keyboard_controller_->HandlePowerSourceChange(power_source);
-  if (state_controller_initialized_)
-    state_controller_->HandlePowerSourceChange(power_source);
 }
 
 void Daemon::IdleEventNotify(int64 threshold) {
@@ -606,8 +572,7 @@ void Daemon::PrepareForSuspend() {
 
   power_supply_->SetSuspended(true);
   audio_client_->MuteSystem();
-  metrics_reporter_->PrepareForSuspend(power_supply_->power_status(),
-                                       base::Time::Now());
+  metrics_reporter_->PrepareForSuspend();
 }
 
 void Daemon::HandleResume(bool suspend_was_successful,
@@ -652,10 +617,6 @@ void Daemon::HandleLidOpened() {
     state_controller_->HandleLidStateChange(LID_OPEN);
 }
 
-void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
-  metrics_reporter_->GeneratePowerButtonMetric(down, timestamp);
-}
-
 void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
   if (state_controller_initialized_)
     state_controller_->HandleAudioActivity();
@@ -666,8 +627,16 @@ void Daemon::OnPowerStatusUpdate() {
   if (status.battery_is_present)
     LOG(INFO) << GetPowerStatusBatteryDebugString(status);
 
-  SetPlugged(status.line_power_on);
-  metrics_reporter_->GenerateMetricsOnPowerEvent(status);
+  metrics_reporter_->HandlePowerStatusUpdate(status);
+
+  const PowerSource power_source =
+      status.line_power_on ? POWER_AC : POWER_BATTERY;
+  if (backlight_controller_)
+    backlight_controller_->HandlePowerSourceChange(power_source);
+  if (keyboard_controller_)
+    keyboard_controller_->HandlePowerSourceChange(power_source);
+  if (state_controller_initialized_)
+    state_controller_->HandlePowerSourceChange(power_source);
 
   if (status.battery_is_present && status.battery_below_shutdown_threshold) {
     LOG(INFO) << "Shutting down due to low battery";
@@ -1150,44 +1119,14 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
 }
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {
+  DLOG(INFO) << "Session " << state_str;
   SessionState state = (state_str == kSessionStarted) ?
       SESSION_STARTED : SESSION_STOPPED;
-
-  if (state == SESSION_STARTED) {
-    DLOG(INFO) << "Session started";
-
-    // We always want to take action even if we were already "started", since we
-    // want to record when the current session started.  If this warning is
-    // appearing it means either we are querying the state of Session Manager
-    // when already know it to be "started" or we missed a "stopped"
-    // signal. Both of these cases are bad and should be investigated.
-    LOG_IF(WARNING, (session_state_ == state))
-        << "Received message saying session started, when we were already in "
-        << "the started state!";
-
-    if (!metrics_reporter_->GenerateBatteryRemainingAtStartOfSessionMetric(
-            power_supply_->power_status())) {
-      LOG(ERROR) << "Unable to generate battery remaining metric";
-    }
-
-    if (plugged_state_ == PLUGGED_STATE_DISCONNECTED)
-      metrics_reporter_->IncrementNumOfSessionsPerChargeMetric();
-
-    session_start_ = base::TimeTicks::Now();
-  } else if (session_state_ != state) {
-    DLOG(INFO) << "Session " << state_str;
-    // For states other then "started" we only want to take action if we have
-    // actually changed state, since the code we are calling assumes that we are
-    // actually transitioning between states.
-    if (state_str == kSessionStopped) {
-      // Don't generate metrics for intermediate states, e.g. "stopping".
-      metrics_reporter_->GenerateEndOfSessionMetrics(
-          power_supply_->power_status(), base::TimeTicks::Now(),
-          session_start_);
-    }
-  }
+  if (state == session_state_)
+    return;
 
   session_state_ = state;
+  metrics_reporter_->HandleSessionStateChange(state);
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
   if (backlight_controller_)

@@ -57,12 +57,6 @@ class AudioClient;
 class Input;
 }  // namespace system
 
-enum PluggedState {
-  PLUGGED_STATE_DISCONNECTED,
-  PLUGGED_STATE_CONNECTED,
-  PLUGGED_STATE_UNKNOWN,
-};
-
 // Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::BacklightControllerObserver,
                public policy::InputController::Delegate,
@@ -80,7 +74,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   void Init();
   void Run();
-  void SetPlugged(bool plugged);
 
   // Notify chrome that an idle event happened.
   void IdleEventNotify(int64 threshold);
@@ -111,8 +104,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Overridden from policy::InputController::Delegate:
   virtual void HandleLidClosed() OVERRIDE;
   virtual void HandleLidOpened() OVERRIDE;
-  virtual void SendPowerButtonMetric(bool down, base::TimeTicks timestamp)
-      OVERRIDE;
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioActivity(base::TimeTicks last_audio_time) OVERRIDE;
@@ -215,8 +206,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // True once the shutdown process has started. Remains true until the
   // system has powered off.
   bool shutting_down_;
-
-  PluggedState plugged_state_;
 
   scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;

@@ -9,16 +9,15 @@ namespace power_manager {
 const char kMetricACSuffix[] = "OnAC";
 const char kMetricBatterySuffix[] = "OnBattery";
 
+const int kMetricMaxPercent = 101;
+
 const char kMetricRetrySuspendCountName[] = "Power.RetrySuspendCount";
 const int kMetricRetrySuspendCountMin = 1;
 const int kMetricRetrySuspendCountBuckets = 10;
 
 const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
-const int kMetricBacklightLevelMax = 100;
-const time_t kMetricBacklightLevelIntervalMs = 30000;
-
 const char kMetricKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
-const int kMetricKeyboardBacklightLevelMax = 100;
+const time_t kMetricBacklightLevelIntervalMs = 30000;
 
 const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 const int kMetricIdleAfterScreenOffMin = 100;
@@ -56,14 +55,10 @@ const int kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec = 60;
 
 const char kMetricBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %
-const int kMetricBatteryRemainingWhenChargeStartsMax = 101;
-
 const char kMetricBatteryRemainingAtEndOfSessionName[] =
     "Power.BatteryRemainingAtEndOfSession";  // %
-const int kMetricBatteryRemainingAtEndOfSessionMax = 101;
 const char kMetricBatteryRemainingAtStartOfSessionName[] =
     "Power.BatteryRemainingAtStartOfSession";  // %
-const int kMetricBatteryRemainingAtStartOfSessionMax = 101;
 
 const char kMetricNumberOfAlsAdjustmentsPerSessionName[] =
     "Power.NumberOfAlsAdjustmentsPerSession";

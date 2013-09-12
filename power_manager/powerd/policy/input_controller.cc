@@ -11,6 +11,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/input_event.pb.h"
+#include "power_manager/powerd/metrics_reporter.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/input.h"
@@ -30,12 +31,14 @@ InputController::InputController(system::Input* input,
                                  Delegate* delegate,
                                  BacklightController* backlight_controller,
                                  StateController* state_controller,
+                                 MetricsReporter* metrics_reporter,
                                  DBusSenderInterface* dbus_sender,
                                  const base::FilePath& run_dir)
     : input_(input),
       delegate_(delegate),
       backlight_controller_(backlight_controller),
       state_controller_(state_controller),
+      metrics_reporter_(metrics_reporter),
       dbus_sender_(dbus_sender),
       lid_state_(LID_NOT_PRESENT),
       check_active_vt_timeout_id_(0) {
@@ -88,8 +91,7 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
     dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
   }
 
-  delegate_->SendPowerButtonMetric(state == BUTTON_DOWN,
-                                   base::TimeTicks::Now());
+  metrics_reporter_->HandlePowerButtonEvent(state);
 
   if (state == BUTTON_DOWN) {
     backlight_controller_->HandlePowerButtonPress();

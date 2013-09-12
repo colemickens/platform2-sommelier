@@ -20,6 +20,7 @@ typedef unsigned int guint;
 namespace power_manager {
 
 class DBusSenderInterface;
+class MetricsReporter;
 class PrefsInterface;
 
 namespace system {
@@ -46,16 +47,13 @@ class InputController : public system::InputObserver {
 
     // Handles the lid being opened.
     virtual void HandleLidOpened() = 0;
-
-    // Sends metrics in response to the power button being pressed or released.
-    virtual void SendPowerButtonMetric(bool down,
-                                       base::TimeTicks timestamp) = 0;
   };
 
   InputController(system::Input* input,
                   Delegate* delegate,
                   BacklightController* backlight_controller,
                   StateController* state_controller,
+                  MetricsReporter* metrics_reporter,
                   DBusSenderInterface* dbus_sender,
                   const base::FilePath& run_dir);
   ~InputController();
@@ -77,6 +75,7 @@ class InputController : public system::InputObserver {
   Delegate* delegate_;  // not owned
   BacklightController* backlight_controller_;  // not owned
   StateController* state_controller_;  // not owned
+  MetricsReporter* metrics_reporter_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned
 
   LidState lid_state_;
