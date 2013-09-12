@@ -119,7 +119,7 @@ class ClientThread : public base::SimpleThread {
   DISALLOW_COPY_AND_ASSIGN(ClientThread);
 };
 
-TEST(HttpServer, DISABLED_Basic) {
+TEST(HttpServer, Basic) {
   FilePath testdir = SetupTestDir("http-server");
   StrictMock<MetricsLibraryMock> metrics_lib;
 
@@ -127,8 +127,13 @@ TEST(HttpServer, DISABLED_Basic) {
   // directory
   setenv("RUN_UNINSTALLED", "1", 1);
 
-  HttpServer* server = HttpServer::Construct(&metrics_lib, testdir, 16725);
+  HttpServer* server = HttpServer::Construct(&metrics_lib, testdir, 0);
   server->Start();
+
+  // Wait until the HTTP server is running and accepting connections.
+  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs, Bind(&PortNonZero, server));
+  EXPECT_NE(server->Port(), 0);
+
   StrictMock<MockHttpServerListener> listener(server);
 
   // Set the metric expectations.
@@ -190,7 +195,7 @@ TEST(HttpServer, DISABLED_Basic) {
   // Start N threads for downloading, one for each file.
   vector<ClientThread*> threads;
   for (int n = 0; n < kMultipleTestNumFiles; n++) {
-    ClientThread* thread = new ClientThread(testdir, 16725, n);
+    ClientThread* thread = new ClientThread(testdir, server->Port(), n);
     thread->Start();
     threads.push_back(thread);
   }
