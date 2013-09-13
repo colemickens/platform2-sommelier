@@ -9,7 +9,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
-#include "shill/dbus_bindings/flimflam-task.h"
+#include "shill/dbus_adaptors/org.chromium.flimflam.Task.h"
 
 namespace shill {
 

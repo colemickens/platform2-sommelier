@@ -13,7 +13,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
-#include "shill/dbus_bindings/flimflam-profile.h"
+#include "shill/dbus_adaptors/org.chromium.flimflam.Profile.h"
 
 namespace shill {
 

@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/dbus_bindings/dbus-properties.h"
+#include "shill/dbus_proxies/dbus-properties.h"
 #include "shill/dbus_properties_proxy_interface.h"
 
 namespace shill {

@@ -142,7 +142,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
-  FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
   FRIEND_TEST(OpenVPNDriverTest, WriteConfigFile);
 
   // The map is a sorted container that allows us to iterate through the options

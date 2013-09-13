@@ -1189,26 +1189,6 @@ TEST_F(OpenVPNDriverTest, OnReconnectingTLSError) {
   EXPECT_TRUE(IsConnectTimeoutStarted());
 }
 
-TEST_F(OpenVPNDriverTest, VerifyPaths) {
-  // Ensure that the various path constants that the OpenVPN driver uses
-  // actually exists in the build image.  Due to build dependencies, they should
-  // already exist by the time we run unit tests.
-
-  // The OpenVPNDriver path constants are absolute.  FilePath::Append asserts
-  // that its argument is not an absolute path, so we need to strip the leading
-  // separators.  There's nothing built into FilePath to do so.
-  static const char *kPaths[] = {
-    OpenVPNDriver::kOpenVPNPath,
-    OpenVPNDriver::kOpenVPNScript,
-  };
-  for (size_t i = 0; i < arraysize(kPaths); i++) {
-    string path(kPaths[i]);
-    TrimString(path, FilePath::kSeparators, &path);
-    EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)))
-        << kPaths[i];
-  }
-}
-
 TEST_F(OpenVPNDriverTest, InitPropertyStore) {
   // Sanity test property store initialization.
   PropertyStore store;

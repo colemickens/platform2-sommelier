@@ -2877,12 +2877,6 @@ TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(WiFiMainTest, VerifyPaths) {
-  string path(WPASupplicant::kSupplicantConfPath);
-  TrimString(path, FilePath::kSeparators, &path);
-  EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)));
-}
-
 struct BSS {
   string bsspath;
   string ssid;

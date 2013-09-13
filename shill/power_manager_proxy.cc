@@ -8,7 +8,7 @@
 #include <google/protobuf/message_lite.h>
 
 #include "shill/logging.h"
-#include "shill/proto_bindings/power_manager/suspend.pb.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 using std::string;
 using std::vector;

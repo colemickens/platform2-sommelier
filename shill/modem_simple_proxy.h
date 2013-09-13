@@ -9,7 +9,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/dbus_bindings/modem-simple.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.Modem.Simple.h"
 #include "shill/modem_simple_proxy_interface.h"
 
 namespace shill {

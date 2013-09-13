@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/dbus_bindings/modem_manager.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.h"
 #include "shill/modem_manager_proxy_interface.h"
 
 namespace shill {

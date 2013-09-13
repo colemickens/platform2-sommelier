@@ -69,7 +69,7 @@
 // Notes:
 //
 // 1.  Shill's definition of the interface is described in
-// shill/dbus_bindings/supplicant-interface.xml, and the WPA Supplicant's
+// shill/dbus_proxies/supplicant-interface.xml, and the WPA Supplicant's
 // description of the same interface is in
 // third_party/wpa_supplicant/doc/dbus.doxygen.
 
@@ -248,7 +248,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
-  FRIEND_TEST(WiFiMainTest, VerifyPaths);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod

@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/dbus_bindings/shims/flimflam-task.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Task.h"
 
 namespace shill {
 

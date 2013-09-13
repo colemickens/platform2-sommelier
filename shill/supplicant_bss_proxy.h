@@ -11,7 +11,7 @@
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
-#include "shill/dbus_bindings/supplicant-bss.h"
+#include "shill/dbus_proxies/supplicant-bss.h"
 #include "shill/supplicant_bss_proxy_interface.h"
 
 namespace shill {

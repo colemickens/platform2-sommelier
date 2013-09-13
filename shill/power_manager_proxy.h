@@ -19,7 +19,7 @@
 
 #include <base/compiler_specific.h>
 
-#include "shill/dbus_bindings/power_manager.h"
+#include "shill/dbus_proxies/power_manager.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
 

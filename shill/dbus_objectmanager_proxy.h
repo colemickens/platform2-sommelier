@@ -7,7 +7,7 @@
 #include <string>
 
 #include "shill/dbus_objectmanager_proxy_interface.h"
-#include "shill/dbus_bindings/dbus-objectmanager.h"
+#include "shill/dbus_proxies/dbus-objectmanager.h"
 
 namespace shill {
 

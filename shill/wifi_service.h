@@ -11,7 +11,7 @@
 
 #include <base/memory/scoped_ptr.h>
 
-#include "shill/dbus_bindings/supplicant-interface.h"
+#include "shill/dbus_proxies/supplicant-interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/dbus_bindings/modem-gsm-network.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.Modem.Gsm.Network.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
 
 namespace shill {

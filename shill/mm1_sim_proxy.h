@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/dbus_bindings/mm1-sim.h"
+#include "dbus_proxies/org.freedesktop.ModemManager1.Sim.h"
 #include "shill/dbus_properties.h"
 #include "shill/mm1_sim_proxy_interface.h"
 

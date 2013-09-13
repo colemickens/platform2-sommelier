@@ -7,7 +7,7 @@
 
 #include <base/callback.h>
 
-#include "shill/dbus_bindings/wimax_manager-network.h"
+#include "wimax_manager/dbus_proxies/org.chromium.WiMaxManager.Network.h"
 #include "shill/wimax_network_proxy_interface.h"
 
 namespace shill {

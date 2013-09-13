@@ -9,7 +9,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/dbus_bindings/modem-gsm-card.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.Modem.Gsm.Card.h"
 #include "shill/modem_gsm_card_proxy_interface.h"
 
 namespace shill {

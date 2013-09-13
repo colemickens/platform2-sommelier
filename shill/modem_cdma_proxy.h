@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/dbus_bindings/modem-cdma.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.Modem.Cdma.h"
 #include "shill/dbus_properties.h"
 #include "shill/modem_cdma_proxy_interface.h"
 

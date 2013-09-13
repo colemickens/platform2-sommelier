@@ -5,7 +5,7 @@
 #ifndef SHILL_DBUS_SERVICE_PROXY_H_
 #define SHILL_DBUS_SERVICE_PROXY_H_
 
-#include "shill/dbus_bindings/dbus-service.h"
+#include "shill/dbus_proxies/dbus-service.h"
 #include "shill/dbus_service_proxy_interface.h"
 
 namespace shill {

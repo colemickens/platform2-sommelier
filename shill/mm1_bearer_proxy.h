@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/dbus_bindings/mm1-bearer.h"
+#include "dbus_proxies/org.freedesktop.ModemManager1.Bearer.h"
 #include "shill/dbus_properties.h"
 #include "shill/mm1_bearer_proxy_interface.h"
 

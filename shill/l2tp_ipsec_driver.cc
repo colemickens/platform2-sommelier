@@ -27,7 +27,7 @@
 #include <base/file_util.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/vpn-manager/service_error.h>
+#include <vpn-manager/service_error.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"

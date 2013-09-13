@@ -8,7 +8,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/weak_ptr.h>
 #include <base/string_util.h>
-#include <chromeos/vpn-manager/service_error.h>
+#include <vpn-manager/service_error.h>
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
@@ -632,26 +632,6 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   EXPECT_CALL(*local_external_task, OnDelete());
   dispatcher_.PostTask(MessageLoop::QuitClosure());
   dispatcher_.DispatchForever();
-}
-
-TEST_F(L2TPIPSecDriverTest, VerifyPaths) {
-  // Ensure that the various path constants that the L2TP/IPSec driver uses
-  // actually exists in the build image.  Due to build dependencies, they should
-  // already exist by the time we run unit tests.
-
-  // The L2TPIPSecDriver path constants are absolute.  FilePath::Append asserts
-  // that its argument is not an absolute path, so we need to strip the leading
-  // separators.  There's nothing built into FilePath to do so.
-  static const char *kPaths[] = {
-    L2TPIPSecDriver::kL2TPIPSecVPNPath,
-    PPPDevice::kPluginPath,
-  };
-  for (size_t i = 0; i < arraysize(kPaths); i++) {
-    string path(kPaths[i]);
-    TrimString(path, FilePath::kSeparators, &path);
-    EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)))
-        << kPaths[i];
-  }
 }
 
 }  // namespace shill

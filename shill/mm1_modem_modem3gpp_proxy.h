@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/dbus_bindings/mm1-modem-modem3gpp.h"
+#include "dbus_proxies/org.freedesktop.ModemManager1.Modem.Modem3gpp.h"
 #include "shill/dbus_properties.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
 
