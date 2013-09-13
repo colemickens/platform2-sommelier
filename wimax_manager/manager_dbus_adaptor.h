@@ -6,7 +6,7 @@
 #define WIMAX_MANAGER_MANAGER_DBUS_ADAPTOR_H_
 
 #include "wimax_manager/dbus_adaptor.h"
-#include "wimax_manager/dbus_bindings/manager.h"
+#include "wimax_manager/dbus_adaptors/org.chromium.WiMaxManager.h"
 
 namespace wimax_manager {
 

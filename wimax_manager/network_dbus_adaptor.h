@@ -8,7 +8,7 @@
 #include <string>
 
 #include "wimax_manager/dbus_adaptor.h"
-#include "wimax_manager/dbus_bindings/network.h"
+#include "wimax_manager/dbus_adaptors/org.chromium.WiMaxManager.Network.h"
 
 namespace wimax_manager {
 

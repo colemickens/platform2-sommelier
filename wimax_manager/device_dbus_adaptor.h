@@ -9,7 +9,7 @@
 #include <map>
 
 #include "wimax_manager/dbus_adaptor.h"
-#include "wimax_manager/dbus_bindings/device.h"
+#include "wimax_manager/dbus_adaptors/org.chromium.WiMaxManager.Device.h"
 #include "wimax_manager/network.h"
 
 namespace wimax_manager {

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "wimax_manager/dbus_bindings/dbus_service.h"
+#include "wimax_manager/dbus_proxies/org.freedesktop.DBus.h"
 #include "wimax_manager/dbus_proxy.h"
 
 namespace wimax_manager {

@@ -7,7 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/message_lite.h>
 
-#include "power_manager/suspend.pb.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 #include "wimax_manager/dbus_control.h"
 #include "wimax_manager/manager.h"
 #include "wimax_manager/power_manager_dbus_proxy.h"

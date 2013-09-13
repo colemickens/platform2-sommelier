@@ -8,7 +8,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/message_lite.h>
 
-#include "power_manager/suspend.pb.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 #include "wimax_manager/power_manager.h"
 
 using std::string;
