@@ -8,6 +8,7 @@
 
 #include "mist/context.h"
 #include "mist/event_dispatcher.h"
+#include "mist/metrics.h"
 #include "mist/usb_modem_switch_context.h"
 #include "mist/usb_modem_switch_operation.h"
 
@@ -46,6 +47,7 @@ void UsbModemOneShotSwitcher::OnSwitchOperationCompleted(
   operation_.reset();
 
   is_success_ = success;
+  context_->metrics()->RecordSwitchResult(success);
 
   // Stop the message loop upon the completion of the switch operation.
   context_->event_dispatcher()->Stop();

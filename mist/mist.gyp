@@ -2,6 +2,7 @@
   'target_defaults': {
     'dependencies': [
       '../libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
+      '../metrics/metrics.gyp:libmetrics',
     ],
     'variables': {
       'deps': [
@@ -34,6 +35,7 @@
         'config_loader.cc',
         'context.cc',
         'event_dispatcher.cc',
+        'metrics.cc',
         'mist.cc',
         'udev.cc',
         'udev_device.cc',

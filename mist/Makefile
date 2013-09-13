@@ -16,7 +16,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 GENERATED_DIR = generated
 CPPFLAGS += -I$(SRC)/.. -I$(OUT)/$(GENERATED_DIR) $(PC_CFLAGS)
-LDLIBS += -lprotobuf -lpthread -ludev $(PC_LIBS)
+LDLIBS += -lmetrics -lprotobuf -lpthread -ludev $(PC_LIBS)
 
 MIST_PROTO_BINDINGS_DIR = $(GENERATED_DIR)/mist/proto_bindings
 MIST_PROTO_BINDINGS = \

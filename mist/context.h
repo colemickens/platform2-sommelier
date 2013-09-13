@@ -12,6 +12,7 @@ namespace mist {
 
 class ConfigLoader;
 class EventDispatcher;
+class Metrics;
 class Udev;
 class UsbDeviceEventNotifier;
 class UsbManager;
@@ -28,6 +29,7 @@ class Context {
   // Initializes all helper objects in the context. Returns true on success.
   virtual bool Initialize();
 
+  Metrics* metrics() const { return metrics_.get(); }
   ConfigLoader* config_loader() const { return config_loader_.get(); }
   EventDispatcher* event_dispatcher() const { return event_dispatcher_.get(); }
   Udev* udev() const { return udev_.get(); }
@@ -39,6 +41,7 @@ class Context {
  private:
   friend class MockContext;
 
+  scoped_ptr<Metrics> metrics_;
   scoped_ptr<ConfigLoader> config_loader_;
   scoped_ptr<EventDispatcher> event_dispatcher_;
   scoped_ptr<Udev> udev_;

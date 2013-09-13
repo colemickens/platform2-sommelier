@@ -6,6 +6,7 @@
 
 #include "mist/config_loader.h"
 #include "mist/event_dispatcher.h"
+#include "mist/metrics.h"
 #include "mist/udev.h"
 #include "mist/usb_device_event_notifier.h"
 #include "mist/usb_manager.h"
@@ -17,6 +18,9 @@ Context::Context() {}
 Context::~Context() {}
 
 bool Context::Initialize() {
+  metrics_.reset(new Metrics());
+  CHECK(metrics_);
+
   config_loader_.reset(new ConfigLoader());
   CHECK(config_loader_);
   if (!config_loader_->LoadDefaultConfig()) {
