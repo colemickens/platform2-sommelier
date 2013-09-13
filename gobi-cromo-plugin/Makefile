@@ -10,6 +10,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS)
+CPPFLAGS += -I.
 CXXFLAGS += -fPIC -Wall -Werror -g
 LDLIBS += -lGobiConnectionMgmt -lGobiImageMgmt -lpthread -lrt \
           -ludev -lmetrics -lgobi3k $(PC_LIBS)
@@ -24,7 +25,8 @@ UDEVRULES_DIR = $(DESTDIR)/lib/udev/rules.d
 
 GOBI_PLUGIN = gobi.so
 
-GLUE_HEADERS = modem_gobi_server_glue.h
+GLUE_HEADERS = modem_gobi_server_glue.h \
+			dbus_adaptors/org.freedesktop.ModemManager.h
 
 TESTS = gobi_sdk_wrapper_unittest \
 	gobi_handle_test \
@@ -75,6 +77,11 @@ gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o gobi_sdk_wrapper_unittest.cc
 metrics_stopwatch_unittest : metrics_stopwatch.o metrics_stopwatch_unittest.cc
 
 %_server_glue.h: %.xml
+	$(DBUSXX_XML2CPP) $^ --adaptor=$@
+
+dbus_adaptors/%.h: \
+	$(SYSROOT)/usr/share/dbus-1/interfaces/%.xml
+	mkdir -p dbus_adaptors
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
 
 install : $(INSTALL_TARGETS)

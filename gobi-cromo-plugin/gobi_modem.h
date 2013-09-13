@@ -17,10 +17,10 @@
 #include <set>
 
 #include <cromo/cromo_server.h>
+#include <cromo/dbus_adaptors/org.freedesktop.DBus.Properties.h>
+#include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.h>
+#include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Simple.h>
 #include <cromo/modem.h>
-#include <cromo/modem_server_glue.h>
-#include <cromo/modem-simple_server_glue.h>
-#include <cromo/properties_server_glue.h>
 #include <cromo/utilities.h>
 #include <metrics/metrics_library.h>
 #include <mm/mm-modem.h>

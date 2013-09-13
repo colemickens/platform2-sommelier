@@ -8,10 +8,10 @@
 #define PLUGIN_GOBI_GSM_MODEM_H_
 
 #include "gobi_modem.h"
-#include <cromo/modem-gsm_server_glue.h>
-#include <cromo/modem-gsm-card_server_glue.h>
-#include <cromo/modem-gsm-network_server_glue.h>
-#include <cromo/modem-gsm-sms_server_glue.h>
+#include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.h>
+#include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.Card.h>
+#include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.Network.h>
+#include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.SMS.h>
 #include <cromo/sms_cache.h>
 
 class GobiModem;
