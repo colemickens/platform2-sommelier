@@ -10,7 +10,7 @@
 
 #include <dbus-c++/dbus.h>
 
-#include "adaptors/org.chromium.debugd.h"
+#include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "packet_capture_tool.h"
 #include "crash_sender_tool.h"
 #include "debug_logs_tool.h"

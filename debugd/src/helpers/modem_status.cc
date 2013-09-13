@@ -10,10 +10,10 @@
 #include <base/values.h>
 #include <chromeos/utility.h>
 
-#include "proxies/org.freedesktop.DBus.Properties.h"
-#include "proxies/org.freedesktop.ModemManager.h"
-#include "proxies/org.freedesktop.ModemManager.Modem.h"
-#include "proxies/org.freedesktop.ModemManager.Modem.Simple.h"
+#include "dbus_proxies/org.freedesktop.DBus.Properties.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.Modem.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.Modem.Simple.h"
 
 // These are lifted from modemmanager's XML files, since dbus-c++ currently
 // doesn't emit constants for enums defined in headers.

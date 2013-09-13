@@ -10,10 +10,10 @@
 #include <base/values.h>
 #include <chromeos/utility.h>
 
-#include "proxies/org.chromium.flimflam.Device.h"
-#include "proxies/org.chromium.flimflam.IPConfig.h"
-#include "proxies/org.chromium.flimflam.Manager.h"
-#include "proxies/org.chromium.flimflam.Service.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Device.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.IPConfig.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Service.h"
 
 const char* kFlimflamPath = "/";
 const char* kFlimflamService = "org.chromium.flimflam";

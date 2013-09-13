@@ -6,10 +6,10 @@
 
 #include <base/file_util.h>
 
-#include "proxies/org.chromium.flimflam.Manager.h"
-#include "proxies/org.freedesktop.DBus.Properties.h"
-#include "proxies/org.freedesktop.ModemManager.h"
-#include "proxies/org.freedesktop.ModemManager1.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
+#include "dbus_proxies/org.freedesktop.DBus.Properties.h"
+#include "dbus_proxies/org.freedesktop.ModemManager.h"
+#include "dbus_proxies/org.freedesktop.ModemManager1.h"
 
 namespace debugd {
 

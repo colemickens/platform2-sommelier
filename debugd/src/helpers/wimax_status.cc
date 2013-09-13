@@ -12,7 +12,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/utility.h>
 
-#include "proxies/org.freedesktop.DBus.Properties.h"
+#include "dbus_proxies/org.freedesktop.DBus.Properties.h"
 
 using base::DictionaryValue;
 using base::ListValue;

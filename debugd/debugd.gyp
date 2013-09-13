@@ -22,7 +22,7 @@
       'type': 'none',
       'variables': {
         'xml2cpp_type': 'adaptor',
-        'xml2cpp_out_dir': 'include/adaptors',
+        'xml2cpp_out_dir': 'include/debugd/dbus_adaptors',
       },
       'sources': [
         'share/org.chromium.debugd.xml',
@@ -32,23 +32,11 @@
     {
       'target_name': 'debugd-proxies',
       'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'proxy',
-        'xml2cpp_in_dir': '<(sysroot)/usr/share/dbus-1/interfaces',
-        'xml2cpp_out_dir': 'include/proxies',
-      },
-      'sources': [
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Device.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.IPConfig.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Manager.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Service.xml',
-        '<(xml2cpp_in_dir)/org.freedesktop.DBus.Properties.xml',
-        '<(xml2cpp_in_dir)/org.freedesktop.ModemManager.xml',
-        '<(xml2cpp_in_dir)/org.freedesktop.ModemManager1.xml',
-        '<(xml2cpp_in_dir)/org.freedesktop.ModemManager.Modem.xml',
-        '<(xml2cpp_in_dir)/org.freedesktop.ModemManager.Modem.Simple.xml',
+      'dependencies': [
+        '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
+        '../common-mk/external_dependencies.gyp:dbus-proxies',
+        '../shill/shill.gyp:shill-proxies',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'libdebugd',

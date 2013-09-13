@@ -65,8 +65,8 @@
 #include <base/values.h>
 #include <chromeos/utility.h>
 
-#include "proxies/org.chromium.flimflam.Manager.h"
-#include "proxies/org.chromium.flimflam.Service.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
+#include "shill/dbus_proxies/org.chromium.flimflam.Service.h"
 
 std::string getmac(int fd, const char *ifname) {
   struct ifreq ifr;
