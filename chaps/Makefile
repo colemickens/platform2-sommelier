@@ -55,36 +55,45 @@ ifneq ($(METRICS_LIB), -lmetrics)
   CPPFLAGS += -DNO_METRICS
 endif
 
+DBUS_ADAPTORS_DIR = $(OUT)/chaps/dbus_adaptors
+DBUS_PROXIES_DIR = $(OUT)/chaps/dbus_proxies
+
 # Rules for Generated Code
-chaps_proxy_generated.h: $(SRC)/chaps_interface.xml
+$(DBUS_PROXIES_DIR)/chaps_interface.h: $(SRC)/chaps_interface.xml
+	mkdir -p $(DBUS_PROXIES_DIR)
 	$(DBUSXX_XML2CPP) $< --proxy=$@
-clean: CLEAN(chaps_proxy_generated.h)
+clean: CLEAN($(DBUS_PROXIES_DIR)/chaps_interface.h)
 
 chaps_client.o.depends \
 chaps_proxy.o.depends \
 chapsd_test.o.depends \
 chaps.o.depends \
 chaps_event_generator.o.depends \
-token_manager_client.o.depends: chaps_proxy_generated.h
+token_manager_client.o.depends: $(DBUS_PROXIES_DIR)/chaps_interface.h
 
-chaps_adaptor_generated.h: $(SRC)/chaps_interface.xml
+$(DBUS_ADAPTORS_DIR)/chaps_interface.h: $(SRC)/chaps_interface.xml
+	mkdir -p $(DBUS_ADAPTORS_DIR)
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
-clean: CLEAN(chaps_adaptor_generated.h)
+clean: CLEAN($(DBUS_ADAPTORS_DIR)/chaps_interface.h)
 
 chaps_adaptor.o.depends \
-chapsd.o.depends : chaps_adaptor_generated.h
+chapsd.o.depends : $(DBUS_ADAPTORS_DIR)/chaps_interface.h
 
-attributes.pb.h attributes.pb.cc: $(SRC)/attributes.proto
-	$(PROTOC) -I$(SRC) --cpp_out=$(OUT) $<
-clean: CLEAN(attributes.pb.h attributes.pb.cc)
-$(eval $(call add_object_rules,attributes.pb.o,CXX,cc,CXXFLAGS))
+PROTO_DIR = $(OUT)/chaps/proto_bindings
+
+$(PROTO_DIR)/attributes.pb.h \
+$(PROTO_DIR)/attributes.pb.cc: $(SRC)/attributes.proto
+	mkdir -p $(PROTO_DIR)
+	$(PROTOC) -I$(SRC) --cpp_out=$(OUT)/chaps/proto_bindings $<
+clean: CLEAN($(PROTO_DIR)/attributes.pb.h $(PROTO_DIR)/attributes.pb.cc)
+$(eval $(call add_object_rules,$(PROTO_DIR)/attributes.pb.o,CXX,cc,CXXFLAGS))
 
 object_pool_impl.o.depends \
 object_pool_test.o.depends \
-attributes.o.depends: attributes.pb.h
+attributes.o.depends: $(PROTO_DIR)/attributes.pb.h
 
 # Common Files
-COMMON_OBJS = chaps_utility.o attributes.pb.o attributes.o
+COMMON_OBJS = chaps_utility.o $(PROTO_DIR)/attributes.pb.o attributes.o
 
 # Chaps Daemon
 chapsd_OBJS = $(COMMON_OBJS) \

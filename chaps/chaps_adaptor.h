@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 
-#include "chaps_adaptor_generated.h"
+#include "chaps/dbus_adaptors/chaps_interface.h"
 
 namespace base {
   class Lock;

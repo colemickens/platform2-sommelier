@@ -13,7 +13,7 @@
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 
-#include "attributes.pb.h"
+#include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"

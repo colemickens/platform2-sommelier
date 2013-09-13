@@ -11,7 +11,7 @@
 #include <chromeos/secure_blob.h>
 
 #include "chaps/chaps_interface.h"
-#include "chaps_proxy_generated.h"
+#include "chaps/dbus_proxies/chaps_interface.h"
 
 namespace chaps {
 

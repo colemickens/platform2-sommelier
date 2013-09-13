@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 
-#include "attributes.pb.h"
+#include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps_utility.h"
 
 using std::string;
