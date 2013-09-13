@@ -376,16 +376,23 @@ TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   EXPECT_CALL(log, Log(logging::LOG_INFO, StrEq("cellular_capability_gsm.cc"),
                        ::testing::StartsWith("GetIMSI failed - ")));
   EXPECT_CALL(*card_proxy_, GetIMSI(_, _, CellularCapability::kTimeoutDefault))
-      .Times(CellularCapabilityGSM::kGetIMSIRetryLimit + 1)
+      .Times(CellularCapabilityGSM::kGetIMSIRetryLimit + 2)
       .WillRepeatedly(Invoke(this,
                              &CellularCapabilityGSMTest::InvokeGetIMSIFails));
-  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  EXPECT_CALL(*this, TestCallback(IsFailure())).Times(2);
   SetCardProxy();
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
   EXPECT_TRUE(capability_->imsi_.empty());
   EXPECT_FALSE(capability_->sim_present_);
 
+  capability_->sim_lock_status_.lock_type = "sim-pin";
+  capability_->GetIMSI(callback);
+  EXPECT_TRUE(capability_->imsi_.empty());
+  EXPECT_TRUE(capability_->sim_present_);
+
+  capability_->sim_lock_status_.lock_type.clear();
+  capability_->sim_present_ = false;
   capability_->get_imsi_retries_ = 0;
   EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds,
             capability_->get_imsi_retry_delay_milliseconds_);

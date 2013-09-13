@@ -865,6 +865,11 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
       }
     }
     if (emit) {
+      if (!sim_present_) {
+        sim_present_ = true;
+        cellular()->adaptor()->EmitBoolChanged(
+            shill::kSIMPresentProperty, sim_present_);
+      }
       cellular()->adaptor()->EmitKeyValueStoreChanged(
           flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
     }
@@ -925,6 +930,10 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
     imsi_ = imsi;
     sim_present_ = true;
     SetHomeProvider();
+    callback.Run(error);
+  } else if (!sim_lock_status_.lock_type.empty()) {
+    SLOG(Cellular, 2) << "GetIMSI failed - SIM lock in place.";
+    sim_present_ = true;
     callback.Run(error);
   } else {
     sim_present_ = false;
