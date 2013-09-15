@@ -1022,7 +1022,8 @@ cmd_update_over_cellular() {
 }
 
 cmd_upload_crashes() {
-  sudo SECONDS_SEND_SPREAD=1 /sbin/crash_sender
+  debugd UploadCrashes
+  echo "Check chrome://crashes for status updates"
 }
 
 cmd_tpcontrol() {
