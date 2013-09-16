@@ -70,6 +70,30 @@ ERROR: The above commands need a space after the ()
 EOF
     ret=1
   fi
+
+  #
+  # Check for common bashisms.  We don't use `checkbashisms` as that script
+  # throws too many false positives, and we do actually use some bash.
+  #
+  if grep -hn '&>' ${s}; then
+    cat <<EOF
+ERROR: The &> construct is a bashism.  Please fix it like so:
+       before:   some_command &> /dev/null
+       after :   some_command >/dev/null 2>&1
+       Note: Some commands (like grep) have options to silence
+             their output.  Use that rather than redirection.
+
+EOF
+    ret=1
+  fi
+
+  if grep -hn '[[:space:]]\[\[[[:space:]]' ${s}; then
+    cat <<EOF
+ERROR: The [[...]] construct is a bashism.  Please stick to [...].
+
+EOF
+    ret=1
+  fi
 done
 
 exit ${ret}

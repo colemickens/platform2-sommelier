@@ -1111,7 +1111,7 @@ mk_fifo() {
 cmd_storage_test_1() (
   option="$1"
 
-  debugd Smartctl "string:abort_test" &> /dev/null
+  debugd Smartctl "string:abort_test" >/dev/null
 
   test=$(debugd Smartctl "string:short_test")
   if [ "$option" != "-v" ]; then
@@ -1125,7 +1125,7 @@ cmd_storage_test_1() (
   echo ""
 
   while debugd Smartctl "string:capabilities" |
-        grep "of test remaining" &> /dev/null; do
+        grep -q "of test remaining"; do
     true
   done
 
@@ -1136,7 +1136,7 @@ cmd_storage_test_1() (
     echo "$result"
   fi
 
-  debugd Smartctl "string:abort_test" &> /dev/null
+  debugd Smartctl "string:abort_test" >/dev/null
 )
 
 cmd_storage_test_2() (
@@ -1220,7 +1220,7 @@ cmd_battery_test() (
   fi
 
   # Ensuring that the parameter is an int.
-  if [[ ! "$test_length" =~ ^[0-9]+$ ]]; then
+  if ! echo "${test_length}" | egrep -q '^[0-9]+$'; then
     echo "You provided invalid test length. Exiting..."
     return 1
   fi
@@ -1231,7 +1231,7 @@ cmd_battery_test() (
   bat="/sys/class/power_supply/*/technology"
 
   # Checking if battery is present in the system.
-  if [ "$(ls ${bat} &> /dev/null; echo $?)" -ne 0 ]; then
+  if ! ls ${bat} >/dev/null 2>&1; then
     echo "No battery found. Insert the battery and reboot the device."
     return 1
   else
@@ -1241,9 +1241,9 @@ cmd_battery_test() (
   fi
 
   # Figuring out if battery gauge measures energy left or charge.
-  if [ "$(ls ${bat}/energy* &> /dev/null; echo $?)" -eq 0 ]; then
+  if ls ${bat}/energy* >/dev/null 2>&1; then
     meter="energy"
-  elif [ "$(ls ${bat}/charge* &> /dev/null; echo $?)" -eq 0 ]; then
+  elif ls ${bat}/charge* >/dev/null 2>&1; then
     meter="charge"
   else
     echo "Could not figure out the way to get battery status"
