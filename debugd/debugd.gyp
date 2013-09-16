@@ -65,6 +65,7 @@
       'sources': [
         'src/anonymizer_tool.cc',
         'src/cpu_info_parser.cc',
+        'src/crash_sender_tool.cc',
         'src/debug_daemon.cc',
         'src/debug_logs_tool.cc',
         'src/debug_mode_tool.cc',

@@ -12,6 +12,7 @@
 
 #include "adaptors/org.chromium.debugd.h"
 #include "packet_capture_tool.h"
+#include "crash_sender_tool.h"
 #include "debug_logs_tool.h"
 #include "debug_mode_tool.h"
 #include "example_tool.h"
@@ -141,11 +142,13 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual void PacketCaptureStop(const std::string& handle,
                                  DBus::Error& error);
   virtual void LogKernelTaskStates(DBus::Error& error); // NOLINT
+  virtual void UploadCrashes(DBus::Error& error);  // NOLINT
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 
+  CrashSenderTool* crash_sender_tool_;
   DebugLogsTool* debug_logs_tool_;
   DebugModeTool* debug_mode_tool_;
   ExampleTool* example_tool_;

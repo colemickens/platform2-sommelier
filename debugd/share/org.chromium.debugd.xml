@@ -430,5 +430,10 @@
         See https://www.kernel.org/doc/Documentation/sysrq.txt.
       </tp:docstring>
     </method>
+    <method name="UploadCrashes">
+      <tp:docstring>
+        Triggers uploading of system crashes (the crash_sender program).
+      </tp:docstring>
+    </method>
   </interface>
 </node>

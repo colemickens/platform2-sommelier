@@ -28,6 +28,7 @@ tests:
 
 TOOLS := $(patsubst %,%_tool.o, \
 	anonymizer \
+	crash_sender \
 	debug_logs \
 	debug_mode \
 	example \

@@ -18,6 +18,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
     dbus_(connection), dispatcher_(dispatcher) { }
 
 bool DebugDaemon::Init() {
+  crash_sender_tool_ = new CrashSenderTool();
   debug_logs_tool_ = new DebugLogsTool();
   debug_mode_tool_ = new DebugModeTool(dbus_);
   example_tool_ = new ExampleTool();
@@ -218,4 +219,9 @@ void DebugDaemon::PacketCaptureStop(const std::string& handle,
 void DebugDaemon::LogKernelTaskStates(DBus::Error& error) { // NOLINT dbuscxx
   sysrq_tool_->LogKernelTaskStates(error);
 }
+
+void DebugDaemon::UploadCrashes(DBus::Error& error) {  // NOLINT dbuscxx
+  crash_sender_tool_->UploadCrashes(error);
+}
+
 };  // namespace debugd
