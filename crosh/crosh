@@ -1033,17 +1033,6 @@ cmd_try_touch_experiment() {
   /usr/sbin/try_touch_experiment "$@"
 }
 
-change_properties() {
-  # change format: PROPERTY_NUMBER:PROPERTY_VALUE,...
-  cleaned="`echo "$1" | sed "s/,*$//g"`"
-  IFS=,
-  for cmd in ${cleaned}; do
-    property_number="`echo "${cmd}" | cut -d ":" -f1`"
-    property_value="`echo "${cmd}" | cut -d ":" -f2`"
-    xinput set-prop "$2" "${property_number}" "${property_value}"
-  done
-}
-
 cmd_rlz() {
   local flag_file="$HOME/.rlz_disabled"
   local enabled=1
