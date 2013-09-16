@@ -452,7 +452,7 @@ void SessionManagerService::RestartBrowserWithArgs(
     browser_.job->SetExtraArguments(args);
   else
     browser_.job->SetArguments(args);
-  RunBrowser();
+  // The browser will be restarted in HandleBrowserExit().
 }
 
 void SessionManagerService::SetBrowserSessionForUser(
@@ -546,34 +546,30 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
   if (manager->shutting_down_)
     return;
 
-  ChildJobInterface* child_job = NULL;
-  if (manager->IsBrowser(pid))
-    child_job = manager->browser_.job.get();
+  CHECK(manager->IsBrowser(pid)) << "Browser pid was " << manager->browser_.pid
+                                 << " while handling exit of " << pid;
+  ChildJobInterface* child_job = manager->browser_.job.get();
+  DCHECK(child_job);
 
   LOG(ERROR) << StringPrintf("Process %s(%d) exited.",
-                             child_job ? child_job->GetName().c_str() : "",
-                             pid);
+                             child_job->GetName().c_str(), pid);
   if (manager->impl_->ScreenIsLocked()) {
     LOG(ERROR) << "Screen locked, shutting down";
     manager->SetExitAndShutdown(CRASH_WHILE_SCREEN_LOCKED);
     return;
   }
 
-  if (child_job) {
-    manager->liveness_checker_->Stop();
-    if (manager->ShouldStopChild(child_job)) {
-      LOG(WARNING) << "Child stopped, shutting down";
-      manager->SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
-    } else if (manager->ShouldRunBrowser()) {
-      // TODO(cmasone): deal with fork failing in RunBrowser()
-      manager->RunBrowser();
-    } else {
-      LOG(INFO) << StringPrintf(
-          "Should NOT run %s again...", child_job->GetName().data());
-      manager->AllowGracefulExit();
-    }
+  manager->liveness_checker_->Stop();
+  if (manager->ShouldStopChild(child_job)) {
+    LOG(WARNING) << "Child stopped, shutting down";
+    manager->SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
+  } else if (manager->ShouldRunBrowser()) {
+    // TODO(cmasone): deal with fork failing in RunBrowser()
+    manager->RunBrowser();
   } else {
-    LOG(ERROR) << "Couldn't find pid of exiting child: " << pid;
+    LOG(INFO) << StringPrintf(
+        "Should NOT run %s again...", child_job->GetName().data());
+    manager->AllowGracefulExit();
   }
 }
 

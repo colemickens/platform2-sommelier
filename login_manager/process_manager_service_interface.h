@@ -35,7 +35,7 @@ class ProcessManagerServiceInterface {
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;
 
-  // Kill the browser, start it again with the provided arg vector.
+  // Kill the browser. Provide |args| to be used when it's restarted.
   virtual void RestartBrowserWithArgs(const std::vector<std::string>& args,
                                       bool args_are_extra) = 0;
 
