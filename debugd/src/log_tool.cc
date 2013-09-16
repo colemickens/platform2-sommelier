@@ -73,7 +73,9 @@ static const Log common_logs[] = {
   { "LOGDATE", "/bin/date" },
   { "Xorg.0.log", "/bin/cat /var/log/Xorg.0.log" },
   { "bios_info", "/bin/cat /var/log/bios_info.txt" },
-  { "bios_log", "/bin/cat /sys/firmware/log" },
+  { "bios_log",
+    "/bin/cat /sys/firmware/log "
+    "/proc/device-tree/chosen/ap-console-buffer 2> /dev/null" },
   { "bios_times", "/bin/cat /var/log/bios_times.txt" },
   { "board-specific",
         "/usr/share/userfeedback/scripts/get_board_specific_info" },
