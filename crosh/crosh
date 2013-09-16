@@ -713,7 +713,7 @@ cmd_network_diag(){
 }
 
 debugd() {
-  method="$1"; shift
+  local method="$1"; shift
   dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
       /org/chromium/debugd "org.chromium.debugd.$method" "$@"
 }
