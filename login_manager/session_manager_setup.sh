@@ -267,7 +267,6 @@ for file in $(find $PEPPER_PATH -name '*.info'); do
     else
       PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=1"
     fi
-    PPAPI_FLASH_FLAGS="${PPAPI_FLASH_FLAGS},enable_low_latency_audio=0"
   else
     PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
     REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
