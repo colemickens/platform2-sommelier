@@ -35,7 +35,7 @@ DEV_HELP='
 
 HELP="$HELP$DEV_HELP"
 
-cmd_packet_capture() {
+cmd_packet_capture() (
   local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
@@ -83,17 +83,17 @@ cmd_packet_capture() {
     echo "No packets captured!"
     rm -f "${capture_file}"
   fi
-}
+)
 
-cmd_shell() {
+cmd_shell() (
  local shell="/bin/sh"
  if [ -x /bin/bash ]; then
    shell="/bin/bash"
  fi
  SHELL=${shell} ${shell} -l
-}
+)
 
-cmd_systrace() {
+cmd_systrace() (
   case x"$1" in
   xstart)
     local categories;
@@ -119,4 +119,4 @@ cmd_systrace() {
     debugd SystraceStatus
     ;;
   esac
-}
+)

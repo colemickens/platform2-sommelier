@@ -237,17 +237,17 @@ shell_history() {
   fi
 }
 
-cmd_help() {
+cmd_help() (
   echo "$HELP"
-}
+)
 
-cmd_help_advanced() {
+cmd_help_advanced() (
   echo "$HELP_ADVANCED"
-}
+)
 
-cmd_exit() {
+cmd_exit() (
   exit
-}
+)
 
 check_dforward() {
   # Matches a port number between 8000 and 8999.
@@ -283,8 +283,7 @@ check_keyfile() {
   (expr "$1" : '^[^/]*$' > /dev/null)
 }
 
-cmd_sound() {
-
+cmd_sound() (
   case "$1" in
   "beamforming")
     card=$(aplay -l | egrep '^card .*\bCA0132\b' | sed 's/card \([0-9]\+\).*/\1/')
@@ -338,13 +337,13 @@ cmd_sound() {
     return 1
     ;;
   esac
-}
+)
 
 check_ssh_host() {
   check_hostname "$1" || check_ipv6 "$1";
 }
 
-cmd_ssh() {
+cmd_ssh() (
   local user=""
   local host=""
   local port="22"
@@ -506,9 +505,9 @@ cmd_ssh() {
     rm "$HOME/.ssh/key-$id";
     trap - EXIT;
   fi
-}
+)
 
-cmd_ssh_forget_host() {
+cmd_ssh_forget_host() (
   local known_hosts="$(readlink -f $HOME/.ssh/known_hosts)"
 
   # Test that the known_hosts is a regular file and is not 0 length.
@@ -551,9 +550,9 @@ cmd_ssh_forget_host() {
   local trimmed="$(awk -v I="$hostno" 'NR != I { print }' "$known_hosts")"
   echo "$trimmed" > "$known_hosts"
   chmod 644 "$known_hosts"
-}
+)
 
-cmd_swap() {
+cmd_swap() (
   local swap_enable_file="/home/chronos/.swap_enabled"
 
   case "$1" in
@@ -607,9 +606,9 @@ cmd_swap() {
     return 1
     ;;
   esac
-}
+)
 
-cmd_experimental_storage() {
+cmd_experimental_storage() (
   local enable=""
   if [ -z "$1" ]; then
     echo "Usage: experimental_storage < status | enable | disable >"
@@ -656,29 +655,29 @@ cmd_experimental_storage() {
       echo "Could not $1 experimental storage features."
     fi
   fi
-}
+)
 
-cmd_bt_console(){
+cmd_bt_console() (
   if [ -x /usr/bin/bluetoothctl ]; then
     /usr/bin/bluetoothctl "${1:+--agent=$1}"
   else
     echo "Bluetooth console not available"
   fi
-}
+)
 
-cmd_ff_debug(){
+cmd_ff_debug() (
   /usr/bin/ff_debug "$@"
-}
+)
 
-cmd_wpa_debug(){
+cmd_wpa_debug() (
   /usr/bin/wpa_debug "$@"
-}
+)
 
-cmd_set_arpgw(){
+cmd_set_arpgw() (
   /usr/bin/set_arpgw "$@"
-}
+)
 
-cmd_network_logging(){
+cmd_network_logging() (
   if [ -n "$1" ]; then
     case "$1" in
       "wifi")
@@ -706,11 +705,11 @@ cmd_network_logging(){
   else
     echo "Missing parameter wifi | cellular | ethernet"
   fi
-}
+)
 
-cmd_network_diag(){
+cmd_network_diag() (
   /usr/bin/network_diagnostics "$@"
-}
+)
 
 debugd() {
   local method="$1"; shift
@@ -718,7 +717,7 @@ debugd() {
       /org/chromium/debugd "org.chromium.debugd.$method" "$@"
 }
 
-cmd_ping() {
+cmd_ping() (
   local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
@@ -776,10 +775,10 @@ cmd_ping() {
     return 1
   fi
   rm -rf "$(dirname ${fifo})"
-}
+)
 
 # TODO(dkrahn): Remove once this is the default. crosbug.com/22543
-cmd_chaps() {
+cmd_chaps() (
   local flag_file="/home/chronos/.disable_chaps"
   local enabled=1
   local changed=0
@@ -810,9 +809,9 @@ cmd_chaps() {
   else
     echo "No change."
   fi
-}
+)
 
-cmd_progressive_scan() {
+cmd_progressive_scan() (
   local flag_file="/home/chronos/.progressive_scan"
   local enabled=0
   local changed=0
@@ -843,9 +842,9 @@ cmd_progressive_scan() {
   else
     echo "No change."
   fi
-}
+)
 
-cmd_chaps_debug() {
+cmd_chaps_debug() (
   local level=${1:--2}
   if [ "$1" = "stop" ]; then
     level=0
@@ -865,9 +864,9 @@ cmd_chaps_debug() {
   else
     echo "Failed to set logging level."
   fi
-}
+)
 
-cmd_route() {
+cmd_route() (
   local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
@@ -886,9 +885,9 @@ cmd_route() {
   option=$(echo "$option" | sed 's/,$//')
 
   debugd GetRoutes "$option"
-}
+)
 
-cmd_tracepath() {
+cmd_tracepath() (
   local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
@@ -921,35 +920,35 @@ cmd_tracepath() {
     return 1
   fi
   rm -rf "$(dirname ${fifo})"
-}
+)
 
-cmd_top() {
+cmd_top() (
   # -s is "secure" mode, which disables kill, renice, and change display/sleep
   # interval.
   top -s
-}
+)
 
-cmd_modem() {
+cmd_modem() (
   /usr/bin/modem "$@"
-}
+)
 
-cmd_modem_set_carrier() {
+cmd_modem_set_carrier() (
   /usr/bin/modem set-carrier "$@"
-}
+)
 
-cmd_set_apn() {
+cmd_set_apn() (
   /usr/bin/set_apn "$@"
-}
+)
 
-cmd_set_cellular_ppp() {
+cmd_set_cellular_ppp() (
   /usr/bin/set_cellular_ppp "$@"
-}
+)
 
-cmd_connectivity() {
+cmd_connectivity() (
   /usr/bin/connectivity "$@"
-}
+)
 
-cmd_autest() {
+cmd_autest() (
   local omaha_url="autest"
 
   if [ "$1" = "-scheduled" ]; then
@@ -960,9 +959,9 @@ cmd_autest() {
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
   /usr/bin/update_engine_client --omaha_url $omaha_url
-}
+)
 
-cmd_p2p_update() {
+cmd_p2p_update() (
   case "$1" in
     "enable")
       param="-p2p_update=yes"
@@ -986,18 +985,18 @@ cmd_p2p_update() {
       ;;
   esac
   /usr/bin/update_engine_client $param -show_p2p_update
-}
+)
 
-cmd_rollback() {
+cmd_rollback() (
   if /usr/bin/update_engine_client --rollback; then
     echo "Rollback attempt succeeded -- after a couple minutes you will" \
          "get an update available and you should reboot to complete rollback."
   else
     echo "Rollback attempt failed. Check chrome://system for more information."
   fi
-}
+)
 
-cmd_update_over_cellular() {
+cmd_update_over_cellular() (
   case "$1" in
     "enable")
       param="-update_over_cellular=yes"
@@ -1019,22 +1018,22 @@ cmd_update_over_cellular() {
       ;;
   esac
   /usr/bin/update_engine_client $param -show_update_over_cellular
-}
+)
 
-cmd_upload_crashes() {
+cmd_upload_crashes() (
   debugd UploadCrashes
   echo "Check chrome://crashes for status updates"
-}
+)
 
-cmd_tpcontrol() {
+cmd_tpcontrol() (
   /opt/google/touchpad/tpcontrol "$@"
-}
+)
 
-cmd_try_touch_experiment() {
+cmd_try_touch_experiment() (
   /usr/sbin/try_touch_experiment "$@"
-}
+)
 
-cmd_rlz() {
+cmd_rlz() (
   local flag_file="$HOME/.rlz_disabled"
   local enabled=1
   local changed=0
@@ -1075,19 +1074,19 @@ cmd_rlz() {
   else
     echo "No change."
   fi
-}
+)
 
-cmd_syslog() {
+cmd_syslog() (
   logger -t crosh -- "$*"
-}
+)
 
-cmd_xset() {
+cmd_xset() (
   case $1 in
   m|r|-r) ;;
   *) set -- ;; # Gets us a usage string.
   esac
   xset-mini "$@"
-}
+)
 
 mk_fifo() {
   # We want C-c to terminate the running test so that the UI stays the same.
@@ -1109,7 +1108,7 @@ mk_fifo() {
   echo "$fifo"
 }
 
-cmd_storage_test_1() {
+cmd_storage_test_1() (
   option="$1"
 
   debugd Smartctl "string:abort_test" &> /dev/null
@@ -1138,9 +1137,9 @@ cmd_storage_test_1() {
   fi
 
   debugd Smartctl "string:abort_test" &> /dev/null
-}
+)
 
-cmd_storage_test_2() {
+cmd_storage_test_2() (
   fifo="$(mk_fifo)"
   pid_file="$(mktemp)"
   debugd BadblocksStart "fd:1" 2>&1 > "$fifo" &
@@ -1154,9 +1153,9 @@ cmd_storage_test_2() {
     return 1
   fi
   rm -rf "$(dirname ${fifo})"
-}
+)
 
-cmd_storage_status() {
+cmd_storage_status() (
   option="$1"
 
   result=$(debugd Smartctl "string:health")
@@ -1185,9 +1184,9 @@ cmd_storage_status() {
   else
     echo "$result"
   fi
-}
+)
 
-cmd_memory_test() {
+cmd_memory_test() (
   # Getting total free memory in KB.
   mem=$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)
 
@@ -1210,9 +1209,9 @@ cmd_memory_test() {
     return 1
   fi
   rm -rf "$(dirname ${fifo})"
-}
+)
 
-cmd_battery_test() {
+cmd_battery_test() (
   test_length="$1"
 
   if [ -z "$test_length" ]; then
@@ -1279,7 +1278,7 @@ cmd_battery_test() {
   bat_perc_dec="$((${bat_perc}%100))"
 
   echo "Battery discharged ${bat_perc_int}.${bat_perc_dec}% in ${test_length}s"
-}
+)
 
 substr() {
   local str="$1"

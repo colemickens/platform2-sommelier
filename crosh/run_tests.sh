@@ -26,6 +26,12 @@ for s in crosh*; do
   egrep -hn '[[:space:]]+$' ${s} && ret=1
 
   #
+  # Make sure we can at least parse the file and catch glaringly
+  # obvious errors.
+  #
+  bash -n ${s} || ret=1
+
+  #
   # Keep HELP sorted.
   #
   for help in $(sed -n "/^[A-Z_]*HELP[A-Z_]*='$/s:='::p" "${s}"); do
@@ -37,6 +43,33 @@ for s in crosh*; do
       ret=1
     fi
   done
+
+  #
+  # Make sure cmd_* use () for function bodies.
+  # People often forget to use `local` in their functions and end up polluting
+  # the environment.  Forcing all commands into a subshell prevents that.
+  #
+  if grep -hn '^cmd_.*() *{' ${s}; then
+    cat <<EOF
+ERROR: The above commands need to use () for their bodies, not {}:
+ cmd_foo() (
+   ...
+ )
+
+EOF
+    ret=1
+  fi
+
+  #
+  # Check for common style mistakes.
+  #
+  if grep -hn '^[a-z0-9_]*()[{(]' ${s}; then
+    cat <<EOF
+ERROR: The above commands need a space after the ()
+
+EOF
+    ret=1
+  fi
 done
 
 exit ${ret}

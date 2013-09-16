@@ -40,7 +40,7 @@ do_install() {
   fi
 }
 
-cmd_update_firmware() {
+cmd_update_firmware() (
   local CHROMEOS_FIRMWARE_UPDATE="/usr/sbin/chromeos-firmwareupdate"
   local UPDATE_OPTION="--mode=recovery"
 
@@ -68,12 +68,12 @@ cmd_update_firmware() {
   else
     echo "There is no firmware update in current system."
   fi
-}
+)
 
-cmd_install() {
+cmd_install() (
   do_install "$1"
-}
+)
 
-cmd_upgrade() {
+cmd_upgrade() (
   do_install "$1" --preserve_stateful
-}
+)
