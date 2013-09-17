@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <sys/time.h>
 
+#include <sstream>
 #include <string>
 
 #include "base/logging.h"
@@ -213,8 +214,10 @@ TEST(PerfSerializeTest, TestCommMd5s) {
 
       quipper::PerfDataProto_CommEvent& comm_event =
           *event.mutable_comm_event();
-      snprintf(comm_name, sizeof(comm_name), "%" PRIx64,
-               comm_event.comm_md5_prefix());
+      std::stringstream ss;
+      ss << comm_event.comm_md5_prefix();
+      strncpy(comm_name, ss.str().c_str(), sizeof(comm_name) - 1);
+      comm_name[sizeof(comm_name) - 1] = '\0';
       comm_event.set_comm(comm_name);
     }
 

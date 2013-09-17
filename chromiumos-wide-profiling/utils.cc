@@ -174,6 +174,10 @@ bool GetPerfReport(const string& filename,
   output->clear();
   for (size_t i = 0; i < lines.size(); ++i) {
     string line = lines[i];
+    if (line.empty()) {
+      output->push_back(line);
+      continue;
+    }
     bool use_line = false;
     if (line[0] != kPerfReportCommentCharacter)
       use_line = true;
