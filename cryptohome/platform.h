@@ -9,6 +9,7 @@
 #include <sys/statvfs.h>
 
 #include <base/basictypes.h>
+#include <base/callback_forward.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <map>
@@ -25,12 +26,67 @@ namespace cryptohome {
 extern const int kDefaultUmask;
 
 class ProcessInformation;
-class FileEnumerator;
+
+// A class for enumerating the files in a provided path. The order of the
+// results is not guaranteed.
+//
+// DO NOT USE FROM THE MAIN THREAD of your application unless it is a test
+// program where latency does not matter. This class is blocking.
+//
+// See file_util::FileEnumerator for details.  This is merely a mockable
+// wrapper.
+class FileEnumerator {
+ public:
+  typedef struct {
+    struct stat stat;
+    std::string filename;
+  } FindInfo;
+  enum FileType {
+    FILES                 = 1 << 0,
+    DIRECTORIES           = 1 << 1,
+    INCLUDE_DOT_DOT       = 1 << 2,
+    SHOW_SYM_LINKS        = 1 << 4,
+  };
+
+  FileEnumerator(const std::string& root_path,
+                 bool recursive,
+                 int file_type);
+  FileEnumerator(const std::string& root_path,
+                 bool recursive,
+                 int file_type,
+                 const std::string& pattern);
+  // Meant for testing only.
+  FileEnumerator() : enumerator_(NULL) { }
+  virtual ~FileEnumerator();
+
+  // Returns an empty string if there are no more results.
+  virtual std::string Next();
+
+  // Write the file info into |info|.
+  virtual void GetFindInfo(FindInfo* info);
+
+  // The static methods are exclusively helpers for interpreting FindInfo.
+  static bool IsDirectory(const FindInfo& info);
+  static std::string GetFilename(const FindInfo& find_info);
+  static int64 GetFilesize(const FindInfo& find_info);
+  static base::Time GetLastModifiedTime(const FindInfo& find_info);
+ private:
+   file_util::FileEnumerator* enumerator_;
+};
 
 // Platform specific routines abstraction layer.
 // Also helps us to be able to mock them in tests.
 class Platform {
  public:
+  struct Permissions {
+    uid_t user;
+    gid_t group;
+    mode_t mode;
+  };
+
+  typedef base::Callback<bool(const FileEnumerator::FindInfo&)>
+      FileEnumeratorCallback;
+
   Platform();
 
   virtual ~Platform();
@@ -139,6 +195,20 @@ class Platform {
   virtual bool SetGroupAccessible(const std::string& path,
                                   gid_t group_id,
                                   mode_t group_mode) const;
+
+  // Applies ownership and permissions recursively if they do not already match.
+  // Logs a warning each time ownership or permissions need to be set.
+  //
+  // Parameters
+  //   path - The base path.
+  //   default_file_info - Default ownership / perms for files.
+  //   default_dir_info - Default ownership / perms for directories.
+  //   special_cases - A map of absolute path to ownership / perms.
+  virtual bool ApplyPermissionsRecursive(
+      const std::string& path,
+      const Permissions& default_file_info,
+      const Permissions& default_dir_info,
+      const std::map<std::string, Permissions>& special_cases);
 
   // Sets the current umask, returning the old mask
   //
@@ -390,6 +460,33 @@ class Platform {
   // Calls fsync() on |path|.  Returns true on success.
   bool SyncPath(const std::string& path);
 
+  // Calls |callback| with |path| and, if |path| is a directory, with every
+  // entry recursively.  Order is not guaranteed, see base::FileEnumerator.  If
+  // |path| is an absolute path, then the file names sent to |callback| will
+  // also be absolute.  Returns true if all invocations of |callback| succeed.
+  // If an invocation fails, the walk terminates and false is returned.
+  bool WalkPath(const std::string& path,
+                const FileEnumeratorCallback& callback);
+
+  // Copies permissions from a file specified by |file_info| to another file
+  // with the same name but a child of |new_base|, not |old_base|.
+  bool CopyPermissionsCallback(const std::string& old_base,
+                               const std::string& new_base,
+                               const FileEnumerator::FindInfo& file_info);
+
+  // Applies ownership and permissions to a single file or directory.
+  //
+  // Parameters
+  //   default_file_info - Default ownership / perms for files.
+  //   default_dir_info - Default ownership / perms for directories.
+  //   special_cases - A map of absolute path to ownership / perms.
+  //   file_info - Info about the file or directory.
+  bool ApplyPermissionsCallback(
+      const Permissions& default_file_info,
+      const Permissions& default_dir_info,
+      const std::map<std::string, Permissions>& special_cases,
+      const FileEnumerator::FindInfo& file_info);
+
   std::string mtab_path_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
@@ -461,53 +558,6 @@ class ProcessInformation {
   std::set<std::string> open_files_;
   std::string cwd_;
   int process_id_;
-};
-
-// A class for enumerating the files in a provided path. The order of the
-// results is not guaranteed.
-//
-// DO NOT USE FROM THE MAIN THREAD of your application unless it is a test
-// program where latency does not matter. This class is blocking.
-//
-// See file_util::FileEnumerator for details.  This is merely a mockable
-// wrapper.
-class FileEnumerator {
- public:
-  typedef struct {
-    struct stat stat;
-    std::string filename;
-  } FindInfo;
-  enum FileType {
-    FILES                 = 1 << 0,
-    DIRECTORIES           = 1 << 1,
-    INCLUDE_DOT_DOT       = 1 << 2,
-    SHOW_SYM_LINKS        = 1 << 4,
-  };
-
-  FileEnumerator(const std::string& root_path,
-                 bool recursive,
-                 int file_type);
-  FileEnumerator(const std::string& root_path,
-                 bool recursive,
-                 int file_type,
-                 const std::string& pattern);
-  // Meant for testing only.
-  FileEnumerator() : enumerator_(NULL) { }
-  virtual ~FileEnumerator();
-
-  // Returns an empty string if there are no more results.
-  virtual std::string Next();
-
-  // Write the file info into |info|.
-  virtual void GetFindInfo(FindInfo* info);
-
-  // The static methods are exclusively helpers for interpreting FindInfo.
-  static bool IsDirectory(const FindInfo& info);
-  static std::string GetFilename(const FindInfo& find_info);
-  static int64 GetFilesize(const FindInfo& find_info);
-  static base::Time GetLastModifiedTime(const FindInfo& find_info);
- private:
-   file_util::FileEnumerator* enumerator_;
 };
 
 }  // namespace cryptohome

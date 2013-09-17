@@ -274,209 +274,176 @@ TEST_F(MountTest, BadDecryptTest) {
   ASSERT_FALSE(mount->AreValid(up));
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir) {
-  scoped_refptr<Mount> mount = new Mount();
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockTpm> tpm;
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->set_shadow_root(kImageDir);
-  mount->set_skel_source(kSkelDir);
-  mount->set_use_tpm(false);
-  mount->set_platform(&platform);
+// A fixture for testing chaps directory checks.
+class ChapsDirectoryTest : public ::testing::Test {
+ public:
+  ChapsDirectoryTest()
+      : kBaseDir("/base_chaps_dir"),
+        kSaltFile("/base_chaps_dir/auth_data_salt"),
+        kDatabaseDir("/base_chaps_dir/database"),
+        kDatabaseFile("/base_chaps_dir/database/file"),
+        kLegacyDir("/legacy"),
+        kRootUID(0), kRootGID(0), kChapsUID(1), kSharedGID(2),
+        mount_(new Mount()) {
+    mount_->crypto()->set_platform(&platform_);
+    mount_->set_platform(&platform_);
+    mount_->chaps_user_ = kChapsUID;
+    mount_->default_access_group_ = kSharedGID;
+    // By default, set stats to the expected values.
+    InitStat(&base_stat_, 040750, kChapsUID, kSharedGID);
+    InitStat(&salt_stat_, 0600, kRootUID, kRootGID);
+    InitStat(&database_dir_stat_, 040750, kChapsUID, kSharedGID);
+    InitStat(&database_file_stat_, 0640, kChapsUID, kSharedGID);
+  }
 
-  NiceMock<MockHomeDirs> mock_homedirs;
-  mount->set_homedirs(&mock_homedirs);
-  EXPECT_CALL(mock_homedirs, Init())
-    .WillOnce(Return(true));
+  virtual ~ChapsDirectoryTest() {}
 
-  chaps_uid_ = 101010;
-  shared_gid_ = 101010;
-  EXPECT_TRUE(DoMountInit(mount.get()));
-  EXPECT_CALL(platform, DirectoryExists("/fake"))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetOwnership("/fake", _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(chaps_uid_),
-                            SetArgumentPointee<2>(shared_gid_),
-                            Return(true)));
-  bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                         &permissions_status));
-  EXPECT_TRUE(permissions_status);
+  void SetupFakeChapsDirectory() {
+    // Configure the base directory.
+    EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, Stat(kBaseDir, _))
+        .WillRepeatedly(DoAll(SetArgumentPointee<1>(base_stat_), Return(true)));
+
+    // Configure a fake enumerator.
+    MockFileEnumerator* enumerator = platform_.mock_enumerator();
+    enumerator->entries_.push_back(kBaseDir);
+    enumerator->entries_.push_back(kSaltFile);
+    enumerator->entries_.push_back(kDatabaseDir);
+    enumerator->entries_.push_back(kDatabaseFile);
+    FileEnumerator::FindInfo find_info1 = {base_stat_, kBaseDir};
+    FileEnumerator::FindInfo find_info2 = {salt_stat_, kSaltFile};
+    FileEnumerator::FindInfo find_info3 = {database_dir_stat_, kDatabaseDir};
+    FileEnumerator::FindInfo find_info4 = {database_file_stat_, kDatabaseFile};
+    enumerator->find_info_.push_back(find_info1);
+    enumerator->find_info_.push_back(find_info2);
+    enumerator->find_info_.push_back(find_info3);
+    enumerator->find_info_.push_back(find_info4);
+  }
+
+  bool RunCheck() {
+    return mount_->CheckChapsDirectory(kBaseDir, kLegacyDir);
+  }
+
+ protected:
+  const std::string kBaseDir;
+  const std::string kSaltFile;
+  const std::string kDatabaseDir;
+  const std::string kDatabaseFile;
+  const std::string kLegacyDir;
+  const uid_t kRootUID;
+  const gid_t kRootGID;
+  const uid_t kChapsUID;
+  const gid_t kSharedGID;
+
+  struct stat base_stat_;
+  struct stat salt_stat_;
+  struct stat database_dir_stat_;
+  struct stat database_file_stat_;
+
+  scoped_refptr<Mount> mount_;
+  NiceMock<MockPlatform> platform_;
+
+ private:
+  void InitStat(struct stat* s, mode_t mode, uid_t uid, gid_t gid) {
+    memset(s, 0, sizeof(struct stat));
+    s->st_mode = mode;
+    s->st_uid = uid;
+    s->st_gid = gid;
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(ChapsDirectoryTest);
+};
+
+TEST_F(ChapsDirectoryTest, DirectoryOK) {
+  SetupFakeChapsDirectory();
+  ASSERT_TRUE(RunCheck());
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms) {
-  scoped_refptr<Mount> mount = new Mount();
-  NiceMock<MockPlatform> platform;
-  mode_t bad_perms = S_IXGRP;
-  NiceMock<MockTpm> tpm;
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->set_shadow_root(kImageDir);
-  mount->set_skel_source(kSkelDir);
-  mount->set_use_tpm(false);
-  mount->set_platform(&platform);
-
-  NiceMock<MockHomeDirs> mock_homedirs;
-  mount->set_homedirs(&mock_homedirs);
-  EXPECT_CALL(mock_homedirs, Init())
-    .WillOnce(Return(true));
-
-  EXPECT_TRUE(DoMountInit(mount.get()));
-  EXPECT_CALL(platform, DirectoryExists("/fake"))
+TEST_F(ChapsDirectoryTest, DirectoryDoesNotExist) {
+  // Specify directory does not exist.
+  EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(kLegacyDir))
+      .WillRepeatedly(Return(false));
+  // Expect basic setup.
+  EXPECT_CALL(platform_, CreateDirectory(kBaseDir))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetPermissions("/fake", _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms), Return(true)));
-  bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                         &permissions_status));
-  EXPECT_FALSE(permissions_status);
+  EXPECT_CALL(platform_, SetPermissions(kBaseDir, 0750))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(kBaseDir, kChapsUID, kSharedGID))
+      .WillRepeatedly(Return(true));
+  ASSERT_TRUE(RunCheck());
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
-  scoped_refptr<Mount> mount = new Mount();
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockTpm> tpm;
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->set_shadow_root(kImageDir);
-  mount->set_skel_source(kSkelDir);
-  mount->set_use_tpm(false);
-  mount->set_platform(&platform);
-  uid_t bad_uid = 0;
-
-  NiceMock<MockHomeDirs> mock_homedirs;
-  mount->set_homedirs(&mock_homedirs);
-  EXPECT_CALL(mock_homedirs, Init())
-    .WillOnce(Return(true));
-
-  // Populate the chaps uid and gid.
-  EXPECT_TRUE(DoMountInit(mount.get()));
-
-  EXPECT_CALL(platform, DirectoryExists(_))
-      .WillRepeatedly(Return(true));
-  mode_t expected_perms = S_IRWXU | S_IRGRP | S_IXGRP;
-  EXPECT_CALL(platform, GetPermissions("/fake", _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(expected_perms), Return(true)));
-  EXPECT_CALL(platform, GetOwnership(_, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_uid),
-                            SetArgumentPointee<2>(shared_gid_),
-                            Return(true)));
-
-  bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                         &permissions_status));
-  EXPECT_FALSE(permissions_status);
+TEST_F(ChapsDirectoryTest, CreateFailure) {
+  // Specify directory does not exist.
+  EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(kLegacyDir))
+      .WillRepeatedly(Return(false));
+  // Expect basic setup but fail.
+  EXPECT_CALL(platform_, CreateDirectory(kBaseDir))
+      .WillRepeatedly(Return(false));
+  ASSERT_FALSE(RunCheck());
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID) {
-  scoped_refptr<Mount> mount = new Mount();
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockTpm> tpm;
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->set_shadow_root(kImageDir);
-  mount->set_skel_source(kSkelDir);
-  mount->set_use_tpm(false);
-  mount->set_platform(&platform);
-
-  NiceMock<MockHomeDirs> mock_homedirs;
-  mount->set_homedirs(&mock_homedirs);
-  EXPECT_CALL(mock_homedirs, Init())
-    .WillOnce(Return(true));
-
-  chaps_uid_ = 101010;
-  shared_gid_ = 101011;
-  gid_t bad_gid = 0;
-  EXPECT_TRUE(DoMountInit(mount.get()));
-  EXPECT_CALL(platform, DirectoryExists("/fake"))
+TEST_F(ChapsDirectoryTest, FixBadPerms) {
+  // Specify some bad perms.
+  base_stat_.st_mode = 040700;
+  salt_stat_.st_mode = 0640;
+  database_dir_stat_.st_mode = 040755;
+  database_file_stat_.st_mode = 0666;
+  SetupFakeChapsDirectory();
+  // Expect corrections.
+  EXPECT_CALL(platform_, SetPermissions(kBaseDir, 0750))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetOwnership("/fake", _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(chaps_uid_),
-                            SetArgumentPointee<2>(bad_gid),
-                            Return(true)));
-  bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                         &permissions_status));
-  EXPECT_FALSE(permissions_status);
+  EXPECT_CALL(platform_, SetPermissions(kSaltFile, 0600))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(kDatabaseDir, 0750))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(kDatabaseFile, 0640))
+      .WillRepeatedly(Return(true));
+  ASSERT_TRUE(RunCheck());
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
-  scoped_refptr<Mount> mount = new Mount();
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockTpm> tpm;
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->set_shadow_root(kImageDir);
-  mount->set_skel_source(kSkelDir);
-  mount->set_use_tpm(false);
-  mount->set_platform(&platform);
-
-  NiceMock<MockHomeDirs> mock_homedirs;
-  mount->set_homedirs(&mock_homedirs);
-  EXPECT_CALL(mock_homedirs, Init())
-    .WillOnce(Return(true));
-
-  helper_.InjectSystemSalt(&platform, kImageSaltFile);
-  EXPECT_TRUE(mount->Init());
-  EXPECT_CALL(platform, DirectoryExists("/fake"))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform, DirectoryExists("/fake_legacy"))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform, CreateDirectory("/fake"))
-      .WillOnce(Return(false))
+TEST_F(ChapsDirectoryTest, FixBadOwnership) {
+  // Specify bad ownership.
+  base_stat_.st_uid = kRootUID;
+  salt_stat_.st_gid = kChapsUID;
+  database_dir_stat_.st_gid = kChapsUID;
+  database_file_stat_.st_uid = kSharedGID;
+  SetupFakeChapsDirectory();
+  // Expect corrections.
+  EXPECT_CALL(platform_, SetOwnership(kBaseDir, kChapsUID, kSharedGID))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, SetOwnership("/fake", _, _))
-      .WillOnce(Return(false))
+  EXPECT_CALL(platform_, SetOwnership(kSaltFile, kRootUID, kRootGID))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, SetPermissions("/fake", _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform, GetPermissions("/fake", _))
-      .WillRepeatedly(Return(false));
-  bool permissions_status = false;
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                          &permissions_status));
-  EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                          &permissions_status));
-  EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                          &permissions_status));
-  EXPECT_FALSE(permissions_status);
+  EXPECT_CALL(platform_, SetOwnership(kDatabaseDir, kChapsUID, kSharedGID))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(kDatabaseFile, kChapsUID, kSharedGID))
+      .WillRepeatedly(Return(true));
+  ASSERT_TRUE(RunCheck());
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError) {
-  scoped_refptr<Mount> mount = new Mount();
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockTpm> tpm;
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->set_shadow_root(kImageDir);
-  mount->set_skel_source(kSkelDir);
-  mount->set_use_tpm(false);
-  mount->set_platform(&platform);
-
-  NiceMock<MockHomeDirs> mock_homedirs;
-  mount->set_homedirs(&mock_homedirs);
-  EXPECT_CALL(mock_homedirs, Init())
-    .WillOnce(Return(true));
-
-  helper_.InjectSystemSalt(&platform, kImageSaltFile);
-  EXPECT_TRUE(mount->Init());
-  EXPECT_CALL(platform, DirectoryExists("/fake"))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetPermissions("/fake", _))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetOwnership("/fake", _, _))
+TEST_F(ChapsDirectoryTest, FixBadPermsFailure) {
+  // Specify some bad perms.
+  base_stat_.st_mode = 040700;
+  SetupFakeChapsDirectory();
+  // Expect corrections but fail to apply.
+  EXPECT_CALL(platform_, SetPermissions(_, _))
       .WillRepeatedly(Return(false));
-  bool permissions_status = false;
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                          &permissions_status));
-  EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                          &permissions_status));
-  EXPECT_FALSE(permissions_status);
+  ASSERT_FALSE(RunCheck());
+}
+
+TEST_F(ChapsDirectoryTest, FixBadOwnershipFailure) {
+  // Specify bad ownership.
+  base_stat_.st_uid = kRootUID;
+  SetupFakeChapsDirectory();
+  // Expect corrections but fail to apply.
+  EXPECT_CALL(platform_, SetOwnership(_, _, _))
+      .WillRepeatedly(Return(false));
+  ASSERT_FALSE(RunCheck());
 }
 
 TEST_F(MountTest, CheckChapsDirectoryMigration) {
@@ -520,9 +487,8 @@ TEST_F(MountTest, CheckChapsDirectoryMigration) {
   find_info2.stat.st_mode = 0777;
   find_info2.stat.st_uid = 5;
   find_info2.stat.st_gid = 6;
-  EXPECT_CALL(*enumerator, GetFindInfo(_))
-      .WillOnce(SetArgumentPointee<0>(find_info1))
-      .WillOnce(SetArgumentPointee<0>(find_info2));
+  enumerator->find_info_.push_back(find_info1);
+  enumerator->find_info_.push_back(find_info2);
 
   // These expectations will ensure the ownership and permissions are being
   // correctly applied after the directory has been moved.
@@ -533,10 +499,7 @@ TEST_F(MountTest, CheckChapsDirectoryMigration) {
   EXPECT_CALL(platform, SetOwnership("/fake", 1, 2)).Times(1);
   EXPECT_CALL(platform, SetPermissions("/fake", 0123)).Times(1);
 
-  bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
-                                         &permissions_status));
-  EXPECT_TRUE(permissions_status);
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy"));
 }
 
 TEST_F(MountTest, CreateCryptohomeTest) {

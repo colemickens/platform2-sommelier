@@ -23,6 +23,8 @@ class MockFileEnumerator : public FileEnumerator {
   MockFileEnumerator() {
     ON_CALL(*this, Next())
       .WillByDefault(Invoke(this, &MockFileEnumerator::MockNext));
+    ON_CALL(*this, GetFindInfo(_))
+      .WillByDefault(Invoke(this, &MockFileEnumerator::MockGetFindInfo));
   }
   virtual ~MockFileEnumerator() {}
 
@@ -30,6 +32,7 @@ class MockFileEnumerator : public FileEnumerator {
   MOCK_METHOD1(GetFindInfo, void(FindInfo* info));
 
   std::vector<std::string> entries_;
+  std::vector<FindInfo> find_info_;
  protected:
   virtual std::string MockNext() {
     if (entries_.empty())
@@ -37,6 +40,12 @@ class MockFileEnumerator : public FileEnumerator {
     std::string entry = entries_.at(0);
     entries_.erase(entries_.begin(), entries_.begin()+1);
     return entry;
+  }
+  virtual void MockGetFindInfo(FindInfo* info) {
+    if (find_info_.empty())
+      return;
+    *info = find_info_.at(0);
+    find_info_.erase(find_info_.begin(), find_info_.begin()+1);
   }
 };
 

@@ -279,6 +279,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   friend class MakeTests;
   friend class MountTest;
   friend class EphemeralTest;
+  friend class ChapsDirectoryTest;
 
  private:
   // A class which scopes a mount point.  i.e. The mount point is unmounted on
@@ -503,7 +504,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Checks Chaps Directory and makes sure that it has the correct
   // permissions, owner uid and gid. If any of these values are
-  // incorrect, permissions_check is set to false. If the directory
+  // incorrect, the correct values are set. If the directory
   // does not exist, it is created and initialzed with the correct
   // values. If the directory or its attributes cannot be checked,
   // set or created, a fatal error has occured and the function
@@ -513,10 +514,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   dir - directory to check
   //   legacy_dir - legacy directory location
-  //   permissions_check - set to false if permissions, uid or gid is incorrect
   bool CheckChapsDirectory(const std::string& dir,
-                           const std::string& legacy_dir,
-                           bool* permissions_check);
+                           const std::string& legacy_dir);
 
   // Ensures that the device policy is loaded.
   //
@@ -773,14 +772,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);
   FRIEND_TEST(MountTest, GoodReDecryptTest);
   FRIEND_TEST(MountTest, MountCryptohomeNoChange);
-  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms);
-  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID);
-  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID);
-  FRIEND_TEST(MountTest,
-              CheckChapsDirectoryCalledWithNonexistingDirWithFatalError);
-  FRIEND_TEST(MountTest,
-              CheckChapsDirectoryCalledWithExistingDirWithFatalError);
-  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDir);
   FRIEND_TEST(MountTest, CheckChapsDirectoryMigration);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);

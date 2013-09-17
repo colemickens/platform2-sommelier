@@ -24,6 +24,8 @@
 #include <unistd.h>
 
 #include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/file_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/string_number_conversions.h>
@@ -566,31 +568,43 @@ bool Platform::Copy(const std::string& from, const std::string& to) {
   return file_util::CopyDirectory(from_path, to_path, true);
 }
 
-bool Platform::CopyWithPermissions(const std::string& from_path,
-                                   const std::string& to_path) {
-  // Save stat for every file.
-  std::vector<FileEnumerator::FindInfo> entry_list;
-  FileEnumerator::FindInfo base_entry_info;
-  base_entry_info.filename = from_path;
-  if (!Stat(from_path, &base_entry_info.stat)) {
-    PLOG(ERROR) << "Failed to stat " << from_path;
-    return false;
-  }
-  entry_list.push_back(base_entry_info);
-  if (FileEnumerator::IsDirectory(base_entry_info)) {
-    int file_types = FileEnumerator::FILES | FileEnumerator::DIRECTORIES;
-    scoped_ptr<FileEnumerator> file_enumerator(
-        GetFileEnumerator(from_path, true, file_types));
-    string entry_path;
-    while (!(entry_path = file_enumerator->Next()).empty()) {
-      FileEnumerator::FindInfo entry_info;
-      file_enumerator->GetFindInfo(&entry_info);
-      // Keep the full path.
-      entry_info.filename = entry_path;
-      entry_list.push_back(entry_info);
+bool Platform::CopyPermissionsCallback(
+    const std::string& old_base,
+    const std::string& new_base,
+    const FileEnumerator::FindInfo& file_info) {
+  const FilePath old_base_path(old_base);
+  const FilePath new_base_path(new_base);
+  // Find the new path that corresponds with the old path given by file_info.
+  FilePath old_path(file_info.filename);
+  FilePath new_path(new_base_path);
+  if (old_path != old_base_path) {
+    if (old_path.IsAbsolute()) {
+      if (!old_base_path.AppendRelativePath(old_path, &new_path)) {
+        LOG(ERROR) << "AppendRelativePath failed: parent="
+                   << old_base_path.value() << ", child=" << old_path.value();
+        return false;
+      }
+    } else {
+      new_path = new_base_path.Append(old_path);
     }
   }
+  if (!SetOwnership(new_path.value(),
+                    file_info.stat.st_uid,
+                    file_info.stat.st_gid)) {
+    PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
+    return false;
+  }
+  const mode_t permissions_mask = 07777;
+  if (!SetPermissions(new_path.value(),
+                      file_info.stat.st_mode & permissions_mask)) {
+    PLOG(ERROR) << "Failed to set permissions for " << new_path.value();
+    return false;
+  }
+  return true;
+}
 
+bool Platform::CopyWithPermissions(const std::string& from_path,
+                                   const std::string& to_path) {
   if (!Copy(from_path, to_path)) {
     PLOG(ERROR) << "Failed to copy " << from_path;
     return false;
@@ -601,38 +615,71 @@ bool Platform::CopyWithPermissions(const std::string& from_path,
 
   // Unfortunately, ownership and permissions are not always retained.
   // Apply the old ownership / permissions on a per-file basis.
-  const FilePath new_base(to_path);
-  const FilePath old_base(from_path);
-  for (size_t i = 0; i < entry_list.size(); ++i) {
-    FilePath old_path(entry_list[i].filename);
-    FilePath new_path(new_base);
-    if (old_path != old_base) {
-      if (old_path.IsAbsolute()) {
-        if (!old_base.AppendRelativePath(old_path, &new_path)) {
-          LOG(ERROR) << "AppendRelativePath failed: parent=" << old_base.value()
-                     << ", child=" << old_path.value();
-          return false;
-        }
-      } else {
-        new_path = new_base.Append(old_path);
-      }
-    }
-    if (!SetOwnership(new_path.value(),
-                      entry_list[i].stat.st_uid,
-                      entry_list[i].stat.st_gid)) {
-      PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
-      return false;
-    }
-    const mode_t permissions_mask = 07777;
-    if (!SetPermissions(new_path.value(),
-                        entry_list[i].stat.st_mode & permissions_mask)) {
-      PLOG(ERROR) << "Failed to set permissions for " << new_path.value();
-      return false;
-    }
-  }
+  FileEnumeratorCallback callback = base::Bind(
+      &Platform::CopyPermissionsCallback,
+      base::Unretained(this),
+      from_path,
+      to_path);
+  if (!WalkPath(from_path, callback))
+    return false;
+
   // The copy is done, keep the new path.
   scoped_new_path.release();
   return true;
+}
+
+bool Platform::ApplyPermissionsCallback(
+    const Permissions& default_file_info,
+    const Permissions& default_dir_info,
+    const std::map<std::string, Permissions>& special_cases,
+    const FileEnumerator::FindInfo& file_info) {
+  Permissions expected;
+  std::map<std::string, Permissions>::const_iterator it =
+      special_cases.find(file_info.filename);
+  if (it != special_cases.end()) {
+    expected = it->second;
+  } else if (FileEnumerator::IsDirectory(file_info)) {
+    expected = default_dir_info;
+  } else {
+    expected = default_file_info;
+  }
+  if (expected.user != file_info.stat.st_uid ||
+      expected.group != file_info.stat.st_gid) {
+    LOG(WARNING) << "Unexpected user/group for " << file_info.filename;
+    if (!SetOwnership(file_info.filename,
+                      expected.user,
+                      expected.group)) {
+      PLOG(ERROR) << "Failed to fix user/group for "
+                  << file_info.filename;
+      return false;
+    }
+  }
+  const mode_t permissions_mask = 07777;
+  if ((expected.mode & permissions_mask) !=
+      (file_info.stat.st_mode & permissions_mask)) {
+    LOG(WARNING) << "Unexpected permissions for " << file_info.filename;
+    if (!SetPermissions(file_info.filename,
+                        expected.mode & permissions_mask)) {
+      PLOG(ERROR) << "Failed to set permissions for "
+                  << file_info.filename;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Platform::ApplyPermissionsRecursive(
+    const std::string& path,
+    const Permissions& default_file_info,
+    const Permissions& default_dir_info,
+    const std::map<std::string, Permissions>& special_cases) {
+  FileEnumeratorCallback callback = base::Bind(
+      &Platform::ApplyPermissionsCallback,
+      base::Unretained(this),
+      default_file_info,
+      default_dir_info,
+      special_cases);
+  return WalkPath(path, callback);
 }
 
 bool Platform::StatVFS(const std::string& path, struct statvfs* vfs) {
@@ -777,7 +824,32 @@ FileEnumerator* Platform::GetFileEnumerator(const std::string& root_path,
   return new FileEnumerator(root_path, recursive, file_type);
 }
 
-
+bool Platform::WalkPath(const std::string& path,
+                        const FileEnumeratorCallback& callback) {
+  FileEnumerator::FindInfo base_entry_info;
+  base_entry_info.filename = path;
+  if (!Stat(path, &base_entry_info.stat)) {
+    PLOG(ERROR) << "Failed to stat " << path;
+    return false;
+  }
+  if (!callback.Run(base_entry_info))
+    return false;
+  if (FileEnumerator::IsDirectory(base_entry_info)) {
+    int file_types = FileEnumerator::FILES | FileEnumerator::DIRECTORIES;
+    scoped_ptr<FileEnumerator> file_enumerator(
+        GetFileEnumerator(path, true, file_types));
+    std::string entry_path;
+    while (!(entry_path = file_enumerator->Next()).empty()) {
+      FileEnumerator::FindInfo entry_info;
+      file_enumerator->GetFindInfo(&entry_info);
+      // Keep the full path.
+      entry_info.filename = entry_path;
+      if (!callback.Run(entry_info))
+        return false;
+    }
+  }
+  return true;
+}
 
 FileEnumerator::FileEnumerator(const std::string& root_path,
                                bool recursive,
@@ -837,5 +909,6 @@ base::Time FileEnumerator::GetLastModifiedTime(const FindInfo& info) {
   return file_util::FileEnumerator::GetLastModifiedTime(
     *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
 }
+
 
 }  // namespace cryptohome
