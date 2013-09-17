@@ -30,11 +30,13 @@ class UsbTransfer;
 // tasks:
 // 1. Open the USB modem device, find and claim the mass storage interface of
 //    the modem.
-// 2. Initiate a bulk transfer of a (or multiple) special USB message(s) to
-//    the mass storage endpoint of the modem.
-// 3. Once the USB message(s) is sent, the modem is expected to disconnect from
-//    the USB bus and then reconnect to the bus after it has been switched to
-//    the modem mode.
+// 2. Initiate a bulk output transfer of a (or multiple) special USB message(s)
+//    to the mass storage endpoint of the modem.
+// 3. On some modems, a bulk input transfer from the mass storage endpoint of
+//    the modem is expected after completing each bulk output transfer.
+// 4. Once the transfer of the last message completes, the modem is expected to
+//    disconnect from the USB bus and then reconnect to the bus after it has
+//    been switched to the modem mode.
 //
 // As mist may run multiple modem switch operations concurrently, in order to
 // maximize the overall concurrency, the modem switch operation is broken up
@@ -69,6 +71,8 @@ class UsbModemSwitchOperation
 
  private:
   typedef void (UsbModemSwitchOperation::*Task)();
+  typedef void (UsbModemSwitchOperation::*UsbTransferCompletionHandler)(
+      UsbTransfer* transfer);
 
   // Schedules the next task in the message loop for execution. At most one
   // pending task is allowed at any time.
@@ -86,17 +90,41 @@ class UsbModemSwitchOperation
   // Opens the device and claims the mass storage interface on the device.
   void OpenDeviceAndClaimMassStorageInterface();
 
-  // Sends a (or multiple) special USB message(s) to the mass storage endpoint
-  // of the device.
+  // Sends a special USB message to the mass storage endpoint of the device.
   void SendMessageToMassStorageEndpoint();
+
+  // Receives a USB message from the mass storage endpoint of the device.
+  void ReceiveMessageFromMassStorageEndpoint();
+
+  // Creates and submits a USB bulk transfer to the specified |endpoint_address|
+  // on the device. |length| specifies the size of the transfer in bytes. For a
+  // host-to-device transfer, |data| should point to a buffer containing
+  // |length| bytes of data to be transferred. For a device-to-host transfer,
+  // |data| is not used and thus ignored. |completion_handler| will be invoked
+  // upon the completion of the transfer.
+  void InitiateUsbBulkTransfer(uint8 endpoint_address,
+                               const uint8* data,
+                               int length,
+                               UsbTransferCompletionHandler completion_handler);
+
+  // Schedules the invocation of SendMessageToMassStorageEndpoint() on the next
+  // USB message to be sent to the mass storage endpoint of the device, or when
+  // there is no more message to send, schedule the wait for the device to
+  // reconnect.
+  void ScheduleNextMessageToMassStorageEndpoint();
+
+  // Invoked upon the completion of the last USB bulk transfer submitted by
+  // SendMessageToMassStorageEndpoint().
+  void OnSendMessageCompleted(UsbTransfer* transfer);
+
+  // Invoked upon the completion of the last USB bulk transfer submitted by
+  // ReceiveMessageFromMassStorageEndpoint().
+  void OnReceiveMessageCompleted(UsbTransfer* transfer);
 
   // Invoked when this switcher times out waiting for the device to reconnect to
   // the bus, after the special USB message(s) is sent to the mass storage
   // endpoint by SendMessageToMassStorageEndpoint().
   void OnReconnectTimeout();
-
-  // Invoked upon the completion of the transfer of the special USB message(s).
-  void OnUsbMessageTransferred(UsbTransfer* transfer);
 
   // Implements UsbDeviceEventObserver.
   virtual void OnUsbDeviceAdded(const std::string& sys_path,
@@ -112,7 +140,10 @@ class UsbModemSwitchOperation
   CompletionCallback completion_callback_;
   bool interface_claimed_;
   uint8 interface_number_;
-  uint8 endpoint_address_;
+  uint8 in_endpoint_address_;
+  uint8 out_endpoint_address_;
+  int message_index_;
+  int num_usb_messages_;
   scoped_ptr<UsbBulkTransfer> bulk_transfer_;
   base::CancelableClosure pending_task_;
   base::CancelableClosure reconnect_timeout_callback_;

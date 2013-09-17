@@ -7,6 +7,8 @@
 
 #include <ostream>
 
+#include <base/basictypes.h>
+
 namespace mist {
 
 // USB class codes.
@@ -57,6 +59,9 @@ enum UsbTransferStatus {
   // Additional enum value to indicate an unknown transfer status.
   kUsbTransferStatusUnknown
 };
+
+// Returns the USB endpoint direction of |endpoint_address|.
+UsbDirection GetUsbDirectionOfEndpointAddress(uint8 endpoint_address);
 
 // Returns a string describing the USB endpoint direction |direction|.
 const char* UsbDirectionToString(UsbDirection direction);

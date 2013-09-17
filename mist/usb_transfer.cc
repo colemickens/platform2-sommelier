@@ -63,6 +63,10 @@ bool UsbTransfer::Cancel() {
   return false;
 }
 
+uint8 UsbTransfer::GetEndpointAddress() const {
+  return transfer_ ? transfer_->endpoint : 0;
+}
+
 UsbTransferType UsbTransfer::GetType() const {
   if (!transfer_)
     return kUsbTransferTypeUnknown;
@@ -109,6 +113,11 @@ int UsbTransfer::GetLength() const {
 
 int UsbTransfer::GetActualLength() const {
   return transfer_ ? transfer_->actual_length : 0;
+}
+
+bool UsbTransfer::IsCompletedWithExpectedLength(int expected_length) const {
+  return GetStatus() == kUsbTransferStatusCompleted &&
+         GetActualLength() == expected_length;
 }
 
 string UsbTransfer::ToString() const {

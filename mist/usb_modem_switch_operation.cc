@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/string_number_conversions.h>
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 
 #include "mist/context.h"
@@ -39,6 +40,9 @@ namespace {
 const int kDefaultUsbInterfaceIndex = 0;
 const int kDefaultUsbInterfaceAlternateSettingIndex = 0;
 
+// Expected response length observed in experiments.
+const int kExpectedResponseLength = 13;
+
 // TODO(benchan): To be conservative, use large timeout values for now. Add UMA
 // metrics to determine appropriate timeout values.
 const int64 kReconnectTimeoutMilliseconds = 15000;
@@ -55,7 +59,10 @@ UsbModemSwitchOperation::UsbModemSwitchOperation(
       switch_context_(switch_context),
       interface_claimed_(false),
       interface_number_(0),
-      endpoint_address_(0) {
+      in_endpoint_address_(0),
+      out_endpoint_address_(0),
+      message_index_(0),
+      num_usb_messages_(0) {
   CHECK(context_);
   CHECK(switch_context_);
   CHECK(!switch_context_->sys_path().empty());
@@ -209,18 +216,31 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
     return;
   }
 
-  scoped_ptr<UsbEndpointDescriptor> endpoint_descriptor(
+  scoped_ptr<UsbEndpointDescriptor> out_endpoint_descriptor(
       interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
           kUsbTransferTypeBulk, kUsbDirectionOut));
-  if (!endpoint_descriptor) {
+  if (!out_endpoint_descriptor) {
     LOG(ERROR) << "Could not find an output bulk endpoint.";
     Complete(false);
     return;
   }
-  VLOG(2) << *endpoint_descriptor;
+  VLOG(2) << "Bulk output endpoint: " << *out_endpoint_descriptor;
 
   interface_number_ = interface_descriptor->GetInterfaceNumber();
-  endpoint_address_ = endpoint_descriptor->GetEndpointAddress();
+  out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
+
+  if (switch_context_->modem_info()->expect_response()) {
+    scoped_ptr<UsbEndpointDescriptor> in_endpoint_descriptor(
+        interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
+            kUsbTransferTypeBulk, kUsbDirectionIn));
+    if (!in_endpoint_descriptor) {
+      LOG(ERROR) << "Could not find an input bulk endpoint.";
+      Complete(false);
+      return;
+    }
+    VLOG(2) << "Bulk input endpoint: " << *in_endpoint_descriptor;
+    in_endpoint_address_ = in_endpoint_descriptor->GetEndpointAddress();
+  }
 
   if (!device_->DetachKernelDriver(interface_number_) &&
       // UsbDevice::DetachKernelDriver returns UsbError::kErrorNotFound when
@@ -241,51 +261,93 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
   }
 
   interface_claimed_ = true;
+  message_index_ = 0;
+  num_usb_messages_ = switch_context_->modem_info()->usb_message_size();
+  // TODO(benchan): Remove this check when we support some modem that does not
+  // require a special USB message for the switch operation.
+  CHECK_GT(num_usb_messages_, 0);
+
+  context_->usb_device_event_notifier()->AddObserver(this);
+
   ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
 }
 
 void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
-  const UsbModemInfo* modem_info = switch_context_->modem_info();
-  // TODO(benchan): Remove this check when we support some modem that does not
-  // require a special USB message for the switch operation.
-  CHECK_GT(modem_info->usb_message_size(), 0);
+  CHECK_LT(message_index_, num_usb_messages_);
 
-  context_->usb_device_event_notifier()->AddObserver(this);
-
-  // TODO(benchan): Support sending multiple special USB messages.
+  const string& usb_message =
+      switch_context_->modem_info()->usb_message(message_index_);
   vector<uint8> bytes;
-  if (!base::HexStringToBytes(modem_info->usb_message(0), &bytes)) {
-    LOG(ERROR) << "Invalid USB message: " << modem_info->usb_message(0);
+  if (!base::HexStringToBytes(usb_message, &bytes)) {
+    LOG(ERROR) << StringPrintf("Invalid USB message (%d/%d): %s",
+                               message_index_,
+                               num_usb_messages_,
+                               usb_message.c_str());
     Complete(false);
     return;
   }
 
-  if (!device_->ClearHalt(endpoint_address_)) {
-     LOG(ERROR) << StringPrintf(
+  VLOG(1) << StringPrintf("Prepare to send USB message (%d/%d): %s",
+                          message_index_ + 1,
+                          num_usb_messages_,
+                          usb_message.c_str());
+
+  InitiateUsbBulkTransfer(out_endpoint_address_,
+                          &bytes[0],
+                          bytes.size(),
+                          &UsbModemSwitchOperation::OnSendMessageCompleted);
+}
+
+void UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint() {
+  CHECK_LT(message_index_, num_usb_messages_);
+
+  VLOG(1) << StringPrintf("Prepare to receive USB message (%d/%d)",
+                          message_index_ + 1,
+                          num_usb_messages_);
+
+  InitiateUsbBulkTransfer(in_endpoint_address_,
+                          NULL,
+                          kExpectedResponseLength,
+                          &UsbModemSwitchOperation::OnReceiveMessageCompleted);
+}
+
+void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
+    uint8 endpoint_address,
+    const uint8* data,
+    int length,
+    UsbTransferCompletionHandler completion_handler) {
+  CHECK_GT(length, 0);
+
+  if (!device_->ClearHalt(endpoint_address)) {
+    LOG(ERROR) << StringPrintf(
         "Could not clear halt condition for endpoint %u: %s",
-        endpoint_address_, device_->error().ToString());
+        endpoint_address, device_->error().ToString());
     Complete(false);
     return;
   }
 
   scoped_ptr<UsbBulkTransfer> bulk_transfer(new UsbBulkTransfer());
   if (!bulk_transfer->Initialize(*device_,
-                                 endpoint_address_,
-                                 bytes.size(),
+                                 endpoint_address,
+                                 length,
                                  kUsbMessageTransferTimeoutMilliseconds)) {
     LOG(ERROR) << "Could not create USB bulk transfer: "
                << bulk_transfer->error();
     Complete(false);
     return;
   }
-  memcpy(bulk_transfer->buffer(), &bytes[0], bytes.size());
+
+  if (GetUsbDirectionOfEndpointAddress(endpoint_address) == kUsbDirectionOut) {
+    CHECK(data);
+    memcpy(bulk_transfer->buffer(), data, length);
+  }
+  // For a device-to-host transfer, |data| is not used and thus ignored.
 
   // Pass a weak pointer of this operation object to the completion callback
   // of the USB bulk transfer. This avoids the need to defer the destruction
   // of this object in order to wait for the completion callback of the
   // transfer when the transfer is cancelled by this object.
-  if (!bulk_transfer->Submit(Bind(
-          &UsbModemSwitchOperation::OnUsbMessageTransferred, AsWeakPtr()))) {
+  if (!bulk_transfer->Submit(Bind(completion_handler, AsWeakPtr()))) {
     LOG(ERROR) << "Could not submit USB bulk transfer: "
                << bulk_transfer->error();
     Complete(false);
@@ -295,22 +357,71 @@ void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
   bulk_transfer_ = bulk_transfer.Pass();
 }
 
-void UsbModemSwitchOperation::OnUsbMessageTransferred(UsbTransfer* transfer) {
+void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
+  VLOG(1) << "USB bulk output transfer completed: " << *transfer;
+
   CHECK_EQ(bulk_transfer_.get(), transfer);
+  CHECK_EQ(out_endpoint_address_, transfer->GetEndpointAddress());
 
-  VLOG(1) << "USB transfer completed: " << *transfer;
-  bool succeeded = (transfer->GetStatus() == kUsbTransferStatusCompleted) &&
-                   (transfer->GetActualLength() == transfer->GetLength());
-  bulk_transfer_.reset();
+  // Keep the bulk transfer valid until this method goes out of scope.
+  scoped_ptr<UsbBulkTransfer> scoped_bulk_transfer = bulk_transfer_.Pass();
 
-  if (!succeeded) {
-    LOG(ERROR) << "Could not successfully transfer USB message.";
+  if (!transfer->IsCompletedWithExpectedLength(transfer->GetLength())) {
+    LOG(ERROR) << StringPrintf(
+                      "Could not successfully send USB message (%d/%d).",
+                      message_index_ + 1,
+                      num_usb_messages_);
     Complete(false);
     return;
   }
 
-  LOG(INFO) << "Successfully transferred USB message.";
+  LOG(INFO) << StringPrintf("Successfully sent USB message (%d/%d).",
+                            message_index_ + 1,
+                            num_usb_messages_);
 
+  if (switch_context_->modem_info()->expect_response()) {
+    ScheduleTask(
+        &UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint);
+    return;
+  }
+
+  ScheduleNextMessageToMassStorageEndpoint();
+}
+
+void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
+  VLOG(1) << "USB bulk input transfer completed: " << *transfer;
+
+  CHECK_EQ(bulk_transfer_.get(), transfer);
+  CHECK_EQ(in_endpoint_address_, transfer->GetEndpointAddress());
+
+  // Keep the bulk transfer valid until this method goes out of scope.
+  scoped_ptr<UsbBulkTransfer> scoped_bulk_transfer = bulk_transfer_.Pass();
+
+  if (!transfer->IsCompletedWithExpectedLength(kExpectedResponseLength)) {
+    LOG(ERROR) << StringPrintf(
+                      "Could not successfully receive USB message (%d/%d).",
+                      message_index_ + 1,
+                      num_usb_messages_);
+    Complete(false);
+    return;
+  }
+
+  LOG(INFO) << StringPrintf("Successfully received USB message (%d/%d).",
+                            message_index_ + 1,
+                            num_usb_messages_);
+
+  ScheduleNextMessageToMassStorageEndpoint();
+}
+
+void UsbModemSwitchOperation::ScheduleNextMessageToMassStorageEndpoint() {
+  ++message_index_;
+  if (message_index_ < num_usb_messages_) {
+    ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
+    return;
+  }
+
+  // After sending the last message (and receiving its response, if expected),
+  // wait for the device to reconnect.
   pending_task_.Cancel();
   reconnect_timeout_callback_.Reset(
       Bind(&UsbModemSwitchOperation::OnReconnectTimeout, Unretained(this)));

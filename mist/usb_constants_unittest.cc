@@ -51,4 +51,10 @@ TEST(UsbConstantsTest, UsbTransferStatus) {
             static_cast<UsbTransferStatus>(LIBUSB_TRANSFER_OVERFLOW));
 }
 
+TEST(UsbConstantsTest, GetUsbDirectionOfEndpointAddress) {
+  EXPECT_EQ(kUsbDirectionIn,
+            GetUsbDirectionOfEndpointAddress(kUsbDirectionIn | 0x1));
+  EXPECT_EQ(kUsbDirectionOut, GetUsbDirectionOfEndpointAddress(0x1));
+}
+
 }  // namespace mist

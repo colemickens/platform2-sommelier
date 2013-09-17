@@ -22,4 +22,7 @@ message UsbModemInfo {
   // mass storage interface of the modem in order to switch the modem to the
   // modem mode.
   repeated string usb_message = 3;
+  // If true, a response is expected from the mass storage interface after
+  // sending each USB message to the interface.
+  optional bool expect_response = 4;
 }

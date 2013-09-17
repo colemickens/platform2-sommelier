@@ -37,6 +37,9 @@ const char kTestConfigFileContent[] =
     "  final_usb_id { vendor_id: 0x5678 product_id: 0xfedc }\n"
     "  final_usb_id { vendor_id: 0x3210 product_id: 0x9876 }\n"
     "  usb_message: \"0123456789abcdef\"\n"
+    "  usb_message: \"fedcba9877654210\"\n"
+    "  usb_message: \"1234\"\n"
+    "  expect_response: true\n"
     "}\n";
 
 }  // namespace
@@ -78,12 +81,25 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
   EXPECT_TRUE(usb_modem_info1 != NULL);
   EXPECT_EQ(0x2345, usb_modem_info1->initial_usb_id().vendor_id());
   EXPECT_EQ(0x7890, usb_modem_info1->initial_usb_id().product_id());
+  EXPECT_EQ(0, usb_modem_info1->final_usb_id_size());
+  EXPECT_EQ(0, usb_modem_info1->usb_message_size());
+  EXPECT_FALSE(usb_modem_info1->expect_response());
 
-  const UsbModemInfo *usb_modem_info2 =
+  const UsbModemInfo* usb_modem_info2 =
       config_loader_.GetUsbModemInfo(0x1234, 0xabcd);
   EXPECT_TRUE(usb_modem_info2 != NULL);
   EXPECT_EQ(0x1234, usb_modem_info2->initial_usb_id().vendor_id());
   EXPECT_EQ(0xabcd, usb_modem_info2->initial_usb_id().product_id());
+  EXPECT_EQ(2, usb_modem_info2->final_usb_id_size());
+  EXPECT_EQ(0x5678, usb_modem_info2->final_usb_id(0).vendor_id());
+  EXPECT_EQ(0xfedc, usb_modem_info2->final_usb_id(0).product_id());
+  EXPECT_EQ(0x3210, usb_modem_info2->final_usb_id(1).vendor_id());
+  EXPECT_EQ(0x9876, usb_modem_info2->final_usb_id(1).product_id());
+  EXPECT_EQ(3, usb_modem_info2->usb_message_size());
+  EXPECT_EQ("0123456789abcdef", usb_modem_info2->usb_message(0));
+  EXPECT_EQ("fedcba9877654210", usb_modem_info2->usb_message(1));
+  EXPECT_EQ("1234", usb_modem_info2->usb_message(2));
+  EXPECT_TRUE(usb_modem_info2->expect_response());
 }
 
 TEST_F(ConfigLoaderTest, LoadEmptyConfigFile) {

@@ -116,6 +116,37 @@ TEST_F(UsbTransferTest, GetActualLength) {
   EXPECT_EQ(test_transfer_.actual_length, transfer_.GetActualLength());
 }
 
+TEST_F(UsbTransferTest, IsCompletedWithExpectedLength) {
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(0));
+
+  InjectTestLibUsbTransfer();
+
+  test_transfer_.actual_length = 5;
+  test_transfer_.status = LIBUSB_TRANSFER_COMPLETED;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.actual_length = 10;
+  EXPECT_TRUE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.status = LIBUSB_TRANSFER_ERROR;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.status = LIBUSB_TRANSFER_TIMED_OUT;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.status = LIBUSB_TRANSFER_CANCELLED;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.status = LIBUSB_TRANSFER_STALL;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.status = LIBUSB_TRANSFER_NO_DEVICE;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+
+  test_transfer_.status = LIBUSB_TRANSFER_OVERFLOW;
+  EXPECT_FALSE(transfer_.IsCompletedWithExpectedLength(10));
+}
+
 TEST_F(UsbTransferTest, VerifyAllocated) {
   EXPECT_FALSE(transfer_.VerifyAllocated());
   EXPECT_EQ(UsbError::kErrorTransferNotAllocated, transfer_.error().type());

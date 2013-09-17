@@ -56,10 +56,16 @@ class UsbTransfer {
   bool Cancel();
 
   // Getters for retrieving fields of the libusb_transfer struct.
+  uint8 GetEndpointAddress() const;
   UsbTransferType GetType() const;
   UsbTransferStatus GetStatus() const;
   int GetLength() const;
   int GetActualLength() const;
+
+  // Returns true if this tranfer is completed with the expected length, i.e.
+  // GetStatus() returns kUsbTransferStatusCompleted and GetActualLength()
+  // returns |expected_length|.
+  bool IsCompletedWithExpectedLength(int expected_length) const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.
