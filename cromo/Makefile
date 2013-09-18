@@ -105,7 +105,7 @@ dummy_OBJS = $(dummy_SRCS:.cc=.o)
 all : $(TARGETS)
 
 %unittest :
-	$(CXX) $^ $(LDLIBS_UNITTEST) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS_UNITTEST) -o $@
 
 # We need to disable unused variable warnings for sms*unittes for gcc 4.7.
 # gTest framework defines _testinfo for every test case, which is not usually
@@ -132,7 +132,7 @@ $(OBJS) cromo_server_unittest.o: glue
 $(dummy_OBJS): glue
 
 $(CROMO): $(OBJS) $(LIBCROMO) cromo.ver
-	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
 $(LIBCROMO): cromo_server.o hooktable.o utilities.o \
 	      modem_handler.o sms_message.o sms_cache.o syslog_helper.o
