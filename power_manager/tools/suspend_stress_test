@@ -61,6 +61,7 @@ restore_dark_resume_state() {
 }
 
 dump_stats_and_exit() {
+  echo $preserved_pm_print_times > /sys/power/pm_print_times
   restore_dark_resume_state
   echo ""
   echo "Finished ${cur} iterations."
@@ -114,6 +115,9 @@ echo "  suspend command: ${suspend_cmd}"
 initial_failed=$(get_failed_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
 wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
+preserved_pm_print_times=$(cat /sys/power/pm_print_times)
+
+echo 1 > /sys/power/pm_print_times
 
 trap dump_stats_and_exit INT
 disable_dark_resume
