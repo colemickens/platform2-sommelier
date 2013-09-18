@@ -63,13 +63,21 @@ class ScanSessionTest : public Test {
   // Test set of "all the other frequencies this device can support" in
   // sorted order.
   ScanSessionTest() : weak_ptr_factory_(this) {
-    WiFiProvider::FrequencyCountList connected_frequencies(
+    WiFiProvider::FrequencyCountList default_connected_frequencies(
         kConnectedFrequencies,
         kConnectedFrequencies + arraysize(kConnectedFrequencies));
 
-    set<uint16_t> unconnected_frequencies(
+    set<uint16_t> default_unconnected_frequencies(
         kUnconnectedFrequencies,
         kUnconnectedFrequencies + arraysize(kUnconnectedFrequencies));
+
+    BuildScanSession(default_connected_frequencies,
+                     default_unconnected_frequencies);
+  }
+
+  void BuildScanSession(const WiFiProvider::FrequencyCountList
+                            &connected_frequencies,
+                        const std::set<uint16_t> &unconnected_frequencies) {
     const int kArbitraryMinimum = 1;
     const int kArbitraryMaximum = std::numeric_limits<int>::max();
     scan_session_.reset(new ScanSession(&netlink_manager_,
@@ -120,10 +128,8 @@ TEST_F(ScanSessionTest, Fraction) {
 
   // Get the first 83% of the connected values.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
-    expected.push_back(kExpectedFreq5600);
-    expected.push_back(kExpectedFreq5580);
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+      kExpectedFreq5580};
     result = GetScanFrequencies(.83, 1, std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -131,11 +137,8 @@ TEST_F(ScanSessionTest, Fraction) {
 
   // Get the next 4 values.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5560);
-    expected.push_back(kExpectedFreq5620);
-    expected.push_back(kExpectedFreq2412);
-    expected.push_back(kExpectedFreq2417);
+    vector<uint16_t> expected{kExpectedFreq5560, kExpectedFreq5620,
+      kExpectedFreq2412, kExpectedFreq2417};
     result = GetScanFrequencies(ScanSession::kAllFrequencies, 1, 4);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -143,10 +146,8 @@ TEST_F(ScanSessionTest, Fraction) {
 
   // And, get the remaining list.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2422);
-    expected.push_back(kExpectedFreq2427);
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq2422, kExpectedFreq2427,
+      kExpectedFreq2432};
     result = GetScanFrequencies(ScanSession::kAllFrequencies, 20,
                                 std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
@@ -161,9 +162,7 @@ TEST_F(ScanSessionTest, TwoFractions) {
 
   // Get the first 60% of the connected values.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
-    expected.push_back(kExpectedFreq5600);
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600};
     result = GetScanFrequencies(.60, 0, std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -171,9 +170,7 @@ TEST_F(ScanSessionTest, TwoFractions) {
 
   // Get the next 32% of the connected values.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5580);
-    expected.push_back(kExpectedFreq5560);
+    vector<uint16_t> expected{kExpectedFreq5580, kExpectedFreq5560};
     result = GetScanFrequencies(.32, 0, std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -181,13 +178,9 @@ TEST_F(ScanSessionTest, TwoFractions) {
 
   // And, get the remaining list.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5620);
-    expected.push_back(kExpectedFreq2412);
-    expected.push_back(kExpectedFreq2417);
-    expected.push_back(kExpectedFreq2422);
-    expected.push_back(kExpectedFreq2427);
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq5620, kExpectedFreq2412,
+      kExpectedFreq2417, kExpectedFreq2422, kExpectedFreq2427,
+      kExpectedFreq2432};
     result = GetScanFrequencies(ScanSession::kAllFrequencies,
                                 std::numeric_limits<size_t>::max(),
                                 std::numeric_limits<size_t>::max());
@@ -203,19 +196,16 @@ TEST_F(ScanSessionTest, Min) {
 
   // Get the first 3 previously seen values.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
-    expected.push_back(kExpectedFreq5600);
-    expected.push_back(kExpectedFreq5580);
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+      kExpectedFreq5580};
     result = GetScanFrequencies(.30, 3, std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
 
-  // Get the next value by requensting a minimum of 1.
+  // Get the next value by requesting a minimum of 1.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5560);
+    vector<uint16_t> expected{kExpectedFreq5560};
     result = GetScanFrequencies(0.0, 1, std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -223,13 +213,9 @@ TEST_F(ScanSessionTest, Min) {
 
   // And, get the remaining list.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5620);
-    expected.push_back(kExpectedFreq2412);
-    expected.push_back(kExpectedFreq2417);
-    expected.push_back(kExpectedFreq2422);
-    expected.push_back(kExpectedFreq2427);
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq5620, kExpectedFreq2412,
+      kExpectedFreq2417, kExpectedFreq2422, kExpectedFreq2427,
+      kExpectedFreq2432};
     result = GetScanFrequencies(ScanSession::kAllFrequencies,
                                 std::numeric_limits<size_t>::max(),
                                 std::numeric_limits<size_t>::max());
@@ -244,14 +230,9 @@ TEST_F(ScanSessionTest, Max) {
 
   // Get the first 7 values (crosses seen/unseen boundary).
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
-    expected.push_back(kExpectedFreq5600);
-    expected.push_back(kExpectedFreq5580);
-    expected.push_back(kExpectedFreq5560);
-    expected.push_back(kExpectedFreq5620);
-    expected.push_back(kExpectedFreq2412);
-    expected.push_back(kExpectedFreq2417);
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+      kExpectedFreq5580, kExpectedFreq5560, kExpectedFreq5620,
+      kExpectedFreq2412, kExpectedFreq2417};
     result = GetScanFrequencies(ScanSession::kAllFrequencies, 1, 7);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -259,10 +240,8 @@ TEST_F(ScanSessionTest, Max) {
 
   // And, get the remaining list.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2422);
-    expected.push_back(kExpectedFreq2427);
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq2422, kExpectedFreq2427,
+      kExpectedFreq2432};
     result = GetScanFrequencies(ScanSession::kAllFrequencies, 20,
                                 std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
@@ -275,14 +254,10 @@ TEST_F(ScanSessionTest, Max) {
 TEST_F(ScanSessionTest, Exact) {
   vector<uint16_t> result;
 
-  // Get the first 5 values -- exectly on the seen/unseen border.
+  // Get the first 5 values -- exactly on the seen/unseen border.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
-    expected.push_back(kExpectedFreq5600);
-    expected.push_back(kExpectedFreq5580);
-    expected.push_back(kExpectedFreq5560);
-    expected.push_back(kExpectedFreq5620);
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+      kExpectedFreq5580, kExpectedFreq5560, kExpectedFreq5620};
     result = GetScanFrequencies(ScanSession::kAllFrequencies, 5, 5);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -290,12 +265,8 @@ TEST_F(ScanSessionTest, Exact) {
 
   // And, get the last 5.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2412);
-    expected.push_back(kExpectedFreq2417);
-    expected.push_back(kExpectedFreq2422);
-    expected.push_back(kExpectedFreq2427);
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq2412, kExpectedFreq2417,
+      kExpectedFreq2422, kExpectedFreq2427, kExpectedFreq2432};
     result = GetScanFrequencies(ScanSession::kAllFrequencies, 5, 5);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_FALSE(scan_session()->HasMoreFrequencies());
@@ -304,17 +275,10 @@ TEST_F(ScanSessionTest, Exact) {
 
 // Test that we can get everything in one read.
 TEST_F(ScanSessionTest, AllOneRead) {
-  vector<uint16_t> expected;
-  expected.push_back(kExpectedFreq5640);
-  expected.push_back(kExpectedFreq5600);
-  expected.push_back(kExpectedFreq5580);
-  expected.push_back(kExpectedFreq5560);
-  expected.push_back(kExpectedFreq5620);
-  expected.push_back(kExpectedFreq2412);
-  expected.push_back(kExpectedFreq2417);
-  expected.push_back(kExpectedFreq2422);
-  expected.push_back(kExpectedFreq2427);
-  expected.push_back(kExpectedFreq2432);
+  vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+    kExpectedFreq5580, kExpectedFreq5560, kExpectedFreq5620,
+    kExpectedFreq2412, kExpectedFreq2417, kExpectedFreq2422,
+    kExpectedFreq2427, kExpectedFreq2432};
   vector<uint16_t> result;
   result = GetScanFrequencies(ScanSession::kAllFrequencies,
                               std::numeric_limits<size_t>::max(),
@@ -325,17 +289,13 @@ TEST_F(ScanSessionTest, AllOneRead) {
 
 // Test that we can get all the previously seen frequencies (and only the
 // previously seen frequencies) via the requested fraction.
-TEST_F(ScanSessionTest, EverythingFraction) {
+TEST_F(ScanSessionTest, EverythingConnected) {
   vector<uint16_t> result;
 
   // Get the first 100% of the connected values.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
-    expected.push_back(kExpectedFreq5600);
-    expected.push_back(kExpectedFreq5580);
-    expected.push_back(kExpectedFreq5560);
-    expected.push_back(kExpectedFreq5620);
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+      kExpectedFreq5580, kExpectedFreq5560, kExpectedFreq5620};
     result = GetScanFrequencies(1.0, 0, std::numeric_limits<size_t>::max());
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
@@ -343,15 +303,73 @@ TEST_F(ScanSessionTest, EverythingFraction) {
 
   // And, get the remaining list.
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2412);
-    expected.push_back(kExpectedFreq2417);
-    expected.push_back(kExpectedFreq2422);
-    expected.push_back(kExpectedFreq2427);
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq2412, kExpectedFreq2417,
+      kExpectedFreq2422, kExpectedFreq2427, kExpectedFreq2432};
     result = GetScanFrequencies(ScanSession::kAllFrequencies,
                                 std::numeric_limits<size_t>::max(),
                                 std::numeric_limits<size_t>::max());
+    EXPECT_THAT(result, ContainerEq(expected));
+    EXPECT_FALSE(scan_session()->HasMoreFrequencies());
+  }
+}
+
+TEST_F(ScanSessionTest, OnlyPreviouslySeen) {
+  // Build a scan session with only previously connected frequencies.
+  WiFiProvider::FrequencyCountList default_connected_frequencies(
+      kConnectedFrequencies,
+      kConnectedFrequencies + arraysize(kConnectedFrequencies));
+  BuildScanSession(default_connected_frequencies, std::set<uint16_t>());
+
+  // Get the first 100% of the connected values.
+  vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+    kExpectedFreq5580, kExpectedFreq5560, kExpectedFreq5620};
+
+  vector<uint16_t> result;
+  result = GetScanFrequencies(ScanSession::kAllFrequencies, 1,
+                              std::numeric_limits<size_t>::max());
+  EXPECT_THAT(result, ContainerEq(expected));
+  EXPECT_FALSE(scan_session()->HasMoreFrequencies());
+  result = GetScanFrequencies(ScanSession::kAllFrequencies,
+                              std::numeric_limits<size_t>::max(),
+                              std::numeric_limits<size_t>::max());
+  EXPECT_TRUE(result.empty());
+}
+
+// Verify that max works inside the list of connected frequencies.
+TEST_F(ScanSessionTest, MaxAppliesToConnected) {
+  vector<uint16_t> result;
+
+  {
+    vector<uint16_t> expected{kExpectedFreq5640, kExpectedFreq5600,
+      kExpectedFreq5580};
+
+    result = GetScanFrequencies(ScanSession::kAllFrequencies, 1, 3);
+    EXPECT_THAT(result, ContainerEq(expected));
+    EXPECT_TRUE(scan_session()->HasMoreFrequencies());
+  }
+
+  {
+    vector<uint16_t> expected{kExpectedFreq5560, kExpectedFreq5620,
+      kExpectedFreq2412};
+
+    result = GetScanFrequencies(ScanSession::kAllFrequencies, 1, 3);
+    EXPECT_THAT(result, ContainerEq(expected));
+    EXPECT_TRUE(scan_session()->HasMoreFrequencies());
+  }
+
+  {
+    vector<uint16_t> expected{kExpectedFreq2417, kExpectedFreq2422,
+      kExpectedFreq2427};
+
+    result = GetScanFrequencies(ScanSession::kAllFrequencies, 1, 3);
+    EXPECT_THAT(result, ContainerEq(expected));
+    EXPECT_TRUE(scan_session()->HasMoreFrequencies());
+  }
+
+  {
+    vector<uint16_t> expected{kExpectedFreq2432};
+
+    result = GetScanFrequencies(ScanSession::kAllFrequencies, 1, 3);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_FALSE(scan_session()->HasMoreFrequencies());
   }
@@ -363,71 +381,61 @@ TEST_F(ScanSessionTest, IndividualReads) {
   static const float kArbitraryFraction = 0.83;
 
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5640);
+    vector<uint16_t> expected{kExpectedFreq5640};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5600);
+    vector<uint16_t> expected{kExpectedFreq5600};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5580);
+    vector<uint16_t> expected{kExpectedFreq5580};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5560);
+    vector<uint16_t> expected{kExpectedFreq5560};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq5620);
+    vector<uint16_t> expected{kExpectedFreq5620};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2412);
+    vector<uint16_t> expected{kExpectedFreq2412};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2417);
+    vector<uint16_t> expected{kExpectedFreq2417};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2422);
+    vector<uint16_t> expected{kExpectedFreq2422};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2427);
+    vector<uint16_t> expected{kExpectedFreq2427};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
   }
   {
-    vector<uint16_t> expected;
-    expected.push_back(kExpectedFreq2432);
+    vector<uint16_t> expected{kExpectedFreq2432};
     result = GetScanFrequencies(kArbitraryFraction, 1, 1);
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_FALSE(scan_session()->HasMoreFrequencies());

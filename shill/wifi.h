@@ -269,7 +269,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kRequestStationInfoPeriodSeconds;
   static const size_t kMinumumFrequenciesToScan;
   static const float kDefaultFractionPerScan;
-  static const char kProgressiveScanFlagFile[];
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
 
@@ -506,6 +505,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   scoped_ptr<ScanSession> scan_session_;
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
+  bool scan_all_frequencies_;
 
   // Fraction of previously seen scan frequencies to include in each
   // progressive scan batch (since the frequencies are sorted, the sum of the

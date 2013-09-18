@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <limits>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -57,6 +58,7 @@ using base::Bind;
 using base::StringPrintf;
 using file_util::PathExists;
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -82,7 +84,6 @@ const int WiFi::kReconnectTimeoutSeconds = 10;
 const int WiFi::kRequestStationInfoPeriodSeconds = 20;
 const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
 const float WiFi::kDefaultFractionPerScan = 0.34;
-const char WiFi::kProgressiveScanFlagFile[] = "/home/chronos/.progressive_scan";
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
 
@@ -122,6 +123,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       netlink_manager_(NetlinkManager::GetInstance()),
       min_frequencies_to_scan_(kMinumumFrequenciesToScan),
       max_frequencies_to_scan_(std::numeric_limits<int>::max()),
+      scan_all_frequencies_(true),
       fraction_per_scan_(kDefaultFractionPerScan),
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
@@ -163,19 +165,10 @@ WiFi::WiFi(ControlInterface *control_interface,
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  if (PathExists(FilePath(kProgressiveScanFlagFile))) {
-    // Setup manually-enrolled progressive scan.
-    progressive_scan_enabled_ = true;
-    scan_configuration_ = "Progressive scan (manual: min=4/max=MAX, 33%)";
-    min_frequencies_to_scan_ = 4;
-    max_frequencies_to_scan_ = std::numeric_limits<int>::max();
-    fraction_per_scan_ = .34;
-  } else {
-    // TODO(wdg): Remove after progressive scan field trial is over.
-    // Only do the field trial if the user hasn't already enabled progressive
-    // scan manually.  crbug.com/250945
-    ParseFieldTrialFile(FilePath(kProgressiveScanFieldTrialFlagFile));
-  }
+  // TODO(wdg): Remove after progressive scan field trial is over.
+  // Only do the field trial if the user hasn't already enabled progressive
+  // scan manually.  crbug.com/250945
+  ParseFieldTrialFile(FilePath(kProgressiveScanFieldTrialFlagFile));
   SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -340,7 +333,8 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
           new ScanSession(netlink_manager_,
                           dispatcher(),
                           provider_->GetScanFrequencies(),
-                          all_scan_frequencies_,
+                          (scan_all_frequencies_ ? all_scan_frequencies_ :
+                           set<uint16_t>()),
                           interface_index(),
                           scan_fractions,
                           min_frequencies_to_scan_,
