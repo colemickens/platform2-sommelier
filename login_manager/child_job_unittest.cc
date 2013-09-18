@@ -141,7 +141,7 @@ TEST_F(ChildJobTest, StartStopMultiSessionTest) {
   job.StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job.ExportArgv();
-  ASSERT_EQ(argv_.size() + 3, job_args.size());
+  ASSERT_EQ(argv_.size() + 2, job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
   ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
   ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, kHash);
@@ -149,7 +149,7 @@ TEST_F(ChildJobTest, StartStopMultiSessionTest) {
   // Start another session, expect the args to be unchanged.
   job.StartSession(kUser, kHash);
   job_args = job.ExportArgv();
-  ASSERT_EQ(argv_.size() + 3, job_args.size());
+  ASSERT_EQ(argv_.size() + 2, job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
   ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
   ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, kHash);
@@ -158,9 +158,8 @@ TEST_F(ChildJobTest, StartStopMultiSessionTest) {
   // Should remove login user and login profile flags.
   job.StopSession();
   job_args = job.ExportArgv();
-  ASSERT_EQ(argv_.size() + 1, job_args.size());
+  ASSERT_EQ(argv_.size(), job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
-  ExpectArgsToContainFlag(job_args, ChildJob::kMultiProfileFlag, "");
 }
 
 TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {

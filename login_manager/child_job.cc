@@ -40,8 +40,6 @@ const char ChildJob::kLoginManagerFlag[] = "--login-manager";
 const char ChildJob::kLoginUserFlag[] = "--login-user=";
 // static
 const char ChildJob::kLoginProfileFlag[] = "--login-profile=";
-// static
-const char ChildJob::kMultiProfileFlag[] = "--multi-profiles";
 
 // static
 const uint ChildJob::kRestartTries = 4;
@@ -59,9 +57,6 @@ ChildJob::ChildJob(const std::vector<std::string>& arguments,
         removed_login_manager_flag_(false),
         session_already_started_(false),
         support_multi_profile_(support_multi_profile) {
-  if (support_multi_profile_)
-    arguments_.push_back(kMultiProfileFlag);
-
   // Take over managing the kLoginManagerFlag.
   std::vector<std::string>::iterator to_erase = std::remove(arguments_.begin(),
                                                             arguments_.end(),
