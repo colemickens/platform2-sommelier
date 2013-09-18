@@ -112,12 +112,6 @@ class PerfParser : public PerfReader {
   // Does a sample event remap and then returns DSO name and offset of sample.
   bool MapSampleEvent(ParsedEvent* parsed_event);
 
-  bool MapIPAndPidAndGetNameAndOffset(uint64 ip,
-                                      uint32 pid,
-                                      uint64* new_ip,
-                                      string* name,
-                                      uint64* offset);
-
   void ResetAddressMappers();
 
   std::vector<ParsedEvent> parsed_events_;
@@ -139,6 +133,17 @@ class PerfParser : public PerfReader {
   PerfEventStats stats_;
 
  private:
+  // This maps a sample event and returns the mapped address, DSO name, and
+  // offset within the DSO.  This is a private function because the API might
+  // change in the future, and we don't want derived classes to be stuck with an
+  // obsolete API.
+  bool MapIPAndPidAndGetNameAndOffset(uint64 ip,
+                                      uint32 pid,
+                                      uint16 misc,
+                                      uint64* new_ip,
+                                      string* name,
+                                      uint64* offset);
+
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };
 

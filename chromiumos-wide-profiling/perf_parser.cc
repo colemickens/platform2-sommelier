@@ -208,6 +208,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   uint64& offset = parsed_event->dso_and_offset.offset;
   if (!MapIPAndPidAndGetNameAndOffset(event.ip,
                                       event.pid,
+                                      event.header.misc,
                                       reinterpret_cast<uint64*>(&event.ip),
                                       &name,
                                       &offset)) {
@@ -221,6 +222,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     for (unsigned int j = 0; j < callchain->nr; ++j) {
       if (!MapIPAndPidAndGetNameAndOffset(callchain->ips[j],
                                           event.pid,
+                                          event.header.misc,
                                           reinterpret_cast<uint64*>(
                                               &callchain->ips[j]),
                                           &parsed_event->callchain[j].dso_name,
@@ -239,6 +241,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
       ParsedEvent::BranchEntry& parsed_entry = parsed_event->branch_stack[i];
       if (!MapIPAndPidAndGetNameAndOffset(entry.from,
                                           event.pid,
+                                          event.header.misc,
                                           reinterpret_cast<uint64*>(
                                               &entry.from),
                                           &parsed_entry.from.dso_name,
@@ -247,6 +250,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
       }
       if (!MapIPAndPidAndGetNameAndOffset(entry.to,
                                           event.pid,
+                                          event.header.misc,
                                           reinterpret_cast<uint64*>(&entry.to),
                                           &parsed_entry.to.dso_name,
                                           &parsed_entry.to.offset)) {
@@ -263,6 +267,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
 
 bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
                                                 uint32 pid,
+                                                uint16 misc,
                                                 uint64* new_ip,
                                                 string* name,
                                                 uint64* offset) {
@@ -270,33 +275,50 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
   // 1. Address space of the kernel.
   // 2. Address space of its own process.
   // 3. Address space of the parent process.
-  uint64 mapped_addr;
-  bool mapped = false;
+
   AddressMapper* mapper = NULL;
-  CHECK(kernel_mapper_);
-  if (kernel_mapper_->GetMappedAddress(ip, &mapped_addr)) {
-    mapped = true;
-    mapper = kernel_mapper_;
-  } else {
+  bool mapped = false;
+  uint64 mapped_addr = 0;
+  switch(misc) {
+  case PERF_RECORD_MISC_KERNEL:
+    CHECK(kernel_mapper_);
+    if (kernel_mapper_->GetMappedAddress(ip, &mapped_addr)) {
+      mapper = kernel_mapper_;
+      mapped = true;
+    }
+    break;
+  case PERF_RECORD_MISC_USER: {
     size_t loop_count = 0;
     while (process_mappers_.find(pid) != process_mappers_.end()) {
       if (loop_count++ > child_to_parent_pid_map_.size()) {
         LOG(FATAL) << "Looped too many times searching for mapper.";
-        return false;
+        break;
       }
       mapper = process_mappers_[pid];
       if (mapper->GetMappedAddress(ip, &mapped_addr)) {
         mapped = true;
-        // For non-kernel addresses, the address is shifted to after where the
-        // kernel objects are mapped.  Described more in MapMmapEvent().
-        mapped_addr += kernel_mapper_->GetMaxMappedLength();
         break;
       }
       if (child_to_parent_pid_map_.find(pid) == child_to_parent_pid_map_.end())
-        return false;
+        break;
       pid = child_to_parent_pid_map_[pid];
     }
+    // Some addresses in call chain and branch stack might be kernel addresses,
+    // but are not identified as such due to the topmost sample being taken from
+    // user space.  Thus if a sample doesn't map to user space, try kernel space
+    // next.
+    if (!mapper && kernel_mapper_->GetMappedAddress(ip, &mapped_addr)) {
+      mapper = kernel_mapper_;
+      mapped = true;
+    }
+
+    break;
   }
+  default:
+    LOG(ERROR) << "Unknown SAMPLE MISC type: " << misc;
+    return false;
+  }
+
   if (mapped) {
     if (name && offset) {
       uint64 id = kuint64max;
@@ -315,22 +337,28 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
 }
 
 bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
-  AddressMapper* mapper = kernel_mapper_;
-  CHECK(kernel_mapper_);
-  uint32 pid = event->pid;
+  // We need to hide only the real kernel addresses.  However, to make things
+  // more secure, and make the mapping idempotent, we should remap all
+  // addresses, both kernel and non-kernel.
 
-  // We need to hide only the real kernel addresses.  But the pid of kernel
-  // mmaps may change over time, and thus we could mistakenly identify a kernel
-  // mmap as a non-kernel mmap.  To plug this security hole, simply map all real
-  // addresses (kernel and non-kernel) to synthetic addresses.
-  if (pid != kKernelPid) {
+  AddressMapper* mapper = NULL;
+  uint32 pid = event->pid;
+  switch(event->header.misc) {
+  case PERF_RECORD_MISC_KERNEL:
+    mapper = kernel_mapper_;
+    break;
+  case PERF_RECORD_MISC_USER:
     if (process_mappers_.find(pid) == process_mappers_.end())
       process_mappers_[pid] = new AddressMapper;
     mapper = process_mappers_[pid];
+    break;
+  default:
+    LOG(ERROR) << "Unknown MMAP MISC type: " << event->header.misc;
+    return false;
   }
+  CHECK(mapper);
 
-  // Lengths need to be aligned to 4-byte blocks.
-  uint64 len = AlignSize(event->len, sizeof(uint32));
+  uint64 len = event->len;
   uint64 start = event->start;
   uint64 pgoff = event->pgoff;
   if (pgoff == start) {
@@ -363,12 +391,6 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
   CHECK(mapper->GetMappedAddress(start, &mapped_addr));
   if (do_remap_) {
     event->start = mapped_addr;
-    // If this is a non-kernel DSO, shift it to after where the kernel objects
-    // are mapped.  This allows for kernel addresses to be identified by address
-    // rather than by pid, since kernel addresses are distinct from non-kernel
-    // addresses even in quipper space.
-    if (pid != kKernelPid)
-      event->start += kernel_mapper_->GetMaxMappedLength();
     event->len = len;
     event->pgoff = pgoff;
   }
