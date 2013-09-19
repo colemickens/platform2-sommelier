@@ -184,6 +184,10 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
   file_reader.ReadLine(&line);
   switch (line[0]) {
     case '1':
+      // The minimum and maximum are the same (which makes the fraction
+      // irrelevant).  Every scan batch (except, possibly, the last) contains
+      // exactly 4 frequencies.  These cases is optimized for users that use
+      // connect to a few frequencies or that heavily prefer the top 4.
       min_frequencies_to_scan_ = 4;
       max_frequencies_to_scan_ = 4;
       fraction_per_scan_ = .34;
@@ -198,6 +202,10 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
       scan_configuration_ = "Progressive scan (field trial 2: min/max=4, 50%)";
       break;
     case '3':
+      // The minimum and maximum are the same (which makes the fraction
+      // irrelevant).  Every scan batch (except, possibly, the last) contains
+      // exactly 8 frequencies.  These cases is optimized for users that use
+      // several frequencies, each with similar likelihood.
       min_frequencies_to_scan_ = 8;
       max_frequencies_to_scan_ = 8;
       fraction_per_scan_ = .51;
@@ -211,17 +219,60 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
       progressive_scan_enabled_ = true;
       scan_configuration_ = "Progressive scan (field trial 4: min/max=8, 100%)";
       break;
+    case '5':
+    case '6':
+      // Does a single scan, only of previously-seen frequencies.  The idea is
+      // that, in nearly all cases, we'll find a good BSS in a scan of all
+      // previously seen frequencies and that, since about 75% of the users
+      // (based on preliminary field trial data) have seen less than 6 or 7
+      // frequencies and 50% (based on the same data) have less than 4, 'all
+      // frequencies' is not too large of a group in the worst case and is a
+      // pretty small group in more then half the cases.  Note that if we don't
+      // find a BSS in a scan, the code falls back to a complete scan.  This
+      // algorithm is represented by two identical groups to help determine
+      // whether the size of the field trial groups are large enough to make the
+      // results statistically significant.
+      min_frequencies_to_scan_ = 1;
+      max_frequencies_to_scan_ = std::numeric_limits<int>::max();
+      fraction_per_scan_ = 1.1;
+      scan_all_frequencies_ = false;
+      progressive_scan_enabled_ = true;
+      scan_configuration_ = (line[0] == '5') ?
+          "Progressive scan (field trial 5: min=1/max=all, 100%, only-seen)" :
+          "Progressive scan (field trial 6: min=1/max=all, 100%, only-seen)";
+      break;
+    case '7':
+      // Uses different min/max values.  This allows machines that have a very
+      // small set of previously-seen frequencies to have very short scan
+      // times, machines that have a large set of previously-seen frequencies
+      // to have their scans broken up to try to find a BSS without searching
+      // all of those frequencies, and scans that don't find anything in the
+      // previously-seen list to scan just the frequencies that haven't just
+      // been scanned.
+      min_frequencies_to_scan_ = 1;
+      max_frequencies_to_scan_ = 4;
+      // This is 1.0 rather than 1.1 so that we only get previously seen
+      // frequencies until they are exhausted.
+      fraction_per_scan_ = 1.0;
+      progressive_scan_enabled_ = true;
+      scan_configuration_ =
+          "Progressive scan (field trial 7: min=1/max=4, 100%)";
+      break;
     case 'c':
+      // This is the control group; it uses traditional, full, scan.  It's the
+      // same size as the other test groups.
       progressive_scan_enabled_ = false;
       scan_configuration_ = "Full scan (field trial c: control group)";
       break;
     case 'x':
+      // This is the non-test group; it uses traditional, full, scan.  It
+      // contains all users that aren't in one of the test groups.
       progressive_scan_enabled_ = false;
       scan_configuration_ = "Full scan (field trial x: default/disabled group)";
       break;
     default:
-      scan_configuration_ = "Full scan (field trial unknown)";
       progressive_scan_enabled_ = false;
+      scan_configuration_ = "Full scan (field trial unknown)";
       break;
   }
   LOG(INFO) << "Progressive scan (via field_trial) "
