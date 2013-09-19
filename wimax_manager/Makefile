@@ -30,7 +30,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS)
-LDLIBS += -lmetrics -lgdmwimax -lprotobuf $(PC_LIBS)
+LDLIBS += -lmetrics -lgdmwimax -lprotobuf -lz $(PC_LIBS)
 
 # TODO(benchan): Generalize and refactor DBus-C++ header generation.
 GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/manager.h): \
