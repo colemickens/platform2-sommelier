@@ -22,11 +22,14 @@ Clear PPP username and password
 
 . /usr/share/misc/shflags
 
+DEFAULT_PROFILE_NAME=default
 FLIMFLAM=org.chromium.flimflam
 IMANAGER=${FLIMFLAM}.Manager
+IPROFILE=${FLIMFLAM}.Profile
 ISERVICE=${FLIMFLAM}.Service
-USERNAME_PROPERTY=Cellular.PPP.Username
 PASSWORD_PROPERTY=Cellular.PPP.Password
+PROFILE_PROPERTY=Profile
+USERNAME_PROPERTY=Cellular.PPP.Username
 
 usage() {
   echo $*
@@ -42,6 +45,14 @@ dbus() {
 
   dbus-send --system --print-reply --fixed --dest="${FLIMFLAM}" \
     "${object}" "${method}" "$@"
+}
+
+get_profile_property() {
+  local profile="$1"
+  local property="$2"
+
+  dbus "${profile}" "${IPROFILE}.GetProperties" 2>/dev/null \
+    | sed -n "/\/${property}/{s/.* //p}"
 }
 
 get_service_property() {
@@ -91,9 +102,27 @@ clear_property() {
   dbus "${service}" "${ISERVICE}.ClearProperty" "string:${property}"
 }
 
+get_profiles() {
+  dbus / "${IMANAGER}.GetProperties" 2>/dev/null \
+    | sed -n "/\/Profiles\//{s/.* //p}"
+}
+
 get_services() {
   dbus / "${IMANAGER}.GetProperties" 2>/dev/null \
     | sed -n "/\/Services\//{s/.* //p}"
+}
+
+get_default_profile() {
+  local profile
+  local profile_name
+
+  for profile in $(get_profiles); do
+    profile_name="$(get_profile_property ${profile} Name)"
+    if [ ${profile_name} = ${DEFAULT_PROFILE_NAME} ]; then
+      echo "${profile}"
+      break
+    fi
+  done
 }
 
 get_first_cellular_service() {
@@ -107,6 +136,25 @@ get_first_cellular_service() {
       break
     fi
   done
+}
+
+move_service_to_profile() {
+  local service="$1"
+  local profile="$2"
+
+  if [ -z "${service}" ]; then
+    return 1
+  fi
+
+  if [ -z "${profile}" ]; then
+    return 1
+  fi
+
+  dbus "${service}" "${ISERVICE}.SetProperty" \
+    "string:${PROFILE_PROPERTY}" "variant:string:${profile}"
+
+  local new_profile=$(get_service_property "${service}" "${PROFILE_PROPERTY}")
+  return $([ "${new_profile}" = "${profile}" ])
 }
 
 service="$(get_first_cellular_service)"
@@ -135,6 +183,27 @@ if [ "${FLAGS_clear}" -ne 0 ]; then
   fi
   if [ -n "${FLAGS_password}" ]; then
     set_password "${service}" "${FLAGS_password}"
+  fi
+  echo  #  newline to separate from set_username/set_password output
+  if move_service_to_profile "${service}" "$(get_default_profile)"; then
+    cat <<-END
+	When your cellular dongle is connected to the system, its connection
+	will be available to any user of this Chromebook, including guest users.
+
+	If you want to leave the dongle connected, without sharing its
+	connection with other users, you will need to clear the PPP username
+	and password by running the following command:
+	        ${PROGRAM} -c
+
+	If you clear the PPP username and password, you will need to re-run
+	${PROGRAM} the next time you need to connect.
+END
+  else
+    cat <<-END
+	Your cellular connection could not be configured for sharing with
+	other users of this Chromebook. If you would like to share this
+	connection with them, please try running this command again.
+END
   fi
 else
   if [ $# -ne 0 ]; then
