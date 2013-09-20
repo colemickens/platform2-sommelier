@@ -34,7 +34,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   Error error;
 
   EXPECT_EQ(Service::kStateIdle, service->state());
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kStateProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
   service->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(adaptor);
 
@@ -42,35 +42,35 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   // that service->SetConnection emits kIPConfigProperty changed.
 
   bool connectable = service->connectable();
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, _));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, _));
   service->SetConnectable(!connectable);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_EQ(string(), service->guid());
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kGuidProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kGuidProperty, _));
   service->SetGuid("some garbage", &error);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_FALSE(service->favorite());
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kAutoConnectProperty, _))
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kAutoConnectProperty, _))
       .Times(AnyNumber());
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kFavoriteProperty, _));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kFavoriteProperty, _));
   service->MakeFavorite();
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_EQ(0, service->priority());
-  EXPECT_CALL(*adaptor, EmitIntChanged(flimflam::kPriorityProperty, _));
+  EXPECT_CALL(*adaptor, EmitIntChanged(kPriorityProperty, _));
   service->SetPriority(1, &error);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_EQ(string(), service->GetProxyConfig(&error));
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kProxyConfigProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kProxyConfigProperty, _));
   service->SetProxyConfig("some garbage", &error);
   Mock::VerifyAndClearExpectations(adaptor);
 
   uint8 strength = service->strength();
   EXPECT_CALL(*adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+              EmitUint8Changed(kSignalStrengthProperty, _));
   service->SetStrength(strength+1);
   Mock::VerifyAndClearExpectations(adaptor);
 
@@ -82,23 +82,23 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   EXPECT_EQ(Service::kFailureUnknown, service->failure());
   EXPECT_EQ(Service::ConnectFailureToString(Service::kFailureUnknown),
             service->error());
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kStateProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kErrorProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kErrorProperty, _));
   service->SetFailure(Service::kFailureAAA);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_NE(Service::ConnectFailureToString(Service::kFailureUnknown),
             service->error());
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kStateProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
   EXPECT_CALL(*adaptor, EmitStringChanged(kErrorDetailsProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kErrorProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kErrorProperty, _));
   service->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_EQ(Service::ConnectFailureToString(Service::kFailureUnknown),
             service->error());
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kStateProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kErrorProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kErrorProperty, _));
   service->SetFailureSilent(Service::kFailureAAA);
   Mock::VerifyAndClearExpectations(adaptor);
 }
@@ -106,7 +106,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
 void TestAutoConnectPropertyChange(ServiceRefPtr service,
                                    ServiceMockAdaptor *adaptor) {
   bool auto_connect = service->auto_connect();
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kAutoConnectProperty, _));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kAutoConnectProperty, _));
   service->SetAutoConnect(!auto_connect);
   Mock::VerifyAndClearExpectations(adaptor);
 }
@@ -115,7 +115,7 @@ void TestNamePropertyChange(ServiceRefPtr service,
                             ServiceMockAdaptor *adaptor) {
   Error error;
   string name = service->GetNameProperty(&error);
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kNameProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty, _));
   service->SetNameProperty(name + " and some new stuff", &error);
   Mock::VerifyAndClearExpectations(adaptor);
 }

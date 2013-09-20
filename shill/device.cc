@@ -111,50 +111,50 @@ Device::Device(ControlInterface *control_interface,
       transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
-  store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
+  store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
-  // flimflam::kBgscanMethodProperty: Registered in WiFi
-  // flimflam::kBgscanShortIntervalProperty: Registered in WiFi
-  // flimflam::kBgscanSignalThresholdProperty: Registered in WiFi
+  // kBgscanMethodProperty: Registered in WiFi
+  // kBgscanShortIntervalProperty: Registered in WiFi
+  // kBgscanSignalThresholdProperty: Registered in WiFi
 
-  // flimflam::kCellularAllowRoamingProperty: Registered in Cellular
-  // flimflam::kCarrierProperty: Registered in Cellular
-  // flimflam::kEsnProperty: Registered in Cellular
-  // flimflam::kHomeProviderProperty: Registered in Cellular
-  // flimflam::kImeiProperty: Registered in Cellular
-  // flimflam::kIccidProperty: Registered in Cellular
-  // flimflam::kImsiProperty: Registered in Cellular
-  // flimflam::kManufacturerProperty: Registered in Cellular
-  // flimflam::kMdnProperty: Registered in Cellular
-  // flimflam::kMeidProperty: Registered in Cellular
-  // flimflam::kMinProperty: Registered in Cellular
-  // flimflam::kModelIDProperty: Registered in Cellular
-  // flimflam::kFirmwareRevisionProperty: Registered in Cellular
-  // flimflam::kHardwareRevisionProperty: Registered in Cellular
-  // flimflam::kPRLVersionProperty: Registered in Cellular
-  // flimflam::kSIMLockStatusProperty: Registered in Cellular
-  // flimflam::kFoundNetworksProperty: Registered in Cellular
-  // flimflam::kDBusConnectionProperty: Registered in Cellular
-  // flimflam::kDBusObjectProperty: Register in Cellular
+  // kCellularAllowRoamingProperty: Registered in Cellular
+  // kCarrierProperty: Registered in Cellular
+  // kEsnProperty: Registered in Cellular
+  // kHomeProviderProperty: Registered in Cellular
+  // kImeiProperty: Registered in Cellular
+  // kIccidProperty: Registered in Cellular
+  // kImsiProperty: Registered in Cellular
+  // kManufacturerProperty: Registered in Cellular
+  // kMdnProperty: Registered in Cellular
+  // kMeidProperty: Registered in Cellular
+  // kMinProperty: Registered in Cellular
+  // kModelIDProperty: Registered in Cellular
+  // kFirmwareRevisionProperty: Registered in Cellular
+  // kHardwareRevisionProperty: Registered in Cellular
+  // kPRLVersionProperty: Registered in Cellular
+  // kSIMLockStatusProperty: Registered in Cellular
+  // kFoundNetworksProperty: Registered in Cellular
+  // kDBusConnectionProperty: Registered in Cellular
+  // kDBusObjectProperty: Register in Cellular
 
-  store_.RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
-  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kIPConfigsProperty,
+  store_.RegisterConstString(kInterfaceProperty, &link_name_);
+  HelpRegisterConstDerivedRpcIdentifiers(kIPConfigsProperty,
                                          &Device::AvailableIPConfigs);
-  store_.RegisterConstString(flimflam::kNameProperty, &link_name_);
-  store_.RegisterConstBool(flimflam::kPoweredProperty, &enabled_);
-  HelpRegisterConstDerivedString(flimflam::kTypeProperty,
+  store_.RegisterConstString(kNameProperty, &link_name_);
+  store_.RegisterConstBool(kPoweredProperty, &enabled_);
+  HelpRegisterConstDerivedString(kTypeProperty,
                                  &Device::GetTechnologyString);
   HelpRegisterConstDerivedUint64(shill::kLinkMonitorResponseTimeProperty,
                                  &Device::GetLinkMonitorResponseTime);
 
   // TODO(cmasone): Chrome doesn't use this...does anyone?
-  // store_.RegisterConstBool(flimflam::kReconnectProperty, &reconnect_);
+  // store_.RegisterConstBool(kReconnectProperty, &reconnect_);
 
   // TODO(cmasone): Figure out what shill concept maps to flimflam's "Network".
-  // known_properties_.push_back(flimflam::kNetworksProperty);
+  // known_properties_.push_back(kNetworksProperty);
 
-  // flimflam::kScanningProperty: Registered in WiFi, Cellular
-  // flimflam::kScanIntervalProperty: Registered in WiFi, Cellular
+  // kScanningProperty: Registered in WiFi, Cellular
+  // kScanIntervalProperty: Registered in WiFi, Cellular
 
   if (manager_ && manager_->device_info()) {  // Unit tests may not have these.
     manager_->device_info()->GetByteCounts(
@@ -982,7 +982,7 @@ void Device::OnEnabledStateChanged(const ResultCallback &callback,
   if (error.IsSuccess()) {
     enabled_ = enabled_pending_;
     manager_->UpdateEnabledTechnologies();
-    adaptor_->EmitBoolChanged(flimflam::kPoweredProperty, enabled_);
+    adaptor_->EmitBoolChanged(kPoweredProperty, enabled_);
   }
   enabled_pending_ = enabled_;
   if (!callback.is_null())

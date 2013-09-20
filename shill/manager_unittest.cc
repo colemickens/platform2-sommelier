@@ -452,7 +452,7 @@ void SetErrorSuccess(Error *error) {
 }
 
 TEST_F(ManagerTest, Contains) {
-  EXPECT_TRUE(manager()->store().Contains(flimflam::kStateProperty));
+  EXPECT_TRUE(manager()->store().Contains(kStateProperty));
   EXPECT_FALSE(manager()->store().Contains(""));
 }
 
@@ -556,7 +556,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
       .WillRepeatedly(Return(service2_name));
   // TODO(quiche): make this EXPECT_CALL work (crbug.com/203247)
   // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor *>(manager.adaptor_.get()),
-  //             EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty, _));
+  //             EmitRpcIdentifierArrayChanged(kServicesProperty, _));
 
   manager.RegisterService(mock_service);
   manager.RegisterService(mock_service2);
@@ -659,23 +659,23 @@ TEST_F(ManagerTest, GetProperties) {
     ::DBus::Error dbus_error;
     string expected("portal_list");
     manager()->mutable_store()->SetStringProperty(
-        flimflam::kCheckPortalListProperty,
+        kCheckPortalListProperty,
         expected,
         &error);
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kCheckPortalListProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kCheckPortalListProperty].reader().get_string(),
+    ASSERT_FALSE(props.find(kCheckPortalListProperty) == props.end());
+    EXPECT_EQ(props[kCheckPortalListProperty].reader().get_string(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    manager()->mutable_store()->SetBoolProperty(flimflam::kOfflineModeProperty,
+    manager()->mutable_store()->SetBoolProperty(kOfflineModeProperty,
                                                 expected,
                                                 &error);
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kOfflineModeProperty].reader().get_bool(),
+    ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
+    EXPECT_EQ(props[kOfflineModeProperty].reader().get_bool(),
               expected);
   }
 }
@@ -688,9 +688,9 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kDevicesProperty) == props.end());
+    ASSERT_FALSE(props.find(kDevicesProperty) == props.end());
     vector < ::DBus::Path> devices =
-        props[flimflam::kDevicesProperty].operator vector< ::DBus::Path>();
+        props[kDevicesProperty].operator vector< ::DBus::Path>();
     EXPECT_EQ(2, devices.size());
   }
 }
@@ -701,7 +701,7 @@ TEST_F(ManagerTest, GetServicesProperty) {
   ::DBus::Error dbus_error;
   DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
   map<string, ::DBus::Variant>::const_iterator prop =
-      props.find(flimflam::kServicesProperty);
+      props.find(kServicesProperty);
   ASSERT_FALSE(prop == props.end());
   const ::DBus::Variant &variant = prop->second;
   ASSERT_TRUE(DBusAdaptor::IsPaths(variant.signature()));
@@ -1501,7 +1501,7 @@ TEST_F(ManagerTest, SetProperty) {
     ::DBus::Variant offline_mode;
     offline_mode.writer().append_bool(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                         flimflam::kOfflineModeProperty,
+                                         kOfflineModeProperty,
                                          offline_mode,
                                          &error));
   }
@@ -1510,7 +1510,7 @@ TEST_F(ManagerTest, SetProperty) {
     ::DBus::Variant country;
     country.writer().append_string("a_country");
     EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                         flimflam::kCountryProperty,
+                                         kCountryProperty,
                                          country,
                                          &error));
   }
@@ -1518,7 +1518,7 @@ TEST_F(ManagerTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                          flimflam::kCountryProperty,
+                                          kCountryProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
     EXPECT_EQ(invalid_args(), error.name());
@@ -1526,7 +1526,7 @@ TEST_F(ManagerTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                          flimflam::kOfflineModeProperty,
+                                          kOfflineModeProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
     EXPECT_EQ(invalid_args(), error.name());
@@ -1536,7 +1536,7 @@ TEST_F(ManagerTest, SetProperty) {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(
         manager()->mutable_store(),
-        flimflam::kEnabledTechnologiesProperty,
+        kEnabledTechnologiesProperty,
         PropertyStoreTest::kStringsV,
         &error));
     EXPECT_EQ(invalid_args(), error.name());
@@ -1554,7 +1554,7 @@ TEST_F(ManagerTest, RequestScan) {
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
     EXPECT_CALL(*mock_devices_[1], Scan(_, _, _)).Times(0);
-    manager()->RequestScan(Device::kFullScan, flimflam::kTypeWifi, &error);
+    manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
   }
 
   {
@@ -1575,7 +1575,7 @@ TEST_F(ManagerTest, GetServiceNoType) {
 TEST_F(ManagerTest, GetServiceUnknownType) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeEthernet);
+  args.SetString(kTypeProperty, kTypeEthernet);
   manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("service type is unsupported", e.message());
@@ -1588,7 +1588,7 @@ TEST_F(ManagerTest, GetServiceEthernetEap) {
                                                     dispatcher(),
                                                     metrics(),
                                                     manager());
-  args.SetString(flimflam::kTypeProperty, kTypeEthernetEap);
+  args.SetString(kTypeProperty, kTypeEthernetEap);
   SetEapProviderService(service);
   EXPECT_EQ(service, manager()->GetService(args, &e));
   EXPECT_TRUE(e.IsSuccess());
@@ -1598,7 +1598,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
   WiFiServiceRefPtr wifi_service;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillRepeatedly(Return(wifi_service));
   manager()->GetService(args, &e);
@@ -1608,7 +1608,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
 TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
+  args.SetString(kTypeProperty, kTypeVPN);
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));
@@ -1621,10 +1621,10 @@ TEST_F(ManagerTest, GetServiceVPNUnknownType) {
 TEST_F(ManagerTest, GetServiceVPN) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
-  args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
-  args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
-  args.SetString(flimflam::kNameProperty, "vpn-name");
+  args.SetString(kTypeProperty, kTypeVPN);
+  args.SetString(kProviderTypeProperty, kProviderOpenVpn);
+  args.SetString(kProviderHostProperty, "10.8.0.1");
+  args.SetString(kNameProperty, "vpn-name");
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));
@@ -1658,7 +1658,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
 TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
+  args.SetString(kTypeProperty, kTypeWimax);
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_EQ("Missing WiMAX network id.", e.message());
@@ -1668,9 +1668,9 @@ TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {
 TEST_F(ManagerTest, GetServiceWiMax) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
+  args.SetString(kTypeProperty, kTypeWimax);
   args.SetString(WiMaxService::kNetworkIdProperty, "01234567");
-  args.SetString(flimflam::kNameProperty, "WiMAX Network");
+  args.SetString(kNameProperty, "WiMAX Network");
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_TRUE(service);
@@ -1684,7 +1684,7 @@ TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   AdoptProfile(manager(), profile);
 
   KeyValueStore args;
-  args.SetString(flimflam::kProfileProperty, "xxx");
+  args.SetString(kProfileProperty, "xxx");
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -1738,7 +1738,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
       .WillOnce(Return(true));
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1793,8 +1793,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
       .WillOnce(Return(true));
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0);
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1841,8 +1841,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
       .Times(0);
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0);
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1894,8 +1894,8 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
       .Times(0);
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0);
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1913,7 +1913,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeCellular);
+  args.SetString(kTypeProperty, kTypeCellular);
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("", args, &error);
@@ -1924,7 +1924,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("/profile/foo", args, &error);
@@ -1940,8 +1940,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kProfileProperty, kProfileName1);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName1);
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
@@ -1957,8 +1957,8 @@ TEST_F(ManagerTest,
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0);
 
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(WiFiServiceRefPtr()));
@@ -1978,7 +1978,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
 
   scoped_refptr<MockWiFiService> mock_service(
       new NiceMock<MockWiFiService>(control_interface(),
@@ -1987,8 +1987,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
                                     manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
-                                    flimflam::kModeManaged,
-                                    flimflam::kSecurityNone,
+                                    kModeManaged,
+                                    kSecurityNone,
                                     false));
   ServiceRefPtr mock_service_generic(mock_service.get());
   mock_service->set_profile(profile0);
@@ -2030,8 +2030,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
   EXPECT_CALL(*profile, AdoptService(mock_service_generic)).Times(0);
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kGuidProperty, kGUID);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kGuidProperty, kGUID);
 
   // The first attempt should fail because the service reports a technology
   // other than "WiFi".
@@ -2070,14 +2070,14 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
                                     manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
-                                    flimflam::kModeManaged,
-                                    flimflam::kSecurityNone,
+                                    kModeManaged,
+                                    kSecurityNone,
                                     false));
   mock_service->set_profile(profile);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2106,14 +2106,14 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
                                     manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
-                                    flimflam::kModeManaged,
-                                    flimflam::kSecurityNone,
+                                    kModeManaged,
+                                    kSecurityNone,
                                     false));
   mock_service->set_profile(GetEphemeralProfile(manager()));
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2144,15 +2144,15 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
                                     manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
-                                    flimflam::kModeManaged,
-                                    flimflam::kSecurityNone,
+                                    kModeManaged,
+                                    kSecurityNone,
                                     false));
   manager()->RegisterService(mock_service);
   mock_service->set_profile(profile0);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2189,8 +2189,8 @@ TEST_F(ManagerTest,
                                       manager(),
                                       wifi_provider_,
                                       vector<uint8_t>(),
-                                      flimflam::kModeManaged,
-                                      flimflam::kSecurityNone,
+                                      kModeManaged,
+                                      kSecurityNone,
                                       false));
   matching_service->set_profile(profile1);
 
@@ -2206,15 +2206,15 @@ TEST_F(ManagerTest,
                                     manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
-                                    flimflam::kModeManaged,
-                                    flimflam::kSecurityNone,
+                                    kModeManaged,
+                                    kSecurityNone,
                                     false);
 
   // Only hold a pointer here so we don't affect the refcount.
   MockWiFiService *mock_service_ptr = temp_mock_service_.get();
 
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(matching_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2280,19 +2280,17 @@ TEST_F(ManagerTest, FindMatchingService) {
 
 TEST_F(ManagerTest, TechnologyOrder) {
   Error error;
-  manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "," +
-                                string(flimflam::kTypeWifi), &error);
+  manager()->SetTechnologyOrder(string(kTypeEthernet) + "," + string(kTypeWifi),
+                                &error);
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_EQ(manager()->GetTechnologyOrder(),
-            string(flimflam::kTypeEthernet) + "," +
-            string(flimflam::kTypeWifi));
+            string(kTypeEthernet) + "," + string(kTypeWifi));
 
-  manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "x," +
-                                string(flimflam::kTypeWifi), &error);
+  manager()->SetTechnologyOrder(string(kTypeEthernet) + "x," +
+                                string(kTypeWifi), &error);
   ASSERT_FALSE(error.IsSuccess());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ(string(flimflam::kTypeEthernet) + "," +
-            string(flimflam::kTypeWifi),
+  EXPECT_EQ(string(kTypeEthernet) + "," + string(kTypeWifi),
             manager()->GetTechnologyOrder());
 }
 
@@ -2343,8 +2341,8 @@ TEST_F(ManagerTest, SortServices) {
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
-  manager()->SetTechnologyOrder(string(flimflam::kTypeWifi) + "," +
-                                string(flimflam::kTypeEthernet), &error);
+  manager()->SetTechnologyOrder(string(kTypeWifi) + "," + string(kTypeEthernet),
+                                &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
@@ -3120,7 +3118,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
   }
 
   KeyValueStore args;
-  args.SetString(flimflam::kGuidProperty, kGUID1);
+  args.SetString(kGuidProperty, kGUID1);
 
   {
     Error error;
@@ -3250,7 +3248,7 @@ TEST_F(ManagerTest, StartupPortalList) {
   // the profile value and what we read back.
   Error error;
   manager()->mutable_store()->SetStringProperty(
-      flimflam::kCheckPortalListProperty,
+      kCheckPortalListProperty,
       kRuntimeValue,
       &error);
   ASSERT_TRUE(error.IsSuccess());
@@ -3290,7 +3288,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
            disable_technology_reply_handler.AsWeakPtr()));
   EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(0);
 
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsSuccess());
 
@@ -3308,7 +3306,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _))
       .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsSuccess());
 
@@ -3317,7 +3315,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
   mock_devices_[0]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
 
@@ -3326,7 +3324,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _));
   mock_devices_[0]->enabled_ = false;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, true,
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, true,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
 
@@ -3335,7 +3333,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
       .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
   mock_devices_[1]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false,
                                           &error, disable_technology_callback);
   EXPECT_EQ(Error::kPermissionDenied, error.type());
 
@@ -3348,7 +3346,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   mock_devices_[1]->enabled_ = true;
   mock_devices_[2]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
 
@@ -3359,7 +3357,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   mock_devices_[1]->enabled_ = true;
   mock_devices_[2]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
   Mock::VerifyAndClearExpectations(&disable_technology_reply_handler);
@@ -3378,7 +3376,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   mock_devices_[1]->enabled_ = true;
   mock_devices_[2]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false,
                                           &error, disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
   device1_result_callback.Run(Error(Error::kSuccess));
@@ -3425,19 +3423,19 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   manager()->RegisterService(mock_service);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          flimflam::kServicesProperty, _)).Times(1);
+          kServicesProperty, _)).Times(1);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          flimflam::kServiceWatchListProperty, _)).Times(1);
+          kServiceWatchListProperty, _)).Times(1);
   CompleteServiceSort();
 
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          flimflam::kServicesProperty, _)).Times(1);
+          kServicesProperty, _)).Times(1);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          flimflam::kServiceWatchListProperty, _)).Times(1);
+          kServiceWatchListProperty, _)).Times(1);
   manager()->UpdateService(mock_service.get());
   CompleteServiceSort();
 

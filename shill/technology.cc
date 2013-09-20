@@ -28,17 +28,17 @@ const char Technology::kUnknownName[] = "unknown";
 
 // static
 Technology::Identifier Technology::IdentifierFromName(const string &name) {
-  if (name == flimflam::kTypeEthernet) {
+  if (name == kTypeEthernet) {
     return kEthernet;
   } else if (name == kTypeEthernetEap) {
     return kEthernetEap;
-  } else if (name == flimflam::kTypeWifi) {
+  } else if (name == kTypeWifi) {
     return kWifi;
-  } else if (name == flimflam::kTypeWimax) {
+  } else if (name == kTypeWimax) {
     return kWiMax;
-  } else if (name == flimflam::kTypeCellular) {
+  } else if (name == kTypeCellular) {
     return kCellular;
-  } else if (name == flimflam::kTypeVPN) {
+  } else if (name == kTypeVPN) {
     return kVPN;
   } else if (name == kLoopbackName) {
     return kLoopback;
@@ -54,17 +54,17 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
 // static
 string Technology::NameFromIdentifier(Technology::Identifier id) {
   if (id == kEthernet) {
-    return flimflam::kTypeEthernet;
+    return kTypeEthernet;
   } else if (id == kEthernetEap) {
     return kTypeEthernetEap;
   } else if (id == kWifi) {
-    return flimflam::kTypeWifi;
+    return kTypeWifi;
   } else if (id == kWiMax) {
-    return flimflam::kTypeWimax;
+    return kTypeWimax;
   } else if (id == kCellular) {
-    return flimflam::kTypeCellular;
+    return kTypeCellular;
   } else if (id == kVPN) {
-    return flimflam::kTypeVPN;
+    return kTypeVPN;
   } else if (id == kLoopback) {
     return kLoopbackName;
   } else if (id == kTunnel) {

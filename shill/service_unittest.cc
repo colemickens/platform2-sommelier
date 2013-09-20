@@ -219,14 +219,14 @@ TEST_F(ServiceTest, Constructor) {
 TEST_F(ServiceTest, CalculateState) {
   service_->state_ = Service::kStateConnected;
   Error error;
-  EXPECT_EQ(flimflam::kStateReady, service_->CalculateState(&error));
+  EXPECT_EQ(kStateReady, service_->CalculateState(&error));
   EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ServiceTest, CalculateTechnology) {
   service_->technology_ = Technology::kWifi;
   Error error;
-  EXPECT_EQ(flimflam::kTypeWifi, service_->CalculateTechnology(&error));
+  EXPECT_EQ(kTypeWifi, service_->CalculateTechnology(&error));
   EXPECT_TRUE(error.IsSuccess());
 }
 
@@ -236,47 +236,47 @@ TEST_F(ServiceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     string expected("true");
-    service_->mutable_store()->SetStringProperty(flimflam::kCheckPortalProperty,
+    service_->mutable_store()->SetStringProperty(kCheckPortalProperty,
                                                  expected,
                                                  &error);
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kCheckPortalProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kCheckPortalProperty].reader().get_string(),
+    ASSERT_FALSE(props.find(kCheckPortalProperty) == props.end());
+    EXPECT_EQ(props[kCheckPortalProperty].reader().get_string(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    service_->mutable_store()->SetBoolProperty(flimflam::kAutoConnectProperty,
+    service_->mutable_store()->SetBoolProperty(kAutoConnectProperty,
                                                expected,
                                                &error);
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kAutoConnectProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
+    ASSERT_FALSE(props.find(kAutoConnectProperty) == props.end());
+    EXPECT_EQ(props[kAutoConnectProperty].reader().get_bool(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kConnectableProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kConnectableProperty].reader().get_bool(), false);
+    ASSERT_FALSE(props.find(kConnectableProperty) == props.end());
+    EXPECT_EQ(props[kConnectableProperty].reader().get_bool(), false);
   }
   {
     ::DBus::Error dbus_error;
     int32 expected = 127;
-    service_->mutable_store()->SetInt32Property(flimflam::kPriorityProperty,
+    service_->mutable_store()->SetInt32Property(kPriorityProperty,
                                                 expected,
                                                 &error);
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kPriorityProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kPriorityProperty].reader().get_int32(),
+    ASSERT_FALSE(props.find(kPriorityProperty) == props.end());
+    EXPECT_EQ(props[kPriorityProperty].reader().get_int32(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kDeviceProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kDeviceProperty].reader().get_path(),
+    ASSERT_FALSE(props.find(kDeviceProperty) == props.end());
+    EXPECT_EQ(props[kDeviceProperty].reader().get_path(),
               string(ServiceUnderTest::kRpcId));
   }
 }
@@ -285,7 +285,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         flimflam::kSaveCredentialsProperty,
+                                         kSaveCredentialsProperty,
                                          PropertyStoreTest::kBoolV,
                                          &error));
   }
@@ -294,7 +294,7 @@ TEST_F(ServiceTest, SetProperty) {
     ::DBus::Variant priority;
     priority.writer().append_int32(1);
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         flimflam::kPriorityProperty,
+                                         kPriorityProperty,
                                          priority,
                                          &error));
   }
@@ -303,7 +303,7 @@ TEST_F(ServiceTest, SetProperty) {
     ::DBus::Variant guid;
     guid.writer().append_string("not default");
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         flimflam::kGuidProperty,
+                                         kGuidProperty,
                                          guid,
                                          &error));
   }
@@ -315,7 +315,7 @@ TEST_F(ServiceTest, SetProperty) {
     ::DBus::Variant eap;
     eap.writer().append_string("eap eep eip!");
     EXPECT_FALSE(DBusAdaptor::SetProperty(service2_->mutable_store(),
-                                          flimflam::kEAPEAPProperty,
+                                          kEAPEAPProperty,
                                           eap,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -323,7 +323,7 @@ TEST_F(ServiceTest, SetProperty) {
     // Now plumb in eap credentials, and try again.
     service2_->SetEapCredentials(new EapCredentials());
     EXPECT_TRUE(DBusAdaptor::SetProperty(service2_->mutable_store(),
-                                         flimflam::kEAPEAPProperty,
+                                         kEAPEAPProperty,
                                          eap,
                                          &error));
   }
@@ -331,7 +331,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          flimflam::kFavoriteProperty,
+                                          kFavoriteProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -342,7 +342,7 @@ TEST_F(ServiceTest, SetProperty) {
     ::DBus::Variant auto_connect;
     auto_connect.writer().append_bool(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         flimflam::kAutoConnectProperty,
+                                         kAutoConnectProperty,
                                          auto_connect,
                                          &error));
   }
@@ -352,7 +352,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          flimflam::kNameProperty,
+                                          kNameProperty,
                                           DBusAdaptor::StringToVariant(
                                               GetFriendlyName()),
                                           &error));
@@ -361,7 +361,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          flimflam::kNameProperty,
+                                          kNameProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -540,9 +540,9 @@ TEST_F(ServiceTest, State) {
   ServiceRefPtr service_ref(service_);
 
   EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(flimflam::kStateProperty, _)).Times(6);
+              EmitStringChanged(kStateProperty, _)).Times(6);
   EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(flimflam::kErrorProperty, _)).Times(4);
+              EmitStringChanged(kErrorProperty, _)).Times(4);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
@@ -827,7 +827,7 @@ TEST_F(ServiceTest, ConfigureBoolProperty) {
   service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
-  args.SetBool(flimflam::kAutoConnectProperty, true);
+  args.SetBool(kAutoConnectProperty, true);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -840,7 +840,7 @@ TEST_F(ServiceTest, ConfigureStringProperty) {
   service_->SetGuid(kGuid0, NULL);
   ASSERT_EQ(kGuid0, service_->guid());
   KeyValueStore args;
-  args.SetString(flimflam::kGuidProperty, kGuid1);
+  args.SetString(kGuidProperty, kGuid1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -873,7 +873,7 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
   ASSERT_EQ(kEAPManagement0, service2_->GetEAPKeyManagement());
   KeyValueStore args;
   EXPECT_CALL(*eap, SetKeyManagement(kEAPManagement1, _));
-  args.SetString(flimflam::kEapKeyMgmtProperty, kEAPManagement1);
+  args.SetString(kEapKeyMgmtProperty, kEAPManagement1);
   Error error;
   service2_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -885,7 +885,7 @@ TEST_F(ServiceTest, ConfigureIntProperty) {
   service_->SetPriority(kPriority0, NULL);
   ASSERT_EQ(kPriority0, service_->priority());
   KeyValueStore args;
-  args.SetInt(flimflam::kPriorityProperty, kPriority1);
+  args.SetInt(kPriorityProperty, kPriority1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -897,9 +897,9 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
-  args.SetBool(flimflam::kAutoConnectProperty, true);
+  args.SetBool(kAutoConnectProperty, true);
   Error error;
-  service_->IgnoreParameterForConfigure(flimflam::kAutoConnectProperty);
+  service_->IgnoreParameterForConfigure(kAutoConnectProperty);
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
@@ -908,7 +908,7 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
 TEST_F(ServiceTest, ConfigureProfileProperty) {
   // Ensure that the Profile property is always ignored.
   KeyValueStore args;
-  args.SetString(flimflam::kProfileProperty, "profile");
+  args.SetString(kProfileProperty, "profile");
   Error error;
   EXPECT_CALL(mock_manager_, SetProfileForService(_, _, _)).Times(0);
   service_->Configure(args, &error);
@@ -929,41 +929,41 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
 
   {
     KeyValueStore args;
-    args.SetString(flimflam::kGuidProperty, kGUID0);
-    args.SetBool(flimflam::kAutoConnectProperty, false);
-    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_TRUE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.SetString(flimflam::kGuidProperty, kGUID1);
-    args.SetBool(flimflam::kAutoConnectProperty, false);
-    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetString(kGuidProperty, kGUID1);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.SetString(flimflam::kGuidProperty, kGUID0);
-    args.SetBool(flimflam::kAutoConnectProperty, true);
-    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, true);
+    args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.SetString(flimflam::kGuidProperty, kGUID0);
-    args.SetBool(flimflam::kAutoConnectProperty, false);
-    args.SetInt(flimflam::kPriorityProperty, kPriority1);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority1);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.SetString(flimflam::kGuidProperty, kGUID0);
-    args.SetBool(flimflam::kAutoConnectProperty, false);
-    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings1);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
@@ -1049,23 +1049,23 @@ TEST_F(ServiceTest, RecheckPortal) {
   ServiceRefPtr service_ref(service_);
   service_->state_ = Service::kStateIdle;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
-  service_->OnPropertyChanged(flimflam::kCheckPortalProperty);
+  service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStatePortal;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
-  service_->OnPropertyChanged(flimflam::kCheckPortalProperty);
+  service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStateConnected;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
-  service_->OnPropertyChanged(flimflam::kProxyConfigProperty);
+  service_->OnPropertyChanged(kProxyConfigProperty);
 
   service_->state_ = Service::kStateOnline;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
-  service_->OnPropertyChanged(flimflam::kCheckPortalProperty);
+  service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStatePortal;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
-  service_->OnPropertyChanged(flimflam::kEAPKeyIDProperty);
+  service_->OnPropertyChanged(kEAPKeyIDProperty);
 }
 
 TEST_F(ServiceTest, SetCheckPortal) {
@@ -1105,7 +1105,7 @@ TEST_F(ServiceTest, SetFriendlyName) {
   service_->SetFriendlyName(service_->unique_name_);
   EXPECT_EQ(service_->unique_name_, service_->friendly_name_);
 
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kNameProperty,
+  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty,
                                           "Test Name 1"));
   service_->SetFriendlyName("Test Name 1");
   EXPECT_EQ("Test Name 1", service_->friendly_name_);
@@ -1114,7 +1114,7 @@ TEST_F(ServiceTest, SetFriendlyName) {
   service_->SetFriendlyName("Test Name 1");
   EXPECT_EQ("Test Name 1", service_->friendly_name_);
 
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kNameProperty,
+  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty,
                                           "Test Name 2"));
   service_->SetFriendlyName("Test Name 2");
   EXPECT_EQ("Test Name 2", service_->friendly_name_);
@@ -1130,19 +1130,19 @@ TEST_F(ServiceTest, SetConnectableFull) {
   service_->SetConnectableFull(false);
   EXPECT_FALSE(service_->connectable());
 
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, true));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, true));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(false));
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   service_->SetConnectableFull(true);
   EXPECT_TRUE(service_->connectable());
 
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, false));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, false));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
   EXPECT_CALL(mock_manager_, UpdateService(_));
   service_->SetConnectableFull(false);
   EXPECT_FALSE(service_->connectable());
 
-  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, true));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, true));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
               EXPECT_CALL(mock_manager_, UpdateService(_));
   service_->SetConnectableFull(true);
@@ -1166,8 +1166,8 @@ INSTANTIATE_TEST_CASE_P(
     WriteOnlyServicePropertyTestInstance,
     WriteOnlyServicePropertyTest,
     Values(
-        DBusAdaptor::StringToVariant(flimflam::kEapPrivateKeyPasswordProperty),
-        DBusAdaptor::StringToVariant(flimflam::kEapPasswordProperty)));
+        DBusAdaptor::StringToVariant(kEapPrivateKeyPasswordProperty),
+        DBusAdaptor::StringToVariant(kEapPasswordProperty)));
 
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
@@ -1232,22 +1232,22 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
                                                  metrics(),
                                                  &mock_manager_));
   string eap_credential_properties[] = {
-      flimflam::kEapAnonymousIdentityProperty,
-      flimflam::kEAPCertIDProperty,
-      flimflam::kEAPClientCertProperty,
-      flimflam::kEapIdentityProperty,
-      flimflam::kEAPKeyIDProperty,
-      flimflam::kEapPasswordProperty,
-      flimflam::kEAPPINProperty,
-      flimflam::kEapPrivateKeyProperty,
-      flimflam::kEapPrivateKeyPasswordProperty
+      kEapAnonymousIdentityProperty,
+      kEAPCertIDProperty,
+      kEAPClientCertProperty,
+      kEapIdentityProperty,
+      kEAPKeyIDProperty,
+      kEapPasswordProperty,
+      kEAPPINProperty,
+      kEapPrivateKeyProperty,
+      kEapPrivateKeyPasswordProperty
   };
   string eap_non_credential_properties[] = {
-      flimflam::kEapCaCertIDProperty,
-      flimflam::kEapCaCertNssProperty,
-      flimflam::kEAPEAPProperty,
-      flimflam::kEapPhase2AuthProperty,
-      flimflam::kEapUseSystemCAsProperty
+      kEapCaCertIDProperty,
+      kEapCaCertNssProperty,
+      kEAPEAPProperty,
+      kEapPhase2AuthProperty,
+      kEapUseSystemCAsProperty
   };
   // While this is not an 802.1x-based service, none of these property
   // changes should cause a call to set_eap().
@@ -1256,7 +1256,7 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
     service->OnPropertyChanged(eap_credential_properties[i]);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
     service->OnPropertyChanged(eap_non_credential_properties[i]);
-  service->OnPropertyChanged(flimflam::kEapKeyMgmtProperty);
+  service->OnPropertyChanged(kEapKeyMgmtProperty);
 
   service->set_is_8021x(true);
 
@@ -1272,7 +1272,7 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   // a credential, it can change which credentials are used.  Therefore it
   // should also trigger a call to set_eap();
   EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(1);
-  service->OnPropertyChanged(flimflam::kEapKeyMgmtProperty);
+  service->OnPropertyChanged(kEapKeyMgmtProperty);
   Mock::VerifyAndClearExpectations(service.get());
 
   EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(0);

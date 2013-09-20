@@ -319,7 +319,7 @@ class Service : public base::RefCounted<Service> {
 
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
   const std::string &friendly_name() const { return friendly_name_; }
-  // Sets the flimflam::kNameProperty and broadcasts the change.
+  // Sets the kNameProperty and broadcasts the change.
   void SetFriendlyName(const std::string &friendly_name);
 
   const std::string &guid() const { return guid_; }

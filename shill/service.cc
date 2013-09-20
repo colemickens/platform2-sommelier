@@ -138,71 +138,71 @@ Service::Service(ControlInterface *control_interface,
       sockets_(new Sockets()),
       time_(Time::GetInstance()),
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()) {
-  HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
+  HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull);
 
-  // flimflam::kActivationStateProperty: Registered in CellularService
-  // flimflam::kCellularApnProperty: Registered in CellularService
-  // flimflam::kCellularLastGoodApnProperty: Registered in CellularService
-  // flimflam::kNetworkTechnologyProperty: Registered in CellularService
-  // flimflam::kOperatorNameProperty: DEPRECATED
-  // flimflam::kOperatorCodeProperty: DEPRECATED
-  // flimflam::kRoamingStateProperty: Registered in CellularService
-  // flimflam::kServingOperatorProperty: Registered in CellularService
-  // flimflam::kPaymentURLProperty: Registered in CellularService
+  // kActivationStateProperty: Registered in CellularService
+  // kCellularApnProperty: Registered in CellularService
+  // kCellularLastGoodApnProperty: Registered in CellularService
+  // kNetworkTechnologyProperty: Registered in CellularService
+  // kOperatorNameProperty: DEPRECATED
+  // kOperatorCodeProperty: DEPRECATED
+  // kRoamingStateProperty: Registered in CellularService
+  // kServingOperatorProperty: Registered in CellularService
+  // kPaymentURLProperty: Registered in CellularService
 
-  HelpRegisterDerivedString(flimflam::kCheckPortalProperty,
+  HelpRegisterDerivedString(kCheckPortalProperty,
                             &Service::GetCheckPortal,
                             &Service::SetCheckPortal);
-  store_.RegisterConstBool(flimflam::kConnectableProperty, &connectable_);
-  HelpRegisterConstDerivedRpcIdentifier(flimflam::kDeviceProperty,
+  store_.RegisterConstBool(kConnectableProperty, &connectable_);
+  HelpRegisterConstDerivedRpcIdentifier(kDeviceProperty,
                                         &Service::GetDeviceRpcId);
   store_.RegisterConstStrings(kEapRemoteCertificationProperty,
                               &remote_certification_);
-  HelpRegisterDerivedString(flimflam::kGuidProperty,
+  HelpRegisterDerivedString(kGuidProperty,
                             &Service::GetGuid,
                             &Service::SetGuid);
 
   // TODO(ers): in flimflam clearing Error has the side-effect of
   // setting the service state to IDLE. Is this important? I could
   // see an autotest depending on it.
-  store_.RegisterConstString(flimflam::kErrorProperty, &error_);
+  store_.RegisterConstString(kErrorProperty, &error_);
   store_.RegisterConstString(shill::kErrorDetailsProperty, &error_details_);
-  store_.RegisterConstBool(flimflam::kFavoriteProperty, &favorite_);
+  store_.RegisterConstBool(kFavoriteProperty, &favorite_);
   HelpRegisterConstDerivedUint16(shill::kHTTPProxyPortProperty,
                                  &Service::GetHTTPProxyPort);
   HelpRegisterConstDerivedRpcIdentifier(shill::kIPConfigProperty,
                                         &Service::GetIPConfigRpcIdentifier);
-  HelpRegisterDerivedBool(flimflam::kIsActiveProperty,
+  HelpRegisterDerivedBool(kIsActiveProperty,
                           &Service::IsActive,
                           NULL);
-  // flimflam::kModeProperty: Registered in WiFiService
+  // kModeProperty: Registered in WiFiService
 
-  HelpRegisterDerivedString(flimflam::kNameProperty,
+  HelpRegisterDerivedString(kNameProperty,
                             &Service::GetNameProperty,
                             &Service::SetNameProperty);
-  // flimflam::kPassphraseProperty: Registered in WiFiService
-  // flimflam::kPassphraseRequiredProperty: Registered in WiFiService
-  HelpRegisterDerivedInt32(flimflam::kPriorityProperty,
+  // kPassphraseProperty: Registered in WiFiService
+  // kPassphraseRequiredProperty: Registered in WiFiService
+  HelpRegisterDerivedInt32(kPriorityProperty,
                            &Service::GetPriority,
                            &Service::SetPriority);
-  HelpRegisterDerivedString(flimflam::kProfileProperty,
+  HelpRegisterDerivedString(kProfileProperty,
                             &Service::GetProfileRpcId,
                             &Service::SetProfileRpcId);
-  HelpRegisterDerivedString(flimflam::kProxyConfigProperty,
+  HelpRegisterDerivedString(kProxyConfigProperty,
                             &Service::GetProxyConfig,
                             &Service::SetProxyConfig);
-  store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
-  HelpRegisterDerivedString(flimflam::kTypeProperty,
+  store_.RegisterBool(kSaveCredentialsProperty, &save_credentials_);
+  HelpRegisterDerivedString(kTypeProperty,
                             &Service::CalculateTechnology,
                             NULL);
-  // flimflam::kSecurityProperty: Registered in WiFiService
-  HelpRegisterDerivedString(flimflam::kStateProperty,
+  // kSecurityProperty: Registered in WiFiService
+  HelpRegisterDerivedString(kStateProperty,
                             &Service::CalculateState,
                             NULL);
-  store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  store_.RegisterString(flimflam::kUIDataProperty, &ui_data_);
+  store_.RegisterConstUint8(kSignalStrengthProperty, &strength_);
+  store_.RegisterString(kUIDataProperty, &ui_data_);
   HelpRegisterConstDerivedStrings(shill::kDiagnosticsDisconnectsProperty,
                                   &Service::GetDisconnectsProperty);
   HelpRegisterConstDerivedStrings(shill::kDiagnosticsMisconnectsProperty,
@@ -211,8 +211,8 @@ Service::Service(ControlInterface *control_interface,
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
 
-  IgnoreParameterForConfigure(flimflam::kTypeProperty);
-  IgnoreParameterForConfigure(flimflam::kProfileProperty);
+  IgnoreParameterForConfigure(kTypeProperty);
+  IgnoreParameterForConfigure(kProfileProperty);
 
   LOG(INFO) << Technology::NameFromIdentifier(technology) << " service "
             << unique_name_ << " constructed.";
@@ -337,7 +337,7 @@ void Service::SetState(ConnectState state) {
   UpdateErrorProperty();
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
-  adaptor_->EmitStringChanged(flimflam::kStateProperty, GetStateString());
+  adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
 void Service::ReEnableAutoConnectTask() {
@@ -678,7 +678,7 @@ void Service::SetAutoConnect(bool connect) {
     return;
   }
   auto_connect_ = connect;
-  adaptor_->EmitBoolChanged(flimflam::kAutoConnectProperty, auto_connect());
+  adaptor_->EmitBoolChanged(kAutoConnectProperty, auto_connect());
 }
 
 void Service::SetEapCredentials(EapCredentials *eap) {
@@ -695,19 +695,19 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
     case kFailureUnknown:
       return "Unknown";
     case kFailureAAA:
-      return flimflam::kErrorAaaFailed;
+      return kErrorAaaFailed;
     case kFailureActivation:
-      return flimflam::kErrorActivationFailed;
+      return kErrorActivationFailed;
     case kFailureBadPassphrase:
-      return flimflam::kErrorBadPassphrase;
+      return kErrorBadPassphrase;
     case kFailureBadWEPKey:
-      return flimflam::kErrorBadWEPKey;
+      return kErrorBadWEPKey;
     case kFailureConnect:
-      return flimflam::kErrorConnectFailed;
+      return kErrorConnectFailed;
     case kFailureDNSLookup:
-      return flimflam::kErrorDNSLookupFailed;
+      return kErrorDNSLookupFailed;
     case kFailureDHCP:
-      return flimflam::kErrorDhcpFailed;
+      return kErrorDhcpFailed;
     case kFailureEAPAuthentication:
       return shill::kErrorEapAuthenticationFailed;
     case kFailureEAPLocalTLS:
@@ -715,25 +715,25 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
     case kFailureEAPRemoteTLS:
       return shill::kErrorEapRemoteTlsFailed;
     case kFailureHTTPGet:
-      return flimflam::kErrorHTTPGetFailed;
+      return kErrorHTTPGetFailed;
     case kFailureInternal:
-      return flimflam::kErrorInternal;
+      return kErrorInternal;
     case kFailureIPSecCertAuth:
-      return flimflam::kErrorIpsecCertAuthFailed;
+      return kErrorIpsecCertAuthFailed;
     case kFailureIPSecPSKAuth:
-      return flimflam::kErrorIpsecPskAuthFailed;
+      return kErrorIpsecPskAuthFailed;
     case kFailureNeedEVDO:
-      return flimflam::kErrorNeedEvdo;
+      return kErrorNeedEvdo;
     case kFailureNeedHomeNetwork:
-      return flimflam::kErrorNeedHomeNetwork;
+      return kErrorNeedHomeNetwork;
     case kFailureOTASP:
-      return flimflam::kErrorOtaspFailed;
+      return kErrorOtaspFailed;
     case kFailureOutOfRange:
-      return flimflam::kErrorOutOfRange;
+      return kErrorOutOfRange;
     case kFailurePinMissing:
-      return flimflam::kErrorPinMissing;
+      return kErrorPinMissing;
     case kFailurePPPAuth:
-      return flimflam::kErrorPppAuthFailed;
+      return kErrorPppAuthFailed;
     case kFailureMax:
       NOTREACHED();
   }
@@ -957,7 +957,7 @@ void Service::SetProfile(const ProfileRefPtr &p) {
   if (!error.IsSuccess()) {
     return;
   }
-  adaptor_->EmitStringChanged(flimflam::kProfileProperty, profile_rpc_id);
+  adaptor_->EmitStringChanged(kProfileProperty, profile_rpc_id);
 }
 
 void Service::OnPropertyChanged(const string &property) {
@@ -965,8 +965,8 @@ void Service::OnPropertyChanged(const string &property) {
     OnEapCredentialsChanged();
   }
   SaveToProfile();
-  if ((property == flimflam::kCheckPortalProperty ||
-       property == flimflam::kProxyConfigProperty) &&
+  if ((property == kCheckPortalProperty ||
+       property == kProxyConfigProperty) &&
       (state_ == kStateConnected ||
        state_ == kStatePortal ||
        state_ == kStateOnline)) {
@@ -1003,7 +1003,7 @@ void Service::SetConnectable(bool connectable) {
   if (connectable_ == connectable)
     return;
   connectable_ = connectable;
-  adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
+  adaptor_->EmitBoolChanged(kConnectableProperty, connectable_);
 }
 
 void Service::SetConnectableFull(bool connectable) {
@@ -1017,21 +1017,23 @@ void Service::SetConnectableFull(bool connectable) {
 }
 
 string Service::GetStateString() const {
+  // TODO(benchan): We may want to rename shill::kState* to avoid name clashing
+  // with Service::kState*.
   switch (state_) {
     case kStateIdle:
-      return flimflam::kStateIdle;
+      return shill::kStateIdle;
     case kStateAssociating:
-      return flimflam::kStateAssociation;
+      return shill::kStateAssociation;
     case kStateConfiguring:
-      return flimflam::kStateConfiguration;
+      return shill::kStateConfiguration;
     case kStateConnected:
-      return flimflam::kStateReady;
+      return shill::kStateReady;
     case kStateFailure:
-      return flimflam::kStateFailure;
+      return shill::kStateFailure;
     case kStatePortal:
-      return flimflam::kStatePortal;
+      return shill::kStatePortal;
     case kStateOnline:
-      return flimflam::kStateOnline;
+      return shill::kStateOnline;
     case kStateUnknown:
     default:
       return "";
@@ -1236,13 +1238,13 @@ bool Service::SetGuid(const string &guid, Error */*error*/) {
     return false;
   }
   guid_ = guid;
-  adaptor_->EmitStringChanged(flimflam::kGuidProperty, guid_);
+  adaptor_->EmitStringChanged(kGuidProperty, guid_);
   return true;
 }
 
 void Service::MarkAsFavorite() {
   favorite_ = true;
-  adaptor_->EmitBoolChanged(flimflam::kFavoriteProperty, favorite_);
+  adaptor_->EmitBoolChanged(kFavoriteProperty, favorite_);
 }
 
 void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,
@@ -1276,7 +1278,7 @@ bool Service::SetPriority(const int32 &priority, Error *error) {
     return false;
   }
   priority_ = priority;
-  adaptor_->EmitIntChanged(flimflam::kPriorityProperty, priority_);
+  adaptor_->EmitIntChanged(kPriorityProperty, priority_);
   return true;
 }
 
@@ -1317,7 +1319,7 @@ bool Service::SetProxyConfig(const string &proxy_config, Error *error) {
   if (proxy_config_ == proxy_config)
     return false;
   proxy_config_ = proxy_config;
-  adaptor_->EmitStringChanged(flimflam::kProxyConfigProperty, proxy_config_);
+  adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }
 
@@ -1350,7 +1352,7 @@ void Service::SetFriendlyName(const string &friendly_name) {
   if (friendly_name == friendly_name_)
     return;
   friendly_name_ = friendly_name;
-  adaptor()->EmitStringChanged(flimflam::kNameProperty, friendly_name_);
+  adaptor()->EmitStringChanged(kNameProperty, friendly_name_);
 }
 
 void Service::SetStrength(uint8 strength) {
@@ -1358,7 +1360,7 @@ void Service::SetStrength(uint8 strength) {
     return;
   }
   strength_ = strength;
-  adaptor_->EmitUint8Changed(flimflam::kSignalStrengthProperty, strength);
+  adaptor_->EmitUint8Changed(kSignalStrengthProperty, strength);
 }
 
 void Service::SetErrorDetails(const string &details) {
@@ -1375,7 +1377,7 @@ void Service::UpdateErrorProperty() {
     return;
   }
   error_ = error;
-  adaptor_->EmitStringChanged(flimflam::kErrorProperty, error);
+  adaptor_->EmitStringChanged(kErrorProperty, error);
 }
 
 }  // namespace shill

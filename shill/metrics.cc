@@ -328,17 +328,17 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
 // static
 Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
     const string &security) {
-  if (security == flimflam::kSecurityNone) {
+  if (security == kSecurityNone) {
     return kWiFiSecurityNone;
-  } else if (security == flimflam::kSecurityWep) {
+  } else if (security == kSecurityWep) {
     return kWiFiSecurityWep;
-  } else if (security == flimflam::kSecurityWpa) {
+  } else if (security == kSecurityWpa) {
     return kWiFiSecurityWpa;
-  } else if (security == flimflam::kSecurityRsn) {
+  } else if (security == kSecurityRsn) {
     return kWiFiSecurityRsn;
-  } else if (security == flimflam::kSecurity8021x) {
+  } else if (security == kSecurity8021x) {
     return kWiFiSecurity8021x;
-  } else if (security == flimflam::kSecurityPsk) {
+  } else if (security == kSecurityPsk) {
     return kWiFiSecurityPsk;
   } else {
     return kWiFiSecurityUnknown;
@@ -347,9 +347,9 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
 
 // static
 Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string &ap_mode) {
-  if (ap_mode == flimflam::kModeManaged) {
+  if (ap_mode == kModeManaged) {
     return kWiFiApModeManaged;
-  } else if (ap_mode == flimflam::kModeAdhoc) {
+  } else if (ap_mode == kModeAdhoc) {
     return kWiFiApModeAdHoc;
   } else {
     return kWiFiApModeUnknown;
@@ -359,13 +359,13 @@ Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string &ap_mode) {
 // static
 Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
     const string &outer) {
-  if (outer == flimflam::kEapMethodPEAP) {
+  if (outer == kEapMethodPEAP) {
     return kEapOuterProtocolPeap;
-  } else if (outer == flimflam::kEapMethodTLS) {
+  } else if (outer == kEapMethodTLS) {
     return kEapOuterProtocolTls;
-  } else if (outer == flimflam::kEapMethodTTLS) {
+  } else if (outer == kEapMethodTTLS) {
     return kEapOuterProtocolTtls;
-  } else if (outer == flimflam::kEapMethodLEAP) {
+  } else if (outer == kEapMethodLEAP) {
     return kEapOuterProtocolLeap;
   } else {
     return kEapOuterProtocolUnknown;
@@ -377,21 +377,21 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
     const string &inner) {
   if (inner.empty()) {
     return kEapInnerProtocolNone;
-  } else if (inner == flimflam::kEapPhase2AuthPEAPMD5) {
+  } else if (inner == kEapPhase2AuthPEAPMD5) {
     return kEapInnerProtocolPeapMd5;
-  } else if (inner == flimflam::kEapPhase2AuthPEAPMSCHAPV2) {
+  } else if (inner == kEapPhase2AuthPEAPMSCHAPV2) {
     return kEapInnerProtocolPeapMschapv2;
-  } else if (inner == flimflam::kEapPhase2AuthTTLSEAPMD5) {
+  } else if (inner == kEapPhase2AuthTTLSEAPMD5) {
     return kEapInnerProtocolTtlsEapMd5;
-  } else if (inner == flimflam::kEapPhase2AuthTTLSEAPMSCHAPV2) {
+  } else if (inner == kEapPhase2AuthTTLSEAPMSCHAPV2) {
     return kEapInnerProtocolTtlsEapMschapv2;
-  } else if (inner == flimflam::kEapPhase2AuthTTLSMSCHAPV2) {
+  } else if (inner == kEapPhase2AuthTTLSMSCHAPV2) {
     return kEapInnerProtocolTtlsMschapv2;
-  } else if (inner == flimflam::kEapPhase2AuthTTLSMSCHAP) {
+  } else if (inner == kEapPhase2AuthTTLSMSCHAP) {
     return kEapInnerProtocolTtlsMschap;
-  } else if (inner == flimflam::kEapPhase2AuthTTLSPAP) {
+  } else if (inner == kEapPhase2AuthTTLSPAP) {
     return kEapInnerProtocolTtlsPap;
-  } else if (inner == flimflam::kEapPhase2AuthTTLSCHAP) {
+  } else if (inner == kEapPhase2AuthTTLSCHAP) {
     return kEapInnerProtocolTtlsChap;
   } else {
     return kEapInnerProtocolUnknown;
@@ -953,23 +953,23 @@ void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
   SLOG(Metrics, 2) << __func__ << ": " << network_technology
                                << ", " << signal_strength;
   CellularDropTechnology drop_technology = kCellularDropTechnologyUnknown;
-  if (network_technology == flimflam::kNetworkTechnology1Xrtt) {
+  if (network_technology == kNetworkTechnology1Xrtt) {
     drop_technology = kCellularDropTechnology1Xrtt;
-  } else if (network_technology == flimflam::kNetworkTechnologyEdge) {
+  } else if (network_technology == kNetworkTechnologyEdge) {
     drop_technology = kCellularDropTechnologyEdge;
-  } else if (network_technology == flimflam::kNetworkTechnologyEvdo) {
+  } else if (network_technology == kNetworkTechnologyEvdo) {
     drop_technology = kCellularDropTechnologyEvdo;
-  } else if (network_technology == flimflam::kNetworkTechnologyGprs) {
+  } else if (network_technology == kNetworkTechnologyGprs) {
     drop_technology = kCellularDropTechnologyGprs;
-  } else if (network_technology == flimflam::kNetworkTechnologyGsm) {
+  } else if (network_technology == kNetworkTechnologyGsm) {
     drop_technology = kCellularDropTechnologyGsm;
-  } else if (network_technology == flimflam::kNetworkTechnologyHspa) {
+  } else if (network_technology == kNetworkTechnologyHspa) {
     drop_technology = kCellularDropTechnologyHspa;
-  } else if (network_technology == flimflam::kNetworkTechnologyHspaPlus) {
+  } else if (network_technology == kNetworkTechnologyHspaPlus) {
     drop_technology = kCellularDropTechnologyHspaPlus;
-  } else if (network_technology == flimflam::kNetworkTechnologyLte) {
+  } else if (network_technology == kNetworkTechnologyLte) {
     drop_technology = kCellularDropTechnologyLte;
-  } else if (network_technology == flimflam::kNetworkTechnologyUmts) {
+  } else if (network_technology == kNetworkTechnologyUmts) {
     drop_technology = kCellularDropTechnologyUmts;
   }
   SendEnumToUMA(kMetricCellularDrop,

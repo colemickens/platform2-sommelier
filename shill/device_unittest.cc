@@ -181,7 +181,7 @@ const char DeviceTest::kDeviceAddress[] = "address";
 const int DeviceTest::kDeviceInterfaceIndex = 0;
 
 TEST_F(DeviceTest, Contains) {
-  EXPECT_TRUE(device_->store().Contains(flimflam::kNameProperty));
+  EXPECT_TRUE(device_->store().Contains(kNameProperty));
   EXPECT_FALSE(device_->store().Contains(""));
 }
 
@@ -190,9 +190,8 @@ TEST_F(DeviceTest, GetProperties) {
   Error error(Error::kInvalidProperty, "");
   ::DBus::Error dbus_error;
   DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
-  ASSERT_FALSE(props.find(flimflam::kNameProperty) == props.end());
-  EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
-            string(kDeviceName));
+  ASSERT_FALSE(props.find(kNameProperty) == props.end());
+  EXPECT_EQ(props[kNameProperty].reader().get_string(), string(kDeviceName));
 }
 
 // Note: there are currently no writeable Device properties that
@@ -201,7 +200,7 @@ TEST_F(DeviceTest, SetReadOnlyProperty) {
   ::DBus::Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                        flimflam::kAddressProperty,
+                                        kAddressProperty,
                                         PropertyStoreTest::kStringV,
                                         &error));
   EXPECT_EQ(invalid_args(), error.name());
@@ -210,7 +209,7 @@ TEST_F(DeviceTest, SetReadOnlyProperty) {
 TEST_F(DeviceTest, ClearReadOnlyProperty) {
   ::DBus::Error error;
   EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                        flimflam::kAddressProperty,
+                                        kAddressProperty,
                                         PropertyStoreTest::kStringV,
                                         &error));
 }
@@ -218,7 +217,7 @@ TEST_F(DeviceTest, ClearReadOnlyProperty) {
 TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   ::DBus::Error error;
   EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                        flimflam::kIPConfigsProperty,
+                                        kIPConfigsProperty,
                                         PropertyStoreTest::kStringsV,
                                         &error));
 }
@@ -351,9 +350,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  service->static_ip_parameters_.args_.SetString(
-      flimflam::kAddressProperty, "1.1.1.1");
-  service->static_ip_parameters_.args_.SetInt(flimflam::kPrefixlenProperty, 16);
+  service->static_ip_parameters_.args_.SetString(kAddressProperty, "1.1.1.1");
+  service->static_ip_parameters_.args_.SetInt(kPrefixlenProperty, 16);
   EXPECT_CALL(*service.get(), SetState(_)).Times(0);
   EXPECT_CALL(*service.get(), SetConnection(_)).Times(0);
   OnIPConfigUpdated(NULL, false);
@@ -467,7 +465,7 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_CALL(*service.get(), state()).
       WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
-              EmitBoolChanged(flimflam::kPoweredProperty, false));
+              EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());

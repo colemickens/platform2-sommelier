@@ -49,8 +49,8 @@ class MetricsTest : public Test {
                                                &manager_,
                                                manager_.wifi_provider(),
                                                ssid_,
-                                               flimflam::kModeManaged,
-                                               flimflam::kSecurityNone,
+                                               kModeManaged,
+                                               kSecurityNone,
                                                false)),
         wep_wifi_service_(new MockWiFiService(&control_interface_,
                                               &dispatcher_,
@@ -58,8 +58,8 @@ class MetricsTest : public Test {
                                               &manager_,
                                               manager_.wifi_provider(),
                                               ssid_,
-                                              flimflam::kModeManaged,
-                                              flimflam::kSecurityWep,
+                                              kModeManaged,
+                                              kSecurityWep,
                                               false)),
         eap_wifi_service_(new MockWiFiService(&control_interface_,
                                               &dispatcher_,
@@ -67,8 +67,8 @@ class MetricsTest : public Test {
                                               &manager_,
                                               manager_.wifi_provider(),
                                               ssid_,
-                                              flimflam::kModeManaged,
-                                              flimflam::kSecurity8021x,
+                                              kModeManaged,
+                                              kSecurity8021x,
                                               false)),
         eap_(new MockEapCredentials()) {}
 
@@ -251,8 +251,8 @@ TEST_F(MetricsTest, WiFiServicePostReadyAdHoc) {
                                              &manager_,
                                              manager_.wifi_provider(),
                                              ssid_,
-                                             flimflam::kModeAdhoc,
-                                             flimflam::kSecurityNone,
+                                             kModeAdhoc,
+                                             kSecurityNone,
                                              false)));
   const int kStrength = -42;
   ExpectCommonPostReady(Metrics::kWiFiApModeAdHoc,
@@ -616,15 +616,15 @@ TEST_F(MetricsTest, CellularAutoConnect) {
 
 TEST_F(MetricsTest, CellularDrop) {
   const char *kUMATechnologyStrings[] = {
-      flimflam::kNetworkTechnology1Xrtt,
-      flimflam::kNetworkTechnologyEdge,
-      flimflam::kNetworkTechnologyEvdo,
-      flimflam::kNetworkTechnologyGprs,
-      flimflam::kNetworkTechnologyGsm,
-      flimflam::kNetworkTechnologyHspa,
-      flimflam::kNetworkTechnologyHspaPlus,
-      flimflam::kNetworkTechnologyLte,
-      flimflam::kNetworkTechnologyUmts,
+      kNetworkTechnology1Xrtt,
+      kNetworkTechnologyEdge,
+      kNetworkTechnologyEvdo,
+      kNetworkTechnologyGprs,
+      kNetworkTechnologyGsm,
+      kNetworkTechnologyHspa,
+      kNetworkTechnologyHspaPlus,
+      kNetworkTechnologyLte,
+      kNetworkTechnologyUmts,
       "Unknown" };
 
   const uint16 signal_strength = 100;

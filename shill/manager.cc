@@ -121,64 +121,59 @@ Manager::Manager(ControlInterface *control_interface,
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
       health_checker_remote_ips_(new IPAddressStore()) {
-  HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
+  HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
-  store_.RegisterBool(flimflam::kArpGatewayProperty, &props_.arp_gateway);
-  HelpRegisterConstDerivedStrings(flimflam::kAvailableTechnologiesProperty,
+  store_.RegisterBool(kArpGatewayProperty, &props_.arp_gateway);
+  HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
-  HelpRegisterDerivedString(flimflam::kCheckPortalListProperty,
+  HelpRegisterDerivedString(kCheckPortalListProperty,
                             &Manager::GetCheckPortalList,
                             &Manager::SetCheckPortalList);
-  HelpRegisterConstDerivedStrings(flimflam::kConnectedTechnologiesProperty,
+  HelpRegisterConstDerivedStrings(kConnectedTechnologiesProperty,
                                   &Manager::ConnectedTechnologies);
-  store_.RegisterString(flimflam::kCountryProperty, &props_.country);
-  HelpRegisterDerivedString(flimflam::kDefaultTechnologyProperty,
+  store_.RegisterString(kCountryProperty, &props_.country);
+  HelpRegisterDerivedString(kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
                             NULL);
   HelpRegisterConstDerivedRpcIdentifier(
       shill::kDefaultServiceProperty,
       &Manager::GetDefaultServiceRpcIdentifier);
-  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kDevicesProperty,
+  HelpRegisterConstDerivedRpcIdentifiers(kDevicesProperty,
                                          &Manager::EnumerateDevices);
-  HelpRegisterConstDerivedStrings(flimflam::kEnabledTechnologiesProperty,
+  HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
   HelpRegisterDerivedString(shill::kIgnoredDNSSearchPathsProperty,
                             &Manager::GetIgnoredDNSSearchPaths,
                             &Manager::SetIgnoredDNSSearchPaths);
   store_.RegisterString(shill::kLinkMonitorTechnologiesProperty,
                         &props_.link_monitor_technologies);
-  store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
-  store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
+  store_.RegisterBool(kOfflineModeProperty, &props_.offline_mode);
+  store_.RegisterString(kPortalURLProperty, &props_.portal_url);
   store_.RegisterInt32(kPortalCheckIntervalProperty,
                        &props_.portal_check_interval_seconds);
-  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kProfilesProperty,
+  HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,
                                          &Manager::EnumerateProfiles);
   store_.RegisterString(kHostNameProperty, &props_.host_name);
-  HelpRegisterDerivedString(flimflam::kStateProperty,
+  HelpRegisterDerivedString(kStateProperty,
                             &Manager::CalculateState,
                             NULL);
-  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServicesProperty,
+  HelpRegisterConstDerivedRpcIdentifiers(kServicesProperty,
                                          &Manager::EnumerateAvailableServices);
   HelpRegisterConstDerivedRpcIdentifiers(shill::kServiceCompleteListProperty,
                                          &Manager::EnumerateCompleteServices);
-  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServiceWatchListProperty,
+  HelpRegisterConstDerivedRpcIdentifiers(kServiceWatchListProperty,
                                          &Manager::EnumerateWatchedServices);
   HelpRegisterConstDerivedStrings(kUninitializedTechnologiesProperty,
                                   &Manager::UninitializedTechnologies);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
-  technology_order_.push_back(
-      Technology::IdentifierFromName(flimflam::kTypeVPN));
-  technology_order_.push_back(
-      Technology::IdentifierFromName(flimflam::kTypeEthernet));
-  technology_order_.push_back(
-      Technology::IdentifierFromName(flimflam::kTypeWifi));
-  technology_order_.push_back(
-      Technology::IdentifierFromName(flimflam::kTypeWimax));
-  technology_order_.push_back(
-      Technology::IdentifierFromName(flimflam::kTypeCellular));
+  technology_order_.push_back(Technology::IdentifierFromName(kTypeVPN));
+  technology_order_.push_back(Technology::IdentifierFromName(kTypeEthernet));
+  technology_order_.push_back(Technology::IdentifierFromName(kTypeWifi));
+  technology_order_.push_back(Technology::IdentifierFromName(kTypeWimax));
+  technology_order_.push_back(Technology::IdentifierFromName(kTypeCellular));
 
   UpdateProviderMapping();
 
@@ -519,7 +514,7 @@ void Manager::PopProfileInternal() {
 void Manager::OnProfilesChanged() {
   Error unused_error;
 
-  adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
+  adaptor_->EmitStringsChanged(kProfilesProperty,
                                EnumerateProfiles(&unused_error));
   Profile::SaveUserProfileList(user_profile_list_path_, profiles_);
 }
@@ -885,7 +880,7 @@ void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
 
 void Manager::UpdateEnabledTechnologies() {
   Error error;
-  adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
+  adaptor_->EmitStringsChanged(kEnabledTechnologiesProperty,
                                EnabledTechnologies(&error));
 }
 
@@ -951,12 +946,12 @@ void Manager::EmitDeviceProperties() {
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     device_paths.push_back((*it)->GetRpcIdentifier());
   }
-  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kDevicesProperty,
+  adaptor_->EmitRpcIdentifierArrayChanged(kDevicesProperty,
                                           device_paths);
   Error error;
-  adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
+  adaptor_->EmitStringsChanged(kAvailableTechnologiesProperty,
                                AvailableTechnologies(&error));
-  adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
+  adaptor_->EmitStringsChanged(kEnabledTechnologiesProperty,
                                EnabledTechnologies(&error));
   adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
                                UninitializedTechnologies(&error));
@@ -1372,15 +1367,15 @@ void Manager::SortServicesTask() {
   sort(services_.begin(), services_.end(),
        ServiceSorter(kCompareConnectivityState, technology_order_));
 
-  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
+  adaptor_->EmitRpcIdentifierArrayChanged(kServicesProperty,
                                           EnumerateAvailableServices(NULL));
-  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServiceWatchListProperty,
+  adaptor_->EmitRpcIdentifierArrayChanged(kServiceWatchListProperty,
                                           EnumerateWatchedServices(NULL));
 
   Error error;
-  adaptor_->EmitStringsChanged(flimflam::kConnectedTechnologiesProperty,
+  adaptor_->EmitStringsChanged(kConnectedTechnologiesProperty,
                                ConnectedTechnologies(&error));
-  adaptor_->EmitStringChanged(flimflam::kDefaultTechnologyProperty,
+  adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
 
   if (!services_.empty()) {
@@ -1527,7 +1522,7 @@ bool Manager::IsOnline() const {
 }
 
 string Manager::CalculateState(Error */*error*/) {
-  return IsOnline() ? flimflam::kStateOnline : flimflam::kStateOffline;
+  return IsOnline() ? kStateOnline : kStateOffline;
 }
 
 vector<string> Manager::AvailableTechnologies(Error */*error*/) {
@@ -1672,8 +1667,8 @@ bool Manager::SetIgnoredDNSSearchPaths(const string &ignored_paths,
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
-  if (args.ContainsString(flimflam::kTypeProperty) &&
-      args.GetString(flimflam::kTypeProperty) == flimflam::kTypeVPN) {
+  if (args.ContainsString(kTypeProperty) &&
+      args.GetString(kTypeProperty) == kTypeVPN) {
      // GetService on a VPN service should actually perform ConfigureService.
      // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
      // instead, when we no longer need to support flimflam.  crbug.com/213802
@@ -1691,21 +1686,21 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
 
 ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
                                        Error *error) {
-  if (args.ContainsString(flimflam::kGuidProperty)) {
+  if (args.ContainsString(kGuidProperty)) {
     SLOG(Manager, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
-        GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
+        GetServiceWithGUID(args.GetString(kGuidProperty), NULL);
     if (service) {
       return service;
     }
   }
 
-  if (!args.ContainsString(flimflam::kTypeProperty)) {
+  if (!args.ContainsString(kTypeProperty)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorTypeRequired);
     return NULL;
   }
 
-  string type = args.GetString(flimflam::kTypeProperty);
+  string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
   if (!ContainsKey(providers_, technology)) {
     Error::PopulateAndLog(error, Error::kNotSupported,
@@ -1721,9 +1716,9 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
 ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
                                         Error *error) {
   ProfileRefPtr profile = ActiveProfile();
-  bool profile_specified = args.ContainsString(flimflam::kProfileProperty);
+  bool profile_specified = args.ContainsString(kProfileProperty);
   if (profile_specified) {
-    string profile_rpcid = args.GetString(flimflam::kProfileProperty);
+    string profile_rpcid = args.GetString(kProfileProperty);
     profile = LookupProfileByRpcIdentifier(profile_rpcid);
     if (!profile) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -1790,12 +1785,12 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::ConfigureServiceForProfile(
     const string &profile_rpcid, const KeyValueStore &args, Error *error) {
-  if (!args.ContainsString(flimflam::kTypeProperty)) {
+  if (!args.ContainsString(kTypeProperty)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorTypeRequired);
     return NULL;
   }
 
-  string type = args.GetString(flimflam::kTypeProperty);
+  string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
 
   if (!ContainsKey(providers_, technology)) {
@@ -1812,8 +1807,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
                           "Profile specified was not found");
     return NULL;
   }
-  if (args.LookupString(flimflam::kProfileProperty,
-                        profile_rpcid) != profile_rpcid) {
+  if (args.LookupString(kProfileProperty, profile_rpcid) != profile_rpcid) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Profile argument does not match that in "
                           "the configuration arguments");
@@ -1821,9 +1815,9 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   }
 
   ServiceRefPtr service;
-  if (args.ContainsString(flimflam::kGuidProperty)) {
+  if (args.ContainsString(kGuidProperty)) {
     SLOG(Manager, 2) << __func__ << ": searching by GUID";
-    service = GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
+    service = GetServiceWithGUID(args.GetString(kGuidProperty), NULL);
     if (service && service->technology() != technology) {
       Error::PopulateAndLog(error, Error::kNotSupported,
                             StringPrintf("This GUID matches a non-%s service",
@@ -1842,7 +1836,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   if (!service) {
     KeyValueStore configure_args;
     configure_args.CopyFrom(args);
-    configure_args.SetString(flimflam::kProfileProperty, profile_rpcid);
+    configure_args.SetString(kProfileProperty, profile_rpcid);
     return ConfigureService(configure_args, error);
   }
 
@@ -1958,7 +1952,7 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr &service) {
 
 void Manager::RequestScan(Device::ScanType scan_type,
                           const string &technology, Error *error) {
-  if (technology == flimflam::kTypeWifi || technology == "") {
+  if (technology == kTypeWifi || technology == "") {
     vector<DeviceRefPtr> wifi_devices;
     FilterByTechnology(Technology::kWifi, &wifi_devices);
     for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
