@@ -128,7 +128,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       receive_byte_count_at_connect_(0) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
-      flimflam::kBgscanMethodProperty,
+      kBgscanMethodProperty,
       StringAccessor(
           // TODO(petkov): CustomMappedAccessor is used for convenience because
           // it provides a way to define a custom clearer (unlike
@@ -140,11 +140,11 @@ WiFi::WiFi(ControlInterface *control_interface,
                                                       &WiFi::SetBgscanMethod,
                                                       0)));  // Unused.
   HelpRegisterDerivedUint16(store,
-                            flimflam::kBgscanShortIntervalProperty,
+                            kBgscanShortIntervalProperty,
                             &WiFi::GetBgscanShortInterval,
                             &WiFi::SetBgscanShortInterval);
   HelpRegisterDerivedInt32(store,
-                           flimflam::kBgscanSignalThresholdProperty,
+                           kBgscanSignalThresholdProperty,
                            &WiFi::GetBgscanSignalThreshold,
                            &WiFi::SetBgscanSignalThreshold);
 
@@ -153,10 +153,10 @@ WiFi::WiFi(ControlInterface *control_interface,
   // scan pending/currently scanning/no scan scheduled as a tri-state
   // kind of thing.
   HelpRegisterConstDerivedBool(store,
-                               flimflam::kScanningProperty,
+                               kScanningProperty,
                                &WiFi::GetScanPending);
   HelpRegisterDerivedUint16(store,
-                            flimflam::kScanIntervalProperty,
+                            kScanIntervalProperty,
                             &WiFi::GetScanInterval,
                             &WiFi::SetScanInterval);
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
@@ -1317,7 +1317,7 @@ void WiFi::StateChanged(const string &new_state) {
               GetServiceLeaseName(*affected_service))) {
         LOG(INFO) << link_name() << " is up; started L3 configuration.";
         affected_service->SetState(Service::kStateConfiguring);
-        if (affected_service->IsSecurityMatch(flimflam::kSecurityWep)) {
+        if (affected_service->IsSecurityMatch(kSecurityWep)) {
           // With the overwhelming majority of WEP networks, we cannot assume
           // our credentials are correct just because we have successfully
           // connected.  It is more useful to track received data as the L3
@@ -1365,7 +1365,7 @@ void WiFi::StateChanged(const string &new_state) {
 
 bool WiFi::SuspectCredentials(
     WiFiServiceRefPtr service, Service::ConnectFailure *failure) const {
-  if (service->IsSecurityMatch(flimflam::kSecurityPsk)) {
+  if (service->IsSecurityMatch(kSecurityPsk)) {
     if (supplicant_state_ == WPASupplicant::kInterfaceState4WayHandshake &&
         service->AddSuspectedCredentialFailure()) {
       if (failure) {
@@ -1373,7 +1373,7 @@ bool WiFi::SuspectCredentials(
       }
       return true;
     }
-  } else if (service->IsSecurityMatch(flimflam::kSecurity8021x)) {
+  } else if (service->IsSecurityMatch(kSecurity8021x)) {
     if (eap_state_handler_->is_eap_in_progress() &&
         service->AddSuspectedCredentialFailure()) {
       if (failure) {
@@ -1551,7 +1551,7 @@ void WiFi::OnConnected() {
   Device::OnConnected();
   EnableHighBitrates();
   if (current_service_ &&
-      current_service_->IsSecurityMatch(flimflam::kSecurityWep)) {
+      current_service_->IsSecurityMatch(kSecurityWep)) {
     // With a WEP network, we are now reasonably certain the credentials are
     // correct, whereas with other network types we were able to determine
     // this earlier when the association process succeeded.
@@ -1566,7 +1566,7 @@ void WiFi::OnIPConfigFailure() {
                << " with no current service.";
     return;
   }
-  if (current_service_->IsSecurityMatch(flimflam::kSecurityWep) &&
+  if (current_service_->IsSecurityMatch(kSecurityWep) &&
       GetReceiveByteCount() == receive_byte_count_at_connect_ &&
       current_service_->AddSuspectedCredentialFailure()) {
     // If we've connected to a WEP network and haven't successfully
@@ -2003,7 +2003,7 @@ void WiFi::SetScanState(ScanState new_state,
   scan_method_ = new_method;
   bool new_scan_pending = GetScanPending(NULL);
   if (old_scan_pending != new_scan_pending) {
-    adaptor()->EmitBoolChanged(flimflam::kScanningProperty, new_scan_pending);
+    adaptor()->EmitBoolChanged(kScanningProperty, new_scan_pending);
   }
   switch (new_state) {
     case kScanIdle:

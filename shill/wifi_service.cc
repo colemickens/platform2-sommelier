@@ -79,23 +79,23 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       certificate_file_(new CertificateFile()),
       provider_(provider) {
   PropertyStore *store = this->mutable_store();
-  store->RegisterConstString(flimflam::kModeProperty, &mode_);
-  HelpRegisterWriteOnlyDerivedString(flimflam::kPassphraseProperty,
+  store->RegisterConstString(kModeProperty, &mode_);
+  HelpRegisterWriteOnlyDerivedString(kPassphraseProperty,
                                      &WiFiService::SetPassphrase,
                                      &WiFiService::ClearPassphrase,
                                      NULL);
-  store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
-  HelpRegisterDerivedString(flimflam::kSecurityProperty,
+  store->RegisterBool(kPassphraseRequiredProperty, &need_passphrase_);
+  HelpRegisterDerivedString(kSecurityProperty,
                             &WiFiService::GetSecurity,
                             NULL);
 
-  store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
-  store->RegisterBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
-  store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
+  store->RegisterConstString(kWifiAuthMode, &auth_mode_);
+  store->RegisterBool(kWifiHiddenSsid, &hidden_ssid_);
+  store->RegisterConstUint16(kWifiFrequency, &frequency_);
   store->RegisterConstUint16s(kWifiFrequencyListProperty, &frequency_list_);
-  store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
-  store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
-  store->RegisterConstString(flimflam::kCountryProperty, &country_code_);
+  store->RegisterConstUint16(kWifiPhyMode, &physical_mode_);
+  store->RegisterConstString(kWifiBSsid, &bssid_);
+  store->RegisterConstString(kCountryProperty, &country_code_);
   store->RegisterConstStringmap(kWifiVendorInformationProperty,
                                 &vendor_information_);
   store->RegisterConstBool(kWifiProtectedManagementFrameRequiredProperty,
@@ -107,7 +107,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   if (WiFi::SanitizeSSID(&ssid_string)) {
     // WifiHexSsid property should only be present if Name property
     // has been munged.
-    store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
+    store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
   }
   set_friendly_name(ssid_string);
 
@@ -118,15 +118,15 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   if (Is8021x()) {
     // Passphrases are not mandatory for 802.1X.
     need_passphrase_ = false;
-  } else if (security_ == flimflam::kSecurityPsk) {
+  } else if (security_ == kSecurityPsk) {
     SetEAPKeyManagement("WPA-PSK");
-  } else if (security_ == flimflam::kSecurityRsn) {
+  } else if (security_ == kSecurityRsn) {
     SetEAPKeyManagement("WPA-PSK");
-  } else if (security_ == flimflam::kSecurityWpa) {
+  } else if (security_ == kSecurityWpa) {
     SetEAPKeyManagement("WPA-PSK");
-  } else if (security_ == flimflam::kSecurityWep) {
+  } else if (security_ == kSecurityWep) {
     SetEAPKeyManagement("NONE");
-  } else if (security_ == flimflam::kSecurityNone) {
+  } else if (security_ == kSecurityNone) {
     SetEAPKeyManagement("NONE");
   } else {
     LOG(ERROR) << "Unsupported security method " << security_;
@@ -137,9 +137,9 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   UpdateConnectable();
   UpdateSecurity();
 
-  IgnoreParameterForConfigure(flimflam::kModeProperty);
-  IgnoreParameterForConfigure(flimflam::kSSIDProperty);
-  IgnoreParameterForConfigure(flimflam::kSecurityProperty);
+  IgnoreParameterForConfigure(kModeProperty);
+  IgnoreParameterForConfigure(kSSIDProperty);
+  IgnoreParameterForConfigure(kSecurityProperty);
 
   InitializeCustomMetrics();
 
@@ -221,11 +221,11 @@ string WiFiService::GetStorageIdentifier() const {
 }
 
 bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
-  if (security_ == flimflam::kSecurityWep) {
+  if (security_ == kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
-  } else if (security_ == flimflam::kSecurityPsk ||
-             security_ == flimflam::kSecurityWpa ||
-             security_ == flimflam::kSecurityRsn) {
+  } else if (security_ == kSecurityPsk ||
+             security_ == kSecurityWpa ||
+             security_ == kSecurityRsn) {
     ValidateWPAPassphrase(passphrase, error);
   } else {
     error->Populate(Error::kNotSupported);
@@ -518,7 +518,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
   params[WPASupplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
-  if (mode_ == flimflam::kModeAdhoc && frequency_ != 0) {
+  if (mode_ == kModeAdhoc && frequency_ != 0) {
     // Frequency is required in order to successfully conntect to an IBSS
     // with wpa_supplicant.  If we have one from our endpoint, insert it
     // here.
@@ -534,9 +534,9 @@ void WiFiService::Connect(Error *error, const char *reason) {
     eap()->PopulateSupplicantProperties(
         certificate_file_.get(), nss_, nss_identifier, &params);
     ClearEAPCertification();
-  } else if (security_ == flimflam::kSecurityPsk ||
-             security_ == flimflam::kSecurityRsn ||
-             security_ == flimflam::kSecurityWpa) {
+  } else if (security_ == kSecurityPsk ||
+             security_ == kSecurityRsn ||
+             security_ == kSecurityWpa) {
     const string psk_proto = StringPrintf("%s %s",
                                           WPASupplicant::kSecurityModeWPA,
                                           WPASupplicant::kSecurityModeRSN);
@@ -544,7 +544,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
         append_string(psk_proto.c_str());
     params[WPASupplicant::kPropertyPreSharedKey].writer().
         append_string(passphrase_.c_str());
-  } else if (security_ == flimflam::kSecurityWep) {
+  } else if (security_ == kSecurityWep) {
     params[WPASupplicant::kPropertyAuthAlg].writer().
         append_string(WPASupplicant::kSecurityAuthAlg);
     Error error;
@@ -556,7 +556,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
     writer << password_bytes;
     params[WPASupplicant::kPropertyWEPTxKeyIndex].writer().
         append_uint32(key_index);
-  } else if (security_ == flimflam::kSecurityNone) {
+  } else if (security_ == kSecurityNone) {
     // Nothing special to do here.
   } else {
     LOG(ERROR) << "Can't connect. Unsupported security method " << security_;
@@ -613,16 +613,16 @@ string WiFiService::GetDeviceRpcId(Error *error) {
 
 void WiFiService::UpdateConnectable() {
   bool is_connectable = false;
-  if (security_ == flimflam::kSecurityNone) {
+  if (security_ == kSecurityNone) {
     DCHECK(passphrase_.empty());
     need_passphrase_ = false;
     is_connectable = true;
   } else if (Is8021x()) {
     is_connectable = Is8021xConnectable();
-  } else if (security_ == flimflam::kSecurityWep ||
-      security_ == flimflam::kSecurityWpa ||
-      security_ == flimflam::kSecurityPsk ||
-      security_ == flimflam::kSecurityRsn) {
+  } else if (security_ == kSecurityWep ||
+             security_ == kSecurityWpa ||
+             security_ == kSecurityPsk ||
+             security_ == kSecurityRsn) {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
   }
@@ -693,15 +693,15 @@ void WiFiService::UpdateFromEndpoints() {
 
   if (frequency_ != frequency) {
     frequency_ = frequency;
-    adaptor()->EmitUint16Changed(flimflam::kWifiFrequency, frequency_);
+    adaptor()->EmitUint16Changed(kWifiFrequency, frequency_);
   }
   if (bssid_ != bssid) {
     bssid_ = bssid;
-    adaptor()->EmitStringChanged(flimflam::kWifiBSsid, bssid_);
+    adaptor()->EmitStringChanged(kWifiBSsid, bssid_);
   }
   if (country_code_ != country_code) {
     country_code_ = country_code;
-    adaptor()->EmitStringChanged(flimflam::kCountryProperty, country_code_);
+    adaptor()->EmitStringChanged(kCountryProperty, country_code_);
   }
   if (vendor_information_ != vendor_information) {
     vendor_information_ = vendor_information;
@@ -710,7 +710,7 @@ void WiFiService::UpdateFromEndpoints() {
   }
   if (physical_mode_ != physical_mode) {
     physical_mode_ = physical_mode;
-    adaptor()->EmitUint16Changed(flimflam::kWifiPhyMode, physical_mode_);
+    adaptor()->EmitUint16Changed(kWifiPhyMode, physical_mode_);
   }
   adaptor()->EmitUint16sChanged(kWifiFrequencyListProperty, frequency_list_);
   SetStrength(SignalToStrength(signal));
@@ -722,22 +722,22 @@ void WiFiService::UpdateSecurity() {
   bool key_rotation = false;
   bool endpoint_auth = false;
 
-  if (security_ == flimflam::kSecurityNone) {
+  if (security_ == kSecurityNone) {
     // initial values apply
-  } else if (security_ == flimflam::kSecurityWep) {
+  } else if (security_ == kSecurityWep) {
     algorithm = kCryptoRc4;
     key_rotation = Is8021x();
     endpoint_auth = Is8021x();
-  } else if (security_ == flimflam::kSecurityPsk ||
-             security_ == flimflam::kSecurityWpa) {
+  } else if (security_ == kSecurityPsk ||
+             security_ == kSecurityWpa) {
     algorithm = kCryptoRc4;
     key_rotation = true;
     endpoint_auth = false;
-  } else if (security_ == flimflam::kSecurityRsn) {
+  } else if (security_ == kSecurityRsn) {
     algorithm = kCryptoAes;
     key_rotation = true;
     endpoint_auth = false;
-  } else if (security_ == flimflam::kSecurity8021x) {
+  } else if (security_ == kSecurity8021x) {
     algorithm = cipher_8021x_;
     key_rotation = true;
     endpoint_auth = true;
@@ -908,9 +908,9 @@ bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
 
 // static
 string WiFiService::GetSecurityClass(const string &security) {
-  if (security == flimflam::kSecurityRsn ||
-      security == flimflam::kSecurityWpa) {
-    return flimflam::kSecurityPsk;
+  if (security == kSecurityRsn ||
+      security == kSecurityWpa) {
+    return kSecurityPsk;
   } else {
     return security;
   }
@@ -924,7 +924,7 @@ bool WiFiService::ParseStorageIdentifier(const string &storage_name,
   vector<string> wifi_parts;
   base::SplitString(storage_name, '_', &wifi_parts);
   if ((wifi_parts.size() != 5 && wifi_parts.size() != 6) ||
-      wifi_parts[0] != flimflam::kTypeWifi) {
+      wifi_parts[0] != kTypeWifi) {
     return false;
   }
   *address = wifi_parts[1];
@@ -951,7 +951,7 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
       continue;
     }
     if (!storage->GetString(id, kStorageType, NULL)) {
-      storage->SetString(id, kStorageType, flimflam::kTypeWifi);
+      storage->SetString(id, kStorageType, kTypeWifi);
       fixed_entry = true;
     }
     if (!storage->GetString(id, kStorageMode, NULL)) {
@@ -972,18 +972,17 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
 
 // static
 bool WiFiService::IsValidMode(const string &mode) {
-  return mode == flimflam::kModeManaged ||
-      mode == flimflam::kModeAdhoc;
+  return mode == kModeManaged || mode == kModeAdhoc;
 }
 
 // static
 bool WiFiService::IsValidSecurityMethod(const string &method) {
-  return method == flimflam::kSecurityNone ||
-      method == flimflam::kSecurityWep ||
-      method == flimflam::kSecurityPsk ||
-      method == flimflam::kSecurityWpa ||
-      method == flimflam::kSecurityRsn ||
-      method == flimflam::kSecurity8021x;
+  return method == kSecurityNone ||
+      method == kSecurityWep ||
+      method == kSecurityPsk ||
+      method == kSecurityWpa ||
+      method == kSecurityRsn ||
+      method == kSecurity8021x;
 }
 
 // static
@@ -1010,7 +1009,7 @@ uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
 
 KeyValueStore WiFiService::GetStorageProperties() const {
   KeyValueStore args;
-  args.SetString(kStorageType, flimflam::kTypeWifi);
+  args.SetString(kStorageType, kTypeWifi);
   args.SetString(kStorageSSID, hex_ssid_);
   args.SetString(kStorageMode, mode_);
   args.SetString(kStorageSecurityClass, GetSecurityClass(security_));
@@ -1020,7 +1019,7 @@ KeyValueStore WiFiService::GetStorageProperties() const {
 string WiFiService::GetDefaultStorageIdentifier() const {
   string security = GetSecurityClass(security_);
   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
-                                               flimflam::kTypeWifi,
+                                               kTypeWifi,
                                                kAnyDeviceAddress,
                                                hex_ssid_.c_str(),
                                                mode_.c_str(),
@@ -1057,11 +1056,11 @@ void WiFiService::OnProfileConfigured() {
 }
 
 bool WiFiService::Is8021x() const {
-  if (security_ == flimflam::kSecurity8021x)
+  if (security_ == kSecurity8021x)
     return true;
 
   // Dynamic WEP + 802.1x.
-  if (security_ == flimflam::kSecurityWep &&
+  if (security_ == kSecurityWep &&
       GetEAPKeyManagement() == WPASupplicant::kKeyManagementIeee8021X)
     return true;
   return false;
@@ -1087,10 +1086,10 @@ void WiFiService::SetWiFi(const WiFiRefPtr &new_wifi) {
     wifi_->DisassociateFromService(this);
   }
   if (new_wifi) {
-    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+    adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
                                         new_wifi->GetRpcIdentifier());
   } else {
-    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+    adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
                                         DBusAdaptor::kNullPath);
   }
   wifi_ = new_wifi;

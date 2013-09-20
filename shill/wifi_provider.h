@@ -161,8 +161,7 @@ class WiFiProvider : public ProviderInterface {
   // Returns true if |args| are valid and populates |ssid|, |mode|,
   // |security| and |hidden_ssid|, if successful.  Otherwise, this function
   // returns false and populates |error| with the reason for failure.  It
-  // is a fatal error if the "Type" parameter passed in |args| is not
-  // flimflam::kWiFi.
+  // is a fatal error if the "Type" parameter passed in |args| is not kWiFi.
   static bool GetServiceParametersFromArgs(const KeyValueStore &args,
                                            std::vector<uint8_t> *ssid_bytes,
                                            std::string *mode,

@@ -171,9 +171,9 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
 
 // static
 uint32_t WiFiEndpoint::ModeStringToUint(const string &mode_string) {
-  if (mode_string == flimflam::kModeManaged)
+  if (mode_string == kModeManaged)
     return WPASupplicant::kNetworkModeInfrastructureInt;
-  else if (mode_string == flimflam::kModeAdhoc)
+  else if (mode_string == kModeAdhoc)
     return WPASupplicant::kNetworkModeAdHocInt;
   else
     NOTIMPLEMENTED() << "Shill dos not support " << mode_string
@@ -301,9 +301,9 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
 // static
 const char *WiFiEndpoint::ParseMode(const string &mode_string) {
   if (mode_string == WPASupplicant::kNetworkModeInfrastructure) {
-    return flimflam::kModeManaged;
+    return kModeManaged;
   } else if (mode_string == WPASupplicant::kNetworkModeAdHoc) {
-    return flimflam::kModeAdhoc;
+    return kModeAdhoc;
   } else if (mode_string == WPASupplicant::kNetworkModeAccessPoint) {
     NOTREACHED() << "Shill does not support AP mode at this time.";
     return NULL;
@@ -344,15 +344,15 @@ const char *WiFiEndpoint::ParseSecurity(
   }
 
   if (flags->rsn_8021x || flags->wpa_8021x) {
-    return flimflam::kSecurity8021x;
+    return kSecurity8021x;
   } else if (flags->rsn_psk) {
-    return flimflam::kSecurityRsn;
+    return kSecurityRsn;
   } else if (flags->wpa_psk) {
-    return flimflam::kSecurityWpa;
+    return kSecurityWpa;
   } else if (flags->privacy) {
-    return flimflam::kSecurityWep;
+    return kSecurityWep;
   } else {
-    return flimflam::kSecurityNone;
+    return kSecurityNone;
   }
 }
 

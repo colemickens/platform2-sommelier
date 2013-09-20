@@ -240,32 +240,32 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
-  EXPECT_STREQ(flimflam::kSecurity8021x,
+  EXPECT_STREQ(kSecurity8021x,
                ParseSecurity(make_security_args("RSN", "something-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {
-  EXPECT_STREQ(flimflam::kSecurity8021x,
+  EXPECT_STREQ(kSecurity8021x,
                ParseSecurity(make_security_args("WPA", "something-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {
-  EXPECT_STREQ(flimflam::kSecurityRsn,
+  EXPECT_STREQ(kSecurityRsn,
                ParseSecurity(make_security_args("RSN", "something-psk")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPAPSK) {
-  EXPECT_STREQ(flimflam::kSecurityWpa,
+  EXPECT_STREQ(kSecurityWpa,
                ParseSecurity(make_security_args("WPA", "something-psk")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
-  EXPECT_STREQ(flimflam::kSecurityWep, ParseSecurity(make_privacy_args(true)));
+  EXPECT_STREQ(kSecurityWep, ParseSecurity(make_privacy_args(true)));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityNone) {
   map<string, ::DBus::Variant> top_params;
-  EXPECT_STREQ(flimflam::kSecurityNone, ParseSecurity(top_params));
+  EXPECT_STREQ(kSecurityNone, ParseSecurity(top_params));
 }
 
 TEST_F(WiFiEndpointTest, SSIDWithNull) {
@@ -631,13 +631,13 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
 TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01");
-  EXPECT_EQ(flimflam::kModeManaged, endpoint->network_mode());
-  EXPECT_EQ(flimflam::kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(kModeManaged, endpoint->network_mode());
+  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   map<string, ::DBus::Variant> no_changed_properties;
   endpoint->PropertiesChanged(no_changed_properties);
-  EXPECT_EQ(flimflam::kModeManaged, endpoint->network_mode());
-  EXPECT_EQ(flimflam::kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(kModeManaged, endpoint->network_mode());
+  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedStrength) {
@@ -659,71 +659,71 @@ TEST_F(WiFiEndpointTest, PropertiesChangedStrength) {
 TEST_F(WiFiEndpointTest, PropertiesChangedNetworkMode) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01");
-  EXPECT_EQ(flimflam::kModeManaged, endpoint->network_mode());
+  EXPECT_EQ(kModeManaged, endpoint->network_mode());
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   map<string, ::DBus::Variant> changed_properties;
   ::DBus::MessageIter writer =
       changed_properties[WPASupplicant::kBSSPropertyMode].writer();
   writer << string(WPASupplicant::kNetworkModeAdHoc);
   endpoint->PropertiesChanged(changed_properties);
-  EXPECT_EQ(flimflam::kModeAdhoc, endpoint->network_mode());
+  EXPECT_EQ(kModeAdhoc, endpoint->network_mode());
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01");
-  EXPECT_EQ(flimflam::kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
 
   // Upgrade to WEP if privacy flag is added.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_privacy_args(true));
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurityWep, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // Make sure we don't downgrade if no interesting arguments arrive.
   map<string, ::DBus::Variant> no_changed_properties;
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurityWep, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // Another upgrade to 802.1x.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_security_args("RSN", "something-eap"));
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurity8021x, endpoint->security_mode());
+  EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // Add WPA-PSK, however this is trumped by RSN 802.1x above, so we don't
   // change our security nor do we notify anyone.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(make_security_args("WPA", "something-psk"));
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurity8021x, endpoint->security_mode());
+  EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // If nothing changes, we should stay the same.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurity8021x, endpoint->security_mode());
+  EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // However, if the BSS updates to no longer support 802.1x, we degrade
   // to WPA.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_security_args("RSN", ""));
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurityWpa, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWpa, endpoint->security_mode());
 
   // Losing WPA brings us back to WEP (since the privacy flag hasn't changed).
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_security_args("WPA", ""));
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurityWep, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // From WEP to open security.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_privacy_args(false));
   Mock::VerifyAndClearExpectations(wifi());
-  EXPECT_EQ(flimflam::kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
 }
 
 TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {

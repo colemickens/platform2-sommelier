@@ -94,7 +94,7 @@ void WiFiProvider::Stop() {
 void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   const StoreInterface *storage = profile->GetConstStorage();
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   set<string> groups = storage->GetGroupsWithProperties(args);
   bool created_hidden_service = false;
   for (set<string>::const_iterator it = groups.begin(); it != groups.end();
@@ -153,8 +153,7 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   if (created_hidden_service &&
       !manager_->IsTechnologyConnected(Technology::kWifi)) {
     Error unused_error;
-    manager_->RequestScan(Device::kProgressiveScan, flimflam::kTypeWifi,
-                          &unused_error);
+    manager_->RequestScan(Device::kProgressiveScan, kTypeWifi, &unused_error);
   }
 }
 
@@ -470,23 +469,23 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
                                                 string *security_method,
                                                 bool *hidden_ssid,
                                                 Error *error) {
-  CHECK_EQ(args.LookupString(flimflam::kTypeProperty, ""), flimflam::kTypeWifi);
+  CHECK_EQ(args.LookupString(kTypeProperty, ""), kTypeWifi);
 
   string mode_test =
-      args.LookupString(flimflam::kModeProperty, flimflam::kModeManaged);
+      args.LookupString(kModeProperty, kModeManaged);
   if (!WiFiService::IsValidMode(mode_test)) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kManagerErrorUnsupportedServiceMode);
     return false;
   }
 
-  if (!args.ContainsString(flimflam::kSSIDProperty)) {
+  if (!args.ContainsString(kSSIDProperty)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           kManagerErrorSSIDRequired);
     return false;
   }
 
-  string ssid = args.GetString(flimflam::kSSIDProperty);
+  string ssid = args.GetString(kSSIDProperty);
 
   if (ssid.length() < 1) {
     Error::PopulateAndLog(error, Error::kInvalidNetworkName,
@@ -500,8 +499,8 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     return false;
   }
 
-  string security_method_test = args.LookupString(flimflam::kSecurityProperty,
-                                                  flimflam::kSecurityNone);
+  string security_method_test = args.LookupString(kSecurityProperty,
+                                                  kSecurityNone);
 
   if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
     Error::PopulateAndLog(error, Error::kNotSupported,
@@ -514,7 +513,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   *security_method = security_method_test;
 
   // If the caller hasn't specified otherwise, we assume it is a hidden service.
-  *hidden_ssid = args.LookupBool(flimflam::kWifiHiddenSsid, true);
+  *hidden_ssid = args.LookupBool(kWifiHiddenSsid, true);
 
   return true;
 }

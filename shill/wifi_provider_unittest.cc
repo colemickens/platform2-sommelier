@@ -179,11 +179,11 @@ class WiFiProviderTest : public testing::Test {
       AddStringParameterToStorage(id, WiFiService::kStorageSecurity, security);
     }
     if (provide_hidden) {
-      EXPECT_CALL(storage_, GetBool(id, flimflam::kWifiHiddenSsid, _))
+      EXPECT_CALL(storage_, GetBool(id, kWifiHiddenSsid, _))
           .WillRepeatedly(
               DoAll(SetArgumentPointee<2>(is_hidden), Return(true)));
     } else {
-      EXPECT_CALL(storage_, GetBool(id, flimflam::kWifiHiddenSsid, _))
+      EXPECT_CALL(storage_, GetBool(id, kWifiHiddenSsid, _))
           .WillRepeatedly(Return(false));
     }
     storage_entry_index_++;
@@ -196,18 +196,18 @@ class WiFiProviderTest : public testing::Test {
                             bool is_hidden,
                             bool provide_hidden,
                             KeyValueStore *args) {
-    args->SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+    args->SetString(kTypeProperty, kTypeWifi);
     if (ssid) {
-      args->SetString(flimflam::kSSIDProperty, ssid);
+      args->SetString(kSSIDProperty, ssid);
     }
     if (mode) {
-      args->SetString(flimflam::kModeProperty, mode);
+      args->SetString(kModeProperty, mode);
     }
     if (security) {
-      args->SetString(flimflam::kSecurityProperty, security);
+      args->SetString(kSecurityProperty, security);
     }
     if (provide_hidden) {
-      args->SetBool(flimflam::kWifiHiddenSsid, is_hidden);
+      args->SetBool(kWifiHiddenSsid, is_hidden);
     }
   }
 
@@ -314,10 +314,7 @@ class WiFiProviderTest : public testing::Test {
     provider_.time_ = &time_;
     EXPECT_CALL(time_, GetSecondsSinceEpoch()).WillOnce(Return(today_seconds));
     const string kGroupId =
-        StringPrintf("%s_0_0_%s_%s",
-                     flimflam::kTypeWifi,
-                     flimflam::kModeManaged,
-                     flimflam::kSecurityNone);
+        StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
     EXPECT_CALL(storage_,
                 GetString(kGroupId, _, _)).WillRepeatedly(Return(true));
     set<string> groups;
@@ -358,7 +355,7 @@ MATCHER(TypeWiFiPropertyMatch, "") {
       arg.int_properties().empty() &&
       arg.uint_properties().empty() &&
       arg.string_properties().size() == 1 &&
-      arg.LookupString(flimflam::kTypeProperty, "") == flimflam::kTypeWifi;
+      arg.LookupString(kTypeProperty, "") == kTypeWifi;
 }
 
 MATCHER_P(RefPtrMatch, ref, "") {
@@ -377,12 +374,12 @@ TEST_F(WiFiProviderTest, Start) {
 
 TEST_F(WiFiProviderTest, Stop) {
   MockWiFiServiceRefPtr service0 = AddMockService(vector<uint8_t>(1, '0'),
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   MockWiFiServiceRefPtr service1 = AddMockService(vector<uint8_t>(1, '1'),
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   WiFiEndpointRefPtr endpoint = MakeEndpoint("", "00:00:00:00:00:00", 0, 0);
   AddEndpointToService(service0, endpoint);
@@ -414,8 +411,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSSID) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      NULL, flimflam::kModeManaged, flimflam::kSecurityNone, false, true));
+  groups.insert(
+      AddServiceToStorage(NULL, kModeManaged, kSecurityNone, false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -426,8 +423,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptySSID) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "", flimflam::kModeManaged, flimflam::kSecurityNone, false, true));
+  groups.insert(
+      AddServiceToStorage("", kModeManaged, kSecurityNone, false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -438,8 +435,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingMode) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "foo", NULL, flimflam::kSecurityNone, false, true));
+  groups.insert(AddServiceToStorage("foo", NULL, kSecurityNone, false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -450,8 +446,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptyMode) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "foo", "", flimflam::kSecurityNone, false, true));
+  groups.insert(AddServiceToStorage("foo", "", kSecurityNone, false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -462,8 +457,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSecurity) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "foo", flimflam::kModeManaged, NULL, false, true));
+  groups.insert(AddServiceToStorage("foo", kModeManaged, NULL, false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -474,8 +468,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptySecurity) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "foo", flimflam::kModeManaged, "", false, true));
+  groups.insert(AddServiceToStorage("foo", kModeManaged, "", false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -486,8 +479,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingHidden) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "foo", flimflam::kModeManaged, flimflam::kSecurityNone, false, false));
+  groups.insert(
+      AddServiceToStorage("foo", kModeManaged, kSecurityNone, false, false));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   CreateServicesFromProfile();
@@ -500,8 +493,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileSingle) {
   set<string> groups;
   string kSSID("foo");
   groups.insert(AddServiceToStorage(
-      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityNone,
-      false, true));
+      kSSID.c_str(), kModeManaged, kSecurityNone, false, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
@@ -512,8 +504,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileSingle) {
   const WiFiServiceRefPtr service = GetServices().front();
   const string service_ssid(service->ssid().begin(), service->ssid().end());
   EXPECT_EQ(kSSID, service_ssid);
-  EXPECT_EQ(flimflam::kModeManaged, service->mode());
-  EXPECT_TRUE(service->IsSecurityMatch(flimflam::kSecurityNone));
+  EXPECT_EQ(kModeManaged, service->mode());
+  EXPECT_TRUE(service->IsSecurityMatch(kSecurityNone));
 
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   CreateServicesFromProfile();
@@ -526,8 +518,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenButConnected) {
   set<string> groups;
   string kSSID("foo");
   groups.insert(AddServiceToStorage(
-      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityNone,
-      true, true));
+      kSSID.c_str(), kModeManaged, kSecurityNone, true, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
@@ -548,15 +539,14 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   set<string> groups;
   string kSSID("foo");
   groups.insert(AddServiceToStorage(
-      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityNone,
-      true, true));
+      kSSID.c_str(), kModeManaged, kSecurityNone, true, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, IsTechnologyConnected(Technology::kWifi))
       .WillOnce(Return(false));
   EXPECT_CALL(manager_, RequestScan(Device::kProgressiveScan,
-                                    flimflam::kTypeWifi, _)).Times(1);
+                                    kTypeWifi, _)).Times(1);
   CreateServicesFromProfile();
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -570,16 +560,16 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
   string id;
   StrictMock<MockStore> storage;
   set<string> groups;
-  groups.insert(AddServiceToStorage(
-      "foo", flimflam::kModeManaged, flimflam::kSecurityNone, false, true));
-  groups.insert(AddServiceToStorage(
-      "bar", flimflam::kModeManaged, flimflam::kSecurityNone, true, true));
+  groups.insert(
+      AddServiceToStorage("foo", kModeManaged, kSecurityNone, false, true));
+  groups.insert(
+      AddServiceToStorage("bar", kModeManaged, kSecurityNone, true, true));
   EXPECT_CALL(storage_, GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(manager_, RegisterService(_)).Times(2);
   EXPECT_CALL(manager_, IsTechnologyConnected(Technology::kWifi))
       .WillOnce(Return(true));
-  EXPECT_CALL(manager_, RequestScan(_, flimflam::kTypeWifi, _)).Times(0);
+  EXPECT_CALL(manager_, RequestScan(_, kTypeWifi, _)).Times(0);
   CreateServicesFromProfile();
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -588,7 +578,7 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
 
 TEST_F(WiFiProviderTest, GetServiceEmptyMode) {
   Error error;
-  EXPECT_FALSE(GetService("foo", "", flimflam::kSecurityNone,
+  EXPECT_FALSE(GetService("foo", "", kSecurityNone,
                           false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
@@ -596,7 +586,7 @@ TEST_F(WiFiProviderTest, GetServiceEmptyMode) {
 TEST_F(WiFiProviderTest, GetServiceNoMode) {
   Error error;
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  EXPECT_TRUE(GetService("foo", NULL, flimflam::kSecurityNone,
+  EXPECT_TRUE(GetService("foo", NULL, kSecurityNone,
                           false, false, &error).get());
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -604,7 +594,7 @@ TEST_F(WiFiProviderTest, GetServiceNoMode) {
 TEST_F(WiFiProviderTest, GetServiceBadMode) {
   Error error;
   EXPECT_FALSE(GetService("foo", "BogoMesh",
-                          flimflam::kSecurityNone,
+                          kSecurityNone,
                           false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("service mode is unsupported", error.message());
@@ -612,8 +602,8 @@ TEST_F(WiFiProviderTest, GetServiceBadMode) {
 
 TEST_F(WiFiProviderTest, GetServiceNoSSID) {
   Error error;
-  EXPECT_FALSE(GetService(NULL, flimflam::kModeManaged,
-                          flimflam::kSecurityNone, false, false,
+  EXPECT_FALSE(GetService(NULL, kModeManaged,
+                          kSecurityNone, false, false,
                           &error).get());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("must specify SSID", error.message());
@@ -621,8 +611,8 @@ TEST_F(WiFiProviderTest, GetServiceNoSSID) {
 
 TEST_F(WiFiProviderTest, GetServiceEmptySSID) {
   Error error;
-  EXPECT_FALSE(GetService("", flimflam::kModeManaged,
-                          flimflam::kSecurityNone, false, false,
+  EXPECT_FALSE(GetService("", kModeManaged,
+                          kSecurityNone, false, false,
                           &error).get());
   EXPECT_EQ(Error::kInvalidNetworkName, error.type());
   EXPECT_EQ("SSID is too short", error.message());
@@ -631,8 +621,8 @@ TEST_F(WiFiProviderTest, GetServiceEmptySSID) {
 TEST_F(WiFiProviderTest, GetServiceLongSSID) {
   Error error;
   string ssid(IEEE_80211::kMaxSSIDLen + 1, '0');
-  EXPECT_FALSE(GetService(ssid.c_str(), flimflam::kModeManaged,
-                          flimflam::kSecurityNone, false, false,
+  EXPECT_FALSE(GetService(ssid.c_str(), kModeManaged,
+                          kSecurityNone, false, false,
                           &error).get());
   EXPECT_EQ(Error::kInvalidNetworkName, error.type());
   EXPECT_EQ("SSID is too long", error.message());
@@ -642,15 +632,15 @@ TEST_F(WiFiProviderTest, GetServiceJustLongEnoughSSID) {
   Error error;
   string ssid(IEEE_80211::kMaxSSIDLen, '0');
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  EXPECT_TRUE(GetService(ssid.c_str(), flimflam::kModeManaged,
-                         flimflam::kSecurityNone, false, false,
+  EXPECT_TRUE(GetService(ssid.c_str(), kModeManaged,
+                         kSecurityNone, false, false,
                          &error));
   EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiProviderTest, GetServiceBadSecurty) {
   Error error;
-  EXPECT_FALSE(GetService("foo", flimflam::kModeManaged,
+  EXPECT_FALSE(GetService("foo", kModeManaged,
                           "pig-80211", false, false,
                           &error));
   EXPECT_EQ(Error::kNotSupported, error.type());
@@ -661,16 +651,16 @@ TEST_F(WiFiProviderTest, GetServiceMinimal) {
   Error error;
   const string kSSID("foo");
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  WiFiServiceRefPtr service = GetService(kSSID.c_str(), flimflam::kModeManaged,
+  WiFiServiceRefPtr service = GetService(kSSID.c_str(), kModeManaged,
                                          NULL, false, false, &error);
   EXPECT_TRUE(service.get());
   EXPECT_TRUE(error.IsSuccess());
   const string service_ssid(service->ssid().begin(), service->ssid().end());
   EXPECT_EQ(kSSID, service_ssid);
-  EXPECT_EQ(flimflam::kModeManaged, service->mode());
+  EXPECT_EQ(kModeManaged, service->mode());
 
   // These two should be set to their default values if not specified.
-  EXPECT_TRUE(service->IsSecurityMatch(flimflam::kSecurityNone));
+  EXPECT_TRUE(service->IsSecurityMatch(kSecurityNone));
   EXPECT_TRUE(service->hidden_ssid());
 }
 
@@ -678,23 +668,21 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   const string kSSID("bar");
   Error error;
-  WiFiServiceRefPtr service0 =
-      GetService(kSSID.c_str(), flimflam::kModeManaged,
-                 flimflam::kSecurityPsk, false, true, &error);
+  WiFiServiceRefPtr service0 = GetService(
+      kSSID.c_str(), kModeManaged, kSecurityPsk, false, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_TRUE(error.IsSuccess());
   const string service_ssid(service0->ssid().begin(), service0->ssid().end());
   EXPECT_EQ(kSSID, service_ssid);
-  EXPECT_EQ(flimflam::kModeManaged, service0->mode());
-  EXPECT_TRUE(service0->IsSecurityMatch(flimflam::kSecurityPsk));
+  EXPECT_EQ(kModeManaged, service0->mode());
+  EXPECT_TRUE(service0->IsSecurityMatch(kSecurityPsk));
   EXPECT_FALSE(service0->hidden_ssid());
 
   // Getting the same service parameters (even with a different hidden
   // parameter) should return the same service.
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   WiFiServiceRefPtr service1 =
-      GetService(kSSID.c_str(), flimflam::kModeManaged,
-                 flimflam::kSecurityPsk, true, true, &error);
+      GetService(kSSID.c_str(), kModeManaged, kSecurityPsk, true, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(service0.get(), service1.get());
   EXPECT_EQ(1, GetServices().size());
@@ -702,9 +690,8 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   // Getting the same ssid with different other parameters should return
   // a different service.
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  WiFiServiceRefPtr service2 =
-      GetService(kSSID.c_str(), flimflam::kModeManaged,
-                 flimflam::kSecurityNone, true, true, &error);
+  WiFiServiceRefPtr service2 = GetService(
+      kSSID.c_str(), kModeManaged, kSecurityNone, true, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_NE(service0.get(), service2.get());
   EXPECT_EQ(2, GetServices().size());
@@ -716,7 +703,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
   const string kSSID("foo");
   KeyValueStore args;
   SetServiceParameters(
-      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityNone,
+      kSSID.c_str(), kModeManaged, kSecurityNone,
       true, true, &args);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   Error get_service_error;
@@ -730,7 +717,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
     EXPECT_TRUE(error.IsSuccess());
   }
 
-  args.SetBool(flimflam::kWifiHiddenSsid, false);
+  args.SetBool(kWifiHiddenSsid, false);
 
   {
     Error error;
@@ -739,7 +726,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
     EXPECT_TRUE(error.IsSuccess());
   }
 
-  args.SetString(flimflam::kSecurityProperty, flimflam::kSecurityWpa);
+  args.SetString(kSecurityProperty, kSecurityWpa);
 
   {
     Error error;
@@ -755,16 +742,15 @@ TEST_F(WiFiProviderTest, CreateTemporaryService) {
   const string kSSID("foo");
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   Error error;
-  WiFiServiceRefPtr service0 =
-      GetService(kSSID.c_str(), flimflam::kModeManaged,
-                 flimflam::kSecurityNone, true, true, &error);
+  WiFiServiceRefPtr service0 = GetService(
+      kSSID.c_str(), kModeManaged, kSecurityNone, true, true, &error);
   EXPECT_EQ(1, GetServices().size());
   Mock::VerifyAndClearExpectations(&manager_);
 
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   ServiceRefPtr service1 =
-      CreateTemporaryService(kSSID.c_str(), flimflam::kModeManaged,
-                             flimflam::kSecurityNone, true, true, &error);
+      CreateTemporaryService(kSSID.c_str(), kModeManaged,
+                             kSecurityNone, true, true, &error);
 
   // Test that a new service was created, but not registered with the
   // manager or added to the provider's service list.
@@ -778,23 +764,22 @@ TEST_F(WiFiProviderTest, FindServiceWPA) {
   Error error;
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   WiFiServiceRefPtr service = GetService(
-      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityRsn,
-       false, true, &error);
+      kSSID.c_str(), kModeManaged, kSecurityRsn, false, true, &error);
   ASSERT_TRUE(service);
   const vector<uint8_t> ssid_bytes(kSSID.begin(), kSSID.end());
-  WiFiServiceRefPtr wpa_service(FindService(ssid_bytes, flimflam::kModeManaged,
-                                            flimflam::kSecurityWpa));
+  WiFiServiceRefPtr wpa_service(FindService(ssid_bytes, kModeManaged,
+                                            kSecurityWpa));
   EXPECT_TRUE(wpa_service);
   EXPECT_EQ(service.get(), wpa_service.get());
-  WiFiServiceRefPtr rsn_service(FindService(ssid_bytes, flimflam::kModeManaged,
-                                            flimflam::kSecurityRsn));
+  WiFiServiceRefPtr rsn_service(FindService(ssid_bytes, kModeManaged,
+                                            kSecurityRsn));
   EXPECT_TRUE(rsn_service.get());
   EXPECT_EQ(service.get(), rsn_service.get());
-  WiFiServiceRefPtr psk_service(FindService(ssid_bytes, flimflam::kModeManaged,
-                                            flimflam::kSecurityPsk));
+  WiFiServiceRefPtr psk_service(FindService(ssid_bytes, kModeManaged,
+                                            kSecurityPsk));
   EXPECT_EQ(service.get(), psk_service.get());
-  WiFiServiceRefPtr wep_service(FindService(ssid_bytes, flimflam::kModeManaged,
-                                            flimflam::kSecurityWep));
+  WiFiServiceRefPtr wep_service(FindService(ssid_bytes, kModeManaged,
+                                            kSecurityWep));
   EXPECT_TRUE(service.get() != wep_service.get());
   EXPECT_EQ(NULL, wep_service.get());
 }
@@ -804,8 +789,7 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   Error error;
   const string kSSID("an_ssid");
   WiFiServiceRefPtr service = GetService(
-      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityNone,
-       false, true, &error);
+      kSSID.c_str(), kModeManaged, kSecurityNone, false, true, &error);
   ASSERT_TRUE(service);
   WiFiEndpointRefPtr endpoint = MakeEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
   WiFiServiceRefPtr endpoint_service =
@@ -820,16 +804,16 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  EXPECT_FALSE(FindService(ssid0_bytes, flimflam::kModeManaged,
-                           flimflam::kSecurityNone));
+  EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged,
+                           kSecurityNone));
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_.OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
-  WiFiServiceRefPtr service0(FindService(ssid0_bytes, flimflam::kModeManaged,
-                                         flimflam::kSecurityNone));
+  WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
+                                         kSecurityNone));
   EXPECT_TRUE(service0);
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(1, GetServiceByEndpoint().size());
@@ -846,8 +830,8 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
 
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
-  EXPECT_FALSE(FindService(ssid1_bytes, flimflam::kModeManaged,
-                           flimflam::kSecurityNone));
+  EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged,
+                           kSecurityNone));
   WiFiEndpointRefPtr endpoint2 = MakeEndpoint(ssid1, "00:00:00:00:00:02",
                                               0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
@@ -856,8 +840,8 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
-  WiFiServiceRefPtr service1(FindService(ssid1_bytes, flimflam::kModeManaged,
-                                         flimflam::kSecurityNone));
+  WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
+                                         kSecurityNone));
   EXPECT_TRUE(service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_TRUE(service1 != service0);
@@ -867,23 +851,23 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  EXPECT_FALSE(FindService(ssid0_bytes, flimflam::kModeManaged,
-                           flimflam::kSecurityNone));
+  EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged,
+                           kSecurityNone));
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
-  endpoint0->set_security_mode(flimflam::kSecurityRsn);
+  endpoint0->set_security_mode(kSecurityRsn);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_.OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
-  WiFiServiceRefPtr service0(FindService(ssid0_bytes, flimflam::kModeManaged,
-                                         flimflam::kSecurityWpa));
+  WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
+                                         kSecurityWpa));
   EXPECT_TRUE(service0);
   EXPECT_TRUE(service0->HasEndpoints());
-  EXPECT_EQ(flimflam::kSecurityPsk, service0->security_);
+  EXPECT_EQ(kSecurityPsk, service0->security_);
 
   WiFiEndpointRefPtr endpoint1 = MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
-  endpoint1->set_security_mode(flimflam::kSecurityWpa);
+  endpoint1->set_security_mode(kSecurityWpa);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   provider_.OnEndpointAdded(endpoint1);
@@ -892,21 +876,21 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
 
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
-  EXPECT_FALSE(FindService(ssid1_bytes, flimflam::kModeManaged,
-                           flimflam::kSecurityNone));
+  EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged,
+                           kSecurityNone));
   WiFiEndpointRefPtr endpoint2 = MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
-  endpoint2->set_security_mode(flimflam::kSecurityWpa);
+  endpoint2->set_security_mode(kSecurityWpa);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_.OnEndpointAdded(endpoint2);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
-  WiFiServiceRefPtr service1(FindService(ssid1_bytes, flimflam::kModeManaged,
-                                         flimflam::kSecurityRsn));
+  WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
+                                         kSecurityRsn));
   EXPECT_TRUE(service1);
   EXPECT_TRUE(service1->HasEndpoints());
-  EXPECT_EQ(flimflam::kSecurityPsk, service1->security_);
+  EXPECT_EQ(kSecurityPsk, service1->security_);
   EXPECT_TRUE(service1 != service0);
 }
 
@@ -929,18 +913,18 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
   MockWiFiServiceRefPtr service1 = AddMockService(ssid1_bytes,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   EXPECT_EQ(service0.get(), FindService(ssid0_bytes,
-                                        flimflam::kModeManaged,
-                                        flimflam::kSecurityNone).get());
+                                        kModeManaged,
+                                        kSecurityNone).get());
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
@@ -974,14 +958,14 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
   MockWiFiServiceRefPtr service1 = AddMockService(ssid1_bytes,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   EXPECT_EQ(2, GetServices().size());
 
@@ -1013,8 +997,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   EXPECT_EQ(1, GetServices().size());
 
@@ -1043,8 +1027,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   EXPECT_EQ(1, GetServices().size());
 
@@ -1085,8 +1069,8 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
 
   const vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
   MockWiFiServiceRefPtr open_service = AddMockService(ssid_bytes,
-                                                      flimflam::kModeManaged,
-                                                      flimflam::kSecurityNone,
+                                                      kModeManaged,
+                                                      kSecurityNone,
                                                       false);
   EXPECT_CALL(*open_service, AddEndpoint(RefPtrMatch(endpoint)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
@@ -1103,8 +1087,8 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   // service, the provider should transfer the endpoint from one service to
   // the other.
   MockWiFiServiceRefPtr rsn_service = AddMockService(ssid_bytes,
-                                                     flimflam::kModeManaged,
-                                                     flimflam::kSecurityRsn,
+                                                     kModeManaged,
+                                                     kSecurityRsn,
                                                      false);
   EXPECT_CALL(*open_service, RemoveEndpoint(RefPtrMatch(endpoint)));
   // We are playing out a scenario where the open service is not removed
@@ -1113,7 +1097,7 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   EXPECT_CALL(*rsn_service, AddEndpoint(RefPtrMatch(endpoint)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(rsn_service)));
-  endpoint->set_security_mode(flimflam::kSecurityRsn);
+  endpoint->set_security_mode(kSecurityRsn);
   provider_.OnEndpointUpdated(endpoint);
 }
 
@@ -1132,8 +1116,8 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
 
   MockWiFiServiceRefPtr service = AddMockService(vector<uint8_t>(1, '0'),
-                                                 flimflam::kModeManaged,
-                                                 flimflam::kSecurityNone,
+                                                 kModeManaged,
+                                                 kSecurityNone,
                                                  false);
   EXPECT_EQ(1, GetServices().size());
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(true));
@@ -1162,10 +1146,7 @@ TEST_F(WiFiProviderTest, LoadAndFixupServiceEntries) {
       Metrics::kMetricServiceFixupMax)).Times(1);
   EXPECT_CALL(storage_, Flush()).Times(1);
   const string kGroupId =
-      StringPrintf("%s_0_0_%s_%s",
-                   flimflam::kTypeWifi,
-                   flimflam::kModeManaged,
-                   flimflam::kSecurityNone);
+      StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
   EXPECT_CALL(storage_,
               GetString(kGroupId, _, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(storage_,
@@ -1201,10 +1182,7 @@ TEST_F(WiFiProviderTest, LoadAndFixupServiceEntriesNothingToDo) {
   EXPECT_CALL(metrics_, SendEnumToUMA(_, _, _)).Times(0);
   EXPECT_CALL(storage_, Flush()).Times(0);
   const string kGroupId =
-      StringPrintf("%s_0_0_%s_%s",
-                   flimflam::kTypeWifi,
-                   flimflam::kModeManaged,
-                   flimflam::kSecurityNone);
+      StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
   EXPECT_CALL(storage_,
               GetString(kGroupId, _, _)).WillRepeatedly(Return(true));
   set<string> groups;
@@ -1228,22 +1206,21 @@ TEST_F(WiFiProviderTest, LoadAndFixupServiceEntriesNothingToDo) {
 TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
   const vector<uint8_t> ssid0(1, '0');
-  AddMockService(ssid0, flimflam::kModeManaged,
-                 flimflam::kSecurityNone, false);
+  AddMockService(ssid0, kModeManaged, kSecurityNone, false);
   EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
 
   const vector<uint8_t> ssid1(1, '1');
   MockWiFiServiceRefPtr service1 = AddMockService(ssid1,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   true);
   EXPECT_CALL(*service1, IsRemembered()).WillRepeatedly(Return(false));
   EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
 
   const vector<uint8_t> ssid2(1, '2');
   MockWiFiServiceRefPtr service2 = AddMockService(ssid2,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   true);
   EXPECT_CALL(*service2, IsRemembered()).WillRepeatedly(Return(true));
   ByteArrays ssid_list = provider_.GetHiddenSSIDList();
@@ -1253,8 +1230,8 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
 
   const vector<uint8_t> ssid3(1, '3');
   MockWiFiServiceRefPtr service3 = AddMockService(ssid3,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   false);
   EXPECT_CALL(*service2, IsRemembered()).WillRepeatedly(Return(true));
 
@@ -1264,8 +1241,8 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
 
   const vector<uint8_t> ssid4(1, '4');
   MockWiFiServiceRefPtr service4 = AddMockService(ssid4,
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
+                                                  kModeManaged,
+                                                  kSecurityNone,
                                                   true);
   EXPECT_CALL(*service4, IsRemembered()).WillRepeatedly(Return(true));
 
@@ -1359,10 +1336,7 @@ TEST_F(WiFiProviderTest, FrequencyMapAgingIllegalDay) {
   const time_t kThisWeekSeconds = kThisWeek * kSecondsPerWeek;
   EXPECT_CALL(time_, GetSecondsSinceEpoch()).WillOnce(Return(kThisWeekSeconds));
   const string kGroupId =
-      StringPrintf("%s_0_0_%s_%s",
-                   flimflam::kTypeWifi,
-                   flimflam::kModeManaged,
-                   flimflam::kSecurityNone);
+      StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
   EXPECT_CALL(storage_,
               GetString(kGroupId, _, _)).WillRepeatedly(Return(true));
   set<string> groups;

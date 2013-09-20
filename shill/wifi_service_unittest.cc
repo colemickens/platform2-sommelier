@@ -94,7 +94,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     EXPECT_CALL(*eap, IsConnectable())
         .WillRepeatedly(Return(is_1x_connectable));
     const string kKeyManagement8021x(WPASupplicant::kKeyManagementIeee8021X);
-    if (security == flimflam::kSecurityWep && is_1x_connectable) {
+    if (security == kSecurityWep && is_1x_connectable) {
       EXPECT_CALL(*eap, key_management())
           .WillRepeatedly(ReturnRef(kKeyManagement8021x));
     }
@@ -121,12 +121,12 @@ class WiFiServiceTest : public PropertyStoreTest {
                            manager(),
                            &provider_,
                            simple_ssid_,
-                           flimflam::kModeManaged,
+                           kModeManaged,
                            security,
                            false);
   }
   WiFiServiceRefPtr MakeGenericService() {
-    return MakeSimpleService(flimflam::kSecurityWep);
+    return MakeSimpleService(kSecurityWep);
   }
   void SetWiFi(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
     service->SetWiFi(wifi);  // Has side-effects.
@@ -146,8 +146,8 @@ class WiFiServiceTest : public PropertyStoreTest {
                            &mock_manager_,
                            &provider_,
                            simple_ssid_,
-                           flimflam::kModeManaged,
-                           flimflam::kSecurityWep,
+                           kModeManaged,
+                           kSecurityWep,
                            false);
   }
   ServiceMockAdaptor *GetAdaptor(WiFiService *service) {
@@ -158,7 +158,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     WiFiServiceRefPtr service = MakeSimpleService(security);
     KeyValueStore args;
     if (passphrase) {
-      args.SetString(flimflam::kPassphraseProperty, passphrase);
+      args.SetString(kPassphraseProperty, passphrase);
     }
     Error error;
     service->Configure(args, &error);
@@ -186,7 +186,7 @@ MATCHER_P3(ContainsWiFiProperties, ssid, mode, security, "") {
   string hex_ssid = base::HexEncode(ssid.data(), ssid.size());
   return
       arg.ContainsString(WiFiService::kStorageType) &&
-      arg.GetString(WiFiService::kStorageType) == flimflam::kTypeWifi &&
+      arg.GetString(WiFiService::kStorageType) == kTypeWifi &&
       arg.ContainsString(WiFiService::kStorageSSID) &&
       arg.GetString(WiFiService::kStorageSSID) == hex_ssid &&
       arg.ContainsString(WiFiService::kStorageMode) &&
@@ -202,7 +202,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     string id = wifi_service->GetStorageIdentifier();
     size_t mac_pos = id.find(StringToLowerASCII(GetAnyDeviceAddress()));
     EXPECT_NE(mac_pos, string::npos);
-    size_t mode_pos = id.find(string(flimflam::kModeManaged), mac_pos);
+    size_t mode_pos = id.find(string(kModeManaged), mac_pos);
     EXPECT_NE(mode_pos, string::npos);
     return id.find(string(security), mode_pos) != string::npos;
   }
@@ -245,7 +245,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     groups.insert(kStorageId);
     EXPECT_CALL(mock_store, GetGroupsWithProperties(
         ContainsWiFiProperties(wifi_service->ssid(),
-                               flimflam::kModeManaged,
+                               kModeManaged,
                                storage_security)))
         .WillRepeatedly(Return(groups));
     bool is_loadable = wifi_service->IsLoadableFrom(mock_store);
@@ -324,33 +324,33 @@ class WiFiServiceFixupStorageTest : public WiFiServiceTest {
   void AddServiceEntry(bool has_type, bool has_mode, bool has_security,
                        bool has_security_class) {
     int index = groups_.size();
-    string id = base::StringPrintf("%s_%d_%d_%s_%s", flimflam::kTypeWifi,
-                                   index, index, flimflam::kModeManaged,
-                                   flimflam::kSecurityWpa);
+    string id = base::StringPrintf("%s_%d_%d_%s_%s", kTypeWifi,
+                                   index, index, kModeManaged,
+                                   kSecurityWpa);
     AddGroup(id);
     EXPECT_CALL(store_, GetString(id, WiFiService::kStorageType, _))
         .WillOnce(Return(has_type));
     if (!has_type) {
       EXPECT_CALL(store_, SetString(id, WiFiService::kStorageType,
-                                    flimflam::kTypeWifi));
+                                    kTypeWifi));
     }
     EXPECT_CALL(store_, GetString(id, WiFiService::kStorageMode, _))
         .WillOnce(Return(has_mode));
     if (!has_mode) {
       EXPECT_CALL(store_, SetString(id, WiFiService::kStorageMode,
-                                    flimflam::kModeManaged));
+                                    kModeManaged));
     }
     EXPECT_CALL(store_, GetString(id, WiFiService::kStorageSecurity, _))
         .WillOnce(Return(has_security));
     if (!has_security) {
       EXPECT_CALL(store_, SetString(id, WiFiService::kStorageSecurity,
-                                    flimflam::kSecurityWpa));
+                                    kSecurityWpa));
     }
     EXPECT_CALL(store_, GetString(id, WiFiService::kStorageSecurityClass, _))
         .WillOnce(Return(has_security_class));
     if (!has_security_class) {
       EXPECT_CALL(store_, SetString(id, WiFiService::kStorageSecurityClass,
-                                    flimflam::kSecurityPsk));
+                                    kSecurityPsk));
     }
   }
 
@@ -371,11 +371,11 @@ TEST_F(WiFiServiceTest, Constructor) {
       .Times(AnyNumber());
   EXPECT_CALL(*metrics(), AddServiceStateTransitionTimer(
       _, histogram, Service::kStateAssociating, Service::kStateConfiguring));
-  MakeSimpleService(flimflam::kSecurityNone);
+  MakeSimpleService(kSecurityNone);
 }
 
 TEST_F(WiFiServiceTest, StorageId) {
-  WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityNone);
   string id = wifi_service->GetStorageIdentifier();
   for (uint i = 0; i < id.length(); ++i) {
     EXPECT_TRUE(id[i] == '_' ||
@@ -384,17 +384,17 @@ TEST_F(WiFiServiceTest, StorageId) {
   }
   size_t mac_pos = id.find(StringToLowerASCII(GetAnyDeviceAddress()));
   EXPECT_NE(mac_pos, string::npos);
-  EXPECT_NE(id.find(string(flimflam::kModeManaged), mac_pos), string::npos);
+  EXPECT_NE(id.find(string(kModeManaged), mac_pos), string::npos);
 }
 
 // Make sure the passphrase is registered as a write only property
 // by reading and comparing all string properties returned on the store.
 TEST_F(WiFiServiceTest, PassphraseWriteOnly) {
-  WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityWpa);
+  WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityWpa);
   ReadablePropertyConstIterator<string> it =
       (wifi_service->store()).GetStringPropertiesIter();
   for ( ; !it.AtEnd(); it.Advance())
-    EXPECT_NE(it.Key(), flimflam::kPassphraseProperty);
+    EXPECT_NE(it.Key(), kPassphraseProperty);
 }
 
 // Make sure setting the passphrase via D-Bus Service.SetProperty validates
@@ -403,20 +403,20 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyValidation) {
   // We only spot check two password cases here to make sure the
   // SetProperty code path does validation.  We're not going to exhaustively
   // test for all types of passwords.
-  WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityWep);
+  WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityWep);
   Error error;
   EXPECT_TRUE(wifi_service->mutable_store()->SetStringProperty(
-                  flimflam::kPassphraseProperty, "0:abcde", &error));
+                  kPassphraseProperty, "0:abcde", &error));
   EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
-                   flimflam::kPassphraseProperty, "invalid", &error));
+                   kPassphraseProperty, "invalid", &error));
   EXPECT_EQ(Error::kInvalidPassphrase, error.type());
 }
 
 TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
-  WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityNone);
   Error error;
   EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
-                   flimflam::kPassphraseProperty, "invalid", &error));
+                   kPassphraseProperty, "invalid", &error));
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
@@ -430,8 +430,8 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
                                                    manager(),
                                                    provider(),
                                                    ssid,
-                                                   flimflam::kModeManaged,
-                                                   flimflam::kSecurityNone,
+                                                   kModeManaged,
+                                                   kSecurityNone,
                                                    false);
   map<string, ::DBus::Variant> properties;
   // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
@@ -462,7 +462,7 @@ MATCHER_P(FrequencyArg, has_arg, "") {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityWpa);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWpa);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
@@ -470,7 +470,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskRSN) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityRsn);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityRsn);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
@@ -479,7 +479,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
 
 TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityNone);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   scoped_refptr<MockProfile> mock_profile(
       new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
   wifi_service->set_profile(mock_profile);
@@ -506,7 +506,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityPsk);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityPsk);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
@@ -514,7 +514,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurity8021x);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   service->mutable_eap()->set_identity("identity");
   service->mutable_eap()->set_password("mumble");
   service->OnEapCredentialsChanged();
@@ -523,7 +523,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurity8021x);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   MockEapCredentials *eap = SetMockEap(service);
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
   service->OnEapCredentialsChanged();
@@ -541,7 +541,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   WiFiEndpointRefPtr endpoint_freq =
       MakeOpenEndpoint("a", "00:00:00:00:00:02", 2412, 0);
 
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityNone);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   wifi_service->AddEndpoint(endpoint_freq);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(false)));
@@ -553,8 +553,8 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  manager(),
                                  provider(),
                                  ssid,
-                                 flimflam::kModeAdhoc,
-                                 flimflam::kSecurityNone,
+                                 kModeAdhoc,
+                                 kSecurityNone,
                                  false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(false)));
@@ -567,8 +567,8 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  manager(),
                                  provider(),
                                  ssid,
-                                 flimflam::kModeAdhoc,
-                                 flimflam::kSecurityNone,
+                                 kModeAdhoc,
+                                 kSecurityNone,
                                  false);
   wifi_service->AddEndpoint(endpoint_nofreq);
   SetWiFiForService(wifi_service, wifi());
@@ -582,8 +582,8 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  manager(),
                                  provider(),
                                  ssid,
-                                 flimflam::kModeAdhoc,
-                                 flimflam::kSecurityNone,
+                                 kModeAdhoc,
+                                 kSecurityNone,
                                  false);
   wifi_service->AddEndpoint(endpoint_freq);
   SetWiFiForService(wifi_service, wifi());
@@ -593,7 +593,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityPsk);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityPsk);
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
   endpoint->ieee80211w_required_ = true;
@@ -638,7 +638,7 @@ MATCHER(WEPSecurityArgsKeyIndex3, "") {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWEP) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityWep);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWep);
   Error error;
   wifi_service->SetPassphrase("0:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
@@ -675,7 +675,7 @@ MATCHER(DynamicWEPArgs, "") {
 
 // Dynamic WEP + 802.1x.
 TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityWep);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWep);
 
   wifi_service->mutable_eap()->SetKeyManagement("IEEE8021X", NULL);
   wifi_service->mutable_eap()->set_identity("something");
@@ -687,7 +687,7 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
 }
 
 TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityRsn);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityRsn);
 
   const string kPassphrase = "abcdefgh";
 
@@ -760,7 +760,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
 // Nonetheless, I think it's worth testing the WiFi+EAP case directly.
 TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
   WiFiServiceRefPtr wifi_service =
-      MakeServiceWithWiFi(flimflam::kSecurity8021x);
+      MakeServiceWithWiFi(kSecurity8021x);
   PropertyStore &property_store(*wifi_service->mutable_store());
 
   // Property with custom accessor.
@@ -770,7 +770,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     // A changed passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
-        flimflam::kEapPasswordProperty, kPassword, &error));
+        kEapPasswordProperty, kPassword, &error));
     Mock::VerifyAndClearExpectations(wifi());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -779,7 +779,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     // An unchanged passphrase should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
     EXPECT_FALSE(property_store.SetStringProperty(
-        flimflam::kEapPasswordProperty, kPassword, &error));
+        kEapPasswordProperty, kPassword, &error));
     Mock::VerifyAndClearExpectations(wifi());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -788,7 +788,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     // A modified passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
-        flimflam::kEapPasswordProperty, kPassword + "X", &error));
+        kEapPasswordProperty, kPassword + "X", &error));
     Mock::VerifyAndClearExpectations(wifi());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -800,7 +800,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     // A changed cert id should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
-        flimflam::kEapCertIdProperty, kCertId, &error));
+        kEapCertIdProperty, kCertId, &error));
     Mock::VerifyAndClearExpectations(wifi());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -809,7 +809,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     // An unchanged cert id should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
     EXPECT_FALSE(property_store.SetStringProperty(
-        flimflam::kEapCertIdProperty, kCertId, &error));
+        kEapCertIdProperty, kCertId, &error));
     Mock::VerifyAndClearExpectations(wifi());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -818,14 +818,14 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     // A modified cert id should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
-        flimflam::kEapCertIdProperty, kCertId + "X", &error));
+        kEapCertIdProperty, kCertId + "X", &error));
     Mock::VerifyAndClearExpectations(wifi());
     EXPECT_TRUE(error.IsSuccess());
   }
 }
 
 TEST_F(WiFiServiceTest, LoadHidden) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   ASSERT_FALSE(service->hidden_ssid_);
   NiceMock<MockStore> mock_store;
   const string storage_id = service->GetStorageIdentifier();
@@ -835,7 +835,7 @@ TEST_F(WiFiServiceTest, LoadHidden) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_store, GetGroupsWithProperties(
       ContainsWiFiProperties(
-          simple_ssid(), flimflam::kModeManaged, flimflam::kSecurityNone)))
+          simple_ssid(), kModeManaged, kSecurityNone)))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store, GetBool(_, _, _))
       .WillRepeatedly(Return(false));
@@ -847,7 +847,7 @@ TEST_F(WiFiServiceTest, LoadHidden) {
 }
 
 TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   NiceMock<MockStore> mock_store;
   const string storage_id = service->GetStorageIdentifier();
   set<string> groups;
@@ -856,7 +856,7 @@ TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_store, GetGroupsWithProperties(
       ContainsWiFiProperties(
-          simple_ssid(), flimflam::kModeManaged, flimflam::kSecurityNone)))
+          simple_ssid(), kModeManaged, kSecurityNone)))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store,
               GetCryptedString(StrEq(storage_id),
@@ -879,7 +879,7 @@ TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
 }
 
 TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
   set<string> groups;
   groups.insert("id0");
   groups.insert("id1");
@@ -890,7 +890,7 @@ TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
   NiceMock<MockStore> mock_store;
   EXPECT_CALL(mock_store, GetGroupsWithProperties(
       ContainsWiFiProperties(
-          simple_ssid(), flimflam::kModeManaged, flimflam::kSecurityNone)))
+          simple_ssid(), kModeManaged, kSecurityNone)))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store, ContainsGroup(first_group))
       .WillRepeatedly(Return(true));
@@ -906,49 +906,27 @@ TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
 }
 
 TEST_F(WiFiServiceSecurityTest, WPAMapping) {
-  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurityRsn,
-                                 flimflam::kSecurityPsk));
-  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurityWpa,
-                                 flimflam::kSecurityPsk));
-  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurityPsk,
-                                 flimflam::kSecurityPsk));
-  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurityWep,
-                                 flimflam::kSecurityWep));
-  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurityNone,
-                                 flimflam::kSecurityNone));
-  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurity8021x,
-                                 flimflam::kSecurity8021x));
+  EXPECT_TRUE(TestStorageMapping(kSecurityRsn, kSecurityPsk));
+  EXPECT_TRUE(TestStorageMapping(kSecurityWpa, kSecurityPsk));
+  EXPECT_TRUE(TestStorageMapping(kSecurityPsk, kSecurityPsk));
+  EXPECT_TRUE(TestStorageMapping(kSecurityWep, kSecurityWep));
+  EXPECT_TRUE(TestStorageMapping(kSecurityNone, kSecurityNone));
+  EXPECT_TRUE(TestStorageMapping(kSecurity8021x, kSecurity8021x));
 }
 
 TEST_F(WiFiServiceSecurityTest, LoadMapping) {
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityRsn,
-                              flimflam::kSecurityPsk,
-                              true));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityRsn,
-                              flimflam::kSecurityRsn,
-                              false));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityRsn,
-                              flimflam::kSecurityWpa,
-                              false));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWpa,
-                              flimflam::kSecurityPsk,
-                              true));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWpa,
-                              flimflam::kSecurityWpa,
-                              false));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWpa,
-                              flimflam::kSecurityRsn,
-                              false));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWep,
-                              flimflam::kSecurityWep,
-                              true));
-  EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWep,
-                              flimflam::kSecurityPsk,
-                              false));
+  EXPECT_TRUE(TestLoadMapping(kSecurityRsn, kSecurityPsk, true));
+  EXPECT_TRUE(TestLoadMapping(kSecurityRsn, kSecurityRsn, false));
+  EXPECT_TRUE(TestLoadMapping(kSecurityRsn, kSecurityWpa, false));
+  EXPECT_TRUE(TestLoadMapping(kSecurityWpa, kSecurityPsk, true));
+  EXPECT_TRUE(TestLoadMapping(kSecurityWpa, kSecurityWpa, false));
+  EXPECT_TRUE(TestLoadMapping(kSecurityWpa, kSecurityRsn, false));
+  EXPECT_TRUE(TestLoadMapping(kSecurityWep, kSecurityWep, true));
+  EXPECT_TRUE(TestLoadMapping(kSecurityWep, kSecurityPsk, false));
 }
 
 TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityPsk);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityPsk);
   NiceMock<MockStore> mock_store;
   const string storage_id = service->GetStorageIdentifier();
   EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
@@ -957,7 +935,7 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   groups.insert(storage_id);
   EXPECT_CALL(mock_store, GetGroupsWithProperties(
       ContainsWiFiProperties(
-          simple_ssid(), flimflam::kModeManaged, flimflam::kSecurityPsk)))
+          simple_ssid(), kModeManaged, kSecurityPsk)))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store, GetBool(_, _, _))
       .WillRepeatedly(Return(false));
@@ -984,13 +962,13 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
 TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   string guid("legit_guid");
   KeyValueStore args;
-  args.SetString(flimflam::kEapIdentityProperty, "legit_identity");
-  args.SetString(flimflam::kEapPasswordProperty, "legit_password");
-  args.SetString(flimflam::kEAPEAPProperty, "PEAP");
-  args.SetString(flimflam::kGuidProperty, guid);
+  args.SetString(kEapIdentityProperty, "legit_identity");
+  args.SetString(kEapPasswordProperty, "legit_password");
+  args.SetString(kEAPEAPProperty, "PEAP");
+  args.SetString(kGuidProperty, guid);
   Error error;
 
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
   // Hack the GUID in so that we don't have to mess about with WiFi to regsiter
   // our service.  This way, Manager will handle the lookup itself.
   service->SetGuid(guid, NULL);
@@ -1003,83 +981,83 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
 
 TEST_F(WiFiServiceTest, ConfigurePassphrase) {
   EXPECT_EQ(Error::kNotSupported,
-            TestConfigurePassphrase(flimflam::kSecurityNone, ""));
+            TestConfigurePassphrase(kSecurityNone, ""));
   EXPECT_EQ(Error::kNotSupported,
-            TestConfigurePassphrase(flimflam::kSecurityNone, "foo"));
+            TestConfigurePassphrase(kSecurityNone, "foo"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep, NULL));
+            TestConfigurePassphrase(kSecurityWep, NULL));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, ""));
+            TestConfigurePassphrase(kSecurityWep, ""));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "abcd"));
+            TestConfigurePassphrase(kSecurityWep, "abcd"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "abcde"));
+            TestConfigurePassphrase(kSecurityWep, "abcde"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "abcdefghijklm"));
+            TestConfigurePassphrase(kSecurityWep, "abcdefghijklm"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "0:abcdefghijklm"));
+            TestConfigurePassphrase(kSecurityWep, "0:abcdefghijklm"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "0102030405"));
+            TestConfigurePassphrase(kSecurityWep, "0102030405"));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "0x0102030405"));
+            TestConfigurePassphrase(kSecurityWep, "0x0102030405"));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "O102030405"));
+            TestConfigurePassphrase(kSecurityWep, "O102030405"));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "1:O102030405"));
+            TestConfigurePassphrase(kSecurityWep, "1:O102030405"));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "1:0xO102030405"));
+            TestConfigurePassphrase(kSecurityWep, "1:0xO102030405"));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWep, "0xO102030405"));
+            TestConfigurePassphrase(kSecurityWep, "0xO102030405"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep,
+            TestConfigurePassphrase(kSecurityWep,
                                     "0102030405060708090a0b0c0d"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep,
+            TestConfigurePassphrase(kSecurityWep,
                                     "0102030405060708090A0B0C0D"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep,
+            TestConfigurePassphrase(kSecurityWep,
                                     "0:0102030405060708090a0b0c0d"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWep,
+            TestConfigurePassphrase(kSecurityWep,
                                     "0:0x0102030405060708090a0b0c0d"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWpa, NULL));
+            TestConfigurePassphrase(kSecurityWpa, NULL));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(flimflam::kSecurityWpa, "secure password"));
+            TestConfigurePassphrase(kSecurityWpa, "secure password"));
   EXPECT_EQ(Error::kInvalidPassphrase,
-            TestConfigurePassphrase(flimflam::kSecurityWpa, ""));
+            TestConfigurePassphrase(kSecurityWpa, ""));
   EXPECT_EQ(Error::kSuccess, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAAsciiMinLen, 'Z').c_str()));
   EXPECT_EQ(Error::kSuccess, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAAsciiMaxLen, 'Z').c_str()));
   // subtle: invalid length for hex key, but valid as ascii passphrase
   EXPECT_EQ(Error::kSuccess, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAHexLen-1, '1').c_str()));
   EXPECT_EQ(Error::kSuccess, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAHexLen, '1').c_str()));
   EXPECT_EQ(Error::kInvalidPassphrase, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAAsciiMinLen-1, 'Z').c_str()));
   EXPECT_EQ(Error::kInvalidPassphrase, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAAsciiMaxLen+1, 'Z').c_str()));
   EXPECT_EQ(Error::kInvalidPassphrase, TestConfigurePassphrase(
-      flimflam::kSecurityWpa,
+      kSecurityWpa,
       string(IEEE_80211::kWPAHexLen+1, '1').c_str()));
 }
 
 TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  args.SetString(flimflam::kSSIDProperty, simple_ssid_string());
-  args.SetString(flimflam::kSecurityProperty, flimflam::kSecurityNone);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kSSIDProperty, simple_ssid_string());
+  args.SetString(kSecurityProperty, kSecurityNone);
   const string kGUID = "aguid";
-  args.SetString(flimflam::kGuidProperty, kGUID);
+  args.SetString(kGuidProperty, kGUID);
 
   EXPECT_EQ("", service->guid());
   Error error;
@@ -1089,14 +1067,14 @@ TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
 }
 
 TEST_F(WiFiServiceTest, DisconnectWithWiFi) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurityWep);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
   EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
   Error error;
   service->Disconnect(&error);
 }
 
 TEST_F(WiFiServiceTest, DisconnectWithoutWiFi) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWep);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityWep);
   EXPECT_CALL(*wifi(), DisconnectFrom(_)).Times(0);
   Error error;
   service->Disconnect(&error);
@@ -1104,7 +1082,7 @@ TEST_F(WiFiServiceTest, DisconnectWithoutWiFi) {
 }
 
 TEST_F(WiFiServiceTest, DisconnectWithoutWiFiWhileAssociating) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWep);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityWep);
   EXPECT_CALL(*wifi(), DisconnectFrom(_)).Times(0);
   service->SetState(Service::kStateAssociating);
   ScopedMockLog log;
@@ -1117,21 +1095,21 @@ TEST_F(WiFiServiceTest, DisconnectWithoutWiFiWhileAssociating) {
 }
 
 TEST_F(WiFiServiceTest, UnloadAndClearCacheWEP) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurityWep);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
   EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
   service->Unload();
 }
 
 TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurity8021x);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
   EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
   service->Unload();
 }
 
 TEST_F(WiFiServiceTest, ParseStorageIdentifierNone) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   const string storage_id = service->GetStorageIdentifier();
   string address;
   string mode;
@@ -1139,14 +1117,14 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifierNone) {
   EXPECT_TRUE(service->ParseStorageIdentifier(storage_id, &address, &mode,
                                               &security));
   EXPECT_EQ(StringToLowerASCII(GetAnyDeviceAddress()), address);
-  EXPECT_EQ(flimflam::kModeManaged, mode);
-  EXPECT_EQ(flimflam::kSecurityNone, security);
+  EXPECT_EQ(kModeManaged, mode);
+  EXPECT_EQ(kSecurityNone, security);
 }
 
 TEST_F(WiFiServiceTest, ParseStorageIdentifier8021x) {
   // Do a separate test for 802.1x, since kSecurity8021x contains a "_",
   // which needs to be dealt with specially in the parser.
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
   const string storage_id = service->GetStorageIdentifier();
   string address;
   string mode;
@@ -1154,8 +1132,8 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier8021x) {
   EXPECT_TRUE(service->ParseStorageIdentifier(storage_id, &address, &mode,
                                               &security));
   EXPECT_EQ(StringToLowerASCII(GetAnyDeviceAddress()), address);
-  EXPECT_EQ(flimflam::kModeManaged, mode);
-  EXPECT_EQ(flimflam::kSecurity8021x, security);
+  EXPECT_EQ(kModeManaged, mode);
+  EXPECT_EQ(kSecurity8021x, security);
 }
 
 TEST_F(WiFiServiceFixupStorageTest, FixedEntries) {
@@ -1203,38 +1181,38 @@ TEST_F(WiFiServiceFixupStorageTest, MissingSecurityClassProperty) {
 
 TEST_F(WiFiServiceTest, Connectable) {
   // Open network should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, NULL, false));
+  EXPECT_TRUE(CheckConnectable(kSecurityNone, NULL, false));
 
   // Open network should remain connectable if we try to set a password on it.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, "abcde", false));
+  EXPECT_TRUE(CheckConnectable(kSecurityNone, "abcde", false));
 
   // WEP network with passphrase set should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, "abcde", false));
+  EXPECT_TRUE(CheckConnectable(kSecurityWep, "abcde", false));
 
   // WEP network without passphrase set should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, NULL, false));
+  EXPECT_FALSE(CheckConnectable(kSecurityWep, NULL, false));
 
   // A bad passphrase should not make a WEP network connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, "a", false));
+  EXPECT_FALSE(CheckConnectable(kSecurityWep, "a", false));
 
   // Similar to WEP, for WPA.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWpa, "abcdefgh", false));
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, NULL, false));
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, "a", false));
+  EXPECT_TRUE(CheckConnectable(kSecurityWpa, "abcdefgh", false));
+  EXPECT_FALSE(CheckConnectable(kSecurityWpa, NULL, false));
+  EXPECT_FALSE(CheckConnectable(kSecurityWpa, "a", false));
 
   // 802.1x without connectable EAP credentials should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, false));
+  EXPECT_FALSE(CheckConnectable(kSecurity8021x, NULL, false));
 
   // 802.1x with connectable EAP credentials should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, true));
+  EXPECT_TRUE(CheckConnectable(kSecurity8021x, NULL, true));
 
   // Dynamic WEP + 802.1X should be connectable under the same conditions.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, NULL, true));
+  EXPECT_TRUE(CheckConnectable(kSecurityWep, NULL, true));
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {
   const char *reason;
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(service->HasEndpoints());
@@ -1263,7 +1241,7 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
 
 TEST_F(WiFiServiceTest, AutoConnect) {
   const char *reason;
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
   EXPECT_CALL(*wifi(), ConnectTo(_, _))
       .Times(0);
@@ -1287,20 +1265,20 @@ TEST_F(WiFiServiceTest, AutoConnect) {
 }
 
 TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
-  WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityWep);
+  WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityWep);
 
   EXPECT_EQ("", wifi_service->passphrase_);
 
   ::DBus::Error error;
   EXPECT_TRUE(DBusAdaptor::SetProperty(
       wifi_service->mutable_store(),
-      flimflam::kPassphraseProperty,
+      kPassphraseProperty,
       DBusAdaptor::StringToVariant("0:abcde"),
       &error));
   EXPECT_EQ("0:abcde", wifi_service->passphrase_);
 
   EXPECT_TRUE(DBusAdaptor::ClearProperty(wifi_service->mutable_store(),
-                                         flimflam::kPassphraseProperty,
+                                         kPassphraseProperty,
                                          &error));
   EXPECT_EQ("", wifi_service->passphrase_);
 }
@@ -1338,70 +1316,65 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Strengths) {
 
 TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   // Initial endpoint updates values.
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(
-      flimflam::kWifiBSsid, kOkEndpointBssId));
-  EXPECT_CALL(adaptor, EmitUint8Changed(
-      flimflam::kSignalStrengthProperty, kOkEndpointStrength));
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiPhyMode, Metrics::kWiFiNetworkPhyMode11b));
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor,
+              EmitUint16Changed(kWifiPhyMode, Metrics::kWiFiNetworkPhyMode11b));
   service->AddEndpoint(ok_endpoint);
   EXPECT_EQ(1, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Endpoint with stronger signal updates values.
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiFrequency, kGoodEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(
-      flimflam::kWifiBSsid, kGoodEndpointBssId));
-  EXPECT_CALL(adaptor, EmitUint8Changed(
-      flimflam::kSignalStrengthProperty, kGoodEndpointStrength));
+  EXPECT_CALL(adaptor,
+              EmitUint16Changed(kWifiFrequency, kGoodEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kGoodEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(kSignalStrengthProperty, kGoodEndpointStrength));
   // However, both endpoints are 11b.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(good_endpoint);
   EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Endpoint with lower signal does not change values.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
+              EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(bad_endpoint);
   EXPECT_EQ(3, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing non-optimal endpoint does not change values.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
+              EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(bad_endpoint);
   EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing optimal endpoint updates values.
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(
-      flimflam::kWifiBSsid, kOkEndpointBssId));
-  EXPECT_CALL(adaptor, EmitUint8Changed(
-      flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
   // However, both endpoints are 11b.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(good_endpoint);
   EXPECT_EQ(1, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing last endpoint updates values (and doesn't crash).
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _));
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _));
-  EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _));
+  EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
   EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiPhyMode, Metrics::kWiFiNetworkPhyModeUndef));
+      kWifiPhyMode, Metrics::kWiFiNetworkPhyModeUndef));
   service->RemoveEndpoint(ok_endpoint);
   EXPECT_EQ(0, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1419,48 +1392,45 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
 
   // Setting current endpoint forces adoption of its values, even if it
   // doesn't have the highest signal.
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiFrequency, kBadEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(
-      flimflam::kWifiBSsid, kBadEndpointBssId));
-  EXPECT_CALL(adaptor, EmitUint8Changed(
-      flimflam::kSignalStrengthProperty, kBadEndpointStrength));
+  EXPECT_CALL(adaptor,
+              EmitUint16Changed(kWifiFrequency, kBadEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kBadEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(kSignalStrengthProperty, kBadEndpointStrength));
   service->NotifyCurrentEndpoint(bad_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Adding a better endpoint doesn't matter, when current endpoint is set.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+              EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
   service->AddEndpoint(good_endpoint);
   EXPECT_EQ(3, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing a better endpoint doesn't matter, when current endpoint is set.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+              EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
   service->RemoveEndpoint(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing the current endpoint is safe and sane.
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(
-      flimflam::kWifiBSsid, kOkEndpointBssId));
-  EXPECT_CALL(adaptor, EmitUint8Changed(
-      flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
   service->RemoveEndpoint(bad_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Clearing the current endpoint (without removing it) is also safe and sane.
   service->NotifyCurrentEndpoint(ok_endpoint);
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+              EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
   service->NotifyCurrentEndpoint(NULL);
   Mock::VerifyAndClearExpectations(&adaptor);
 }
@@ -1476,28 +1446,26 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Updating sub-optimal Endpoint doesn't update Service.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
-              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+              EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
   ok_endpoint->signal_strength_ = (kOkEndpointSignal + kGoodEndpointSignal) / 2;
   service->NotifyEndpointUpdated(ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Updating optimal Endpoint updates appropriate Service property.
-  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
-  EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
   good_endpoint->signal_strength_ = kGoodEndpointSignal + 1;
   service->NotifyEndpointUpdated(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Change in optimal Endpoint updates Service properties.
-  EXPECT_CALL(adaptor, EmitUint16Changed(
-      flimflam::kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(
-      flimflam::kWifiBSsid, kOkEndpointBssId));
-  EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
   ok_endpoint->signal_strength_ = kGoodEndpointSignal + 2;
   service->NotifyEndpointUpdated(ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1620,46 +1588,46 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
 }
 
 TEST_F(WiFiServiceTest, SecurityFromCurrentEndpoint) {
-  WiFiServiceRefPtr service(MakeSimpleService(flimflam::kSecurityPsk));
-  EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));
+  WiFiServiceRefPtr service(MakeSimpleService(kSecurityPsk));
+  EXPECT_EQ(kSecurityPsk, service->GetSecurity(NULL));
   WiFiEndpoint *endpoint = MakeOpenEndpoint(
         simple_ssid_string(), "00:00:00:00:00:00", 0, 0);
   service->AddEndpoint(endpoint);
-  EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));
+  EXPECT_EQ(kSecurityPsk, service->GetSecurity(NULL));
   service->NotifyCurrentEndpoint(endpoint);
-  EXPECT_EQ(flimflam::kSecurityNone, service->GetSecurity(NULL));
+  EXPECT_EQ(kSecurityNone, service->GetSecurity(NULL));
   service->NotifyCurrentEndpoint(NULL);
-  EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));
+  EXPECT_EQ(kSecurityPsk, service->GetSecurity(NULL));
 }
 
 TEST_F(WiFiServiceTest, UpdateSecurity) {
   // Cleartext and pre-shared-key crypto.
   {
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
     EXPECT_EQ(Service::kCryptoNone, service->crypto_algorithm());
     EXPECT_FALSE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
   }
   {
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWep);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityWep);
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_FALSE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
   }
   {
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityPsk);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityPsk);
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
   }
   {
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWpa);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityWpa);
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
   }
   {
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityRsn);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityRsn);
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -1668,7 +1636,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
   // Crypto with 802.1X key management.
   {
     // WEP
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWep);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityWep);
     service->SetEAPKeyManagement("IEEE8021X");
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
@@ -1676,7 +1644,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
   }
   {
     // WPA
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, false);
     service->AddEndpoint(endpoint);
@@ -1686,7 +1654,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
   }
   {
     // RSN
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, true);
     service->AddEndpoint(endpoint);
@@ -1696,7 +1664,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
   }
   {
     // AP supports both WPA and RSN.
-    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, true);
     service->AddEndpoint(endpoint);
@@ -1802,7 +1770,7 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
 }
 
 TEST_F(WiFiServiceTest, Unload) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurityNone);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
   EXPECT_CALL(*wifi(), DestroyIPConfigLease(service->GetStorageIdentifier())).
     Times(1);
   service->Unload();
@@ -1815,12 +1783,12 @@ TEST_F(WiFiServiceTest, PropertyChanges) {
   TestAutoConnectPropertyChange(service, adaptor);
 
   EXPECT_CALL(*adaptor,
-              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+              EmitRpcIdentifierChanged(kDeviceProperty, _));
   SetWiFi(service, wifi());
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_CALL(*adaptor,
-              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+              EmitRpcIdentifierChanged(kDeviceProperty, _));
   service->ResetWiFi();
   Mock::VerifyAndClearExpectations(adaptor);
 }
@@ -1833,7 +1801,7 @@ TEST_F(WiFiServiceTest, CustomSetterNoopChange) {
 }
 
 TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWpa);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityWpa);
   EXPECT_FALSE(service->has_ever_connected());
   EXPECT_EQ(0, service->suspected_credential_failures_);
 
