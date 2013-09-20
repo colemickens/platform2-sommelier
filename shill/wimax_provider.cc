@@ -158,7 +158,7 @@ bool WiMaxProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
         error, Error::kInvalidArguments, "Missing WiMAX network id.");
     return false;
   }
-  string name = args.LookupString(flimflam::kNameProperty, "");
+  string name = args.LookupString(kNameProperty, "");
   if (name.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "Missing WiMAX service name.");
@@ -174,7 +174,7 @@ bool WiMaxProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
 ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
                                         Error *error) {
   SLOG(WiMax, 2) << __func__;
-  CHECK_EQ(flimflam::kTypeWimax, args.GetString(flimflam::kTypeProperty));
+  CHECK_EQ(kTypeWimax, args.GetString(kTypeProperty));
   WiMaxNetworkId id;
   string name;
   if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
@@ -190,7 +190,7 @@ ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
 ServiceRefPtr WiMaxProvider::FindSimilarService(const KeyValueStore &args,
                                                 Error *error) const {
   SLOG(WiMax, 2) << __func__;
-  CHECK_EQ(flimflam::kTypeWimax, args.GetString(flimflam::kTypeProperty));
+  CHECK_EQ(kTypeWimax, args.GetString(kTypeProperty));
   WiMaxNetworkId id;
   string name;
   if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
@@ -207,7 +207,7 @@ ServiceRefPtr WiMaxProvider::FindSimilarService(const KeyValueStore &args,
 ServiceRefPtr WiMaxProvider::CreateTemporaryService(const KeyValueStore &args,
                                                     Error *error) {
   SLOG(WiMax, 2) << __func__;
-  CHECK_EQ(flimflam::kTypeWimax, args.GetString(flimflam::kTypeProperty));
+  CHECK_EQ(kTypeWimax, args.GetString(kTypeProperty));
   WiMaxNetworkId id;
   string name;
   if (!GetServiceParametersFromArgs(args, &id, &name, error)) {

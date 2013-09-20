@@ -65,7 +65,7 @@ WiMax::WiMax(ControlInterface *control,
       connect_timeout_seconds_(kDefaultConnectTimeoutSeconds) {
   LOG(INFO) << "WiMAX device created: " << link_name << " @ " << path;
   PropertyStore *store = mutable_store();
-  store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
+  store->RegisterConstBool(kScanningProperty, &scanning_);
 }
 
 WiMax::~WiMax() {

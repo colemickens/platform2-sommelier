@@ -38,7 +38,7 @@ WiMaxService::WiMaxService(ControlInterface *control,
   PropertyStore *store = this->mutable_store();
   // TODO(benchan): Support networks that require no user credentials or
   // implicitly defined credentials.
-  store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
+  store->RegisterBool(kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(kNetworkIdProperty, &network_id_);
 
   SetEapCredentials(new EapCredentials());
@@ -218,10 +218,10 @@ void WiMaxService::SetDevice(WiMaxRefPtr new_device) {
   if (device_ == new_device)
     return;
   if (new_device) {
-    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+    adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
                                         new_device->GetRpcIdentifier());
   } else {
-    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+    adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
                                         DBusAdaptor::kNullPath);
   }
   device_ = new_device;
@@ -270,7 +270,7 @@ string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
                                              const string &name) {
   string storage_id =
       base::StringPrintf("%s_%s_%s",
-                         flimflam::kTypeWimax, name.c_str(), id.c_str());
+                         kTypeWimax, name.c_str(), id.c_str());
   StringToLowerASCII(&storage_id);
   replace_if(storage_id.begin(), storage_id.end(), &Service::IllegalChar, '_');
   return storage_id;

@@ -488,7 +488,7 @@ TEST_F(WiMaxProviderTest, GetService) {
   KeyValueStore args;
   Error e;
 
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
+  args.SetString(kTypeProperty, kTypeWimax);
 
   // No network id property.
   ServiceRefPtr service = provider_.GetService(args, &e);
@@ -505,9 +505,9 @@ TEST_F(WiMaxProviderTest, GetService) {
 
   // Service created and configured.
   static const char kName[] = "Test WiMAX Network";
-  args.SetString(flimflam::kNameProperty, kName);
+  args.SetString(kNameProperty, kName);
   static const char kIdentity[] = "joe";
-  args.SetString(flimflam::kEapIdentityProperty, kIdentity);
+  args.SetString(kEapIdentityProperty, kIdentity);
 
   e.Reset();
   service = provider_.FindSimilarService(args, &e);

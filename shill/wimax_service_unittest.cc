@@ -321,12 +321,12 @@ TEST_F(WiMaxServiceTest, PropertyChanges) {
   TestAutoConnectPropertyChange(service_, adaptor);
 
   EXPECT_CALL(*adaptor,
-              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+              EmitRpcIdentifierChanged(kDeviceProperty, _));
   SetDevice(device_);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_CALL(*adaptor,
-              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+              EmitRpcIdentifierChanged(kDeviceProperty, _));
   SetDevice(NULL);
   Mock::VerifyAndClearExpectations(adaptor);
 }
