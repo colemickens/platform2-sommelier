@@ -30,8 +30,10 @@ const int kDefaultPollMs = 30000;
 // Default shorter time interval used after a failed poll, in milliseconds.
 const int kDefaultShortPollMs = 5000;
 
-// Default value for |current_stabilized_delay_|, in milliseconds.
-const int kDefaultCurrentStabilizedDelayMs = 5000;
+// Default values for |current_stabilized_after_*_delay_|, in milliseconds.
+const int kDefaultCurrentStabilizedAfterStartupDelayMs = 5000;
+const int kDefaultCurrentStabilizedAfterPowerSourceChangeDelayMs = 5000;
+const int kDefaultCurrentStabilizedAfterResumeDelayMs = 5000;
 
 // Different power supply types reported by the kernel.
 const char kBatteryType[] = "Battery";
@@ -83,8 +85,17 @@ bool IsUsbType(const std::string& type) {
 
 }  // namespace
 
+base::TimeTicks PowerSupply::TestApi::GetCurrentTime() const {
+  return power_supply_->clock_->GetCurrentTime();
+}
+
 void PowerSupply::TestApi::SetCurrentTime(base::TimeTicks now) {
   power_supply_->clock_->set_current_time_for_testing(now);
+}
+
+void PowerSupply::TestApi::AdvanceTime(base::TimeDelta interval) {
+  power_supply_->clock_->set_current_time_for_testing(
+      GetCurrentTime() + interval);
 }
 
 bool PowerSupply::TestApi::TriggerPollTimeout() {
@@ -110,8 +121,6 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       power_supply_path_(power_supply_path),
       low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
-      current_stabilized_delay_(base::TimeDelta::FromMilliseconds(
-          kDefaultCurrentStabilizedDelayMs)),
       full_factor_(1.0),
       poll_timeout_id_(0),
       notify_observers_timeout_id_(0) {
@@ -133,6 +142,22 @@ void PowerSupply::Init() {
   int64 short_poll_ms = kDefaultShortPollMs;
   prefs_->GetInt64(kBatteryPollShortIntervalPref, &short_poll_ms);
   short_poll_delay_ = base::TimeDelta::FromMilliseconds(short_poll_ms);
+
+  int64 startup_ms = kDefaultCurrentStabilizedAfterStartupDelayMs;
+  prefs_->GetInt64(kBatteryCurrentStabilizedAfterStartupMsPref, &startup_ms);
+  current_stabilized_after_startup_delay_ =
+      base::TimeDelta::FromMilliseconds(startup_ms);
+
+  int64 source_ms = kDefaultCurrentStabilizedAfterPowerSourceChangeDelayMs;
+  prefs_->GetInt64(kBatteryCurrentStabilizedAfterPowerSourceChangeMsPref,
+                   &source_ms);
+  current_stabilized_after_power_source_change_delay_ =
+      base::TimeDelta::FromMilliseconds(source_ms);
+
+  int64 resume_ms = kDefaultCurrentStabilizedAfterResumeDelayMs;
+  prefs_->GetInt64(kBatteryCurrentStabilizedAfterResumeMsPref, &resume_ms);
+  current_stabilized_after_resume_delay_ =
+      base::TimeDelta::FromMilliseconds(resume_ms);
 
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
@@ -160,7 +185,7 @@ void PowerSupply::Init() {
 
   // This defers the initial recording of samples until the current has
   // stabilized.
-  ResetCurrentSamples();
+  ResetCurrentSamples(current_stabilized_after_startup_delay_);
   SchedulePoll(false);
 }
 
@@ -223,7 +248,7 @@ void PowerSupply::SetSuspended(bool suspended) {
     util::RemoveTimeout(&poll_timeout_id_);
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
-    ResetCurrentSamples();
+    ResetCurrentSamples(current_stabilized_after_resume_delay_);
     RefreshImmediately();
   }
 }
@@ -234,12 +259,15 @@ void PowerSupply::HandleUdevEvent() {
     RefreshImmediately();
 }
 
-void PowerSupply::ResetCurrentSamples() {
-  VLOG(1) << "Waiting " << current_stabilized_delay_.InMilliseconds()
-          << " ms for current to stabilize";
+void PowerSupply::ResetCurrentSamples(base::TimeDelta stabilized_delay) {
   current_samples_.Clear();
+
+  const base::TimeTicks now = clock_->GetCurrentTime();
   current_stabilized_timestamp_ =
-      clock_->GetCurrentTime() + current_stabilized_delay_;
+      std::max(current_stabilized_timestamp_, now + stabilized_delay);
+  VLOG(1) << "Waiting "
+          << (current_stabilized_timestamp_ - now).InMilliseconds()
+          << " ms for current to stabilize";
 }
 
 bool PowerSupply::UpdatePowerStatus() {
@@ -411,7 +439,7 @@ bool PowerSupply::UpdatePowerStatus() {
 
   if (power_status_initialized_ &&
       status.line_power_on != power_status_.line_power_on)
-    ResetCurrentSamples();
+    ResetCurrentSamples(current_stabilized_after_power_source_change_delay_);
 
   if (clock_->GetCurrentTime() >= current_stabilized_timestamp_ &&
       battery_current > 0.0)

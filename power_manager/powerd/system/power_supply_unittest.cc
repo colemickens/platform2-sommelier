@@ -109,10 +109,11 @@ class PowerSupplyTest : public ::testing::Test {
   };
 
   // Sets the time so that |power_supply_| will believe that the current
-  // has stabilized after startup.
+  // has stabilized.
   void SetStabilizedTime() {
-    test_api_->SetCurrentTime(
-        kStartTime + power_supply_->current_stabilized_delay());
+    const base::TimeTicks now = test_api_->GetCurrentTime();
+    if (power_supply_->current_stabilized_timestamp() > now)
+      test_api_->SetCurrentTime(power_supply_->current_stabilized_timestamp());
   }
 
   void WriteValue(const std::string& relative_filename,
@@ -331,20 +332,24 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   const base::TimeDelta kPollDelay = base::TimeDelta::FromSeconds(30);
   const base::TimeDelta kShortPollDelay = base::TimeDelta::FromSeconds(5);
-  const base::TimeDelta kShortPollDelayPlusSlack = kShortPollDelay +
-      base::TimeDelta::FromMilliseconds(PowerSupply::kCurrentStabilizedSlackMs);
+  const base::TimeDelta kStartupDelay = base::TimeDelta::FromSeconds(6);
+  const base::TimeDelta kPowerSourceDelay = base::TimeDelta::FromSeconds(7);
+  const base::TimeDelta kResumeDelay = base::TimeDelta::FromSeconds(10);
+  const base::TimeDelta kSlack = base::TimeDelta::FromMilliseconds(
+      PowerSupply::kCurrentStabilizedSlackMs);
 
   prefs_.SetInt64(kBatteryPollIntervalPref, kPollDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryPollShortIntervalPref,
-                   kShortPollDelay.InMilliseconds());
+                  kShortPollDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryCurrentStabilizedAfterStartupMsPref,
+                  kStartupDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryCurrentStabilizedAfterPowerSourceChangeMsPref,
+                  kPowerSourceDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryCurrentStabilizedAfterResumeMsPref,
+                  kResumeDelay.InMilliseconds());
 
   base::TimeTicks current_time = kStartTime;
   power_supply_->Init();
-
-  // Make sure that the initial polling delay will advance the time enough
-  // for the battery time to be estimated.
-  ASSERT_GE(kShortPollDelayPlusSlack.InMilliseconds(),
-            power_supply_->current_stabilized_delay().InMilliseconds());
 
   // The battery times should be reported as "calculating" just after
   // initialization.
@@ -352,11 +357,11 @@ TEST_F(PowerSupplyTest, PollDelays) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
-  EXPECT_EQ(kShortPollDelayPlusSlack.InMilliseconds(),
+  EXPECT_EQ((kStartupDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
   // After enough time has elapsed, the battery times should be reported.
-  current_time += kShortPollDelayPlusSlack;
+  current_time += kStartupDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->power_status();
@@ -378,11 +383,11 @@ TEST_F(PowerSupplyTest, PollDelays) {
   status = power_supply_->power_status();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
-  EXPECT_EQ(kShortPollDelayPlusSlack.InMilliseconds(),
+  EXPECT_EQ((kResumeDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
   // Check that the updated times are returned after a delay.
-  current_time += kShortPollDelayPlusSlack;
+  current_time += kResumeDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->power_status();
@@ -395,11 +400,11 @@ TEST_F(PowerSupplyTest, PollDelays) {
   status = power_supply_->power_status();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
-  EXPECT_EQ(kShortPollDelayPlusSlack.InMilliseconds(),
+  EXPECT_EQ((kPowerSourceDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
   // After the delay, estimates should be made again.
-  current_time += kShortPollDelayPlusSlack;
+  current_time += kPowerSourceDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->power_status();
@@ -408,9 +413,6 @@ TEST_F(PowerSupplyTest, PollDelays) {
 }
 
 TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
-  const base::TimeDelta kStabilizeDelay =
-      power_supply_->current_stabilized_delay();
-
   // Start out with the battery 50% full and an unset current.
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
   WriteDoubleValue("battery/charge_full", 1.0);
@@ -429,8 +431,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // Set the current such that it'll take an hour to charge fully and
   // advance the clock so the current will be used.
   WriteDoubleValue("battery/current_now", 0.5);
-  base::TimeTicks now = kStartTime + kStabilizeDelay;
-  test_api_->SetCurrentTime(now);
+  SetStabilizedTime();
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(0, status.battery_time_to_empty.InSeconds());
@@ -438,8 +439,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   EXPECT_EQ(3600, status.battery_time_to_full.InSeconds());
 
   // Let half an hour pass and report that the battery is 75% full.
-  now += base::TimeDelta::FromMinutes(30);
-  test_api_->SetCurrentTime(now);
+  test_api_->AdvanceTime(base::TimeDelta::FromMinutes(30));
   WriteDoubleValue("battery/charge_now", 0.75);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
@@ -461,8 +461,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // (0.5 + 0.5 + 1.25 + 0.25) / 4 = 0.625) and report an increased charge.
   // There should be 0.125 / 0.625 * 3600 = 720 seconds until the battery
   // is full.
-  now += base::TimeDelta::FromMinutes(15);
-  test_api_->SetCurrentTime(now);
+  test_api_->AdvanceTime(base::TimeDelta::FromMinutes(15));
   WriteDoubleValue("battery/current_now", 0.25);
   WriteDoubleValue("battery/charge_now", 0.875);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -484,8 +483,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // After the current has had time to stabilize, the average should be
   // reset and the time-to-empty should be estimated.
-  now += kStabilizeDelay;
-  test_api_->SetCurrentTime(now);
+  SetStabilizedTime();
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(3600, status.battery_time_to_empty.InSeconds());
@@ -495,8 +493,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Thirty minutes later, decrease the charge and report a significantly
   // higher current.
-  now += base::TimeDelta::FromMinutes(30);
-  test_api_->SetCurrentTime(now);
+  test_api_->AdvanceTime(base::TimeDelta::FromMinutes(30));
   WriteDoubleValue("battery/charge_now", 0.25);
   WriteDoubleValue("battery/current_now", -1.5);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -519,8 +516,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // reset and the battery time should be reported as "calculating".
   power_supply_->SetSuspended(true);
   WriteDoubleValue("battery/current_now", -0.5);
-  now += base::TimeDelta::FromSeconds(8);
-  test_api_->SetCurrentTime(now);
+  test_api_->AdvanceTime(base::TimeDelta::FromSeconds(8));
   power_supply_->SetSuspended(false);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -529,8 +525,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   EXPECT_EQ(0, status.battery_time_to_full.InSeconds());
 
   // Wait for the current to stabilize.
-  now += kStabilizeDelay;
-  test_api_->SetCurrentTime(now);
+  SetStabilizedTime();
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(1800, status.battery_time_to_empty.InSeconds());
@@ -544,8 +539,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   WriteValue("ac/online", kOnline);
   WriteValue("battery/status", kDischarging);
   ASSERT_TRUE(UpdateStatus(&status));
-  now += kStabilizeDelay;
-  test_api_->SetCurrentTime(now);
+  SetStabilizedTime();
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(1800, status.battery_time_to_empty.InSeconds());
@@ -562,8 +556,7 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   // When the only available current readings are close to 0 (which would
   // result in very large time estimates), -1 estimates should be provided
   // instead.
-  base::TimeTicks now = kStartTime + power_supply_->current_stabilized_delay();
-  test_api_->SetCurrentTime(now);
+  SetStabilizedTime();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
@@ -575,8 +568,7 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.is_calculating_battery_time);
 
-  now += power_supply_->current_stabilized_delay();
-  test_api_->SetCurrentTime(now);
+  SetStabilizedTime();
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(-1, status.battery_time_to_empty.InSeconds());
@@ -766,8 +758,7 @@ TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {
   WriteDoubleValue("battery/current_now", -1.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
   power_supply_->Init();
-  test_api_->SetCurrentTime(
-      kStartTime + power_supply_->current_stabilized_delay());
+  SetStabilizedTime();
 
   // The reported time until shutdown should be based only on the charge that's
   // available before shutdown. Note also that the time-based shutdown threshold

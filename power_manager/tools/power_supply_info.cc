@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
   power_manager::system::PowerSupply power_supply(path, &prefs);
   // Ensure that the battery's time-to-full or time-to-empty will be
   // calculated immediately.
-  power_supply.set_current_stabilized_delay(base::TimeDelta());
+  power_supply.clear_current_stabilized_after_startup_delay();
   power_supply.Init();
 
   power_manager::system::PowerInformation power_info;

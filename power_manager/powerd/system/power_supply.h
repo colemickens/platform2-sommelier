@@ -152,8 +152,14 @@ class PowerSupply {
       return power_supply_->current_poll_delay_for_testing_;
     }
 
+    // Returns the time that will be used as "now".
+    base::TimeTicks GetCurrentTime() const;
+
     // Sets the time that will be used as "now".
     void SetCurrentTime(base::TimeTicks now);
+
+    // Advances the time by |interval|.
+    void AdvanceTime(base::TimeDelta interval);
 
     // Calls HandlePollTimeout() and returns true if |poll_timeout_id_| was
     // set.  Returns false if the timeout was unset.
@@ -169,7 +175,7 @@ class PowerSupply {
   // calculating the battery's time-to-full or -empty.
   static const int kMaxCurrentSamples;
 
-  // Additional time beyond |current_stabilized_delay_| to wait before
+  // Additional time beyond |current_stabilized_after_*_delay_| to wait before
   // updating the status, in milliseconds. This just ensures that the timer
   // doesn't fire before it's safe to calculate the battery time.
   static const int kCurrentStabilizedSlackMs;
@@ -179,11 +185,14 @@ class PowerSupply {
 
   const PowerStatus& power_status() const { return power_status_; }
 
-  const base::TimeDelta& current_stabilized_delay() const {
-    return current_stabilized_delay_;
+  base::TimeTicks current_stabilized_timestamp() const {
+    return current_stabilized_timestamp_;
   }
-  void set_current_stabilized_delay(const base::TimeDelta& delay) {
-    current_stabilized_delay_ = delay;
+
+  // Useful for callers that just need an instantaneous estimate after creating
+  // a PowerSupply object and don't care about smoothing.
+  void clear_current_stabilized_after_startup_delay() {
+    current_stabilized_after_startup_delay_ = base::TimeDelta();
   }
 
   // Initializes the object and begins polling.
@@ -212,8 +221,10 @@ class PowerSupply {
  private:
   friend class PowerSupplyTest;
 
-  // Clears |current_samples_| and sets |current_stabilized_timestamp_|.
-  void ResetCurrentSamples();
+  // Clears |current_samples_| and sets |current_stabilized_timestamp_| so that
+  // the current won't be sampled again until at least |stabilized_delay| in the
+  // future.
+  void ResetCurrentSamples(base::TimeDelta stabilized_delay);
 
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
@@ -283,7 +294,9 @@ class PowerSupply {
   // Amount of time to wait after startup, a power source change, or a
   // resume event before assuming that the current can be used in battery
   // time estimates.
-  base::TimeDelta current_stabilized_delay_;
+  base::TimeDelta current_stabilized_after_startup_delay_;
+  base::TimeDelta current_stabilized_after_power_source_change_delay_;
+  base::TimeDelta current_stabilized_after_resume_delay_;
 
   // Time at which the reported current is expected to have stabilized to
   // the point where it can be recorded in |current_samples_| and the
