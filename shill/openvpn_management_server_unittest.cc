@@ -59,24 +59,24 @@ class OpenVPNManagementServerTest : public testing::Test {
   }
 
   void ExpectStaticChallengeResponse() {
-    driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
-    driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
-    driver_.args()->SetString(flimflam::kOpenVPNOTPProperty, "123456");
+    driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
+    driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
+    driver_.args()->SetString(kOpenVPNOTPProperty, "123456");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" jojo\n");
     ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
   void ExpectAuthenticationResponse() {
-    driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
-    driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
+    driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
+    driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" jojo\n");
     ExpectSend("password \"Auth\" \"yoyo\"\n");
   }
 
   void ExpectPINResponse() {
-    driver_.args()->SetString(flimflam::kOpenVPNPinProperty, "987654");
+    driver_.args()->SetString(kOpenVPNPinProperty, "987654");
     SetConnectedSocket();
     ExpectSend("password \"User-Specific TPM Token FOO\" \"987654\"\n");
   }
@@ -177,8 +177,7 @@ TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
 
 TEST_F(OpenVPNManagementServerTest, Start) {
   const string kStaticChallenge = "static-challenge";
-  driver_.args()->SetString(
-      flimflam::kOpenVPNStaticChallengeProperty, kStaticChallenge);
+  driver_.args()->SetString(kOpenVPNStaticChallengeProperty, kStaticChallenge);
   const int kSocket = 123;
   EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
       .WillOnce(Return(kSocket));
@@ -335,7 +334,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
   EXPECT_TRUE(
       server_.ProcessNeedPasswordMessage(
           ">PASSWORD:Need 'Auth' SC:user/password/otp"));
-  EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
+  EXPECT_FALSE(driver_.args()->ContainsString(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth) {
@@ -389,23 +388,23 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
                                    Service::kErrorDetailsNone)).Times(3);
   server_.PerformStaticChallenge("Auth");
-  driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
+  driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
   server_.PerformStaticChallenge("Auth");
-  driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
+  driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
   server_.PerformStaticChallenge("Auth");
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
   ExpectStaticChallengeResponse();
   server_.PerformStaticChallenge("Auth");
-  EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
+  EXPECT_FALSE(driver_.args()->ContainsString(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
                                    Service::kErrorDetailsNone)).Times(2);
   server_.PerformAuthentication("Auth");
-  driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
+  driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
   server_.PerformAuthentication("Auth");
 }
 

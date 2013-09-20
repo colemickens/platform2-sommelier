@@ -65,18 +65,17 @@ const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 // static
 const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
-  { flimflam::kL2tpIpsecAuthenticationType, 0 },
-  { flimflam::kL2tpIpsecCaCertNssProperty, 0 },
-  { flimflam::kL2tpIpsecClientCertIdProperty, 0 },
-  { flimflam::kL2tpIpsecClientCertSlotProperty, 0 },
-  { flimflam::kL2tpIpsecIkeVersion, 0 },
-  { flimflam::kL2tpIpsecPasswordProperty,
-    Property::kCredential | Property::kWriteOnly },
-  { flimflam::kL2tpIpsecPinProperty, Property::kCredential },
-  { flimflam::kL2tpIpsecPskProperty, Property::kCredential },
-  { flimflam::kL2tpIpsecUserProperty, 0 },
-  { flimflam::kProviderHostProperty, 0 },
-  { flimflam::kProviderTypeProperty, 0 },
+  { kL2tpIpsecAuthenticationType, 0 },
+  { kL2tpIpsecCaCertNssProperty, 0 },
+  { kL2tpIpsecClientCertIdProperty, 0 },
+  { kL2tpIpsecClientCertSlotProperty, 0 },
+  { kL2tpIpsecIkeVersion, 0 },
+  { kL2tpIpsecPasswordProperty, Property::kCredential | Property::kWriteOnly },
+  { kL2tpIpsecPinProperty, Property::kCredential },
+  { kL2tpIpsecPskProperty, Property::kCredential },
+  { kL2tpIpsecUserProperty, 0 },
+  { kProviderHostProperty, 0 },
+  { kProviderTypeProperty, 0 },
   { kL2tpIpsecCaCertPemProperty, Property::kArray },
   { kL2tpIpsecTunnelGroupProperty, 0 },
   { kL2TPIPSecIPSecTimeoutProperty, 0 },
@@ -142,7 +141,7 @@ void L2TPIPSecDriver::OnConnectTimeout() {
 }
 
 string L2TPIPSecDriver::GetProviderType() const {
-  return flimflam::kProviderL2tpIpsec;
+  return kProviderL2tpIpsec;
 }
 
 void L2TPIPSecDriver::IdleService() {
@@ -207,7 +206,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
 }
 
 bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
-  string vpnhost = args()->LookupString(flimflam::kProviderHostProperty, "");
+  string vpnhost = args()->LookupString(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "VPN host not specified.");
@@ -231,12 +230,12 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
     InitNSSOptions(options);
   }
 
-  AppendValueOption(flimflam::kL2tpIpsecClientCertIdProperty,
+  AppendValueOption(kL2tpIpsecClientCertIdProperty,
                     "--client_cert_id", options);
-  AppendValueOption(flimflam::kL2tpIpsecClientCertSlotProperty,
+  AppendValueOption(kL2tpIpsecClientCertSlotProperty,
                     "--client_cert_slot", options);
-  AppendValueOption(flimflam::kL2tpIpsecPinProperty, "--user_pin", options);
-  AppendValueOption(flimflam::kL2tpIpsecUserProperty, "--user", options);
+  AppendValueOption(kL2tpIpsecPinProperty, "--user_pin", options);
+  AppendValueOption(kL2tpIpsecUserProperty, "--user", options);
   AppendValueOption(kL2TPIPSecIPSecTimeoutProperty, "--ipsec_timeout", options);
   AppendValueOption(kL2TPIPSecLeftProtoPortProperty,
                     "--leftprotoport", options);
@@ -260,7 +259,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
 }
 
 bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
-  string psk = args()->LookupString(flimflam::kL2tpIpsecPskProperty, "");
+  string psk = args()->LookupString(kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
     if (!file_util::CreateTemporaryFileInDir(
             manager()->run_path(), &psk_file_) ||
@@ -279,9 +278,9 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
 
 void L2TPIPSecDriver::InitNSSOptions(vector<string> *options) {
   string ca_cert =
-      args()->LookupString(flimflam::kL2tpIpsecCaCertNssProperty, "");
+      args()->LookupString(kL2tpIpsecCaCertNssProperty, "");
   if (!ca_cert.empty()) {
-    const string &vpnhost = args()->GetString(flimflam::kProviderHostProperty);
+    const string &vpnhost = args()->GetString(kProviderHostProperty);
     vector<char> id(vpnhost.begin(), vpnhost.end());
     FilePath certfile = nss_->GetDERCertfile(ca_cert, id);
     if (certfile.empty()) {
@@ -367,13 +366,13 @@ Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
 void L2TPIPSecDriver::GetLogin(string *user, string *password) {
   LOG(INFO) << "Login requested.";
   string user_property =
-      args()->LookupString(flimflam::kL2tpIpsecUserProperty, "");
+      args()->LookupString(kL2tpIpsecUserProperty, "");
   if (user_property.empty()) {
     LOG(ERROR) << "User not set.";
     return;
   }
   string password_property =
-      args()->LookupString(flimflam::kL2tpIpsecPasswordProperty, "");
+      args()->LookupString(kL2tpIpsecPasswordProperty, "");
   if (password_property.empty()) {
     LOG(ERROR) << "Password not set.";
     return;
@@ -433,12 +432,10 @@ void L2TPIPSecDriver::Notify(
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {
   SLOG(VPN, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
-  props.SetBool(flimflam::kPassphraseRequiredProperty,
-                args()->LookupString(
-                    flimflam::kL2tpIpsecPasswordProperty, "").empty());
-  props.SetBool(flimflam::kL2tpIpsecPskRequiredProperty,
-                args()->LookupString(
-                    flimflam::kL2tpIpsecPskProperty, "").empty());
+  props.SetBool(kPassphraseRequiredProperty,
+                args()->LookupString(kL2tpIpsecPasswordProperty, "").empty());
+  props.SetBool(kL2tpIpsecPskRequiredProperty,
+                args()->LookupString(kL2tpIpsecPskProperty, "").empty());
   return props;
 }
 
@@ -451,14 +448,14 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
   bool has_remote_authentication = false;
-  if (args()->LookupString(flimflam::kL2tpIpsecCaCertNssProperty, "") != "") {
+  if (args()->LookupString(kL2tpIpsecCaCertNssProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
     has_remote_authentication = true;
   }
-  if (args()->LookupString(flimflam::kL2tpIpsecPskProperty, "") != "") {
+  if (args()->LookupString(kL2tpIpsecPskProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
@@ -473,7 +470,7 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->LookupString(flimflam::kL2tpIpsecClientCertIdProperty,
+  if (args()->LookupString(kL2tpIpsecClientCertIdProperty,
                            "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
@@ -481,7 +478,7 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(flimflam::kL2tpIpsecPasswordProperty, "") != "") {
+  if (args()->LookupString(kL2tpIpsecPasswordProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,

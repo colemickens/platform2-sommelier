@@ -360,10 +360,8 @@ TEST_F(OpenVPNDriverTest, NotifyUMA) {
   Error unused_error;
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  store.SetStringProperty(flimflam::kOpenVPNCaCertProperty, "x",
-                          &unused_error);
-  store.SetStringProperty(flimflam::kOpenVPNUserProperty, "y",
-                          &unused_error);
+  store.SetStringProperty(kOpenVPNCaCertProperty, "x", &unused_error);
+  store.SetStringProperty(kOpenVPNUserProperty, "y", &unused_error);
   driver_->Notify("up", config);
 }
 
@@ -583,9 +581,9 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
   static const char kID[] = "TestPKCS11ID";
   FilePath empty_cert;
-  SetArg(flimflam::kProviderHostProperty, kHost);
-  SetArg(flimflam::kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
-  SetArg(flimflam::kOpenVPNClientCertIdProperty, kID);
+  SetArg(kProviderHostProperty, kHost);
+  SetArg(kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
+  SetArg(kOpenVPNClientCertIdProperty, kID);
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
@@ -615,7 +613,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
-  SetArg(flimflam::kProviderHostProperty, "v.com:1234");
+  SetArg(kProviderHostProperty, "v.com:1234");
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
@@ -641,19 +639,19 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
 
   options.clear();
-  SetArg(flimflam::kOpenVPNCaCertProperty, kCaCert);
+  SetArg(kOpenVPNCaCertProperty, kCaCert);
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   ExpectInFlags(options, "ca", kCaCert);
   EXPECT_TRUE(error.IsSuccess());
 
-  SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
+  SetArg(kOpenVPNCaCertNSSProperty, kCaCertNSS);
   EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("Can't specify more than one of CACert, CACertNSS and CACertPEM.",
             error.message());
 
-  SetArg(flimflam::kOpenVPNCaCertProperty, "");
-  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(kOpenVPNCaCertProperty, "");
+  SetArg(kProviderHostProperty, kHost);
   FilePath empty_cert;
   FilePath nss_cert(kNSSCertfile);
   EXPECT_CALL(nss_,
@@ -681,8 +679,8 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
             error.message());
 
   options.clear();
-  SetArg(flimflam::kOpenVPNCaCertNSSProperty, "");
-  SetArg(flimflam::kProviderHostProperty, "");
+  SetArg(kOpenVPNCaCertNSSProperty, "");
+  SetArg(kProviderHostProperty, "");
   static const char kPEMCertfile[] = "/tmp/pem-cert";
   FilePath pem_cert(kPEMCertfile);
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
@@ -728,15 +726,15 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // Key available, AuthUserPass set.
   options.clear();
-  SetArg(flimflam::kOpenVPNAuthUserPassProperty, kTestValue);
+  SetArg(kOpenVPNAuthUserPassProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
   ExpectInFlags(options, "key", kTestValue);
 
   // Key available, User set.
   options.clear();
-  RemoveStringArg(flimflam::kOpenVPNAuthUserPassProperty);
-  SetArg(flimflam::kOpenVPNUserProperty, "user");
+  RemoveStringArg(kOpenVPNAuthUserPassProperty);
+  SetArg(kOpenVPNUserProperty, "user");
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
   ExpectInFlags(options, "key", kTestValue);
@@ -745,8 +743,8 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   options.clear();
   RemoveStringArg(kOpenVPNKeyProperty);
   RemoveStringArg(kOpenVPNCertProperty);
-  RemoveStringArg(flimflam::kOpenVPNUserProperty);
-  SetArg(flimflam::kOpenVPNClientCertIdProperty, "");
+  RemoveStringArg(kOpenVPNUserProperty);
+  SetArg(kOpenVPNClientCertIdProperty, "");
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
   ExpectNotInFlags(options, "key");
@@ -755,7 +753,7 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // Non-empty PKCS11 certificate id, no user/password/cert.
   options.clear();
-  SetArg(flimflam::kOpenVPNClientCertIdProperty, kTestValue);
+  SetArg(kOpenVPNClientCertIdProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectNotInFlags(options, "auth-user-pass");
   ExpectNotInFlags(options, "key");
@@ -765,7 +763,7 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // PKCS11 certificate id available, AuthUserPass set.
   options.clear();
-  SetArg(flimflam::kOpenVPNAuthUserPassProperty, kTestValue);
+  SetArg(kOpenVPNAuthUserPassProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
   ExpectNotInFlags(options, "key");
@@ -773,8 +771,8 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // PKCS11 certificate id available, User set.
   options.clear();
-  RemoveStringArg(flimflam::kOpenVPNAuthUserPassProperty);
-  SetArg(flimflam::kOpenVPNUserProperty, "user");
+  RemoveStringArg(kOpenVPNAuthUserPassProperty);
+  SetArg(kOpenVPNUserProperty, "user");
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "auth-user-pass");
   ExpectNotInFlags(options, "key");
@@ -787,13 +785,13 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
   EXPECT_TRUE(options.empty());
 
   static const char kID[] = "TestPKCS11ID";
-  SetArg(flimflam::kOpenVPNClientCertIdProperty, kID);
+  SetArg(kOpenVPNClientCertIdProperty, kID);
   driver_->InitPKCS11Options(&options);
   ExpectInFlags(options, "pkcs11-id", kID);
   ExpectInFlags(options, "pkcs11-providers", "libchaps.so");
 
   static const char kProvider[] = "libpkcs11.so";
-  SetArg(flimflam::kOpenVPNProviderProperty, kProvider);
+  SetArg(kOpenVPNProviderProperty, kProvider);
   options.clear();
   driver_->InitPKCS11Options(&options);
   ExpectInFlags(options, "pkcs11-id", kID);
@@ -901,7 +899,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_FALSE(driver_->device_);
 
   static const char kHost[] = "192.168.2.254";
-  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
@@ -995,7 +993,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_FALSE(driver_->SpawnOpenVPN());
 
   static const char kHost[] = "192.168.2.254";
-  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(kProviderHostProperty, kHost);
   driver_->tunnel_interface_ = "tun0";
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   EXPECT_CALL(*management_server_, Start(_, _, _))
@@ -1132,10 +1130,9 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
   driver_->InitPropertyStore(&store);
   const string kUser = "joe";
   Error error;
-  EXPECT_TRUE(
-      store.SetStringProperty(flimflam::kOpenVPNUserProperty, kUser, &error));
+  EXPECT_TRUE(store.SetStringProperty(kOpenVPNUserProperty, kUser, &error));
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kUser, GetArgs()->LookupString(flimflam::kOpenVPNUserProperty, ""));
+  EXPECT_EQ(kUser, GetArgs()->LookupString(kOpenVPNUserProperty, ""));
 }
 
 TEST_F(OpenVPNDriverTest, GetProvider) {
@@ -1145,19 +1142,17 @@ TEST_F(OpenVPNDriverTest, GetProvider) {
     KeyValueStore props;
     Error error;
     EXPECT_TRUE(
-        store.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props, &error));
-    EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
+        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
+    EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
   }
   {
     KeyValueStore props;
-    SetArg(flimflam::kOpenVPNPasswordProperty, "random-password");
+    SetArg(kOpenVPNPasswordProperty, "random-password");
     Error error;
     EXPECT_TRUE(
-        store.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props, &error));
-    EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
-    EXPECT_FALSE(props.ContainsString(flimflam::kOpenVPNPasswordProperty));
+        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
+    EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
+    EXPECT_FALSE(props.ContainsString(kOpenVPNPasswordProperty));
   }
 }
 

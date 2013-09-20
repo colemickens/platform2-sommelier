@@ -79,7 +79,7 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { kPSKProperty, Property::kCredential },
   { kPasswordProperty, Property::kCredential },
   { kPortProperty, 0 },
-  { flimflam::kProviderTypeProperty, 0 },
+  { kProviderTypeProperty, 0 },
 };
 
 VPNDriverUnderTest::VPNDriverUnderTest(
@@ -148,7 +148,7 @@ bool VPNDriverTest::GetProviderPropertyString(const PropertyStore &store,
   KeyValueStore provider_properties;
   Error error;
   EXPECT_TRUE(store.GetKeyValueStoreProperty(
-      flimflam::kProviderProperty, &provider_properties, &error));
+      kProviderProperty, &provider_properties, &error));
   if (!provider_properties.ContainsString(key)) {
     return false;
   }
@@ -164,7 +164,7 @@ bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore &store,
   KeyValueStore provider_properties;
   Error error;
   EXPECT_TRUE(store.GetKeyValueStoreProperty(
-      flimflam::kProviderProperty, &provider_properties, &error));
+      kProviderProperty, &provider_properties, &error));
   if (!provider_properties.ContainsStrings(key)) {
     return false;
   }
@@ -215,7 +215,7 @@ TEST_F(VPNDriverTest, Load) {
 }
 
 TEST_F(VPNDriverTest, Save) {
-  SetArg(flimflam::kProviderTypeProperty, "");
+  SetArg(kProviderTypeProperty, "");
   SetArg(kPINProperty, kPIN);
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
@@ -227,7 +227,7 @@ TEST_F(VPNDriverTest, Save) {
               SetStringList(kStorageID, kEapCaCertPemProperty, kCaCerts))
       .WillOnce(Return(true));
   EXPECT_CALL(storage,
-              SetString(kStorageID, flimflam::kProviderTypeProperty, ""))
+              SetString(kStorageID, kProviderTypeProperty, ""))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetString(kStorageID, kPortProperty, kPort))
       .WillOnce(Return(true));
@@ -240,7 +240,7 @@ TEST_F(VPNDriverTest, Save) {
   EXPECT_CALL(storage, SetString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, SetString(_, kEapCaCertPemProperty, _)).Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kEapCaCertPemProperty)).Times(0);
-  EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kProviderTypeProperty))
+  EXPECT_CALL(storage, DeleteKey(kStorageID, kProviderTypeProperty))
       .Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kL2tpIpsecCaCertPemProperty));
   EXPECT_CALL(storage, DeleteKey(kStorageID, kPSKProperty));
@@ -295,7 +295,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   const string kProviderType = "boo";
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
-  SetArg(flimflam::kProviderTypeProperty, kProviderType);
+  SetArg(kProviderTypeProperty, kProviderType);
   SetArg(kVPNHostProperty, "");
   const vector<string> kCaCerts{ "cert1" };
   SetArgArray(kEapCaCertPemProperty, kCaCerts);
@@ -344,7 +344,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // name in the Properties dict with the prefix removed.
   {
     string value;
-    EXPECT_TRUE(GetProviderPropertyString(store, flimflam::kTypeProperty,
+    EXPECT_TRUE(GetProviderPropertyString(store, kTypeProperty,
                                           &value));
     EXPECT_EQ(kProviderType, value);
   }

@@ -143,7 +143,7 @@ void VPNDriver::InitPropertyStore(PropertyStore *store) {
   }
 
   store->RegisterDerivedKeyValueStore(
-      flimflam::kProviderProperty,
+      kProviderProperty,
       KeyValueStoreAccessor(
           new CustomAccessor<VPNDriver, KeyValueStore>(
               this, &VPNDriver::GetProvider, NULL)));
@@ -213,7 +213,7 @@ bool VPNDriver::SetMappedStringsProperty(
 
 KeyValueStore VPNDriver::GetProvider(Error *error) {
   SLOG(VPN, 2) << __func__;
-  string provider_prefix = string(flimflam::kProviderProperty) + ".";
+  string provider_prefix = string(kProviderProperty) + ".";
   KeyValueStore provider_properties;
 
   for (size_t i = 0; i < property_count_; i++) {
@@ -277,7 +277,7 @@ void VPNDriver::OnConnectTimeout() {
 }
 
 string VPNDriver::GetHost() const {
-  return args_.LookupString(flimflam::kProviderHostProperty, "");
+  return args_.LookupString(kProviderHostProperty, "");
 }
 
 }  // namespace shill

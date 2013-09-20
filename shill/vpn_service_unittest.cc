@@ -140,7 +140,7 @@ TEST_F(VPNServiceTest, Disconnect) {
 TEST_F(VPNServiceTest, CreateStorageIdentifierNoHost) {
   KeyValueStore args;
   Error error;
-  args.SetString(flimflam::kNameProperty, "vpn-name");
+  args.SetString(kNameProperty, "vpn-name");
   EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
@@ -148,7 +148,7 @@ TEST_F(VPNServiceTest, CreateStorageIdentifierNoHost) {
 TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
   KeyValueStore args;
   Error error;
-  args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
+  args.SetString(kProviderHostProperty, "10.8.0.1");
   EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
@@ -156,8 +156,8 @@ TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
 TEST_F(VPNServiceTest, CreateStorageIdentifier) {
   KeyValueStore args;
   Error error;
-  args.SetString(flimflam::kNameProperty, "vpn-name");
-  args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
+  args.SetString(kNameProperty, "vpn-name");
+  args.SetString(kProviderHostProperty, "10.8.0.1");
   EXPECT_EQ("vpn_10_8_0_1_vpn_name",
             VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_TRUE(error.IsSuccess());
@@ -301,7 +301,7 @@ TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
   DBus::Error error;
   // A null change returns false, but with error set to success.
   EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                        flimflam::kNameProperty,
+                                        kNameProperty,
                                         DBusAdaptor::StringToVariant(
                                             service_->friendly_name()),
                                         &error));
@@ -310,7 +310,7 @@ TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
 
 TEST_F(VPNServiceTest, SetNameProperty) {
   const string kHost = "1.2.3.4";
-  driver_->args()->SetString(flimflam::kProviderHostProperty, kHost);
+  driver_->args()->SetString(kProviderHostProperty, kHost);
   string kOldId = service_->GetStorageIdentifier();
   DBus::Error error;
   const string kName = "New Name";
@@ -320,7 +320,7 @@ TEST_F(VPNServiceTest, SetNameProperty) {
   EXPECT_CALL(*profile, UpdateService(_));
   service_->set_profile(profile);
   EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                       flimflam::kNameProperty,
+                                       kNameProperty,
                                        DBusAdaptor::StringToVariant(kName),
                                        &error));
   EXPECT_NE(service_->GetStorageIdentifier(), kOldId);
@@ -335,7 +335,7 @@ TEST_F(VPNServiceTest, PropertyChanges) {
   scoped_refptr<MockProfile> profile(
       new NiceMock<MockProfile>(&control_, &metrics_, &manager_));
   service_->set_profile(profile);
-  driver_->args()->SetString(flimflam::kProviderHostProperty, kHost);
+  driver_->args()->SetString(kProviderHostProperty, kHost);
   TestNamePropertyChange(service_, GetAdaptor());
 }
 
@@ -380,8 +380,7 @@ TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi) {
       .WillOnce(Return(Technology::kWifi));
 
   Error error;
-  EXPECT_EQ(flimflam::kTypeWifi,
-            service_->GetPhysicalTechologyProperty(&error));
+  EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechologyProperty(&error));
   EXPECT_TRUE(error.IsSuccess());
 
   // Clear expectations now, so the Return(lower_connection_) action releases

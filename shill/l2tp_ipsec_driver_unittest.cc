@@ -149,10 +149,8 @@ class L2TPIPSecDriverTest : public testing::Test,
     Error unused_error;
     PropertyStore store;
     driver_->InitPropertyStore(&store);
-    store.SetStringProperty(flimflam::kL2tpIpsecPskProperty, "x",
-                            &unused_error);
-    store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "y",
-                            &unused_error);
+    store.SetStringProperty(kL2tpIpsecPskProperty, "x", &unused_error);
+    store.SetStringProperty(kL2tpIpsecPasswordProperty, "y", &unused_error);
     EXPECT_CALL(metrics_, SendEnumToUMA(
         Metrics::kMetricVpnDriver,
         Metrics::kVpnDriverL2tpIpsec,
@@ -216,7 +214,7 @@ FilePath L2TPIPSecDriverTest::SetupPSKFile() {
 }
 
 TEST_F(L2TPIPSecDriverTest, GetProviderType) {
-  EXPECT_EQ(flimflam::kProviderL2tpIpsec, GetProviderType());
+  EXPECT_EQ(kProviderL2tpIpsec, GetProviderType());
 }
 
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
@@ -264,9 +262,9 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
   static const char kCaCertNSS[] = "{1234}";
   static const char kPSK[] = "foobar";
 
-  SetArg(flimflam::kProviderHostProperty, kHost);
-  SetArg(flimflam::kL2tpIpsecCaCertNssProperty, kCaCertNSS);
-  SetArg(flimflam::kL2tpIpsecPskProperty, kPSK);
+  SetArg(kProviderHostProperty, kHost);
+  SetArg(kL2tpIpsecCaCertNssProperty, kCaCertNSS);
+  SetArg(kL2tpIpsecPskProperty, kPSK);
 
   FilePath empty_cert;
   EXPECT_CALL(nss_, GetDERCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
@@ -298,7 +296,7 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
   EXPECT_TRUE(options.empty());
   EXPECT_TRUE(error.IsSuccess());
 
-  SetArg(flimflam::kL2tpIpsecPskProperty, kPSK);
+  SetArg(kL2tpIpsecPskProperty, kPSK);
 
   EXPECT_FALSE(driver_->InitPSKOptions(&options, &error));
   EXPECT_TRUE(options.empty());
@@ -324,8 +322,8 @@ TEST_F(L2TPIPSecDriverTest, InitNSSOptions) {
   static const char kNSSCertfile[] = "/tmp/nss-cert";
   FilePath empty_cert;
   FilePath nss_cert(kNSSCertfile);
-  SetArg(flimflam::kProviderHostProperty, kHost);
-  SetArg(flimflam::kL2tpIpsecCaCertNssProperty, kCaCertNSS);
+  SetArg(kProviderHostProperty, kHost);
+  SetArg(kL2tpIpsecCaCertNssProperty, kCaCertNSS);
   EXPECT_CALL(nss_,
               GetDERCertfile(kCaCertNSS,
                              ElementsAreArray(kHost, arraysize(kHost) - 1)))
@@ -418,16 +416,16 @@ TEST_F(L2TPIPSecDriverTest, GetLogin) {
   static const char kUser[] = "joesmith";
   static const char kPassword[] = "random-password";
   string user, password;
-  SetArg(flimflam::kL2tpIpsecUserProperty, kUser);
+  SetArg(kL2tpIpsecUserProperty, kUser);
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
-  SetArg(flimflam::kL2tpIpsecUserProperty, "");
-  SetArg(flimflam::kL2tpIpsecPasswordProperty, kPassword);
+  SetArg(kL2tpIpsecUserProperty, "");
+  SetArg(kL2tpIpsecPasswordProperty, kPassword);
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
-  SetArg(flimflam::kL2tpIpsecUserProperty, kUser);
+  SetArg(kL2tpIpsecUserProperty, kUser);
   driver_->GetLogin(&user, &password);
   EXPECT_EQ(kUser, user);
   EXPECT_EQ(kPassword, password);
@@ -450,7 +448,7 @@ TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
 
   // Provide the required arguments.
   static const char kHost[] = "192.168.2.254";
-  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(kProviderHostProperty, kHost);
 
   // TODO(quiche): Instead of setting expectations based on what
   // ExternalTask will call, mock out ExternalTask. Non-trivial,
@@ -470,7 +468,7 @@ TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
 TEST_F(L2TPIPSecDriverTest, Connect) {
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
   static const char kHost[] = "192.168.2.254";
-  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(kProviderHostProperty, kHost);
 
   // TODO(quiche): Instead of setting expectations based on what
   // ExternalTask will call, mock out ExternalTask. Non-trivial,
@@ -518,11 +516,9 @@ TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
   driver_->InitPropertyStore(&store);
   const string kUser = "joe";
   Error error;
-  EXPECT_TRUE(
-      store.SetStringProperty(flimflam::kL2tpIpsecUserProperty, kUser, &error));
+  EXPECT_TRUE(store.SetStringProperty(kL2tpIpsecUserProperty, kUser, &error));
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kUser,
-            GetArgs()->LookupString(flimflam::kL2tpIpsecUserProperty, ""));
+  EXPECT_EQ(kUser, GetArgs()->LookupString(kL2tpIpsecUserProperty, ""));
 }
 
 TEST_F(L2TPIPSecDriverTest, GetProvider) {
@@ -532,24 +528,21 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     KeyValueStore props;
     Error error;
     EXPECT_TRUE(
-        store.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props, &error));
-    EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
-    EXPECT_TRUE(
-        props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, false));
+        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
+    EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
+    EXPECT_TRUE(props.LookupBool(kL2tpIpsecPskRequiredProperty, false));
   }
   {
     KeyValueStore props;
-    SetArg(flimflam::kL2tpIpsecPasswordProperty, "random-password");
-    SetArg(flimflam::kL2tpIpsecPskProperty, "random-psk");
+    SetArg(kL2tpIpsecPasswordProperty, "random-password");
+    SetArg(kL2tpIpsecPskProperty, "random-psk");
     Error error;
     EXPECT_TRUE(
-        store.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props, &error));
-    EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
+        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
+    EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
     EXPECT_FALSE(
-        props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, true));
-    EXPECT_FALSE(props.ContainsString(flimflam::kL2tpIpsecPasswordProperty));
+        props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
+    EXPECT_FALSE(props.ContainsString(kL2tpIpsecPasswordProperty));
   }
 }
 

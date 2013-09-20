@@ -38,7 +38,7 @@ VPNService::VPNService(ControlInterface *control,
       driver_(driver) {
   SetConnectable(true);
   set_save_credentials(false);
-  mutable_store()->RegisterString(flimflam::kVPNDomainProperty, &vpn_domain_);
+  mutable_store()->RegisterString(kVPNDomainProperty, &vpn_domain_);
   mutable_store()->RegisterDerivedString(
           kPhysicalTechnologyProperty,
           StringAccessor(
@@ -80,13 +80,13 @@ string VPNService::GetStorageIdentifier() const {
 // static
 string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
                                            Error *error) {
-  string host = args.LookupString(flimflam::kProviderHostProperty, "");
+  string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidProperty, "Missing VPN host.");
     return "";
   }
-  string name = args.LookupString(flimflam::kNameProperty, "");
+  string name = args.LookupString(kNameProperty, "");
   if (name.empty()) {
     Error::PopulateAndLog(error, Error::kNotSupported, "Missing VPN name.");
     return "";
@@ -182,7 +182,7 @@ bool VPNService::SetNameProperty(const string &name, Error *error) {
             << friendly_name() << " -> " << name;
 
   KeyValueStore *args = driver_->args();
-  args->SetString(flimflam::kNameProperty, name);
+  args->SetString(kNameProperty, name);
   string new_storage_id = CreateStorageIdentifier(*args, error);
   if (new_storage_id.empty()) {
     return false;

@@ -100,7 +100,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   hold_waiting_ = false;
 
   driver_->AppendOption("management-query-passwords", options);
-  if (driver_->AppendValueOption(flimflam::kOpenVPNStaticChallengeProperty,
+  if (driver_->AppendValueOption(kOpenVPNStaticChallengeProperty,
                                  "static-challenge",
                                  options)) {
     options->back().push_back("1");  // Force echo.
@@ -258,12 +258,9 @@ string OpenVPNManagementServer::ParsePasswordFailedReason(
 
 void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
   LOG(INFO) << "Perform static challenge: " << tag;
-  string user =
-      driver_->args()->LookupString(flimflam::kOpenVPNUserProperty, "");
-  string password =
-      driver_->args()->LookupString(flimflam::kOpenVPNPasswordProperty, "");
-  string otp =
-      driver_->args()->LookupString(flimflam::kOpenVPNOTPProperty, "");
+  string user = driver_->args()->LookupString(kOpenVPNUserProperty, "");
+  string password = driver_->args()->LookupString(kOpenVPNPasswordProperty, "");
+  string otp = driver_->args()->LookupString(kOpenVPNOTPProperty, "");
   if (user.empty() || password.empty() || otp.empty()) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
@@ -284,15 +281,13 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
                                  b64_password.c_str(),
                                  b64_otp.c_str()));
   // Don't reuse OTP.
-  driver_->args()->RemoveString(flimflam::kOpenVPNOTPProperty);
+  driver_->args()->RemoveString(kOpenVPNOTPProperty);
 }
 
 void OpenVPNManagementServer::PerformAuthentication(const string &tag) {
   LOG(INFO) << "Perform authentication: " << tag;
-  string user =
-      driver_->args()->LookupString(flimflam::kOpenVPNUserProperty, "");
-  string password =
-      driver_->args()->LookupString(flimflam::kOpenVPNPasswordProperty, "");
+  string user = driver_->args()->LookupString(kOpenVPNUserProperty, "");
+  string password = driver_->args()->LookupString(kOpenVPNPasswordProperty, "");
   if (user.empty() || password.empty()) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
@@ -306,7 +301,7 @@ void OpenVPNManagementServer::PerformAuthentication(const string &tag) {
 
 void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
   SLOG(VPN, 2) << __func__ << "(" << tag << ")";
-  string pin = driver_->args()->LookupString(flimflam::kOpenVPNPinProperty, "");
+  string pin = driver_->args()->LookupString(kOpenVPNPinProperty, "");
   if (pin.empty()) {
     NOTIMPLEMENTED() << ": Missing PIN.";
     driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);

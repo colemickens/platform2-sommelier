@@ -69,39 +69,38 @@ const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
 const char OpenVPNDriver::kOpenVPNScript[] = SHIMDIR "/openvpn-script";
 // static
 const VPNDriver::Property OpenVPNDriver::kProperties[] = {
-  { flimflam::kOpenVPNAuthNoCacheProperty, 0 },
-  { flimflam::kOpenVPNAuthProperty, 0 },
-  { flimflam::kOpenVPNAuthRetryProperty, 0 },
-  { flimflam::kOpenVPNAuthUserPassProperty, 0 },
-  { flimflam::kOpenVPNCaCertNSSProperty, 0 },
-  { flimflam::kOpenVPNCaCertProperty, 0 },
-  { flimflam::kOpenVPNCipherProperty, 0 },
-  { flimflam::kOpenVPNClientCertIdProperty, Property::kCredential },
-  { flimflam::kOpenVPNCompLZOProperty, 0 },
-  { flimflam::kOpenVPNCompNoAdaptProperty, 0 },
-  { flimflam::kOpenVPNKeyDirectionProperty, 0 },
-  { flimflam::kOpenVPNNsCertTypeProperty, 0 },
-  { flimflam::kOpenVPNOTPProperty,
+  { kOpenVPNAuthNoCacheProperty, 0 },
+  { kOpenVPNAuthProperty, 0 },
+  { kOpenVPNAuthRetryProperty, 0 },
+  { kOpenVPNAuthUserPassProperty, 0 },
+  { kOpenVPNCaCertNSSProperty, 0 },
+  { kOpenVPNCaCertProperty, 0 },
+  { kOpenVPNCipherProperty, 0 },
+  { kOpenVPNClientCertIdProperty, Property::kCredential },
+  { kOpenVPNCompLZOProperty, 0 },
+  { kOpenVPNCompNoAdaptProperty, 0 },
+  { kOpenVPNKeyDirectionProperty, 0 },
+  { kOpenVPNNsCertTypeProperty, 0 },
+  { kOpenVPNOTPProperty,
     Property::kEphemeral | Property::kCredential | Property::kWriteOnly },
-  { flimflam::kOpenVPNPasswordProperty,
-    Property::kCredential | Property::kWriteOnly },
-  { flimflam::kOpenVPNPinProperty, Property::kCredential },
-  { flimflam::kOpenVPNPortProperty, 0 },
-  { flimflam::kOpenVPNProtoProperty, 0 },
-  { flimflam::kOpenVPNProviderProperty, 0 },
-  { flimflam::kOpenVPNPushPeerInfoProperty, 0 },
-  { flimflam::kOpenVPNRemoteCertEKUProperty, 0 },
-  { flimflam::kOpenVPNRemoteCertKUProperty, 0 },
-  { flimflam::kOpenVPNRemoteCertTLSProperty, 0 },
-  { flimflam::kOpenVPNRenegSecProperty, 0 },
-  { flimflam::kOpenVPNServerPollTimeoutProperty, 0 },
-  { flimflam::kOpenVPNShaperProperty, 0 },
-  { flimflam::kOpenVPNStaticChallengeProperty, 0 },
-  { flimflam::kOpenVPNTLSAuthContentsProperty, 0 },
-  { flimflam::kOpenVPNTLSRemoteProperty, 0 },
-  { flimflam::kOpenVPNUserProperty, 0 },
-  { flimflam::kProviderHostProperty, 0 },
-  { flimflam::kProviderTypeProperty, 0 },
+  { kOpenVPNPasswordProperty, Property::kCredential | Property::kWriteOnly },
+  { kOpenVPNPinProperty, Property::kCredential },
+  { kOpenVPNPortProperty, 0 },
+  { kOpenVPNProtoProperty, 0 },
+  { kOpenVPNProviderProperty, 0 },
+  { kOpenVPNPushPeerInfoProperty, 0 },
+  { kOpenVPNRemoteCertEKUProperty, 0 },
+  { kOpenVPNRemoteCertKUProperty, 0 },
+  { kOpenVPNRemoteCertTLSProperty, 0 },
+  { kOpenVPNRenegSecProperty, 0 },
+  { kOpenVPNServerPollTimeoutProperty, 0 },
+  { kOpenVPNShaperProperty, 0 },
+  { kOpenVPNStaticChallengeProperty, 0 },
+  { kOpenVPNTLSAuthContentsProperty, 0 },
+  { kOpenVPNTLSRemoteProperty, 0 },
+  { kOpenVPNUserProperty, 0 },
+  { kProviderHostProperty, 0 },
+  { kProviderTypeProperty, 0 },
   { kOpenVPNCaCertPemProperty, Property::kArray },
   { kOpenVPNCertProperty, 0 },
   { kOpenVPNExtraCertPemProperty, Property::kArray },
@@ -574,7 +573,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
 }
 
 void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
-  string vpnhost = args()->LookupString(flimflam::kProviderHostProperty, "");
+  string vpnhost = args()->LookupString(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "VPN host not specified.");
@@ -603,12 +602,12 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
   InitLoggingOptions(options);
 
   AppendValueOption(kVPNMTUProperty, "mtu", options);
-  AppendValueOption(flimflam::kOpenVPNProtoProperty, "proto", options);
-  AppendValueOption(flimflam::kOpenVPNPortProperty, "port", options);
+  AppendValueOption(kOpenVPNProtoProperty, "proto", options);
+  AppendValueOption(kOpenVPNPortProperty, "port", options);
   AppendValueOption(kOpenVPNTLSAuthProperty, "tls-auth", options);
   {
     string contents =
-        args()->LookupString(flimflam::kOpenVPNTLSAuthContentsProperty, "");
+        args()->LookupString(kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
       if (!file_util::CreateTemporaryFile(&tls_auth_file_) ||
           file_util::WriteFile(
@@ -621,20 +620,17 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
       AppendOption("tls-auth", tls_auth_file_.value(), options);
     }
   }
-  AppendValueOption(
-      flimflam::kOpenVPNTLSRemoteProperty, "tls-remote", options);
-  AppendValueOption(flimflam::kOpenVPNCipherProperty, "cipher", options);
-  AppendValueOption(flimflam::kOpenVPNAuthProperty, "auth", options);
-  AppendFlag(flimflam::kOpenVPNAuthNoCacheProperty, "auth-nocache", options);
-  AppendValueOption(
-      flimflam::kOpenVPNAuthRetryProperty, "auth-retry", options);
-  AppendFlag(flimflam::kOpenVPNCompLZOProperty, "comp-lzo", options);
-  AppendFlag(flimflam::kOpenVPNCompNoAdaptProperty, "comp-noadapt", options);
-  AppendFlag(
-      flimflam::kOpenVPNPushPeerInfoProperty, "push-peer-info", options);
-  AppendValueOption(flimflam::kOpenVPNRenegSecProperty, "reneg-sec", options);
-  AppendValueOption(flimflam::kOpenVPNShaperProperty, "shaper", options);
-  AppendValueOption(flimflam::kOpenVPNServerPollTimeoutProperty,
+  AppendValueOption(kOpenVPNTLSRemoteProperty, "tls-remote", options);
+  AppendValueOption(kOpenVPNCipherProperty, "cipher", options);
+  AppendValueOption(kOpenVPNAuthProperty, "auth", options);
+  AppendFlag(kOpenVPNAuthNoCacheProperty, "auth-nocache", options);
+  AppendValueOption(kOpenVPNAuthRetryProperty, "auth-retry", options);
+  AppendFlag(kOpenVPNCompLZOProperty, "comp-lzo", options);
+  AppendFlag(kOpenVPNCompNoAdaptProperty, "comp-noadapt", options);
+  AppendFlag(kOpenVPNPushPeerInfoProperty, "push-peer-info", options);
+  AppendValueOption(kOpenVPNRenegSecProperty, "reneg-sec", options);
+  AppendValueOption(kOpenVPNShaperProperty, "shaper", options);
+  AppendValueOption(kOpenVPNServerPollTimeoutProperty,
                     "server-poll-timeout", options);
 
   if (!InitCAOptions(options, error)) {
@@ -646,15 +642,14 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
   AppendValueOption(kOpenVPNPingExitProperty, "ping-exit", options);
   AppendValueOption(kOpenVPNPingRestartProperty, "ping-restart", options);
 
-  AppendValueOption(
-      flimflam::kOpenVPNNsCertTypeProperty, "ns-cert-type", options);
+  AppendValueOption(kOpenVPNNsCertTypeProperty, "ns-cert-type", options);
 
   InitClientAuthOptions(options);
   InitPKCS11Options(options);
 
   // TLS suport.
   string remote_cert_tls =
-      args()->LookupString(flimflam::kOpenVPNRemoteCertTLSProperty, "");
+      args()->LookupString(kOpenVPNRemoteCertTLSProperty, "");
   if (remote_cert_tls.empty()) {
     remote_cert_tls = "server";
   }
@@ -664,13 +659,10 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
 
   // This is an undocumented command line argument that works like a .cfg file
   // entry. TODO(sleffler): Maybe roll this into the "tls-auth" option?
-  AppendValueOption(
-      flimflam::kOpenVPNKeyDirectionProperty, "key-direction", options);
+  AppendValueOption(kOpenVPNKeyDirectionProperty, "key-direction", options);
   // TODO(sleffler): Support more than one eku parameter.
-  AppendValueOption(
-      flimflam::kOpenVPNRemoteCertEKUProperty, "remote-cert-eku", options);
-  AppendValueOption(
-      flimflam::kOpenVPNRemoteCertKUProperty, "remote-cert-ku", options);
+  AppendValueOption(kOpenVPNRemoteCertEKUProperty, "remote-cert-eku", options);
+  AppendValueOption(kOpenVPNRemoteCertKUProperty, "remote-cert-ku", options);
 
   if (!InitManagementChannelOptions(options, error)) {
     return;
@@ -701,9 +693,9 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
 bool OpenVPNDriver::InitCAOptions(
     vector<vector<string>> *options, Error *error) {
   string ca_cert =
-      args()->LookupString(flimflam::kOpenVPNCaCertProperty, "");
+      args()->LookupString(kOpenVPNCaCertProperty, "");
   string ca_cert_nss =
-      args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
+      args()->LookupString(kOpenVPNCaCertNSSProperty, "");
   vector<string> ca_cert_pem;
   if (args()->ContainsStrings(kOpenVPNCaCertPemProperty)) {
     ca_cert_pem = args()->GetStrings(kOpenVPNCaCertPemProperty);
@@ -729,7 +721,7 @@ bool OpenVPNDriver::InitCAOptions(
   string cert_file;
   if (!ca_cert_nss.empty()) {
     DCHECK(ca_cert.empty() && ca_cert_pem.empty());
-    const string &vpnhost = args()->GetString(flimflam::kProviderHostProperty);
+    const string &vpnhost = args()->GetString(kProviderHostProperty);
     vector<char> id(vpnhost.begin(), vpnhost.end());
     FilePath certfile = nss_->GetPEMCertfile(ca_cert_nss, id);
     if (certfile.empty()) {
@@ -760,10 +752,10 @@ bool OpenVPNDriver::InitCAOptions(
 }
 
 void OpenVPNDriver::InitPKCS11Options(vector<vector<string>> *options) {
-  string id = args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "");
+  string id = args()->LookupString(kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
     string provider =
-        args()->LookupString(flimflam::kOpenVPNProviderProperty, "");
+        args()->LookupString(kOpenVPNProviderProperty, "");
     if (provider.empty()) {
       provider = kDefaultPKCS11Provider;
     }
@@ -774,13 +766,13 @@ void OpenVPNDriver::InitPKCS11Options(vector<vector<string>> *options) {
 
 void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>> *options) {
   bool has_cert = AppendValueOption(kOpenVPNCertProperty, "cert", options) ||
-      !args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "").empty();
+      !args()->LookupString(kOpenVPNClientCertIdProperty, "").empty();
   bool has_key = AppendValueOption(kOpenVPNKeyProperty, "key", options);
   // If the AuthUserPass property is set, or the User property is non-empty, or
   // there's neither a key, nor a cert available, specify user-password client
   // authentication.
-  if (args()->ContainsString(flimflam::kOpenVPNAuthUserPassProperty) ||
-      !args()->LookupString(flimflam::kOpenVPNUserProperty, "").empty() ||
+  if (args()->ContainsString(kOpenVPNAuthUserPassProperty) ||
+      !args()->LookupString(kOpenVPNUserProperty, "").empty() ||
       (!has_cert && !has_key)) {
     AppendOption("auth-user-pass", options);
   }
@@ -920,15 +912,14 @@ int OpenVPNDriver::GetReconnectTimeoutSeconds(ReconnectReason reason) {
 }
 
 string OpenVPNDriver::GetProviderType() const {
-  return flimflam::kProviderOpenVpn;
+  return kProviderOpenVpn;
 }
 
 KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
   SLOG(VPN, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
-  props.SetBool(flimflam::kPassphraseRequiredProperty,
-                args()->LookupString(
-                    flimflam::kOpenVPNPasswordProperty, "").empty());
+  props.SetBool(kPassphraseRequiredProperty,
+                args()->LookupString(kOpenVPNPasswordProperty, "").empty());
   return props;
 }
 
@@ -991,8 +982,8 @@ void OpenVPNDriver::ReportConnectionMetrics() {
       Metrics::kVpnDriverOpenVpn,
       Metrics::kMetricVpnDriverMax);
 
-  if (args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "") != "" ||
-      args()->LookupString(flimflam::kOpenVPNCaCertProperty, "") != "") {
+  if (args()->LookupString(kOpenVPNCaCertNSSProperty, "") != "" ||
+      args()->LookupString(kOpenVPNCaCertProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
@@ -1005,22 +996,22 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->LookupString(flimflam::kOpenVPNOTPProperty, "") != "") {
+  if (args()->LookupString(kOpenVPNOTPProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(flimflam::kOpenVPNAuthUserPassProperty, "") != ""||
-      args()->LookupString(flimflam::kOpenVPNUserProperty, "") != "")  {
+  if (args()->LookupString(kOpenVPNAuthUserPassProperty, "") != "" ||
+      args()->LookupString(kOpenVPNUserProperty, "") != "")  {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "") != "" ||
+  if (args()->LookupString(kOpenVPNClientCertIdProperty, "") != "" ||
       args()->LookupString(kOpenVPNCertProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,

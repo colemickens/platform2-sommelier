@@ -46,14 +46,14 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
                                                string *host_ptr,
                                                Error *error) {
   SLOG(VPN, 2) << __func__;
-  string type = args.LookupString(flimflam::kProviderTypeProperty, "");
+  string type = args.LookupString(kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Missing VPN type property.");
     return false;
   }
 
-  string host = args.LookupString(flimflam::kProviderHostProperty, "");
+  string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Missing VPN host property.");
@@ -62,7 +62,7 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
 
   *type_ptr = type,
   *host_ptr = host,
-  *name_ptr = args.LookupString(flimflam::kNameProperty, "");
+  *name_ptr = args.LookupString(kNameProperty, "");
 
   return true;
 }
@@ -136,30 +136,30 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   SLOG(VPN, 2) << __func__;
   const StoreInterface *storage = profile->GetConstStorage();
   set<string> groups =
-      storage->GetGroupsWithKey(flimflam::kProviderTypeProperty);
+      storage->GetGroupsWithKey(kProviderTypeProperty);
   for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
     if (!StartsWithASCII(*it, "vpn_", false)) {
       continue;
     }
 
     string type;
-    if (!storage->GetString(*it, flimflam::kProviderTypeProperty, &type)) {
+    if (!storage->GetString(*it, kProviderTypeProperty, &type)) {
       LOG(ERROR) << "Group " << *it << " is missing the "
-                 << flimflam::kProviderTypeProperty << " property.";
+                 << kProviderTypeProperty << " property.";
       continue;
     }
 
     string name;
-    if (!storage->GetString(*it, flimflam::kNameProperty, &name)) {
+    if (!storage->GetString(*it, kNameProperty, &name)) {
       LOG(ERROR) << "Group " << *it << " is missing the "
-                 << flimflam::kNameProperty << " property.";
+                 << kNameProperty << " property.";
       continue;
     }
 
     string host;
-    if (!storage->GetString(*it, flimflam::kProviderHostProperty, &host)) {
+    if (!storage->GetString(*it, kProviderHostProperty, &host)) {
       LOG(ERROR) << "Group " << *it << " is missing the "
-                 << flimflam::kProviderHostProperty << " property.";
+                 << kProviderHostProperty << " property.";
       continue;
     }
 
@@ -200,11 +200,11 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
 #else
 
   scoped_ptr<VPNDriver> driver;
-  if (type == flimflam::kProviderOpenVpn) {
+  if (type == kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
         control_interface_, dispatcher_, metrics_, manager_,
         manager_->device_info(), manager_->glib()));
-  } else if (type == flimflam::kProviderL2tpIpsec) {
+  } else if (type == kProviderL2tpIpsec) {
     driver.reset(new L2TPIPSecDriver(
         control_interface_, dispatcher_, metrics_, manager_,
         manager_->device_info(), manager_->glib()));

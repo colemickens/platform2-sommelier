@@ -75,7 +75,7 @@ const char VPNProviderTest::kName[] = "vpn-name";
 TEST_F(VPNProviderTest, GetServiceNoType) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
+  args.SetString(kTypeProperty, kTypeVPN);
   ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
@@ -84,10 +84,10 @@ TEST_F(VPNProviderTest, GetServiceNoType) {
 TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
   KeyValueStore args;
   Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
-  args.SetString(flimflam::kProviderTypeProperty, "unknown-vpn-type");
-  args.SetString(flimflam::kProviderHostProperty, kHost);
-  args.SetString(flimflam::kNameProperty, kName);
+  args.SetString(kTypeProperty, kTypeVPN);
+  args.SetString(kProviderTypeProperty, "unknown-vpn-type");
+  args.SetString(kProviderHostProperty, kHost);
+  args.SetString(kNameProperty, kName);
   ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
@@ -95,10 +95,10 @@ TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
 
 TEST_F(VPNProviderTest, GetService) {
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
-  args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
-  args.SetString(flimflam::kProviderHostProperty, kHost);
-  args.SetString(flimflam::kNameProperty, kName);
+  args.SetString(kTypeProperty, kTypeVPN);
+  args.SetString(kProviderTypeProperty, kProviderOpenVpn);
+  args.SetString(kProviderHostProperty, kHost);
+  args.SetString(kNameProperty, kName);
 
   {
     Error error;
@@ -248,41 +248,34 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
 
   const string kVPNIdentifierNoName("vpn_no_name");
   groups.insert(kVPNIdentifierNoName);
-  const string kOpenVPNProvider(flimflam::kProviderOpenVpn);
-  EXPECT_CALL(storage, GetString(kVPNIdentifierNoName,
-                                 flimflam::kProviderTypeProperty,
-                                 _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kOpenVPNProvider),
-                            Return(true)));
+  const string kOpenVPNProvider(kProviderOpenVpn);
+  EXPECT_CALL(storage,
+              GetString(kVPNIdentifierNoName, kProviderTypeProperty, _))
+      .WillRepeatedly(
+           DoAll(SetArgumentPointee<2>(kOpenVPNProvider), Return(true)));
 
   const string kVPNIdentifierNoHost("vpn_no_host");
   groups.insert(kVPNIdentifierNoHost);
-  EXPECT_CALL(storage, GetString(kVPNIdentifierNoHost,
-                                 flimflam::kProviderTypeProperty,
-                                 _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kOpenVPNProvider),
-                            Return(true)));
+  EXPECT_CALL(storage,
+              GetString(kVPNIdentifierNoHost, kProviderTypeProperty, _))
+      .WillRepeatedly(
+           DoAll(SetArgumentPointee<2>(kOpenVPNProvider), Return(true)));
   const string kName("name");
-  EXPECT_CALL(storage, GetString(kVPNIdentifierNoHost,
-                                 flimflam::kNameProperty, _))
+  EXPECT_CALL(storage, GetString(kVPNIdentifierNoHost, kNameProperty, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(kName), Return(true)));
 
   const string kVPNIdentifierValid("vpn_valid");
   groups.insert(kVPNIdentifierValid);
-  EXPECT_CALL(storage, GetString(kVPNIdentifierValid,
-                                 flimflam::kProviderTypeProperty,
-                                 _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kOpenVPNProvider),
-                            Return(true)));
-  EXPECT_CALL(storage, GetString(kVPNIdentifierValid,
-                                 flimflam::kNameProperty, _))
+  EXPECT_CALL(storage, GetString(kVPNIdentifierValid, kProviderTypeProperty, _))
+      .WillRepeatedly(
+           DoAll(SetArgumentPointee<2>(kOpenVPNProvider), Return(true)));
+  EXPECT_CALL(storage, GetString(kVPNIdentifierValid, kNameProperty, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(kName), Return(true)));
   const string kHost("1.2.3.4");
-  EXPECT_CALL(storage, GetString(kVPNIdentifierValid,
-                                 flimflam::kProviderHostProperty, _))
+  EXPECT_CALL(storage, GetString(kVPNIdentifierValid, kProviderHostProperty, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHost), Return(true)));
 
-  EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kProviderTypeProperty))
+  EXPECT_CALL(storage, GetGroupsWithKey(kProviderTypeProperty))
       .WillRepeatedly(Return(groups));
 
   EXPECT_CALL(manager_, device_info())
@@ -294,8 +287,7 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
       .WillOnce(Return(true));
   provider_.CreateServicesFromProfile(profile);
 
-  GetServiceAt(0)->driver()->args()->SetString(flimflam::kProviderHostProperty,
-                                             kHost);
+  GetServiceAt(0)->driver()->args()->SetString(kProviderHostProperty, kHost);
   // Calling this again should not create any more services (checked by the
   // Times(1) above).
   provider_.CreateServicesFromProfile(profile);
@@ -305,8 +297,8 @@ TEST_F(VPNProviderTest, CreateService) {
   static const char kName[] = "test-vpn-service";
   static const char kStorageID[] = "test_vpn_storage_id";
   static const char *kTypes[] = {
-    flimflam::kProviderOpenVpn,
-    flimflam::kProviderL2tpIpsec,
+    kProviderOpenVpn,
+    kProviderL2tpIpsec,
   };
   const size_t kTypesCount = arraysize(kTypes);
   EXPECT_CALL(manager_, device_info())
