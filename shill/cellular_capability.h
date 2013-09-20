@@ -156,7 +156,7 @@ class CellularCapability {
   //
   // Subclasses should implement this by fetching scan results
   // asynchronously.  When the results are ready, update the
-  // flimflam::kFoundNetworksProperty and send a property change
+  // kFoundNetworksProperty and send a property change
   // notification.  Finally, callback must be invoked to inform the
   // caller that the scan has completed.
   //

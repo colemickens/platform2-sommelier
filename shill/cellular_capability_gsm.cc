@@ -66,20 +66,16 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       sim_present_(false) {
   SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
   PropertyStore *store = cellular->mutable_store();
-  store->RegisterConstString(flimflam::kSelectedNetworkProperty,
-                             &selected_network_);
-  store->RegisterConstStringmaps(flimflam::kFoundNetworksProperty,
-                                 &found_networks_);
+  store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
+  store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
   store->RegisterConstBool(shill::kProviderRequiresRoamingProperty,
                            &provider_requires_roaming_);
-  store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
-  store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  store->RegisterConstBool(kScanningProperty, &scanning_);
+  store->RegisterUint16(kScanIntervalProperty, &scan_interval_);
   store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
   HelpRegisterConstDerivedKeyValueStore(
-      flimflam::kSIMLockStatusProperty,
-      &CellularCapabilityGSM::SimLockStatusToProperty);
-  store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
-                                 &apn_list_);
+      kSIMLockStatusProperty, &CellularCapabilityGSM::SimLockStatusToProperty);
+  store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
   scanning_supported_ = true;
 
   // TODO(benchan): This is a hack to initialize the GSM card proxy for GetIMSI
@@ -101,10 +97,9 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
 
 KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
   KeyValueStore status;
-  status.SetBool(flimflam::kSIMLockEnabledProperty, sim_lock_status_.enabled);
-  status.SetString(flimflam::kSIMLockTypeProperty, sim_lock_status_.lock_type);
-  status.SetUint(flimflam::kSIMLockRetriesLeftProperty,
-                 sim_lock_status_.retries_left);
+  status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);
+  status.SetString(kSIMLockTypeProperty, sim_lock_status_.lock_type);
+  status.SetUint(kSIMLockRetriesLeftProperty, sim_lock_status_.retries_left);
   return status;
 }
 
@@ -224,11 +219,9 @@ void CellularCapabilityGSM::OnServiceCreated() {
   // If IMSI is available, base the service's storage identifier on it.
   if (!imsi_.empty()) {
     cellular()->service()->SetStorageIdentifier(
-        string(flimflam::kTypeCellular) + "_" +
-        cellular()->address() + "_" + imsi_);
+        string(kTypeCellular) + "_" + cellular()->address() + "_" + imsi_);
   }
-  cellular()->service()->SetActivationState(
-      flimflam::kActivationStateActivated);
+  cellular()->service()->SetActivationState(kActivationStateActivated);
   UpdateServingOperator();
 }
 
@@ -278,16 +271,15 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
     // Leave the APN at the front of the list, so that it can be recorded
     // if the connect attempt succeeds.
     Stringmap apn_info = apn_try_list_.front();
-    SLOG(Cellular, 2) << __func__ << ": Using APN "
-                      << apn_info[flimflam::kApnProperty];
+    SLOG(Cellular, 2) << __func__ << ": Using APN " << apn_info[kApnProperty];
     (*properties)[kConnectPropertyApn].writer().append_string(
-        apn_info[flimflam::kApnProperty].c_str());
-    if (ContainsKey(apn_info, flimflam::kApnUsernameProperty))
+        apn_info[kApnProperty].c_str());
+    if (ContainsKey(apn_info, kApnUsernameProperty))
       (*properties)[kConnectPropertyApnUsername].writer().append_string(
-          apn_info[flimflam::kApnUsernameProperty].c_str());
-    if (ContainsKey(apn_info, flimflam::kApnPasswordProperty))
+          apn_info[kApnUsernameProperty].c_str());
+    if (ContainsKey(apn_info, kApnPasswordProperty))
       (*properties)[kConnectPropertyApnPassword].writer().append_string(
-          apn_info[flimflam::kApnPasswordProperty].c_str());
+          apn_info[kApnPasswordProperty].c_str());
   }
 }
 
@@ -549,13 +541,13 @@ void CellularCapabilityGSM::InitAPNList() {
     Stringmap props;
     mobile_apn *apn = home_provider_->apns[i];
     if (apn->value) {
-      props[flimflam::kApnProperty] = apn->value;
+      props[kApnProperty] = apn->value;
     }
     if (apn->username) {
-      props[flimflam::kApnUsernameProperty] = apn->username;
+      props[kApnUsernameProperty] = apn->username;
     }
     if (apn->password) {
-      props[flimflam::kApnPasswordProperty] = apn->password;
+      props[kApnPasswordProperty] = apn->password;
     }
     // Find the first localized and non-localized name, if any.
     const localized_name *lname = NULL;
@@ -570,17 +562,17 @@ void CellularCapabilityGSM::InitAPNList() {
       }
     }
     if (name) {
-      props[flimflam::kApnNameProperty] = name->name;
+      props[kApnNameProperty] = name->name;
     }
     if (lname) {
-      props[flimflam::kApnLocalizedNameProperty] = lname->name;
-      props[flimflam::kApnLanguageProperty] = lname->lang;
+      props[kApnLocalizedNameProperty] = lname->name;
+      props[kApnLanguageProperty] = lname->lang;
     }
     apn_list_.push_back(props);
   }
   if (cellular()->adaptor()) {
     cellular()->adaptor()->EmitStringmapsChanged(
-        flimflam::kCellularApnListProperty, apn_list_);
+        kCellularApnListProperty, apn_list_);
   } else {
     LOG(ERROR) << "Null RPC service adaptor.";
   }
@@ -688,8 +680,7 @@ void CellularCapabilityGSM::Scan(Error *error, const ResultCallback &callback) {
   network_proxy_->Scan(error, cb, kTimeoutScan);
   if (!error->IsFailure()) {
     scanning_ = true;
-    cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
-                                           scanning_);
+    cellular()->adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
   }
 }
 
@@ -704,8 +695,7 @@ void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
   //
   // TODO(jglasgow): fix error handling
   scanning_ = false;
-  cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
-                                         scanning_);
+  cellular()->adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
   found_networks_.clear();
   if (!error.IsFailure()) {
     for (GSMScanResults::const_iterator it = results.begin();
@@ -713,7 +703,7 @@ void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
       found_networks_.push_back(ParseScanResult(*it));
     }
   }
-  cellular()->adaptor()->EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+  cellular()->adaptor()->EmitStringmapsChanged(kFoundNetworksProperty,
                                                found_networks_);
   if (!callback.is_null())
     callback.Run(error);
@@ -732,13 +722,13 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
       "forbidden",
     };
     static const char * const kTechnologyString[] = {
-      flimflam::kNetworkTechnologyGsm,
+      kNetworkTechnologyGsm,
       "GSM Compact",
-      flimflam::kNetworkTechnologyUmts,
-      flimflam::kNetworkTechnologyEdge,
+      kNetworkTechnologyUmts,
+      kNetworkTechnologyEdge,
       "HSDPA",
       "HSUPA",
-      flimflam::kNetworkTechnologyHspa,
+      kNetworkTechnologyHspa,
     };
     SLOG(Cellular, 2) << "Network property: " << it->first << " = "
                       << it->second;
@@ -747,22 +737,22 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
       if (base::StringToInt(it->second, &status) &&
           status >= 0 &&
           status < static_cast<int>(arraysize(kStatusString))) {
-        parsed[flimflam::kStatusProperty] = kStatusString[status];
+        parsed[kStatusProperty] = kStatusString[status];
       } else {
         LOG(ERROR) << "Unexpected status value: " << it->second;
       }
     } else if (it->first == kNetworkPropertyID) {
-      parsed[flimflam::kNetworkIdProperty] = it->second;
+      parsed[kNetworkIdProperty] = it->second;
     } else if (it->first == kNetworkPropertyLongName) {
-      parsed[flimflam::kLongNameProperty] = it->second;
+      parsed[kLongNameProperty] = it->second;
     } else if (it->first == kNetworkPropertyShortName) {
-      parsed[flimflam::kShortNameProperty] = it->second;
+      parsed[kShortNameProperty] = it->second;
     } else if (it->first == kNetworkPropertyAccessTechnology) {
       int tech = 0;
       if (base::StringToInt(it->second, &tech) &&
           tech >= 0 &&
           tech < static_cast<int>(arraysize(kTechnologyString))) {
-        parsed[flimflam::kTechnologyProperty] = kTechnologyString[tech];
+        parsed[kTechnologyProperty] = kTechnologyString[tech];
       } else {
         LOG(ERROR) << "Unexpected technology value: " << it->second;
       }
@@ -772,17 +762,17 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
   }
   // If the long name is not available but the network ID is, look up the long
   // name in the mobile provider database.
-  if ((!ContainsKey(parsed, flimflam::kLongNameProperty) ||
-       parsed[flimflam::kLongNameProperty].empty()) &&
-      ContainsKey(parsed, flimflam::kNetworkIdProperty)) {
+  if ((!ContainsKey(parsed, kLongNameProperty) ||
+       parsed[kLongNameProperty].empty()) &&
+      ContainsKey(parsed, kNetworkIdProperty)) {
     mobile_provider *provider =
         mobile_provider_lookup_by_network(
             modem_info()->provider_db(),
-            parsed[flimflam::kNetworkIdProperty].c_str());
+            parsed[kNetworkIdProperty].c_str());
     if (provider) {
       const char *long_name = mobile_provider_get_name(provider);
       if (long_name && *long_name) {
-        parsed[flimflam::kLongNameProperty] = long_name;
+        parsed[kLongNameProperty] = long_name;
       }
     }
   }
@@ -800,19 +790,19 @@ string CellularCapabilityGSM::GetNetworkTechnologyString() const {
   switch (access_technology_) {
     case MM_MODEM_GSM_ACCESS_TECH_GSM:
     case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
-      return flimflam::kNetworkTechnologyGsm;
+      return kNetworkTechnologyGsm;
     case MM_MODEM_GSM_ACCESS_TECH_GPRS:
-      return flimflam::kNetworkTechnologyGprs;
+      return kNetworkTechnologyGprs;
     case MM_MODEM_GSM_ACCESS_TECH_EDGE:
-      return flimflam::kNetworkTechnologyEdge;
+      return kNetworkTechnologyEdge;
     case MM_MODEM_GSM_ACCESS_TECH_UMTS:
-      return flimflam::kNetworkTechnologyUmts;
+      return kNetworkTechnologyUmts;
     case MM_MODEM_GSM_ACCESS_TECH_HSDPA:
     case MM_MODEM_GSM_ACCESS_TECH_HSUPA:
     case MM_MODEM_GSM_ACCESS_TECH_HSPA:
-      return flimflam::kNetworkTechnologyHspa;
+      return kNetworkTechnologyHspa;
     case MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS:
-      return flimflam::kNetworkTechnologyHspaPlus;
+      return kNetworkTechnologyHspaPlus;
     default:
       break;
   }
@@ -822,13 +812,13 @@ string CellularCapabilityGSM::GetNetworkTechnologyString() const {
 string CellularCapabilityGSM::GetRoamingStateString() const {
   switch (registration_state_) {
     case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
-      return flimflam::kRoamingStateHome;
+      return kRoamingStateHome;
     case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
-      return flimflam::kRoamingStateRoaming;
+      return kRoamingStateRoaming;
     default:
       break;
   }
-  return flimflam::kRoamingStateUnknown;
+  return kRoamingStateUnknown;
 }
 
 void CellularCapabilityGSM::OnDBusPropertiesChanged(
@@ -871,7 +861,7 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
             shill::kSIMPresentProperty, sim_present_);
       }
       cellular()->adaptor()->EmitKeyValueStoreChanged(
-          flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+          kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
     }
   }
 }

@@ -66,27 +66,27 @@ void Cellular::Operator::CopyFrom(const Operator &oper) {
 }
 
 const string &Cellular::Operator::GetName() const {
-  return dict_.find(flimflam::kOperatorNameKey)->second;
+  return dict_.find(kOperatorNameKey)->second;
 }
 
 void Cellular::Operator::SetName(const string &name) {
-  dict_[flimflam::kOperatorNameKey] = name;
+  dict_[kOperatorNameKey] = name;
 }
 
 const string &Cellular::Operator::GetCode() const {
-  return dict_.find(flimflam::kOperatorCodeKey)->second;
+  return dict_.find(kOperatorCodeKey)->second;
 }
 
 void Cellular::Operator::SetCode(const string &code) {
-  dict_[flimflam::kOperatorCodeKey] = code;
+  dict_[kOperatorCodeKey] = code;
 }
 
 const string &Cellular::Operator::GetCountry() const {
-  return dict_.find(flimflam::kOperatorCountryKey)->second;
+  return dict_.find(kOperatorCountryKey)->second;
 }
 
 void Cellular::Operator::SetCountry(const string &country) {
-  dict_[flimflam::kOperatorCountryKey] = country;
+  dict_[kOperatorCountryKey] = country;
 }
 
 const Stringmap &Cellular::Operator::ToDict() const {
@@ -124,15 +124,15 @@ Cellular::Cellular(ModemInfo *modem_info,
       is_ppp_authenticating_(false) {
   PropertyStore *store = this->mutable_store();
   // TODO(jglasgow): kDBusConnectionProperty is deprecated.
-  store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
-  store->RegisterConstString(flimflam::kDBusServiceProperty, &dbus_service_);
-  store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
-  HelpRegisterConstDerivedString(flimflam::kTechnologyFamilyProperty,
+  store->RegisterConstString(kDBusConnectionProperty, &dbus_owner_);
+  store->RegisterConstString(kDBusServiceProperty, &dbus_service_);
+  store->RegisterConstString(kDBusObjectProperty, &dbus_path_);
+  HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
                                  &Cellular::GetTechnologyFamily);
-  HelpRegisterDerivedBool(flimflam::kCellularAllowRoamingProperty,
+  HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
                           &Cellular::GetAllowRoaming,
                           &Cellular::SetAllowRoaming);
-  store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
+  store->RegisterConstStringmap(kHomeProviderProperty,
                                 &home_provider_.ToDict());
 
   // For now, only a single capability is supported.
@@ -545,7 +545,7 @@ void Cellular::Connect(Error *error) {
   }
 
   if (!capability_->AllowRoaming() &&
-      service_->roaming_state() == flimflam::kRoamingStateRoaming) {
+      service_->roaming_state() == kRoamingStateRoaming) {
     Error::PopulateAndLog(error, Error::kNotOnHomeNetwork,
                           "Roaming disallowed; connection request ignored.");
     return;
@@ -596,7 +596,7 @@ void Cellular::OnConnected() {
     LOG(INFO) << "Disconnecting due to no cellular service.";
     Disconnect(NULL);
   } else if (!capability_->AllowRoaming() &&
-      service_->roaming_state() == flimflam::kRoamingStateRoaming) {
+      service_->roaming_state() == kRoamingStateRoaming) {
     LOG(INFO) << "Disconnecting due to roaming.";
     Disconnect(NULL);
   } else {
@@ -790,11 +790,11 @@ bool Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
   // incorporate provider preferences when evaluating if a disconnect
   // is required.
   if (!capability_->AllowRoaming() &&
-      capability_->GetRoamingStateString() == flimflam::kRoamingStateRoaming) {
+      capability_->GetRoamingStateString() == kRoamingStateRoaming) {
     Error error;
     Disconnect(&error);
   }
-  adaptor()->EmitBoolChanged(flimflam::kCellularAllowRoamingProperty, value);
+  adaptor()->EmitBoolChanged(kCellularAllowRoamingProperty, value);
   return true;
 }
 

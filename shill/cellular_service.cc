@@ -118,28 +118,25 @@ CellularService::CellularService(ModemInfo *modem_info,
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
                            &activate_over_non_cellular_network_);
-  store->RegisterConstString(flimflam::kActivationStateProperty,
-                             &activation_state_);
-  HelpRegisterDerivedStringmap(flimflam::kCellularApnProperty,
+  store->RegisterConstString(kActivationStateProperty, &activation_state_);
+  HelpRegisterDerivedStringmap(kCellularApnProperty,
                                &CellularService::GetApn,
                                &CellularService::SetApn);
-  store->RegisterConstStringmap(flimflam::kCellularLastGoodApnProperty,
+  store->RegisterConstStringmap(kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
-  store->RegisterConstString(flimflam::kNetworkTechnologyProperty,
-                             &network_technology_);
+  store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
   store->RegisterConstBool(kOutOfCreditsProperty, &out_of_credits_);
-  store->RegisterConstStringmap(flimflam::kPaymentPortalProperty,
-                                &olp_.ToDict());
-  store->RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
-  store->RegisterConstStringmap(flimflam::kServingOperatorProperty,
+  store->RegisterConstStringmap(kPaymentPortalProperty, &olp_.ToDict());
+  store->RegisterConstString(kRoamingStateProperty, &roaming_state_);
+  store->RegisterConstStringmap(kServingOperatorProperty,
                                 &serving_operator_.ToDict());
-  store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
+  store->RegisterConstString(kUsageURLProperty, &usage_url_);
   store->RegisterString(kCellularPPPUsernameProperty, &ppp_username_);
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
 
   string name = device->CreateFriendlyServiceName();
   set_friendly_name(name);
-  SetStorageIdentifier(string(flimflam::kTypeCellular) + "_" +
+  SetStorageIdentifier(string(kTypeCellular) + "_" +
                        device->address() + "_" + name);
 }
 
@@ -181,7 +178,7 @@ void CellularService::HelpRegisterDerivedStringmap(
 }
 
 Stringmap *CellularService::GetUserSpecifiedApn() {
-  Stringmap::iterator it = apn_info_.find(flimflam::kApnProperty);
+  Stringmap::iterator it = apn_info_.find(kApnProperty);
   if (it == apn_info_.end() || it->second.empty())
     return NULL;
   return &apn_info_;
@@ -189,7 +186,7 @@ Stringmap *CellularService::GetUserSpecifiedApn() {
 
 Stringmap *CellularService::GetLastGoodApn() {
   Stringmap::iterator it =
-      last_good_apn_info_.find(flimflam::kApnProperty);
+      last_good_apn_info_.find(kApnProperty);
   if (it == last_good_apn_info_.end() || it->second.empty())
     return NULL;
   return &last_good_apn_info_;
@@ -204,18 +201,18 @@ bool CellularService::SetApn(const Stringmap &value, Error *error) {
   // If the "apn" field is missing or empty, the APN is cleared.
   string str;
   Stringmap new_apn_info;
-  if (GetNonEmptyField(value, flimflam::kApnProperty, &str)) {
-    new_apn_info[flimflam::kApnProperty] = str;
-    if (GetNonEmptyField(value, flimflam::kApnUsernameProperty, &str))
-      new_apn_info[flimflam::kApnUsernameProperty] = str;
-    if (GetNonEmptyField(value, flimflam::kApnPasswordProperty, &str))
-      new_apn_info[flimflam::kApnPasswordProperty] = str;
+  if (GetNonEmptyField(value, kApnProperty, &str)) {
+    new_apn_info[kApnProperty] = str;
+    if (GetNonEmptyField(value, kApnUsernameProperty, &str))
+      new_apn_info[kApnUsernameProperty] = str;
+    if (GetNonEmptyField(value, kApnPasswordProperty, &str))
+      new_apn_info[kApnPasswordProperty] = str;
   }
   if (apn_info_ == new_apn_info) {
     return false;
   }
   apn_info_ = new_apn_info;
-  if (ContainsKey(apn_info_, flimflam::kApnProperty)) {
+  if (ContainsKey(apn_info_, kApnProperty)) {
     // Clear the last good APN, otherwise the one the user just
     // set won't be used, since LastGoodApn comes first in the
     // search order when trying to connect. Only do this if a
@@ -223,21 +220,21 @@ bool CellularService::SetApn(const Stringmap &value, Error *error) {
     // being cleared, leave LastGoodApn alone.
     ClearLastGoodApn();
   }
-  adaptor()->EmitStringmapChanged(flimflam::kCellularApnProperty, apn_info_);
+  adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
   SaveToCurrentProfile();
   return true;
 }
 
 void CellularService::SetLastGoodApn(const Stringmap &apn_info) {
   last_good_apn_info_ = apn_info;
-  adaptor()->EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+  adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
   SaveToCurrentProfile();
 }
 
 void CellularService::ClearLastGoodApn() {
   last_good_apn_info_.clear();
-  adaptor()->EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+  adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
   SaveToCurrentProfile();
 }
@@ -271,13 +268,10 @@ void CellularService::LoadApn(StoreInterface *storage,
                               const string &storage_group,
                               const string &keytag,
                               Stringmap *apn_info) {
-  if (!LoadApnField(storage, storage_group, keytag,
-               flimflam::kApnProperty, apn_info))
+  if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info))
     return;
-  LoadApnField(storage, storage_group, keytag,
-               flimflam::kApnUsernameProperty, apn_info);
-  LoadApnField(storage, storage_group, keytag,
-               flimflam::kApnPasswordProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnPasswordProperty, apn_info);
 }
 
 bool CellularService::LoadApnField(StoreInterface *storage,
@@ -353,7 +347,7 @@ void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
     return;
   if (explicitly_disconnected())
     return;
-  if (roaming_state_ == flimflam::kRoamingStateRoaming &&
+  if (roaming_state_ == kRoamingStateRoaming &&
       !cellular_->allow_roaming_property())
     return;
   if (time_since_connect.InSeconds() <= kOutOfCreditsConnectionDropSeconds) {
@@ -404,12 +398,9 @@ void CellularService::SaveApn(StoreInterface *storage,
                               const string &storage_group,
                               const Stringmap *apn_info,
                               const string &keytag) {
-    SaveApnField(storage, storage_group, apn_info, keytag,
-                 flimflam::kApnProperty);
-    SaveApnField(storage, storage_group, apn_info, keytag,
-                 flimflam::kApnUsernameProperty);
-    SaveApnField(storage, storage_group, apn_info, keytag,
-                 flimflam::kApnPasswordProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnUsernameProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnPasswordProperty);
 }
 
 void CellularService::SaveApnField(StoreInterface *storage,
@@ -491,8 +482,8 @@ void CellularService::SetActivationState(const string &state) {
     return;
   }
   activation_state_ = state;
-  adaptor()->EmitStringChanged(flimflam::kActivationStateProperty, state);
-  SetConnectableFull(state != flimflam::kActivationStateNotActivated);
+  adaptor()->EmitStringChanged(kActivationStateProperty, state);
+  SetConnectableFull(state != kActivationStateNotActivated);
 }
 
 void CellularService::SetOLP(const OLP &olp) {
@@ -500,7 +491,7 @@ void CellularService::SetOLP(const OLP &olp) {
     return;
   }
   olp_.CopyFrom(olp);
-  adaptor()->EmitStringmapChanged(flimflam::kPaymentPortalProperty,
+  adaptor()->EmitStringmapChanged(kPaymentPortalProperty,
                                   olp.ToDict());
 }
 
@@ -509,7 +500,7 @@ void CellularService::SetUsageURL(const string &url) {
     return;
   }
   usage_url_ = url;
-  adaptor()->EmitStringChanged(flimflam::kUsageURLProperty, url);
+  adaptor()->EmitStringChanged(kUsageURLProperty, url);
 }
 
 void CellularService::SetNetworkTechnology(const string &technology) {
@@ -517,7 +508,7 @@ void CellularService::SetNetworkTechnology(const string &technology) {
     return;
   }
   network_technology_ = technology;
-  adaptor()->EmitStringChanged(flimflam::kNetworkTechnologyProperty,
+  adaptor()->EmitStringChanged(kNetworkTechnologyProperty,
                                technology);
 }
 
@@ -526,7 +517,7 @@ void CellularService::SetRoamingState(const string &state) {
     return;
   }
   roaming_state_ = state;
-  adaptor()->EmitStringChanged(flimflam::kRoamingStateProperty, state);
+  adaptor()->EmitStringChanged(kRoamingStateProperty, state);
 }
 
 void CellularService::SetOutOfCredits(bool state) {
@@ -546,8 +537,7 @@ void CellularService::SetServingOperator(const Cellular::Operator &oper) {
     return;
   }
   serving_operator_.CopyFrom(oper);
-  adaptor()->EmitStringmapChanged(flimflam::kServingOperatorProperty,
-                                  oper.ToDict());
+  adaptor()->EmitStringmapChanged(kServingOperatorProperty, oper.ToDict());
 }
 
 }  // namespace shill

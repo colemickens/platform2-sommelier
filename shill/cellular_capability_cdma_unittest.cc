@@ -140,7 +140,7 @@ const char CellularCapabilityCDMATest::kTestCarrier[] = "The Cellular Carrier";
 const unsigned int CellularCapabilityCDMATest::kStrength = 90;
 
 TEST_F(CellularCapabilityCDMATest, PropertyStore) {
-  EXPECT_TRUE(cellular_->store().Contains(flimflam::kPRLVersionProperty));
+  EXPECT_TRUE(cellular_->store().Contains(kPRLVersionProperty));
 }
 
 TEST_F(CellularCapabilityCDMATest, Activate) {
@@ -156,7 +156,7 @@ TEST_F(CellularCapabilityCDMATest, Activate) {
       Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             capability_->activation_state());
-  EXPECT_EQ(flimflam::kActivationStateActivating,
+  EXPECT_EQ(kActivationStateActivating,
             cellular_->service()->activation_state());
   EXPECT_EQ("", cellular_->service()->error());
 }
@@ -189,7 +189,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   // Now the modem is actually activating.
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             capability_->activation_state());
-  EXPECT_EQ(flimflam::kActivationStateActivating,
+  EXPECT_EQ(kActivationStateActivating,
             cellular_->service()->activation_state());
   EXPECT_EQ("", cellular_->service()->error());
   EXPECT_FALSE(IsActivationStarting());
@@ -220,10 +220,9 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
   capability_->DisconnectCleanup();
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
             capability_->activation_state());
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+  EXPECT_EQ(kActivationStateNotActivated,
             cellular_->service()->activation_state());
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
-            cellular_->service()->error());
+  EXPECT_EQ(kErrorActivationFailed, cellular_->service()->error());
   EXPECT_FALSE(IsActivationStarting());
   EXPECT_FALSE(capability_->IsActivating());
 }
@@ -241,52 +240,52 @@ TEST_F(CellularCapabilityCDMATest, ActivateError) {
       Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
             capability_->activation_state());
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+  EXPECT_EQ(kActivationStateNotActivated,
             cellular_->service()->activation_state());
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
+  EXPECT_EQ(kErrorActivationFailed,
             cellular_->service()->error());
 }
 
 TEST_F(CellularCapabilityCDMATest, GetActivationStateString) {
-  EXPECT_EQ(flimflam::kActivationStateActivated,
+  EXPECT_EQ(kActivationStateActivated,
             CellularCapabilityCDMA::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED));
-  EXPECT_EQ(flimflam::kActivationStateActivating,
+  EXPECT_EQ(kActivationStateActivating,
             CellularCapabilityCDMA::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING));
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+  EXPECT_EQ(kActivationStateNotActivated,
             CellularCapabilityCDMA::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED));
-  EXPECT_EQ(flimflam::kActivationStatePartiallyActivated,
+  EXPECT_EQ(kActivationStatePartiallyActivated,
             CellularCapabilityCDMA::GetActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED));
-  EXPECT_EQ(flimflam::kActivationStateUnknown,
+  EXPECT_EQ(kActivationStateUnknown,
             CellularCapabilityCDMA::GetActivationStateString(123));
 }
 
 TEST_F(CellularCapabilityCDMATest, GetActivationErrorString) {
-  EXPECT_EQ(flimflam::kErrorNeedEvdo,
+  EXPECT_EQ(kErrorNeedEvdo,
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE));
-  EXPECT_EQ(flimflam::kErrorNeedHomeNetwork,
+  EXPECT_EQ(kErrorNeedHomeNetwork,
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING));
-  EXPECT_EQ(flimflam::kErrorOtaspFailed,
+  EXPECT_EQ(kErrorOtaspFailed,
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT));
-  EXPECT_EQ(flimflam::kErrorOtaspFailed,
+  EXPECT_EQ(kErrorOtaspFailed,
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED));
-  EXPECT_EQ(flimflam::kErrorOtaspFailed,
+  EXPECT_EQ(kErrorOtaspFailed,
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED));
   EXPECT_EQ("",
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
+  EXPECT_EQ(kErrorActivationFailed,
             CellularCapabilityCDMA::GetActivationErrorString(
                 MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
+  EXPECT_EQ(kErrorActivationFailed,
             CellularCapabilityCDMA::GetActivationErrorString(1234));
 }
 
@@ -317,33 +316,33 @@ TEST_F(CellularCapabilityCDMATest, IsRegistered1x) {
 TEST_F(CellularCapabilityCDMATest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
-  EXPECT_EQ(flimflam::kNetworkTechnologyEvdo,
+  EXPECT_EQ(kNetworkTechnologyEvdo,
             capability_->GetNetworkTechnologyString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
-  EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
+  EXPECT_EQ(kNetworkTechnology1Xrtt,
             capability_->GetNetworkTechnologyString());
 }
 
 TEST_F(CellularCapabilityCDMATest, GetRoamingStateString) {
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+  EXPECT_EQ(kRoamingStateUnknown,
             capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+  EXPECT_EQ(kRoamingStateUnknown,
             capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
-  EXPECT_EQ(flimflam::kRoamingStateHome, capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateHome, capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
-  EXPECT_EQ(flimflam::kRoamingStateRoaming,
+  EXPECT_EQ(kRoamingStateRoaming,
             capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+  EXPECT_EQ(kRoamingStateUnknown,
             capability_->GetRoamingStateString());
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
-  EXPECT_EQ(flimflam::kRoamingStateHome, capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateHome, capability_->GetRoamingStateString());
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
-  EXPECT_EQ(flimflam::kRoamingStateRoaming,
+  EXPECT_EQ(kRoamingStateRoaming,
             capability_->GetRoamingStateString());
 }
 

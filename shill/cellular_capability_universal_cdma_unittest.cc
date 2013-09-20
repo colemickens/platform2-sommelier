@@ -468,42 +468,34 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest,
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
       .WillRepeatedly(Return(&olp));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_,_))
+              GetActivationState(_, _))
       .WillOnce(Return(PendingActivationStore::kStatePending))
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
   capability_->UpdateServiceActivationStateProperty();
   Mock::VerifyAndClearExpectations(service_);
 
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateNotActivated))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
       .Times(1);
   capability_->UpdateServiceActivationStateProperty();
   Mock::VerifyAndClearExpectations(service_);
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
   capability_->UpdateServiceActivationStateProperty();
   Mock::VerifyAndClearExpectations(service_);
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivated))
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
   capability_->UpdateServiceActivationStateProperty();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
-  Mock::VerifyAndClearExpectations(
-      modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, IsActivating) {

@@ -91,7 +91,7 @@ class CellularPropertyTest : public PropertyStoreTest {
 };
 
 TEST_F(CellularPropertyTest, Contains) {
-  EXPECT_TRUE(device_->store().Contains(flimflam::kNameProperty));
+  EXPECT_TRUE(device_->store().Contains(kNameProperty));
   EXPECT_FALSE(device_->store().Contains(""));
 }
 
@@ -102,7 +102,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
     allow_roaming.writer().append_bool(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(
         device_->mutable_store(),
-        flimflam::kCellularAllowRoamingProperty,
+        kCellularAllowRoamingProperty,
         allow_roaming,
         &error));
   }
@@ -110,7 +110,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                          flimflam::kAddressProperty,
+                                          kAddressProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -119,7 +119,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                          flimflam::kCarrierProperty,
+                                          kCarrierProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -307,7 +307,7 @@ class CellularTest : public testing::Test {
     EXPECT_CALL(*proxy_,
                 GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
         .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-    if (network_technology == flimflam::kNetworkTechnology1Xrtt)
+    if (network_technology == kNetworkTechnology1Xrtt)
       EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
           .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationState1X));
     else
@@ -495,7 +495,7 @@ TEST_F(CellularTest, GetStateString) {
 
 TEST_F(CellularTest, StartCDMARegister) {
   SetCellularType(Cellular::kTypeCDMA);
-  ExpectCdmaStartModem(flimflam::kNetworkTechnology1Xrtt);
+  ExpectCdmaStartModem(kNetworkTechnology1Xrtt);
   EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
@@ -504,10 +504,9 @@ TEST_F(CellularTest, StartCDMARegister) {
   EXPECT_EQ(kTestCarrier, GetCapabilityClassic()->carrier_);
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
-  EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
-            device_->service_->network_technology());
+  EXPECT_EQ(kNetworkTechnology1Xrtt, device_->service_->network_technology());
   EXPECT_EQ(kStrength, device_->service_->strength());
-  EXPECT_EQ(flimflam::kRoamingStateHome, device_->service_->roaming_state());
+  EXPECT_EQ(kRoamingStateHome, device_->service_->roaming_state());
 }
 
 TEST_F(CellularTest, StartGSMRegister) {
@@ -554,11 +553,10 @@ TEST_F(CellularTest, StartGSMRegister) {
   EXPECT_EQ(kMSISDN, GetCapabilityGSM()->mdn_);
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
-  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
-            device_->service_->network_technology());
+  EXPECT_EQ(kNetworkTechnologyEdge, device_->service_->network_technology());
   EXPECT_TRUE(GetCapabilityGSM()->sim_lock_status_.enabled);
   EXPECT_EQ(kStrength, device_->service_->strength());
-  EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
+  EXPECT_EQ(kRoamingStateRoaming, device_->service_->roaming_state());
   EXPECT_EQ(kNetworkID, device_->service_->serving_operator().GetCode());
   EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
   EXPECT_EQ("ch", device_->service_->serving_operator().GetCountry());
@@ -570,7 +568,7 @@ TEST_F(CellularTest, StartConnected) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   GetCapabilityClassic()->meid_ = kMEID;
-  ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
+  ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
@@ -584,7 +582,7 @@ TEST_F(CellularTest, StartLinked) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   GetCapabilityClassic()->meid_ = kMEID;
-  ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
+  ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
@@ -649,7 +647,7 @@ TEST_F(CellularTest, Connect) {
   SetService();
 
   device_->allow_roaming_ = false;
-  device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
+  device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->Connect(&error);
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
 
@@ -660,7 +658,7 @@ TEST_F(CellularTest, Connect) {
                 .Times(2)
                 .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
-  device_->service_->roaming_state_ = flimflam::kRoamingStateHome;
+  device_->service_->roaming_state_ = kRoamingStateHome;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(&error);
   EXPECT_TRUE(error.IsSuccess());
@@ -668,7 +666,7 @@ TEST_F(CellularTest, Connect) {
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 
   device_->allow_roaming_ = true;
-  device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
+  device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(&error);
   EXPECT_TRUE(error.IsSuccess());

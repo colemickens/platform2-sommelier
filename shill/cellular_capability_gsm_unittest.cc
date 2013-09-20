@@ -332,7 +332,7 @@ const char CellularCapabilityGSMTest::kScanID1[] = "456";
 const int CellularCapabilityGSMTest::kStrength = 80;
 
 TEST_F(CellularCapabilityGSMTest, PropertyStore) {
-  EXPECT_TRUE(cellular_->store().Contains(flimflam::kSIMLockStatusProperty));
+  EXPECT_TRUE(cellular_->store().Contains(kSIMLockStatusProperty));
 }
 
 TEST_F(CellularCapabilityGSMTest, GetIMEI) {
@@ -556,10 +556,8 @@ TEST_F(CellularCapabilityGSMTest, Scan) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   capability_->found_networks_.resize(3, Stringmap());
   EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
-                                    SizeIs2()));
-  EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, true));
+              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs2()));
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
   EXPECT_FALSE(capability_->scanning_);
 
   SetNetworkProxy();
@@ -569,15 +567,12 @@ TEST_F(CellularCapabilityGSMTest, Scan) {
   EXPECT_TRUE(capability_->scanning_);
 
   // Simulate the completion of the scan...
-  EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, false));
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
   InvokeScanReply();
   EXPECT_FALSE(capability_->scanning_);
   EXPECT_EQ(2, capability_->found_networks_.size());
-  EXPECT_EQ(kScanID0,
-            capability_->found_networks_[0][flimflam::kNetworkIdProperty]);
-  EXPECT_EQ(kScanID1,
-            capability_->found_networks_[1][flimflam::kNetworkIdProperty]);
+  EXPECT_EQ(kScanID0, capability_->found_networks_[0][kNetworkIdProperty]);
+  EXPECT_EQ(kScanID1, capability_->found_networks_[1][kNetworkIdProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
@@ -593,12 +588,11 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
   result["unknown property"] = "random value";
   Stringmap parsed = capability_->ParseScanResult(result);
   EXPECT_EQ(5, parsed.size());
-  EXPECT_EQ("available", parsed[flimflam::kStatusProperty]);
-  EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
-  EXPECT_EQ(kLongName, parsed[flimflam::kLongNameProperty]);
-  EXPECT_EQ(kShortName, parsed[flimflam::kShortNameProperty]);
-  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
-            parsed[flimflam::kTechnologyProperty]);
+  EXPECT_EQ("available", parsed[kStatusProperty]);
+  EXPECT_EQ(kID, parsed[kNetworkIdProperty]);
+  EXPECT_EQ(kLongName, parsed[kLongNameProperty]);
+  EXPECT_EQ(kShortName, parsed[kShortNameProperty]);
+  EXPECT_EQ(kNetworkTechnologyEdge, parsed[kTechnologyProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
@@ -608,8 +602,8 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
   result[CellularCapabilityGSM::kNetworkPropertyID] = kID;
   Stringmap parsed = capability_->ParseScanResult(result);
   EXPECT_EQ(2, parsed.size());
-  EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
-  EXPECT_EQ("T-Mobile", parsed[flimflam::kLongNameProperty]);
+  EXPECT_EQ(kID, parsed[kNetworkIdProperty]);
+  EXPECT_EQ("T-Mobile", parsed[kLongNameProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
@@ -619,8 +613,7 @@ TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
   capability_->SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, capability_->access_technology_);
-  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
-            cellular_->service()->network_technology());
+  EXPECT_EQ(kNetworkTechnologyGprs, cellular_->service()->network_technology());
 }
 
 TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
@@ -727,65 +720,50 @@ TEST_F(CellularCapabilityGSMTest, InitAPNList) {
   ASSERT_TRUE(capability_->home_provider_);
   EXPECT_EQ(0, capability_->apn_list_.size());
   EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(flimflam::kCellularApnListProperty,
-                                    SizeIs4()));
+              EmitStringmapsChanged(kCellularApnListProperty, SizeIs4()));
   capability_->InitAPNList();
   EXPECT_EQ(4, capability_->apn_list_.size());
   EXPECT_EQ("wap.voicestream.com",
-            capability_->apn_list_[1][flimflam::kApnProperty]);
+            capability_->apn_list_[1][kApnProperty]);
   EXPECT_EQ("Web2Go/t-zones",
-            capability_->apn_list_[1][flimflam::kApnNameProperty]);
+            capability_->apn_list_[1][kApnNameProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
-  EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyGsm, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT);
-  EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyGsm, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
-  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_EDGE);
-  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyEdge, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_UMTS);
-  EXPECT_EQ(flimflam::kNetworkTechnologyUmts,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyUmts, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSDPA);
-  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyHspa, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSUPA);
-  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyHspa, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSPA);
-  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyHspa, capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS);
-  EXPECT_EQ(flimflam::kNetworkTechnologyHspaPlus,
+  EXPECT_EQ(kNetworkTechnologyHspaPlus,
             capability_->GetNetworkTechnologyString());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
-  EXPECT_EQ(flimflam::kRoamingStateHome,
-            capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateHome, capability_->GetRoamingStateString());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
-  EXPECT_EQ(flimflam::kRoamingStateRoaming,
-            capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateRoaming, capability_->GetRoamingStateString());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING);
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED);
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE);
-  EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_->GetRoamingStateString());
+  EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
 }
 
 TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
@@ -818,12 +796,12 @@ TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
 TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
   SetService();
   capability_->OnServiceCreated();
-  EXPECT_EQ(string(flimflam::kTypeCellular) + "_" + kAddress + "_" +
+  EXPECT_EQ(string(kTypeCellular) + "_" + kAddress + "_" +
             cellular_->service()->friendly_name(),
             cellular_->service()->GetStorageIdentifier());
   capability_->imsi_ = kIMSI;
   capability_->OnServiceCreated();
-  EXPECT_EQ(string(flimflam::kTypeCellular) + "_" + kAddress + "_" + kIMSI,
+  EXPECT_EQ(string(kTypeCellular) + "_" + kAddress + "_" + kIMSI,
             cellular_->service()->GetStorageIdentifier());
 }
 
@@ -882,12 +860,12 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   // Call with the MM_MODEM_GSM_NETWORK_INTERFACE interface and expect a change
   // to the enabled state of the SIM lock.
   KeyValueStore lock_status;
-  lock_status.SetBool(flimflam::kSIMLockEnabledProperty, true);
-  lock_status.SetString(flimflam::kSIMLockTypeProperty, "");
-  lock_status.SetUint(flimflam::kSIMLockRetriesLeftProperty, 0);
+  lock_status.SetBool(kSIMLockEnabledProperty, true);
+  lock_status.SetString(kSIMLockTypeProperty, "");
+  lock_status.SetUint(kSIMLockRetriesLeftProperty, 0);
 
   EXPECT_CALL(*device_adaptor_, EmitKeyValueStoreChanged(
-      flimflam::kSIMLockStatusProperty,
+      kSIMLockStatusProperty,
       KeyValueStoreEq(lock_status)));
 
   capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_NETWORK_INTERFACE, props,
@@ -904,11 +882,11 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   capability_->sim_lock_status_.lock_type = "";
   capability_->sim_lock_status_.retries_left = 0;
   KeyValueStore lock_status2;
-  lock_status2.SetBool(flimflam::kSIMLockEnabledProperty, false);
-  lock_status2.SetString(flimflam::kSIMLockTypeProperty, kLockType);
-  lock_status2.SetUint(flimflam::kSIMLockRetriesLeftProperty, kRetries);
+  lock_status2.SetBool(kSIMLockEnabledProperty, false);
+  lock_status2.SetString(kSIMLockTypeProperty, kLockType);
+  lock_status2.SetUint(kSIMLockRetriesLeftProperty, kRetries);
   EXPECT_CALL(*device_adaptor_,
-              EmitKeyValueStoreChanged(flimflam::kSIMLockStatusProperty,
+              EmitKeyValueStoreChanged(kSIMLockStatusProperty,
                                        KeyValueStoreEq(lock_status2)));
   capability_->OnDBusPropertiesChanged(MM_MODEM_INTERFACE, props,
                                        vector<string>());
@@ -929,60 +907,60 @@ TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
   capability_->SetHomeProvider();
   DBusPropertiesMap props;
   capability_->SetupConnectProperties(&props);
-  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
-  EXPECT_EQ(kTmobileApn, props[flimflam::kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kTmobileApn, props[kApnProperty].reader().get_string());
 
   ProfileRefPtr profile(new NiceMock<MockProfile>(
       modem_info_.control_interface(), modem_info_.metrics(),
       modem_info_.manager()));
   cellular_->service()->set_profile(profile);
   Stringmap apn_info;
-  apn_info[flimflam::kApnProperty] = kLastGoodApn;
-  apn_info[flimflam::kApnUsernameProperty] = kLastGoodUsername;
+  apn_info[kApnProperty] = kLastGoodApn;
+  apn_info[kApnUsernameProperty] = kLastGoodUsername;
   cellular_->service()->SetLastGoodApn(apn_info);
   props.clear();
-  EXPECT_TRUE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_TRUE(props.find(kApnProperty) == props.end());
   capability_->SetupConnectProperties(&props);
   // We expect the list to contain the last good APN, plus
   // the 4 APNs from the mobile provider info database.
   EXPECT_EQ(5, capability_->apn_try_list_.size());
-  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[flimflam::kApnProperty].reader().get_string());
-  EXPECT_FALSE(props.find(flimflam::kApnUsernameProperty) == props.end());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(kApnUsernameProperty) == props.end());
   EXPECT_EQ(kLastGoodUsername,
-            props[flimflam::kApnUsernameProperty].reader().get_string());
+            props[kApnUsernameProperty].reader().get_string());
 
   Error error;
   apn_info.clear();
   props.clear();
-  apn_info[flimflam::kApnProperty] = kSuppliedApn;
+  apn_info[kApnProperty] = kSuppliedApn;
   // Setting the APN has the side effect of clearing the LastGoodApn,
   // so the try list will have 5 elements, with the first one being
   // the supplied APN.
   cellular_->service()->SetApn(apn_info, &error);
-  EXPECT_TRUE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_TRUE(props.find(kApnProperty) == props.end());
   capability_->SetupConnectProperties(&props);
   EXPECT_EQ(5, capability_->apn_try_list_.size());
-  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
-  EXPECT_EQ(kSuppliedApn, props[flimflam::kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kSuppliedApn, props[kApnProperty].reader().get_string());
 
   apn_info.clear();
   props.clear();
-  apn_info[flimflam::kApnProperty] = kLastGoodApn;
-  apn_info[flimflam::kApnUsernameProperty] = kLastGoodUsername;
+  apn_info[kApnProperty] = kLastGoodApn;
+  apn_info[kApnUsernameProperty] = kLastGoodUsername;
   // Now when LastGoodAPN is set, it will be the one selected.
   cellular_->service()->SetLastGoodApn(apn_info);
-  EXPECT_TRUE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_TRUE(props.find(kApnProperty) == props.end());
   capability_->SetupConnectProperties(&props);
   // We expect the list to contain the last good APN, plus
   // the user-supplied APN, plus the 4 APNs from the mobile
   // provider info database.
   EXPECT_EQ(6, capability_->apn_try_list_.size());
-  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[flimflam::kApnProperty].reader().get_string());
-  EXPECT_FALSE(props.find(flimflam::kApnUsernameProperty) == props.end());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(kApnUsernameProperty) == props.end());
   EXPECT_EQ(kLastGoodUsername,
-            props[flimflam::kApnUsernameProperty].reader().get_string());
+            props[kApnUsernameProperty].reader().get_string());
 }
 
 TEST_F(CellularCapabilityGSMTest, StartModemSuccess) {

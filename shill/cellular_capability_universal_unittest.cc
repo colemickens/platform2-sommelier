@@ -688,7 +688,7 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
             capability_->access_technologies_);
   EXPECT_FALSE(capability_->sim_proxy_.get());
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
-      flimflam::kTechnologyFamilyProperty, flimflam::kTechnologyFamilyGsm));
+      kTechnologyFamilyProperty, kTechnologyFamilyGsm));
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties, vector<string>());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
@@ -714,7 +714,7 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
       writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
-      flimflam::kTechnologyFamilyProperty, flimflam::kTechnologyFamilyCdma)).
+      kTechnologyFamilyProperty, kTechnologyFamilyCdma)).
       Times(1);
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties,
@@ -726,7 +726,7 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
       writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_LTE);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
-      flimflam::kTechnologyFamilyProperty, flimflam::kTechnologyFamilyGsm)).
+      kTechnologyFamilyProperty, kTechnologyFamilyGsm)).
       Times(1);
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties,
@@ -1158,8 +1158,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ScanWithNullCallback) {
   EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
       .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeScan));
   EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
-                                    SizeIs(0)));
+              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
   Set3gppProxy();
   capability_->Scan(&error, ResultCallback());
   EXPECT_TRUE(error.IsSuccess());
@@ -1171,19 +1170,16 @@ TEST_F(CellularCapabilityUniversalMainTest, Scan) {
 
   EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
       .WillRepeatedly(SaveArg<1>(&scan_callback_));
-  EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, true));
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
   Set3gppProxy();
   capability_->Scan(&error, ResultCallback());
   EXPECT_TRUE(capability_->scanning_);
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Simulate the completion of the scan with 2 networks in the results.
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
   EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, false));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
-                                    SizeIs(2)));
+              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(2)));
   vector<DBusPropertiesMap> results;
   const char kScanID0[] = "testID0";
   const char kScanID1[] = "testID1";
@@ -1198,17 +1194,14 @@ TEST_F(CellularCapabilityUniversalMainTest, Scan) {
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Simulate the completion of the scan with no networks in the results.
-  EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, true));
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
   capability_->Scan(&error, ResultCallback());
   EXPECT_TRUE(capability_->scanning_);
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
   EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, false));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
-                                    SizeIs(0)));
+              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
   scan_callback_.Run(vector<DBusPropertiesMap>(), Error());
   EXPECT_FALSE(capability_->scanning_);
 }
@@ -1234,8 +1227,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ScanFailure) {
 
   // Initiate a scan
   error.Populate(Error::kSuccess);
-  EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, true));
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
   capability_->Scan(&error, ResultCallback());
   EXPECT_TRUE(capability_->scanning_);
   EXPECT_TRUE(error.IsSuccess());
@@ -1249,11 +1241,9 @@ TEST_F(CellularCapabilityUniversalMainTest, ScanFailure) {
   // Validate that signals are emitted even if an error is reported.
   capability_->found_networks_.clear();
   capability_->found_networks_.push_back(Stringmap());
+  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
   EXPECT_CALL(*device_adaptor_,
-              EmitBoolChanged(flimflam::kScanningProperty, false));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
-                                    SizeIs(0)));
+              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
   vector<DBusPropertiesMap> results;
   scan_callback_.Run(results, Error(Error::kOperationFailed));
   EXPECT_FALSE(capability_->scanning_);
@@ -1383,10 +1373,10 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _, _))
       .WillOnce(SaveArg<2>(&connect_callback_));
   Stringmap apn1;
-  apn1[flimflam::kApnProperty] = apn_name_foo;
+  apn1[kApnProperty] = apn_name_foo;
   capability_->apn_try_list_.push_back(apn1);
   Stringmap apn2;
-  apn2[flimflam::kApnProperty] = apn_name_bar;
+  apn2[kApnProperty] = apn_name_bar;
   capability_->apn_try_list_.push_back(apn2);
   capability_->FillConnectPropertyMap(&properties);
   capability_->Connect(properties, &error, callback);
@@ -1426,7 +1416,7 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
   };
   for (size_t i = 0; i < arraysize(gsm_technologies); ++i) {
     capability_->access_technologies_ = gsm_technologies[i];
-    ASSERT_EQ(capability_->GetTypeString(), flimflam::kTechnologyFamilyGsm);
+    ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyGsm);
   }
   const int cdma_technologies[] = {
     MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
@@ -1438,7 +1428,7 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
   };
   for (size_t i = 0; i < arraysize(cdma_technologies); ++i) {
     capability_->access_technologies_ = cdma_technologies[i];
-    ASSERT_EQ(capability_->GetTypeString(), flimflam::kTechnologyFamilyCdma);
+    ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyCdma);
   }
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   ASSERT_EQ(capability_->GetTypeString(), "");
@@ -1782,8 +1772,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
   capability_->mdn_.clear();
   capability_->sim_identifier_.clear();
 
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(0);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               SetActivationState(
@@ -1804,8 +1793,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
                                  kIccid,
                                  PendingActivationStore::kStatePending))
       .Times(1);
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(1);
   capability_->CompleteActivation(&error);
@@ -1820,8 +1808,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
                                  kIccid,
                                  PendingActivationStore::kStatePending))
       .Times(0);
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(0);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
   capability_->mdn_ = "1231231212";
@@ -1837,16 +1824,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
       .WillRepeatedly(Return(&olp));
 
   service_->SetAutoConnect(false);
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateNotActivated))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
   EXPECT_FALSE(service_->auto_connect());
 
   capability_->mdn_ = "1231231122";
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivated))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
@@ -1861,8 +1846,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
       .Times(2)
       .WillOnce(Return(PendingActivationStore::kStatePending))
       .WillOnce(Return(PendingActivationStore::kStatePendingTimeout));
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
@@ -1874,8 +1858,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
                                  kIccid))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivated))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
@@ -1973,9 +1956,8 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
               GetActivationState(PendingActivationStore::kIdentifierICCID,
                                  kIccid))
       .Times(2).WillRepeatedly(Return(PendingActivationStore::kStatePending));
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivating))
-     .Times(2);
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
+      .Times(2);
   EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_proxy);
@@ -2004,15 +1986,13 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   EXPECT_CALL(*service_, AutoConnect()).Times(1);
   capability_->UpdatePendingActivationState();
 
-  cellular_->service_->activation_state_ =
-      flimflam::kActivationStateNotActivated;
+  cellular_->service_->activation_state_ = kActivationStateNotActivated;
 
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Device is connected.
   cellular_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivated))
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(3);
   capability_->UpdatePendingActivationState();
 
@@ -2061,9 +2041,8 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
                                  kIccid,
                                  PendingActivationStore::kStateActivated))
     .Times(1);
-  EXPECT_CALL(*service_,
-              SetActivationState(flimflam::kActivationStateActivated))
-    .Times(1);
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
+      .Times(1);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
@@ -2187,16 +2166,13 @@ TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
   EXPECT_TRUE(capability_->GetNetworkTechnologyString().empty());
 
   capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
-  EXPECT_EQ(flimflam::kNetworkTechnologyLte,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
 
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_GPRS;
-  EXPECT_EQ(flimflam::kNetworkTechnologyLte,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
 
   capability_->model_id_.clear();
-  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
-            capability_->GetNetworkTechnologyString());
+  EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, ShouldDetectOutOfCredit) {
@@ -2211,29 +2187,29 @@ TEST_F(CellularCapabilityUniversalMainTest, ShouldDetectOutOfCredit) {
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   Error error;
   KeyValueStore store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_FALSE(store.GetBool(flimflam::kSIMLockEnabledProperty));
-  EXPECT_TRUE(store.GetString(flimflam::kSIMLockTypeProperty).empty());
-  EXPECT_EQ(0, store.GetUint(flimflam::kSIMLockRetriesLeftProperty));
+  EXPECT_FALSE(store.GetBool(kSIMLockEnabledProperty));
+  EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
+  EXPECT_EQ(0, store.GetUint(kSIMLockRetriesLeftProperty));
 
   capability_->sim_lock_status_.enabled = true;
   capability_->sim_lock_status_.retries_left = 3;
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.GetBool(flimflam::kSIMLockEnabledProperty));
-  EXPECT_EQ("sim-pin", store.GetString(flimflam::kSIMLockTypeProperty));
-  EXPECT_EQ(3, store.GetUint(flimflam::kSIMLockRetriesLeftProperty));
+  EXPECT_TRUE(store.GetBool(kSIMLockEnabledProperty));
+  EXPECT_EQ("sim-pin", store.GetString(kSIMLockTypeProperty));
+  EXPECT_EQ(3, store.GetUint(kSIMLockRetriesLeftProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_EQ("sim-puk", store.GetString(flimflam::kSIMLockTypeProperty));
+  EXPECT_EQ("sim-puk", store.GetString(kSIMLockTypeProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.GetString(flimflam::kSIMLockTypeProperty).empty());
+  EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.GetString(flimflam::kSIMLockTypeProperty).empty());
+  EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {

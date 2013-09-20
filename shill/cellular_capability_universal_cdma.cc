@@ -204,11 +204,11 @@ void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
   cellular()->service()->SetActivateOverNonCellularNetwork(activation_required);
   string activation_state;
   if (IsActivating())
-      activation_state = flimflam::kActivationStateActivating;
+      activation_state = kActivationStateActivating;
   else if (activation_required)
-      activation_state = flimflam::kActivationStateNotActivated;
+      activation_state = kActivationStateNotActivated;
   else
-      activation_state = flimflam::kActivationStateActivated;
+      activation_state = kActivationStateActivated;
   cellular()->service()->SetActivationState(activation_state);
 }
 
@@ -392,15 +392,15 @@ string CellularCapabilityUniversalCDMA::GetActivationStateString(
     uint32 state) {
   switch (state) {
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
-      return flimflam::kActivationStateActivated;
+      return kActivationStateActivated;
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
-      return flimflam::kActivationStateActivating;
+      return kActivationStateActivating;
     case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
-      return flimflam::kActivationStateNotActivated;
+      return kActivationStateNotActivated;
     case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
-      return flimflam::kActivationStatePartiallyActivated;
+      return kActivationStatePartiallyActivated;
     default:
-      return flimflam::kActivationStateUnknown;
+      return kActivationStateUnknown;
   }
 }
 
@@ -409,18 +409,18 @@ string CellularCapabilityUniversalCDMA::GetActivationErrorString(
     uint32 error) {
   switch (error) {
     case MM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
-      return flimflam::kErrorNeedEvdo;
+      return kErrorNeedEvdo;
     case MM_CDMA_ACTIVATION_ERROR_ROAMING:
-      return flimflam::kErrorNeedHomeNetwork;
+      return kErrorNeedHomeNetwork;
     case MM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT:
     case MM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED:
     case MM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED:
-      return flimflam::kErrorOtaspFailed;
+      return kErrorOtaspFailed;
     case MM_CDMA_ACTIVATION_ERROR_NONE:
       return "";
     case MM_CDMA_ACTIVATION_ERROR_NO_SIGNAL:
     default:
-      return flimflam::kErrorActivationFailed;
+      return kErrorActivationFailed;
   }
 }
 
@@ -513,13 +513,13 @@ string CellularCapabilityUniversalCDMA::GetRoamingStateString() const {
     case MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED:
       break;
     case MM_MODEM_CDMA_REGISTRATION_STATE_HOME:
-      return flimflam::kRoamingStateHome;
+      return kRoamingStateHome;
     case MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING:
-      return flimflam::kRoamingStateRoaming;
+      return kRoamingStateRoaming;
     default:
       NOTREACHED();
   }
-  return flimflam::kRoamingStateUnknown;
+  return kRoamingStateUnknown;
 }
 
 void CellularCapabilityUniversalCDMA::OnDBusPropertiesChanged(

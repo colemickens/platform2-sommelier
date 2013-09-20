@@ -74,7 +74,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual std::string GetTypeString() const {
-    return flimflam::kTechnologyFamilyGsm;
+    return kTechnologyFamilyGsm;
   }
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,

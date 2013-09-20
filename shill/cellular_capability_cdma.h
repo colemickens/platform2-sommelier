@@ -43,7 +43,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
   virtual std::string GetTypeString() const {
-    return flimflam::kTechnologyFamilyCdma;
+    return kTechnologyFamilyCdma;
   }
   virtual bool AllowRoaming();
   virtual void GetRegistrationState();

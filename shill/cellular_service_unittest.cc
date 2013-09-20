@@ -82,26 +82,26 @@ TEST_F(CellularServiceTest, SetActivationState) {
   {
     InSequence call_sequence;
     EXPECT_CALL(*adaptor_, EmitStringChanged(
-        flimflam::kActivationStateProperty,
-        flimflam::kActivationStateNotActivated));
+        kActivationStateProperty,
+        kActivationStateNotActivated));
     EXPECT_CALL(*adaptor_, EmitBoolChanged(
-        flimflam::kConnectableProperty, false));
+        kConnectableProperty, false));
     EXPECT_CALL(*adaptor_, EmitStringChanged(
-        flimflam::kActivationStateProperty,
-        flimflam::kActivationStateActivating));
+        kActivationStateProperty,
+        kActivationStateActivating));
     EXPECT_CALL(*adaptor_, EmitBoolChanged(
-        flimflam::kConnectableProperty, true));
+        kConnectableProperty, true));
     EXPECT_CALL(*adaptor_, EmitStringChanged(
-        flimflam::kActivationStateProperty,
-        flimflam::kActivationStatePartiallyActivated));
+        kActivationStateProperty,
+        kActivationStatePartiallyActivated));
     EXPECT_CALL(*adaptor_, EmitStringChanged(
-        flimflam::kActivationStateProperty,
-        flimflam::kActivationStateActivated));
+        kActivationStateProperty,
+        kActivationStateActivated));
     EXPECT_CALL(*adaptor_, EmitStringChanged(
-        flimflam::kActivationStateProperty,
-        flimflam::kActivationStateNotActivated));
+        kActivationStateProperty,
+        kActivationStateNotActivated));
     EXPECT_CALL(*adaptor_, EmitBoolChanged(
-        flimflam::kConnectableProperty, false));
+        kConnectableProperty, false));
   }
   EXPECT_CALL(*modem_info_.mock_manager(), HasService(_))
       .WillRepeatedly(Return(false));
@@ -109,46 +109,43 @@ TEST_F(CellularServiceTest, SetActivationState) {
   EXPECT_TRUE(service_->activation_state().empty());
   EXPECT_TRUE(service_->connectable());
 
-  service_->SetActivationState(flimflam::kActivationStateNotActivated);
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
-            service_->activation_state());
+  service_->SetActivationState(kActivationStateNotActivated);
+  EXPECT_EQ(kActivationStateNotActivated, service_->activation_state());
   EXPECT_FALSE(service_->connectable());
 
-  service_->SetActivationState(flimflam::kActivationStateActivating);
-  EXPECT_EQ(flimflam::kActivationStateActivating, service_->activation_state());
+  service_->SetActivationState(kActivationStateActivating);
+  EXPECT_EQ(kActivationStateActivating, service_->activation_state());
   EXPECT_TRUE(service_->connectable());
 
-  service_->SetActivationState(flimflam::kActivationStatePartiallyActivated);
-  EXPECT_EQ(flimflam::kActivationStatePartiallyActivated,
-            service_->activation_state());
+  service_->SetActivationState(kActivationStatePartiallyActivated);
+  EXPECT_EQ(kActivationStatePartiallyActivated, service_->activation_state());
   EXPECT_TRUE(service_->connectable());
 
-  service_->SetActivationState(flimflam::kActivationStateActivated);
-  EXPECT_EQ(flimflam::kActivationStateActivated, service_->activation_state());
+  service_->SetActivationState(kActivationStateActivated);
+  EXPECT_EQ(kActivationStateActivated, service_->activation_state());
   EXPECT_TRUE(service_->connectable());
 
-  service_->SetActivationState(flimflam::kActivationStateNotActivated);
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
-            service_->activation_state());
+  service_->SetActivationState(kActivationStateNotActivated);
+  EXPECT_EQ(kActivationStateNotActivated, service_->activation_state());
   EXPECT_FALSE(service_->connectable());
 }
 
 TEST_F(CellularServiceTest, SetNetworkTechnology) {
-  EXPECT_CALL(*adaptor_, EmitStringChanged(flimflam::kNetworkTechnologyProperty,
-                                           flimflam::kNetworkTechnologyUmts));
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kNetworkTechnologyProperty,
+                                           kNetworkTechnologyUmts));
   EXPECT_TRUE(service_->network_technology().empty());
-  service_->SetNetworkTechnology(flimflam::kNetworkTechnologyUmts);
-  EXPECT_EQ(flimflam::kNetworkTechnologyUmts, service_->network_technology());
-  service_->SetNetworkTechnology(flimflam::kNetworkTechnologyUmts);
+  service_->SetNetworkTechnology(kNetworkTechnologyUmts);
+  EXPECT_EQ(kNetworkTechnologyUmts, service_->network_technology());
+  service_->SetNetworkTechnology(kNetworkTechnologyUmts);
 }
 
 TEST_F(CellularServiceTest, SetRoamingState) {
-  EXPECT_CALL(*adaptor_, EmitStringChanged(flimflam::kRoamingStateProperty,
-                                           flimflam::kRoamingStateHome));
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kRoamingStateProperty,
+                                           kRoamingStateHome));
   EXPECT_TRUE(service_->roaming_state().empty());
-  service_->SetRoamingState(flimflam::kRoamingStateHome);
-  EXPECT_EQ(flimflam::kRoamingStateHome, service_->roaming_state());
-  service_->SetRoamingState(flimflam::kRoamingStateHome);
+  service_->SetRoamingState(kRoamingStateHome);
+  EXPECT_EQ(kRoamingStateHome, service_->roaming_state());
+  service_->SetRoamingState(kRoamingStateHome);
 }
 
 TEST_F(CellularServiceTest, FriendlyName) {
@@ -159,7 +156,7 @@ TEST_F(CellularServiceTest, FriendlyName) {
 }
 
 TEST_F(CellularServiceTest, SetStorageIdentifier) {
-  EXPECT_EQ(string(flimflam::kTypeCellular) + "_" +
+  EXPECT_EQ(string(kTypeCellular) + "_" +
             kAddress + "_" + GetFriendlyName(),
             service_->GetStorageIdentifier());
   service_->SetStorageIdentifier("a b c");
@@ -168,7 +165,7 @@ TEST_F(CellularServiceTest, SetStorageIdentifier) {
 
 TEST_F(CellularServiceTest, SetServingOperator) {
   EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(flimflam::kServingOperatorProperty, _));
+              EmitStringmapChanged(kServingOperatorProperty, _));
   static const char kCode[] = "123456";
   static const char kName[] = "Some Cellular Operator";
   Cellular::Operator oper;
@@ -183,7 +180,7 @@ TEST_F(CellularServiceTest, SetServingOperator) {
 
 TEST_F(CellularServiceTest, SetOLP) {
   EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(flimflam::kPaymentPortalProperty, _));
+              EmitStringmapChanged(kPaymentPortalProperty, _));
   static const char kURL[] = "payment.url";
   static const char kMethod[] = "GET";
   CellularService::OLP olp;
@@ -198,7 +195,7 @@ TEST_F(CellularServiceTest, SetOLP) {
 
 TEST_F(CellularServiceTest, SetUsageURL) {
   static const char kUsageURL[] = "usage.url";
-  EXPECT_CALL(*adaptor_, EmitStringChanged(flimflam::kUsageURLProperty,
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kUsageURLProperty,
                                            kUsageURL));
   EXPECT_TRUE(service_->usage_url().empty());
   service_->SetUsageURL(kUsageURL);
@@ -215,24 +212,24 @@ TEST_F(CellularServiceTest, SetApn) {
   service_->set_profile(profile);
   Error error;
   Stringmap testapn;
-  testapn[flimflam::kApnProperty] = kApn;
-  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  testapn[kApnProperty] = kApn;
+  testapn[kApnUsernameProperty] = kUsername;
   {
     InSequence seq;
     EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                EmitStringmapChanged(kCellularLastGoodApnProperty,
                                      _));
     EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(flimflam::kCellularApnProperty, _));
+                EmitStringmapChanged(kCellularApnProperty, _));
   }
   service_->SetApn(testapn, &error);
   EXPECT_TRUE(error.IsSuccess());
   Stringmap resultapn = service_->GetApn(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(2, resultapn.size());
-  Stringmap::const_iterator it = resultapn.find(flimflam::kApnProperty);
+  Stringmap::const_iterator it = resultapn.find(kApnProperty);
   EXPECT_TRUE(it != resultapn.end() && it->second == kApn);
-  it = resultapn.find(flimflam::kApnUsernameProperty);
+  it = resultapn.find(kApnUsernameProperty);
   EXPECT_TRUE(it != resultapn.end() && it->second == kUsername);
   EXPECT_FALSE(service_->GetUserSpecifiedApn() == NULL);
 }
@@ -247,15 +244,15 @@ TEST_F(CellularServiceTest, ClearApn) {
   Error error;
   // Set up an APN to make sure that it later gets cleared.
   Stringmap testapn;
-  testapn[flimflam::kApnProperty] = kApn;
-  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  testapn[kApnProperty] = kApn;
+  testapn[kApnUsernameProperty] = kUsername;
   {
     InSequence seq;
     EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                EmitStringmapChanged(kCellularLastGoodApnProperty,
                                      _));
     EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(flimflam::kCellularApnProperty, _));
+                EmitStringmapChanged(kCellularApnProperty, _));
   }
   service_->SetApn(testapn, &error);
   Stringmap resultapn = service_->GetApn(&error);
@@ -264,10 +261,10 @@ TEST_F(CellularServiceTest, ClearApn) {
 
   Stringmap emptyapn;
   EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+              EmitStringmapChanged(kCellularLastGoodApnProperty,
                                    _)).Times(0);
   EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(flimflam::kCellularApnProperty, _)).Times(1);
+              EmitStringmapChanged(kCellularApnProperty, _)).Times(1);
   service_->SetApn(emptyapn, &error);
   EXPECT_TRUE(error.IsSuccess());
   resultapn = service_->GetApn(&error);
@@ -283,30 +280,30 @@ TEST_F(CellularServiceTest, LastGoodApn) {
       modem_info_.manager()));
   service_->set_profile(profile);
   Stringmap testapn;
-  testapn[flimflam::kApnProperty] = kApn;
-  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  testapn[kApnProperty] = kApn;
+  testapn[kApnUsernameProperty] = kUsername;
   EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty, _));
+              EmitStringmapChanged(kCellularLastGoodApnProperty, _));
   service_->SetLastGoodApn(testapn);
   Stringmap *resultapn = service_->GetLastGoodApn();
   EXPECT_FALSE(resultapn == NULL);
   EXPECT_EQ(2, resultapn->size());
-  Stringmap::const_iterator it = resultapn->find(flimflam::kApnProperty);
+  Stringmap::const_iterator it = resultapn->find(kApnProperty);
   EXPECT_TRUE(it != resultapn->end() && it->second == kApn);
-  it = resultapn->find(flimflam::kApnUsernameProperty);
+  it = resultapn->find(kApnUsernameProperty);
   EXPECT_TRUE(it != resultapn->end() && it->second == kUsername);
   // Now set the user-specified APN, and check that LastGoodApn got
   // cleared.
   Stringmap userapn;
-  userapn[flimflam::kApnProperty] = kApn;
-  userapn[flimflam::kApnUsernameProperty] = kUsername;
+  userapn[kApnProperty] = kApn;
+  userapn[kApnUsernameProperty] = kUsername;
   {
     InSequence seq;
     EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                EmitStringmapChanged(kCellularLastGoodApnProperty,
                                      _));
     EXPECT_CALL(*adaptor_,
-                EmitStringmapChanged(flimflam::kCellularApnProperty, _));
+                EmitStringmapChanged(kCellularApnProperty, _));
   }
   Error error;
   service_->SetApn(userapn, &error);
@@ -594,16 +591,13 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   service_->SetActivateOverNonCellularNetwork(!activate_over_non_cellular);
   Mock::VerifyAndClearExpectations(adaptor_);
 
-  EXPECT_NE(flimflam::kActivationStateNotActivated,
-            service_->activation_state());
-  EXPECT_CALL(*adaptor_,
-              EmitStringChanged(flimflam::kActivationStateProperty, _));
-  service_->SetActivationState(flimflam::kActivationStateNotActivated);
+  EXPECT_NE(kActivationStateNotActivated, service_->activation_state());
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty, _));
+  service_->SetActivationState(kActivationStateNotActivated);
   Mock::VerifyAndClearExpectations(adaptor_);
 
   string network_technology = service_->network_technology();
-  EXPECT_CALL(*adaptor_,
-              EmitStringChanged(flimflam::kNetworkTechnologyProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kNetworkTechnologyProperty, _));
   service_->SetNetworkTechnology(network_technology + "and some new stuff");
   Mock::VerifyAndClearExpectations(adaptor_);
 
@@ -613,8 +607,7 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   Mock::VerifyAndClearExpectations(adaptor_);
 
   string roaming_state = service_->roaming_state();
-  EXPECT_CALL(*adaptor_,
-              EmitStringChanged(flimflam::kRoamingStateProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kRoamingStateProperty, _));
   service_->SetRoamingState(roaming_state + "and some new stuff");
   Mock::VerifyAndClearExpectations(adaptor_);
 }
@@ -633,8 +626,8 @@ TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   Stringmap testapn;
   ProfileRefPtr profile(new NiceMock<MockProfile>(nullptr, nullptr, nullptr));
   service_->set_profile(profile);
-  testapn[flimflam::kApnProperty] = kApn;
-  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  testapn[kApnProperty] = kApn;
+  testapn[kApnUsernameProperty] = kUsername;
   // ... then set to a known value ...
   EXPECT_TRUE(service_->SetApn(testapn, &error));
   EXPECT_TRUE(error.IsSuccess());

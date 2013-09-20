@@ -322,10 +322,10 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
 
   {
     InSequence seq;
-    EXPECT_CALL(*device_adaptor_, EmitBoolChanged(
-        flimflam::kCellularAllowRoamingProperty, true));
-    EXPECT_CALL(*device_adaptor_, EmitBoolChanged(
-        flimflam::kCellularAllowRoamingProperty, false));
+    EXPECT_CALL(*device_adaptor_,
+                EmitBoolChanged(kCellularAllowRoamingProperty, true));
+    EXPECT_CALL(*device_adaptor_,
+                EmitBoolChanged(kCellularAllowRoamingProperty, false));
   }
 
   cellular_->state_ = Cellular::kStateConnected;
@@ -360,12 +360,12 @@ TEST_F(CellularCapabilityTest, SetCarrier) {
 }
 
 MATCHER_P(HasApn, apn, "") {
-  DBusPropertiesMap::const_iterator it = arg.find(flimflam::kApnProperty);
+  DBusPropertiesMap::const_iterator it = arg.find(kApnProperty);
   return it != arg.end() && apn == it->second.reader().get_string();
 }
 
 MATCHER(HasNoApn, "") {
-  return arg.find(flimflam::kApnProperty) == arg.end();
+  return arg.find(kApnProperty) == arg.end();
 }
 
 TEST_F(CellularCapabilityTest, TryApns) {
@@ -400,11 +400,11 @@ TEST_F(CellularCapabilityTest, TryApns) {
   Error error;
   Stringmap apn_info;
   DBusPropertiesMap props;
-  apn_info[flimflam::kApnProperty] = kSuppliedApn;
+  apn_info[kApnProperty] = kSuppliedApn;
   cellular_->service()->SetApn(apn_info, &error);
 
   apn_info.clear();
-  apn_info[flimflam::kApnProperty] = kLastGoodApn;
+  apn_info[kApnProperty] = kLastGoodApn;
   cellular_->service()->SetLastGoodApn(apn_info);
 
   capability_->SetupConnectProperties(&props);
@@ -412,8 +412,8 @@ TEST_F(CellularCapabilityTest, TryApns) {
   // the user-supplied APN, plus the 4 APNs from the mobile
   // provider info database.
   EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
-  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[flimflam::kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
 
   SetSimpleProxy();
   capability_->Connect(props, &error, ResultCallback());

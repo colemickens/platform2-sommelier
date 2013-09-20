@@ -68,21 +68,18 @@ CellularCapabilityClassic::CellularCapabilityClassic(
       scanning_supported_(false),
       weak_ptr_factory_(this) {
   PropertyStore *store = cellular->mutable_store();
-  store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
-  store->RegisterConstBool(flimflam::kSupportNetworkScanProperty,
-                           &scanning_supported_);
-  store->RegisterConstString(flimflam::kEsnProperty, &esn_);
-  store->RegisterConstString(flimflam::kFirmwareRevisionProperty,
-                             &firmware_revision_);
-  store->RegisterConstString(flimflam::kHardwareRevisionProperty,
-                             &hardware_revision_);
-  store->RegisterConstString(flimflam::kImeiProperty, &imei_);
-  store->RegisterConstString(flimflam::kImsiProperty, &imsi_);
-  store->RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
-  store->RegisterConstString(flimflam::kMdnProperty, &mdn_);
-  store->RegisterConstString(flimflam::kMeidProperty, &meid_);
-  store->RegisterConstString(flimflam::kMinProperty, &min_);
-  store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
+  store->RegisterConstString(kCarrierProperty, &carrier_);
+  store->RegisterConstBool(kSupportNetworkScanProperty, &scanning_supported_);
+  store->RegisterConstString(kEsnProperty, &esn_);
+  store->RegisterConstString(kFirmwareRevisionProperty, &firmware_revision_);
+  store->RegisterConstString(kHardwareRevisionProperty, &hardware_revision_);
+  store->RegisterConstString(kImeiProperty, &imei_);
+  store->RegisterConstString(kImsiProperty, &imsi_);
+  store->RegisterConstString(kManufacturerProperty, &manufacturer_);
+  store->RegisterConstString(kMdnProperty, &mdn_);
+  store->RegisterConstString(kMeidProperty, &meid_);
+  store->RegisterConstString(kMinProperty, &min_);
+  store->RegisterConstString(kModelIDProperty, &model_id_);
 
   // This class is currently instantiated only for Gobi modems so setup the
   // supported carriers list appropriately and expose it over RPC.
