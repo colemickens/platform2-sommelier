@@ -36,7 +36,7 @@ namespace shill {
 
 namespace {
 
-const char kHostProperty[] = "VPN.Host";
+const char kVPNHostProperty[] = "VPN.Host";
 const char kOTPProperty[] = "VPN.OTP";
 const char kPINProperty[] = "VPN.PIN";
 const char kPSKProperty[] = "VPN.PSK";
@@ -72,7 +72,7 @@ class VPNDriverUnderTest : public VPNDriver {
 // static
 const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { kEapCaCertPemProperty, Property::kArray },
-  { kHostProperty, 0 },
+  { kVPNHostProperty, 0 },
   { kL2tpIpsecCaCertPemProperty, Property::kArray },
   { kOTPProperty, Property::kEphemeral },
   { kPINProperty, Property::kWriteOnly },
@@ -176,7 +176,7 @@ bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore &store,
 
 TEST_F(VPNDriverTest, Load) {
   MockStore storage;
-  GetArgs()->SetString(kHostProperty, "1.2.3.4");
+  GetArgs()->SetString(kVPNHostProperty, "1.2.3.4");
   GetArgs()->SetString(kPSKProperty, "1234");
   GetArgs()->SetStrings(kL2tpIpsecCaCertPemProperty,
                         vector<string>{ "cleared-cert0", "cleared-cert1" });
@@ -209,7 +209,7 @@ TEST_F(VPNDriverTest, Load) {
   EXPECT_EQ(kPassword, GetArgs()->LookupString(kPasswordProperty, ""));
 
   // Properties missing from the persistent store should be deleted.
-  EXPECT_FALSE(GetArgs()->ContainsString(kHostProperty));
+  EXPECT_FALSE(GetArgs()->ContainsString(kVPNHostProperty));
   EXPECT_FALSE(GetArgs()->ContainsStrings(kL2tpIpsecCaCertPemProperty));
   EXPECT_FALSE(GetArgs()->ContainsString(kPSKProperty));
 }
@@ -244,7 +244,7 @@ TEST_F(VPNDriverTest, Save) {
       .Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kL2tpIpsecCaCertPemProperty));
   EXPECT_CALL(storage, DeleteKey(kStorageID, kPSKProperty));
-  EXPECT_CALL(storage, DeleteKey(kStorageID, kHostProperty));
+  EXPECT_CALL(storage, DeleteKey(kStorageID, kVPNHostProperty));
   EXPECT_TRUE(driver_.Save(&storage, kStorageID, true));
 }
 
@@ -296,7 +296,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(flimflam::kProviderTypeProperty, kProviderType);
-  SetArg(kHostProperty, "");
+  SetArg(kVPNHostProperty, "");
   const vector<string> kCaCerts{ "cert1" };
   SetArgArray(kEapCaCertPemProperty, kCaCerts);
   SetArgArray(kL2tpIpsecCaCertPemProperty, vector<string>());
@@ -330,7 +330,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // We should be able to read empty properties from the "Provider" stringmap.
   {
     string value;
-    EXPECT_TRUE(GetProviderPropertyString(store, kHostProperty, &value));
+    EXPECT_TRUE(GetProviderPropertyString(store, kVPNHostProperty, &value));
     EXPECT_TRUE(value.empty());
   }
   {
