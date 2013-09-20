@@ -45,21 +45,16 @@ IPConfig::IPConfig(ControlInterface *control_interface,
 }
 
 void IPConfig::Init() {
-  store_.RegisterConstString(flimflam::kAddressProperty,
-                             &properties_.address);
-  store_.RegisterConstString(flimflam::kBroadcastProperty,
+  store_.RegisterConstString(kAddressProperty, &properties_.address);
+  store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);
-  store_.RegisterConstString(flimflam::kDomainNameProperty,
-                             &properties_.domain_name);
-  store_.RegisterConstString(flimflam::kGatewayProperty, &properties_.gateway);
-  store_.RegisterConstString(flimflam::kMethodProperty, &properties_.method);
-  store_.RegisterConstInt32(flimflam::kMtuProperty, &properties_.mtu);
-  store_.RegisterConstStrings(flimflam::kNameServersProperty,
-                              &properties_.dns_servers);
-  store_.RegisterConstString(flimflam::kPeerAddressProperty,
-                             &properties_.peer_address);
-  store_.RegisterConstInt32(flimflam::kPrefixlenProperty,
-                            &properties_.subnet_prefix);
+  store_.RegisterConstString(kDomainNameProperty, &properties_.domain_name);
+  store_.RegisterConstString(kGatewayProperty, &properties_.gateway);
+  store_.RegisterConstString(kMethodProperty, &properties_.method);
+  store_.RegisterConstInt32(kMtuProperty, &properties_.mtu);
+  store_.RegisterConstStrings(kNameServersProperty, &properties_.dns_servers);
+  store_.RegisterConstString(kPeerAddressProperty, &properties_.peer_address);
+  store_.RegisterConstInt32(kPrefixlenProperty, &properties_.subnet_prefix);
   store_.RegisterConstStrings(kSearchDomainsProperty,
                               &properties_.domain_search);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
@@ -142,10 +137,8 @@ void IPConfig::RegisterUpdateCallback(
 }
 
 void IPConfig::EmitChanges() {
-  adaptor_->EmitStringChanged(flimflam::kAddressProperty,
-                              properties_.address);
-  adaptor_->EmitStringsChanged(flimflam::kNameServersProperty,
-                               properties_.dns_servers);
+  adaptor_->EmitStringChanged(kAddressProperty, properties_.address);
+  adaptor_->EmitStringsChanged(kNameServersProperty, properties_.dns_servers);
 }
 
 }  // namespace shill

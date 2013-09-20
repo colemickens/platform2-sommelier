@@ -671,7 +671,7 @@ TEST_F(DHCPConfigTest, SetProperty) {
   ::DBus::Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::SetProperty(config_->mutable_store(),
-                                        flimflam::kAddressProperty,
+                                        kAddressProperty,
                                         PropertyStoreTest::kStringV,
                                         &error));
   ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise

@@ -372,7 +372,7 @@ bool DHCPConfig::ParseClasslessStaticRoutes(const string &classless_routes,
 bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
                                     IPConfig::Properties *properties) {
   SLOG(DHCP, 2) << __func__;
-  properties->method = flimflam::kTypeDHCP;
+  properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
   string classless_static_routes;
   bool default_gateway_parse_error = false;

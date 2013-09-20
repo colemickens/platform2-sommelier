@@ -161,19 +161,19 @@ TEST_F(IPConfigTest, PropertyChanges) {
   IPConfigMockAdaptor *adaptor = GetAdaptor();
 
   StaticIPParameters static_ip_params;
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kAddressProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringsChanged(flimflam::kNameServersProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
   ipconfig_->ApplyStaticIPParameters(&static_ip_params);
   Mock::VerifyAndClearExpectations(adaptor);
 
   IPConfig::Properties ip_properties;
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kAddressProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringsChanged(flimflam::kNameServersProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
   UpdateProperties(ip_properties, true);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kAddressProperty, _));
-  EXPECT_CALL(*adaptor, EmitStringsChanged(flimflam::kNameServersProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
   UpdateProperties(ip_properties, false);
   Mock::VerifyAndClearExpectations(adaptor);
 }

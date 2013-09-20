@@ -28,12 +28,12 @@ const char StaticIPParameters::kConfigKeyPrefix[] = "StaticIP.";
 const char StaticIPParameters::kSavedConfigKeyPrefix[] = "SavedIP.";
 // static
 const StaticIPParameters::Property StaticIPParameters::kProperties[] = {
-  { flimflam::kAddressProperty, Property::kTypeString },
-  { flimflam::kGatewayProperty, Property::kTypeString },
-  { flimflam::kMtuProperty, Property::kTypeInt32 },
-  { flimflam::kNameServersProperty, Property::kTypeStrings },
-  { flimflam::kPeerAddressProperty, Property::kTypeString },
-  { flimflam::kPrefixlenProperty, Property::kTypeInt32 }
+  { kAddressProperty, Property::kTypeString },
+  { kGatewayProperty, Property::kTypeString },
+  { kMtuProperty, Property::kTypeInt32 },
+  { kNameServersProperty, Property::kTypeStrings },
+  { kPeerAddressProperty, Property::kTypeString },
+  { kPrefixlenProperty, Property::kTypeInt32 }
 };
 
 StaticIPParameters::StaticIPParameters() {}
@@ -196,12 +196,12 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties *props) {
     props->address_family = IPAddress::kFamilyIPv4;
   }
   ClearSavedParameters();
-  ApplyString(flimflam::kAddressProperty, &props->address);
-  ApplyString(flimflam::kGatewayProperty, &props->gateway);
-  ApplyInt(flimflam::kMtuProperty, &props->mtu);
-  ApplyStrings(flimflam::kNameServersProperty, &props->dns_servers);
-  ApplyString(flimflam::kPeerAddressProperty, &props->peer_address);
-  ApplyInt(flimflam::kPrefixlenProperty, &props->subnet_prefix);
+  ApplyString(kAddressProperty, &props->address);
+  ApplyString(kGatewayProperty, &props->gateway);
+  ApplyInt(kMtuProperty, &props->mtu);
+  ApplyStrings(kNameServersProperty, &props->dns_servers);
+  ApplyString(kPeerAddressProperty, &props->peer_address);
+  ApplyInt(kPrefixlenProperty, &props->subnet_prefix);
 }
 
 void StaticIPParameters::ClearSavedParameters() {
@@ -209,8 +209,8 @@ void StaticIPParameters::ClearSavedParameters() {
 }
 
 bool StaticIPParameters::ContainsAddress() const {
-  return args_.ContainsString(flimflam::kAddressProperty) &&
-      args_.ContainsInt(flimflam::kPrefixlenProperty);
+  return args_.ContainsString(kAddressProperty) &&
+      args_.ContainsInt(kPrefixlenProperty);
 }
 
 void StaticIPParameters::ClearMappedProperty(
