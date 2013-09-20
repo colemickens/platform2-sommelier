@@ -124,7 +124,7 @@ TEST_F(EthernetEapProviderTest, ServiceConstructors) {
   EXPECT_CALL(manager_, RegisterService(_)).WillOnce(SaveArg<0>(&service));
   provider_.Start();
   KeyValueStore args;
-  args.SetString(flimflam::kTypeProperty, kTypeEthernetEap);
+  args.SetString(kTypeProperty, kTypeEthernetEap);
   {
     Error error;
     EXPECT_EQ(service, provider_.GetService(args, &error));

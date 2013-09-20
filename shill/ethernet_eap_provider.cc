@@ -32,7 +32,7 @@ void EthernetEapProvider::CreateServicesFromProfile(
 
 ServiceRefPtr EthernetEapProvider::FindSimilarService(const KeyValueStore &args,
                                                       Error *error) const {
-  CHECK_EQ(kTypeEthernetEap, args.LookupString(flimflam::kTypeProperty, ""))
+  CHECK_EQ(kTypeEthernetEap, args.LookupString(kTypeProperty, ""))
       << "Service type must be Ethernet EAP!";
   return service();
 }

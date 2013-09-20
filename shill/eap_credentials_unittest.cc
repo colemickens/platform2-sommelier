@@ -132,8 +132,7 @@ TEST_F(EapCredentialsTest, PropertyStore) {
   eap_.InitPropertyStore(&store);
   const string kIdentity("Cross-Eyed Mary");
   Error error;
-  EXPECT_TRUE(store.SetStringProperty(flimflam::kEapIdentityProperty,
-                                      kIdentity, &error));
+  EXPECT_TRUE(store.SetStringProperty(kEapIdentityProperty, kIdentity, &error));
   EXPECT_EQ(kIdentity, eap_.identity());
 }
 
@@ -211,42 +210,36 @@ TEST_F(EapCredentialsTest, ConnectableUsingPassphrase) {
 
 TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapAnonymousIdentityProperty));
+      kEapAnonymousIdentityProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEAPCertIDProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEAPCertIDProperty));
+      kEAPClientCertProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEAPClientCertProperty));
+      kEapIdentityProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEAPKeyIDProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyMgmtProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapIdentityProperty));
+      kEapPasswordProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEAPPINProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEAPKeyIDProperty));
+      kEapPrivateKeyProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapKeyMgmtProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapPasswordProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEAPPINProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapPrivateKeyProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapPrivateKeyPasswordProperty));
+      kEapPrivateKeyPasswordProperty));
 
   // It's easier to test that this function returns TRUE in every situation
   // that it should, than to test all the cases it should return FALSE in.
+  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapCaCertProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapCaCertProperty));
+      kEapCaCertIDProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapCaCertIDProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapCaCertNssProperty));
+      kEapCaCertNssProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapCaCertPemProperty));
+  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEAPEAPProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEAPEAPProperty));
+      kEapPhase2AuthProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapPhase2AuthProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      flimflam::kEapUseSystemCAsProperty));
+      kEapUseSystemCAsProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapRemoteCertificationProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
@@ -305,8 +298,8 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
 
 TEST_F(EapCredentialsTest, OutputConnectionMetrics) {
   Error unused_error;
-  SetEap(flimflam::kEapMethodPEAP);
-  SetInnerEap(flimflam::kEapPhase2AuthPEAPMSCHAPV2);
+  SetEap(kEapMethodPEAP);
+  SetInnerEap(kEapPhase2AuthPEAPMSCHAPV2);
 
   MockEventDispatcher dispatcher;
   MockMetrics metrics(&dispatcher);

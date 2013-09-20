@@ -62,7 +62,7 @@ TEST_F(EthernetEapServiceTest, OnEapCredentialsChanged) {
 TEST_F(EthernetEapServiceTest, OnEapCredentialPropertyChanged) {
   EXPECT_CALL(manager_, ethernet_eap_provider()).WillOnce(Return(&provider_));
   EXPECT_CALL(provider_, OnCredentialsChanged());
-  service_->OnPropertyChanged(flimflam::kEapPasswordProperty);
+  service_->OnPropertyChanged(kEapPasswordProperty);
 }
 
 TEST_F(EthernetEapServiceTest, Unload) {

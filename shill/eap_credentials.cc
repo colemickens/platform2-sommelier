@@ -163,53 +163,52 @@ void EapCredentials::PopulateWiMaxProperties(KeyValueStore *params) const {
 
 void EapCredentials::InitPropertyStore(PropertyStore *store) {
   // Authentication properties.
-  store->RegisterString(flimflam::kEapAnonymousIdentityProperty,
-                        &anonymous_identity_);
-  store->RegisterString(flimflam::kEAPCertIDProperty, &cert_id_);
-  store->RegisterString(flimflam::kEAPClientCertProperty, &client_cert_);
-  store->RegisterString(flimflam::kEapIdentityProperty, &identity_);
-  store->RegisterString(flimflam::kEAPKeyIDProperty, &key_id_);
+  store->RegisterString(kEapAnonymousIdentityProperty, &anonymous_identity_);
+  store->RegisterString(kEAPCertIDProperty, &cert_id_);
+  store->RegisterString(kEAPClientCertProperty, &client_cert_);
+  store->RegisterString(kEapIdentityProperty, &identity_);
+  store->RegisterString(kEAPKeyIDProperty, &key_id_);
   HelpRegisterDerivedString(store,
-                            flimflam::kEapKeyMgmtProperty,
+                            kEapKeyMgmtProperty,
                             &EapCredentials::GetKeyManagement,
                             &EapCredentials::SetKeyManagement);
   HelpRegisterWriteOnlyDerivedString(store,
-                                     flimflam::kEapPasswordProperty,
+                                     kEapPasswordProperty,
                                      &EapCredentials::SetEapPassword,
                                      NULL,
                                      &password_);
-  store->RegisterString(flimflam::kEAPPINProperty, &pin_);
-  store->RegisterString(flimflam::kEapPrivateKeyProperty, &private_key_);
+  store->RegisterString(kEAPPINProperty, &pin_);
+  store->RegisterString(kEapPrivateKeyProperty, &private_key_);
   HelpRegisterWriteOnlyDerivedString(store,
-                                     flimflam::kEapPrivateKeyPasswordProperty,
+                                     kEapPrivateKeyPasswordProperty,
                                      &EapCredentials::SetEapPrivateKeyPassword,
                                      NULL,
                                      &private_key_password_);
 
   // Non-authentication properties.
   store->RegisterStrings(kEapCaCertPemProperty, &ca_cert_pem_);
-  store->RegisterString(flimflam::kEapCaCertIDProperty, &ca_cert_id_);
-  store->RegisterString(flimflam::kEapCaCertNssProperty, &ca_cert_nss_);
-  store->RegisterString(flimflam::kEapCaCertProperty, &ca_cert_);
-  store->RegisterString(flimflam::kEAPEAPProperty, &eap_);
-  store->RegisterString(flimflam::kEapPhase2AuthProperty, &inner_eap_);
+  store->RegisterString(kEapCaCertIDProperty, &ca_cert_id_);
+  store->RegisterString(kEapCaCertNssProperty, &ca_cert_nss_);
+  store->RegisterString(kEapCaCertProperty, &ca_cert_);
+  store->RegisterString(kEAPEAPProperty, &eap_);
+  store->RegisterString(kEapPhase2AuthProperty, &inner_eap_);
   store->RegisterString(kEapSubjectMatchProperty, &subject_match_);
-  store->RegisterBool(flimflam::kEapUseSystemCAsProperty, &use_system_cas_);
+  store->RegisterBool(kEapUseSystemCAsProperty, &use_system_cas_);
 }
 
 // static
 bool EapCredentials::IsEapAuthenticationProperty(const string property) {
   return
-      property == flimflam::kEapAnonymousIdentityProperty ||
-      property == flimflam::kEAPCertIDProperty ||
-      property == flimflam::kEAPClientCertProperty ||
-      property == flimflam::kEapIdentityProperty ||
-      property == flimflam::kEAPKeyIDProperty ||
-      property == flimflam::kEapKeyMgmtProperty ||
-      property == flimflam::kEapPasswordProperty ||
-      property == flimflam::kEAPPINProperty ||
-      property == flimflam::kEapPrivateKeyProperty ||
-      property == flimflam::kEapPrivateKeyPasswordProperty;
+      property == kEapAnonymousIdentityProperty ||
+      property == kEAPCertIDProperty ||
+      property == kEAPClientCertProperty ||
+      property == kEapIdentityProperty ||
+      property == kEAPKeyIDProperty ||
+      property == kEapKeyMgmtProperty ||
+      property == kEapPasswordProperty ||
+      property == kEAPPINProperty ||
+      property == kEapPrivateKeyProperty ||
+      property == kEapPrivateKeyPasswordProperty;
 }
 
 bool EapCredentials::IsConnectable() const {
@@ -237,7 +236,7 @@ bool EapCredentials::IsConnectable() const {
   }
 
   // For EAP-TLS, a client certificate is required.
-  if (eap_.empty() || eap_ == flimflam::kEapMethodTLS) {
+  if (eap_.empty() || eap_ == kEapMethodTLS) {
     if ((!client_cert_.empty() || !cert_id_.empty()) &&
         (!private_key_.empty() || !key_id_.empty())) {
       SLOG(Service, 2) << "Connectable: EAP-TLS with a client cert and key.";
@@ -247,7 +246,7 @@ bool EapCredentials::IsConnectable() const {
 
   // For EAP types other than TLS (e.g. EAP-TTLS or EAP-PEAP, password is the
   // minimum requirement), at least an identity + password is required.
-  if (eap_.empty() || eap_ != flimflam::kEapMethodTLS) {
+  if (eap_.empty() || eap_ != kEapMethodTLS) {
     if (!password_.empty()) {
       SLOG(Service, 2) << "Connectable. !EAP-TLS and has a password.";
       return true;
@@ -469,8 +468,8 @@ bool EapCredentials::SetKeyManagement(const std::string &key_management,
 }
 
 bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
-  return (eap_.empty() || eap_ == flimflam::kEapMethodTLS ||
-          inner_eap_ == flimflam::kEapMethodTLS) &&
+  return (eap_.empty() || eap_ == kEapMethodTLS ||
+          inner_eap_ == kEapMethodTLS) &&
          (!cert_id_.empty() || !key_id_.empty());
 }
 
