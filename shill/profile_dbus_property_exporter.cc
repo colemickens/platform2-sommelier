@@ -51,16 +51,15 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
     LoadWiFiServiceProperties(properties, error);
   }
 
-  LoadBool(properties, Service::kStorageAutoConnect,
-           flimflam::kAutoConnectProperty);
-  LoadString(properties, Service::kStorageError, flimflam::kErrorProperty);
-  LoadString(properties, Service::kStorageGUID, flimflam::kGuidProperty);
-  LoadString(properties, Service::kStorageName, flimflam::kNameProperty);
-  if (!LoadString(properties, Service::kStorageType, flimflam::kTypeProperty)) {
-    SetString(properties, flimflam::kTypeProperty,
+  LoadBool(properties, Service::kStorageAutoConnect, kAutoConnectProperty);
+  LoadString(properties, Service::kStorageError, kErrorProperty);
+  LoadString(properties, Service::kStorageGUID, kGuidProperty);
+  LoadString(properties, Service::kStorageName, kNameProperty);
+  if (!LoadString(properties, Service::kStorageType, kTypeProperty)) {
+    SetString(properties, kTypeProperty,
               Technology::NameFromIdentifier(technology));
   }
-  LoadString(properties, Service::kStorageUIData, flimflam::kUIDataProperty);
+  LoadString(properties, Service::kStorageUIData, kUIDataProperty);
   return true;
 }
 
@@ -68,19 +67,16 @@ bool ProfileDBusPropertyExporter::LoadEapServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
   LoadString(properties, EapCredentials::kStorageEapCACertID,
-             flimflam::kEapCaCertIDProperty);
-  LoadString(properties, EapCredentials::kStorageEapCertID,
-             flimflam::kEAPCertIDProperty);
-  LoadString(properties, EapCredentials::kStorageEapKeyID,
-             flimflam::kEAPKeyIDProperty);
+             kEapCaCertIDProperty);
+  LoadString(properties, EapCredentials::kStorageEapCertID, kEAPCertIDProperty);
+  LoadString(properties, EapCredentials::kStorageEapKeyID, kEAPKeyIDProperty);
   return true;
 }
 
 bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
-  LoadBool(properties, WiFiService::kStorageHiddenSSID,
-             flimflam::kWifiHiddenSsid);
+  LoadBool(properties, WiFiService::kStorageHiddenSSID, kWifiHiddenSsid);
 
   // Support the old and busted technique for storing "Mode" and "Security"
   // within the entry name.
@@ -90,14 +86,14 @@ bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
   bool parsed_identifier = WiFiService::ParseStorageIdentifier(
       entry_name_, &address, &mode, &security);
 
-  if (!LoadString(properties, WiFiService::kStorageMode,
-                  flimflam::kModeProperty) && parsed_identifier) {
-    SetString(properties, flimflam::kModeProperty, mode);
+  if (!LoadString(properties, WiFiService::kStorageMode, kModeProperty) &&
+      parsed_identifier) {
+    SetString(properties, kModeProperty, mode);
   }
 
   if (!LoadString(properties, WiFiService::kStorageSecurity,
-                  flimflam::kSecurityProperty) && parsed_identifier) {
-    SetString(properties, flimflam::kSecurityProperty, security);
+                  kSecurityProperty) && parsed_identifier) {
+    SetString(properties, kSecurityProperty, security);
   }
 
   LoadEapServiceProperties(properties, NULL);

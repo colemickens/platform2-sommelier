@@ -62,20 +62,16 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
       profile_id_(profile_id),
       props_(manager_props) {
   PropertyStore *store = this->mutable_store();
-  store->RegisterConstBool(flimflam::kArpGatewayProperty,
-                           &manager_props.arp_gateway);
-  store->RegisterConstString(flimflam::kCheckPortalListProperty,
+  store->RegisterConstBool(kArpGatewayProperty, &manager_props.arp_gateway);
+  store->RegisterConstString(kCheckPortalListProperty,
                              &manager_props.check_portal_list);
-  store->RegisterConstString(flimflam::kCountryProperty,
-                             &manager_props.country);
+  store->RegisterConstString(kCountryProperty, &manager_props.country);
   store->RegisterConstString(shill::kIgnoredDNSSearchPathsProperty,
                              &manager_props.ignored_dns_search_paths);
   store->RegisterConstString(shill::kLinkMonitorTechnologiesProperty,
                              &manager_props.link_monitor_technologies);
-  store->RegisterConstBool(flimflam::kOfflineModeProperty,
-                           &manager_props.offline_mode);
-  store->RegisterConstString(flimflam::kPortalURLProperty,
-                             &manager_props.portal_url);
+  store->RegisterConstBool(kOfflineModeProperty, &manager_props.offline_mode);
+  store->RegisterConstString(kPortalURLProperty, &manager_props.portal_url);
   store->RegisterConstInt32(shill::kPortalCheckIntervalProperty,
                             &manager_props.portal_check_interval_seconds);
 }

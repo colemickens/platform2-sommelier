@@ -49,18 +49,17 @@ Profile::Profile(ControlInterface *control_interface,
   if (connect_to_rpc)
     adaptor_.reset(control_interface->CreateProfileAdaptor(this));
 
-  // flimflam::kCheckPortalListProperty: Registered in DefaultProfile
-  // flimflam::kCountryProperty: Registered in DefaultProfile
-  store_.RegisterConstString(flimflam::kNameProperty, &name_.identifier);
+  // kCheckPortalListProperty: Registered in DefaultProfile
+  // kCountryProperty: Registered in DefaultProfile
+  store_.RegisterConstString(kNameProperty, &name_.identifier);
   store_.RegisterConstString(kUserHashProperty, &name_.user_hash);
 
-  // flimflam::kOfflineModeProperty: Registered in DefaultProfile
-  // flimflam::kPortalURLProperty: Registered in DefaultProfile
+  // kOfflineModeProperty: Registered in DefaultProfile
+  // kPortalURLProperty: Registered in DefaultProfile
 
-  HelpRegisterConstDerivedStrings(flimflam::kServicesProperty,
+  HelpRegisterConstDerivedStrings(kServicesProperty,
                                   &Profile::EnumerateAvailableServices);
-  HelpRegisterConstDerivedStrings(flimflam::kEntriesProperty,
-                                  &Profile::EnumerateEntries);
+  HelpRegisterConstDerivedStrings(kEntriesProperty, &Profile::EnumerateEntries);
 }
 
 Profile::~Profile() {}

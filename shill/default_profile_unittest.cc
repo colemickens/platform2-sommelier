@@ -85,22 +85,22 @@ TEST_F(DefaultProfileTest, GetProperties) {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(profile_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
-    EXPECT_FALSE(props[flimflam::kOfflineModeProperty].reader().get_bool());
+    ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
+    EXPECT_FALSE(props[kOfflineModeProperty].reader().get_bool());
   }
   properties_.offline_mode = true;
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(profile_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
-    EXPECT_TRUE(props[flimflam::kOfflineModeProperty].reader().get_bool());
+    ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
+    EXPECT_TRUE(props[kOfflineModeProperty].reader().get_bool());
   }
   {
     Error error(Error::kInvalidProperty, "");
     EXPECT_FALSE(
         profile_->mutable_store()->SetBoolProperty(
-            flimflam::kOfflineModeProperty,
+            kOfflineModeProperty,
             true,
             &error));
   }

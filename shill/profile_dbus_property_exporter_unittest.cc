@@ -102,8 +102,7 @@ TEST_F(ProfileDBusPropertyExporterTest, MinimalProperties) {
   Error e;
   EXPECT_TRUE(exporter_->LoadServiceProperties(&props, &e));
   EXPECT_EQ(1, props.size());
-  EXPECT_EQ(flimflam::kTypeEthernet,
-            GetStringProperty(&props, flimflam::kTypeProperty));
+  EXPECT_EQ(kTypeEthernet, GetStringProperty(&props, kTypeProperty));
 }
 
 TEST_F(ProfileDBusPropertyExporterTest, OverrideTypeProperty) {
@@ -115,7 +114,7 @@ TEST_F(ProfileDBusPropertyExporterTest, OverrideTypeProperty) {
   Error e;
   EXPECT_TRUE(exporter_->LoadServiceProperties(&props, &e));
   EXPECT_EQ(1, props.size());
-  EXPECT_EQ(service_type, GetStringProperty(&props, flimflam::kTypeProperty));
+  EXPECT_EQ(service_type, GetStringProperty(&props, kTypeProperty));
 }
 
 TEST_F(ProfileDBusPropertyExporterTest, AllServiceProperties) {
@@ -136,13 +135,12 @@ TEST_F(ProfileDBusPropertyExporterTest, AllServiceProperties) {
   ProfileDBusPropertyExporter::PropertyList props;
   Error e;
   EXPECT_TRUE(exporter_->LoadServiceProperties(&props, &e));
-  EXPECT_EQ(auto_connect, GetBoolProperty(&props,
-                                          flimflam::kAutoConnectProperty));
-  EXPECT_EQ(error, GetStringProperty(&props, flimflam::kErrorProperty));
-  EXPECT_EQ(guid, GetStringProperty(&props, flimflam::kGuidProperty));
-  EXPECT_EQ(name, GetStringProperty(&props, flimflam::kNameProperty));
-  EXPECT_EQ(type, GetStringProperty(&props, flimflam::kTypeProperty));
-  EXPECT_EQ(uidata, GetStringProperty(&props, flimflam::kUIDataProperty));
+  EXPECT_EQ(auto_connect, GetBoolProperty(&props, kAutoConnectProperty));
+  EXPECT_EQ(error, GetStringProperty(&props, kErrorProperty));
+  EXPECT_EQ(guid, GetStringProperty(&props, kGuidProperty));
+  EXPECT_EQ(name, GetStringProperty(&props, kNameProperty));
+  EXPECT_EQ(type, GetStringProperty(&props, kTypeProperty));
+  EXPECT_EQ(uidata, GetStringProperty(&props, kUIDataProperty));
 }
 
 TEST_F(ProfileDBusPropertyExporterTest, MinimalWiFiServiceProperties) {
@@ -151,9 +149,8 @@ TEST_F(ProfileDBusPropertyExporterTest, MinimalWiFiServiceProperties) {
   ProfileDBusPropertyExporter::PropertyList props;
   Error e;
   EXPECT_TRUE(exporter_->LoadServiceProperties(&props, &e));
-  EXPECT_EQ("superfly", GetStringProperty(&props, flimflam::kModeProperty));
-  EXPECT_EQ("unbreakable_crypto",
-            GetStringProperty(&props, flimflam::kSecurityProperty));
+  EXPECT_EQ("superfly", GetStringProperty(&props, kModeProperty));
+  EXPECT_EQ("unbreakable_crypto", GetStringProperty(&props, kSecurityProperty));
 }
 
 TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
@@ -176,13 +173,12 @@ TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
   ProfileDBusPropertyExporter::PropertyList props;
   Error e;
   EXPECT_TRUE(exporter_->LoadServiceProperties(&props, &e));
-  EXPECT_EQ(hidden_ssid, GetBoolProperty(&props, flimflam::kWifiHiddenSsid));
-  EXPECT_EQ(mode, GetStringProperty(&props, flimflam::kModeProperty));
-  EXPECT_EQ(security, GetStringProperty(&props, flimflam::kSecurityProperty));
-  EXPECT_EQ(ca_cert_id,
-            GetStringProperty(&props, flimflam::kEapCaCertIDProperty));
-  EXPECT_EQ(cert_id, GetStringProperty(&props, flimflam::kEAPCertIDProperty));
-  EXPECT_EQ(key_id, GetStringProperty(&props, flimflam::kEAPKeyIDProperty));
+  EXPECT_EQ(hidden_ssid, GetBoolProperty(&props, kWifiHiddenSsid));
+  EXPECT_EQ(mode, GetStringProperty(&props, kModeProperty));
+  EXPECT_EQ(security, GetStringProperty(&props, kSecurityProperty));
+  EXPECT_EQ(ca_cert_id, GetStringProperty(&props, kEapCaCertIDProperty));
+  EXPECT_EQ(cert_id, GetStringProperty(&props, kEAPCertIDProperty));
+  EXPECT_EQ(key_id, GetStringProperty(&props, kEAPKeyIDProperty));
 }
 
 }  // namespace shill
