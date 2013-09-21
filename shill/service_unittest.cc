@@ -1570,8 +1570,7 @@ TEST_F(ServiceTest, SetErrorDetails) {
   EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
   static const char kDetails[] = "Certificate revoked.";
   ServiceMockAdaptor *adaptor = GetAdaptor();
-  EXPECT_CALL(*adaptor, EmitStringChanged(shill::kErrorDetailsProperty,
-                                          kDetails));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kErrorDetailsProperty, kDetails));
   service_->SetErrorDetails(Service::kErrorDetailsNone);
   EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
   service_->SetErrorDetails(kDetails);

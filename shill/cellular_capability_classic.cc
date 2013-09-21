@@ -83,11 +83,10 @@ CellularCapabilityClassic::CellularCapabilityClassic(
 
   // This class is currently instantiated only for Gobi modems so setup the
   // supported carriers list appropriately and expose it over RPC.
-  supported_carriers_.push_back(shill::kCarrierGenericUMTS);
-  supported_carriers_.push_back(shill::kCarrierSprint);
-  supported_carriers_.push_back(shill::kCarrierVerizon);
-  store->RegisterConstStrings(shill::kSupportedCarriersProperty,
-                              &supported_carriers_);
+  supported_carriers_.push_back(kCarrierGenericUMTS);
+  supported_carriers_.push_back(kCarrierSprint);
+  supported_carriers_.push_back(kCarrierVerizon);
+  store->RegisterConstStrings(kSupportedCarriersProperty, &supported_carriers_);
 }
 
 CellularCapabilityClassic::~CellularCapabilityClassic() {}

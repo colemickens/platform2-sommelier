@@ -144,7 +144,7 @@ Device::Device(ControlInterface *control_interface,
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty,
                                  &Device::GetTechnologyString);
-  HelpRegisterConstDerivedUint64(shill::kLinkMonitorResponseTimeProperty,
+  HelpRegisterConstDerivedUint64(kLinkMonitorResponseTimeProperty,
                                  &Device::GetLinkMonitorResponseTime);
 
   // TODO(cmasone): Chrome doesn't use this...does anyone?
@@ -159,9 +159,9 @@ Device::Device(ControlInterface *control_interface,
   if (manager_ && manager_->device_info()) {  // Unit tests may not have these.
     manager_->device_info()->GetByteCounts(
         interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
-    HelpRegisterConstDerivedUint64(shill::kReceiveByteCountProperty,
+    HelpRegisterConstDerivedUint64(kReceiveByteCountProperty,
                                    &Device::GetReceiveByteCountProperty);
-    HelpRegisterConstDerivedUint64(shill::kTransmitByteCountProperty,
+    HelpRegisterConstDerivedUint64(kTransmitByteCountProperty,
                                    &Device::GetTransmitByteCountProperty);
   }
 

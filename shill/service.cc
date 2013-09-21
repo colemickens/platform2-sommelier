@@ -168,15 +168,13 @@ Service::Service(ControlInterface *control_interface,
   // setting the service state to IDLE. Is this important? I could
   // see an autotest depending on it.
   store_.RegisterConstString(kErrorProperty, &error_);
-  store_.RegisterConstString(shill::kErrorDetailsProperty, &error_details_);
+  store_.RegisterConstString(kErrorDetailsProperty, &error_details_);
   store_.RegisterConstBool(kFavoriteProperty, &favorite_);
-  HelpRegisterConstDerivedUint16(shill::kHTTPProxyPortProperty,
+  HelpRegisterConstDerivedUint16(kHTTPProxyPortProperty,
                                  &Service::GetHTTPProxyPort);
-  HelpRegisterConstDerivedRpcIdentifier(shill::kIPConfigProperty,
+  HelpRegisterConstDerivedRpcIdentifier(kIPConfigProperty,
                                         &Service::GetIPConfigRpcIdentifier);
-  HelpRegisterDerivedBool(kIsActiveProperty,
-                          &Service::IsActive,
-                          NULL);
+  HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, NULL);
   // kModeProperty: Registered in WiFiService
 
   HelpRegisterDerivedString(kNameProperty,
@@ -203,9 +201,9 @@ Service::Service(ControlInterface *control_interface,
                             NULL);
   store_.RegisterConstUint8(kSignalStrengthProperty, &strength_);
   store_.RegisterString(kUIDataProperty, &ui_data_);
-  HelpRegisterConstDerivedStrings(shill::kDiagnosticsDisconnectsProperty,
+  HelpRegisterConstDerivedStrings(kDiagnosticsDisconnectsProperty,
                                   &Service::GetDisconnectsProperty);
-  HelpRegisterConstDerivedStrings(shill::kDiagnosticsMisconnectsProperty,
+  HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
   metrics_->RegisterService(this);
 
@@ -638,7 +636,7 @@ void Service::SetConnection(const ConnectionRefPtr &connection) {
   Error error;
   string ipconfig = GetIPConfigRpcIdentifier(&error);
   if (error.IsSuccess()) {
-    adaptor_->EmitRpcIdentifierChanged(shill::kIPConfigProperty, ipconfig);
+    adaptor_->EmitRpcIdentifierChanged(kIPConfigProperty, ipconfig);
   }
 }
 
@@ -709,11 +707,11 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
     case kFailureDHCP:
       return kErrorDhcpFailed;
     case kFailureEAPAuthentication:
-      return shill::kErrorEapAuthenticationFailed;
+      return kErrorEapAuthenticationFailed;
     case kFailureEAPLocalTLS:
-      return shill::kErrorEapLocalTlsFailed;
+      return kErrorEapLocalTlsFailed;
     case kFailureEAPRemoteTLS:
-      return shill::kErrorEapRemoteTlsFailed;
+      return kErrorEapRemoteTlsFailed;
     case kFailureHTTPGet:
       return kErrorHTTPGetFailed;
     case kFailureInternal:
@@ -1368,7 +1366,7 @@ void Service::SetErrorDetails(const string &details) {
     return;
   }
   error_details_ = details;
-  adaptor_->EmitStringChanged(shill::kErrorDetailsProperty, error_details_);
+  adaptor_->EmitStringChanged(kErrorDetailsProperty, error_details_);
 }
 
 void Service::UpdateErrorProperty() {

@@ -2521,7 +2521,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
   EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
   EXPECT_CALL(*service, SetFailure(Service::kFailureEAPAuthentication));
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
-                       EndsWith(shill::kErrorEapAuthenticationFailed)));
+                       EndsWith(kErrorEapAuthenticationFailed)));
   EXPECT_CALL(*eap_state_handler_, Reset());
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
 }

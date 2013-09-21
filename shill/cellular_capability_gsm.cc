@@ -68,11 +68,11 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
   store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
-  store->RegisterConstBool(shill::kProviderRequiresRoamingProperty,
+  store->RegisterConstBool(kProviderRequiresRoamingProperty,
                            &provider_requires_roaming_);
   store->RegisterConstBool(kScanningProperty, &scanning_);
   store->RegisterUint16(kScanIntervalProperty, &scan_interval_);
-  store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
+  store->RegisterConstBool(kSIMPresentProperty, &sim_present_);
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty, &CellularCapabilityGSM::SimLockStatusToProperty);
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
@@ -857,8 +857,8 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
     if (emit) {
       if (!sim_present_) {
         sim_present_ = true;
-        cellular()->adaptor()->EmitBoolChanged(
-            shill::kSIMPresentProperty, sim_present_);
+        cellular()->adaptor()->EmitBoolChanged(kSIMPresentProperty,
+                                               sim_present_);
       }
       cellular()->adaptor()->EmitKeyValueStoreChanged(
           kSIMLockStatusProperty, SimLockStatusToProperty(NULL));

@@ -66,13 +66,13 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
   store->RegisterConstString(kCheckPortalListProperty,
                              &manager_props.check_portal_list);
   store->RegisterConstString(kCountryProperty, &manager_props.country);
-  store->RegisterConstString(shill::kIgnoredDNSSearchPathsProperty,
+  store->RegisterConstString(kIgnoredDNSSearchPathsProperty,
                              &manager_props.ignored_dns_search_paths);
-  store->RegisterConstString(shill::kLinkMonitorTechnologiesProperty,
+  store->RegisterConstString(kLinkMonitorTechnologiesProperty,
                              &manager_props.link_monitor_technologies);
   store->RegisterConstBool(kOfflineModeProperty, &manager_props.offline_mode);
   store->RegisterConstString(kPortalURLProperty, &manager_props.portal_url);
-  store->RegisterConstInt32(shill::kPortalCheckIntervalProperty,
+  store->RegisterConstInt32(kPortalCheckIntervalProperty,
                             &manager_props.portal_check_interval_seconds);
 }
 

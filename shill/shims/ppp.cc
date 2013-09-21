@@ -120,8 +120,8 @@ void PPP::OnDisconnect() {
 bool PPP::CreateProxy() {
   Environment *environment = Environment::GetInstance();
   string service, path;
-  if (!environment->GetVariable(shill::kRPCTaskServiceVariable, &service) ||
-      !environment->GetVariable(shill::kRPCTaskPathVariable, &path)) {
+  if (!environment->GetVariable(kRPCTaskServiceVariable, &service) ||
+      !environment->GetVariable(kRPCTaskPathVariable, &path)) {
     LOG(ERROR) << "Environment variables not available.";
     return false;
   }

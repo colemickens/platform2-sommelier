@@ -174,15 +174,15 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
   store->RegisterConstString(kModelIDProperty, &model_id_);
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
   store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
-  store->RegisterConstBool(shill::kProviderRequiresRoamingProperty,
+  store->RegisterConstBool(kProviderRequiresRoamingProperty,
                            &provider_requires_roaming_);
   store->RegisterConstBool(kScanningProperty, &scanning_or_searching_);
   store->RegisterUint16(kScanIntervalProperty, &scan_interval_);
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
-  store->RegisterConstString(shill::kSIMOperatorIdProperty, &operator_id_);
-  store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
+  store->RegisterConstString(kSIMOperatorIdProperty, &operator_id_);
+  store->RegisterConstBool(kSIMPresentProperty, &sim_present_);
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
 }
 

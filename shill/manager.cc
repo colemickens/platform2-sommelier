@@ -137,16 +137,15 @@ Manager::Manager(ControlInterface *control_interface,
                             &Manager::DefaultTechnology,
                             NULL);
   HelpRegisterConstDerivedRpcIdentifier(
-      shill::kDefaultServiceProperty,
-      &Manager::GetDefaultServiceRpcIdentifier);
+      kDefaultServiceProperty, &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kDevicesProperty,
                                          &Manager::EnumerateDevices);
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
-  HelpRegisterDerivedString(shill::kIgnoredDNSSearchPathsProperty,
+  HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
                             &Manager::GetIgnoredDNSSearchPaths,
                             &Manager::SetIgnoredDNSSearchPaths);
-  store_.RegisterString(shill::kLinkMonitorTechnologiesProperty,
+  store_.RegisterString(kLinkMonitorTechnologiesProperty,
                         &props_.link_monitor_technologies);
   store_.RegisterBool(kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterString(kPortalURLProperty, &props_.portal_url);
@@ -160,7 +159,7 @@ Manager::Manager(ControlInterface *control_interface,
                             NULL);
   HelpRegisterConstDerivedRpcIdentifiers(kServicesProperty,
                                          &Manager::EnumerateAvailableServices);
-  HelpRegisterConstDerivedRpcIdentifiers(shill::kServiceCompleteListProperty,
+  HelpRegisterConstDerivedRpcIdentifiers(kServiceCompleteListProperty,
                                          &Manager::EnumerateCompleteServices);
   HelpRegisterConstDerivedRpcIdentifiers(kServiceWatchListProperty,
                                          &Manager::EnumerateWatchedServices);
@@ -1245,8 +1244,7 @@ void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
 void Manager::EmitDefaultService() {
   RpcIdentifier rpc_identifier = GetDefaultServiceRpcIdentifier(NULL);
   if (rpc_identifier != default_service_rpc_identifier_) {
-    adaptor_->EmitRpcIdentifierChanged(shill::kDefaultServiceProperty,
-                                       rpc_identifier);
+    adaptor_->EmitRpcIdentifierChanged(kDefaultServiceProperty, rpc_identifier);
     default_service_rpc_identifier_ = rpc_identifier;
   }
 }
