@@ -6,7 +6,6 @@
 #define UTILS_H_
 
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -90,7 +89,7 @@ bool ComparePerfReports(const string& quipper_input,
 // by quipper.
 bool ComparePipedPerfReports(const string& quipper_input,
                              const string& quipper_output,
-                             std::set<string>* seen_metadata);
+                             std::map<string, string>* seen_metadata);
 
 // Given a perf data file, get the list of build ids and create a map from
 // filenames to build ids.

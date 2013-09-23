@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
-#include <set>
+#include <map>
 #include <string>
 
 #include "base/logging.h"
@@ -202,7 +202,7 @@ TEST(PerfReaderTest, Test1Cycle) {
                                    i, &pr);
   }
 
-  std::set<string> metadata;
+  std::map<string, string> metadata;
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {

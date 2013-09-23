@@ -10,4 +10,7 @@ using std::string;
 using std::stringstream;
 #endif
 
+#include "base/stringprintf.h"
+using base::StringPrintf;
+
 #endif  // QUIPPER_STRING_

@@ -14,7 +14,6 @@
 #include <fstream>
 #include <iomanip>
 #include <map>
-#include <set>
 #include <sstream>
 #include <vector>
 
@@ -136,6 +135,7 @@ const int kUninitializedUnknownValue = -1;
 const double kPerfReportEntryErrorThreshold = 0.05;
 
 const char kPerfReportCommentCharacter = '#';
+const char kPerfReportMetadataFieldCharacter = ':';
 
 void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
   // TODO(rohinmshah): Use something from base.
@@ -183,8 +183,9 @@ bool GetPerfReport(const string& filename,
       use_line = true;
 
     for (size_t j = 0; quipper::kSupportedMetadata[j]; ++j) {
-      string valid_prefix =
-          StringPrintf("# %s", quipper::kSupportedMetadata[j]);
+      string valid_prefix = StringPrintf("%c %s",
+                                         kPerfReportCommentCharacter,
+                                         quipper::kSupportedMetadata[j]);
       if (line.substr(0, valid_prefix.size()) == valid_prefix)
         use_line = true;
     }
@@ -314,11 +315,63 @@ const char* kSupportedMetadata[] = {
   "total memory",
   "cmdline",
   "event",
-  "sibling cores  ",      // CPU topology.
+  "sibling cores",        // CPU topology.
   "sibling threads",      // CPU topology.
-  "node",                 // NUMA topology.
+  "node0 meminfo",        // NUMA topology.
+  "node0 cpu list",       // NUMA topology.
+  "node1 meminfo",        // NUMA topology.
+  "node1 cpu list",       // NUMA topology.
   NULL,
 };
+
+namespace {
+
+// Returns the number of lines at the beginning of |report| containing metadata.
+// Stores the metadata types found in |report| in |*seen_metadata|.
+// Each string in |report| is a line of the report.
+// TODO(sque): This function is huge.  It should be refactored into smaller
+// helper functions.
+int CountReportMetadata(const std::vector<string>& report,
+                        std::map<string, string>* seen_metadata) {
+  size_t index = 0;
+  while (index < report.size()) {
+    const string& line = report[index];
+    if (line[0] != kPerfReportCommentCharacter)
+      break;
+    size_t index_of_colon = line.find(kPerfReportMetadataFieldCharacter);
+    if (index_of_colon == string::npos)
+      return -1;
+
+    // Get the metadata type name.
+    string key = line.substr(1, index_of_colon - 1);
+    TrimWhitespace(&key);
+
+    bool metadata_is_supported = false;
+    for (size_t i = 0; i < arraysize(kSupportedMetadata); ++i) {
+      if (key == kSupportedMetadata[i]) {
+        metadata_is_supported = true;
+        break;
+      }
+    }
+
+    // The field should have only ASCII printable characters.  The opposite of
+    // printable characters are control charaters.
+    if (std::find_if(key.begin(), key.end(), iscntrl) != key.end())
+      return -1;
+
+    // Add the metadata to the set of seen metadata.
+    if (seen_metadata && metadata_is_supported) {
+      string value = line.substr(index_of_colon + 1, string::npos);
+      TrimWhitespace(&value);
+      (*seen_metadata)[key] = value;
+    }
+
+    ++index;
+  }
+  return index;
+}
+
+}  // namespace
 
 string GetTestInputFilePath(const string& filename) {
   return string(kPerfDataInputPath) + filename;
@@ -461,7 +514,7 @@ bool ComparePerfReportsByFields(const string& quipper_input,
 
 bool ComparePipedPerfReports(const string& quipper_input,
                              const string& quipper_output,
-                             std::set<string>* seen_metadata) {
+                             std::map<string, string>* seen_metadata) {
   // Generate a perf report for each file.
   std::vector<string> quipper_input_report, quipper_output_report;
   CHECK(GetPerfReport(quipper_input, &quipper_input_report,
@@ -470,35 +523,17 @@ bool ComparePipedPerfReports(const string& quipper_input,
                       kDefaultPipedSortFields, true));
   int input_size = quipper_input_report.size();
   int output_size = quipper_output_report.size();
-  int input_index = 0, output_index = 0;
 
-  // Metadata is only found in the output file.  Make sure it is reasonable.
-  string line = quipper_output_report[output_index];
-  while (line[0] == kPerfReportCommentCharacter) {
-    size_t index_of_colon = line.find(':');
-    if (index_of_colon == string::npos)
-      return false;
+  // TODO(sque): The chromiumos perf tool does not show metadata for piped data,
+  // but other perf tools might.  We should check that the metadata values match
+  // when both the input and output reports have metadata.
+  int input_index = CountReportMetadata(quipper_input_report, NULL);
+  int output_index = CountReportMetadata(quipper_output_report, seen_metadata);
 
-    // Add the metadata to the set of seen metadata
-    for (size_t i = 0; i < arraysize(quipper::kSupportedMetadata); ++i) {
-      string prefix_to_check = string("# ") + quipper::kSupportedMetadata[i];
-      if (line.substr(0, prefix_to_check.size()) == prefix_to_check) {
-        seen_metadata->insert(quipper::kSupportedMetadata[i]);
-        break;
-      }
-    }
-
-    string field_value = line.substr(index_of_colon + 1);
-
-    // The field should have only ASCII printable characters.
-    // ASCII printable characters are found between the space and ~.
-    for (size_t i = 0; i < field_value.size(); ++i) {
-      if (!isprint(field_value[i]))
-        return false;
-    }
-
-    line = quipper_output_report[++output_index];
-  }
+  if (input_index < 0)
+    return false;
+  if (output_index < 0)
+    return false;
 
   // Parse each section of the perf report and make sure they agree.
   // See ParsePerfReportSection and CompareMapsAccountingForUnknownEntries.
