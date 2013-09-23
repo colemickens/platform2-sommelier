@@ -1167,6 +1167,11 @@ void WiFi::UpdateScanStateAfterScanDone() {
     manager()->OnDeviceGeolocationInfoUpdated(this);
   }
   if (scan_state_ == kScanBackgroundScanning) {
+    // Going directly to kScanIdle (instead of to kScanFoundNothing) inhibits
+    // some UMA reporting in SetScanState.  That's desired -- we don't want
+    // to report background scan results to UMA since the drivers may play
+    // background scans over a longer period in order to not interfere with
+    // traffic.
     SetScanState(kScanIdle, kScanMethodNone, __func__);
   } else if (scan_state_ != kScanIdle && IsIdle()) {
     SetScanState(kScanFoundNothing, scan_method_, __func__);
@@ -1971,6 +1976,9 @@ void WiFi::SetScanState(ScanState new_state,
   } else if (new_state == kScanConnected || new_state == kScanFoundNothing) {
     // These 'terminal' states are slightly more interesting than the
     // intermediate states.
+    // NOTE: Since background scan goes directly to kScanIdle (skipping over
+    // the states required to set |is_terminal_state|), ReportScanResultToUma,
+    // below, doesn't get called.  That's intentional.
     log_level = 5;
     is_terminal_state = true;
   }

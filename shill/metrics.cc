@@ -923,8 +923,6 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
 
   if (!device_metrics->scan_connect_timer->Stop())
     return;
-  base::TimeDelta elapsed_time;
-  device_metrics->scan_connect_timer->GetElapsedTime(&elapsed_time);
   device_metrics->scan_connect_timer->ReportMilliseconds();
 }
 
@@ -1050,7 +1048,7 @@ void Metrics::UpdateServiceStateTransitionMetrics(
   }
 
   TimerReportersList &stop_timers = service_metrics->stop_on_state[new_state];
-  for (auto &stop_timer: stop_timers) {
+  for (auto &stop_timer : stop_timers) {
     SLOG(Metrics, 5) << "Stopping timer for " << stop_timer->histogram_name()
                      << " due to new state " << state_string << ".";
     if (stop_timer->Stop())
