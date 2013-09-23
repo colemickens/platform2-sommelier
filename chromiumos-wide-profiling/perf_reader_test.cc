@@ -57,6 +57,7 @@ void CreateFilenameToBuildIDMap(
 }
 
 void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
+                                    const string& output_perf_data_prefix,
                                     unsigned int seed,
                                     PerfReader* reader) {
   // Check filenames.
@@ -100,12 +101,12 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
   reader->GetFilenamesToBuildIDs(&reader_map);
   EXPECT_EQ(expected_map, reader_map);
 
-  string output_perf_data = input_perf_data + ".parse.inject.out";
-  ASSERT_TRUE(reader->WriteFile(output_perf_data));
+  string output_perf_data1 = output_perf_data_prefix + ".parse.inject.out";
+  ASSERT_TRUE(reader->WriteFile(output_perf_data1));
 
   // Perf should find the same build ids.
   std::map<string, string> perf_build_id_map;
-  ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data, &perf_build_id_map));
+  ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data1, &perf_build_id_map));
   EXPECT_EQ(expected_map, perf_build_id_map);
 
   std::map<string, string> build_id_localizer;
@@ -135,7 +136,7 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
   reader->GetFilenamesToBuildIDs(&reader_map);
   EXPECT_EQ(expected_map, reader_map);
 
-  string output_perf_data2 = input_perf_data + ".parse.localize.out";
+  string output_perf_data2 = output_perf_data_prefix + ".parse.localize.out";
   ASSERT_TRUE(reader->WriteFile(output_perf_data2));
 
   perf_build_id_map.clear();
@@ -169,7 +170,7 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
   reader->GetFilenamesToBuildIDs(&reader_map);
   EXPECT_EQ(expected_map, reader_map);
 
-  string output_perf_data3 = input_perf_data + ".parse.localize2.out";
+  string output_perf_data3 = output_perf_data_prefix + ".parse.localize2.out";
   ASSERT_TRUE(reader->WriteFile(output_perf_data3));
 
   perf_build_id_map.clear();
@@ -197,7 +198,8 @@ TEST(PerfReaderTest, Test1Cycle) {
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
     EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
-    CheckFilenameAndBuildIDMethods(input_perf_data, i, &pr);
+    CheckFilenameAndBuildIDMethods(input_perf_data, output_path + test_file,
+                                   i, &pr);
   }
 
   std::set<string> metadata;
@@ -214,7 +216,8 @@ TEST(PerfReaderTest, Test1Cycle) {
 
     EXPECT_TRUE(ComparePipedPerfReports(input_perf_data, output_perf_data,
                                         &metadata));
-    CheckFilenameAndBuildIDMethods(input_perf_data, i, &pr);
+    CheckFilenameAndBuildIDMethods(input_perf_data, output_path + test_file,
+                                   i, &pr);
   }
 
   // For piped data, perf report doesn't check metadata.
