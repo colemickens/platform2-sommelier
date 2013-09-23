@@ -32,17 +32,17 @@ class LinkMonitor {
  public:
   typedef base::Closure FailureCallback;
 
-  // When the sum of consecutive unicast and broadcast failures
-  // equals this value, the failure callback is called, the counters
-  // are reset, and the link monitoring quiesces.  Needed by Metrics.
-  static const int kFailureThreshold;
-
   // The default number of milliseconds between ARP requests. Needed by Metrics.
   static const int kDefaultTestPeriodMilliseconds;
 
   // The default list of technologies for which link monitoring is enabled.
   // Needed by DefaultProfile.
   static const char kDefaultLinkMonitorTechnologies[];
+
+  // When the sum of consecutive counted unicast and broadcast failures
+  // equals this value, the failure callback is called, the counters
+  // are reset, and the link monitoring quiesces.  Needed by Metrics.
+  static const int kFailureThreshold;
 
   LinkMonitor(const ConnectionRefPtr &connection,
               EventDispatcher *dispatcher,  // Owned by caller; can't be NULL.
@@ -85,6 +85,11 @@ class LinkMonitor {
   // more samples than this number arrive, this determines how "slow"
   // our simple low-pass filter works.
   static const int kMaxResponseSampleFilterDepth;
+
+  // When the sum of consecutive unicast successes equals this value,
+  // we can assume that in general this gateway supports unicast ARP
+  // requests, and we will count future unicast failures.
+  static const int kUnicastReplyReliabilityThreshold;
 
   // Similar to Start, except that the initial probes use
   // |probe_period_milliseconds|. After successfully probing with both
@@ -147,6 +152,10 @@ class LinkMonitor {
   // alternates between unicast and broadcast requests so that
   // both types of network traffic is monitored.
   bool is_unicast_;
+
+  // Whether we have observed that the gateway reliably responds
+  // to unicast ARP requests.
+  bool gateway_supports_unicast_arp_;
 
   // Number of response samples received in our rolling averge.
   int response_sample_count_;

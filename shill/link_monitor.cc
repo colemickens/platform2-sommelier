@@ -33,6 +33,7 @@ const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 const int LinkMonitor::kFailureThreshold = 5;
 const int LinkMonitor::kFastTestPeriodMilliseconds = 200;
 const int LinkMonitor::kMaxResponseSampleFilterDepth = 5;
+const int LinkMonitor::kUnicastReplyReliabilityThreshold = 10;
 
 LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
                          EventDispatcher *dispatcher,
@@ -50,6 +51,7 @@ LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
       broadcast_success_count_(0),
       unicast_success_count_(0),
       is_unicast_(false),
+      gateway_supports_unicast_arp_(false),
       response_sample_count_(0),
       response_sample_bucket_(0),
       time_(Time::GetInstance()) {
@@ -99,6 +101,7 @@ void LinkMonitor::Stop() {
   broadcast_success_count_ = 0;
   unicast_success_count_ = 0;
   is_unicast_ = false;
+  gateway_supports_unicast_arp_ = false;
   response_sample_bucket_ = 0;
   response_sample_count_ = 0;
   receive_response_handler_.reset();
@@ -109,8 +112,10 @@ void LinkMonitor::Stop() {
 
 void LinkMonitor::OnAfterResume() {
   ByteString prior_gateway_mac_address(gateway_mac_address_);
+  bool gateway_supports_unicast_arp = gateway_supports_unicast_arp_;
   Stop();
   gateway_mac_address_ = prior_gateway_mac_address;
+  gateway_supports_unicast_arp_ = gateway_supports_unicast_arp;
   StartInternal(kFastTestPeriodMilliseconds);
 }
 
@@ -165,7 +170,9 @@ bool LinkMonitor::AddMissedResponse() {
   AddResponseTimeSample(test_period_milliseconds_);
 
   if (is_unicast_) {
-    ++unicast_failure_count_;
+    if (gateway_supports_unicast_arp_) {
+      ++unicast_failure_count_;
+    }
     unicast_success_count_ = 0;
   } else {
     ++broadcast_failure_count_;
@@ -240,6 +247,12 @@ void LinkMonitor::ReceiveResponse(int fd) {
   if (is_unicast_) {
     ++unicast_success_count_;
     unicast_failure_count_ = 0;
+    if (unicast_success_count_ >= kUnicastReplyReliabilityThreshold) {
+      SLOG_IF(Link, 2, !gateway_supports_unicast_arp_)
+          << "Gateway is now considered a reliable unicast responder.  "
+             "Unicast failures will now count.";
+      gateway_supports_unicast_arp_ = true;
+    }
   } else {
     ++broadcast_success_count_;
     broadcast_failure_count_ = 0;
@@ -257,7 +270,8 @@ void LinkMonitor::ReceiveResponse(int fd) {
   }
 
   is_unicast_ = !is_unicast_;
-  if (unicast_success_count_ && broadcast_success_count_) {
+  if ((unicast_success_count_ || !gateway_supports_unicast_arp_)
+      && broadcast_success_count_) {
     test_period_milliseconds_ = kDefaultTestPeriodMilliseconds;
   }
 }
