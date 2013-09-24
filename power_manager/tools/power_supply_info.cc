@@ -126,6 +126,9 @@ int main(int argc, char** argv) {
   power_manager::system::PowerStatus& power_status = power_info.power_status;
   power_supply.GetPowerInformation(&power_info);
 
+  // NOTE, autotests (see autotest/files/client/cros/power_status.py) rely on
+  // parsing this information below.
+  // DO NOT CHANGE formatting without also fixing there as well.
   InfoDisplay display;
   display.SetIndent(0, 0);
   display.PrintString("Device: Line Power");
