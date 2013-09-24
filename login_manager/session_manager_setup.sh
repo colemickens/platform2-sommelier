@@ -71,6 +71,11 @@ export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
 export XAUTHORITY=${DATA_DIR}/.Xauthority
 
+# Provide /etc/lsb-release contents and timestamp so that they are available
+# to Chrome immediately without requiring a blocking file read.
+export LSB_RELEASE="$(cat /etc/lsb-release)"
+export LSB_RELEASE_TIME="$(stat -c '%Z' /etc/lsb-release)"
+
 # If used with Address Sanitizer, set the following flags to alter memory
 # allocations by glibc. Hopefully later, when ASAN matures, we will not need
 # any changes for it to run.
