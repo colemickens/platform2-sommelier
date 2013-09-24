@@ -51,9 +51,9 @@
 # compiling the objects.  This can be done by adding one of the following
 # to the Makefile:
 #   - For C source files
-#     $(eval $(call add_object_rules,sub/dir/gen_a.o sub/dir/gen_b.o,CC,c))
+#   $(eval $(call add_object_rules,sub/dir/gen_a.o sub/dir/b.o,CC,c,CFLAGS))
 #   - For C++ source files
-#     $(eval $(call add_object_rules,sub/dir/gen_a.o sub/dir/gen_b.o,CXX,cc))
+#   $(eval $(call add_object_rules,sub/dir/gen_a.o sub/dir/b.o,CXX,cc,CXXFLAGS))
 #
 # Exported targets meant to have prerequisites added to:
 #  - all - Your desired targets should be given
