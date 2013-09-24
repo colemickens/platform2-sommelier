@@ -34,6 +34,26 @@ crash_reporter --clean_shutdown
 # Measure shutdown time up to this point.
 bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
 
+# CROS_DEBUG equals one if we've booted in developer mode or we've booted a
+# developer image.
+crossystem "cros_debug?1"
+CROS_DEBUG=$((! $?))
+
+STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
+
+if [ "$CROS_DEBUG" = "1" -a -f "$STATEFUL_UPDATE" ] ; then
+  STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
+
+  if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ] ; then
+    PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
+
+    # We preserve a few files. Make sure preservation directory starts empty.
+    rm -rf "${PRESERVE_DIR}/log"
+    mkdir -p -m 0755 "${PRESERVE_DIR}"
+    cp -a "${MNTS}/var/log" "${PRESERVE_DIR}"
+  fi
+fi
+
 # Lazy umount the tmpfs dirs under /var so we can immediately umount it.
 umount -n -l /var/run /var/lock
 if [ -e /dev/mapper/encstateful ]; then
