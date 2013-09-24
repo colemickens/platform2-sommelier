@@ -38,7 +38,7 @@ clean: CLEAN($(PROTO_HEADERS))
 clean: CLEAN($(PROTO_OBJS))
 # Add rules for compiling generated protobuffer code, as the CXX_OBJECTS list
 # is built before these source files exists and, as such, does not contain them.
-$(eval $(call add_object_rules,$(PROTO_OBJS),CXX,cc))
+$(eval $(call add_object_rules,$(PROTO_OBJS),CXX,cc,CXXFLAGS))
 
 # The binaries we build and the objects they depend on
 KEYGEN_BIN = keygen
