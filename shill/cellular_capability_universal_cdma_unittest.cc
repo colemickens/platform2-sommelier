@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -89,6 +90,10 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(&modem_info_, cellular_);
+  }
+
+  void ClearService() {
+    cellular_->service_ = NULL;
   }
 
   void ReleaseCapabilityProxies() {
@@ -523,6 +528,46 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, SetupConnectProperties) {
   capability_->SetupConnectProperties(&map);
   EXPECT_EQ(1, map.size());
   EXPECT_STREQ("#777", map["number"].reader().get_string());
+}
+
+TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateStorageIdentifier) {
+  ClearService();
+  EXPECT_FALSE(cellular_->service().get());
+  capability_->UpdateStorageIdentifier();
+  EXPECT_FALSE(cellular_->service().get());
+
+  SetService();
+  EXPECT_TRUE(cellular_->service().get());
+
+  const string kPrefix =
+      string(shill::kTypeCellular) + "_" + string(kMachineAddress) + "_";
+  const string kDefaultIdentifierPattern = kPrefix + "CDMANetwork*";
+
+  // GetCellularOperatorBySID returns NULL.
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
+              GetCellularOperatorBySID(_))
+      .WillOnce(Return(nullptr));
+  capability_->UpdateStorageIdentifier();
+  EXPECT_TRUE(::MatchPattern(cellular_->service()->GetStorageIdentifier(),
+                             kDefaultIdentifierPattern));
+  Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
+
+  CellularOperatorInfo::CellularOperator provider;
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
+              GetCellularOperatorBySID(_))
+      .Times(2)
+      .WillRepeatedly(Return(&provider));
+
+  // |provider.identifier_| is empty.
+  capability_->UpdateStorageIdentifier();
+  EXPECT_TRUE(::MatchPattern(cellular_->service()->GetStorageIdentifier(),
+                             kDefaultIdentifierPattern));
+
+  // Success.
+  provider.identifier_ = "testidentifier";
+  capability_->UpdateStorageIdentifier();
+  EXPECT_EQ(kPrefix + "testidentifier",
+            cellular_->service()->GetStorageIdentifier());
 }
 
 TEST_F(CellularCapabilityUniversalCDMADispatcherTest,

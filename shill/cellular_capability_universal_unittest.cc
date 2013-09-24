@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -126,6 +126,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   void SetService() {
     cellular_->service_ = new CellularService(&modem_info_, cellular_);
+  }
+
+  void ClearService() {
+    cellular_->service_ = NULL;
   }
 
   void InvokeEnable(bool enable, Error *error,
@@ -1640,7 +1644,13 @@ TEST_F(CellularCapabilityUniversalTimerTest, UpdateScanningPropertyTimeout) {
 TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
   CellularOperatorInfo::CellularOperator provider;
 
+  ClearService();
+  EXPECT_FALSE(cellular_->service().get());
+  capability_->UpdateStorageIdentifier();
+  EXPECT_FALSE(cellular_->service().get());
+
   SetService();
+  EXPECT_TRUE(cellular_->service().get());
 
   const string prefix = "cellular_" + string(kMachineAddress) + "_";
   string default_identifier_pattern =
@@ -1659,8 +1669,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
   capability_->operator_id_ = "1";
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
       GetCellularOperatorByMCCMNC(capability_->operator_id_))
-      .WillOnce(
-          Return((const CellularOperatorInfo::CellularOperator *)NULL));
+      .WillOnce(Return(nullptr));
 
   capability_->UpdateStorageIdentifier();
   EXPECT_TRUE(::MatchPattern(cellular_->service()->storage_identifier_,
@@ -1671,8 +1680,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
   capability_->imsi_ = "TESTIMSI";
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
       GetCellularOperatorByMCCMNC(capability_->operator_id_))
-      .WillOnce(
-          Return((const CellularOperatorInfo::CellularOperator *)NULL));
+      .WillOnce(Return(nullptr));
 
   capability_->UpdateStorageIdentifier();
   EXPECT_EQ(prefix + "TESTIMSI", cellular_->service()->storage_identifier_);

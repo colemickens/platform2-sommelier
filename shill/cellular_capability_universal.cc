@@ -638,19 +638,20 @@ void CellularCapabilityUniversal::UpdateStorageIdentifier() {
 
   // Lookup the unique identifier assigned to the current network and base the
   // service's storage identifier on it.
-  const string prefix = "cellular_" + cellular()->address() + "_";
+  const string kPrefix =
+      string(shill::kTypeCellular) + "_" + cellular()->address() + "_";
   string storage_id;
   if (!operator_id_.empty()) {
     const CellularOperatorInfo::CellularOperator *provider =
         modem_info()->cellular_operator_info()->GetCellularOperatorByMCCMNC(
             operator_id_);
     if (provider && !provider->identifier().empty()) {
-      storage_id = prefix + provider->identifier();
+      storage_id = kPrefix + provider->identifier();
     }
   }
   // If the above didn't work, append IMSI, if available.
   if (storage_id.empty() && !imsi_.empty()) {
-    storage_id = prefix + imsi_;
+    storage_id = kPrefix + imsi_;
   }
   if (!storage_id.empty()) {
     cellular()->service()->SetStorageIdentifier(storage_id);

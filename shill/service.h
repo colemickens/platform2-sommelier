@@ -537,6 +537,8 @@ class Service : public base::RefCounted<Service> {
   friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor *);
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+              UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
