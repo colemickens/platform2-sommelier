@@ -34,7 +34,7 @@ $(MIST_PROTO_BINDINGS): \
 clean: CLEAN($(MIST_PROTO_BINDINGS))
 clean: CLEAN($(MIST_PROTO_HEADERS))
 clean: CLEAN($(MIST_PROTO_OBJS))
-$(eval $(call add_object_rules,$(MIST_PROTO_OBJS),CXX,cc))
+$(eval $(call add_object_rules,$(MIST_PROTO_OBJS),CXX,cc,CXXFLAGS))
 
 $(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): $(MIST_PROTO_HEADERS)
 
