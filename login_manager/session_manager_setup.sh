@@ -45,20 +45,19 @@ add_vmodule_pattern() {
   fi
 }
 
-# Takes a wallpaper name ("default", "guest") and size ("large", "small"),
-# checks if the file exists, and appends the appropriate flag to ASH_FLAGS
-# if it does.
+# Takes a wallpaper name ("default", "guest", "oem") and size ("large",
+# "small"), checks if the file exists, and appends the appropriate flag to
+# ASH_FLAGS if it does.
 add_ash_wallpaper_flag() {
   local NAME=$1
   local SIZE=$2
   local FILE="/usr/share/chromeos-assets/wallpaper/${NAME}_${SIZE}.jpg"
   if [ -e "$FILE" ]; then
-    if [ "$NAME" = default ]; then
-      local FLAG="--ash-default-wallpaper-${SIZE}"
-    else
-      local FLAG="--ash-default-${NAME}-wallpaper-${SIZE}"
+    ASH_FLAGS="${ASH_FLAGS} --ash-${NAME}-wallpaper-${SIZE}=${FILE}"
+    # TODO(derat): Remove this after updating Chrome to not use this flag.
+    if [ "$NAME" = "guest" ]; then
+      ASH_FLAGS="${ASH_FLAGS} --ash-default-guest-wallpaper-${SIZE}=${FILE}"
     fi
-    ASH_FLAGS="${ASH_FLAGS} ${FLAG}=${FILE}"
   fi
 }
 
@@ -312,6 +311,8 @@ add_ash_wallpaper_flag default large
 add_ash_wallpaper_flag default small
 add_ash_wallpaper_flag guest large
 add_ash_wallpaper_flag guest small
+add_ash_wallpaper_flag oem large
+add_ash_wallpaper_flag oem small
 
 # Setup GPU & acceleration flags which differ between SoCs that
 # use EGL/GLX rendering
