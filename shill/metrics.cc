@@ -34,6 +34,12 @@ const int Metrics::kMetricDisconnectMax = 2;
 const int Metrics::kMetricDisconnectMin = 1;
 const int Metrics::kMetricDisconnectNumBuckets = 3;
 
+const char Metrics::kMetricSignalAtDisconnect[] =
+    "Network.Shill.%s.SignalAtDisconnect";
+const int Metrics::kMetricSignalAtDisconnectMin = 0;
+const int Metrics::kMetricSignalAtDisconnectMax = 200;
+const int Metrics::kMetricSignalAtDisconnectNumBuckets = 40;
+
 const char Metrics::kMetricNetworkApMode[] = "Network.Shill.%s.ApMode";
 const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
@@ -594,6 +600,19 @@ void Metrics::NotifyServiceDisconnect(const Service *service) {
             kMetricDisconnectMin,
             kMetricDisconnectMax,
             kMetricDisconnectNumBuckets);
+}
+
+void Metrics::NotifySignalAtDisconnect(const Service &service,
+                                       int16_t signal_strength) {
+  // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
+  // seem to handle negative values well.  Now everything's positive.
+  Technology::Identifier technology = service.technology();
+  string histogram = GetFullMetricName(kMetricSignalAtDisconnect, technology);
+  SendToUMA(histogram,
+            -signal_strength,
+            kMetricSignalAtDisconnectMin,
+            kMetricSignalAtDisconnectMax,
+            kMetricSignalAtDisconnectNumBuckets);
 }
 
 void Metrics::NotifyPowerStateChange(PowerManager::SuspendState new_state) {

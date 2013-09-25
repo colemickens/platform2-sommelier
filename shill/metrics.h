@@ -265,6 +265,10 @@ class Metrics {
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
   static const int kMetricDisconnectNumBuckets;
+  static const char kMetricSignalAtDisconnect[];
+  static const int kMetricSignalAtDisconnectMin;
+  static const int kMetricSignalAtDisconnectMax;
+  static const int kMetricSignalAtDisconnectNumBuckets;
   static const char kMetricNetworkApMode[];
   static const char kMetricNetworkChannel[];
   static const int kMetricNetworkChannelMax;
@@ -473,6 +477,10 @@ class Metrics {
   // Notifies this object that |service| has been disconnected.
   void NotifyServiceDisconnect(const Service *service);
 
+  // Notifies this object of power at disconnect.
+  void NotifySignalAtDisconnect(const Service &service,
+                                int16_t signal_strength);
+
   // Notifies this object of a power management state change.
   void NotifyPowerStateChange(PowerManager::SuspendState new_state);
 
@@ -536,7 +544,7 @@ class Metrics {
   // Notifies this object that a device has completed the scanning process.
   virtual void NotifyDeviceScanFinished(int interface_index);
 
-  // Terminates an underay scan (does nothing if a scan wasn't underay).
+  // Terminates an underway scan (does nothing if a scan wasn't underway).
   virtual void ResetScanTimer(int interface_index);
 
   // Notifies this object that a device has started the connect process.

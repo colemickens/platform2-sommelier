@@ -5,6 +5,7 @@
 #include "shill/wifi_service.h"
 
 #include <algorithm>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -491,7 +492,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
   if (!wifi) {
     // If this is a hidden service before it has been found in a scan, we
     // may need to late-bind to any available WiFi Device.  We don't actually
-    // set |wifi_| in this case snce we do not yet see any endpoints.  This
+    // set |wifi_| in this case since we do not yet see any endpoints.  This
     // will mean this service is not disconnectable until an endpoint is
     // found.
     wifi = ChooseDevice();
@@ -519,7 +520,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
   if (mode_ == kModeAdhoc && frequency_ != 0) {
-    // Frequency is required in order to successfully conntect to an IBSS
+    // Frequency is required in order to successfully connect to an IBSS
     // with wpa_supplicant.  If we have one from our endpoint, insert it
     // here.
     params[WPASupplicant::kNetworkPropertyFrequency].writer().
@@ -914,6 +915,12 @@ string WiFiService::GetSecurityClass(const string &security) {
   } else {
     return security;
   }
+}
+
+
+int16 WiFiService::SignalLevel() const {
+  return current_endpoint_ ? current_endpoint_->signal_strength() :
+      std::numeric_limits<int16>::min();
 }
 
 // static

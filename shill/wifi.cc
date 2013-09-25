@@ -790,6 +790,8 @@ void WiFi::HandleDisconnect() {
   } else {
     affected_service->SetFailureSilent(Service::kFailureUnknown);
   }
+  metrics()->NotifySignalAtDisconnect(*affected_service,
+                                      affected_service->SignalLevel());
   affected_service->NotifyCurrentEndpoint(NULL);
   metrics()->NotifyServiceDisconnect(affected_service);
 
@@ -965,7 +967,7 @@ bool WiFi::DisableNetworkForService(const WiFiService *service, Error *error) {
     Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
 
     // Make sure that such errored networks are removed, so problems do not
-    // propogate to future connection attempts.
+    // propagate to future connection attempts.
     RemoveNetwork(rpcid);
     rpcid_by_service_.erase(service);
 
@@ -1340,7 +1342,7 @@ void WiFi::StateChanged(const string &new_state) {
     // bothering the user when roaming, or re-keying.
     if (old_state != WPASupplicant::kInterfaceStateCompleted)
       affected_service->SetState(Service::kStateAssociating);
-    // TOOD(quiche): On backwards transitions, we should probably set
+    // TODO(quiche): On backwards transitions, we should probably set
     // a timeout for getting back into the completed state. At present,
     // we depend on wpa_supplicant eventually reporting that CurrentBSS
     // has changed. But there may be cases where that signal is not sent.
@@ -2043,7 +2045,7 @@ void WiFi::SetScanState(ScanState new_state,
   if (is_terminal_state) {
     ReportScanResultToUma(new_state, old_method);
     // Now that we've logged a terminal state, let's call ourselves to
-    // transistion to the idle state.
+    // transition to the idle state.
     SetScanState(kScanIdle, kScanMethodNone, reason);
   }
 }

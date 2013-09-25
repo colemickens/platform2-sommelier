@@ -146,6 +146,10 @@ class WiFiService : public Service {
   // This function maps them all into "psk".
   static std::string GetSecurityClass(const std::string &security);
 
+  // Signal level in dBm.  If no current endpoint, returns
+  // std::numeric_limits<int>::min().
+  int16 SignalLevel() const;
+
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
   virtual void SetEAPKeyManagement(const std::string &key_management);
