@@ -728,10 +728,11 @@ string Cellular::CreateFriendlyServiceName() {
   return capability_.get() ? capability_->CreateFriendlyServiceName() : "";
 }
 
-void Cellular::OnModemStateChanged(ModemState old_state,
-                                   ModemState new_state,
-                                   uint32 /*reason*/) {
+void Cellular::OnModemStateChanged(ModemState new_state) {
+  ModemState old_state = modem_state_;
+  SLOG(Cellular, 2) << __func__ << ": " << old_state << " -> " << new_state;
   if (old_state == new_state) {
+    SLOG(Cellular, 2) << "The new state matches the old state. Nothing to do.";
     return;
   }
   set_modem_state(new_state);
@@ -740,36 +741,25 @@ void Cellular::OnModemStateChanged(ModemState old_state,
     capability_->SetUnregistered(new_state == kModemStateSearching);
     HandleNewRegistrationState();
   }
-  switch (new_state) {
-    case kModemStateDisabled:
-      SetEnabled(false);
-      break;
-    case kModemStateEnabled:
-      // Transition from Disabled to Enabled is handled in the
-      // DBusPropertiesChanged handler.
-      SLOG(Cellular, 2) << __func__ << ": Ignoring state change to Enabled";
-      // Intentionally falls through.
-    case kModemStateSearching:
-    case kModemStateRegistered:
-      // If the modem state changes from Connecting/Connected/Disconnecting
-      // to Registered/Enabled/Searching, then it's an indication that the
-      // modem has been disconnected or got disconnected by the network.
-      if (old_state == kModemStateConnected ||
-          old_state == kModemStateConnecting ||
-          old_state == kModemStateDisconnecting)
-        OnDisconnected();
-      break;
-    case kModemStateConnecting:
+  if (new_state == kModemStateDisabled) {
+    SetEnabled(false);
+  } else if (new_state >= kModemStateEnabled) {
+    if (old_state < kModemStateEnabled) {
+      // Just became enabled, update enabled state.
+      SetEnabled(true);
+    }
+    if ((new_state == kModemStateEnabled ||
+         new_state == kModemStateSearching ||
+         new_state == kModemStateRegistered) &&
+        (old_state == kModemStateConnected ||
+         old_state == kModemStateConnecting ||
+         old_state == kModemStateDisconnecting))
+      OnDisconnected();
+    else if (new_state == kModemStateConnecting)
       OnConnecting();
-      break;
-    case kModemStateConnected:
-      if (old_state == kModemStateConnecting)
-        OnConnected();
-      else
-        SLOG(Cellular, 2) << __func__ << ": Ignoring state change to Connected";
-      break;
-    default:
-      break;
+    else if (new_state == kModemStateConnected &&
+             old_state == kModemStateConnecting)
+      OnConnected();
   }
 }
 

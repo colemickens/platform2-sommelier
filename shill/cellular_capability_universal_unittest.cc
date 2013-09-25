@@ -450,8 +450,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
 
   // Change the state to kModemStateEnabling and verify that it still has not
   // been enabled.
-  capability_->OnModemStateChangedSignal(Cellular::kModemStateInitializing,
-                                         Cellular::kModemStateEnabling, 0);
+  capability_->OnModemStateChanged(Cellular::kModemStateEnabling);
   EXPECT_TRUE(capability_->imei_.empty());
   EXPECT_EQ(0, capability_->access_technologies_);
   Mock::VerifyAndClearExpectations(this);
@@ -459,16 +458,14 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
   // Change the state to kModemStateDisabling and verify that it still has not
   // been enabled.
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  capability_->OnModemStateChangedSignal(Cellular::kModemStateEnabling,
-                                         Cellular::kModemStateDisabling, 0);
+  capability_->OnModemStateChanged(Cellular::kModemStateDisabling);
   EXPECT_TRUE(capability_->imei_.empty());
   EXPECT_EQ(0, capability_->access_technologies_);
   Mock::VerifyAndClearExpectations(this);
 
   // Change the state of the modem to disabled and verify that it gets enabled.
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  capability_->OnModemStateChangedSignal(Cellular::kModemStateDisabling,
-                                         Cellular::kModemStateDisabled, 0);
+  capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
   EXPECT_EQ(kImei, capability_->imei_);
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
@@ -496,8 +493,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
   // operation with the WrongState error in order to verify that the deferred
   // enable operation does not trigger another deferred enable operation.
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  capability_->OnModemStateChangedSignal(Cellular::kModemStateDisabling,
-                                         Cellular::kModemStateDisabled, 0);
+  capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
@@ -2333,7 +2329,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateBearerPath) {
 TEST_F(CellularCapabilityUniversalMainTest,
        ListBearersOnModemStateChangedToConnected) {
   EXPECT_CALL(*modem_proxy_, ListBearers(_, _, _));
-  capability_->InitProxies();
   capability_->OnModemStateChanged(Cellular::kModemStateConnected);
 }
 

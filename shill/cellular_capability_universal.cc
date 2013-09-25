@@ -1747,26 +1747,21 @@ void CellularCapabilityUniversal::OnModemRevisionChanged(
 
 void CellularCapabilityUniversal::OnModemStateChanged(
     Cellular::ModemState state) {
-  Cellular::ModemState prev_modem_state = cellular()->modem_state();
-  bool was_enabled = cellular()->IsUnderlyingDeviceEnabled();
-  if (Cellular::IsEnabledModemState(state))
-    cellular()->set_modem_state(state);
-  SLOG(Cellular, 2) << __func__ << ": prev_modem_state: " << prev_modem_state
-                    << " was_enabled: " << was_enabled
-                    << " cellular state: "
-                    << cellular()->GetStateString(cellular()->state());
-  if (prev_modem_state != Cellular::kModemStateUnknown &&
-      prev_modem_state != Cellular::kModemStateEnabling &&
-      !was_enabled &&
-      cellular()->state() == Cellular::kStateDisabled &&
-      cellular()->IsUnderlyingDeviceEnabled()) {
-    cellular()->SetEnabled(true);
-  }
-  if (state == Cellular::kModemStateConnected) {
+  SLOG(Cellular, 3) << __func__ << ": " << state;
+
+  cellular()->OnModemStateChanged(state);
+  UpdateScanningProperty();
+  // TODO(armansito): Move the deferred enable logic to Cellular
+  // (See crbug.com/279499).
+  if (!deferred_enable_modem_callback_.is_null() &&
+      state == Cellular::kModemStateDisabled) {
+    SLOG(Cellular, 2) << "Enabling modem after deferring.";
+    deferred_enable_modem_callback_.Run();
+    deferred_enable_modem_callback_.Reset();
+  } else if (state == Cellular::kModemStateConnected) {
     SLOG(Cellular, 2) << "Updating bearer path to reflect the active bearer.";
     UpdateBearerPath();
   }
-  UpdateScanningProperty();
 }
 
 void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
@@ -1971,19 +1966,6 @@ void CellularCapabilityUniversal::OnModemStateChangedSignal(
     int32 old_state, int32 new_state, uint32 reason) {
   SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
                     << reason << ")";
-  cellular()->OnModemStateChanged(static_cast<Cellular::ModemState>(old_state),
-                                  static_cast<Cellular::ModemState>(new_state),
-                                  reason);
-  UpdateScanningProperty();
-  if (!deferred_enable_modem_callback_.is_null() &&
-      (new_state == Cellular::kModemStateDisabled)) {
-    SLOG(Cellular, 2) << "Enabling modem after deferring";
-    deferred_enable_modem_callback_.Run();
-    deferred_enable_modem_callback_.Reset();
-  } else if (new_state == Cellular::kModemStateConnected) {
-    SLOG(Cellular, 2) << "Updating bearer path to reflect the active bearer.";
-    UpdateBearerPath();
-  }
 }
 
 void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {

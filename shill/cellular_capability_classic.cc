@@ -318,6 +318,7 @@ void CellularCapabilityClassic::OnDBusPropertiesChanged(
     const std::string &interface,
     const DBusPropertiesMap &changed_properties,
     const std::vector<std::string> &invalidated_properties) {
+  SLOG(Cellular, 2) << __func__;
   bool enabled;
   // This solves a bootstrapping problem: If the modem is not yet
   // enabled, there are no proxy objects associated with the capability
@@ -326,21 +327,19 @@ void CellularCapabilityClassic::OnDBusPropertiesChanged(
   // get the initialization process started, which will result in the
   // creation of the proxy objects.
   //
-  // The first time we see the change to Enabled (when the modem state
-  // is Unknown), we simply update the state, and rely on the Manager to
-  // enable the device when it is registered with the Manager. On subsequent
-  // changes to Enabled, we need to explicitly enable the device ourselves.
+  // We handle all state changes to ENABLED from a disabled state (including,
+  // UNKNOWN) through Cellular::OnModemStateChanged. This will try to enable
+  // the device regardless of whether it has been registered with the Manager.
+  //
+  // All other state changes are handled from OnModemStateChangedSignal.
   if (DBusProperties::GetBool(changed_properties,
                               kModemPropertyEnabled, &enabled)) {
+    SLOG(Cellular, 2) << "Property \"Enabled\" changed: " << enabled;
     Cellular::ModemState prev_modem_state = cellular()->modem_state();
-    if (enabled)
-      cellular()->set_modem_state(Cellular::kModemStateEnabled);
-    else
-      cellular()->set_modem_state(Cellular::kModemStateDisabled);
-    if (enabled && cellular()->state() == Cellular::kStateDisabled &&
-        prev_modem_state != Cellular::kModemStateUnknown &&
-        prev_modem_state != Cellular::kModemStateEnabled) {
-      cellular()->SetEnabled(true);
+    if (!Cellular::IsEnabledModemState(prev_modem_state)) {
+      cellular()->OnModemStateChanged(
+          enabled ? Cellular::kModemStateEnabled :
+                    Cellular::kModemStateDisabled);
     }
   }
 }
@@ -384,9 +383,7 @@ void CellularCapabilityClassic::OnModemStateChangedSignal(
     uint32 old_state, uint32 new_state, uint32 reason) {
   SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
                     << reason << ")";
-  cellular()->OnModemStateChanged(ConvertClassicToModemState(old_state),
-                                  ConvertClassicToModemState(new_state),
-                                  reason);
+  cellular()->OnModemStateChanged(ConvertClassicToModemState(new_state));
 }
 
 }  // namespace shill

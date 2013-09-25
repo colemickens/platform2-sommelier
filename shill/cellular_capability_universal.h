@@ -62,7 +62,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Checks the modem state.  If the state is kModemStateDisabled, then the
   // modem is enabled.  Otherwise, the enable command is buffered until the
   // modem becomes disabled.  ModemManager rejects the enable command if the
-  // modem is not disabled, for exmaple, if it is initializing insted.
+  // modem is not disabled, for example, if it is initializing instead.
   virtual void StartModem(Error *error, const ResultCallback &callback);
   virtual void StopModem(Error *error, const ResultCallback &callback);
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,

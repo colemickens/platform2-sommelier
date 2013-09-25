@@ -857,18 +857,16 @@ TEST_F(CellularTest, ModemStateChangeStaleConnected) {
   // modem is disabled, it may send a stale Connected state transition after
   // it has been disabled.
   device_->state_ = Cellular::kStateDisabled;
-  device_->OnModemStateChanged(Cellular::kModemStateEnabling,
-                               Cellular::kModemStateConnected,
-                               0);
+  device_->modem_state_ = Cellular::kModemStateEnabling;
+  device_->OnModemStateChanged(Cellular::kModemStateConnected);
   EXPECT_EQ(Cellular::kStateDisabled, device_->state());
 }
 
 TEST_F(CellularTest, ModemStateChangeValidConnected) {
   device_->state_ = Cellular::kStateEnabled;
+  device_->modem_state_ = Cellular::kModemStateConnecting;
   SetService();
-  device_->OnModemStateChanged(Cellular::kModemStateConnecting,
-                               Cellular::kModemStateConnected,
-                               0);
+  device_->OnModemStateChanged(Cellular::kModemStateConnected);
   EXPECT_EQ(Cellular::kStateConnected, device_->state());
 }
 
@@ -877,9 +875,8 @@ TEST_F(CellularTest, ModemStateChangeLostRegistration) {
   CellularCapabilityUniversal *capability = GetCapabilityUniversal();
   capability->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_TRUE(capability->IsRegistered());
-  device_->OnModemStateChanged(Cellular::kModemStateRegistered,
-                               Cellular::kModemStateEnabled,
-                               0);
+  device_->set_modem_state(Cellular::kModemStateRegistered);
+  device_->OnModemStateChanged(Cellular::kModemStateEnabled);
   EXPECT_FALSE(capability->IsRegistered());
 }
 

@@ -213,9 +213,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   void OnDisconnected();
   void OnDisconnectFailed();
   std::string GetTechnologyFamily(Error *error);
-  void OnModemStateChanged(ModemState old_state,
-                           ModemState new_state,
-                           uint32 reason);
+  void OnModemStateChanged(ModemState new_state);
 
   // accessor to read the allow roaming property
   bool allow_roaming_property() const { return allow_roaming_; }
