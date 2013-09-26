@@ -385,6 +385,59 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
   OnIPConfigUpdated(ipconfig.get(), true);
 }
 
+TEST_F(DeviceTest, SetEnabledNonPersistent) {
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  device_->enabled_persistent_ = false;
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  SetManager(&manager);
+  Error error;
+  device_->SetEnabledNonPersistent(true, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_pending_);
+
+  // Enable while already enabled.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_persistent_ = false;
+  device_->enabled_pending_ = true;
+  device_->enabled_ = true;
+  device_->SetEnabledNonPersistent(true, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_pending_);
+  EXPECT_TRUE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Enable while enabled but disabling.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_pending_ = false;
+  device_->SetEnabledNonPersistent(true, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  EXPECT_TRUE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Disable while already disabled.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_ = false;
+  device_->SetEnabledNonPersistent(false, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Disable while already enabling.
+  error.Populate(Error::kOperationInitiated);
+  device_->enabled_pending_ = true;
+  device_->SetEnabledNonPersistent(false, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_pending_);
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_FALSE(device_->enabled_);
   EXPECT_FALSE(device_->enabled_pending_);

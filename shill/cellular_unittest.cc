@@ -983,58 +983,6 @@ TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
   EXPECT_TRUE(service->out_of_credits_);
 }
 
-// The following test crashes under Clang
-// Disabling it for now (crbug.com/221452)
-#if defined(__clang__)
-  #define MAYBE_ConnectAddsTerminationAction \
-    DISABLED_ConnectAddsTerminationAction
-#else
-  #define MAYBE_ConnectAddsTerminationAction \
-    ConnectAddsTerminationAction
-#endif  // defined(__clang__)
-
-TEST_F(CellularTest, MAYBE_ConnectAddsTerminationAction) {
-  Error error;
-  EXPECT_CALL(*simple_proxy_,
-              Connect(ContainsPhoneNumber(), _, _,
-                      CellularCapability::kTimeoutConnect))
-                .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
-  EXPECT_CALL(*proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
-      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
-
-  // TestCallback() will be called when the termination actions complete.  This
-  // verifies that the actions were registered, invoked, and report their
-  // status.
-  EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
-
-  SetService();
-  GetCapabilityClassic()->proxy_.reset(proxy_.release());
-  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
-  device_->state_ = Cellular::kStateRegistered;
-  device_->Connect(&error);
-  EXPECT_TRUE(error.IsSuccess());
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::kStateConnected, device_->state_);
-
-  // If the action of establishing a connection registered a termination action
-  // with the manager, then running the termination action will result in a
-  // disconnect.
-  modem_info_.manager()->RunTerminationActions(
-      Bind(&CellularTest::TestCallback, Unretained(this)));
-  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
-  dispatcher_.DispatchPendingEvents();
-
-  // Verify that the termination action has been removed from the manager.
-  // Running the registered termination actions again should result in
-  // TestCallback being called with success because there are no registered
-  // termination actions..  If the termination action is not removed, then
-  // TestCallback will be called with kOperationTimeout.
-  modem_info_.manager()->RunTerminationActions(
-      Bind(&CellularTest::TestCallback, Unretained(this)));
-  dispatcher_.DispatchPendingEvents();
-}
-
 TEST_F(CellularTest, SetAllowRoaming) {
   EXPECT_FALSE(device_->allow_roaming_);
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateDevice(_));

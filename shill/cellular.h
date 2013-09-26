@@ -207,6 +207,8 @@ class Cellular : public Device, public RPCTaskDelegate {
                           const Error &error);
   void StopModemCallback(const EnabledStateChangedCallback &callback,
                          const Error &error);
+  void OnDisabled();
+  void OnEnabled();
   void OnConnecting();
   void OnConnected();
   void OnConnectFailed(const Error &error);
@@ -282,7 +284,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, ConnectSuccessNoService);
@@ -359,6 +360,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   // When shill terminates or ChromeOS suspends, this function is called to
   // disconnect from the cellular network.
   void StartTermination();
+
+  // This method is invoked upon the completion of StartTermination().
+  void OnTerminationCompleted(const Error &error);
 
   // This function does the final cleanup once a disconnect request terminates.
   // Returns true, if the device state is successfully changed.

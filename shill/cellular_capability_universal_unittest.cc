@@ -132,6 +132,38 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     cellular_->service_ = NULL;
   }
 
+  void ExpectModemAndModem3gppProperties() {
+    // Set up mock modem properties.
+    DBusPropertiesMap modem_properties;
+    string operator_name = "TestOperator";
+    string operator_code = "001400";
+
+    modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
+        writer().append_uint32(kAccessTechnologies);
+
+    DBus::Variant variant;
+    DBus::MessageIter writer = variant.writer();
+    DBus::Struct<uint32_t, bool> signal_signal;
+    signal_signal._1 = 90;
+    signal_signal._2 = true;
+    writer << signal_signal;
+    modem_properties[MM_MODEM_PROPERTY_SIGNALQUALITY] = variant;
+
+    // Set up mock modem 3gpp properties.
+    DBusPropertiesMap modem3gpp_properties;
+    modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
+        writer().append_uint32(0);
+    modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
+        writer().append_string(kImei);
+
+    EXPECT_CALL(*properties_proxy_,
+                GetAll(MM_DBUS_INTERFACE_MODEM))
+        .WillOnce(Return(modem_properties));
+    EXPECT_CALL(*properties_proxy_,
+                GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
+        .WillOnce(Return(modem3gpp_properties));
+  }
+
   void InvokeEnable(bool enable, Error *error,
                     const ResultCallback &callback, int timeout) {
     callback.Run(Error());
@@ -148,7 +180,12 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                       const ResultCallback &callback, int timeout) {
     callback.Run(Error());
   }
-
+  void InvokeSetPowerState(const uint32_t &power_state,
+                           Error *error,
+                           const ResultCallback &callback,
+                           int timeout) {
+    callback.Run(Error());
+  }
   void InvokeScan(Error *error, const DBusPropertyMapsCallback &callback,
                   int timeout) {
     callback.Run(CellularCapabilityUniversal::ScanResults(), Error());
@@ -337,39 +374,12 @@ const char CellularCapabilityUniversalTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
 
 TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
-  // Set up mock modem properties
-  DBusPropertiesMap modem_properties;
-  string operator_name = "TestOperator";
-  string operator_code = "001400";
-
-  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-      writer().append_uint32(kAccessTechnologies);
-
-  ::DBus::Variant v;
-  ::DBus::MessageIter writer = v.writer();
-  ::DBus::Struct< uint32_t, bool > quality;
-  quality._1 = 90;
-  quality._2 = true;
-  writer << quality;
-  modem_properties[MM_MODEM_PROPERTY_SIGNALQUALITY] = v;
-
-  // Set up mock modem 3gpp properties
-  DBusPropertiesMap modem3gpp_properties;
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
-      writer().append_uint32(0);
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
-      writer().append_string(kImei);
+  ExpectModemAndModem3gppProperties();
 
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(
            this, &CellularCapabilityUniversalTest::InvokeEnable));
-  EXPECT_CALL(*properties_proxy_,
-              GetAll(MM_DBUS_INTERFACE_MODEM))
-      .WillOnce(Return(modem_properties));
-  EXPECT_CALL(*properties_proxy_,
-              GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
-      .WillOnce(Return(modem3gpp_properties));
 
   Error error;
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
@@ -400,28 +410,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemFailure) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
-  // Set up mock modem properties
-  DBusPropertiesMap modem_properties;
-  string operator_name = "TestOperator";
-  string operator_code = "001400";
-
-  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-      writer().append_uint32(kAccessTechnologies);
-
-  ::DBus::Variant v;
-  ::DBus::MessageIter writer = v.writer();
-  ::DBus::Struct< uint32_t, bool > quality;
-  quality._1 = 90;
-  quality._2 = true;
-  writer << quality;
-  modem_properties[MM_MODEM_PROPERTY_SIGNALQUALITY] = v;
-
-  // Set up mock modem 3gpp properties
-  DBusPropertiesMap modem3gpp_properties;
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
-      writer().append_uint32(0);
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
-      writer().append_string(kImei);
+  ExpectModemAndModem3gppProperties();
 
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
@@ -429,12 +418,6 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
            this, &CellularCapabilityUniversalTest::InvokeEnableInWrongState))
       .WillOnce(Invoke(
            this, &CellularCapabilityUniversalTest::InvokeEnable));
-  EXPECT_CALL(*properties_proxy_,
-              GetAll(MM_DBUS_INTERFACE_MODEM))
-      .WillOnce(Return(modem_properties));
-  EXPECT_CALL(*properties_proxy_,
-              GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
-      .WillOnce(Return(modem3gpp_properties));
 
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
@@ -531,6 +514,106 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   // callback gets called with an error
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   set_power_state_callback.Run(Error(Error::kOperationFailed));
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, TerminationAction) {
+  ExpectModemAndModem3gppProperties();
+
+  {
+    InSequence seq;
+
+    EXPECT_CALL(*modem_proxy_,
+                Enable(true, _, _, CellularCapability::kTimeoutEnable))
+        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+    EXPECT_CALL(*modem_proxy_,
+                Enable(false, _, _, CellularCapability::kTimeoutEnable))
+        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+    EXPECT_CALL(
+        *modem_proxy_,
+        SetPowerState(
+            MM_MODEM_POWER_STATE_LOW, _, _,
+            CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+        .WillOnce(Invoke(
+             this, &CellularCapabilityUniversalTest::InvokeSetPowerState));
+  }
+  EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
+
+  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::kModemStateUnknown, cellular_->modem_state());
+  EXPECT_TRUE(modem_info_.manager()->termination_actions_.IsEmpty());
+
+  // Here we mimic the modem state change from ModemManager. When the modem is
+  // enabled, a termination action should be added.
+  cellular_->OnModemStateChanged(Cellular::kModemStateEnabled);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateEnabled, cellular_->state());
+  EXPECT_EQ(Cellular::kModemStateEnabled, cellular_->modem_state());
+  EXPECT_FALSE(modem_info_.manager()->termination_actions_.IsEmpty());
+
+  // Running the termination action should disable the modem.
+  modem_info_.manager()->RunTerminationActions(Bind(
+      &CellularCapabilityUniversalMainTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
+  // Here we mimic the modem state change from ModemManager. When the modem is
+  // disabled, the termination action should be removed.
+  cellular_->OnModemStateChanged(Cellular::kModemStateDisabled);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::kModemStateDisabled, cellular_->modem_state());
+  EXPECT_TRUE(modem_info_.manager()->termination_actions_.IsEmpty());
+
+  // No termination action should be called here.
+  modem_info_.manager()->RunTerminationActions(Bind(
+      &CellularCapabilityUniversalMainTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityUniversalMainTest,
+       TerminationActionRemovedByStopModem) {
+  ExpectModemAndModem3gppProperties();
+
+  {
+    InSequence seq;
+
+    EXPECT_CALL(*modem_proxy_,
+                Enable(true, _, _, CellularCapability::kTimeoutEnable))
+        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+    EXPECT_CALL(*modem_proxy_,
+                Enable(false, _, _, CellularCapability::kTimeoutEnable))
+        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+    EXPECT_CALL(
+        *modem_proxy_,
+        SetPowerState(
+            MM_MODEM_POWER_STATE_LOW, _, _,
+            CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+        .WillOnce(Invoke(
+             this, &CellularCapabilityUniversalTest::InvokeSetPowerState));
+  }
+  EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(1);
+
+  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::kModemStateUnknown, cellular_->modem_state());
+  EXPECT_TRUE(modem_info_.manager()->termination_actions_.IsEmpty());
+
+  // Here we mimic the modem state change from ModemManager. When the modem is
+  // enabled, a termination action should be added.
+  cellular_->OnModemStateChanged(Cellular::kModemStateEnabled);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateEnabled, cellular_->state());
+  EXPECT_EQ(Cellular::kModemStateEnabled, cellular_->modem_state());
+  EXPECT_FALSE(modem_info_.manager()->termination_actions_.IsEmpty());
+
+  // Verify that the termination action is removed when the modem is disabled
+  // not due to a suspend request.
+  cellular_->SetEnabled(false);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_TRUE(modem_info_.manager()->termination_actions_.IsEmpty());
+
+  // No termination action should be called here.
+  modem_info_.manager()->RunTerminationActions(Bind(
+      &CellularCapabilityUniversalMainTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {

@@ -387,7 +387,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
 
-  FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              TerminationActionRemovedByStopModem);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);

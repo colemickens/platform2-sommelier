@@ -67,6 +67,13 @@ class Device : public base::RefCounted<Device> {
 
   // Enable or disable the device.
   virtual void SetEnabled(bool enable);
+  // Enable or disable the device. Unlikely SetEnabledPersistent, it does not
+  // save the setting in the profile.
+  //
+  // TODO(benchan): Combine it with SetEnabledPersistent.
+  virtual void SetEnabledNonPersistent(bool enable,
+                                       Error *error,
+                                       const ResultCallback &callback);
   // Enable or disable the device, and save the setting in the profile.
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
@@ -236,6 +243,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, Start);

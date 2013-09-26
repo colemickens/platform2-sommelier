@@ -282,6 +282,10 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback &callback,
     SetState(kStateDisabled);
   set_traffic_monitor_enabled(false);
   callback.Run(error);
+  // In case no termination action was executed (and TerminationActionComplete
+  // was not invoked) in response to a suspend request, any registered
+  // termination action needs to be removed explicitly.
+  manager()->RemoveTerminationAction(FriendlyName());
 }
 
 void Cellular::InitCapability(Type type) {
@@ -577,6 +581,17 @@ void Cellular::OnConnectReply(const Error &error) {
   }
 }
 
+void Cellular::OnDisabled() {
+  SetEnabled(false);
+}
+
+void Cellular::OnEnabled() {
+  manager()->AddTerminationAction(FriendlyName(),
+                                  Bind(&Cellular::StartTermination,
+                                       weak_ptr_factory_.GetWeakPtr()));
+  SetEnabled(true);
+}
+
 void Cellular::OnConnecting() {
   if (service_)
     service_->SetState(Service::kStateAssociating);
@@ -588,9 +603,6 @@ void Cellular::OnConnected() {
     SLOG(Cellular, 2) << "Already connected";
     return;
   }
-  Closure start_cb = Bind(&Cellular::StartTermination,
-                          weak_ptr_factory_.GetWeakPtr());
-  manager()->AddTerminationAction(FriendlyName(), start_cb);
   SetState(kStateConnected);
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
@@ -631,8 +643,6 @@ void Cellular::OnDisconnectReply(const Error &error) {
     metrics()->NotifyCellularDeviceFailure(error);
     OnDisconnectFailed();
   }
-  manager()->TerminationActionComplete(FriendlyName());
-  manager()->RemoveTerminationAction(FriendlyName());
 }
 
 void Cellular::OnDisconnected() {
@@ -742,11 +752,11 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
     HandleNewRegistrationState();
   }
   if (new_state == kModemStateDisabled) {
-    SetEnabled(false);
+    OnDisabled();
   } else if (new_state >= kModemStateEnabled) {
     if (old_state < kModemStateEnabled) {
       // Just became enabled, update enabled state.
-      SetEnabled(true);
+      OnEnabled();
     }
     if ((new_state == kModemStateEnabled ||
          new_state == kModemStateSearching ||
@@ -791,7 +801,24 @@ bool Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
 void Cellular::StartTermination() {
   LOG(INFO) << __func__;
   Error error;
-  Disconnect(&error);
+  SetEnabledNonPersistent(
+      false,
+      &error,
+      Bind(&Cellular::OnTerminationCompleted, weak_ptr_factory_.GetWeakPtr()));
+  if (error.IsFailure() && error.type() != Error::kInProgress) {
+    // If we fail to disable the modem right away, proceed to suspend instead of
+    // wasting the time to wait for the suspend delay to expire.
+    LOG(WARNING)
+        << "Proceed to suspend even through the modem is not yet disabled: "
+        << error;
+    OnTerminationCompleted(error);
+  }
+}
+
+void Cellular::OnTerminationCompleted(const Error &error) {
+  LOG(INFO) << __func__ << ": " << error;
+  manager()->TerminationActionComplete(FriendlyName());
+  manager()->RemoveTerminationAction(FriendlyName());
 }
 
 bool Cellular::DisconnectCleanup() {

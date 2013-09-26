@@ -1006,6 +1006,12 @@ void Device::SetEnabled(bool enable) {
       << "Enabled failed, but no way to report the failure.";
 }
 
+void Device::SetEnabledNonPersistent(bool enable,
+                                     Error *error,
+                                     const ResultCallback &callback) {
+  SetEnabledInternal(enable, false, error, callback);
+}
+
 void Device::SetEnabledPersistent(bool enable,
                                   Error *error,
                                   const ResultCallback &callback) {

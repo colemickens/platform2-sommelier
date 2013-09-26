@@ -241,6 +241,9 @@ class CellularCapabilityUniversal : public CellularCapability {
               StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              TerminationActionRemovedByStopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateBearerPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
