@@ -1017,7 +1017,7 @@ void Service::SetConnectableFull(bool connectable) {
 string Service::GetStateString() const {
   // TODO(benchan): We may want to rename shill::kState* to avoid name clashing
   // with Service::kState*.
-  switch (state_) {
+  switch (state()) {
     case kStateIdle:
       return shill::kStateIdle;
     case kStateAssociating:

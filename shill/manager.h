@@ -251,6 +251,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual bool IsOnline() const;
   std::string CalculateState(Error *error);
 
+  // Recalculate the |connected_state_| string and emit a singal if it has
+  // changed.
+  void RefreshConnectionState();
+
   virtual int GetPortalCheckInterval() const {
     return props_.portal_check_interval_seconds;
   }
@@ -594,6 +598,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Stores the most recent copy of geolocation information for each
   // technology type.
   std::map<std::string, GeolocationInfos> networks_for_geolocation_;
+
+  // Stores the state of the highest ranked connected service.
+  std::string connection_state_;
 };
 
 }  // namespace shill

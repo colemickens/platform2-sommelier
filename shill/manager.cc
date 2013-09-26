@@ -132,6 +132,7 @@ Manager::Manager(ControlInterface *control_interface,
                             &Manager::SetCheckPortalList);
   HelpRegisterConstDerivedStrings(kConnectedTechnologiesProperty,
                                   &Manager::ConnectedTechnologies);
+  store_.RegisterConstString(kConnectionStateProperty, &connection_state_);
   store_.RegisterString(kCountryProperty, &props_.country);
   HelpRegisterDerivedString(kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
@@ -1394,6 +1395,7 @@ void Manager::SortServicesTask() {
     }
   }
   NotifyDefaultServiceChanged(default_service);
+  RefreshConnectionState();
   AutoConnect();
 }
 
@@ -1521,6 +1523,16 @@ bool Manager::IsOnline() const {
 
 string Manager::CalculateState(Error */*error*/) {
   return IsOnline() ? kStateOnline : kStateOffline;
+}
+
+void Manager::RefreshConnectionState() {
+  const ServiceRefPtr &service = GetDefaultService();
+  string connection_state = service ? service->GetStateString() : kStateIdle;
+  if (connection_state_ == connection_state) {
+    return;
+  }
+  connection_state_ = connection_state;
+  adaptor_->EmitStringChanged(kConnectionStateProperty, connection_state_);
 }
 
 vector<string> Manager::AvailableTechnologies(Error */*error*/) {

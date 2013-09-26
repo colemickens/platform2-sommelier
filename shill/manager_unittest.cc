@@ -269,6 +269,10 @@ class ManagerTest : public PropertyStoreTest {
     EXPECT_TRUE(manager()->sort_services_task_.IsCancelled());
   }
 
+  void RefreshConnectionState() {
+    manager()->RefreshConnectionState();
+  }
+
   RpcIdentifier GetDefaultServiceRpcIdentifier() {
     return manager()->GetDefaultServiceRpcIdentifier(NULL);
   }
@@ -3221,6 +3225,41 @@ TEST_F(ManagerTest, CalculateStateOnline) {
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
+}
+
+TEST_F(ManagerTest, RefreshConnectionState) {
+  EXPECT_CALL(*manager_adaptor_,
+              EmitStringChanged(kConnectionStateProperty, kStateIdle));
+  RefreshConnectionState();
+  Mock::VerifyAndClearExpectations(manager_adaptor_);
+
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitStringChanged(kConnectionStateProperty, _)).Times(0);
+  manager()->RegisterService(mock_service);
+  RefreshConnectionState();
+
+  scoped_refptr<MockConnection> mock_connection(
+      new NiceMock<MockConnection>(device_info_.get()));
+  mock_service->set_mock_connection(mock_connection);
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStateIdle));
+  RefreshConnectionState();
+
+  Mock::VerifyAndClearExpectations(manager_adaptor_);
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStatePortal));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitStringChanged(kConnectionStateProperty, kStatePortal));
+  RefreshConnectionState();
+  Mock::VerifyAndClearExpectations(manager_adaptor_);
+
+  mock_service->set_mock_connection(NULL);
+  manager()->DeregisterService(mock_service);
 }
 
 TEST_F(ManagerTest, StartupPortalList) {

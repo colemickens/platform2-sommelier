@@ -501,6 +501,14 @@ Properties 	object ActiveProfile [readwrite]
 			The list of connected technologies. The strings
 			are the same as the ones from the service type.
 
+		string ConnectionState [readonly]
+
+			The state of the highest ranked connected service.
+			The value of this property is "idle" if there are
+			no connected services.  Otherwise this can be any
+			of the connected service states, e.g, "portal" or
+			"online".
+
 		string Country [readwrite]
 
 			The ISO 3166 country code.  This may not be defined;
