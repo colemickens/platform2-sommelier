@@ -68,7 +68,7 @@ class ConnectionDelegateTest : public ::testing::Test {
   }
 
  protected:
-  virtual void SetUp() {
+  void SetupDelegate() {
     testdir_path_ = SetupTestDir("connection-delegate");
     testdir_fd_ = open(testdir_path_.value().c_str(), O_DIRECTORY);
     if (testdir_fd_ == -1)
@@ -133,7 +133,8 @@ class ConnectionDelegateTest : public ::testing::Test {
   }
 
   virtual void TearDown() {
-    delete thread_;
+    if (thread_)
+      delete thread_;
     // The ConnectionDelegate deletes itself when Run() finishes.
 
     if (client_fd_ != -1)
@@ -144,7 +145,8 @@ class ConnectionDelegateTest : public ::testing::Test {
       EXPECT_EQ(-1, close(server_fd_));
     if (testdir_fd_ != -1)
       EXPECT_EQ(0, close(testdir_fd_));
-    TeardownTestDir(testdir_path_);
+    if (!testdir_path_.empty())
+      TeardownTestDir(testdir_path_);
   }
 
   // A randomly generated temporary testing directory to put the shared files.
@@ -377,6 +379,8 @@ static void GeneratePrintableData(size_t size, string* output) {
 }
 
 TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
+  SetupDelegate();
+
   p2p::testutil::TimeBombAbort bomb(60, "Test NoRequestAndClose timeout\n");
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
@@ -390,6 +394,8 @@ TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
 }
 
 TEST_F(ConnectionDelegateTest, RequestIndexClosesTheConnection) {
+  SetupDelegate();
+
   p2p::testutil::TimeBombAbort bomb(60,
       "Test RequestIndexClosesTheConnection timeout\n");
   EXPECT_CALL(mock_server_, ReportServerMessage(
@@ -415,6 +421,8 @@ TEST_F(ConnectionDelegateTest, RequestIndexClosesTheConnection) {
 }
 
 TEST_F(ConnectionDelegateTest, RequestIndexThenClose) {
+  SetupDelegate();
+
   p2p::testutil::TimeBombAbort bomb(60, "Test RequestIndexThenClose timeout\n");
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
@@ -430,6 +438,8 @@ TEST_F(ConnectionDelegateTest, RequestIndexThenClose) {
 }
 
 TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
+  SetupDelegate();
+
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
@@ -451,6 +461,8 @@ TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
 }
 
 TEST_F(ConnectionDelegateTest, GetExistentFile) {
+  SetupDelegate();
+
   const string content = "Hello World!";
   WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
 
@@ -482,6 +494,8 @@ TEST_F(ConnectionDelegateTest, GetExistentFile) {
 }
 
 TEST_F(ConnectionDelegateTest, PostExistentFile) {
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(9 * 1000 * 1000 - 1, &content);
   WriteFile(testdir_path_.Append("a.foo.p2p"), content.c_str(), content.size());
@@ -515,6 +529,8 @@ TEST_F(ConnectionDelegateTest, PostExistentFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetEmptyFile) {
+  SetupDelegate();
+
   WriteFile(testdir_path_.Append("empty.p2p"), "", 0);
 
   EXPECT_CALL(mock_server_, ReportServerMessage(
@@ -545,6 +561,8 @@ TEST_F(ConnectionDelegateTest, GetEmptyFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(60 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -581,6 +599,8 @@ TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(64 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -607,6 +627,8 @@ TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(5 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -646,6 +668,14 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
+  if (!util::IsXAttrSupported(FilePath("/tmp"))) {
+    LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
+                 << "Please update your system to support this feature.";
+    return;
+  }
+
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(50 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -684,6 +714,14 @@ TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
+  if (!util::IsXAttrSupported(FilePath("/tmp"))) {
+    LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
+                 << "Please update your system to support this feature.";
+    return;
+  }
+
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(5 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
@@ -723,6 +761,8 @@ TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
 }
 
 TEST_F(ConnectionDelegateTest, GetNonExistentFile) {
+  SetupDelegate();
+
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultNotFound));
@@ -742,6 +782,8 @@ TEST_F(ConnectionDelegateTest, GetNonExistentFile) {
 }
 
 TEST_F(ConnectionDelegateTest, URIArgumentsNotParsed) {
+  SetupDelegate();
+
   const string content = "Hello World!";
   WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
 
@@ -764,6 +806,8 @@ TEST_F(ConnectionDelegateTest, URIArgumentsNotParsed) {
 }
 
 TEST_F(ConnectionDelegateTest, URIUsesRelativePath) {
+  SetupDelegate();
+
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultMalformed));
@@ -783,6 +827,8 @@ TEST_F(ConnectionDelegateTest, URIUsesRelativePath) {
 }
 
 TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
+  SetupDelegate();
+
   const string content = "Hello World!";
   WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
 
@@ -809,6 +855,14 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
 // Tests that the ConnectionDelegate properly blocks when the end of the file
 // is missing and continues serving the file when more data is available.
 TEST_F(ConnectionDelegateTest, Waiting) {
+  if (!util::IsXAttrSupported(FilePath("/tmp"))) {
+    LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
+                 << "Please update your system to support this feature.";
+    return;
+  }
+
+  SetupDelegate();
+
   // The file starts with 50kB on disk, but expected total size of 100kB. The
   // file is then extended to 75kB and finally to 100kB.
   string content;
@@ -871,6 +925,14 @@ TEST_F(ConnectionDelegateTest, Waiting) {
 }
 
 TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
+  if (!util::IsXAttrSupported(FilePath("/tmp"))) {
+    LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
+                 << "Please update your system to support this feature.";
+    return;
+  }
+
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(50 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
@@ -910,6 +972,14 @@ TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
 }
 
 TEST_F(ConnectionDelegateTest, DisregardTimeWaitingFromTransferBudget) {
+  if (!util::IsXAttrSupported(FilePath("/tmp"))) {
+    LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
+                 << "Please update your system to support this feature.";
+    return;
+  }
+
+  SetupDelegate();
+
   string content;
   GeneratePrintableData(25 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());

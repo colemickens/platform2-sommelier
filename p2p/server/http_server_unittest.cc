@@ -8,6 +8,7 @@
 
 #include "common/server_message.h"
 #include "common/testutil.h"
+#include "common/util.h"
 #include "server/http_server.h"
 
 #include <glib-object.h>
@@ -120,6 +121,12 @@ class ClientThread : public base::SimpleThread {
 };
 
 TEST(HttpServer, Basic) {
+  if (!util::IsXAttrSupported(FilePath("/tmp"))) {
+    LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
+                 << "Please update your system to support this feature.";
+    return;
+  }
+
   FilePath testdir = SetupTestDir("http-server");
   StrictMock<MetricsLibraryMock> metrics_lib;
 

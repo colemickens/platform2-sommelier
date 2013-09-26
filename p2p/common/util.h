@@ -5,6 +5,8 @@
 #ifndef P2P_COMMON_UTIL_H__
 #define P2P_COMMON_UTIL_H__
 
+#include <base/file_path.h>
+
 namespace p2p {
 
 namespace util {
@@ -20,6 +22,11 @@ void SetupSyslog(const char* program_name, bool include_pid);
 // This is not thread safe and blocks the calling thread the first
 // time it is called.
 const char* GetDBusMachineId();
+
+// Checks if xattr is supported in the directory specified by
+// |dir_path| which must be writable. Returns true if the feature is
+// supported, false if not or if an error occured.
+bool IsXAttrSupported(const base::FilePath& dir_path);
 
 }  // namespace util
 
