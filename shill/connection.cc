@@ -414,12 +414,17 @@ uint32 Connection::GetMetric(bool is_default) {
 bool Connection::PinHostRoute(const IPAddress &trusted_ip,
                               const IPAddress &gateway) {
   SLOG(Connection, 2) << __func__;
-  if (!trusted_ip.IsValid() || !gateway.IsValid()) {
-    LOG_IF(ERROR, !gateway.IsValid())
-        << "No gateway -- unable to pin host route.";
-    LOG_IF(ERROR, !trusted_ip.IsValid())
-        << "No trusted IP -- unable to pin host route.";
+  if (!trusted_ip.IsValid()) {
+    LOG(ERROR) << "No trusted IP -- unable to pin host route.";
     return false;
+  }
+
+  if (!gateway.IsValid()) {
+    // Although we cannot pin a host route, we are also not going to create
+    // a gateway route that will interfere with our primary connection, so
+    // it is okay to return success here.
+    LOG(WARNING) << "No gateway -- unable to pin host route.";
+    return true;
   }
 
   return RequestHostRoute(trusted_ip);

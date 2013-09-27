@@ -529,9 +529,12 @@ TEST_F(ConnectionTest, PinHostRoute) {
   static const char kTrustedIP[] = "10.0.1.1";
   ASSERT_TRUE(trusted_ip.SetAddressFromString(kTrustedIP));
 
-  // Should fail because gateway IP is not set.
-  EXPECT_FALSE(PinHostRoute(connection, trusted_ip,
-                            IPAddress(gateway.family())));
+  // Should pass without calling RequestRouteToHost since if the gateway
+  // is not set, there is no work to be done.
+  EXPECT_CALL(routing_table_, RequestRouteToHost(_, _, _, _)).Times(0);
+  EXPECT_TRUE(PinHostRoute(connection, trusted_ip,
+                           IPAddress(gateway.family())));
+  Mock::VerifyAndClearExpectations(&routing_table_);
 
   size_t prefix_len = IPAddress::GetMaxPrefixLength(trusted_ip.family());
   EXPECT_CALL(routing_table_, RequestRouteToHost(
