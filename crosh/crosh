@@ -1000,6 +1000,10 @@ cmd_update_over_cellular() (
   case "$1" in
     "enable")
       param="-update_over_cellular=yes"
+      echo "When available, auto-updates download in the background any time " \
+           "the computer is powered on.  Note: this may incur additional " \
+           "cellular charges, including roaming and/or data charges, as per " \
+           "your carrier arrangement."
       ;;
 
     "disable")
