@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 /* For background on this, see:
- * https://gerrit.chromium.org/gerrit/43885
+ * https://chromium-review.googlesource.com/43885
  * https://crosbug.com/39422
  *
  * Short answer: `xauth` pulls in a lot of legacy libs we don't care about.
