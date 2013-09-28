@@ -373,10 +373,6 @@ int CountReportMetadata(const std::vector<string>& report,
 
 }  // namespace
 
-string GetTestInputFilePath(const string& filename) {
-  return string(kPerfDataInputPath) + filename;
-}
-
 event_t* CallocMemoryForEvent(size_t size) {
   event_t* event = reinterpret_cast<event_t*>(calloc(1, size));
   CHECK(event);

@@ -4,10 +4,18 @@
 
 #include "utils.h"
 
+namespace {
+
+const char kPerfDataInputPath[] = "testdata/";
+
+}  // namespace
+
 namespace quipper {
 
 extern const char kPerfPath[] = "/usr/sbin/perf";
 
-extern const char kPerfDataInputPath[] = "testdata/";
+string GetTestInputFilePath(const string& filename) {
+  return string(kPerfDataInputPath) + filename;
+}
 
 }  // namespace quipper

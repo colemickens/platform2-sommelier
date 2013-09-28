@@ -21,9 +21,6 @@ extern const char* kSupportedMetadata[];
 // Path to the perf executable.
 extern const char kPerfPath[];
 
-// Input and perf data file path.
-extern const char kPerfDataInputPath[];
-
 // Converts a perf data filename to the full path.
 string GetTestInputFilePath(const string& filename);
 string GetTestOutputFilePath(const string& filename);

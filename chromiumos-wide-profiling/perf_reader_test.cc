@@ -189,7 +189,7 @@ TEST(PerfReaderTest, Test1Cycle) {
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
     const char* test_file = perf_test_files::kPerfDataFiles[i];
-    string input_perf_data = string(kPerfDataInputPath) + test_file;
+    string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     string output_perf_data = output_path + test_file + ".pr.out";
     PerfReader pr;
@@ -207,7 +207,7 @@ TEST(PerfReaderTest, Test1Cycle) {
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
     const char* test_file = perf_test_files::kPerfPipedDataFiles[i];
-    string input_perf_data = string(kPerfDataInputPath) + test_file;
+    string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     string output_perf_data = output_path + test_file + ".pr.out";
     PerfReader pr;

@@ -19,7 +19,7 @@ TEST(PerfRecorderTest, TestRecord) {
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   quipper::PerfDataProto perf_data_proto;
-  string perf_command_line = "sudo /usr/sbin/perf record";
+  string perf_command_line = string("sudo ") + kPerfPath + " record";
   PerfRecorder perf_recorder;
   EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
                                                        1,
