@@ -14,7 +14,7 @@ void Sandbox::Enter() {
   if (getuid() != 0 && geteuid() != 0)
     // Already sandboxed. Do nothing.
     // TODO(ellyjones): Remove this hack once
-    // http://gerrit.chromium.org/gerrit/8650 is in.
+    // https://chromium-review.googlesource.com/8650 is in.
     return;
 
   struct minijail *jail = minijail_new();
