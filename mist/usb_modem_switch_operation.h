@@ -90,6 +90,10 @@ class UsbModemSwitchOperation
   // Opens the device and claims the mass storage interface on the device.
   void OpenDeviceAndClaimMassStorageInterface();
 
+  // Clears the halt condition on the endpoint at |endpoint_address|. Returns
+  // true on success.
+  bool ClearHalt(uint8 endpoint_address);
+
   // Sends a special USB message to the mass storage endpoint of the device.
   void SendMessageToMassStorageEndpoint();
 

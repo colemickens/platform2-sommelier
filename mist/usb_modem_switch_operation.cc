@@ -228,8 +228,9 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
 
   interface_number_ = interface_descriptor->GetInterfaceNumber();
   out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
+  bool expect_response = switch_context_->modem_info()->expect_response();
 
-  if (switch_context_->modem_info()->expect_response()) {
+  if (expect_response) {
     scoped_ptr<UsbEndpointDescriptor> in_endpoint_descriptor(
         interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
             kUsbTransferTypeBulk, kUsbDirectionIn));
@@ -260,6 +261,18 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
     return;
   }
 
+  if (!ClearHalt(out_endpoint_address_)) {
+    Complete(false);
+    return;
+  }
+
+  if (expect_response) {
+    if (!ClearHalt(in_endpoint_address_)) {
+      Complete(false);
+      return;
+    }
+  }
+
   interface_claimed_ = true;
   message_index_ = 0;
   num_usb_messages_ = switch_context_->modem_info()->usb_message_size();
@@ -270,6 +283,16 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
   context_->usb_device_event_notifier()->AddObserver(this);
 
   ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
+}
+
+bool UsbModemSwitchOperation::ClearHalt(uint8 endpoint_address) {
+  if (device_->ClearHalt(endpoint_address))
+    return true;
+
+  LOG(ERROR) << StringPrintf(
+      "Could not clear halt condition for endpoint %u: %s",
+      endpoint_address, device_->error().ToString());
+  return false;
 }
 
 void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
@@ -318,14 +341,6 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
     UsbTransferCompletionHandler completion_handler) {
   CHECK_GT(length, 0);
 
-  if (!device_->ClearHalt(endpoint_address)) {
-    LOG(ERROR) << StringPrintf(
-        "Could not clear halt condition for endpoint %u: %s",
-        endpoint_address, device_->error().ToString());
-    Complete(false);
-    return;
-  }
-
   scoped_ptr<UsbBulkTransfer> bulk_transfer(new UsbBulkTransfer());
   if (!bulk_transfer->Initialize(*device_,
                                  endpoint_address,
@@ -366,6 +381,16 @@ void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
   // Keep the bulk transfer valid until this method goes out of scope.
   scoped_ptr<UsbBulkTransfer> scoped_bulk_transfer = bulk_transfer_.Pass();
 
+  if (transfer->GetStatus() == kUsbTransferStatusStall) {
+    if (!ClearHalt(transfer->GetEndpointAddress())) {
+      Complete(false);
+      return;
+    }
+
+    ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
+    return;
+  }
+
   if (!transfer->IsCompletedWithExpectedLength(transfer->GetLength())) {
     LOG(ERROR) << StringPrintf(
                       "Could not successfully send USB message (%d/%d).",
@@ -397,6 +422,17 @@ void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
   // Keep the bulk transfer valid until this method goes out of scope.
   scoped_ptr<UsbBulkTransfer> scoped_bulk_transfer = bulk_transfer_.Pass();
 
+  if (transfer->GetStatus() == kUsbTransferStatusStall) {
+    if (!ClearHalt(transfer->GetEndpointAddress())) {
+      Complete(false);
+      return;
+    }
+
+    ScheduleTask(
+        &UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint);
+    return;
+  }
+
   if (!transfer->IsCompletedWithExpectedLength(kExpectedResponseLength)) {
     LOG(ERROR) << StringPrintf(
                       "Could not successfully receive USB message (%d/%d).",
@@ -419,6 +455,12 @@ void UsbModemSwitchOperation::ScheduleNextMessageToMassStorageEndpoint() {
     ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
     return;
   }
+
+  // Be a bit cautious, clear any halt condition on the bulk endpoints, but
+  // ignore any error as the device may already disconnect from USB.
+  ClearHalt(out_endpoint_address_);
+  if (switch_context_->modem_info()->expect_response())
+    ClearHalt(in_endpoint_address_);
 
   // After sending the last message (and receiving its response, if expected),
   // wait for the device to reconnect.
