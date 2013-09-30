@@ -71,10 +71,13 @@ class OpenVPNDriverTest : public testing::Test,
             &control_, &dispatcher_, &metrics_, &manager_,
             kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         certificate_file_(new MockCertificateFile()),
+        extra_certificates_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
     driver_->management_server_.reset(management_server_);
     driver_->nss_ = &nss_;
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
+    driver_->extra_certificates_file_.reset(
+        extra_certificates_file_);  // Passes ownership.
     driver_->process_killer_ = &process_killer_;
     temporary_directory_.CreateUniqueTempDir();
     driver_->openvpn_config_directory_ =
@@ -214,6 +217,7 @@ class OpenVPNDriverTest : public testing::Test,
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVirtualDevice> device_;
   MockCertificateFile *certificate_file_;  // Owned by |driver_|.
+  MockCertificateFile *extra_certificates_file_;  // Owned by |driver_|.
   MockNSS nss_;
   MockProcessKiller process_killer_;
   base::ScopedTempDir temporary_directory_;
@@ -699,6 +703,44 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(OpenVPNDriverTest, InitCertificateVerifyOptions) {
+  {
+    Error error;
+    vector<vector<string>> options;
+    // No options supplied.
+    driver_->InitCertificateVerifyOptions(&options);
+    EXPECT_TRUE(options.empty());
+  }
+  const char kName[] = "x509-name";
+  {
+    Error error;
+    vector<vector<string>> options;
+    // With Name property alone, we should have the 1-parameter version of the
+    // "x509-verify-name" parameter provided.
+    SetArg(kOpenVPNVerifyX509NameProperty, kName);
+    driver_->InitCertificateVerifyOptions(&options);
+    ExpectInFlags(options, "verify-x509-name", kName);
+  }
+  const char kType[] = "x509-type";
+  {
+    Error error;
+    vector<vector<string>> options;
+    // With both Name property and Type property set, we should have the
+    // 2-parameter version of the "x509-verify-name" parameter provided.
+    SetArg(kOpenVPNVerifyX509TypeProperty, kType);
+    driver_->InitCertificateVerifyOptions(&options);
+    ExpectInFlags(options, vector<string> { "verify-x509-name", kName, kType });
+  }
+  {
+    Error error;
+    vector<vector<string>> options;
+    // We should ignore the Type parameter if no Name parameter is specified.
+    SetArg(kOpenVPNVerifyX509NameProperty, "");
+    driver_->InitCertificateVerifyOptions(&options);
+    EXPECT_TRUE(options.empty());
+  }
+}
+
 TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   static const char kTestValue[] = "foo";
   vector<vector<string>> options;
@@ -777,6 +819,49 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   ExpectInFlags(options, "auth-user-pass");
   ExpectNotInFlags(options, "key");
   ExpectNotInFlags(options, "cert");
+}
+
+TEST_F(OpenVPNDriverTest, InitExtraCertOptions) {
+  {
+    Error error;
+    vector<vector<string>> options;
+    // No ExtraCertOptions supplied.
+    EXPECT_TRUE(driver_->InitExtraCertOptions(&options, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(options.empty());
+  }
+  {
+    Error error;
+    vector<vector<string>> options;
+    SetArgArray(kOpenVPNExtraCertPemProperty, vector<string>());
+    // Empty ExtraCertOptions supplied.
+    EXPECT_TRUE(driver_->InitExtraCertOptions(&options, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(options.empty());
+  }
+  const vector<string> kExtraCerts{ "---PEM CONTENTS---" };
+  SetArgArray(kOpenVPNExtraCertPemProperty, kExtraCerts);
+  static const char kPEMCertfile[] = "/tmp/pem-cert";
+  FilePath pem_cert(kPEMCertfile);
+  EXPECT_CALL(*extra_certificates_file_, CreatePEMFromStrings(kExtraCerts))
+      .WillOnce(Return(FilePath()))
+      .WillOnce(Return(pem_cert));
+  // CreatePemFromStrings fails.
+  {
+    Error error;
+    vector<vector<string>> options;
+    EXPECT_FALSE(driver_->InitExtraCertOptions(&options, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_TRUE(options.empty());
+  }
+  // CreatePemFromStrings succeeds.
+  {
+    Error error;
+    vector<vector<string>> options;
+    EXPECT_TRUE(driver_->InitExtraCertOptions(&options, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    ExpectInFlags(options, "extra-certs", kPEMCertfile);
+  }
 }
 
 TEST_F(OpenVPNDriverTest, InitPKCS11Options) {

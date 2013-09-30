@@ -110,6 +110,9 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNPingRestartProperty, 0 },
   { kOpenVPNTLSAuthProperty, 0 },
   { kOpenVPNVerbProperty, 0 },
+  { kOpenVPNVerifyHashProperty, 0 },
+  { kOpenVPNVerifyX509NameProperty, 0 },
+  { kOpenVPNVerifyX509TypeProperty, 0 },
   { kVPNMTUProperty, 0 },
 };
 
@@ -140,6 +143,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       management_server_(new OpenVPNManagementServer(this, glib)),
       nss_(NSS::GetInstance()),
       certificate_file_(new CertificateFile()),
+      extra_certificates_file_(new CertificateFile()),
       process_killer_(ProcessKiller::GetInstance()),
       lsb_release_file_(kLSBReleaseFile),
       openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
@@ -637,6 +641,12 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
     return;
   }
 
+  // Additional remote certificate verification options.
+  InitCertificateVerifyOptions(options);
+  if (!InitExtraCertOptions(options, error)) {
+    return;
+  }
+
   // Client-side ping support.
   AppendValueOption(kOpenVPNPingProperty, "ping", options);
   AppendValueOption(kOpenVPNPingExitProperty, "ping-exit", options);
@@ -748,6 +758,47 @@ bool OpenVPNDriver::InitCAOptions(
   }
   DCHECK(!ca_cert.empty() && ca_cert_nss.empty() && ca_cert_pem.empty());
   AppendOption("ca", ca_cert, options);
+  return true;
+}
+
+void OpenVPNDriver::InitCertificateVerifyOptions(
+    std::vector<std::vector<std::string>> *options) {
+  AppendValueOption(kOpenVPNVerifyHashProperty, "verify-hash", options);
+  string x509_name = args()->LookupString(kOpenVPNVerifyX509NameProperty, "");
+  if (!x509_name.empty()) {
+    string x509_type = args()->LookupString(kOpenVPNVerifyX509TypeProperty, "");
+    if (x509_type.empty()) {
+      AppendOption("verify-x509-name", x509_name, options);
+    } else {
+      AppendOption("verify-x509-name", x509_name, x509_type, options);
+    }
+  }
+}
+
+bool OpenVPNDriver::InitExtraCertOptions(
+    vector<vector<string>> *options, Error *error) {
+  if (!args()->ContainsStrings(kOpenVPNExtraCertPemProperty)) {
+    // It's okay for this parameter to be unspecified.
+    return true;
+  }
+
+  vector<string> extra_certs = args()->GetStrings(kOpenVPNExtraCertPemProperty);
+  if (extra_certs.empty()) {
+    // It's okay for this parameter to be empty.
+    return true;
+  }
+
+  FilePath certfile =
+      extra_certificates_file_->CreatePEMFromStrings(extra_certs);
+  if (certfile.empty()) {
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidArguments,
+        "Unable to extract extra PEM CA certificates.");
+    return false;
+  }
+
+  AppendOption("extra-certs", certfile.value(), options);
   return true;
 }
 

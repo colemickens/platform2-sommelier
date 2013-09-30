@@ -120,8 +120,10 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitCAOptions);
+  FRIEND_TEST(OpenVPNDriverTest, InitCertificateVerifyOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitClientAuthOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
+  FRIEND_TEST(OpenVPNDriverTest, InitExtraCertOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithPort);
@@ -190,7 +192,11 @@ class OpenVPNDriver : public VPNDriver,
       std::vector<std::vector<std::string>> *options, Error *error);
   bool InitCAOptions(
       std::vector<std::vector<std::string>> *options, Error *error);
+  void InitCertificateVerifyOptions(
+      std::vector<std::vector<std::string>> *options);
   void InitClientAuthOptions(std::vector<std::vector<std::string>> *options);
+  bool InitExtraCertOptions(
+      std::vector<std::vector<std::string>> *options, Error *error);
   void InitPKCS11Options(std::vector<std::vector<std::string>> *options);
   bool InitManagementChannelOptions(
       std::vector<std::vector<std::string>> *options, Error *error);
@@ -248,6 +254,7 @@ class OpenVPNDriver : public VPNDriver,
   scoped_ptr<OpenVPNManagementServer> management_server_;
   NSS *nss_;
   scoped_ptr<CertificateFile> certificate_file_;
+  scoped_ptr<CertificateFile> extra_certificates_file_;
   ProcessKiller *process_killer_;
   base::FilePath lsb_release_file_;
 
