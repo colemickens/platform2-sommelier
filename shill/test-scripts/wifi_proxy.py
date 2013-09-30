@@ -4,12 +4,28 @@
 
 import dbus
 import logging
+import subprocess
 import time
 
 import shill_proxy
 
 class WifiProxy(shill_proxy.ShillProxy):
     """Wrapper around shill dbus interface used by wifi tests."""
+
+
+    @staticmethod
+    def clear_supplicant_blacklist():
+        """Clears wpa_supplicant's BSS blacklist.
+
+        @returns stdout and stderr output from wpa call.
+
+        """
+        stdoutdata,stderrdata = subprocess.Popen(
+                ['su wpa -s /bin/bash -c "wpa_cli blacklist clear"'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                shell=True).communicate()
+        return stdoutdata, stderrdata
+
 
     def set_logging_for_wifi_test(self):
         """Set the logging in shill for a test of wifi technology.
