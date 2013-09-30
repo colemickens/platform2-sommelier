@@ -288,7 +288,7 @@ if use_flag_is_set natural_scroll_default; then
 fi
 
 KEYBOARD_FLAGS=
-if use_flag_is_set chromeos_keyboard; then
+if ! use_flag_is_set legacy_keyboard; then
   KEYBOARD_FLAGS="--has-chromeos-keyboard"
 fi
 
@@ -297,7 +297,7 @@ if use_flag_is_set has_diamond_key; then
 fi
 
 ASH_FLAGS=
-if ! use_flag_is_set new_power_button; then
+if use_flag_is_set legacy_power_button; then
   ASH_FLAGS="$ASH_FLAGS --aura-legacy-power-button"
 fi
 if use_flag_is_set disable_login_animations; then
