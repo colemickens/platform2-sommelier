@@ -69,6 +69,7 @@ struct ConstBufferWithSize;
 class PerfReader {
  public:
   PerfReader() : sample_type_(0),
+                 read_format_(0),
                  is_cross_endian_(0) {}
   ~PerfReader();
 
@@ -257,6 +258,7 @@ class PerfReader {
   PerfCPUTopologyMetadata cpu_topology_;
   std::vector<PerfNodeTopologyMetadata> numa_topology_;
   uint64 sample_type_;
+  uint64 read_format_;
   uint64 metadata_mask_;
 
   // Indicates that the perf data being read is from machine with a different

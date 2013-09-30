@@ -264,12 +264,18 @@ struct perf_sample {
 	u64 stream_id;
 	u64 period;
 	u32 cpu;
+	struct {  // Copied from struct read_event.
+		u64 time_enabled;
+		u64 time_running;
+		u64 id;
+	} read;
 	u32 raw_size;
 	void *raw_data;
 	struct ip_callchain *callchain;
 	struct branch_stack *branch_stack;
 
-	perf_sample() : callchain(NULL),
+	perf_sample() : raw_data(NULL),
+			callchain(NULL),
 			branch_stack(NULL) {}
 	~perf_sample() {
 	  if (callchain) {
@@ -279,6 +285,10 @@ struct perf_sample {
 	  if (branch_stack) {
 	    delete [] branch_stack;
 	    branch_stack = NULL;
+	  }
+	  if (raw_data) {
+	    delete [] reinterpret_cast<char*>(raw_data);
+	    raw_data = NULL;
 	  }
 	}
 };

@@ -410,6 +410,10 @@ bool PerfSerializer::SerializeRecordSample(
     sample->set_cpu(sample_info.cpu);
   if (sample_type_ & PERF_SAMPLE_PERIOD)
     sample->set_period(sample_info.period);
+  // TODO(sque): We don't have a use case for the raw data so just store the
+  // size.  The data is assumed to be all zeroes.  So far it has been such.
+  if (sample_type_ & PERF_SAMPLE_RAW)
+    sample->set_raw_size(sample_info.raw_size);
   if (sample_type_ & PERF_SAMPLE_CALLCHAIN) {
     for (size_t i = 0; i < sample_info.callchain->nr; ++i)
       sample->add_callchain(sample_info.callchain->ips[i]);
@@ -459,6 +463,11 @@ bool PerfSerializer::DeserializeRecordSample(
     sample_info.callchain->nr = callchain_size;
     for (size_t i = 0; i < callchain_size; ++i)
       sample_info.callchain->ips[i] = sample.callchain(i);
+  }
+  if (sample.raw_size() > 0) {
+    sample_info.raw_size = sample.raw_size();
+    sample_info.raw_data = new uint8[sample.raw_size()];
+    memset(sample_info.raw_data, 0, sample.raw_size());
   }
   if (sample.branch_stack_size() > 0) {
     uint64 branch_stack_size = sample.branch_stack_size();

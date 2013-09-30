@@ -242,12 +242,118 @@ bool WriteStringToBuffer(const CStringWithLength& src,
   return true;
 }
 
-size_t ReadPerfSampleFromData(const uint64* array,
-                              const uint64 sample_fields,
+// Read read info from perf data.  Corresponds to sample format type
+// PERF_SAMPLE_READ.
+const uint64* ReadReadInfo(const uint64* array,
+                           bool swap_bytes,
+                           uint64 read_format,
+                           struct perf_sample* sample) {
+  if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
+    sample->read.time_enabled = *array++;
+  if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
+    sample->read.time_running = *array++;
+  if (read_format & PERF_FORMAT_ID)
+    sample->read.id = *array++;
+
+  if (swap_bytes) {
+    ByteSwap(&sample->read.time_enabled);
+    ByteSwap(&sample->read.time_running);
+    ByteSwap(&sample->read.id);
+  }
+
+  return array;
+}
+
+// Read call chain info from perf data.  Corresponds to sample format type
+// PERF_SAMPLE_CALLCHAIN.
+const uint64* ReadCallchain(const uint64* array,
+                            bool swap_bytes,
+                            struct perf_sample* sample) {
+  // Make sure there is no existing allocated memory in |sample->callchain|.
+  CHECK_EQ(static_cast<void*>(NULL), sample->callchain);
+
+  // The callgraph data consists of a uint64 value |nr| followed by |nr|
+  // addresses.
+  uint64 callchain_size = *array++;
+  if (swap_bytes)
+    ByteSwap(&callchain_size);
+  struct ip_callchain* callchain =
+      reinterpret_cast<struct ip_callchain*>(new uint64[callchain_size + 1]);
+  callchain->nr = callchain_size;
+  for (size_t i = 0; i < callchain_size; ++i) {
+    callchain->ips[i] = *array++;
+    if (swap_bytes)
+      ByteSwap(&callchain->ips[i]);
+  }
+  sample->callchain = callchain;
+
+  return array;
+}
+
+// Read raw info from perf data.  Corresponds to sample format type
+// PERF_SAMPLE_RAW.
+const uint64* ReadRawData(const uint64* array,
+                          bool swap_bytes,
+                          struct perf_sample* sample) {
+  // First read the size.
+  const uint32* ptr = reinterpret_cast<const uint32*>(array);
+  sample->raw_size = *ptr++;
+  if (swap_bytes)
+    ByteSwap(&sample->raw_size);
+
+  // Allocate space for and read the raw data bytes.
+  sample->raw_data = new uint8[sample->raw_size];
+  memcpy(sample->raw_data, ptr, sample->raw_size);
+
+  // Determine the bytes that were read, and align to the next 64 bits.
+  int bytes_read = AlignSize(sizeof(sample->raw_size) + sample->raw_size,
+                             sizeof(uint64));
+  array += bytes_read / sizeof(uint64);
+
+  return array;
+}
+
+// Read call chain info from perf data.  Corresponds to sample format type
+// PERF_SAMPLE_CALLCHAIN.
+const uint64* ReadBranchStack(const uint64* array,
                               bool swap_bytes,
                               struct perf_sample* sample) {
-  size_t num_values_read = 0;
+  // Make sure there is no existing allocated memory in
+  // |sample->branch_stack|.
+  CHECK_EQ(static_cast<void*>(NULL), sample->branch_stack);
+
+  // The branch stack data consists of a uint64 value |nr| followed by |nr|
+  // branch_entry structs.
+  uint64 branch_stack_size = *array++;
+  if (swap_bytes)
+    ByteSwap(&branch_stack_size);
+  struct branch_stack* branch_stack =
+      reinterpret_cast<struct branch_stack*>(
+          new uint8[sizeof(uint64) +
+                    branch_stack_size * sizeof(struct branch_entry)]);
+  branch_stack->nr = branch_stack_size;
+  for (size_t i = 0; i < branch_stack_size; ++i) {
+    memcpy(&branch_stack->entries[i], array, sizeof(struct branch_entry));
+    array += sizeof(struct branch_entry) / sizeof(*array);
+    if (swap_bytes) {
+      ByteSwap(&branch_stack->entries[i].from);
+      ByteSwap(&branch_stack->entries[i].to);
+    }
+  }
+  sample->branch_stack = branch_stack;
+
+  return array;
+}
+
+size_t ReadPerfSampleFromData(const uint64* array,
+                              const uint64 sample_fields,
+                              const uint64 read_format,
+                              bool swap_bytes,
+                              struct perf_sample* sample) {
+  const uint64* initial_array_ptr = array;
   const uint64 k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
+  bool read_read_info = false;
+  bool read_raw_data = false;
   bool read_callchain = false;
   bool read_branch_stack = false;
 
@@ -260,8 +366,7 @@ size_t ReadPerfSampleFromData(const uint64* array,
     if (!(sample_type & sample_fields))
       continue;
 
-    val64 = *array++;
-    ++num_values_read;
+    val64 = *array;
 
     if (swap_bytes) {
       if (k32BitFields & sample_type) {
@@ -298,81 +403,74 @@ size_t ReadPerfSampleFromData(const uint64* array,
     case PERF_SAMPLE_PERIOD:
       sample->period = val64;
       break;
+    case PERF_SAMPLE_READ:
+      read_read_info = true;
+      break;
+    case PERF_SAMPLE_RAW:
+      read_raw_data = true;
+      break;
     case PERF_SAMPLE_CALLCHAIN:
-      // Call chain is a special case.  It comes after the other fields in the
-      // sample info data, regardless of the order of |sample_type| bits.
       read_callchain = true;
-      --num_values_read;
-      --array;
       break;
     case PERF_SAMPLE_BRANCH_STACK:
-      // Branch infois a special case just like call chain, and comes after the
-      // other sample info data and call chain data.
       read_branch_stack = true;
-      --num_values_read;
-      --array;
       break;
     default:
-      LOG(FATAL) << "Invalid sample type " << std::hex << sample_type;
+      LOG(FATAL) << "Invalid sample type 0x" << std::hex << sample_type;
+      break;
+    }
+
+    switch (sample_type) {
+    case PERF_SAMPLE_IP:
+    case PERF_SAMPLE_TID:
+    case PERF_SAMPLE_TIME:
+    case PERF_SAMPLE_ADDR:
+    case PERF_SAMPLE_ID:
+    case PERF_SAMPLE_STREAM_ID:
+    case PERF_SAMPLE_CPU:
+    case PERF_SAMPLE_PERIOD:
+      ++array;
+      break;
+    case PERF_SAMPLE_READ:
+    case PERF_SAMPLE_RAW:
+    case PERF_SAMPLE_CALLCHAIN:
+    case PERF_SAMPLE_BRANCH_STACK:
+      // Read info, raw info, call chain, and branch stack are special cases.
+      // They come after the other fields in the sample info data, regardless of
+      // the order of |sample_type| bits.  So do not increment the data pointer.
+      break;
+    default:
+      LOG(FATAL) << "Invalid sample type 0x" << std::hex << sample_type;
     }
   }
 
+  // Read each of the complex sample info fields.
+  if (read_read_info) {
+    // TODO(cwp-team): support grouped read info.
+    if (read_format & PERF_FORMAT_GROUP)
+      return 0;
+    array = ReadReadInfo(array, swap_bytes, read_format, sample);
+  }
   if (read_callchain) {
-    // Make sure there is no existing allocated memory in |sample->callchain|.
-    CHECK_EQ(static_cast<void*>(NULL), sample->callchain);
-
-    // The callgraph data consists of a uint64 value |nr| followed by |nr|
-    // addresses.
-    uint64 callchain_size = *array++;
-    if (swap_bytes)
-      ByteSwap(&callchain_size);
-    struct ip_callchain* callchain =
-        reinterpret_cast<struct ip_callchain*>(new uint64[callchain_size + 1]);
-    callchain->nr = callchain_size;
-    for (size_t i = 0; i < callchain_size; ++i) {
-      callchain->ips[i] = *array++;
-      if (swap_bytes)
-        ByteSwap(&callchain->ips[i]);
-    }
-    num_values_read += callchain_size + 1;
-    sample->callchain = callchain;
+    array = ReadCallchain(array, swap_bytes, sample);
   }
-
+  if (read_raw_data) {
+    array = ReadRawData(array, swap_bytes, sample);
+  }
   if (read_branch_stack) {
-    // Make sure there is no existing allocated memory in
-    // |sample->branch_stack|.
-    CHECK_EQ(static_cast<void*>(NULL), sample->branch_stack);
-
-    // The branch stack data consists of a uint64 value |nr| followed by |nr|
-    // branch_entry structs.
-    uint64 branch_stack_size = *array++;
-    if (swap_bytes)
-      ByteSwap(&branch_stack_size);
-    struct branch_stack* branch_stack =
-        reinterpret_cast<struct branch_stack*>(
-            new uint8[sizeof(uint64) +
-                      branch_stack_size * sizeof(struct branch_entry)]);
-    branch_stack->nr = branch_stack_size;
-    for (size_t i = 0; i < branch_stack_size; ++i) {
-      memcpy(&branch_stack->entries[i], array, sizeof(struct branch_entry));
-      array += sizeof(struct branch_entry) / sizeof(*array);
-      if (swap_bytes) {
-        ByteSwap(&branch_stack->entries[i].from);
-        ByteSwap(&branch_stack->entries[i].to);
-      }
-    }
-    num_values_read +=
-        branch_stack_size * sizeof(struct branch_entry) / sizeof(uint64) + 1;
-    sample->branch_stack = branch_stack;
+    array = ReadBranchStack(array, swap_bytes, sample);
   }
 
-  return num_values_read * sizeof(uint64);
+  return (array - initial_array_ptr) * sizeof(uint64);
 }
 
 size_t WritePerfSampleToData(const struct perf_sample& sample,
                              const uint64 sample_fields,
+                             const uint64 read_format,
                              uint64* array) {
-  size_t num_values_written = 0;
+  uint64* initial_array_ptr = array;
+  bool write_read_info = false;
+  bool write_raw_data = false;
   bool write_callchain = false;
   bool write_branch_stack = false;
 
@@ -411,6 +509,12 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     case PERF_SAMPLE_PERIOD:
       val64 = sample.period;
       break;
+    case PERF_SAMPLE_READ:
+      write_read_info = true;
+      continue;
+    case PERF_SAMPLE_RAW:
+      write_raw_data = true;
+      continue;
     case PERF_SAMPLE_CALLCHAIN:
       write_callchain = true;
       continue;
@@ -421,29 +525,47 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       LOG(FATAL) << "Invalid sample type " << std::hex << sample_type;
     }
     *array++ = val64;
-    ++num_values_written;
+  }
+
+  if (write_read_info) {
+    // TODO(cwp-team): support grouped read info.
+    if (read_format & PERF_FORMAT_GROUP)
+      return 0;
+    if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
+      *array++ = sample.read.time_enabled;
+    if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
+      *array++ = sample.read.time_running;
+    if (read_format & PERF_FORMAT_ID)
+      *array++ = sample.read.id;
   }
 
   if (write_callchain) {
     *array++ = sample.callchain->nr;
     for (size_t i = 0; i < sample.callchain->nr; ++i)
       *array++ = sample.callchain->ips[i];
-    num_values_written += sample.callchain->nr + 1;
+  }
+
+  if (write_raw_data) {
+    uint32* ptr = reinterpret_cast<uint32*>(array);
+    *ptr++ = sample.raw_size;
+    memcpy(ptr, sample.raw_data, sample.raw_size);
+
+    // Update the data read pointer after aligning to the next 64 bytes.
+    int num_bytes = AlignSize(sizeof(sample.raw_size) + sample.raw_size,
+                              sizeof(uint64));
+    array += num_bytes / sizeof(uint64);
   }
 
   if (write_branch_stack) {
     *array++ = sample.branch_stack->nr;
-    ++num_values_written;
     for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
       *array++ = sample.branch_stack->entries[i].from;
       *array++ = sample.branch_stack->entries[i].to;
       *array++ =
           *reinterpret_cast<uint64*>(&sample.branch_stack->entries[i].flags);
-      num_values_written += 3;
     }
   }
-
-  return num_values_written * sizeof(uint64);
+  return (array - initial_array_ptr) * sizeof(uint64);
 }
 
 }  // namespace
@@ -775,6 +897,7 @@ bool PerfReader::ReadPerfSampleInfo(const event_t& event,
   size_t size_read = ReadPerfSampleFromData(
       reinterpret_cast<const uint64*>(&event) + offset / sizeof(uint64),
       sample_format,
+      read_format_,
       is_cross_endian_,
       sample);
 
@@ -814,6 +937,7 @@ bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
   size_t size_written = WritePerfSampleToData(
       sample,
       sample_format,
+      read_format_,
       reinterpret_cast<uint64*>(event) + offset / sizeof(uint64));
   if (size_written != expected_size) {
     LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
@@ -910,12 +1034,21 @@ bool PerfReader::ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
 
   // Assign sample type if it hasn't been assigned, otherwise make sure all
   // subsequent attributes have the same sample type bits set.
-  if (sample_type_ == 0)
+  if (sample_type_ == 0) {
     sample_type_ = attr->sample_type;
-  else
+  } else {
     CHECK_EQ(sample_type_, attr->sample_type)
-        << "Event type sample format does not match format of "
-        << "other event type samples.";
+        << "Event type sample format does not match sample format of other "
+        << "event type.";
+  }
+
+  if (read_format_ == 0) {
+    read_format_ = attr->read_format;
+  } else {
+    CHECK_EQ(read_format_, attr->read_format)
+        << "Event type read format does not match read format of other event "
+        << "types.";
+  }
 
   return true;
 }

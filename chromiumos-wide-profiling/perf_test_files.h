@@ -36,9 +36,18 @@ const char* kPerfDataFiles[] = {
   // While in the background, this loop is running:
   //   while true; do restart powerd; sleep .2; done
   "perf.data.forkexit",
+
+  // Obtained with "perf record -a -g -- sleep 2"
   "perf.data.callgraph",
+  // Obtained with "perf record -a -b -- sleep 2"
   "perf.data.branch",
+  // Obtained with "perf record -a -g -b -- sleep 2"
   "perf.data.callgraph_and_branch",
+
+  // Obtained with "perf record -a -R -- sleep 2"
+  "perf.data.raw",
+  // Obtained with "perf record -a -R -g -b -- sleep 2"
+  "perf.data.raw_callgraph_branch",
 
   // Data from other architectures.
   "perf.data.i686",     // 32-bit x86
