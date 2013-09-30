@@ -54,10 +54,6 @@ add_ash_wallpaper_flag() {
   local FILE="/usr/share/chromeos-assets/wallpaper/${NAME}_${SIZE}.jpg"
   if [ -e "$FILE" ]; then
     ASH_FLAGS="${ASH_FLAGS} --ash-${NAME}-wallpaper-${SIZE}=${FILE}"
-    # TODO(derat): Remove this after updating Chrome to not use this flag.
-    if [ "$NAME" = "guest" ]; then
-      ASH_FLAGS="${ASH_FLAGS} --ash-default-guest-wallpaper-${SIZE}=${FILE}"
-    fi
   fi
 }
 
