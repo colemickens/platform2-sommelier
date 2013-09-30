@@ -43,6 +43,19 @@ const char kBluetoothMatchString[] = "bluetooth";
 
 const char kConsolePath[] = "/dev/tty0";
 
+// Physical location (as returned by EVIOCGPHYS()) of power button devices that
+// should be skipped.
+#ifdef LEGACY_POWER_BUTTON
+// Skip input events that are on the built-in keyboard. Many of these devices
+// advertise a power button but do not physically have one. Skipping will reduce
+// the wasteful waking of powerd due to keyboard events.
+const char kPowerButtonToSkip[] = "isa";
+#else
+// Skip input events from the ACPI power button (identified as LNXPWRBN) if a
+// new power button is present on the keyboard.
+const char kPowerButtonToSkip[] = "LNXPWRBN";
+#endif
+
 // Sources of input events.
 enum InputType {
   INPUT_LID,
@@ -452,24 +465,10 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     VLOG(1) << "Device topo phys: " << phys;
   }
 
-#ifdef NEW_POWER_BUTTON
-  // Skip input events from the ACPI power button (identified as LNXPWRBN) if
-  // a new power button is present. In that case, don't skip the built in
-  // keyboard, which starts with isa in its topo phys path.
-  if (strncmp("LNXPWRBN", phys, 8) == 0) {
+  if (strncmp(kPowerButtonToSkip, phys, strlen(kPowerButtonToSkip)) == 0) {
     VLOG(1) << "Skipping interface: " << phys;
     return false;
   }
-#else
-  // Skip input events that are on the built in keyboard. Many of these
-  // devices advertise a power button but do not physically have one.
-  // Skipping will reduce the wasteful waking of powerd due to keyboard
-  // events.
-  if (strncmp("isa", phys, 3) == 0) {
-    VLOG(1) << "Skipping interface: " << phys;
-    return false;
-  }
-#endif
 
   unsigned long events[NUM_BITS(EV_MAX)];
   memset(events, 0, sizeof(events));
