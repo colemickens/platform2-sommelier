@@ -35,21 +35,21 @@ bool OOBECompleted() {
   return access("/home/chronos/.oobe_completed", F_OK) == 0;
 }
 
-void Launch(const char* command) {
+void Launch(const std::string& command) {
   LOG(INFO) << "Launching \"" << command << "\"";
   pid_t pid = fork();
   if (pid == 0) {
     // Detach from parent so that powerd doesn't need to wait around for us
     setsid();
-    exit(fork() == 0 ? system(command) : 0);
+    exit(fork() == 0 ? system(command.c_str()) : 0);
   } else if (pid > 0) {
     waitpid(pid, NULL, 0);
   }
 }
 
-int Run(const char* command) {
+int Run(const std::string& command) {
   LOG(INFO) << "Running \"" << command << "\"";
-  int return_value = system(command);
+  int return_value = system(command.c_str());
   if (return_value == -1) {
     LOG(ERROR) << "fork() failed";
   } else if (return_value) {

@@ -19,10 +19,10 @@ namespace util {
 bool OOBECompleted();
 
 // Runs |command| asynchronously.
-void Launch(const char* command);
+void Launch(const std::string& command);
 
 // Runs |command| synchronously.  The process's exit code is returned.
-int Run(const char* command);
+int Run(const std::string& command);
 
 // Runs powerd_setuid_helper.  |action| is passed via --action.  If
 // |additional_args| is non-empty, it will be appended to the command.

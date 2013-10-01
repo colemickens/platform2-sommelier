@@ -10,12 +10,14 @@
 #include <linux/input.h>
 #include <linux/vt.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "base/stringprintf.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/input_observer.h"
 
@@ -42,6 +44,10 @@ const char kUsbMatchString[] = "usb";
 const char kBluetoothMatchString[] = "bluetooth";
 
 const char kConsolePath[] = "/dev/tty0";
+
+// Path to an optional script used to disable touch devices when the lid is
+// closed.
+const char kTouchControlPath[] = "/opt/google/touch/touch-control.sh";
 
 // Physical location (as returned by EVIOCGPHYS()) of power button devices that
 // should be skipped.
@@ -219,13 +225,13 @@ bool Input::SetWakeInputsState(bool enable) {
 }
 
 void Input::SetTouchDevicesState(bool enable) {
-#ifdef TOUCH_DEVICE
-  if (enable) {
-    util::Launch("/opt/google/touch/touch-control.sh --enable");
-  } else {
-    util::Run("/opt/google/touch/touch-control.sh --disable");
-  }
-#endif // TOUCH_DEVICE
+  if (access(kTouchControlPath, R_OK | X_OK) != 0)
+    return;
+
+  if (enable)
+    util::Launch(StringPrintf("%s --enable", kTouchControlPath));
+  else
+    util::Run(StringPrintf("%s --disable", kTouchControlPath));
 }
 
 bool Input::RegisterInputDevices() {
