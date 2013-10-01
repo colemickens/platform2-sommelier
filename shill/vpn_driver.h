@@ -48,6 +48,7 @@ class VPNDriver {
   std::string GetHost() const;
 
   KeyValueStore *args() { return &args_; }
+  const KeyValueStore *const_args() const { return &args_; }
 
  protected:
   struct Property {

@@ -115,6 +115,10 @@ class L2TPIPSecDriver : public VPNDriver,
 
   static Service::ConnectFailure TranslateExitStatusToFailure(int status);
 
+  // Returns true if neither a PSK nor a client certificate has been provided
+  // for the IPSec phase of the authentication process.
+  bool IsPskRequired() const;
+
   // Inherit from VPNDriver to add custom properties.
   virtual KeyValueStore GetProvider(Error *error);
 

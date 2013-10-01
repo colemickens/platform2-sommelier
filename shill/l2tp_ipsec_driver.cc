@@ -429,13 +429,18 @@ void L2TPIPSecDriver::Notify(
   StopConnectTimeout();
 }
 
+bool L2TPIPSecDriver::IsPskRequired() const {
+  return
+    const_args()->LookupString(kL2tpIpsecPskProperty, "").empty() &&
+    const_args()->LookupString(kL2tpIpsecClientCertIdProperty, "").empty();
+}
+
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {
   SLOG(VPN, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.SetBool(kPassphraseRequiredProperty,
                 args()->LookupString(kL2tpIpsecPasswordProperty, "").empty());
-  props.SetBool(kL2tpIpsecPskRequiredProperty,
-                args()->LookupString(kL2tpIpsecPskProperty, "").empty());
+  props.SetBool(kL2tpIpsecPskRequiredProperty, IsPskRequired());
   return props;
 }
 

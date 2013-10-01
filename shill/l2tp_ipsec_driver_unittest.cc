@@ -527,10 +527,21 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
   {
     KeyValueStore props;
     Error error;
+    SetArg(kL2tpIpsecClientCertIdProperty, "");
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
     EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
     EXPECT_TRUE(props.LookupBool(kL2tpIpsecPskRequiredProperty, false));
+  }
+  {
+    KeyValueStore props;
+    Error error;
+    SetArg(kL2tpIpsecClientCertIdProperty, "some-cert-id");
+    EXPECT_TRUE(
+        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
+    EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
+    EXPECT_FALSE(props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
+    SetArg(kL2tpIpsecClientCertIdProperty, "");
   }
   {
     KeyValueStore props;
