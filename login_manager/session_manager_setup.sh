@@ -340,7 +340,7 @@ if use_flag_is_set highdpi; then
 fi
 
 TOUCHUI_FLAGS=
-if use_flag_is_set touchui && is_board link; then
+if is_board link; then
   TOUCHUI_FLAGS="--touch-calibration=45,45,0,50"
 fi
 
