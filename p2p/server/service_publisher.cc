@@ -68,9 +68,9 @@ class ServicePublisherAvahi : public ServicePublisher {
   // The TCP port of the HTTP server.
   uint16_t http_port_;
 
-  // The D-Bus/systemd machine-id. This is used as the identifier
-  // of the DNS-SD service being exported via mDNS.
-  string machine_id_;
+  // The LAN name currently used by Avahi. This is used as the
+  // identifier of the DNS-SD service being exported via mDNS.
+  string lan_name_;
 
   // Object used for integrating Avahi with the GLib mainloop.
   AvahiGLibPoll* poll_;
@@ -179,7 +179,7 @@ void ServicePublisherAvahi::Publish(bool may_delay) {
                                               AVAHI_IF_UNSPEC,
                                               AVAHI_PROTO_UNSPEC,
                                               (AvahiPublishFlags) 0,
-                                              machine_id_.c_str(),
+                                              lan_name_.c_str(),
                                               "_cros_p2p._tcp",
                                               /* service type */
                                               NULL,       /* domain */
@@ -203,7 +203,7 @@ void ServicePublisherAvahi::Publish(bool may_delay) {
                                                 AVAHI_IF_UNSPEC,
                                                 AVAHI_PROTO_UNSPEC,
                                                 (AvahiPublishFlags) 0,
-                                                machine_id_.c_str(),
+                                                lan_name_.c_str(),
                                                 "_cros_p2p._tcp",
                                                 /* service type */
                                                 NULL, /* domain */
@@ -226,15 +226,21 @@ void ServicePublisherAvahi::OnAvahiChanged(AvahiClient* client,
 
   VLOG(1) << "OnAvahiChanged, state=" << state;
   if (state == AVAHI_CLIENT_S_RUNNING) {
-    VLOG(1) << "Server running, publishing services";
+    // Free the existing group, if there is one. This can happen if
+    // e.g. the LAN name used by Avahi changes.
+    if (publisher->group_ != NULL) {
+      avahi_entry_group_free(publisher->group_);
+      publisher->group_ = NULL;
+    }
+    publisher->lan_name_ = string(avahi_client_get_host_name(client));
+    VLOG(1) << "Server running, publishing services using LAN name '"
+            << publisher->lan_name_ << "'";
     publisher->Publish(false);
   }
 }
 
 bool ServicePublisherAvahi::Init() {
   int error;
-
-  machine_id_ = p2p::util::GetDBusMachineId();
 
   poll_ = avahi_glib_poll_new(NULL, G_PRIORITY_DEFAULT);
   client_ = avahi_client_new(avahi_glib_poll_get(poll_),

@@ -17,12 +17,6 @@ namespace util {
 // |program_name| and, if |include_pid| is true, the process id.
 void SetupSyslog(const char* program_name, bool include_pid);
 
-// Gets the D-Bus machine id.
-//
-// This is not thread safe and blocks the calling thread the first
-// time it is called.
-const char* GetDBusMachineId();
-
 // Checks if xattr is supported in the directory specified by
 // |dir_path| which must be writable. Returns true if the feature is
 // supported, false if not or if an error occured.

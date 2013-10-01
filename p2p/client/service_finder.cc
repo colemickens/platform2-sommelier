@@ -287,9 +287,7 @@ void ServiceFinderAvahi::service_resolve_cb(AvahiServiceResolver* r,
 }
 
 bool ServiceFinderAvahi::IsOwnService(const char *name) {
-  // Here we rely on the implementation detail that the DNS-SD name
-  // used is the D-Bus machine-id.
-  return g_strcmp0(name, p2p::util::GetDBusMachineId()) == 0;
+  return g_strcmp0(name, avahi_client_get_host_name(client_)) == 0;
 }
 
 static string ToString(AvahiBrowserEvent event) {
