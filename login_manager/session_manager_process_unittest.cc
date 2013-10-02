@@ -31,12 +31,15 @@
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::AtMost;
-using ::testing::ContainerEq;
+using ::testing::Contains;
 using ::testing::DoAll;
+using ::testing::HasSubstr;
 using ::testing::Invoke;
+using ::testing::Not;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::Sequence;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::WithArgs;
 using ::testing::_;
@@ -125,6 +128,12 @@ class SessionManagerProcessTest : public ::testing::Test {
     EXPECT_CALL(*job, ClearOneTimeArguments()).Times(AtLeast(1));
     EXPECT_CALL(*metrics_, HasRecordedChromeExec())
         .WillRepeatedly(Return(true));
+    base::FilePath term_message_file = utils_.GetUniqueFilename();
+    EXPECT_CALL(*job,
+                SetOneTimeArguments(
+                    Contains(HasSubstr(term_message_file.value()))))
+        .Times(AtLeast(1));
+
     EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
         .Times(AnyNumber());
   }
@@ -287,6 +296,32 @@ TEST_F(SessionManagerProcessTest, SlowKillCleanupChildren) {
   manager_->test_api().CleanupChildren(3);
 }
 
+TEST_F(SessionManagerProcessTest, RunBrowserTermMessage) {
+  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+
+  // Expect the job to be run.
+  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  ExpectOneTimeArgsBoilerplate(job);
+  EXPECT_CALL(*job, RecordTime()).Times(1);
+  EXPECT_CALL(*liveness_checker_, Start()).Times(1);
+
+  MockUtils();
+
+  std::string term_message("killdya");
+  manager_->RunBrowser();
+
+  // Expect the job to be killed.
+  EXPECT_CALL(utils_, kill(-kDummyPid, _, SIGABRT)).WillOnce(Return(0));
+  manager_->AbortBrowser(SIGABRT, term_message);
+
+  // Check for termination message.
+  std::string sent_message;
+  base::FilePath term_file(utils_.GetUniqueFilename());
+  ASSERT_FALSE(term_file.empty());
+  ASSERT_TRUE(utils_.ReadFileToString(term_file, &sent_message));
+  EXPECT_EQ(term_message, sent_message);
+}
+
 TEST_F(SessionManagerProcessTest, SessionStartedCleanup) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
 
@@ -442,9 +477,12 @@ TEST_F(SessionManagerProcessTest, FirstExecAfterBootFlagUsedOnce) {
       .WillOnce(Return(true));
   EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
       .Times(2);
-  std::vector<std::string> one_time_args;
-  one_time_args.push_back(SessionManagerService::kFirstExecAfterBootFlag);
-  EXPECT_CALL(*job, SetOneTimeArguments(ContainerEq(one_time_args))).Times(1);
+  EXPECT_CALL(*job, SetOneTimeArguments(
+      Contains(SessionManagerService::kFirstExecAfterBootFlag)))
+      .Times(1);
+  EXPECT_CALL(*job, SetOneTimeArguments(
+      Not(Contains(SessionManagerService::kFirstExecAfterBootFlag))))
+      .Times(1);
   EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
 
   ExpectLivenessChecking();
@@ -546,13 +584,14 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
 
 TEST_F(SessionManagerProcessTest, InSessionFlagsSpecified) {
   // job should run, die, and get run again.  On its first run, it should
-  // be fun with no flags and the second time with one extra flag.
+  // be run with no flags and the second time with one extra flag.
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
 
   EXPECT_CALL(*metrics_, HasRecordedChromeExec())
       .Times(2).WillRepeatedly(Return(true));
   EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
       .Times(2);
+  EXPECT_CALL(*job, SetOneTimeArguments(_)).Times(2);
   EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
   EXPECT_CALL(*job, SetExtraArguments(_)).Times(1);
 

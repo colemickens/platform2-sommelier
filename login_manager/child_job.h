@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 
 namespace login_manager {
@@ -93,6 +94,7 @@ class ChildJob : public ChildJobInterface {
     scoped_ptr<ChildJobInterface> job;
     pid_t pid;
     guint watcher;
+    base::FilePath term_file;
   };
 
   ChildJob(const std::vector<std::string>& arguments,

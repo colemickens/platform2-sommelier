@@ -14,7 +14,8 @@ PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 nss \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CPPFLAGS += -I$(SRC)/.. -I$(OUT) -DOS_CHROMEOS -DUSE_NSS $(PC_CFLAGS)
+CPPFLAGS += -I$(SRC)/.. -I$(OUT) -DOS_CHROMEOS -DUSE_NSS -D__STDC_FORMAT_MACROS
+CPPFLAGS += $(PC_CFLAGS)
 LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite -lmetrics
 
 # Special logic for generating dbus service bindings.
