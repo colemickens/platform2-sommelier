@@ -77,18 +77,20 @@ pid_t SystemUtils::fork() {
   return ::fork();
 }
 
-bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {
+bool SystemUtils::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
   base::TimeTicks start = base::TimeTicks::Now();
-  base::TimeDelta max_elapsed = base::TimeDelta::FromSeconds(timeout);
   base::TimeDelta elapsed;
   int ret;
 
-  alarm(timeout);
+  DCHECK(timeout.InSeconds() >= 0);
+  DCHECK(timeout.InSeconds() <=
+         static_cast<int64>(std::numeric_limits<int>::max()));
+  alarm(static_cast<int32>(timeout.InSeconds()));
   do {
     errno = 0;
     ret = ::waitpid(child_spec, NULL, 0);
     elapsed = base::TimeTicks::Now() - start;
-  } while (ret > 0 || (errno == EINTR && elapsed < max_elapsed));
+  } while (ret > 0 || (errno == EINTR && elapsed < timeout));
 
   // Once we exit the loop, we know there was an error.
   alarm(0);

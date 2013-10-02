@@ -112,8 +112,9 @@ class SessionManagerService
     }
 
     // Executes the CleanupChildren() method on the manager.
-    void CleanupChildren(int timeout) {
-      session_manager_service_->CleanupChildren(timeout);
+    void CleanupChildren(int timeout_sec) {
+      session_manager_service_->CleanupChildren(
+          base::TimeDelta::FromSeconds(timeout_sec));
     }
 
     // Cause handling of faked-out exit of a child process.
@@ -262,15 +263,11 @@ class SessionManagerService
   // Set all changed signal handlers back to the default behavior.
   void RevertHandlers();
 
-  // Try to terminate the job represented by |spec|, but also remember it for
-  // later.
-  void KillAndRemember(const ChildJob::Spec& spec, PidUidPairList* to_remember);
-
   // Returns appropriate child-killing timeout, depending on flag file state.
-  int GetKillTimeout();
+  base::TimeDelta GetKillTimeout();
 
   // Terminate all children, with increasing prejudice.
-  void CleanupChildren(int timeout);
+  void CleanupChildren(base::TimeDelta timeout);
 
   // De-register all child-exit handlers.
   void DeregisterChildWatchers();
@@ -287,13 +284,17 @@ class SessionManagerService
   // Kill one of the children using provided signal.
   void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
 
+  // Waits |timeout| for job defined by |spec| to go away, then
+  // aborts it if it's not gone.
+  void WaitAndAbortChild(const ChildJob::Spec& spec, base::TimeDelta timeout);
+
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
 
   ChildJob::Spec browser_;
   ChildJob::Spec generator_;
   bool exit_on_child_done_;
-  int kill_timeout_;
+  const base::TimeDelta kill_timeout_;
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;

@@ -16,6 +16,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
+#include <base/time.h>
 #include <dbus/dbus.h>
 #include <gmock/gmock.h>
 
@@ -33,7 +34,7 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD0(IsDevMode, int(void));
   MOCK_METHOD1(Exists, bool(const FilePath&));
   MOCK_METHOD3(AtomicFileWrite, bool(const FilePath&, const char*, int));
-  MOCK_METHOD2(ChildIsGone, bool(pid_t child_spec, int timeout));
+  MOCK_METHOD2(ChildIsGone, bool(pid_t child_spec, base::TimeDelta timeout));
   MOCK_METHOD2(EnsureAndReturnSafeFileSize,
                bool(const FilePath& file, int32* file_size_32));
   MOCK_METHOD2(EnsureAndReturnSafeSize,

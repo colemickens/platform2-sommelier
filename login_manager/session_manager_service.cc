@@ -155,7 +155,7 @@ SessionManagerService::SessionManagerService(
     SystemUtils* utils)
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
-      kill_timeout_(kill_timeout),
+      kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       session_manager_(NULL),
       main_loop_(NULL),
       dont_use_directly_(NULL),
@@ -342,9 +342,9 @@ bool SessionManagerService::Reset() {
   return true;
 }
 
-int SessionManagerService::GetKillTimeout() {
+base::TimeDelta SessionManagerService::GetKillTimeout() {
   if (file_util::PathExists(FilePath(kCollectChromeFile)))
-    return kKillTimeoutCollectChrome;
+    return base::TimeDelta::FromSeconds(kKillTimeoutCollectChrome);
   else
     return kill_timeout_;
 }
@@ -683,35 +683,27 @@ void SessionManagerService::RevertHandlers() {
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
-void SessionManagerService::KillAndRemember(const ChildJob::Spec& spec,
-                                            PidUidPairList* to_remember) {
-  const pid_t pid = spec.pid;
-  if (pid < 0)
-    return;
-
-  const uid_t uid = (spec.job->IsDesiredUidSet() ?
-                     spec.job->GetDesiredUid() : getuid());
-  system_->kill(pid, uid, SIGTERM);
-  to_remember->push_back(std::make_pair(pid, uid));
+void SessionManagerService::WaitAndAbortChild(const ChildJob::Spec& spec,
+                                              base::TimeDelta timeout) {
+  if (!system_->ChildIsGone(spec.pid, timeout)) {
+    LOG(WARNING) << "Aborting child process " << spec.pid << " "
+                 << timeout.InSeconds() << " seconds after sending TERM signal";
+    KillChild(spec.job.get(), spec.pid, SIGABRT);
+  } else {
+    DLOG(INFO) << "Cleaned up child " << spec.pid;
+  }
 }
 
-void SessionManagerService::CleanupChildren(int timeout) {
-  PidUidPairList pids_to_abort;
-  KillAndRemember(browser_, &pids_to_abort);
-  KillAndRemember(generator_, &pids_to_abort);
+void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
+  if (browser_.pid > 0)
+    KillChild(browser_.job.get(), browser_.pid, SIGTERM);
+  if (generator_.pid > 0)
+    KillChild(generator_.job.get(), generator_.pid, SIGTERM);
 
-  for (PidUidPairList::const_iterator it = pids_to_abort.begin();
-       it != pids_to_abort.end(); ++it) {
-    const pid_t pid = it->first;
-    const uid_t uid = it->second;
-    if (!system_->ChildIsGone(pid, timeout)) {
-      LOG(WARNING) << "Killing child process " << pid << " " << timeout
-                   << " seconds after sending TERM signal";
-      system_->kill(pid, uid, SIGABRT);
-    } else {
-      DLOG(INFO) << "Cleaned up child " << pid;
-    }
-  }
+  if (browser_.pid > 0)
+    WaitAndAbortChild(browser_, timeout);
+  if (generator_.pid > 0)
+    WaitAndAbortChild(generator_, timeout);
 }
 
 void SessionManagerService::DeregisterChildWatchers() {

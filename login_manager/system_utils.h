@@ -14,6 +14,7 @@
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
+#include <base/time.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus-glib.h>
@@ -50,7 +51,7 @@ class SystemUtils {
 
   // Returns: true if child specified by |child_spec| exited,
   //          false if we time out.
-  virtual bool ChildIsGone(pid_t child_spec, int timeout);
+  virtual bool ChildIsGone(pid_t child_spec, base::TimeDelta timeout);
 
   virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                            int32* file_size_32);

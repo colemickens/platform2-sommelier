@@ -136,7 +136,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void ExpectPidKill(pid_t pid, bool success) {
-    EXPECT_CALL(utils_, kill(pid, getuid(), SIGTERM)).WillOnce(Return(0));
+    EXPECT_CALL(utils_, kill(-pid, getuid(), SIGTERM)).WillOnce(Return(0));
     EXPECT_CALL(utils_, ChildIsGone(pid, _)).WillOnce(Return(success));
   }
 
@@ -281,7 +281,7 @@ TEST_F(SessionManagerProcessTest, SlowKillCleanupChildren) {
   manager_->test_api().set_browser_pid(kDummyPid);
 
   ExpectFailedPidKill(kDummyPid);
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT)).WillOnce(Return(0));
+  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGABRT)).WillOnce(Return(0));
   MockUtils();
 
   manager_->test_api().CleanupChildren(3);
@@ -298,8 +298,8 @@ TEST_F(SessionManagerProcessTest, SessionStartedCleanup) {
   ExpectShutdown();
 
   // Expect the job to be killed, and die promptly.
-  int timeout = 3;
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
+  base::TimeDelta timeout = base::TimeDelta::FromSeconds(3);
+  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
@@ -323,12 +323,12 @@ TEST_F(SessionManagerProcessTest, SessionStartedSlowKillCleanup) {
   ExpectSuccessfulInitialization();
   ExpectShutdown();
 
-  int timeout = 3;
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
+  base::TimeDelta timeout = base::TimeDelta::FromSeconds(3);
+  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT))
+  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
 
   MockUtils();
