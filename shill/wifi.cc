@@ -838,7 +838,7 @@ void WiFi::HandleDisconnect() {
   metrics()->NotifySignalAtDisconnect(*affected_service,
                                       affected_service->SignalLevel());
   affected_service->NotifyCurrentEndpoint(NULL);
-  metrics()->NotifyServiceDisconnect(affected_service);
+  metrics()->NotifyServiceDisconnect(*affected_service);
 
   if (affected_service == pending_service_.get()) {
     // The attempt to connect to |pending_service_| failed. Clear

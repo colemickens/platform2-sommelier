@@ -19,7 +19,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD4(AddServiceStateTransitionTimer,
-               void(const Service *service, const std::string &histogram_name,
+               void(const Service &service, const std::string &histogram_name,
                     Service::ConnectState start_state,
                     Service::ConnectState stop_state));
   MOCK_METHOD1(NotifyDeviceScanStarted, void (int interface_index));
@@ -31,7 +31,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(ResetConnectTimer, void(int interface_index));
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
   MOCK_METHOD2(NotifyServiceStateChanged,
-               void(const Service *service, Service::ConnectState new_state));
+               void(const Service &service, Service::ConnectState new_state));
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());

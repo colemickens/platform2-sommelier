@@ -475,28 +475,28 @@ void Metrics::Stop() {
   SLOG(Metrics, 2) << __func__;
 }
 
-void Metrics::RegisterService(const Service *service) {
+void Metrics::RegisterService(const Service &service) {
   SLOG(Metrics, 2) << __func__;
-  LOG_IF(WARNING, service && ContainsKey(services_metrics_, service))
-      << "Repeatedly registering " << service->unique_name();
+  LOG_IF(WARNING, ContainsKey(services_metrics_, &service))
+      << "Repeatedly registering " << service.unique_name();
   shared_ptr<ServiceMetrics> service_metrics(new ServiceMetrics());
-  services_metrics_[service] = service_metrics;
+  services_metrics_[&service] = service_metrics;
   InitializeCommonServiceMetrics(service);
 }
 
-void Metrics::DeregisterService(const Service *service) {
-  services_metrics_.erase(service);
+void Metrics::DeregisterService(const Service &service) {
+  services_metrics_.erase(&service);
 }
 
 void Metrics::AddServiceStateTransitionTimer(
-    const Service *service,
+    const Service &service,
     const string &histogram_name,
     Service::ConnectState start_state,
     Service::ConnectState stop_state) {
   SLOG(Metrics, 2) << __func__ << ": adding " << histogram_name << " for "
                    << Service::ConnectStateToString(start_state) << " -> "
                    << Service::ConnectStateToString(stop_state);
-  ServiceMetricsLookupMap::iterator it = services_metrics_.find(service);
+  ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
   if (it == services_metrics_.end()) {
     SLOG(Metrics, 1) << "service not found";
     DCHECK(false);
@@ -554,9 +554,9 @@ void Metrics::NotifyDefaultServiceChanged(const Service *service) {
   was_online_ = (service != NULL);
 }
 
-void Metrics::NotifyServiceStateChanged(const Service *service,
+void Metrics::NotifyServiceStateChanged(const Service &service,
                                         Service::ConnectState new_state) {
-  ServiceMetricsLookupMap::iterator it = services_metrics_.find(service);
+  ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
   if (it == services_metrics_.end()) {
     SLOG(Metrics, 1) << "service not found";
     DCHECK(false);
@@ -572,8 +572,8 @@ void Metrics::NotifyServiceStateChanged(const Service *service,
     bootstat_log(
         StringPrintf("network-%s-%s",
                      Technology::NameFromIdentifier(
-                         service->technology()).c_str(),
-                     service->GetStateString().c_str()).c_str());
+                         service.technology()).c_str(),
+                     service.GetStateString().c_str()).c_str());
   }
 
   if (new_state != Service::kStateConnected)
@@ -582,7 +582,7 @@ void Metrics::NotifyServiceStateChanged(const Service *service,
   base::TimeDelta time_resume_to_ready;
   time_resume_to_ready_timer_->GetElapsedTime(&time_resume_to_ready);
   time_resume_to_ready_timer_->Reset();
-  service->SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
+  service.SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
 }
 
 string Metrics::GetFullMetricName(const char *metric_name,
@@ -592,11 +592,11 @@ string Metrics::GetFullMetricName(const char *metric_name,
   return base::StringPrintf(metric_name, technology.c_str());
 }
 
-void Metrics::NotifyServiceDisconnect(const Service *service) {
-  Technology::Identifier technology = service->technology();
+void Metrics::NotifyServiceDisconnect(const Service &service) {
+  Technology::Identifier technology = service.technology();
   string histogram = GetFullMetricName(kMetricDisconnect, technology);
   SendToUMA(histogram,
-            service->explicitly_disconnected(),
+            service.explicitly_disconnected(),
             kMetricDisconnectMin,
             kMetricDisconnectMax,
             kMetricDisconnectNumBuckets);
@@ -1030,8 +1030,8 @@ bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
   return library_->SendToUMA(name, sample, min, max, num_buckets);
 }
 
-void Metrics::InitializeCommonServiceMetrics(const Service *service) {
-  Technology::Identifier technology = service->technology();
+void Metrics::InitializeCommonServiceMetrics(const Service &service) {
+  Technology::Identifier technology = service.technology();
   string histogram = GetFullMetricName(kMetricTimeToConfigMilliseconds,
                                        technology);
   AddServiceStateTransitionTimer(
@@ -1075,9 +1075,9 @@ void Metrics::UpdateServiceStateTransitionMetrics(
   }
 }
 
-void Metrics::SendServiceFailure(const Service *service) {
+void Metrics::SendServiceFailure(const Service &service) {
   library_->SendEnumToUMA(kMetricNetworkServiceErrors,
-                          service->failure(),
+                          service.failure(),
                           kMetricNetworkServiceErrorsMax);
 }
 

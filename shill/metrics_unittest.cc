@@ -126,8 +126,8 @@ TEST_F(MetricsTest, TimeToConfig) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateConfiguring);
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConfiguring);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
 }
 
 TEST_F(MetricsTest, TimeToPortal) {
@@ -136,8 +136,8 @@ TEST_F(MetricsTest, TimeToPortal) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
-  metrics_.NotifyServiceStateChanged(service_, Service::kStatePortal);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStatePortal);
 }
 
 TEST_F(MetricsTest, TimeToOnline) {
@@ -146,17 +146,17 @@ TEST_F(MetricsTest, TimeToOnline) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateOnline);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateOnline);
 }
 
 TEST_F(MetricsTest, ServiceFailure) {
-  EXPECT_CALL(*service_.get(), failure())
+  EXPECT_CALL(*service_, failure())
       .WillRepeatedly(Return(Service::kFailureBadPassphrase));
   EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricNetworkServiceErrors,
                                       Service::kFailureBadPassphrase,
                                       Metrics::kMetricNetworkServiceErrorsMax));
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateFailure);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
 }
 
 TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
@@ -165,9 +165,9 @@ TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(open_wifi_service_,
+  metrics_.NotifyServiceStateChanged(*open_wifi_service_,
                                      Service::kStateAssociating);
-  metrics_.NotifyServiceStateChanged(open_wifi_service_,
+  metrics_.NotifyServiceStateChanged(*open_wifi_service_,
                                      Service::kStateConfiguring);
 }
 
@@ -192,7 +192,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   wep_wifi_service_->frequency_ = 2412;
   wep_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wep_wifi_service_->raw_signal_strength_ = kStrength;
-  metrics_.NotifyServiceStateChanged(wep_wifi_service_,
+  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);
 
@@ -211,7 +211,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
       WillOnce(DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
   metrics_.NotifyPowerStateChange(PowerManagerProxyDelegate::kMem);
   metrics_.NotifyPowerStateChange(PowerManagerProxyDelegate::kOn);
-  metrics_.NotifyServiceStateChanged(wep_wifi_service_,
+  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);
   Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
@@ -224,7 +224,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                         -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   _, _, _, _)).Times(0);
-  metrics_.NotifyServiceStateChanged(wep_wifi_service_,
+  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
 }
 
@@ -239,7 +239,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
   EXPECT_CALL(*eap_, OutputConnectionMetrics(&metrics_, Technology::kWifi));
-  metrics_.NotifyServiceStateChanged(eap_wifi_service_,
+  metrics_.NotifyServiceStateChanged(*eap_wifi_service_,
                                      Service::kStateConnected);
 }
 
@@ -263,7 +263,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyAdHoc) {
   adhoc_wifi_service->frequency_ = 2412;
   adhoc_wifi_service->physical_mode_ = Metrics::kWiFiNetworkPhyMode11b;
   adhoc_wifi_service->raw_signal_strength_ = kStrength;
-  metrics_.NotifyServiceStateChanged(adhoc_wifi_service,
+  metrics_.NotifyServiceStateChanged(*adhoc_wifi_service,
                                      Service::kStateConnected);
 }
 
@@ -304,7 +304,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   chromeos_metrics::TimerMock *mock_time_to_drop_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
-  EXPECT_CALL(*service_.get(), technology()).
+  EXPECT_CALL(*service_, technology()).
       WillOnce(Return(Technology::kEthernet));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline",
                                   Ge(0),
@@ -337,25 +337,25 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
 }
 
 TEST_F(MetricsTest, Disconnect) {
-  EXPECT_CALL(*service_.get(), technology()).
+  EXPECT_CALL(*service_, technology()).
       WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*service_.get(), explicitly_disconnected()).
+  EXPECT_CALL(*service_, explicitly_disconnected()).
       WillOnce(Return(false));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect",
                                   false,
                                   Metrics::kMetricDisconnectMin,
                                   Metrics::kMetricDisconnectMax,
                                   Metrics::kMetricDisconnectNumBuckets));
-  metrics_.NotifyServiceDisconnect(service_);
+  metrics_.NotifyServiceDisconnect(*service_);
 
-  EXPECT_CALL(*service_.get(), explicitly_disconnected()).
+  EXPECT_CALL(*service_, explicitly_disconnected()).
       WillOnce(Return(true));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect",
                                   true,
                                   Metrics::kMetricDisconnectMin,
                                   Metrics::kMetricDisconnectMax,
                                   Metrics::kMetricDisconnectNumBuckets));
-  metrics_.NotifyServiceDisconnect(service_);
+  metrics_.NotifyServiceDisconnect(*service_);
 }
 
 TEST_F(MetricsTest, PortalDetectionResultToEnum) {

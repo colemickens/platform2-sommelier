@@ -450,16 +450,16 @@ class Metrics {
 
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.
-  void RegisterService(const Service *service);
+  void RegisterService(const Service &service);
 
   // Deregisters the service from this class.  All state transition timers
   // will be removed.
-  void DeregisterService(const Service *service);
+  void DeregisterService(const Service &service);
 
   // Tracks the time it takes |service| to go from |start_state| to
   // |stop_state|.  When |stop_state| is reached, the time is sent to UMA.
   virtual void AddServiceStateTransitionTimer(
-      const Service *service, const std::string &histogram_name,
+      const Service &service, const std::string &histogram_name,
       Service::ConnectState start_state, Service::ConnectState stop_state);
 
   // Specializes |metric_name| for the specified |technology_id|.
@@ -471,11 +471,11 @@ class Metrics {
   virtual void NotifyDefaultServiceChanged(const Service *service);
 
   // Notifies this object that |service| state has changed.
-  virtual void NotifyServiceStateChanged(const Service *service,
+  virtual void NotifyServiceStateChanged(const Service &service,
                                          Service::ConnectState new_state);
 
   // Notifies this object that |service| has been disconnected.
-  void NotifyServiceDisconnect(const Service *service);
+  void NotifyServiceDisconnect(const Service &service);
 
   // Notifies this object of power at disconnect.
   void NotifySignalAtDisconnect(const Service &service,
@@ -645,10 +645,10 @@ class Metrics {
   static const uint16 kWiFiFrequency5745;
   static const uint16 kWiFiFrequency5825;
 
-  void InitializeCommonServiceMetrics(const Service *service);
+  void InitializeCommonServiceMetrics(const Service &service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,
                                            Service::ConnectState new_state);
-  void SendServiceFailure(const Service *service);
+  void SendServiceFailure(const Service &service);
 
   DeviceMetrics *GetDeviceMetrics(int interface_index) const;
   void AutoConnectMetricsReset(DeviceMetrics *device_metrics);

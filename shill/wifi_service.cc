@@ -370,7 +370,7 @@ void WiFiService::InitializeCustomMetrics() const {
   string histogram = metrics()->GetFullMetricName(
       Metrics::kMetricTimeToJoinMilliseconds,
       technology());
-  metrics()->AddServiceStateTransitionTimer(this,
+  metrics()->AddServiceStateTransitionTimer(*this,
                                             histogram,
                                             Service::kStateAssociating,
                                             Service::kStateConfiguring);

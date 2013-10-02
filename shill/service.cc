@@ -206,7 +206,7 @@ Service::Service(ControlInterface *control_interface,
                                   &Service::GetDisconnectsProperty);
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
-  metrics_->RegisterService(this);
+  metrics_->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
 
@@ -218,7 +218,7 @@ Service::Service(ControlInterface *control_interface,
 }
 
 Service::~Service() {
-  metrics_->DeregisterService(this);
+  metrics_->DeregisterService(*this);
   LOG(INFO) << "Service " << unique_name_ << " destroyed.";
 }
 
@@ -335,7 +335,7 @@ void Service::SetState(ConnectState state) {
   }
   UpdateErrorProperty();
   manager_->UpdateService(this);
-  metrics_->NotifyServiceStateChanged(this, state);
+  metrics_->NotifyServiceStateChanged(*this, state);
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
