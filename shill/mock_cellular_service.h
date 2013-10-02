@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #ifndef SHILL_MOCK_CELLULAR_SERVICE_H_
-#define SHILL_MOCK_CELLULAR_SERIVCE_H_
+#define SHILL_MOCK_CELLULAR_SERVICE_H_
 
 #include <string>
 
