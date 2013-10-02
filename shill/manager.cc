@@ -79,7 +79,7 @@ const char Manager::kErrorUnsupportedServiceType[] =
     "service type is unsupported";
 // This timeout should be less than the upstart job timeout, otherwise
 // stats for termination actions might be lost.
-const int Manager::kTerminationActionsTimeoutMilliseconds = 4500;
+const int Manager::kTerminationActionsTimeoutMilliseconds = 9500;
 const char Manager::kPowerManagerKey[] = "manager";
 
 Manager::Manager(ControlInterface *control_interface,
