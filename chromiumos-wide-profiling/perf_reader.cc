@@ -970,11 +970,6 @@ bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
   if (header_.size != sizeof(header_))
     return true;
 
-  if (header_.attr_size != sizeof(perf_file_attr)) {
-    LOG(ERROR) << "header_.attr_size: " << header_.attr_size << " Expected: "
-               << sizeof(perf_file_attr);
-    return false;
-  }
   LOG(INFO) << "event_types.size: " << header_.event_types.size;
   LOG(INFO) << "event_types.offset: " << header_.event_types.offset;
 
@@ -983,7 +978,6 @@ bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
 
 bool PerfReader::ReadAttrs(const ConstBufferWithSize& data) {
   size_t num_attrs = header_.attrs.size / header_.attr_size;
-  CHECK_EQ(sizeof(struct perf_file_attr), header_.attr_size);
   size_t offset = header_.attrs.offset;
   for (size_t i = 0; i < num_attrs; i++) {
     if (!ReadAttr(data, &offset))
@@ -1033,6 +1027,12 @@ bool PerfReader::ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
     ByteSwap(&attr->bp_len);
     ByteSwap(&attr->branch_sample_type);
   }
+
+  // The actual perf_event_attr data size might be different from the size of
+  // the struct definition.  Check against perf_event_attr's |size| field.
+  int size_diff = attr->size - sizeof(*attr);
+  *offset += size_diff;
+  attr->size = sizeof(*attr);
 
   // Assign sample type if it hasn't been assigned, otherwise make sure all
   // subsequent attributes have the same sample type bits set.
@@ -1805,7 +1805,7 @@ bool PerfReader::ReadAttrEventBlock(const ConstBufferWithSize& data,
   if (!ReadEventAttr(data, &offset, &attr.attr))
     return false;
 
-  size_t num_ids = (size - sizeof(attr.attr)) / sizeof(attr.ids[0]);
+  size_t num_ids = (size - attr.attr.size) / sizeof(attr.ids[0]);
   if (!ReadUniqueIDs(data, num_ids, &offset, &attr.ids))
     return false;
 
