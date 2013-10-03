@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <secder.h>
 #include <signal.h>
 #include <stdio.h>
@@ -40,6 +41,7 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/switches/chrome_switches.h>
 #include <chromeos/utility.h>
 
 #include "login_manager/child_job.h"
@@ -409,13 +411,20 @@ void SessionManagerService::RunBrowser() {
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
 
   login_metrics_->RecordStats("chrome-exec");
-  if (first_boot) {
-    std::vector<std::string> one_time_args;
-    one_time_args.push_back(kFirstExecAfterBootFlag);
-    browser_.job->SetOneTimeArguments(one_time_args);
+  std::vector<std::string> one_time_args;
+  system_->RemoveFile(browser_.term_file);
+  if (system_->CreateReadOnlyFileInTempDir(&browser_.term_file)) {
+    one_time_args.push_back(
+        base::StringPrintf("--%s=%s",
+                           chromeos::switches::kTerminationMessageFile,
+                           browser_.term_file.value().c_str()));
   }
+  if (first_boot)
+    one_time_args.push_back(kFirstExecAfterBootFlag);
+  browser_.job->SetOneTimeArguments(one_time_args);
   LOG(INFO) << "Running child " << browser_.job->GetName() << "...";
   browser_.pid = RunChild(browser_.job.get());
+  browser_.job->ClearOneTimeArguments();
   liveness_checker_->Start();
 }
 
@@ -427,7 +436,6 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
     child_job->Run();
     exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
   }
-  child_job->ClearOneTimeArguments();
 
   browser_.watcher = g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
                                             pid,
@@ -437,7 +445,10 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   return pid;
 }
 
-void SessionManagerService::AbortBrowser(int signal) {
+void SessionManagerService::AbortBrowser(int signal,
+                                         const std::string& message) {
+  LOG(INFO) << "Sending termination message: " << message;
+  system_->AtomicFileWrite(browser_.term_file, message.c_str(), message.size());
   KillChild(browser_.job.get(), browser_.pid, signal);
 }
 
@@ -688,6 +699,10 @@ void SessionManagerService::WaitAndAbortChild(const ChildJob::Spec& spec,
   if (!system_->ChildIsGone(spec.pid, timeout)) {
     LOG(WARNING) << "Aborting child process " << spec.pid << " "
                  << timeout.InSeconds() << " seconds after sending TERM signal";
+    std::string message = base::StringPrintf(
+        "Browser took more than %" PRId64 " seconds to exit after TERM.",
+        timeout.InSeconds());
+    system_->AtomicFileWrite(spec.term_file, message.c_str(), message.size());
     KillChild(spec.job.get(), spec.pid, SIGABRT);
   } else {
     DLOG(INFO) << "Cleaned up child " << spec.pid;

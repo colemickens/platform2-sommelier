@@ -114,15 +114,24 @@ bool SystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
   return true;
 }
 
-bool SystemUtils::EnsureAndReturnSafeSize(int64 size_64, int32* size_32) {
-  if (size_64 > static_cast<int64>(std::numeric_limits<int>::max()))
-    return false;
-  *size_32 = static_cast<int32>(size_64);
-  return true;
-}
-
 bool SystemUtils::Exists(const base::FilePath& file) {
   return file_util::PathExists(file);
+}
+
+bool SystemUtils::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
+  if (!tempdir_.IsValid() && !tempdir_.CreateUniqueTempDir())
+    return false;
+  base::FilePath local_temp_file;
+  if (file_util::CreateTemporaryFileInDir(tempdir_.path(), &local_temp_file)) {
+    if (chmod(local_temp_file.value().c_str(), 0644) == 0) {
+      *temp_file = local_temp_file;
+      return true;
+    } else {
+      PLOG(ERROR) << "Can't chmod " << local_temp_file.value() << " to 0644.";
+    }
+    RemoveFile(local_temp_file);
+  }
+  return false;
 }
 
 bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
@@ -144,7 +153,7 @@ bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
   }
   // Now, allow access to non-root processes.
   if (chmod(temp_dir_path.value().c_str(), 0333)) {
-    PLOG(ERROR) << "Can't chmod " << temp_file_path->value() << " to 0333";
+    PLOG(ERROR) << "Can't chmod " << temp_file_path->value() << " to 0333.";
     return false;
   }
   if (!RemoveFile(*temp_file_path)) {
@@ -155,6 +164,8 @@ bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
 }
 
 bool SystemUtils::RemoveFile(const base::FilePath& filename) {
+  if (file_util::DirectoryExists(filename))
+    return false;
   return file_util::Delete(filename, false);
 }
 
@@ -168,7 +179,8 @@ bool SystemUtils::AtomicFileWrite(const base::FilePath& filename,
     return false;
 
   return (file_util::ReplaceFile(scratch_file, filename) &&
-          chmod(filename.value().c_str(), (S_IRUSR | S_IWUSR | S_IROTH)) == 0);
+          file_util::SetPosixFilePermissions(filename,
+                                             (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
 void SystemUtils::EmitSignal(const char* signal_name) {

@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/file_path.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/time.h>
@@ -32,19 +31,24 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD1(time, time_t(time_t*)); // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
   MOCK_METHOD0(IsDevMode, int(void));
-  MOCK_METHOD1(Exists, bool(const FilePath&));
-  MOCK_METHOD3(AtomicFileWrite, bool(const FilePath&, const char*, int));
   MOCK_METHOD2(ChildIsGone, bool(pid_t child_spec, base::TimeDelta timeout));
-  MOCK_METHOD2(EnsureAndReturnSafeFileSize,
-               bool(const FilePath& file, int32* file_size_32));
-  MOCK_METHOD2(EnsureAndReturnSafeSize,
-               bool(int64 size_64, int32* size_32));
-  MOCK_METHOD1(RemoveFile, bool(const FilePath& filename));
 
-  // Make a fake that returns a filename in a temp dir owned by this class.
-  bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path);
-  // Set filename to be returned by the above.
-  void SetUniqueFilename(const std::string& name);
+  // All filesystem-touching methods write to a ScopedTempDir that's owned by
+  // this class.
+  bool Exists(const FilePath& file) OVERRIDE;
+  bool AtomicFileWrite(const FilePath& file,
+                       const char* data,
+                       int size) OVERRIDE;
+  bool ReadFileToString(const FilePath& file, std::string* out);
+  bool EnsureAndReturnSafeFileSize(const FilePath& file,
+                                   int32* file_size_32) OVERRIDE;
+  bool RemoveFile(const FilePath& file) OVERRIDE;
+
+  bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path) OVERRIDE;
+  bool CreateReadOnlyFileInTempDir(FilePath* temp_file_path) OVERRIDE;
+  // Get filename to be returned by the above. Returns full path to the file.
+  // An empty path is returned on failure.
+  base::FilePath GetUniqueFilename();
 
   MOCK_METHOD1(EmitSignal, void(const char*));
   MOCK_METHOD2(EmitSignalWithStringArgs, void(const char*,
@@ -75,8 +79,22 @@ class MockSystemUtils : public SystemUtils {
   void EnqueueFakePendingCall(scoped_ptr<ScopedDBusPendingCall> fake_call);
 
  private:
-  base::ScopedTempDir tmpdir_;
-  std::string unique_file_name_;
+  // Ensures that temp_dir_ (inherited from SystemUtils) exists.
+  // Returns true if it already does, or if it can be created. Else, False.
+  // This call is idempotent
+  bool EnsureTempDir();
+
+  // Returns the given path "chrooted" inside temp_dir_, so to speak.
+  // Ex: /var/run/foo -> /tmp/.org.Chromium.whatever/var/run/foo
+  base::FilePath PutInsideTempdir(const base::FilePath& path);
+
+  // To fake out GetUniqueFilenameInWriteOnlyTempDir() and
+  // CreateReadOnlyFileInTempDir(), we just generate a single "unique"
+  // path inside the temp dir managed by this class, store it here,
+  // and return it whenever asked.
+  base::FilePath unique_file_path_;
+
+  SystemUtils real_utils_;
   ScopedVector<ScopedDBusPendingCall> fake_calls_;
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);
 };

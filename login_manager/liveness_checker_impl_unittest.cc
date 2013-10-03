@@ -27,6 +27,7 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::StrictMock;
+using ::testing::_;
 
 namespace login_manager {
 
@@ -113,14 +114,14 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
-  EXPECT_CALL(*manager_.get(), AbortBrowser(SIGFPE)).Times(1);
+  EXPECT_CALL(*manager_.get(), AbortBrowser(SIGFPE, _)).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
-  EXPECT_CALL(*manager_.get(), AbortBrowser(SIGFPE)).Times(1);
+  EXPECT_CALL(*manager_.get(), AbortBrowser(SIGFPE, _)).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   base::RunLoop().RunUntilIdle();
 }
