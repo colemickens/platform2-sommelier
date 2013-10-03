@@ -227,6 +227,10 @@ class SessionManagerImplTest : public ::testing::Test {
                     StrEq(login_manager::kSessionStateChangedSignal),
                     ElementsAre(SessionManagerImpl::kStarted)))
         .Times(1);
+    EXPECT_CALL(utils_,
+                AtomicFileWrite(FilePath(SessionManagerImpl::kLoggedInFlag),
+                                StrEq("1"), 1))
+        .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
   }
@@ -282,14 +286,12 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
 }
 
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {
+  string expected_testing_path("a/temp/place");
   // DBus arrays are null-terminated.
   const gchar* args1[] = {"--repeat-arg", "--one-time-arg", NULL};
   gchar* testing_path = NULL;
 
-  base::FilePath expected = utils_.GetUniqueFilename();
-  ASSERT_FALSE(expected.empty());
-  string expected_testing_path = expected.value();
-
+  utils_.SetUniqueFilename(expected_testing_path);
   EXPECT_CALL(manager_,
               RestartBrowserWithArgs(
                   ElementsAre(args1[0], args1[1],
@@ -804,8 +806,7 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
-  ASSERT_FALSE(utils_.Exists(logged_in_path));
-  ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1", 1));
+  EXPECT_CALL(utils_, Exists(logged_in_path)).WillOnce(Return(true));
   GError *error = NULL;
   gboolean done = FALSE;
   EXPECT_EQ(FALSE, impl_.StartDeviceWipe(&done, &error));
@@ -814,7 +815,8 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
   FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   FilePath reset_path(SessionManagerImpl::kResetFile);
-  ASSERT_TRUE(utils_.RemoveFile(logged_in_path));
+  EXPECT_CALL(utils_, Exists(logged_in_path)).WillOnce(Return(false));
+  EXPECT_CALL(utils_, AtomicFileWrite(reset_path, _, _)).WillOnce(Return(true));
   EXPECT_CALL(utils_, CallMethodOnPowerManager(_)).Times(1);
   gboolean done = FALSE;
   EXPECT_EQ(TRUE, impl_.StartDeviceWipe(&done, NULL));

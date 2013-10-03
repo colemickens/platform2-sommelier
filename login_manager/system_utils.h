@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
 #include <base/time.h>
@@ -57,13 +56,10 @@ class SystemUtils {
   virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                            int32* file_size_32);
 
+  virtual bool EnsureAndReturnSafeSize(int64 size_64, int32* size_32);
+
   // Returns whether a file exists.
   virtual bool Exists(const base::FilePath& file);
-
-  // Creates a uniquely-named read-only file under |dir|.
-  // Upon success, sets |temp_file| and returns true. Upon failure, |temp_file|
-  // remains untouched.
-  virtual bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file);
 
   // Generates a guaranteed-unique filename in a write-only temp dir.
   // Returns false upon failure.
@@ -74,8 +70,8 @@ class SystemUtils {
   virtual bool RemoveFile(const base::FilePath& filename);
 
   // Atomically writes the given buffer into the file, overwriting any
-  // data that was previously there.  Returns true upon success, false
-  // otherwise.
+  // data that was previously there.  Returns the number of bytes
+  // written, or -1 on error.
   virtual bool AtomicFileWrite(const base::FilePath& filename,
                                const char* data,
                                int size);
@@ -123,8 +119,6 @@ class SystemUtils {
   virtual void SetAndSendGError(ChromeOSLoginError code,
                                 DBusGMethodInvocation* context,
                                 const char* message);
- protected:
-  base::ScopedTempDir tempdir_;
 
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.

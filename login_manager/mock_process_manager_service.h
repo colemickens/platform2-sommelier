@@ -20,7 +20,7 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
 
   MOCK_METHOD0(ScheduleShutdown, void());
   MOCK_METHOD0(RunBrowser, void());
-  MOCK_METHOD2(AbortBrowser, void(int, const std::string&));
+  MOCK_METHOD1(AbortBrowser, void(int));
   MOCK_METHOD1(IsBrowser, bool(pid_t));
   MOCK_METHOD2(RestartBrowserWithArgs, void(const std::vector<std::string>&,
                                             bool));

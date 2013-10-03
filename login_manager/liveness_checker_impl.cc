@@ -78,8 +78,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
       // Note: If this log message is changed, the desktopui_HangDetector
       // autotest must be updated.
       LOG(WARNING) << "Aborting browser process.";
-      manager_->AbortBrowser(SIGFPE,
-                             "Browser did not respond to DBus liveness check.");
+      manager_->AbortBrowser(SIGFPE);
       // HandleChildExit() will reap the process and restart if needed.
       Stop();
       return;
