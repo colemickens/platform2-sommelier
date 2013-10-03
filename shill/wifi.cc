@@ -184,6 +184,7 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
   file_reader.ReadLine(&line);
   switch (line[0]) {
     case '1':
+    case '2':
       // The minimum and maximum are the same (which makes the fraction
       // irrelevant).  Every scan batch (except, possibly, the last) contains
       // exactly 4 frequencies.  These cases is optimized for users that use
@@ -192,16 +193,10 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
       max_frequencies_to_scan_ = 4;
       fraction_per_scan_ = .34;
       progressive_scan_enabled_ = true;
-      scan_configuration_ = "Progressive scan (field trial 1: min/max=4, 33%)";
-      break;
-    case '2':
-      min_frequencies_to_scan_ = 4;
-      max_frequencies_to_scan_ = 4;
-      fraction_per_scan_ = .51;
-      progressive_scan_enabled_ = true;
-      scan_configuration_ = "Progressive scan (field trial 2: min/max=4, 50%)";
+      scan_configuration_ = "Progressive scan (field trial 1/2: min/max=4)";
       break;
     case '3':
+    case '4':
       // The minimum and maximum are the same (which makes the fraction
       // irrelevant).  Every scan batch (except, possibly, the last) contains
       // exactly 8 frequencies.  These cases is optimized for users that use
@@ -210,14 +205,7 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
       max_frequencies_to_scan_ = 8;
       fraction_per_scan_ = .51;
       progressive_scan_enabled_ = true;
-      scan_configuration_ = "Progressive scan (field trial 3: min/max=8, 50%)";
-      break;
-    case '4':
-      min_frequencies_to_scan_ = 8;
-      max_frequencies_to_scan_ = 8;
-      fraction_per_scan_ = 1.1;
-      progressive_scan_enabled_ = true;
-      scan_configuration_ = "Progressive scan (field trial 4: min/max=8, 100%)";
+      scan_configuration_ = "Progressive scan (field trial 3/4: min/max=8)";
       break;
     case '5':
     case '6':
