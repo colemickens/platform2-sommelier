@@ -573,10 +573,12 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
 PerfReader::~PerfReader() {
   // Free allocated memory.
   for (size_t i = 0; i < events_.size(); ++i)
-    free(events_[i]);
+    if (events_[i])
+      free(events_[i]);
 
   for (size_t i = 0; i < build_id_events_.size(); ++i)
-    free(build_id_events_[i]);
+    if (build_id_events_[i])
+      free(build_id_events_[i]);
 }
 
 void PerfReader::PerfizeBuildIDString(string* build_id) {
