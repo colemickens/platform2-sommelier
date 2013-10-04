@@ -319,6 +319,7 @@
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="label" direction="out" />
       <arg type="s" name="user_pin" direction="out" />
+      <arg type="i" name="slot" direction="out" />
     </method>
     <method name="Pkcs11Terminate">
       <arg type="s" name="username" direction="in" />

@@ -1137,12 +1137,37 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
       action.c_str())) {
-    cryptohome::Pkcs11Init init;
-    if (init.IsUserTokenBroken()) {
-      printf("User token looks broken!\n");
-      return 1;
+    // If no username is specified, proceed with the empty string.
+    string user = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    if (!user.empty()) {
+      chromeos::glib::ScopedError error;
+      gchar* label = NULL;
+      gchar* pin = NULL;
+      int slot = 0;
+      if (!org_chromium_CryptohomeInterface_pkcs11_get_tpm_token_info_for_user(
+              proxy.gproxy(),
+              user.c_str(),
+              &label,
+              &pin,
+              &slot,
+              &chromeos::Resetter(&error).lvalue())) {
+        printf("PKCS #11 info call failed: %s.\n", error->message);
+      } else {
+        printf("Token properties for %s:\n", user.c_str());
+        printf("Label = %s\n", label);
+        printf("Pin = %s\n", pin);
+        printf("Slot = %d\n", slot);
+        g_free(label);
+        g_free(pin);
+      }
+    } else {
+      cryptohome::Pkcs11Init init;
+      if (init.IsUserTokenBroken()) {
+        printf("User token looks broken!\n");
+        return 1;
+      }
+      printf("User token looks OK!\n");
     }
-    printf("User token looks OK!\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
                      action.c_str())) {
     // If no username is specified, proceed with the empty string.

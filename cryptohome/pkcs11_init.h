@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Pkcs11Init - class for handling opencryptoki initialization.
+// Pkcs11Init - Class for handling PKCS #11 initialization.  Since the move to
+// Chaps, this class does very little.  The loading / unloading of tokens is
+// handled in mount.cc.
 
 #ifndef CRYPTOHOME_PKCS11_INIT_H_
 #define CRYPTOHOME_PKCS11_INIT_H_
@@ -12,6 +14,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <glib.h>
@@ -36,6 +39,11 @@ class Pkcs11Init {
 
   // Returns the same label as GetTpmTokenInfoForUser.
   virtual std::string GetTpmTokenLabelForUser(const std::string& username);
+
+  // Returns the tpm token slot for the given path.  If no slot is found,
+  // returns the default slot (which will belong to the user who originally
+  // signed in).
+  virtual int GetTpmTokenSlotForPath(const base::FilePath& path);
 
   // Check if the user's PKCS #11 token is valid.
   virtual bool IsUserTokenBroken();

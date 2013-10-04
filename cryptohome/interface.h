@@ -353,6 +353,7 @@ gboolean cryptohome_pkcs11_get_tpm_token_info_for_user(Cryptohome *self,
                                                        gchar *username,
                                                        gchar **OUT_label,
                                                        gchar **OUT_user_pin,
+                                                       gint* OUT_slot,
                                                        GError **error);
 gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome *self,
                                               gboolean *OUT_ready,

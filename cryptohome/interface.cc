@@ -588,11 +588,13 @@ gboolean cryptohome_pkcs11_get_tpm_token_info_for_user(Cryptohome *self,
                                                        gchar *username,
                                                        gchar **OUT_label,
                                                        gchar **OUT_user_pin,
+                                                       gint* OUT_slot,
                                                        GError **error) {
   CRYPTOHOME_WRAP_METHOD(Pkcs11GetTpmTokenInfoForUser,
                          username,
                          OUT_label,
-                         OUT_user_pin);
+                         OUT_user_pin,
+                         OUT_slot);
 }
 gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome *self,
                                     gboolean *OUT_ready,

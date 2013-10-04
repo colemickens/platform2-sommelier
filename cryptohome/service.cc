@@ -1734,8 +1734,11 @@ gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
 gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
                                                gchar** OUT_label,
                                                gchar** OUT_user_pin,
+                                               gint* OUT_slot,
                                                GError** error) {
   pkcs11_init_->GetTpmTokenInfoForUser(username, OUT_label, OUT_user_pin);
+  *OUT_slot = pkcs11_init_->GetTpmTokenSlotForPath(
+      homedirs_->GetChapsTokenDir(username));
   return TRUE;
 }
 

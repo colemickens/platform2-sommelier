@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <chaps/isolate.h>
+#include <chaps/token_manager_client.h>
 #include <chromeos/cryptohome.h>
 #include <errno.h>
 #include <glib.h>
@@ -35,15 +37,48 @@ void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
 void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
                                         gchar **OUT_label,
                                         gchar **OUT_user_pin) {
-  // TODO(ellyjones): make this work for real, perhaps? crosbug.com/22127
-  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultLabel));
-  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
+  // All tokens get the same label.  There will be only one per profile so there
+  // is no need for users to differentiate.
+  GetTpmTokenInfo(OUT_label, OUT_user_pin);
 }
 
 std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
   return std::string(reinterpret_cast<const char*>(kDefaultLabel));
 }
 
+int Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path) {
+  CK_RV rv;
+  rv = C_Initialize(NULL);
+  if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
+    LOG(WARNING) << __func__ << ": C_Initialize failed.";
+    return kDefaultTpmSlotId;
+  }
+  CK_ULONG num_slots = 0;
+  rv = C_GetSlotList(CK_TRUE, NULL, &num_slots);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
+    return kDefaultTpmSlotId;
+  }
+  scoped_array<CK_SLOT_ID> slot_list(new CK_SLOT_ID[num_slots]);
+  rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << __func__ << ": C_GetSlotList failed.";
+    return kDefaultTpmSlotId;
+  }
+  chaps::TokenManagerClient token_manager;
+  for (CK_ULONG i = 0; i < num_slots; ++i) {
+    FilePath slot_path;
+    if (token_manager.GetTokenPath(
+        chaps::IsolateCredentialManager::GetDefaultIsolateCredential(),
+        slot_list[i],
+        &slot_path) && (path == slot_path)) {
+      LOG(INFO) << __func__ << ": " << path.value() << " -> " << slot_list[i];
+      return slot_list[i];
+    }
+  }
+  LOG(WARNING) << __func__ << ": Path not found.";
+  return kDefaultTpmSlotId;
+}
 
 bool Pkcs11Init::IsUserTokenBroken() {
   if (!platform_->FileExists(kTpmOwnedFile)) {
