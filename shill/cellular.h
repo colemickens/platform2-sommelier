@@ -317,6 +317,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StartModemCallbackFail);
   FRIEND_TEST(CellularTest, StopModemCallback);
   FRIEND_TEST(CellularTest, StopModemCallbackFail);
+  FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -369,6 +370,11 @@ class Cellular : public Device, public RPCTaskDelegate {
   // This function does the final cleanup once a disconnect request terminates.
   // Returns true, if the device state is successfully changed.
   bool DisconnectCleanup();
+
+  // Terminate the pppd process associated with this Device, and remove the
+  // association between the PPPDevice and our CellularService. If this
+  // Device is not using PPP, the method has no effect.
+  void StopPPP();
 
   // Handlers for PPP events. Dispatched from Notify().
   void OnPPPAuthenticated();

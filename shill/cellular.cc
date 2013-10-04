@@ -670,6 +670,7 @@ void Cellular::Disconnect(Error *error) {
         error, Error::kNotConnected, "Not connected; request ignored.");
     return;
   }
+  StopPPP();
   explicit_disconnect_ = true;
   ResultCallback cb = Bind(&Cellular::OnDisconnectReply,
                            weak_ptr_factory_.GetWeakPtr());
@@ -921,6 +922,16 @@ void Cellular::StartPPP(const string &serial_device) {
     LOG(INFO) << "Forked pppd process.";
     ppp_task_ = new_ppp_task.Pass();
   }
+}
+
+void Cellular::StopPPP() {
+  SLOG(PPP, 2) << __func__;
+  if (!ppp_task_) {
+    return;
+  }
+  DropConnection();
+  ppp_task_.reset();
+  ppp_device_ = NULL;
 }
 
 // called by |ppp_task_|

@@ -1296,6 +1296,25 @@ TEST_F(CellularTest, ChangeServiceStatePPP) {
   device_->SetServiceFailureSilent(Service::kFailureUnknown);
 }
 
+TEST_F(CellularTest, StopPPPOnDisconnect) {
+  const int kPID = 123;
+  StartPPP(kPID);
+
+  const char kInterfaceName[] = "fake-ppp-device";
+  const int kInterfaceIndex = -1;
+  auto mock_ppp_device = make_scoped_refptr(new MockPPPDevice(
+      modem_info_.control_interface(), NULL, NULL, NULL, kInterfaceName,
+      kInterfaceIndex));
+  device_->ppp_device_ = mock_ppp_device;
+  device_->state_ = Cellular::kStateConnected;
+
+  Error error;
+  EXPECT_CALL(*mock_ppp_device, DropConnection());
+  device_->Disconnect(&error);
+  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_FALSE(device_->ppp_device_);
+}
+
 // Custom property setters should return false, and make no changes, if
 // the new value is the same as the old value.
 TEST_F(CellularTest, CustomSetterNoopChange) {
