@@ -270,43 +270,46 @@ bool PerfSerializer::SerializeEvent(
     const ParsedEvent& event,
     PerfDataProto_PerfEvent* event_proto) const {
   const perf_event_header& header = (*event.raw_event)->header;
+  const event_t& raw_event = **event.raw_event;
   if (!SerializeEventHeader(header, event_proto->mutable_header()))
     return false;
   switch (header.type) {
     case PERF_RECORD_SAMPLE:
-      if (!SerializeRecordSample(event, event_proto->mutable_sample_event()))
+      if (!SerializeRecordSample(raw_event,
+                                 event_proto->mutable_sample_event())) {
         return false;
+      }
       break;
     case PERF_RECORD_MMAP:
-      if (!SerializeMMapSample(event, event_proto->mutable_mmap_event()))
+      if (!SerializeMMapSample(raw_event, event_proto->mutable_mmap_event()))
         return false;
       break;
     case PERF_RECORD_COMM:
-      if (!SerializeCommSample(event, event_proto->mutable_comm_event()))
+      if (!SerializeCommSample(raw_event, event_proto->mutable_comm_event()))
         return false;
       break;
     case PERF_RECORD_EXIT:
     case PERF_RECORD_FORK:
-      if (!SerializeForkSample(event, event_proto->mutable_fork_event()))
+      if (!SerializeForkSample(raw_event, event_proto->mutable_fork_event()))
         return false;
       break;
     case PERF_RECORD_LOST:
-      if (!SerializeLostSample(event, event_proto->mutable_lost_event()))
+      if (!SerializeLostSample(raw_event, event_proto->mutable_lost_event()))
         return false;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      if (!SerializeThrottleSample(event,
+      if (!SerializeThrottleSample(raw_event,
                                    event_proto->mutable_throttle_event())) {
         return false;
       }
       break;
     case PERF_RECORD_READ:
-      if (!SerializeReadSample(event, event_proto->mutable_read_event()))
+      if (!SerializeReadSample(raw_event, event_proto->mutable_read_event()))
         return false;
       break;
     default:
-      LOG(ERROR) << "Unknown event type: " << header.type;
+      LOG(ERROR) << "Unknown raw_event type: " << header.type;
       break;
   }
   return true;
@@ -317,42 +320,42 @@ bool PerfSerializer::DeserializeEvent(
     ParsedEvent* event) const {
   // Here, event->raw_event points to a location in |events_|
   // However, the location doesn't contain a pointer to an event yet.
-  // Since we don't know how much memory to allocate, use an event_t for now.
+  // Since we don't know how much memory to allocate, use a local event_t for
+  // now.
   event_t temp_event;
   memset(&temp_event, 0, sizeof(temp_event));
-  *event->raw_event = &temp_event;
   if (!DeserializeEventHeader(event_proto.header(), &temp_event.header))
     return false;
   bool event_deserialized = true;
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
-      if (!DeserializeRecordSample(event_proto.sample_event(), event))
+      if (!DeserializeRecordSample(event_proto.sample_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_MMAP:
-      if (!DeserializeMMapSample(event_proto.mmap_event(), event))
+      if (!DeserializeMMapSample(event_proto.mmap_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_COMM:
-      if (!DeserializeCommSample(event_proto.comm_event(), event))
+      if (!DeserializeCommSample(event_proto.comm_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_EXIT:
     case PERF_RECORD_FORK:
-      if (!DeserializeForkSample(event_proto.fork_event(), event))
+      if (!DeserializeForkSample(event_proto.fork_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_LOST:
-      if (!DeserializeLostSample(event_proto.lost_event(), event))
+      if (!DeserializeLostSample(event_proto.lost_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      if (!DeserializeThrottleSample(event_proto.throttle_event(), event))
+      if (!DeserializeThrottleSample(event_proto.throttle_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_READ:
-      if (!DeserializeReadSample(event_proto.read_event(), event))
+      if (!DeserializeReadSample(event_proto.read_event(), &temp_event))
         event_deserialized = false;
       break;
     case PERF_RECORD_MAX:
@@ -389,12 +392,12 @@ bool PerfSerializer::DeserializeEventHeader(
 }
 
 bool PerfSerializer::SerializeRecordSample(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_SampleEvent* sample) const {
   perf_sample sample_info;
-  if (!ReadPerfSampleInfo(*(*event.raw_event), &sample_info))
+  if (!ReadPerfSampleInfo(event, &sample_info))
     return false;
-  const struct ip_event& ip_event = (*event.raw_event)->ip;
+  const struct ip_event& ip_event = event.ip;
 
   if (sample_type_ & PERF_SAMPLE_IP)
     sample->set_ip(ip_event.ip);
@@ -438,9 +441,9 @@ bool PerfSerializer::SerializeRecordSample(
 
 bool PerfSerializer::DeserializeRecordSample(
     const PerfDataProto_SampleEvent& sample,
-    ParsedEvent* event) const {
+    event_t* event) const {
   perf_sample sample_info;
-  struct ip_event& ip_event = (*event->raw_event)->ip;
+  struct ip_event& ip_event = event->ip;
   if (sample.has_ip())
     ip_event.ip = sample.ip();
   if (sample.has_pid()) {
@@ -491,13 +494,13 @@ bool PerfSerializer::DeserializeRecordSample(
       entry.flags.predicted = !entry.flags.mispred;
     }
   }
-  return WritePerfSampleInfo(sample_info, *event->raw_event);
+  return WritePerfSampleInfo(sample_info, event);
 }
 
 bool PerfSerializer::SerializeMMapSample(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_MMapEvent* sample) const {
-  const struct mmap_event& mmap = (*event.raw_event)->mmap;
+  const struct mmap_event& mmap = event.mmap;
   sample->set_pid(mmap.pid);
   sample->set_tid(mmap.tid);
   sample->set_start(mmap.start);
@@ -511,8 +514,8 @@ bool PerfSerializer::SerializeMMapSample(
 
 bool PerfSerializer::DeserializeMMapSample(
     const PerfDataProto_MMapEvent& sample,
-    ParsedEvent* event) const {
-  struct mmap_event& mmap = (*event->raw_event)->mmap;
+    event_t* event) const {
+  struct mmap_event& mmap = event->mmap;
   mmap.pid = sample.pid();
   mmap.tid = sample.tid();
   mmap.start = sample.start();
@@ -524,9 +527,9 @@ bool PerfSerializer::DeserializeMMapSample(
 }
 
 bool PerfSerializer::SerializeCommSample(
-      const ParsedEvent& event,
+      const event_t& event,
       PerfDataProto_CommEvent* sample) const {
-  const struct comm_event& comm = (*event.raw_event)->comm;
+  const struct comm_event& comm = event.comm;
   sample->set_pid(comm.pid);
   sample->set_tid(comm.tid);
   sample->set_comm(comm.comm);
@@ -537,8 +540,8 @@ bool PerfSerializer::SerializeCommSample(
 
 bool PerfSerializer::DeserializeCommSample(
     const PerfDataProto_CommEvent& sample,
-    ParsedEvent* event) const {
-  struct comm_event& comm = (*event->raw_event)->comm;
+    event_t* event) const {
+  struct comm_event& comm = event->comm;
   comm.pid = sample.pid();
   comm.tid = sample.tid();
   snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
@@ -551,16 +554,16 @@ bool PerfSerializer::DeserializeCommSample(
   uint64 sample_fields =
       GetSampleFieldsForEventType(comm.header.type, sample_type_);
   std::bitset<sizeof(sample_fields) * CHAR_BIT> sample_type_bits(sample_fields);
-  comm.header.size = GetPerfSampleDataOffset(**event->raw_event) +
+  comm.header.size = GetPerfSampleDataOffset(*event) +
                      sample_type_bits.count() * sizeof(uint64);
 
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
 bool PerfSerializer::SerializeForkSample(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_ForkEvent* sample) const {
-  const struct fork_event& fork = (*event.raw_event)->fork;
+  const struct fork_event& fork = event.fork;
   sample->set_pid(fork.pid);
   sample->set_ppid(fork.ppid);
   sample->set_tid(fork.tid);
@@ -572,8 +575,8 @@ bool PerfSerializer::SerializeForkSample(
 
 bool PerfSerializer::DeserializeForkSample(
     const PerfDataProto_ForkEvent& sample,
-    ParsedEvent* event) const {
-  struct fork_event& fork = (*event->raw_event)->fork;
+    event_t* event) const {
+  struct fork_event& fork = event->fork;
   fork.pid = sample.pid();
   fork.ppid = sample.ppid();
   fork.tid = sample.tid();
@@ -584,9 +587,9 @@ bool PerfSerializer::DeserializeForkSample(
 }
 
 bool PerfSerializer::SerializeLostSample(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_LostEvent* sample) const {
-  const struct lost_event& lost = (*event.raw_event)->lost;
+  const struct lost_event& lost = event.lost;
   sample->set_id(lost.id);
   sample->set_lost(lost.lost);
 
@@ -595,8 +598,8 @@ bool PerfSerializer::SerializeLostSample(
 
 bool PerfSerializer::DeserializeLostSample(
     const PerfDataProto_LostEvent& sample,
-    ParsedEvent* event) const {
-  struct lost_event& lost = (*event->raw_event)->lost;
+    event_t* event) const {
+  struct lost_event& lost = event->lost;
   lost.id = sample.id();
   lost.lost = sample.lost();
 
@@ -604,9 +607,9 @@ bool PerfSerializer::DeserializeLostSample(
 }
 
 bool PerfSerializer::SerializeThrottleSample(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_ThrottleEvent* sample) const {
-  const struct throttle_event& throttle = (*event.raw_event)->throttle;
+  const struct throttle_event& throttle = event.throttle;
   sample->set_time(throttle.time);
   sample->set_id(throttle.id);
   sample->set_stream_id(throttle.stream_id);
@@ -616,8 +619,8 @@ bool PerfSerializer::SerializeThrottleSample(
 
 bool PerfSerializer::DeserializeThrottleSample(
     const PerfDataProto_ThrottleEvent& sample,
-    ParsedEvent* event) const {
-  struct throttle_event& throttle = (*event->raw_event)->throttle;
+    event_t* event) const {
+  struct throttle_event& throttle = event->throttle;
   throttle.time = sample.time();
   throttle.id = sample.id();
   throttle.stream_id = sample.stream_id();
@@ -626,9 +629,9 @@ bool PerfSerializer::DeserializeThrottleSample(
 }
 
 bool PerfSerializer::SerializeReadSample(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_ReadEvent* sample) const {
-  const struct read_event& read = (*event.raw_event)->read;
+  const struct read_event& read = event.read;
   sample->set_pid(read.pid);
   sample->set_tid(read.tid);
   sample->set_value(read.value);
@@ -641,8 +644,8 @@ bool PerfSerializer::SerializeReadSample(
 
 bool PerfSerializer::DeserializeReadSample(
     const PerfDataProto_ReadEvent& sample,
-    ParsedEvent* event) const {
-  struct read_event& read = (*event->raw_event)->read;
+    event_t* event) const {
+  struct read_event& read = event->read;
   read.pid = sample.pid();
   read.tid = sample.tid();
   read.value = sample.value();
@@ -654,10 +657,10 @@ bool PerfSerializer::DeserializeReadSample(
 }
 
 bool PerfSerializer::SerializeSampleInfo(
-    const ParsedEvent& event,
+    const event_t& event,
     PerfDataProto_SampleInfo* sample) const {
   perf_sample sample_info;
-  if (!ReadPerfSampleInfo(*(*event.raw_event), &sample_info))
+  if (!ReadPerfSampleInfo(event, &sample_info))
     return false;
 
   if (sample_type_ & PERF_SAMPLE_TID) {
@@ -675,7 +678,7 @@ bool PerfSerializer::SerializeSampleInfo(
 
 bool PerfSerializer::DeserializeSampleInfo(
     const PerfDataProto_SampleInfo& sample,
-    ParsedEvent* event) const {
+    event_t* event) const {
   perf_sample sample_info;
   if (sample.has_tid()) {
     sample_info.pid = sample.pid();
@@ -687,7 +690,7 @@ bool PerfSerializer::DeserializeSampleInfo(
     sample_info.id = sample.id();
   if (sample.has_cpu())
     sample_info.cpu = sample.cpu();
-  return WritePerfSampleInfo(sample_info, *event->raw_event);
+  return WritePerfSampleInfo(sample_info, event);
 }
 
 bool PerfSerializer::SerializeBuildIDs(

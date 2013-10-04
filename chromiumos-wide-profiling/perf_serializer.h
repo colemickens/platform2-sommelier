@@ -70,55 +70,55 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_EventHeader& header_proto,
       perf_event_header* header) const;
 
-  bool SerializeRecordSample(const ParsedEvent& event,
+  bool SerializeRecordSample(const event_t& event,
                              quipper::PerfDataProto_SampleEvent* sample) const;
   bool DeserializeRecordSample(
       const quipper::PerfDataProto_SampleEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
-  bool SerializeMMapSample(const ParsedEvent& event,
+  bool SerializeMMapSample(const event_t& event,
                            quipper::PerfDataProto_MMapEvent* sample) const;
   bool DeserializeMMapSample(
       const quipper::PerfDataProto_MMapEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
   bool SerializeCommSample(
-      const ParsedEvent& event,
+      const event_t& event,
       quipper::PerfDataProto_CommEvent* sample) const;
   bool DeserializeCommSample(
       const quipper::PerfDataProto_CommEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
-  bool SerializeForkSample(const ParsedEvent& event,
+  bool SerializeForkSample(const event_t& event,
                            quipper::PerfDataProto_ForkEvent* sample) const;
   bool DeserializeForkSample(
       const quipper::PerfDataProto_ForkEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
-  bool SerializeLostSample(const ParsedEvent& event,
+  bool SerializeLostSample(const event_t& event,
                            quipper::PerfDataProto_LostEvent* sample) const;
   bool DeserializeLostSample(
       const quipper::PerfDataProto_LostEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
-  bool SerializeThrottleSample(const ParsedEvent& event,
+  bool SerializeThrottleSample(const event_t& event,
                            quipper::PerfDataProto_ThrottleEvent* sample) const;
   bool DeserializeThrottleSample(
       const quipper::PerfDataProto_ThrottleEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
-  bool SerializeReadSample(const ParsedEvent& event,
+  bool SerializeReadSample(const event_t& event,
                            quipper::PerfDataProto_ReadEvent* sample) const;
   bool DeserializeReadSample(
       const quipper::PerfDataProto_ReadEvent& sample,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
   bool SerializeSampleInfo(
-      const ParsedEvent& event,
+      const event_t& event,
       quipper::PerfDataProto_SampleInfo* sample_info) const;
   bool DeserializeSampleInfo(
       const quipper::PerfDataProto_SampleInfo& info,
-      ParsedEvent* event) const;
+      event_t* event) const;
 
   bool SerializeBuildIDs(
       const std::vector<build_id_event*>& from,
