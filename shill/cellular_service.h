@@ -26,6 +26,7 @@ class Manager;
 class CellularService : public Service {
  public:
   // Online payment portal.
+  // TODO(armansito): Move this to CellularOperatorInfo.
   class OLP {
    public:
     OLP();

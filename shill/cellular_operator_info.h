@@ -131,6 +131,7 @@ class CellularOperatorInfo {
     friend class CellularOperatorInfo;
     friend class CellularOperatorInfoImpl;
     friend class CellularCapabilityUniversalCDMATest;
+    friend class MobileOperatorTest;
     FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
                 CreateFriendlyServiceName);
     FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
