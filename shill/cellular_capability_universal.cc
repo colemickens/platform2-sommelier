@@ -69,6 +69,7 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kIpConfigPropertyMethod[] = "method";
+const char CellularCapabilityUniversal::kALT3100ModelId[] = "ALT3100";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
@@ -722,8 +723,8 @@ void CellularCapabilityUniversal::OnServiceCreated() {
   //
   // The out-of-credits detection is also needed on ALT3100 modems until the PCO
   // support is ready (crosbug.com/p/20461).
-  cellular()->service()->set_enforce_out_of_credits_detection(
-      ShouldDetectOutOfCredit());
+  cellular()->service()->InitOutOfCreditsDetection(
+      GetOutOfCreditsDetectionType());
 
   // Make sure that the network technology is set when the service gets
   // created, just in case.
@@ -826,10 +827,6 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
 
 bool CellularCapabilityUniversal::AllowRoaming() {
   return provider_requires_roaming_ || allow_roaming_property();
-}
-
-bool CellularCapabilityUniversal::ShouldDetectOutOfCredit() const {
-  return model_id_ == kE362ModelId;
 }
 
 void CellularCapabilityUniversal::GetProperties() {
@@ -1934,6 +1931,18 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     On3GPPSubscriptionStateChanged(
         static_cast<MMModem3gppSubscriptionState>(uint_value));
 
+  uint32 subscription_state;
+  CellularServiceRefPtr service = cellular()->service();
+  if (service.get() &&
+      DBusProperties::GetUint32(properties,
+                                MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE,
+                                &subscription_state)) {
+    SLOG(Cellular, 2) << __func__ << ": Subscription state = "
+                                  << subscription_state;
+    service->out_of_credits_detector()->NotifySubscriptionStateChanged(
+        subscription_state);
+  }
+
   uint32 locks = 0;
   if (DBusProperties::GetUint32(
           properties, MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS,
@@ -2108,6 +2117,17 @@ void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string &operator_id) {
   SLOG(Cellular, 2) << "Operator ID = '" << operator_id << "'";
   operator_id_ = operator_id;
+}
+
+OutOfCreditsDetector::OOCType
+CellularCapabilityUniversal::GetOutOfCreditsDetectionType() const {
+  if (model_id_ == kALT3100ModelId) {
+    return OutOfCreditsDetector::OOCTypeSubscriptionState;
+  } else if (model_id_ == kE362ModelId) {
+    return OutOfCreditsDetector::OOCTypeActivePassive;
+  } else {
+    return OutOfCreditsDetector::OOCTypeNone;
+  }
 }
 
 }  // namespace shill

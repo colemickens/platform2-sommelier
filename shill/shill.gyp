@@ -177,6 +177,7 @@
             ],
           },
           'sources': [
+            'active_passive_out_of_credits_detector.cc',
             'cellular.cc',
             'cellular_capability.cc',
             'cellular_capability_cdma.cc',
@@ -209,6 +210,8 @@
             'modem_manager_proxy.cc',
             'modem_proxy.cc',
             'modem_simple_proxy.cc',
+            'out_of_credits_detector.cc',
+            'subscription_state_out_of_credits_detector.cc',
           ],
         }],
         ['USE_vpn == 1', {
@@ -644,6 +647,7 @@
           'conditions': [
             ['USE_cellular == 1', {
               'sources': [
+                'active_passive_out_of_credits_detector_unittest.cc',
                 'cellular_capability_cdma_unittest.cc',
                 'cellular_capability_classic_unittest.cc',
                 'cellular_capability_gsm_unittest.cc',
@@ -675,6 +679,8 @@
                 'modem_1_unittest.cc',
                 'modem_manager_unittest.cc',
                 'modem_unittest.cc',
+                'mock_out_of_credits_detector.cc',
+                'subscription_state_out_of_credits_detector_unittest.cc',
               ],
               'variables': {
                 'deps': [

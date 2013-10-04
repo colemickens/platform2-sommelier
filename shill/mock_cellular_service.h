@@ -23,10 +23,14 @@ class MockCellularService : public CellularService {
   MOCK_METHOD1(SetLastGoodApn, void(const Stringmap &apn_info));
   MOCK_METHOD0(ClearLastGoodApn, void());
   MOCK_METHOD1(SetActivationState, void(const std::string &state));
+  MOCK_METHOD2(Connect, void(Error *error, const char *reason));
   MOCK_METHOD1(Disconnect, void(Error *error));
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
+  MOCK_CONST_METHOD0(state, ConnectState());
+  MOCK_CONST_METHOD0(explicitly_disconnected, bool());
+  MOCK_CONST_METHOD0(resume_start_time, const base::Time &());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCellularService);

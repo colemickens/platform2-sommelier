@@ -306,8 +306,6 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback &callback,
     // Registration state updates may have been ignored while the
     // modem was not yet marked enabled.
     HandleNewRegistrationState();
-    if (capability_->ShouldDetectOutOfCredit())
-      set_traffic_monitor_enabled(true);
   }
   callback.Run(error);
 }
@@ -322,7 +320,6 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback &callback,
   DestroyService();
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
-  set_traffic_monitor_enabled(false);
   callback.Run(error);
   // In case no termination action was executed (and TerminationActionComplete
   // was not invoked) in response to a suspend request, any registered
@@ -458,14 +455,6 @@ void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
-void Cellular::OnNoNetworkRouting() {
-  SLOG(Cellular, 2) << __func__;
-  Device::OnNoNetworkRouting();
-
-  SLOG(Cellular, 2) << "Requesting active probe for out-of-credit detection.";
-  RequestConnectionHealthCheck();
-}
-
 void Cellular::OnAfterResume() {
   SLOG(Cellular, 2) << __func__;
   if (enabled_persistent()) {
@@ -497,39 +486,6 @@ void Cellular::OnAfterResume() {
   // the device was still disabling when we suspended, will trying to
   // renew DHCP here cause problems?
   Device::OnAfterResume();
-}
-
-void Cellular::OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::Result result) {
-  SLOG(Cellular, 2) << __func__ << "(Result = "
-                    << ConnectionHealthChecker::ResultToString(result) << ")";
-
-  if (result == ConnectionHealthChecker::kResultCongestedTxQueue) {
-    SLOG(Cellular, 2) << "Active probe determined possible out-of-credits "
-                      << "scenario.";
-    if (service().get()) {
-      Metrics::CellularOutOfCreditsReason reason =
-          (result == ConnectionHealthChecker::kResultCongestedTxQueue) ?
-              Metrics::kCellularOutOfCreditsReasonTxCongested :
-              Metrics::kCellularOutOfCreditsReasonElongatedTimeWait;
-      metrics()->NotifyCellularOutOfCredits(reason);
-
-      service()->SetOutOfCredits(true);
-      SLOG(Cellular, 2) << "Disconnecting due to out-of-credit scenario.";
-      Error error;
-      service()->Disconnect(&error);
-    }
-  }
-}
-
-void Cellular::PortalDetectorCallback(const PortalDetector::Result &result) {
-  Device::PortalDetectorCallback(result);
-  if (result.status != PortalDetector::kStatusSuccess &&
-      capability_->ShouldDetectOutOfCredit()) {
-    SLOG(Cellular, 2) << "Portal detection failed. Launching active probe for "
-                      << "out-of-credit detection.";
-    RequestConnectionHealthCheck();
-  }
 }
 
 void Cellular::Scan(ScanType /*scan_type*/, Error *error,

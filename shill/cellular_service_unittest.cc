@@ -15,6 +15,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_info.h"
+#include "shill/mock_out_of_credits_detector.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
@@ -54,6 +55,10 @@ class CellularServiceTest : public testing::Test {
   virtual void SetUp() {
     adaptor_ =
         dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+    out_of_credits_detector_ =
+        new MockOutOfCreditsDetector(NULL, NULL, NULL, service_);
+    // Passes ownership.
+    service_->set_out_of_credits_detector(out_of_credits_detector_);
   }
 
   CellularCapabilityCDMA *GetCapabilityCDMA() {
@@ -70,6 +75,7 @@ class CellularServiceTest : public testing::Test {
   scoped_refptr<MockCellular> device_;
   CellularServiceRefPtr service_;
   ServiceMockAdaptor *adaptor_;  // Owned by |service_|.
+  MockOutOfCreditsDetector *out_of_credits_detector_;  // Owned by |service_|.
 };
 
 const char CellularServiceTest::kAddress[] = "000102030405";
@@ -313,6 +319,9 @@ TEST_F(CellularServiceTest, LastGoodApn) {
 TEST_F(CellularServiceTest, IsAutoConnectable) {
   const char *reason = NULL;
 
+  ON_CALL(*out_of_credits_detector_, IsDetecting())
+      .WillByDefault(Return(false));
+
   // Auto-connect should be suppressed if the device is not running.
   device_->running_ = false;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -335,18 +344,24 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 
   // Auto-connect should be suppressed if the we're undergoing an
   // out-of-credits detection.
-  service_->out_of_credits_detection_in_progress_ = true;
+  EXPECT_CALL(*out_of_credits_detector_, IsDetecting())
+      .WillOnce(Return(true));
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnOutOfCreditsDetectionInProgress,
                reason);
+  Mock::VerifyAndClearExpectations(out_of_credits_detector_);
 
   // Auto-connect should be suppressed if we're out of credits.
-  service_->out_of_credits_detection_in_progress_ = false;
-  service_->out_of_credits_ = true;
+  EXPECT_CALL(*out_of_credits_detector_, IsDetecting())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*out_of_credits_detector_, out_of_credits())
+      .WillOnce(Return(true));
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnOutOfCredits, reason);
+  Mock::VerifyAndClearExpectations(out_of_credits_detector_);
 
-  service_->out_of_credits_ = false;
+  EXPECT_CALL(*out_of_credits_detector_, out_of_credits())
+      .WillRepeatedly(Return(false));
 
   // But other activation states are fine.
   GetCapabilityCDMA()->activation_state_ =
@@ -404,139 +419,6 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   service_->SetState(Service::kStateAssociating);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsDetected) {
-  service_->set_enforce_out_of_credits_detection(true);
-  EXPECT_CALL(*device_, Connect(_)).Times(3);
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateAssociating);
-  service_->SetState(Service::kStateFailure);
-  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
-  dispatcher_.DispatchPendingEvents();
-  service_->SetState(Service::kStateConfiguring);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
-  dispatcher_.DispatchPendingEvents();
-  service_->SetState(Service::kStateConnected);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_TRUE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsDetectionNotSkippedAfterSlowResume) {
-  service_->set_enforce_out_of_credits_detection(true);
-  service_->OnAfterResume();
-  service_->resume_start_time_ =
-      base::Time::Now() -
-      base::TimeDelta::FromSeconds(
-          CellularService::kOutOfCreditsResumeIgnoreSeconds + 1);
-  EXPECT_CALL(*device_, Connect(_)).Times(3);
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateAssociating);
-  service_->SetState(Service::kStateFailure);
-  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
-  dispatcher_.DispatchPendingEvents();
-  service_->SetState(Service::kStateConfiguring);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
-  dispatcher_.DispatchPendingEvents();
-  service_->SetState(Service::kStateConnected);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_TRUE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume) {
-  service_->set_enforce_out_of_credits_detection(true);
-  service_->OnAfterResume();
-  EXPECT_CALL(*device_, Connect(_));
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateConnected);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_FALSE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-  // There should not be any pending connect requests but dispatch pending
-  // events anyway to be sure.
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedAlreadyOutOfCredits) {
-  service_->set_enforce_out_of_credits_detection(true);
-  EXPECT_CALL(*device_, Connect(_));
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->out_of_credits_ = true;
-  service_->SetState(Service::kStateConnected);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-  // There should not be any pending connect requests but dispatch pending
-  // events anyway to be sure.
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedExplicitDisconnect) {
-  service_->set_enforce_out_of_credits_detection(true);
-  EXPECT_CALL(*device_, Connect(_));
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateConnected);
-  service_->UserInitiatedDisconnect(&error);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_FALSE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-  // There should not be any pending connect requests but dispatch pending
-  // events anyway to be sure.
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped) {
-  service_->set_enforce_out_of_credits_detection(true);
-  EXPECT_CALL(*device_, Connect(_));
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateAssociating);
-  service_->SetState(Service::kStateConfiguring);
-  service_->SetState(Service::kStateConnected);
-  EXPECT_FALSE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-  // There should not be any pending connect requests but dispatch pending
-  // events anyway to be sure.
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork) {
-  service_->set_enforce_out_of_credits_detection(true);
-  EXPECT_CALL(*device_, Connect(_));
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateConnected);
-  service_->connect_start_time_ =
-      base::Time::Now() -
-      base::TimeDelta::FromSeconds(
-          CellularService::kOutOfCreditsConnectionDropSeconds + 1);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_FALSE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-  // There should not be any pending connect requests but dispatch pending
-  // events anyway to be sure.
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(CellularServiceTest, OutOfCreditsNotEnforced) {
-  EXPECT_CALL(*device_, Connect(_));
-  Error error;
-  service_->Connect(&error, "in test");
-  service_->SetState(Service::kStateConnected);
-  service_->SetState(Service::kStateIdle);
-  EXPECT_FALSE(service_->out_of_credits_);
-  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
-  // There should not be any pending connect requests but dispatch pending
-  // events anyway to be sure.
-  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
@@ -601,9 +483,10 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   service_->SetNetworkTechnology(network_technology + "and some new stuff");
   Mock::VerifyAndClearExpectations(adaptor_);
 
-  bool out_of_credits = service_->out_of_credits();
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(kOutOfCreditsProperty, _));
-  service_->SetOutOfCredits(!out_of_credits);
+  bool out_of_credits = true;
+  EXPECT_CALL(*adaptor_,
+              EmitBoolChanged(kOutOfCreditsProperty, out_of_credits));
+  service_->SignalOutOfCreditsChanged(out_of_credits);
   Mock::VerifyAndClearExpectations(adaptor_);
 
   string roaming_state = service_->roaming_state();

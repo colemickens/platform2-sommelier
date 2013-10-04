@@ -26,9 +26,6 @@ const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kAutoConnOutOfCredits[] = "device out of credits";
 const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
     "device detecting out-of-credits";
-const int64 CellularService::kOutOfCreditsConnectionDropSeconds = 15;
-const int CellularService::kOutOfCreditsMaxConnectAttempts = 3;
-const int64 CellularService::kOutOfCreditsResumeIgnoreSeconds = 5;
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
 const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 
@@ -110,10 +107,7 @@ CellularService::CellularService(ModemInfo *modem_info,
       activate_over_non_cellular_network_(false),
       cellular_(device),
       is_auto_connecting_(false),
-      enforce_out_of_credits_detection_(false),
-      num_connect_attempts_(0),
-      out_of_credits_detection_in_progress_(false),
-      out_of_credits_(false) {
+      out_of_credits_detector_(NULL) {
   SetConnectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
@@ -125,7 +119,9 @@ CellularService::CellularService(ModemInfo *modem_info,
   store->RegisterConstStringmap(kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
   store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
-  store->RegisterConstBool(kOutOfCreditsProperty, &out_of_credits_);
+  HelpRegisterDerivedBool(kOutOfCreditsProperty,
+                          &CellularService::IsOutOfCredits,
+                          NULL);
   store->RegisterConstStringmap(kPaymentPortalProperty, &olp_.ToDict());
   store->RegisterConstString(kRoamingStateProperty, &roaming_state_);
   store->RegisterConstStringmap(kServingOperatorProperty,
@@ -138,6 +134,10 @@ CellularService::CellularService(ModemInfo *modem_info,
   set_friendly_name(name);
   SetStorageIdentifier(string(kTypeCellular) + "_" +
                        device->address() + "_" + name);
+
+  // Assume we are not performing any out-of-credits detection.
+  // The capability can reinitialize with the appropriate type later.
+  InitOutOfCreditsDetection(OutOfCreditsDetector::OOCTypeNone);
 }
 
 CellularService::~CellularService() { }
@@ -155,11 +155,11 @@ bool CellularService::IsAutoConnectable(const char **reason) const {
     *reason = kAutoConnBadPPPCredentials;
     return false;
   }
-  if (out_of_credits_detection_in_progress_) {
+  if (out_of_credits_detector_->IsDetecting()) {
     *reason = kAutoConnOutOfCreditsDetectionInProgress;
     return false;
   }
-  if (out_of_credits_) {
+  if (out_of_credits_detector_->out_of_credits()) {
     *reason = kAutoConnOutOfCredits;
     return false;
   }
@@ -175,6 +175,15 @@ void CellularService::HelpRegisterDerivedStringmap(
       name,
       StringmapAccessor(
           new CustomAccessor<CellularService, Stringmap>(this, get, set)));
+}
+
+void CellularService::HelpRegisterDerivedBool(
+    const string &name,
+    bool(CellularService::*get)(Error *),
+    bool(CellularService::*set)(const bool&, Error *)) {
+  mutable_store()->RegisterDerivedBool(
+    name,
+    BoolAccessor(new CustomAccessor<CellularService, bool>(this, get, set)));
 }
 
 Stringmap *CellularService::GetUserSpecifiedApn() {
@@ -244,6 +253,16 @@ void CellularService::OnAfterResume() {
   resume_start_time_ = base::Time::Now();
 }
 
+void CellularService::InitOutOfCreditsDetection(
+    OutOfCreditsDetector::OOCType ooc_type) {
+  out_of_credits_detector_.reset(
+      OutOfCreditsDetector::CreateDetector(ooc_type,
+                                           dispatcher(),
+                                           manager(),
+                                           metrics(),
+                                           this));
+}
+
 bool CellularService::Load(StoreInterface *storage) {
   // Load properties common to all Services.
   if (!Service::Load(storage))
@@ -288,99 +307,6 @@ bool CellularService::LoadApnField(StoreInterface *storage,
   return false;
 }
 
-void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
-                                                   ConnectState new_state) {
-  // WORKAROUND:
-  // Some modems on Verizon network does not properly redirect when a SIM
-  // runs out of credits.  This workaround is used to detect an out-of-credits
-  // condition by by retrying a connect request if it was dropped within
-  // kOutOfCreditsConnectionDropSeconds.  If the number of retries exceeds
-  // kOutOfCreditsMaxConnectAttempts, then the SIM is considered
-  // out-of-credits and the cellular service kOutOfCreditsProperty is set.
-  // This will signal Chrome to display the appropriate UX and also suppress
-  // auto-connect until the next time the user manually connects.
-  //
-  // TODO(thieule): Remove this workaround (crosbug.com/p/18169).
-  if (out_of_credits_) {
-    SLOG(Cellular, 2) << __func__
-                      << ": Already out-of-credits, skipping check";
-    return;
-  }
-  base::TimeDelta
-      time_since_resume = base::Time::Now() - resume_start_time_;
-  if (time_since_resume.InSeconds() < kOutOfCreditsResumeIgnoreSeconds) {
-    // On platforms that power down the modem during suspend, make sure that
-    // we do not display a false out-of-credits warning to the user
-    // due to the sequence below by skipping out-of-credits detection
-    // immediately after a resume.
-    //   1. User suspends Chromebook.
-    //   2. Hardware turns off power to modem.
-    //   3. User resumes Chromebook.
-    //   4. Hardware restores power to modem.
-    //   5. ModemManager still has instance of old modem.
-    //      ModemManager does not delete this instance until udev fires a
-    //      device removed event.  ModemManager does not detect new modem
-    //      until udev fires a new device event.
-    //   6. Shill performs auto-connect against the old modem.
-    //      Make sure at this step that we do not display a false
-    //      out-of-credits warning.
-    //   7. Udev fires device removed event.
-    //   8. Udev fires new device event.
-    SLOG(Cellular, 2) <<
-        "Skipping out-of-credits detection, too soon since resume.";
-    ResetOutOfCreditsState();
-    return;
-  }
-  base::TimeDelta
-      time_since_connect = base::Time::Now() - connect_start_time_;
-  if (time_since_connect.InSeconds() > kOutOfCreditsConnectionDropSeconds) {
-    ResetOutOfCreditsState();
-    return;
-  }
-  // Verizon can drop the connection in two ways:
-  //   - Denies the connect request
-  //   - Allows connect request but disconnects later
-  bool connection_dropped =
-      (IsConnectedState(curr_state) || IsConnectingState(curr_state)) &&
-      (new_state == kStateFailure || new_state == kStateIdle);
-  if (!connection_dropped)
-    return;
-  if (explicitly_disconnected())
-    return;
-  if (roaming_state_ == kRoamingStateRoaming &&
-      !cellular_->allow_roaming_property())
-    return;
-  if (time_since_connect.InSeconds() <= kOutOfCreditsConnectionDropSeconds) {
-    if (num_connect_attempts_ < kOutOfCreditsMaxConnectAttempts) {
-      SLOG(Cellular, 2) << "Out-Of-Credits detection: Reconnecting "
-                        << "(retry #" << num_connect_attempts_ << ")";
-      // Prevent autoconnect logic from kicking in while we perform the
-      // out-of-credits detection.
-      out_of_credits_detection_in_progress_ = true;
-      dispatcher()->PostTask(
-          Bind(&CellularService::OutOfCreditsReconnect,
-               weak_ptr_factory_.GetWeakPtr()));
-    } else {
-      LOG(ERROR) <<
-          "Out-Of-Credits detection: Marking service as out-of-credits";
-      metrics()->NotifyCellularOutOfCredits(
-          Metrics::kCellularOutOfCreditsReasonConnectDisconnectLoop);
-      SetOutOfCredits(true);
-      ResetOutOfCreditsState();
-    }
-  }
-}
-
-void CellularService::OutOfCreditsReconnect() {
-  Error error;
-  Connect(&error, __func__);
-}
-
-void CellularService::ResetOutOfCreditsState() {
-  out_of_credits_detection_in_progress_ = false;
-  num_connect_attempts_ = 0;
-}
-
 bool CellularService::Save(StoreInterface *storage) {
   // Save properties common to all Services.
   if (!Service::Save(storage))
@@ -416,6 +342,19 @@ void CellularService::SaveApnField(StoreInterface *storage,
     storage->DeleteKey(storage_group, key);
 }
 
+bool CellularService::IsOutOfCredits(Error */*error*/) {
+  return out_of_credits_detector_->out_of_credits();
+}
+
+void CellularService::set_out_of_credits_detector(
+    OutOfCreditsDetector *detector) {
+  out_of_credits_detector_.reset(detector);
+}
+
+void CellularService::SignalOutOfCreditsChanged(bool state) const {
+  adaptor()->EmitBoolChanged(kOutOfCreditsProperty, state);
+}
+
 void CellularService::AutoConnect() {
   is_auto_connecting_ = true;
   Service::AutoConnect();
@@ -423,14 +362,10 @@ void CellularService::AutoConnect() {
 }
 
 void CellularService::Connect(Error *error, const char *reason) {
-  if (num_connect_attempts_ == 0)
-    SetOutOfCredits(false);
-  connect_start_time_ = base::Time::Now();
-  num_connect_attempts_++;
   Service::Connect(error, reason);
   cellular_->Connect(error);
   if (error->IsFailure())
-    ResetOutOfCreditsState();
+    out_of_credits_detector_->ResetDetector();
 }
 
 void CellularService::Disconnect(Error *error) {
@@ -449,8 +384,7 @@ void CellularService::CompleteCellularActivation(Error *error) {
 }
 
 void CellularService::SetState(ConnectState new_state) {
-  if (enforce_out_of_credits_detection_)
-    PerformOutOfCreditsDetection(state(), new_state);
+  out_of_credits_detector_->NotifyServiceStateChanged(state(), new_state);
   Service::SetState(new_state);
 }
 
@@ -518,14 +452,6 @@ void CellularService::SetRoamingState(const string &state) {
   }
   roaming_state_ = state;
   adaptor()->EmitStringChanged(kRoamingStateProperty, state);
-}
-
-void CellularService::SetOutOfCredits(bool state) {
-  if (state == out_of_credits_) {
-    return;
-  }
-  out_of_credits_ = state;
-  adaptor()->EmitBoolChanged(kOutOfCreditsProperty, state);
 }
 
 const Cellular::Operator &CellularService::serving_operator() const {

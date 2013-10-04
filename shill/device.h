@@ -16,7 +16,6 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
-#include "shill/connection_health_checker.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
@@ -219,10 +218,6 @@ class Device : public base::RefCounted<Device> {
 
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
-  void set_health_checker(ConnectionHealthChecker *health_checker) {
-    health_checker_.reset(health_checker);
-  }
-
   // Suspend event handler. Called by Manager before the system
   // suspends. This handler, along with any other suspect handlers,
   // will have Manager::kTerminationActionsTimeoutMilliseconds to
@@ -373,17 +368,6 @@ class Device : public base::RefCounted<Device> {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  virtual void SetupConnectionHealthChecker();
-
-  // Checks the network connectivity status by creating a TCP connection, and
-  // optionally sending a small amount of data.
-  void RequestConnectionHealthCheck();
-
-  // Responds to the result from connection health checker in a device specific
-  // manner.
-  virtual void OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::Result result);
-
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
@@ -403,18 +387,6 @@ class Device : public base::RefCounted<Device> {
 
   // Respond to a LinkMonitor failure in a Device-specific manner.
   virtual void OnLinkMonitorFailure();
-
-  // Initiates traffic monitoring if it's enabled via
-  // set_traffic_monitor_enabled() and returns true if the monitoring
-  // is started.
-  bool StartTrafficMonitor();
-
-  // Stops traffic monitoring if it is running.
-  void StopTrafficMonitor();
-
-  // Responds to a TrafficMonitor no-network-routing failure in a
-  // Device-specific manner.
-  virtual void OnNoNetworkRouting();
 
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
@@ -449,16 +421,6 @@ class Device : public base::RefCounted<Device> {
   Manager *manager() const { return manager_; }
   const LinkMonitor *link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor *link_monitor);
-  const TrafficMonitor *traffic_monitor() const {
-    return traffic_monitor_.get();
-  }
-
-  // Ownership of |traffic_monitor| is taken.
-  void set_traffic_monitor(TrafficMonitor *traffic_monitor);
-  bool traffic_monitor_enabled() const { return traffic_monitor_enabled_; }
-  void set_traffic_monitor_enabled(bool traffic_monitor_enabled) {
-    traffic_monitor_enabled_ = traffic_monitor_enabled;
-  }
 
  private:
   friend class CellularCapabilityTest;
@@ -560,9 +522,6 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
   scoped_ptr<LinkMonitor> link_monitor_;
-  scoped_ptr<TrafficMonitor> traffic_monitor_;
-  scoped_ptr<ConnectionHealthChecker> health_checker_;
-  bool traffic_monitor_enabled_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
   Technology::Identifier technology_;

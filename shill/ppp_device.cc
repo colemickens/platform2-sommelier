@@ -4,6 +4,8 @@
 
 #include "shill/ppp_device.h"
 
+#include <base/stl_util.h>
+
 #include "shill/logging.h"
 #include "shill/technology.h"
 

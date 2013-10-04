@@ -24,6 +24,7 @@
 #include "shill/mm1_modem_proxy_interface.h"
 #include "shill/mm1_modem_simple_proxy_interface.h"
 #include "shill/mm1_sim_proxy_interface.h"
+#include "shill/out_of_credits_detector.h"
 
 struct mobile_provider;
 
@@ -107,7 +108,6 @@ class CellularCapabilityUniversal : public CellularCapability {
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
   virtual bool AllowRoaming();
-  virtual bool ShouldDetectOutOfCredit() const;
 
  protected:
   virtual void InitProxies();
@@ -172,6 +172,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kIpConfigPropertyMethod[];
 
   // Modem Model ID strings.  From modem firmware via modemmanager.
+  static const char kALT3100ModelId[];
   static const char kE362ModelId[];
 
   // Generic service name prefix, shown when the correct carrier name is
@@ -206,9 +207,12 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               DisconnectWithDeferredCallback);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, ExtractPcoValue);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               GetNetworkTechnologyStringOnE362);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              GetOutOfCreditsDetectionType);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
@@ -227,8 +231,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              ShouldDetectOutOfCredit);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
@@ -442,6 +444,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnResetAfterActivationReply(const Error &error);
 
   static bool IsRegisteredState(MMModem3gppRegistrationState state);
+
+  // Returns the out-of-credits detection algorithm to be used on this modem.
+  OutOfCreditsDetector::OOCType GetOutOfCreditsDetectionType() const;
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemProxyInterface> modem_proxy_;

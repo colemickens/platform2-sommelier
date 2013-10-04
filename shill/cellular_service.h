@@ -13,6 +13,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular.h"
+#include "shill/out_of_credits_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -22,6 +23,7 @@ class ControlInterface;
 class Error;
 class EventDispatcher;
 class Manager;
+class OutOfCreditsDetector;
 
 class CellularService : public Service {
  public:
@@ -69,6 +71,8 @@ class CellularService : public Service {
   virtual std::string GetStorageIdentifier() const;
   void SetStorageIdentifier(const std::string &identifier);
 
+  const CellularRefPtr &cellular() const { return cellular_; }
+
   void SetActivateOverNonCellularNetwork(bool state);
   bool activate_over_non_cellular_network() const {
     return activate_over_non_cellular_network_;
@@ -101,11 +105,14 @@ class CellularService : public Service {
   const std::string &ppp_username() const { return ppp_username_; }
   const std::string &ppp_password() const { return ppp_password_; }
 
-  void set_enforce_out_of_credits_detection(bool state) {
-    enforce_out_of_credits_detection_ = state;
+  virtual const base::Time &resume_start_time() const {
+    return resume_start_time_;
   }
-  bool out_of_credits() const { return out_of_credits_; }
-  void SetOutOfCredits(bool state);
+
+  OutOfCreditsDetector *out_of_credits_detector() {
+    return out_of_credits_detector_.get();
+  }
+  void SignalOutOfCreditsChanged(bool state) const;
 
   // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
@@ -118,6 +125,9 @@ class CellularService : public Service {
   virtual void ClearLastGoodApn();
 
   virtual void OnAfterResume();
+
+  // Initialize out-of-credits detection.
+  void InitOutOfCreditsDetection(OutOfCreditsDetector::OOCType ooc_type);
 
  protected:
   // Overrides IsAutoConnectable from parent Service class.
@@ -158,9 +168,6 @@ class CellularService : public Service {
   static const char kAutoConnDeviceDisabled[];
   static const char kAutoConnOutOfCredits[];
   static const char kAutoConnOutOfCreditsDetectionInProgress[];
-  static const int64 kOutOfCreditsConnectionDropSeconds;
-  static const int kOutOfCreditsMaxConnectAttempts;
-  static const int64 kOutOfCreditsResumeIgnoreSeconds;
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
 
@@ -168,6 +175,10 @@ class CellularService : public Service {
       const std::string &name,
       Stringmap(CellularService::*get)(Error *error),
       bool(CellularService::*set)(const Stringmap &value, Error *error));
+  void HelpRegisterDerivedBool(
+      const std::string &name,
+      bool(CellularService::*get)(Error *),
+      bool(CellularService::*set)(const bool&, Error *));
 
   virtual std::string GetDeviceRpcId(Error *error);
 
@@ -191,11 +202,10 @@ class CellularService : public Service {
                            const std::string &keytag,
                            const std::string &apntag,
                            Stringmap *apn_info);
+  bool IsOutOfCredits(Error */*error*/);
 
-  void PerformOutOfCreditsDetection(ConnectState curr_state,
-                                    ConnectState new_state);
-  void OutOfCreditsReconnect();
-  void ResetOutOfCreditsState();
+  // For unit test.
+  void set_out_of_credits_detector(OutOfCreditsDetector *detector);
 
   base::WeakPtrFactory<CellularService> weak_ptr_factory_;
 
@@ -221,19 +231,10 @@ class CellularService : public Service {
   // call to Connect().  It does not remain set while the async request is
   // in flight.
   bool is_auto_connecting_;
-
-  // Flag indicating whether we need to perform out-of-credits detection.
-  bool enforce_out_of_credits_detection_;
-  // Time when the last connect request started.
-  base::Time connect_start_time_;
-  // Number of connect attempts.
-  int num_connect_attempts_;
-  // Flag indicating whether out-of-credits detection is in progress.
-  bool out_of_credits_detection_in_progress_;
-  // Flag indicating if the SIM is out-of-credits.
-  bool out_of_credits_;
   // Time when the last resume occurred.
   base::Time resume_start_time_;
+  // Out-of-credits detector.
+  scoped_ptr<OutOfCreditsDetector> out_of_credits_detector_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };

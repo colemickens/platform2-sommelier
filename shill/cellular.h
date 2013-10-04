@@ -208,7 +208,6 @@ class Cellular : public Device, public RPCTaskDelegate {
       override;
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state)
       override;
-  virtual void OnNoNetworkRouting() override;
   virtual void OnAfterResume() override;
 
   void StartModemCallback(const EnabledStateChangedCallback &callback,
@@ -230,10 +229,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
 
-  virtual void OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::Result result);
-  virtual void PortalDetectorCallback(const PortalDetector::Result &result);
-
   // Initiate PPP link. Called from capabilities.
   virtual void StartPPP(const std::string &serial_device);
   // Callback for |ppp_task_|.
@@ -244,6 +239,7 @@ class Cellular : public Device, public RPCTaskDelegate {
                       const std::map<std::string, std::string> &dict) override;
 
  private:
+  friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityCDMATest;
@@ -252,6 +248,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   friend class CellularCapabilityUniversalCDMATest;
   friend class CellularServiceTest;
   friend class ModemTest;
+  friend class SubscriptionStateOutOfCreditsDetectorTest;
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);

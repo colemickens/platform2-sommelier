@@ -20,7 +20,6 @@
 
 #include "shill/async_connection.h"
 #include "shill/connection.h"
-#include "shill/connection_health_checker.h"
 #include "shill/control_interface.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/dhcp_config.h"
@@ -42,7 +41,6 @@
 #include "shill/socket_info_reader.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
-#include "shill/traffic_monitor.h"
 
 using base::Bind;
 using base::FilePath;
@@ -102,7 +100,6 @@ Device::Device(ControlInterface *control_interface,
       manager_(manager),
       weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
-      traffic_monitor_enabled_(false),
       portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
                                      weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
@@ -495,8 +492,6 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
       StartPortalDetection();
     }
     StartLinkMonitor();
-    StartTrafficMonitor();
-    SetupConnectionHealthChecker();
   } else {
     // TODO(pstew): This logic gets yet more complex when multiple
     // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
@@ -565,14 +560,12 @@ void Device::DestroyConnection() {
   SLOG(Device, 2) << __func__ << " on " << link_name_;
   StopPortalDetection();
   StopLinkMonitor();
-  StopTrafficMonitor();
   if (selected_service_.get()) {
     SLOG(Device, 3) << "Clearing connection of service "
                     << selected_service_->unique_name();
     selected_service_->SetConnection(NULL);
   }
   connection_ = NULL;
-  health_checker_.reset();
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {
@@ -594,7 +587,6 @@ void Device::SelectService(const ServiceRefPtr &service) {
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(NULL);
     StopLinkMonitor();
-    StopTrafficMonitor();
     StopPortalDetection();
   }
   selected_service_ = service;
@@ -648,44 +640,6 @@ void Device::ResetByteCounters() {
   manager_->device_info()->GetByteCounts(
       interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
   manager_->UpdateDevice(this);
-}
-
-void Device::SetupConnectionHealthChecker() {
-  DCHECK(connection_);
-  if (!health_checker_.get()) {
-    health_checker_.reset(new ConnectionHealthChecker(
-        connection_,
-        dispatcher_,
-        manager_->health_checker_remote_ips(),
-        Bind(&Device::OnConnectionHealthCheckerResult,
-             weak_ptr_factory_.GetWeakPtr())));
-  } else {
-    health_checker_->SetConnection(connection_);
-  }
-  // Add URL in either case because a connection reset could have dropped past
-  // DNS queries.
-  health_checker_->AddRemoteURL(manager_->GetPortalCheckURL());
-}
-
-void Device::RequestConnectionHealthCheck() {
-  if (!health_checker_.get()) {
-    SLOG(Device, 2) << "No health checker exists, cannot request "
-                    << "health check.";
-    return;
-  }
-  if (health_checker_->health_check_in_progress()) {
-    SLOG(Device, 2) << "Health check already in progress.";
-    return;
-  }
-  health_checker_->Start();
-}
-
-void Device::OnConnectionHealthCheckerResult(
-    ConnectionHealthChecker::Result result) {
-  SLOG(Device, 2)
-      << FriendlyName()
-      << ": ConnectionHealthChecker result: "
-      << ConnectionHealthChecker::ResultToString(result);
 }
 
 bool Device::RestartPortalDetection() {
@@ -812,42 +766,6 @@ void Device::StopLinkMonitor() {
 void Device::OnLinkMonitorFailure() {
   LOG(ERROR) << "Device " << FriendlyName()
              << ": Link Monitor indicates failure.";
-}
-
-void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
-  traffic_monitor_.reset(traffic_monitor);
-}
-
-bool Device::StartTrafficMonitor() {
-  SLOG(Device, 2) << __func__;
-  if (!traffic_monitor_enabled_) {
-    SLOG(Device, 2) << "Device " << FriendlyName()
-                    << ": Traffic Monitoring is disabled.";
-    return false;
-  }
-
-  if (!traffic_monitor_.get()) {
-    traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
-    traffic_monitor_->set_tcp_out_traffic_not_routed_callback(
-        Bind(&Device::OnNoNetworkRouting, weak_ptr_factory_.GetWeakPtr()));
-  }
-
-  SLOG(Device, 2) << "Device " << FriendlyName()
-                  << ": Traffic Monitor starting.";
-  traffic_monitor_->Start();
-  return true;
-}
-
-void Device::StopTrafficMonitor() {
-  SLOG(Device, 2) << __func__;
-  SLOG(Device, 2) << "Device " << FriendlyName()
-                  << ": Traffic Monitor stopping.";
-  traffic_monitor_.reset();
-}
-
-void Device::OnNoNetworkRouting() {
-  SLOG(Device, 2) << "Device " << FriendlyName()
-                  << ": Traffic Monitor detects network congestion.";
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {

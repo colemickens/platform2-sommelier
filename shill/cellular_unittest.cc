@@ -1002,34 +1002,6 @@ TEST_F(CellularTest, ModemStateChangeLostRegistration) {
   EXPECT_FALSE(capability->IsRegistered());
 }
 
-TEST_F(CellularTest, EnableTrafficMonitor) {
-  SetCellularType(Cellular::kTypeUniversal);
-  CellularCapabilityUniversal *capability = GetCapabilityUniversal();
-  capability->model_id_.clear();
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
-                                   Unretained(this)),
-                              Error(Error::kSuccess));
-  EXPECT_FALSE(device_->traffic_monitor_enabled());
-  Mock::VerifyAndClearExpectations(this);
-
-  device_->state_ = Cellular::kStateDisabled;
-
-  capability->model_id_ = CellularCapabilityUniversal::kE362ModelId;
-  EXPECT_CALL(*this, TestCallback(IsFailure()));
-  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
-                                   Unretained(this)),
-                              Error(Error::kOperationFailed));
-  EXPECT_FALSE(device_->traffic_monitor_enabled());
-  Mock::VerifyAndClearExpectations(this);
-
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
-                                   Unretained(this)),
-                              Error(Error::kSuccess));
-  EXPECT_TRUE(device_->traffic_monitor_enabled());
-}
-
 TEST_F(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
@@ -1066,25 +1038,6 @@ TEST_F(CellularTest, StopModemCallbackFail) {
                              Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
   EXPECT_FALSE(device_->service_.get());
-}
-
-TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
-  MockCellularService *service(SetMockService());
-  EXPECT_FALSE(service->out_of_credits_);
-
-  EXPECT_CALL(*service, Disconnect(_)).Times(0);
-  device_->OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::kResultUnknown);
-  EXPECT_FALSE(service->out_of_credits_);
-  device_->OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::kResultConnectionFailure);
-  EXPECT_FALSE(service->out_of_credits_);
-  Mock::VerifyAndClearExpectations(service);
-
-  EXPECT_CALL(*service, Disconnect(_)).Times(1);
-  device_->OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::kResultCongestedTxQueue);
-  EXPECT_TRUE(service->out_of_credits_);
 }
 
 TEST_F(CellularTest, SetAllowRoaming) {
@@ -1341,6 +1294,7 @@ TEST_F(CellularTest, ChangeServiceState) {
   EXPECT_CALL(*service, SetState(_));
   EXPECT_CALL(*service, SetFailure(_));
   EXPECT_CALL(*service, SetFailureSilent(_));
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
   // Without PPP, these should be handled by our selected_service().
   device_->SelectService(service);

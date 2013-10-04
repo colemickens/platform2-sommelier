@@ -153,18 +153,6 @@ class DeviceTest : public PropertyStoreTest {
     return device_->GetLinkMonitorResponseTime(error);
   }
 
-  void SetTrafficMonitor(TrafficMonitor *traffic_monitor) {
-    device_->set_traffic_monitor(traffic_monitor);  // Passes ownership.
-  }
-
-  bool StartTrafficMonitor() {
-    return device_->StartTrafficMonitor();
-  }
-
-  void StopTrafficMonitor() {
-    device_->StopTrafficMonitor();
-  }
-
   void SetManager(Manager *manager) {
     device_->manager_ = manager;
   }
@@ -635,55 +623,6 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
   EXPECT_TRUE(HasLinkMonitor());
   SelectService(NULL);
   EXPECT_FALSE(HasLinkMonitor());
-}
-
-TEST_F(DeviceTest, StartTrafficMonitor) {
-  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
-  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
-
-  EXPECT_CALL(*traffic_monitor, Start()).Times(0);
-  EXPECT_FALSE(device_->traffic_monitor_enabled());
-  EXPECT_FALSE(StartTrafficMonitor());
-
-  device_->set_traffic_monitor_enabled(true);
-  EXPECT_CALL(*traffic_monitor, Start()).Times(1);
-  EXPECT_TRUE(device_->traffic_monitor_enabled());
-  EXPECT_TRUE(StartTrafficMonitor());
-}
-
-TEST_F(DeviceTest, StopTrafficMonitor) {
-  // Invoke Stop() without a traffic monitor set.
-  EXPECT_FALSE(device_->traffic_monitor_.get());
-  StopTrafficMonitor();
-  EXPECT_FALSE(device_->traffic_monitor_.get());
-
-  // Invoke Stop() with a traffic monitor set but without invoking Start().
-  TrafficMonitor *traffic_monitor = new TrafficMonitor(device_, dispatcher());
-  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
-  EXPECT_TRUE(device_->traffic_monitor_.get());
-  StopTrafficMonitor();
-  EXPECT_FALSE(device_->traffic_monitor_.get());
-
-  // Invoke Stop() with a traffic monitor set but not enabled.
-  traffic_monitor = new TrafficMonitor(device_, dispatcher());
-  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
-  EXPECT_FALSE(device_->traffic_monitor_enabled());
-  EXPECT_FALSE(StartTrafficMonitor());
-  EXPECT_TRUE(device_->traffic_monitor_.get());
-  StopTrafficMonitor();
-  EXPECT_FALSE(device_->traffic_monitor_.get());
-
-  // Invoke Stop() with a traffic monitor set and started.
-  device_->set_traffic_monitor_enabled(true);
-  EXPECT_TRUE(device_->traffic_monitor_enabled());
-  EXPECT_TRUE(StartTrafficMonitor());
-  EXPECT_TRUE(device_->traffic_monitor_.get());
-  StopTrafficMonitor();
-  EXPECT_FALSE(device_->traffic_monitor_.get());
-
-  // Invoke Stop() again after the traffic monitor is stopped.
-  StopTrafficMonitor();
-  EXPECT_FALSE(device_->traffic_monitor_.get());
 }
 
 TEST_F(DeviceTest, ShouldUseArpGateway) {
@@ -1210,75 +1149,6 @@ TEST_F(DeviceByteCountTest, GetByteCounts) {
   EXPECT_CALL(manager_, UpdateDevice(device));
   device->ResetByteCounters();
   EXPECT_TRUE(ExpectByteCounts(device, 0, 0));
-}
-
-class DeviceHealthCheckerTest : public DeviceTest {
- public:
-  DeviceHealthCheckerTest()
-      : connection_(new StrictMock<MockConnection>(&device_info_)),
-        ip_address_store_(new MockIPAddressStore()),
-        weak_ptr_factory_(this) {}
-
- protected:
-  void SetUp() {
-    DeviceTest::SetUp();
-
-    string default_str;
-    vector<string> default_vector;
-
-    ON_CALL(*connection_.get(), interface_name())
-        .WillByDefault(ReturnRef(default_str));
-    ON_CALL(*connection_.get(), dns_servers())
-        .WillByDefault(ReturnRef(default_vector));
-    EXPECT_CALL(*connection_.get(), interface_name())
-        .Times(AnyNumber());
-    EXPECT_CALL(*connection_.get(), dns_servers())
-        .Times(AnyNumber());
-    EXPECT_CALL(*ip_address_store_.get(), AddUnique(_)).Times(AnyNumber());
-
-    mock_health_checker_.reset(
-        new MockConnectionHealthChecker(
-            connection_,
-            NULL,
-            ip_address_store_.get(),
-            Bind(&DeviceHealthCheckerTest::OnConnectionHealthCheckerResult,
-                 weak_ptr_factory_.GetWeakPtr())));
-  }
-
-  void SetMockHealthChecker() {
-    device_->set_health_checker(mock_health_checker_.release());
-    EXPECT_TRUE(device_->health_checker_.get());
-  }
-
-  void SetMockConnection() {
-    device_->connection_ = connection_;
-  }
-
-  void OnConnectionHealthCheckerResult(
-    ConnectionHealthChecker::Result result) {
-  }
-
-  scoped_refptr<MockConnection> connection_;
-  scoped_ptr<MockConnectionHealthChecker> mock_health_checker_;
-  scoped_ptr<MockIPAddressStore> ip_address_store_;
-  base::WeakPtrFactory<DeviceHealthCheckerTest> weak_ptr_factory_;
-};
-
-TEST_F(DeviceHealthCheckerTest, RequestConnectionHealthCheck) {
-  EXPECT_FALSE(device_->health_checker_.get());
-  MockConnectionHealthChecker *health_checker = mock_health_checker_.get();
-  SetMockHealthChecker();
-  EXPECT_CALL(*health_checker, health_check_in_progress())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*health_checker, Start()).Times(0);
-  device_->RequestConnectionHealthCheck();
-  Mock::VerifyAndClearExpectations(health_checker);
-
-  EXPECT_CALL(*health_checker, health_check_in_progress())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*health_checker, Start()).Times(1);
-  device_->RequestConnectionHealthCheck();
-  Mock::VerifyAndClearExpectations(health_checker);
 }
 
 }  // namespace shill

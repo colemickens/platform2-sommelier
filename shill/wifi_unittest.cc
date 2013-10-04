@@ -2269,8 +2269,6 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableHighBitrates()).Times(1);
   EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));
-  string portal_url;
-  EXPECT_CALL(*manager(), GetPortalCheckURL()).WillOnce(ReturnRef(portal_url));
   ReportIPConfigComplete();
   // Similarly, rekeying events after we have an IP don't trigger L3
   // configuration.  However, we treat all transitions to completed as potential

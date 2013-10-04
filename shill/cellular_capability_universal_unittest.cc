@@ -2333,11 +2333,16 @@ TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
   EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, ShouldDetectOutOfCredit) {
+TEST_F(CellularCapabilityUniversalMainTest, GetOutOfCreditsDetectionType) {
   capability_->model_id_.clear();
-  EXPECT_FALSE(capability_->ShouldDetectOutOfCredit());
+  EXPECT_EQ(OutOfCreditsDetector::OOCTypeNone,
+            capability_->GetOutOfCreditsDetectionType());
+  capability_->model_id_ = CellularCapabilityUniversal::kALT3100ModelId;
+  EXPECT_EQ(OutOfCreditsDetector::OOCTypeSubscriptionState,
+            capability_->GetOutOfCreditsDetectionType());
   capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
-  EXPECT_TRUE(capability_->ShouldDetectOutOfCredit());
+  EXPECT_EQ(OutOfCreditsDetector::OOCTypeActivePassive,
+            capability_->GetOutOfCreditsDetectionType());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
