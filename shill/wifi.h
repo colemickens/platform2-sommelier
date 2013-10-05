@@ -92,6 +92,7 @@
 #include "shill/dbus_manager.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/key_value_store.h"
 #include "shill/metrics.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
@@ -102,7 +103,6 @@ namespace shill {
 
 class Error;
 class GeolocationInfo;
-class KeyValueStore;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;
@@ -286,6 +286,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return bgscan_signal_threshold_dbm_;
   }
   uint16 GetScanInterval(Error */* error */) { return scan_interval_seconds_; }
+
+  // RPC accessor for |link_statistics_|.
+  KeyValueStore GetLinkStatistics(Error *error);
+
   bool GetScanPending(Error */* error */);
   bool SetBgscanMethod(
       const int &argument, const std::string &method, Error *error);
@@ -519,6 +523,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Used to compute the number of bytes received since the link went up.
   uint64 receive_byte_count_at_connect_;
+
+  // Used to report the current state of our wireless link.
+  KeyValueStore link_statistics_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

@@ -464,6 +464,57 @@ Properties	string Address [readonly]
 			for this device in milliseconds, if the link monitor
 			is active.
 
+		dict LinkStatistics [readonly]
+
+			(WiFi only) A dictionary providing current link
+			statitistics.  This can include the following
+			properties, depending on whether the system is
+			connected and the capabilities of the specific
+			WiFi device.
+
+				int8 AverageReceiveSignalDbm
+
+                                Reports the running average of signal
+				strength to the connected AP.
+
+				uint32 InactiveTimeMilliseconds
+
+                                Reports the time in milliseconds since
+				the last activity by the station.
+
+				int8 LastReceiveSignalDbm
+
+				Reports the signal strength of the last
+				received packet.
+
+				uint32 PacketReceiveSuccesses
+
+				Reports the number of successfully received
+				packets.
+
+				uint32 PacketTransmitFailures
+
+				Reports the number of failed packet
+				transmission attempts.
+
+				uint32 PacketTrasmitSuccesses
+
+				Reports the number of successful packet
+				transmission attempts.
+
+				string TransmitBitrate
+
+				Reports the transmit bitrate of the last
+				successful outbound packet in a textual format
+				which includes additional 802.11n transmit
+				parameters.
+
+				uint32 TransmitRetries
+
+				Reports the number of times the system has had
+				to retry an outgoing packet.
+
+
 		string Name [readonly]
 
 			The device name (for example "Wireless" etc.)

@@ -699,6 +699,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportReceivedStationInfo(const Nl80211Message &nl80211_message) {
     wifi_->OnReceivedStationInfo(nl80211_message);
   }
+  KeyValueStore GetLinkStatistics() {
+    return wifi_->GetLinkStatistics(NULL);
+  }
   void SetPendingService(const WiFiServiceRefPtr &service) {
     wifi_->SetPendingService(service);
   }
@@ -2667,6 +2670,10 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   NewStationMessage new_station;
   new_station.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
 
+  // Confirm that up until now no link statistics exist.
+  KeyValueStore link_statistics = GetLinkStatistics();
+  EXPECT_TRUE(link_statistics.IsEmpty());
+
   // Use a reference to the endpoint instance in the WiFi device instead of
   // the copy returned by SetupConnectedService().
   WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
@@ -2678,8 +2685,56 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   new_station.attributes()->GetNestedAttributeList(
       NL80211_ATTR_STA_INFO, &station_info);
   station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
-  const int16_t kSignalValue = -20;
+  const int kSignalValue = -20;
   station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, kSignalValue);
+  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL_AVG, "SignalAverage");
+  const int kSignalAvgValue = -40;
+  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL_AVG,
+                                    kSignalAvgValue);
+  station_info->CreateU32Attribute(NL80211_STA_INFO_INACTIVE_TIME,
+                                   "InactiveTime");
+  const int32_t kInactiveTime = 100;
+  station_info->SetU32AttributeValue(NL80211_STA_INFO_INACTIVE_TIME,
+                                     kInactiveTime);
+  station_info->CreateU32Attribute(NL80211_STA_INFO_RX_PACKETS,
+                                   "ReceivedSuccesses");
+  const int32_t kReceiveSuccesses = 200;
+  station_info->SetU32AttributeValue(NL80211_STA_INFO_RX_PACKETS,
+                                     kReceiveSuccesses);
+  station_info->CreateU32Attribute(NL80211_STA_INFO_TX_FAILED,
+                                   "TransmitFailed");
+  const int32_t kTransmitFailed = 300;
+  station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_FAILED,
+                                     kTransmitFailed);
+  station_info->CreateU32Attribute(NL80211_STA_INFO_TX_PACKETS,
+                                   "TransmitSuccesses");
+  const int32_t kTransmitSuccesses = 400;
+  station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_PACKETS,
+                                     kTransmitSuccesses);
+  station_info->CreateU32Attribute(NL80211_STA_INFO_TX_RETRIES,
+                                   "TransmitRetries");
+  const int32_t kTransmitRetries = 500;
+  station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_RETRIES,
+                                     kTransmitRetries);
+  station_info->CreateNestedAttribute(NL80211_STA_INFO_TX_BITRATE,
+                                      "Bitrate Info");
+
+  // Embed transmit bitrate info within the station info element.
+  AttributeListRefPtr bitrate_info;
+  station_info->GetNestedAttributeList(
+      NL80211_STA_INFO_TX_BITRATE, &bitrate_info);
+  bitrate_info->CreateU16Attribute(NL80211_RATE_INFO_BITRATE, "Bitrate");
+  const int16_t kBitrate = 6005;
+  bitrate_info->SetU16AttributeValue(NL80211_RATE_INFO_BITRATE, kBitrate);
+  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_MCS, "MCS");
+  const int16_t kMCS = 7;
+  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_MCS, kMCS);
+  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_40_MHZ_WIDTH, "HT40");
+  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH, true);
+  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_SHORT_GI, "SGI");
+  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, false);
+  station_info->SetNestedAttributeHasAValue(NL80211_STA_INFO_TX_BITRATE);
+
   new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
 
   EXPECT_NE(kSignalValue, endpoint->signal_strength());
@@ -2687,6 +2742,33 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   AttributeListConstRefPtr station_info_prime;
   ReportReceivedStationInfo(new_station);
   EXPECT_EQ(kSignalValue, endpoint->signal_strength());
+
+  link_statistics = GetLinkStatistics();
+  ASSERT_FALSE(link_statistics.IsEmpty());
+  ASSERT_TRUE(link_statistics.ContainsInt(kLastReceiveSignalDbmProperty));
+  EXPECT_EQ(kSignalValue,
+            link_statistics.GetInt(kLastReceiveSignalDbmProperty));
+  ASSERT_TRUE(link_statistics.ContainsInt(kAverageReceiveSignalDbmProperty));
+  EXPECT_EQ(kSignalAvgValue,
+            link_statistics.GetInt(kAverageReceiveSignalDbmProperty));
+  ASSERT_TRUE(link_statistics.ContainsUint(kInactiveTimeMillisecondsProperty));
+  EXPECT_EQ(kInactiveTime,
+            link_statistics.GetUint(kInactiveTimeMillisecondsProperty));
+  ASSERT_TRUE(link_statistics.ContainsUint(kPacketReceiveSuccessesProperty));
+  EXPECT_EQ(kReceiveSuccesses,
+            link_statistics.GetUint(kPacketReceiveSuccessesProperty));
+  ASSERT_TRUE(link_statistics.ContainsUint(kPacketTransmitFailuresProperty));
+  EXPECT_EQ(kTransmitFailed,
+            link_statistics.GetUint(kPacketTransmitFailuresProperty));
+  ASSERT_TRUE(link_statistics.ContainsUint(kPacketTransmitSuccessesProperty));
+  EXPECT_EQ(kTransmitSuccesses,
+            link_statistics.GetUint(kPacketTransmitSuccessesProperty));
+  ASSERT_TRUE(link_statistics.ContainsUint(kTransmitRetriesProperty));
+  EXPECT_EQ(kTransmitRetries,
+            link_statistics.GetUint(kTransmitRetriesProperty));
+  EXPECT_EQ(StringPrintf("%d.%d MBit/s MCS %d 40MHz",
+                         kBitrate / 10, kBitrate % 10, kMCS),
+            link_statistics.LookupString(kTransmitBitrateProperty, ""));
 }
 
 TEST_F(WiFiMainTest, EAPCertification) {

@@ -106,6 +106,7 @@ TEST_F(KeyValueStoreTest, DoubleRemove) {
 }
 
 TEST_F(KeyValueStoreTest, Clear) {
+  EXPECT_TRUE(store_.IsEmpty());
   const string kBoolKey("foo");
   const bool kBoolValue = true;
   store_.SetBool(kBoolKey, kBoolValue);
@@ -131,7 +132,9 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
   EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
   EXPECT_TRUE(store_.ContainsUint(kUintKey));
+  EXPECT_FALSE(store_.IsEmpty());
   store_.Clear();
+  EXPECT_TRUE(store_.IsEmpty());
   EXPECT_FALSE(store_.ContainsBool(kBoolKey));
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
   EXPECT_FALSE(store_.ContainsString(kStringKey));

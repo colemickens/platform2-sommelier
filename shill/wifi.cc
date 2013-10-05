@@ -150,6 +150,12 @@ WiFi::WiFi(ControlInterface *control_interface,
                            &WiFi::GetBgscanSignalThreshold,
                            &WiFi::SetBgscanSignalThreshold);
 
+  store->RegisterDerivedKeyValueStore(
+      kLinkStatisticsProperty,
+      KeyValueStoreAccessor(
+          new CustomAccessor<WiFi, KeyValueStore>(
+              this, &WiFi::GetLinkStatistics, NULL)));
+
   // TODO(quiche): Decide if scan_pending_ is close enough to
   // "currently scanning" that we don't care, or if we want to track
   // scan pending/currently scanning/no scan scheduled as a tri-state
@@ -1986,6 +1992,10 @@ void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
   }
 }
 
+KeyValueStore WiFi::GetLinkStatistics(Error */*error*/) {
+  return link_statistics_;
+}
+
 bool WiFi::GetScanPending(Error */* error */) {
   return scan_state_ == kScanScanning || scan_state_ == kScanBackgroundScanning;
 }
@@ -2297,11 +2307,70 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
   }
 
   endpoint->UpdateSignalStrength(static_cast<signed char>(signal));
+
+  link_statistics_.Clear();
+
+  map<int, string> u32_property_map = {
+      { NL80211_STA_INFO_INACTIVE_TIME, kInactiveTimeMillisecondsProperty },
+      { NL80211_STA_INFO_RX_PACKETS, kPacketReceiveSuccessesProperty },
+      { NL80211_STA_INFO_TX_FAILED, kPacketTransmitFailuresProperty },
+      { NL80211_STA_INFO_TX_PACKETS, kPacketTransmitSuccessesProperty },
+      { NL80211_STA_INFO_TX_RETRIES, kTransmitRetriesProperty }
+  };
+
+  for (const auto &kv : u32_property_map) {
+    uint32 value;
+    if (station_info->GetU32AttributeValue(kv.first, &value)) {
+      link_statistics_.SetUint(kv.second, value);
+    }
+  }
+
+  map<int, string> s8_property_map = {
+      { NL80211_STA_INFO_SIGNAL, kLastReceiveSignalDbmProperty },
+      { NL80211_STA_INFO_SIGNAL_AVG, kAverageReceiveSignalDbmProperty }
+  };
+
+  for (const auto &kv : s8_property_map) {
+    uint8 value;
+    if (station_info->GetU8AttributeValue(kv.first, &value)) {
+      // Despite these values being reported as a U8 by the kernel, these
+      // should be interpreted as signed char.
+      link_statistics_.SetInt(kv.second, static_cast<signed char>(value));
+    }
+  }
+
+  AttributeListConstRefPtr transmit_info;
+  if (station_info->ConstGetNestedAttributeList(
+      NL80211_STA_INFO_TX_BITRATE, &transmit_info)) {
+    // TODO(pstew): Support VHT rate parameters.  crbug.com/305050
+    uint16 rate = 0;  // In 100Kbps.
+    uint8 mcs = 0;
+    bool is_40_mhz = false;
+    bool is_short_gi = false;
+    string mcs_info;
+    transmit_info->GetU16AttributeValue(NL80211_RATE_INFO_BITRATE, &rate);
+    if (transmit_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &mcs)) {
+      mcs_info = StringPrintf(" MCS %d", mcs);
+    }
+    transmit_info->GetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH,
+                                         &is_40_mhz);
+    transmit_info->GetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI,
+                                         &is_short_gi);
+    if (rate) {
+      link_statistics_.SetString(kTransmitBitrateProperty,
+                                 StringPrintf("%d.%d MBit/s%s%s%s",
+                                              rate / 10, rate % 10,
+                                              mcs_info.c_str(),
+                                              is_40_mhz ? " 40MHz" : "",
+                                              is_short_gi ? " short GI" : ""));
+    }
+  }
 }
 
 void WiFi::StopRequestingStationInfo() {
   SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
   request_station_info_callback_.Cancel();
+  link_statistics_.Clear();
 }
 
 }  // namespace shill

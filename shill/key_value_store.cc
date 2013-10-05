@@ -25,6 +25,16 @@ void KeyValueStore::Clear() {
   uint_properties_.clear();
 }
 
+bool KeyValueStore::IsEmpty() {
+  return
+      bool_properties_.empty() &&
+      int_properties_.empty() &&
+      string_properties_.empty() &&
+      stringmap_properties_.empty() &&
+      strings_properties_.empty() &&
+      uint_properties_.empty();
+}
+
 void KeyValueStore::CopyFrom(const KeyValueStore &b) {
   bool_properties_ = b.bool_properties_;
   int_properties_ = b.int_properties_;
