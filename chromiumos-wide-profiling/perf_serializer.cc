@@ -323,40 +323,46 @@ bool PerfSerializer::DeserializeEvent(
   *event->raw_event = &temp_event;
   if (!DeserializeEventHeader(event_proto.header(), &temp_event.header))
     return false;
+  bool event_deserialized = true;
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
       if (!DeserializeRecordSample(event_proto.sample_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_MMAP:
       if (!DeserializeMMapSample(event_proto.mmap_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_COMM:
       if (!DeserializeCommSample(event_proto.comm_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_EXIT:
     case PERF_RECORD_FORK:
       if (!DeserializeForkSample(event_proto.fork_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_LOST:
       if (!DeserializeLostSample(event_proto.lost_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
       if (!DeserializeThrottleSample(event_proto.throttle_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_READ:
       if (!DeserializeReadSample(event_proto.read_event(), event))
-        return false;
+        event_deserialized = false;
       break;
     case PERF_RECORD_MAX:
     default:
+      event_deserialized = false;
       break;
+  }
+  if (!event_deserialized) {
+    *event->raw_event = NULL;
+    return false;
   }
   // Copy the event from the stack to the heap.
   *event->raw_event = CallocMemoryForEvent(temp_event.header.size);
