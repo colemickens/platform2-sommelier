@@ -191,8 +191,8 @@ class PowerSupply {
 
   // Useful for callers that just need an instantaneous estimate after creating
   // a PowerSupply object and don't care about smoothing.
-  void clear_current_stabilized_after_startup_delay() {
-    current_stabilized_after_startup_delay_ = base::TimeDelta();
+  void clear_current_stabilized_timestamp() {
+    current_stabilized_timestamp_ = base::TimeTicks();
   }
 
   // Initializes the object and begins polling.

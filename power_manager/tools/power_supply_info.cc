@@ -47,9 +47,11 @@ std::string ValueToString(T value) {
   return stream.str();
 }
 
-std::string SecondsToString(int64 time_in_seconds) {
+std::string TimeDeltaToString(base::TimeDelta time) {
+  if (time < base::TimeDelta())
+    return "calculating";
+
   // Calculate hours, minutes, and seconds, then display in H:M:S format.
-  TimeDelta time = TimeDelta::FromSeconds(time_in_seconds);
   int hours = time.InHours();
   time -= TimeDelta::FromHours(hours);
   int minutes = time.InMinutes();
@@ -117,10 +119,11 @@ int main(int argc, char** argv) {
 
   base::FilePath path(kPowerStatusPath);
   power_manager::system::PowerSupply power_supply(path, &prefs);
+  power_supply.Init();
+
   // Ensure that the battery's time-to-full or time-to-empty will be
   // calculated immediately.
-  power_supply.clear_current_stabilized_after_startup_delay();
-  power_supply.Init();
+  power_supply.clear_current_stabilized_timestamp();
 
   power_manager::system::PowerInformation power_info;
   power_manager::system::PowerStatus& power_status = power_info.power_status;
@@ -190,11 +193,11 @@ int main(int argc, char** argv) {
     if (power_status.battery_state ==
         power_manager::PowerSupplyProperties_BatteryState_CHARGING) {
       display.PrintValue("time to full",
-          SecondsToString(power_status.battery_time_to_full.InSeconds()));
+          TimeDeltaToString(power_status.battery_time_to_full));
     } else if (power_status.battery_state ==
                power_manager::PowerSupplyProperties_BatteryState_DISCHARGING) {
       display.PrintValue("time to empty",
-          SecondsToString(power_status.battery_time_to_empty.InSeconds()));
+          TimeDeltaToString(power_status.battery_time_to_empty));
     }
     display.PrintValue("percentage", power_status.battery_percentage);
     display.PrintValue("display percentage",
