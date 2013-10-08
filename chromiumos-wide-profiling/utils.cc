@@ -137,6 +137,8 @@ const double kPerfReportEntryErrorThreshold = 0.05;
 const char kPerfReportCommentCharacter = '#';
 const char kPerfReportMetadataFieldCharacter = ':';
 
+const char kReportExtension[] = ".report";
+
 void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
   // TODO(rohinmshah): Use something from base.
   std::vector<char>::const_iterator start = bytes.begin();
@@ -149,6 +151,24 @@ void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
   }
 }
 
+bool CallPerfReport(const string& filename,
+                    const string& sort_fields,
+                    PerfDataType perf_data_type,
+                    std::vector<char>* report_output) {
+  // Try reading from an pre-generated report.  If it doesn't exist, call perf
+  // report.
+  if (!quipper::FileToBuffer(filename + "." + sort_fields + kReportExtension,
+                             report_output)) {
+    string cmd =
+        GetPerfCommandString(GetPerfReportArgs(perf_data_type, sort_fields),
+                                               filename);
+    report_output->clear();
+    if (!quipper::RunCommandAndGetStdout(cmd, report_output))
+      return false;
+  }
+  return true;
+}
+
 // Given a perf piped data file, get the perf report and read it into a string.
 // is_normal_mode should be true if the INPUT file to quipper was in normal
 // mode.  Note that a file written by quipper is always in normal mode.
@@ -156,16 +176,15 @@ bool GetPerfReport(const string& filename,
                    std::vector<string>* output,
                    string sort_fields,
                    bool is_normal_mode) {
-  string cmd =
-      GetPerfCommandString(
-          GetPerfReportArgs(is_normal_mode ? kPerfDataNormal : kPerfDataPiped,
-                            sort_fields),
-          filename);
-  std::vector<char> stdout;
-  if (!quipper::RunCommandAndGetStdout(cmd, &stdout))
+  std::vector<char> report_output;
+  if (!CallPerfReport(filename,
+                      sort_fields,
+                      is_normal_mode ? kPerfDataNormal : kPerfDataPiped,
+                      &report_output)) {
     return false;
+  }
   std::vector<string> lines;
-  SeparateLines(stdout, &lines);
+  SeparateLines(report_output, &lines);
 
   // Read line by line, discarding commented lines.
   // Only keep commented lines of the form
