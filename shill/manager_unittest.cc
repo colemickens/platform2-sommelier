@@ -144,10 +144,6 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's crypto util proxy with our mock.  Passes
     // ownership.
     manager()->crypto_util_proxy_.reset(crypto_util_proxy_);
-
-    // Reset service serial number so service sorting by unique_name()
-    // (and by extension, sorting by order of creation) is predictable.
-    Service::serial_number_ = 10000;
   }
   virtual ~ManagerTest() {}
 
@@ -2303,128 +2299,132 @@ TEST_F(ManagerTest, SortServices) {
   // service_unittest, since the actual comparison of Services is
   // implemented in Service. (crbug.com/206367)
 
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  // Construct our Services so that the string comparison of
+  // unique_name_ differs from the numerical comparison of
+  // serial_number_.
+  vector<scoped_refptr<MockService>> mock_services;
+  for (size_t i = 0; i < 11; ++i) {
+    mock_services.push_back(
+        new NiceMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  }
+  scoped_refptr<MockService> mock_service2 = mock_services[2];
+  scoped_refptr<MockService> mock_service10 = mock_services[10];
+  mock_services.clear();
 
-  manager()->RegisterService(mock_service0);
-  manager()->RegisterService(mock_service1);
+  manager()->RegisterService(mock_service2);
+  manager()->RegisterService(mock_service10);
 
-  // Services should already be sorted by |unique_name_|
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  // Services should already be sorted by |serial_number_|.
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Asking explictly to sort services should not change anything
   manager()->SortServicesTask();
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Two otherwise equal services should be reordered by strength
-  mock_service1->SetStrength(1);
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  mock_service10->SetStrength(1);
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
   // Security
-  mock_service0->SetSecurity(Service::kCryptoAes, true, true);
-  manager()->UpdateService(mock_service0);
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  mock_service2->SetSecurity(Service::kCryptoAes, true, true);
+  manager()->UpdateService(mock_service2);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Technology
-  EXPECT_CALL(*mock_service0.get(), technology())
+  EXPECT_CALL(*mock_service2.get(), technology())
       .WillRepeatedly(Return((Technology::kWifi)));
-  EXPECT_CALL(*mock_service1.get(), technology())
+  EXPECT_CALL(*mock_service10.get(), technology())
       .WillRepeatedly(Return(Technology::kEthernet));
 
   Error error;
   // Default technology ordering should favor Ethernet over WiFi.
   manager()->SortServicesTask();
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
   manager()->SetTechnologyOrder(string(kTypeWifi) + "," + string(kTypeEthernet),
                                 &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Priority.
-  mock_service0->SetPriority(1, NULL);
-  manager()->UpdateService(mock_service0);
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  mock_service2->SetPriority(1, NULL);
+  manager()->UpdateService(mock_service2);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Favorite.
-  mock_service1->MakeFavorite();
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  mock_service10->MakeFavorite();
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
   // Auto-connect.
-  mock_service0->SetAutoConnect(true);
-  manager()->UpdateService(mock_service0);
-  mock_service1->SetAutoConnect(false);
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  mock_service2->SetAutoConnect(true);
+  manager()->UpdateService(mock_service2);
+  mock_service10->SetAutoConnect(false);
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Test is-dependent-on.  It doesn't make sense to have this ranking compare
   // to any of the others below, so we reset to the default state after
   // testing.
-  EXPECT_CALL(*mock_service1.get(),
-              IsDependentOn(ServiceRefPtr(mock_service0.get())))
+  EXPECT_CALL(*mock_service10.get(),
+              IsDependentOn(ServiceRefPtr(mock_service2.get())))
       .WillOnce(Return(true))
       .WillRepeatedly(Return(false));
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
-  manager()->UpdateService(mock_service0);
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
+  manager()->UpdateService(mock_service2);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Connectable.
-  mock_service1->SetConnectable(true);
-  manager()->UpdateService(mock_service1);
-  mock_service0->SetConnectable(false);
-  manager()->UpdateService(mock_service0);
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  mock_service10->SetConnectable(true);
+  manager()->UpdateService(mock_service10);
+  mock_service2->SetConnectable(false);
+  manager()->UpdateService(mock_service2);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
   // IsFailed.
-  EXPECT_CALL(*mock_service0.get(), state())
+  EXPECT_CALL(*mock_service2.get(), state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*mock_service0.get(), IsFailed())
+  EXPECT_CALL(*mock_service2.get(), IsFailed())
       .WillRepeatedly(Return(false));
-  manager()->UpdateService(mock_service0);
-  EXPECT_CALL(*mock_service0.get(), state())
+  manager()->UpdateService(mock_service2);
+  EXPECT_CALL(*mock_service10.get(), state())
       .WillRepeatedly(Return(Service::kStateFailure));
-  EXPECT_CALL(*mock_service1.get(), IsFailed())
+  EXPECT_CALL(*mock_service10.get(), IsFailed())
       .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Connecting.
-  EXPECT_CALL(*mock_service1.get(), state())
+  EXPECT_CALL(*mock_service10.get(), state())
       .WillRepeatedly(Return(Service::kStateAssociating));
-  EXPECT_CALL(*mock_service1.get(), IsConnecting())
+  EXPECT_CALL(*mock_service10.get(), IsConnecting())
       .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
-  // Connected.
-  EXPECT_CALL(*mock_service0.get(), state())
+  // Connected-but-portalled preferred over unconnected.
+  EXPECT_CALL(*mock_service2.get(), state())
       .WillRepeatedly(Return(Service::kStatePortal));
-  EXPECT_CALL(*mock_service0.get(), IsConnected())
+  EXPECT_CALL(*mock_service2.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service0);
-  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+  manager()->UpdateService(mock_service2);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
-  // Portal.
-  EXPECT_CALL(*mock_service1.get(), state())
+  // Connected preferred over connected-but-portalled.
+  EXPECT_CALL(*mock_service10.get(), state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*mock_service1.get(), IsConnected())
+  EXPECT_CALL(*mock_service10.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service1);
-  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
-  manager()->DeregisterService(mock_service0);
-  manager()->DeregisterService(mock_service1);
+  manager()->DeregisterService(mock_service2);
+  manager()->DeregisterService(mock_service10);
 }
 
 TEST_F(ManagerTest, SortServicesWithConnection) {
@@ -2447,6 +2447,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   scoped_refptr<MockConnection> mock_connection1(
       new NiceMock<MockConnection>(device_info_.get()));
 
+  // If neither service has a Connection, the DefaultService should be
+  // NULL.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->RegisterService(mock_service0);
   CompleteServiceSort();
@@ -2454,23 +2456,32 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   manager()->RegisterService(mock_service1);
   CompleteServiceSort();
 
+  // An explicit sort doesn't change anything.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
+  // Re-ordering the services doesn't change DefaultService.
   mock_service1->SetPriority(1, NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
+  // Re-ordering the services doesn't change DefaultService.
   mock_service1->SetPriority(0, NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   mock_service0->set_mock_connection(mock_connection0);
   mock_service1->set_mock_connection(mock_connection1);
 
+  // If both Services have Connections, the DefaultService follows
+  // from ServiceOrderIs.
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   manager()->SortServicesTask();
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   ServiceWatcher service_watcher;
   int tag =
@@ -2479,26 +2490,34 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
                service_watcher.AsWeakPtr()));
   EXPECT_EQ(1, tag);
 
+  // Changing the ordering causes the DefaultService to change, and
+  // appropriate notifications are sent.
   mock_service1->SetPriority(1, NULL);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
   manager()->SortServicesTask();
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
+  // Deregistering the current DefaultService causes the other Service
+  // to become default.
   manager()->DeregisterDefaultServiceCallback(tag);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_)).Times(0);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
-  mock_service1->set_mock_connection(NULL);
+  mock_service1->set_mock_connection(NULL);  // So DeregisterService works.
   manager()->DeregisterService(mock_service1);
   CompleteServiceSort();
 
-  mock_service0->set_mock_connection(NULL);
+  // Deregistering the only Service causes the DefaultService to become
+  // NULL.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  mock_service0->set_mock_connection(NULL);  // So DeregisterService works.
   manager()->DeregisterService(mock_service0);
   CompleteServiceSort();
 
+  // An explicit sort doesn't change anything.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
 }

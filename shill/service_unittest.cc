@@ -1626,6 +1626,11 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 
+TEST_F(ServiceTest, UniqueAttributes) {
+  EXPECT_NE(service_->serial_number_, service2_->serial_number_);
+  EXPECT_NE(service_->unique_name(), service2_->unique_name());
+}
+
 TEST_F(ServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, GetAdaptor());
   TestAutoConnectPropertyChange(service_, GetAdaptor());

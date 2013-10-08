@@ -573,6 +573,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, StateResetAfterFailure);
+  FRIEND_TEST(ServiceTest, UniqueAttributes);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
@@ -596,8 +597,8 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortIsPortalled[];
   static const char kServiceSortPriority[];
   static const char kServiceSortSecurityEtc[];
+  static const char kServiceSortSerialNumber[];
   static const char kServiceSortTechnology[];
-  static const char kServiceSortUniqueName[];
 
   static const uint64 kMaxAutoConnectCooldownTimeMilliseconds;
   static const uint64 kMinAutoConnectCooldownTimeMilliseconds;
@@ -713,7 +714,7 @@ class Service : public base::RefCounted<Service> {
   std::set<std::string> parameters_ignored_for_configure_;
 
   EventDispatcher *dispatcher_;
-  static unsigned int serial_number_;
+  unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst service instances
 
   // Service's friendly name is presented through the UI. By default it's the
@@ -734,6 +735,9 @@ class Service : public base::RefCounted<Service> {
   scoped_ptr<Sockets> sockets_;
   Time *time_;
   DiagnosticsReporter *diagnostics_reporter_;
+
+  // The |serial_number_| for the next Service.
+  static unsigned int next_serial_number_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

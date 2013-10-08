@@ -68,8 +68,8 @@ const char Service::kServiceSortIsFailed[] = "IsFailed";
 const char Service::kServiceSortIsPortalled[] = "IsPortal";
 const char Service::kServiceSortPriority[] = "Priority";
 const char Service::kServiceSortSecurityEtc[] = "SecurityEtc";
+const char Service::kServiceSortSerialNumber[] = "SerialNumber";
 const char Service::kServiceSortTechnology[] = "Technology";
-const char Service::kServiceSortUniqueName[] = "UniqueName";
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
@@ -98,7 +98,7 @@ const int Service::kReportMisconnectsThreshold = 3;
 const int Service::kMaxDisconnectEventHistory = 20;
 
 // static
-unsigned int Service::serial_number_ = 0;
+unsigned int Service::next_serial_number_ = 0;
 
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
@@ -130,7 +130,8 @@ Service::Service(ControlInterface *control_interface,
           base::Bind(&Service::OnPropertyChanged,
                      weak_ptr_factory_.GetWeakPtr()))),
       dispatcher_(dispatcher),
-      unique_name_(base::UintToString(serial_number_++)),
+      serial_number_(next_serial_number_++),
+      unique_name_(base::UintToString(serial_number_)),
       friendly_name_(unique_name_),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
       metrics_(metrics),
@@ -934,8 +935,8 @@ bool Service::Compare(ServiceRefPtr a,
     return ret;
   }
 
-  *reason = kServiceSortUniqueName;
-  return a->unique_name() < b->unique_name();
+  *reason = kServiceSortSerialNumber;
+  return a->serial_number_ < b->serial_number_;
 }
 
 const ProfileRefPtr &Service::profile() const { return profile_; }
