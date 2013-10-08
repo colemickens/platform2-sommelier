@@ -71,13 +71,11 @@ void Daemon::Run() {
 
 void Daemon::Quit() {
   SLOG(Daemon, 1) << "Starting termination actions.";
-  // Stop() prevents autoconnect from attempting to immediately connect to
-  // services after they have been disconnected.
-  Stop();
   if (!manager_->RunTerminationActionsAndNotifyMetrics(
       Bind(&Daemon::TerminationActionsCompleted, Unretained(this)),
       Metrics::kTerminationActionReasonTerminate)) {
     SLOG(Daemon, 1) << "No termination actions were run";
+    Stop();
     dispatcher_.PostTask(MessageLoop::QuitClosure());
   }
 }
@@ -86,6 +84,7 @@ void Daemon::TerminationActionsCompleted(const Error &error) {
   SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonTerminate, error.IsSuccess());
+  Stop();
   dispatcher_.PostTask(MessageLoop::QuitClosure());
 }
 
