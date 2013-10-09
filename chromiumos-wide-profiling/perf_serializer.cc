@@ -686,16 +686,29 @@ bool PerfSerializer::DeserializeSampleInfo(
     const PerfDataProto_SampleInfo& sample,
     event_t* event) const {
   perf_sample sample_info;
+  size_t sample_info_size = 0;
   if (sample.has_tid()) {
     sample_info.pid = sample.pid();
     sample_info.tid = sample.tid();
+    sample_info_size += sizeof(uint64);
   }
-  if (sample.has_sample_time_ns())
+  if (sample.has_sample_time_ns()) {
     sample_info.time = sample.sample_time_ns();
-  if (sample.has_id())
+    sample_info_size += sizeof(uint64);
+  }
+  if (sample.has_id()) {
     sample_info.id = sample.id();
-  if (sample.has_cpu())
+    sample_info_size += sizeof(uint64);
+  }
+  if (sample.has_cpu()) {
     sample_info.cpu = sample.cpu();
+    sample_info_size += sizeof(uint64);
+  }
+
+  // The event info may have changed (e.g. strings replaced with Md5sum), so
+  // adjust the size accordingly.
+  event->header.size = GetPerfSampleDataOffset(*event) + sample_info_size;
+
   return WritePerfSampleInfo(sample_info, event);
 }
 

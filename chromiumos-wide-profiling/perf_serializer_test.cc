@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/logging.h"
+#include "base/stringprintf.h"
 
 #include "perf_protobuf_io.h"
 #include "perf_reader.h"
@@ -17,6 +18,8 @@
 #include "quipper_string.h"
 #include "quipper_test.h"
 #include "utils.h"
+
+using base::StringPrintf;
 
 namespace quipper {
 
@@ -195,7 +198,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
        ++i) {
     const string test_file = perf_test_files::kPerfDataFiles[i];
     const string input_perf_data = GetTestInputFilePath(test_file);
-    LOG(INFO) << "Testing " << input_perf_data;
+    LOG(INFO) << "Testing COMM Md5sum for " << input_perf_data;
 
     quipper::PerfDataProto perf_data_proto;
     PerfSerializer serializer;
@@ -209,16 +212,14 @@ TEST(PerfSerializeTest, TestCommMd5s) {
         continue;
       CHECK(event.has_comm_event());
 
+      string comm_md5_string =
+          StringPrintf("%" PRIx64, event.comm_event().comm_md5_prefix());
+      // Make sure it fits in the comm string array, accounting for the null
+      // terminator.
       struct comm_event dummy;
-      char comm_name[arraysize(dummy.comm)];
-
-      quipper::PerfDataProto_CommEvent& comm_event =
-          *event.mutable_comm_event();
-      std::stringstream ss;
-      ss << comm_event.comm_md5_prefix();
-      strncpy(comm_name, ss.str().c_str(), sizeof(comm_name) - 1);
-      comm_name[sizeof(comm_name) - 1] = '\0';
-      comm_event.set_comm(comm_name);
+      if (comm_md5_string.size() > arraysize(dummy.comm) - 1)
+        comm_md5_string.resize(arraysize(dummy.comm) - 1);
+      event.mutable_comm_event()->set_comm(comm_md5_string);
     }
 
     PerfSerializer deserializer;
@@ -229,6 +230,51 @@ TEST(PerfSerializeTest, TestCommMd5s) {
     EXPECT_TRUE(ComparePerfReportsByFields(input_perf_data,
                                            output_perf_data,
                                            "dso,sym"));
+  }
+}
+
+TEST(PerfSerializeTest, TestMmapMd5s) {
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
+  string output_path = output_dir.path();
+
+  // Replace MMAP filename strings with their Md5sums.  Test size adjustment for
+  // MMAP filename strings.
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataFiles);
+       ++i) {
+    const string test_file = perf_test_files::kPerfDataFiles[i];
+    const string input_perf_data = GetTestInputFilePath(test_file);
+    LOG(INFO) << "Testing MMAP Md5sum for " << input_perf_data;
+
+    quipper::PerfDataProto perf_data_proto;
+    PerfSerializer serializer;
+    EXPECT_TRUE(serializer.SerializeFromFile(input_perf_data,
+                                             &perf_data_proto));
+
+    for (int j = 0; j < perf_data_proto.events_size(); ++j) {
+      quipper::PerfDataProto_PerfEvent& event =
+          *perf_data_proto.mutable_events(j);
+      if (event.header().type() != PERF_RECORD_MMAP)
+        continue;
+      CHECK(event.has_mmap_event());
+
+      string filename_md5_string =
+          StringPrintf("%" PRIx64, event.mmap_event().filename_md5_prefix());
+      struct mmap_event dummy;
+      // Make sure the Md5 prefix string can fit in the filename buffer,
+      // including the null terminator
+      if (filename_md5_string.size() > arraysize(dummy.filename) - 1)
+        filename_md5_string.resize(arraysize(dummy.filename) - 1);
+      event.mutable_mmap_event()->set_filename(filename_md5_string);
+    }
+
+    PerfSerializer deserializer;
+    const string output_perf_data = output_path + test_file + ".ser.comm.out";
+    // Make sure the data can be deserialized after replacing the filenames with
+    // Md5sum prefixes.  No need to check the output.
+    EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
+                                               output_perf_data));
   }
 }
 
