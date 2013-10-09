@@ -1747,7 +1747,7 @@ void CellularCapabilityUniversal::OnModemRevisionChanged(
 
 void CellularCapabilityUniversal::OnModemStateChanged(
     Cellular::ModemState state) {
-  SLOG(Cellular, 3) << __func__ << ": " << state;
+  SLOG(Cellular, 3) << __func__ << ": " << Cellular::GetModemStateString(state);
 
   cellular()->OnModemStateChanged(state);
   UpdateScanningProperty();
@@ -1964,7 +1964,13 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
 
 void CellularCapabilityUniversal::OnModemStateChangedSignal(
     int32 old_state, int32 new_state, uint32 reason) {
-  SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
+  Cellular::ModemState old_modem_state =
+      static_cast<Cellular::ModemState>(old_state);
+  Cellular::ModemState new_modem_state =
+      static_cast<Cellular::ModemState>(new_state);
+  SLOG(Cellular, 2) << __func__ << "("
+                    << Cellular::GetModemStateString(old_modem_state) << ", "
+                    << Cellular::GetModemStateString(new_modem_state) << ", "
                     << reason << ")";
 }
 

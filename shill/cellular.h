@@ -145,6 +145,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   virtual void DestroyService();
 
   static std::string GetStateString(State state);
+  static std::string GetModemStateString(ModemState modem_state);
 
   std::string CreateFriendlyServiceName();
 

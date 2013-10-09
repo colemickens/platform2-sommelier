@@ -482,15 +482,42 @@ const int CellularTest::kStrength = 90;
 
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",
-            device_->GetStateString(Cellular::kStateDisabled));
+            Cellular::GetStateString(Cellular::kStateDisabled));
   EXPECT_EQ("CellularStateEnabled",
-            device_->GetStateString(Cellular::kStateEnabled));
+            Cellular::GetStateString(Cellular::kStateEnabled));
   EXPECT_EQ("CellularStateRegistered",
-            device_->GetStateString(Cellular::kStateRegistered));
+            Cellular::GetStateString(Cellular::kStateRegistered));
   EXPECT_EQ("CellularStateConnected",
-            device_->GetStateString(Cellular::kStateConnected));
+            Cellular::GetStateString(Cellular::kStateConnected));
   EXPECT_EQ("CellularStateLinked",
-            device_->GetStateString(Cellular::kStateLinked));
+            Cellular::GetStateString(Cellular::kStateLinked));
+}
+
+TEST_F(CellularTest, GetModemStateString) {
+  EXPECT_EQ("CellularModemStateUnknown",
+            Cellular::GetModemStateString(Cellular::kModemStateUnknown));
+  EXPECT_EQ("CellularModemStateInitializing",
+            Cellular::GetModemStateString(Cellular::kModemStateInitializing));
+  EXPECT_EQ("CellularModemStateLocked",
+            Cellular::GetModemStateString(Cellular::kModemStateLocked));
+  EXPECT_EQ("CellularModemStateDisabled",
+            Cellular::GetModemStateString(Cellular::kModemStateDisabled));
+  EXPECT_EQ("CellularModemStateDisabling",
+            Cellular::GetModemStateString(Cellular::kModemStateDisabling));
+  EXPECT_EQ("CellularModemStateEnabling",
+            Cellular::GetModemStateString(Cellular::kModemStateEnabling));
+  EXPECT_EQ("CellularModemStateEnabled",
+            Cellular::GetModemStateString(Cellular::kModemStateEnabled));
+  EXPECT_EQ("CellularModemStateSearching",
+            Cellular::GetModemStateString(Cellular::kModemStateSearching));
+  EXPECT_EQ("CellularModemStateRegistered",
+            Cellular::GetModemStateString(Cellular::kModemStateRegistered));
+  EXPECT_EQ("CellularModemStateDisconnecting",
+            Cellular::GetModemStateString(Cellular::kModemStateDisconnecting));
+  EXPECT_EQ("CellularModemStateConnecting",
+            Cellular::GetModemStateString(Cellular::kModemStateConnecting));
+  EXPECT_EQ("CellularModemStateConnected",
+            Cellular::GetModemStateString(Cellular::kModemStateConnected));
 }
 
 TEST_F(CellularTest, StartCDMARegister) {

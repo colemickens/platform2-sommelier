@@ -164,14 +164,53 @@ bool Cellular::Save(StoreInterface *storage) {
 // static
 string Cellular::GetStateString(State state) {
   switch (state) {
-    case kStateDisabled: return "CellularStateDisabled";
-    case kStateEnabled: return "CellularStateEnabled";
-    case kStateRegistered: return "CellularStateRegistered";
-    case kStateConnected: return "CellularStateConnected";
-    case kStateLinked: return "CellularStateLinked";
-    default: NOTREACHED();
+    case kStateDisabled:
+      return "CellularStateDisabled";
+    case kStateEnabled:
+      return "CellularStateEnabled";
+    case kStateRegistered:
+      return "CellularStateRegistered";
+    case kStateConnected:
+      return "CellularStateConnected";
+    case kStateLinked:
+      return "CellularStateLinked";
+    default:
+      NOTREACHED();
   }
   return StringPrintf("CellularStateUnknown-%d", state);
+}
+
+// static
+string Cellular::GetModemStateString(ModemState modem_state) {
+  switch (modem_state) {
+    case kModemStateUnknown:
+      return "CellularModemStateUnknown";
+    case kModemStateInitializing:
+      return "CellularModemStateInitializing";
+    case kModemStateLocked:
+      return "CellularModemStateLocked";
+    case kModemStateDisabled:
+      return "CellularModemStateDisabled";
+    case kModemStateDisabling:
+      return "CellularModemStateDisabling";
+    case kModemStateEnabling:
+      return "CellularModemStateEnabling";
+    case kModemStateEnabled:
+      return "CellularModemStateEnabled";
+    case kModemStateSearching:
+      return "CellularModemStateSearching";
+    case kModemStateRegistered:
+      return "CellularModemStateRegistered";
+    case kModemStateDisconnecting:
+      return "CellularModemStateDisconnecting";
+    case kModemStateConnecting:
+      return "CellularModemStateConnecting";
+    case kModemStateConnected:
+      return "CellularModemStateConnected";
+    default:
+      NOTREACHED();
+  }
+  return StringPrintf("CellularModemStateUnknown-%d", modem_state);
 }
 
 string Cellular::GetTechnologyFamily(Error *error) {
@@ -740,7 +779,8 @@ string Cellular::CreateFriendlyServiceName() {
 
 void Cellular::OnModemStateChanged(ModemState new_state) {
   ModemState old_state = modem_state_;
-  SLOG(Cellular, 2) << __func__ << ": " << old_state << " -> " << new_state;
+  SLOG(Cellular, 2) << __func__ << ": " << GetModemStateString(old_state)
+                    << " -> " << GetModemStateString(new_state);
   if (old_state == new_state) {
     SLOG(Cellular, 2) << "The new state matches the old state. Nothing to do.";
     return;
