@@ -219,26 +219,11 @@ gboolean cryptohome_tpm_attestation_finish_cert_request(
     GArray** OUT_cert,
     gboolean* OUT_success,
     GError** error);
-gboolean cryptohome_tpm_attestation_finish_cert_request_old(
-    Cryptohome *self,
-    GArray* pca_response,
-    gboolean is_user_specific,
-    gchar* key_name,
-    GArray** OUT_cert,
-    gboolean* OUT_success,
-    GError** error);
 gboolean cryptohome_async_tpm_attestation_finish_cert_request(
     Cryptohome *self,
     GArray* pca_response,
     gboolean is_user_specific,
     gchar* username,
-    gchar* key_name,
-    gint *OUT_async_id,
-    GError** error);
-gboolean cryptohome_async_tpm_attestation_finish_cert_request_old(
-    Cryptohome *self,
-    GArray* pca_response,
-    gboolean is_user_specific,
     gchar* key_name,
     gint *OUT_async_id,
     GError** error);
@@ -251,20 +236,9 @@ gboolean cryptohome_tpm_attestation_does_key_exist(Cryptohome *self,
                                                    gchar* key_name,
                                                    gboolean *OUT_exists,
                                                    GError **error);
-gboolean cryptohome_tpm_attestation_does_key_exist_old(Cryptohome *self,
-                                                   gboolean is_user_specific,
-                                                   gchar* key_name,
-                                                   gboolean *OUT_exists,
-                                                   GError **error);
 gboolean cryptohome_tpm_attestation_get_certificate(Cryptohome *self,
                                                     gboolean is_user_specific,
                                                     gchar* username,
-                                                    gchar* key_name,
-                                                    GArray** OUT_certificate,
-                                                    gboolean* OUT_success,
-                                                    GError **error);
-gboolean cryptohome_tpm_attestation_get_certificate_old(Cryptohome *self,
-                                                    gboolean is_user_specific,
                                                     gchar* key_name,
                                                     GArray** OUT_certificate,
                                                     gboolean* OUT_success,
@@ -276,20 +250,9 @@ gboolean cryptohome_tpm_attestation_get_public_key(Cryptohome *self,
                                                    GArray** OUT_public_key,
                                                    gboolean* OUT_success,
                                                    GError **error);
-gboolean cryptohome_tpm_attestation_get_public_key_old(Cryptohome *self,
-                                                   gboolean is_user_specific,
-                                                   gchar* key_name,
-                                                   GArray** OUT_public_key,
-                                                   gboolean* OUT_success,
-                                                   GError **error);
 gboolean cryptohome_tpm_attestation_register_key(Cryptohome *self,
                                                  gboolean is_user_specific,
                                                  gchar* username,
-                                                 gchar* key_name,
-                                                 gint *OUT_async_id,
-                                                 GError **error);
-gboolean cryptohome_tpm_attestation_register_key_old(Cryptohome *self,
-                                                 gboolean is_user_specific,
                                                  gchar* key_name,
                                                  gint *OUT_async_id,
                                                  GError **error);
@@ -297,16 +260,6 @@ gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
     Cryptohome *self,
     gboolean is_user_specific,
     gchar* username,
-    gchar* key_name,
-    gchar* domain,
-    GArray* device_id,
-    gboolean include_signed_public_key,
-    GArray* challenge,
-    gint *OUT_async_id,
-    GError **error);
-gboolean cryptohome_tpm_attestation_sign_enterprise_challenge_old(
-    Cryptohome *self,
-    gboolean is_user_specific,
     gchar* key_name,
     gchar* domain,
     GArray* device_id,
@@ -322,13 +275,6 @@ gboolean cryptohome_tpm_attestation_sign_simple_challenge(
     GArray* challenge,
     gint *OUT_async_id,
     GError **error);
-gboolean cryptohome_tpm_attestation_sign_simple_challenge_old(
-    Cryptohome *self,
-    gboolean is_user_specific,
-    gchar* key_name,
-    GArray* challenge,
-    gint *OUT_async_id,
-    GError **error);
 gboolean cryptohome_tpm_attestation_get_key_payload(Cryptohome *self,
                                                     gboolean is_user_specific,
                                                     gchar* username,
@@ -336,21 +282,9 @@ gboolean cryptohome_tpm_attestation_get_key_payload(Cryptohome *self,
                                                     GArray** OUT_payload,
                                                     gboolean* OUT_success,
                                                     GError **error);
-gboolean cryptohome_tpm_attestation_get_key_payload_old(Cryptohome *self,
-                                                    gboolean is_user_specific,
-                                                    gchar* key_name,
-                                                    GArray** OUT_payload,
-                                                    gboolean* OUT_success,
-                                                    GError **error);
 gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
                                                     gboolean is_user_specific,
                                                     gchar* username,
-                                                    gchar* key_name,
-                                                    GArray* payload,
-                                                    gboolean* OUT_success,
-                                                    GError **error);
-gboolean cryptohome_tpm_attestation_set_key_payload_old(Cryptohome *self,
-                                                    gboolean is_user_specific,
                                                     gchar* key_name,
                                                     GArray* payload,
                                                     gboolean* OUT_success,

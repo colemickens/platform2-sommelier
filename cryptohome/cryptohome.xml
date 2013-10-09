@@ -185,23 +185,10 @@
       <arg type="ay" name="certificate" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
-    <method name="TpmAttestationFinishCertRequestOld">
-      <arg type="ay" name="pca_response" direction="in" />
-      <arg type="b" name="is_user_specific" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="certificate" direction="out" />
-      <arg type="b" name="success" direction="out" />
-    </method>
     <method name="AsyncTpmAttestationFinishCertRequest">
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
-    <method name="AsyncTpmAttestationFinishCertRequestOld">
-      <arg type="ay" name="pca_response" direction="in" />
-      <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
@@ -214,20 +201,9 @@
       <arg type="s" name="key_name" direction="in" />
       <arg type="b" name="exists" direction="out" />
     </method>
-    <method name="TpmAttestationDoesKeyExistOld">
-      <arg type="b" name="is_user_specific" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="b" name="exists" direction="out" />
-    </method>
     <method name="TpmAttestationGetCertificate">
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="certificate" direction="out" />
-      <arg type="b" name="success" direction="out" />
-    </method>
-    <method name="TpmAttestationGetCertificateOld">
-      <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="ay" name="certificate" direction="out" />
       <arg type="b" name="success" direction="out" />
@@ -239,35 +215,15 @@
       <arg type="ay" name="public_key" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
-    <method name="TpmAttestationGetPublicKeyOld">
-      <arg type="b" name="is_user_specific" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="public_key" direction="out" />
-      <arg type="b" name="success" direction="out" />
-    </method>
     <method name="TpmAttestationRegisterKey">
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="TpmAttestationRegisterKeyOld">
-      <arg type="b" name="is_user_specific" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="TpmAttestationSignEnterpriseChallenge">
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="s" name="domain" direction="in" />
-      <arg type="ay" name="device_id" direction="in" />
-      <arg type="b" name="include_signed_public_key" direction="in" />
-      <arg type="ay" name="challenge" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
-    <method name="TpmAttestationSignEnterpriseChallengeOld">
-      <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="s" name="domain" direction="in" />
       <arg type="ay" name="device_id" direction="in" />
@@ -282,12 +238,6 @@
       <arg type="ay" name="challenge" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="TpmAttestationSignSimpleChallengeOld">
-      <arg type="b" name="is_user_specific" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="challenge" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="TpmAttestationGetKeyPayload">
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
@@ -295,21 +245,9 @@
       <arg type="ay" name="payload" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
-    <method name="TpmAttestationGetKeyPayloadOld">
-      <arg type="b" name="is_user_specific" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="payload" direction="out" />
-      <arg type="b" name="success" direction="out" />
-    </method>
     <method name="TpmAttestationSetKeyPayload">
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
-      <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="payload" direction="in" />
-      <arg type="b" name="success" direction="out" />
-    </method>
-    <method name="TpmAttestationSetKeyPayloadOld">
-      <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="ay" name="payload" direction="in" />
       <arg type="b" name="success" direction="out" />

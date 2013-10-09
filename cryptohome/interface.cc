@@ -334,23 +334,6 @@ gboolean cryptohome_tpm_attestation_finish_cert_request(
                          OUT_cert,
                          OUT_success);
 }
-gboolean cryptohome_tpm_attestation_finish_cert_request_old(
-    Cryptohome *self,
-    GArray* pca_response,
-    gboolean is_user_specific,
-    gchar* key_name,
-    GArray** OUT_cert,
-    gboolean* OUT_success,
-    GError** error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationFinishCertRequest,
-                         pca_response,
-                         is_user_specific,
-                         empty_username,
-                         key_name,
-                         OUT_cert,
-                         OUT_success);
-}
 gboolean cryptohome_async_tpm_attestation_finish_cert_request(
     Cryptohome *self,
     GArray* pca_response,
@@ -363,21 +346,6 @@ gboolean cryptohome_async_tpm_attestation_finish_cert_request(
                          pca_response,
                          is_user_specific,
                          username,
-                         key_name,
-                         OUT_async_id);
-}
-gboolean cryptohome_async_tpm_attestation_finish_cert_request_old(
-    Cryptohome *self,
-    GArray* pca_response,
-    gboolean is_user_specific,
-    gchar* key_name,
-    gint *OUT_async_id,
-    GError** error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationFinishCertRequest,
-                         pca_response,
-                         is_user_specific,
-                         empty_username,
                          key_name,
                          OUT_async_id);
 }
@@ -398,18 +366,6 @@ gboolean cryptohome_tpm_attestation_does_key_exist(Cryptohome *self,
                          key_name,
                          OUT_exists);
 }
-gboolean cryptohome_tpm_attestation_does_key_exist_old(Cryptohome *self,
-                                                   gboolean is_user_specific,
-                                                   gchar* key_name,
-                                                   gboolean *OUT_exists,
-                                                   GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationDoesKeyExist,
-                         is_user_specific,
-                         empty_username,
-                         key_name,
-                         OUT_exists);
-}
 gboolean cryptohome_tpm_attestation_get_certificate(Cryptohome *self,
                                                     gboolean is_user_specific,
                                                     gchar* username,
@@ -420,20 +376,6 @@ gboolean cryptohome_tpm_attestation_get_certificate(Cryptohome *self,
   CRYPTOHOME_WRAP_METHOD(TpmAttestationGetCertificate,
                          is_user_specific,
                          username,
-                         key_name,
-                         OUT_certificate,
-                         OUT_success);
-}
-gboolean cryptohome_tpm_attestation_get_certificate_old(Cryptohome *self,
-                                                    gboolean is_user_specific,
-                                                    gchar* key_name,
-                                                    GArray** OUT_certificate,
-                                                    gboolean* OUT_success,
-                                                    GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetCertificate,
-                         is_user_specific,
-                         empty_username,
                          key_name,
                          OUT_certificate,
                          OUT_success);
@@ -452,20 +394,6 @@ gboolean cryptohome_tpm_attestation_get_public_key(Cryptohome *self,
                          OUT_public_key,
                          OUT_success);
 }
-gboolean cryptohome_tpm_attestation_get_public_key_old(Cryptohome *self,
-                                                   gboolean is_user_specific,
-                                                   gchar* key_name,
-                                                   GArray** OUT_public_key,
-                                                   gboolean* OUT_success,
-                                                   GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetPublicKey,
-                         is_user_specific,
-                         empty_username,
-                         key_name,
-                         OUT_public_key,
-                         OUT_success);
-}
 gboolean cryptohome_tpm_attestation_register_key(Cryptohome *self,
                                                  gboolean is_user_specific,
                                                  gchar* username,
@@ -475,18 +403,6 @@ gboolean cryptohome_tpm_attestation_register_key(Cryptohome *self,
   CRYPTOHOME_WRAP_METHOD(TpmAttestationRegisterKey,
                          is_user_specific,
                          username,
-                         key_name,
-                         OUT_async_id);
-}
-gboolean cryptohome_tpm_attestation_register_key_old(Cryptohome *self,
-                                                 gboolean is_user_specific,
-                                                 gchar* key_name,
-                                                 gint *OUT_async_id,
-                                                 GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationRegisterKey,
-                         is_user_specific,
-                         empty_username,
                          key_name,
                          OUT_async_id);
 }
@@ -511,27 +427,6 @@ gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
                          challenge,
                          OUT_async_id);
 }
-gboolean cryptohome_tpm_attestation_sign_enterprise_challenge_old(
-    Cryptohome *self,
-    gboolean is_user_specific,
-    gchar* key_name,
-    gchar* domain,
-    GArray* device_id,
-    gboolean include_signed_public_key,
-    GArray* challenge,
-    gint *OUT_async_id,
-    GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationSignEnterpriseChallenge,
-                         is_user_specific,
-                         empty_username,
-                         key_name,
-                         domain,
-                         device_id,
-                         include_signed_public_key,
-                         challenge,
-                         OUT_async_id);
-}
 gboolean cryptohome_tpm_attestation_sign_simple_challenge(
     Cryptohome *self,
     gboolean is_user_specific,
@@ -543,21 +438,6 @@ gboolean cryptohome_tpm_attestation_sign_simple_challenge(
   CRYPTOHOME_WRAP_METHOD(TpmAttestationSignSimpleChallenge,
                          is_user_specific,
                          username,
-                         key_name,
-                         challenge,
-                         OUT_async_id);
-}
-gboolean cryptohome_tpm_attestation_sign_simple_challenge_old(
-    Cryptohome *self,
-    gboolean is_user_specific,
-    gchar* key_name,
-    GArray* challenge,
-    gint *OUT_async_id,
-    GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationSignSimpleChallenge,
-                         is_user_specific,
-                         empty_username,
                          key_name,
                          challenge,
                          OUT_async_id);
@@ -576,20 +456,6 @@ gboolean cryptohome_tpm_attestation_get_key_payload(Cryptohome *self,
                          OUT_payload,
                          OUT_success);
 }
-gboolean cryptohome_tpm_attestation_get_key_payload_old(Cryptohome *self,
-                                                    gboolean is_user_specific,
-                                                    gchar* key_name,
-                                                    GArray** OUT_payload,
-                                                    gboolean* OUT_success,
-                                                    GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetKeyPayload,
-                         is_user_specific,
-                         empty_username,
-                         key_name,
-                         OUT_payload,
-                         OUT_success);
-}
 gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
                                                     gboolean is_user_specific,
                                                     gchar* username,
@@ -600,20 +466,6 @@ gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
   CRYPTOHOME_WRAP_METHOD(TpmAttestationSetKeyPayload,
                          is_user_specific,
                          username,
-                         key_name,
-                         payload,
-                         OUT_success);
-}
-gboolean cryptohome_tpm_attestation_set_key_payload_old(Cryptohome *self,
-                                                    gboolean is_user_specific,
-                                                    gchar* key_name,
-                                                    GArray* payload,
-                                                    gboolean* OUT_success,
-                                                    GError **error) {
-  gchar empty_username[1] = "";
-  CRYPTOHOME_WRAP_METHOD(TpmAttestationSetKeyPayload,
-                         is_user_specific,
-                         empty_username,
                          key_name,
                          payload,
                          OUT_success);
