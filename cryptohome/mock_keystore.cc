@@ -7,10 +7,10 @@
 namespace cryptohome {
 
 MockKeyStore::MockKeyStore() {
-  ON_CALL(*this, Read(_, _)).WillByDefault(Return(true));
-  ON_CALL(*this, Write(_, _)).WillByDefault(Return(true));
-  ON_CALL(*this, Delete(_)).WillByDefault(Return(true));
-  ON_CALL(*this, Register(_, _)).WillByDefault(Return(true));
+  ON_CALL(*this, Read(_, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, Write(_, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, Delete(_, _)).WillByDefault(Return(true));
+  ON_CALL(*this, Register(_, _, _)).WillByDefault(Return(true));
 }
 
 MockKeyStore::~MockKeyStore() {}

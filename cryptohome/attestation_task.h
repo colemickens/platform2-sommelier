@@ -81,6 +81,7 @@ class FinishCertRequestTask : public AttestationTask {
                         Attestation* attestation,
                         const SecureBlob& pca_response,
                         bool is_user_specific,
+                        const std::string& username,
                         const std::string& key_name);
   virtual ~FinishCertRequestTask();
 
@@ -89,6 +90,7 @@ class FinishCertRequestTask : public AttestationTask {
  private:
   SecureBlob pca_response_;
   bool is_user_specific_;
+  std::string username_;
   std::string key_name_;
 
   DISALLOW_COPY_AND_ASSIGN(FinishCertRequestTask);
@@ -101,12 +103,14 @@ class SignChallengeTask : public AttestationTask {
   SignChallengeTask(AttestationTaskObserver* observer,
                     Attestation* attestation,
                     bool is_user_specific,
+                    const std::string& username,
                     const std::string& key_name,
                     const chromeos::SecureBlob& challenge);
   // Constructs a task for SignEnterpriseChallenge.
   SignChallengeTask(AttestationTaskObserver* observer,
                     Attestation* attestation,
                     bool is_user_specific,
+                    const std::string& username,
                     const std::string& key_name,
                     const std::string& domain,
                     const chromeos::SecureBlob& device_id,
@@ -119,6 +123,7 @@ class SignChallengeTask : public AttestationTask {
  private:
   bool is_enterprise_;
   bool is_user_specific_;
+  std::string username_;
   std::string key_name_;
   std::string domain_;
   chromeos::SecureBlob device_id_;
@@ -134,6 +139,7 @@ class RegisterKeyTask : public AttestationTask {
   RegisterKeyTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
                         bool is_user_specific,
+                        const std::string& username,
                         const std::string& key_name);
   virtual ~RegisterKeyTask();
 
@@ -141,6 +147,7 @@ class RegisterKeyTask : public AttestationTask {
 
  private:
   bool is_user_specific_;
+  std::string username_;
   std::string key_name_;
 
   DISALLOW_COPY_AND_ASSIGN(RegisterKeyTask);

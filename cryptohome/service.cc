@@ -1486,6 +1486,7 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
 
 gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
                                                   gboolean is_user_specific,
+                                                  gchar* username,
                                                   gchar* key_name,
                                                   GArray** OUT_cert,
                                                   gboolean* OUT_success,
@@ -1501,6 +1502,7 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
   chromeos::SecureBlob cert_blob;
   *OUT_success = attestation->FinishCertRequest(response_blob,
                                                 is_user_specific,
+                                                username,
                                                 key_name,
                                                 &cert_blob);
   if (*OUT_success)
@@ -1511,6 +1513,7 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
 gboolean Service::AsyncTpmAttestationFinishCertRequest(
     GArray* pca_response,
     gboolean is_user_specific,
+    gchar* username,
     gchar* key_name,
     gint* OUT_async_id,
     GError** error) {
@@ -1522,6 +1525,7 @@ gboolean Service::AsyncTpmAttestationFinishCertRequest(
                                 tpm_init_->get_attestation(),
                                 blob,
                                 is_user_specific,
+                                username,
                                 key_name);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
@@ -1540,6 +1544,7 @@ gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
 }
 
 gboolean Service::TpmAttestationDoesKeyExist(gboolean is_user_specific,
+                                             gchar* username,
                                              gchar* key_name,
                                              gboolean *OUT_exists,
                                              GError** error) {
@@ -1549,11 +1554,12 @@ gboolean Service::TpmAttestationDoesKeyExist(gboolean is_user_specific,
     *OUT_exists = FALSE;
     return TRUE;
   }
-  *OUT_exists = attestation->DoesKeyExist(is_user_specific, key_name);
+  *OUT_exists = attestation->DoesKeyExist(is_user_specific, username, key_name);
   return TRUE;
 }
 
 gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
+                                               gchar* username,
                                                gchar* key_name,
                                                GArray **OUT_certificate,
                                                gboolean* OUT_success,
@@ -1567,6 +1573,7 @@ gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
   }
   chromeos::SecureBlob blob;
   *OUT_success = attestation->GetCertificateChain(is_user_specific,
+                                                  username,
                                                   key_name,
                                                   &blob);
   if (*OUT_success)
@@ -1575,6 +1582,7 @@ gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
 }
 
 gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
+                                             gchar* username,
                                              gchar* key_name,
                                              GArray **OUT_public_key,
                                              gboolean* OUT_success,
@@ -1588,6 +1596,7 @@ gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
   }
   chromeos::SecureBlob blob;
   *OUT_success = attestation->GetPublicKey(is_user_specific,
+                                           username,
                                            key_name,
                                            &blob);
   if (*OUT_success)
@@ -1596,6 +1605,7 @@ gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
 }
 
 gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
+                                            gchar* username,
                                             gchar* key_name,
                                             gint *OUT_async_id,
                                             GError** error) {
@@ -1605,6 +1615,7 @@ gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
       new RegisterKeyTask(observer,
                           tpm_init_->get_attestation(),
                           is_user_specific,
+                          username,
                           key_name);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
@@ -1615,6 +1626,7 @@ gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
 
 gboolean Service::TpmAttestationSignEnterpriseChallenge(
       gboolean is_user_specific,
+      gchar* username,
       gchar* key_name,
       gchar* domain,
       GArray* device_id,
@@ -1630,6 +1642,7 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       new SignChallengeTask(observer,
                             tpm_init_->get_attestation(),
                             is_user_specific,
+                            username,
                             key_name,
                             domain,
                             device_id_blob,
@@ -1644,6 +1657,7 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
 
 gboolean Service::TpmAttestationSignSimpleChallenge(
       gboolean is_user_specific,
+      gchar* username,
       gchar* key_name,
       GArray* challenge,
       gint *OUT_async_id,
@@ -1655,6 +1669,7 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
       new SignChallengeTask(observer,
                             tpm_init_->get_attestation(),
                             is_user_specific,
+                            username,
                             key_name,
                             challenge_blob);
   *OUT_async_id = task->sequence_id();
@@ -1665,6 +1680,7 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
 }
 
 gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
+                                              gchar* username,
                                               gchar* key_name,
                                               GArray** OUT_payload,
                                               gboolean* OUT_success,
@@ -1678,6 +1694,7 @@ gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
   }
   chromeos::SecureBlob blob;
   *OUT_success = attestation->GetKeyPayload(is_user_specific,
+                                            username,
                                             key_name,
                                             &blob);
   if (*OUT_success)
@@ -1686,6 +1703,7 @@ gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
 }
 
 gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
+                                              gchar* username,
                                               gchar* key_name,
                                               GArray* payload,
                                               gboolean* OUT_success,
@@ -1698,6 +1716,7 @@ gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
   }
   chromeos::SecureBlob blob(payload->data, payload->len);
   *OUT_success = attestation->SetKeyPayload(is_user_specific,
+                                            username,
                                             key_name,
                                             blob);
   return TRUE;
@@ -1737,8 +1756,11 @@ gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
                                                gint* OUT_slot,
                                                GError** error) {
   pkcs11_init_->GetTpmTokenInfoForUser(username, OUT_label, OUT_user_pin);
-  *OUT_slot = pkcs11_init_->GetTpmTokenSlotForPath(
-      homedirs_->GetChapsTokenDir(username));
+  *OUT_slot = -1;
+  CK_SLOT_ID slot;
+  FilePath token_path = homedirs_->GetChapsTokenDir(username);
+  if (pkcs11_init_->GetTpmTokenSlotForPath(token_path, &slot))
+    *OUT_slot = slot;
   return TRUE;
 }
 

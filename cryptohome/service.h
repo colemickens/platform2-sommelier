@@ -262,6 +262,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
       GError** error);
   virtual gboolean TpmAttestationFinishCertRequest(GArray* pca_response,
                                                    gboolean is_user_specific,
+                                                   gchar* username,
                                                    gchar* key_name,
                                                    GArray** OUT_cert,
                                                    gboolean* OUT_success,
@@ -269,31 +270,37 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncTpmAttestationFinishCertRequest(
       GArray* pca_response,
       gboolean is_user_specific,
+      gchar* username,
       gchar* key_name,
       gint* OUT_async_id,
       GError** error);
   virtual gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
                                             GError** error);
   virtual gboolean TpmAttestationDoesKeyExist(gboolean is_user_specific,
+                                              gchar* username,
                                               gchar* key_name,
                                               gboolean *OUT_exists,
                                               GError** error);
   virtual gboolean TpmAttestationGetCertificate(gboolean is_user_specific,
+                                                gchar* username,
                                                 gchar* key_name,
                                                 GArray **OUT_certificate,
                                                 gboolean* OUT_success,
                                                 GError** error);
   virtual gboolean TpmAttestationGetPublicKey(gboolean is_user_specific,
+                                              gchar* username,
                                               gchar* key_name,
                                               GArray **OUT_public_key,
                                               gboolean* OUT_success,
                                               GError** error);
   virtual gboolean TpmAttestationRegisterKey(gboolean is_user_specific,
+                                             gchar* username,
                                              gchar* key_name,
                                              gint *OUT_async_id,
                                              GError** error);
   virtual gboolean TpmAttestationSignEnterpriseChallenge(
       gboolean is_user_specific,
+      gchar* username,
       gchar* key_name,
       gchar* domain,
       GArray* device_id,
@@ -303,16 +310,19 @@ class Service : public chromeos::dbus::AbstractDbusService,
       GError** error);
   virtual gboolean TpmAttestationSignSimpleChallenge(
       gboolean is_user_specific,
+      gchar* username,
       gchar* key_name,
       GArray* challenge,
       gint *OUT_async_id,
       GError** error);
   virtual gboolean TpmAttestationGetKeyPayload(gboolean is_user_specific,
+                                               gchar* username,
                                                gchar* key_name,
                                                GArray** OUT_payload,
                                                gboolean* OUT_success,
                                                GError** error);
   virtual gboolean TpmAttestationSetKeyPayload(gboolean is_user_specific,
+                                               gchar* username,
                                                gchar* key_name,
                                                GArray* payload,
                                                gboolean* OUT_success,

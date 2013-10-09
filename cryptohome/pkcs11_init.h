@@ -40,10 +40,10 @@ class Pkcs11Init {
   // Returns the same label as GetTpmTokenInfoForUser.
   virtual std::string GetTpmTokenLabelForUser(const std::string& username);
 
-  // Returns the tpm token slot for the given path.  If no slot is found,
-  // returns the default slot (which will belong to the user who originally
-  // signed in).
-  virtual int GetTpmTokenSlotForPath(const base::FilePath& path);
+  // Gets the tpm token |slot| for the given |path|.  If no slot is found,
+  // returns false.
+  virtual bool GetTpmTokenSlotForPath(const base::FilePath& path,
+                                      CK_SLOT_ID_PTR slot);
 
   // Check if the user's PKCS #11 token is valid.
   virtual bool IsUserTokenBroken();

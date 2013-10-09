@@ -15,6 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "mock_pkcs11_init.h"
+
 using chaps::Attributes;
 using chromeos::SecureBlob;
 using std::map;
@@ -33,6 +35,7 @@ namespace cryptohome {
 typedef chaps::ChapsProxyMock Pkcs11Mock;
 
 const uint64_t kDefaultHandle = 7;  // Arbitrary non-zero value.
+const char* kDefaultUser = "test_user";
 
 // Implements a fake PKCS #11 object store.  Labeled data blobs can be stored
 // and later retrieved.  No handle management is performed, the emitted handles
@@ -68,6 +71,8 @@ class KeyStoreTest : public testing::Test {
         .WillByDefault(Invoke(this, &KeyStoreTest::FindObjects));
     ON_CALL(pkcs11_, FindObjectsFinal(_, kDefaultHandle))
         .WillByDefault(Return(0));
+    ON_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
+        .WillByDefault(DoAll(SetArgumentPointee<1>(0), Return(true)));
   }
 
   // Stores a new labeled object, only CKA_LABEL and CKA_VALUE are relevant.
@@ -144,6 +149,7 @@ class KeyStoreTest : public testing::Test {
 
  protected:
   NiceMock<Pkcs11Mock> pkcs11_;
+  NiceMock<MockPkcs11Init> pkcs11_init_;
 
   bool CompareBlob(const chromeos::SecureBlob& blob, const string& str) {
     string blob_str(reinterpret_cast<const char*>(blob.const_data()),
@@ -183,75 +189,75 @@ class KeyStoreTest : public testing::Test {
 TEST(KeyStoreTest_NoMock, Pkcs11NotAvailable) {
   Pkcs11KeyStore key_store;
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Read("test", &blob));
-  EXPECT_FALSE(key_store.Write("test", blob));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", blob));
 }
 
 // Exercises the key store when PKCS #11 returns success.  This exercises all
 // non-error-handling code paths.
 TEST_F(KeyStoreTest, Pkcs11Success) {
-  Pkcs11KeyStore key_store;
+  Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Read("test", &blob));
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_TRUE(key_store.Read("test", &blob));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data"));
   // Try with a different key name.
-  EXPECT_FALSE(key_store.Read("test2", &blob));
-  EXPECT_TRUE(key_store.Write("test2", SecureBlob("test_data2")));
-  EXPECT_TRUE(key_store.Read("test2", &blob));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test2", SecureBlob("test_data2")));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "test2", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data2"));
   // Read the original key again.
-  EXPECT_TRUE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data"));
   // Replace key data.
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data3")));
-  EXPECT_TRUE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data3")));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data3"));
   // Delete key data.
-  EXPECT_TRUE(key_store.Delete("test2"));
-  EXPECT_FALSE(key_store.Read("test2", &blob));
-  EXPECT_TRUE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Delete(kDefaultUser, "test2"));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to open a session.
 TEST_F(KeyStoreTest, NoSession) {
   EXPECT_CALL(pkcs11_, OpenSession(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  Pkcs11KeyStore key_store;
+  Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to create an object.
 TEST_F(KeyStoreTest, CreateObjectFail) {
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  Pkcs11KeyStore key_store;
+  Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to read attribute values.
 TEST_F(KeyStoreTest, ReadValueFail) {
   EXPECT_CALL(pkcs11_, GetAttributeValue(_, _, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  Pkcs11KeyStore key_store;
+  Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to delete key data.
 TEST_F(KeyStoreTest, DeleteValueFail) {
   EXPECT_CALL(pkcs11_, DestroyObject(_, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  Pkcs11KeyStore key_store;
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Write("test", SecureBlob("test_data2")));
-  EXPECT_FALSE(key_store.Delete("test"));
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data2")));
+  EXPECT_FALSE(key_store.Delete(kDefaultUser, "test"));
 }
 
 // Tests the key store when PKCS #11 fails to find objects.  Tests each part of
@@ -259,24 +265,24 @@ TEST_F(KeyStoreTest, DeleteValueFail) {
 TEST_F(KeyStoreTest, FindFail) {
   EXPECT_CALL(pkcs11_, FindObjectsInit(_, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  Pkcs11KeyStore key_store;
+  Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 
   EXPECT_CALL(pkcs11_, FindObjectsInit(_, _, _))
       .WillRepeatedly(Return(CKR_OK));
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(Return(CKR_OK));
   EXPECT_CALL(pkcs11_, FindObjectsFinal(_, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 successfully finds zero objects.
@@ -284,15 +290,16 @@ TEST_F(KeyStoreTest, FindNoObjects) {
   vector<uint64_t> empty;
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(empty), Return(CKR_OK)));
-  Pkcs11KeyStore key_store;
+  Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read("test", &blob));
+  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
 }
 
 TEST_F(KeyStoreTest, Register) {
-  Pkcs11KeyStore key_store;
-  EXPECT_FALSE(key_store.Register(SecureBlob("private_key_blob"),
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  EXPECT_FALSE(key_store.Register(kDefaultUser,
+                                  SecureBlob("private_key_blob"),
                                   SecureBlob("bad_pubkey")));
   const char* public_key_der_hex =
       "3082010A0282010100"
@@ -308,7 +315,8 @@ TEST_F(KeyStoreTest, Register) {
       "010001";
   SecureBlob public_key_der;
   base::HexStringToBytes(public_key_der_hex, &public_key_der);
-  EXPECT_TRUE(key_store.Register(SecureBlob("private_key_blob"),
+  EXPECT_TRUE(key_store.Register(kDefaultUser,
+                                 SecureBlob("private_key_blob"),
                                  public_key_der));
 }
 

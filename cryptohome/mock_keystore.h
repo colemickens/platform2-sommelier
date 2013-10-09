@@ -22,12 +22,16 @@ class MockKeyStore : public KeyStore {
   MockKeyStore();
   virtual ~MockKeyStore();
 
-  MOCK_METHOD2(Read, bool(const std::string& name,
+  MOCK_METHOD3(Read, bool(const std::string& username,
+                          const std::string& name,
                           chromeos::SecureBlob* key_data));
-  MOCK_METHOD2(Write, bool(const std::string& name,
+  MOCK_METHOD3(Write, bool(const std::string& username,
+                           const std::string& name,
                            const chromeos::SecureBlob& key_data));
-  MOCK_METHOD1(Delete, bool(const std::string& name));
-  MOCK_METHOD2(Register, bool(const chromeos::SecureBlob&,
+  MOCK_METHOD2(Delete, bool(const std::string& username,
+                            const std::string& name));
+  MOCK_METHOD3(Register, bool(const std::string& username,
+                              const chromeos::SecureBlob&,
                               const chromeos::SecureBlob&));
 
  private:

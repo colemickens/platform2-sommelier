@@ -563,6 +563,7 @@ bool Attestation::CreateCertRequest(CertificateProfile profile,
 
 bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
                                     bool is_user_specific,
+                                    const string& username,
                                     const string& key_name,
                                     SecureBlob* certificate_chain) {
   AttestationCertificateResponse response_pb;
@@ -599,7 +600,7 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
       response_pb.certified_key_credential());
   certified_key_pb.set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
   certified_key_pb.set_key_name(key_name);
-  if (!SaveKey(is_user_specific, key_name, certified_key_pb))
+  if (!SaveKey(is_user_specific, username, key_name, certified_key_pb))
     return false;
   LOG(INFO) << "Attestation: Certified key credential received and stored.";
   return CreatePEMCertificateChain(response_pb.certified_key_credential(),
@@ -608,11 +609,12 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
 }
 
 bool Attestation::GetCertificateChain(bool is_user_specific,
+                                      const string& username,
                                       const string& key_name,
                                       SecureBlob* certificate_chain) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
-  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Could not find certified key: " << key_name;
     return false;
   }
@@ -622,11 +624,12 @@ bool Attestation::GetCertificateChain(bool is_user_specific,
 }
 
 bool Attestation::GetPublicKey(bool is_user_specific,
+                               const string& username,
                                const string& key_name,
                                SecureBlob* public_key) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
-  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Could not find certified key: " << key_name;
     return false;
   }
@@ -654,14 +657,16 @@ bool Attestation::GetPublicKey(bool is_user_specific,
 }
 
 bool Attestation::DoesKeyExist(bool is_user_specific,
+                               const string& username,
                                const string& key_name) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
-  return FindKeyByName(is_user_specific, key_name, &key);
+  return FindKeyByName(is_user_specific, username, key_name, &key);
 }
 
 bool Attestation::SignEnterpriseChallenge(
       bool is_user_specific,
+      const string& username,
       const string& key_name,
       const string& domain,
       const SecureBlob& device_id,
@@ -669,7 +674,7 @@ bool Attestation::SignEnterpriseChallenge(
       const SecureBlob& challenge,
       SecureBlob* response) {
   CertifiedKey key;
-  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
@@ -742,11 +747,12 @@ bool Attestation::SignEnterpriseChallenge(
 }
 
 bool Attestation::SignSimpleChallenge(bool is_user_specific,
+                                      const string& username,
                                       const string& key_name,
                                       const SecureBlob& challenge,
                                       SecureBlob* response) {
   CertifiedKey key;
-  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
@@ -764,7 +770,9 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
   return true;
 }
 
-bool Attestation::RegisterKey(bool is_user_specific, const string& key_name) {
+bool Attestation::RegisterKey(bool is_user_specific,
+                              const string& username,
+                              const string& key_name) {
   if (!is_user_specific) {
     // Currently there are no use cases which require a non-user key to be
     // registered.  This prevents any accidental or malicious registration.
@@ -772,26 +780,28 @@ bool Attestation::RegisterKey(bool is_user_specific, const string& key_name) {
     return false;
   }
   CertifiedKey key;
-  if (!FindKeyByName(true, key_name, &key)) {
+  if (!FindKeyByName(true, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
-  if (!user_key_store_->Register(ConvertStringToBlob(key.key_blob()),
+  if (!user_key_store_->Register(username,
+                                 ConvertStringToBlob(key.key_blob()),
                                  ConvertStringToBlob(key.public_key()))) {
     LOG(ERROR) << __func__ << ": Failed to register key.";
     return false;
   }
-  if (!user_key_store_->Delete(key_name)) {
+  if (!user_key_store_->Delete(username, key_name)) {
     LOG(WARNING) << __func__ << ": Failed to delete registered key.";
   }
   return true;
 }
 
 bool Attestation::GetKeyPayload(bool is_user_specific,
+                                const string& username,
                                 const string& key_name,
                                 SecureBlob* payload) {
   CertifiedKey key;
-  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
@@ -801,15 +811,16 @@ bool Attestation::GetKeyPayload(bool is_user_specific,
 }
 
 bool Attestation::SetKeyPayload(bool is_user_specific,
+                                const string& username,
                                 const string& key_name,
                                 const SecureBlob& payload) {
   CertifiedKey key;
-  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
   key.set_payload(ConvertBlobToString(payload));
-  return SaveKey(is_user_specific, key_name, key);
+  return SaveKey(is_user_specific, username, key_name, key);
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {
@@ -1245,11 +1256,12 @@ bool Attestation::AddDeviceKey(const string& key_name,
 }
 
 bool Attestation::FindKeyByName(bool is_user_specific,
+                                const string& username,
                                 const string& key_name,
                                 CertifiedKey* key) {
   if (is_user_specific) {
     SecureBlob key_data;
-    if (!user_key_store_->Read(key_name, &key_data)) {
+    if (!user_key_store_->Read(username, key_name, &key_data)) {
       LOG(INFO) << "Key not found: " << key_name;
       return false;
     }
@@ -1270,6 +1282,7 @@ bool Attestation::FindKeyByName(bool is_user_specific,
 }
 
 bool Attestation::SaveKey(bool is_user_specific,
+                          const string& username,
                           const string& key_name,
                           const CertifiedKey& key) {
   if (is_user_specific) {
@@ -1280,7 +1293,7 @@ bool Attestation::SaveKey(bool is_user_specific,
     }
     SecureBlob blob = ConvertStringToBlob(tmp);
     ClearString(&tmp);
-    if (!user_key_store_->Write(key_name, blob)) {
+    if (!user_key_store_->Write(username, key_name, blob)) {
       LOG(ERROR) << __func__ << ": Failed to store certified key for user.";
       return false;
     }

@@ -11,10 +11,12 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <chaps/pkcs11/cryptoki.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/rsa.h>
 
 #include "cryptolib.h"
+#include "pkcs11_init.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -23,10 +25,6 @@ namespace cryptohome {
 
 // An arbitrary application ID to identify PKCS #11 objects.
 const char kApplicationID[] = "CrOS_d5bbc079d2497110feadfc97c40d718ae46f4658";
-
-// TODO(dkrahn): crosbug.com/23835 - Make this multi-user friendly.  For now,
-// only slot 0 exists.
-const CK_SLOT_ID kDefaultSlotID = 0;
 
 // A helper class to scope a PKCS #11 session.
 class ScopedSession {
@@ -67,13 +65,21 @@ class ScopedSession {
   DISALLOW_COPY_AND_ASSIGN(ScopedSession);
 };
 
-Pkcs11KeyStore::Pkcs11KeyStore() {}
+Pkcs11KeyStore::Pkcs11KeyStore() : default_pkcs11_init_(new Pkcs11Init),
+                                   pkcs11_init_(default_pkcs11_init_.get()) {}
+
+Pkcs11KeyStore::Pkcs11KeyStore(Pkcs11Init* pkcs11_init)
+    : pkcs11_init_(pkcs11_init) {}
 
 Pkcs11KeyStore::~Pkcs11KeyStore() {}
 
-bool Pkcs11KeyStore::Read(const string& key_name,
+bool Pkcs11KeyStore::Read(const string& username,
+                          const string& key_name,
                           SecureBlob* key_data) {
-  ScopedSession session(kDefaultSlotID);
+  CK_SLOT_ID slot;
+  if (!GetUserSlot(username, &slot))
+    return false;
+  ScopedSession session(slot);
   if (!session.IsValid())
     return false;
   CK_OBJECT_HANDLE key_handle = FindObject(session.handle(), key_name);
@@ -101,12 +107,16 @@ bool Pkcs11KeyStore::Read(const string& key_name,
   return true;
 }
 
-bool Pkcs11KeyStore::Write(const string& key_name,
+bool Pkcs11KeyStore::Write(const string& username,
+                           const string& key_name,
                            const SecureBlob& key_data) {
   // Delete any existing key with the same name.
-  if (!Delete(key_name))
+  if (!Delete(username, key_name))
     return false;
-  ScopedSession session(kDefaultSlotID);
+  CK_SLOT_ID slot;
+  if (!GetUserSlot(username, &slot))
+    return false;
+  ScopedSession session(slot);
   if (!session.IsValid())
     return false;
   // Create a new data object for the key.
@@ -145,8 +155,12 @@ bool Pkcs11KeyStore::Write(const string& key_name,
   return true;
 }
 
-bool Pkcs11KeyStore::Delete(const std::string& key_name) {
-  ScopedSession session(kDefaultSlotID);
+bool Pkcs11KeyStore::Delete(const string& username,
+                            const std::string& key_name) {
+  CK_SLOT_ID slot;
+  if (!GetUserSlot(username, &slot))
+    return false;
+  ScopedSession session(slot);
   if (!session.IsValid())
     return false;
   CK_OBJECT_HANDLE key_handle = FindObject(session.handle(), key_name);
@@ -159,11 +173,15 @@ bool Pkcs11KeyStore::Delete(const std::string& key_name) {
   return true;
 }
 
-bool Pkcs11KeyStore::Register(const chromeos::SecureBlob& private_key_blob,
+bool Pkcs11KeyStore::Register(const string& username,
+                              const chromeos::SecureBlob& private_key_blob,
                               const chromeos::SecureBlob& public_key_der) {
   const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 
-  ScopedSession session(kDefaultSlotID);
+  CK_SLOT_ID slot;
+  if (!GetUserSlot(username, &slot))
+    return false;
+  ScopedSession session(slot);
   if (!session.IsValid())
     return false;
 
@@ -250,7 +268,7 @@ bool Pkcs11KeyStore::Register(const chromeos::SecureBlob& private_key_blob,
 
   // Close all sessions in an attempt to trigger other modules to find the new
   // objects.
-  C_CloseAllSessions(kDefaultSlotID);
+  C_CloseAllSessions(slot);
 
   return true;
 }
@@ -290,6 +308,18 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
   if (count == 1)
     return key_handle;
   return CK_INVALID_HANDLE;
+}
+
+bool Pkcs11KeyStore::GetUserSlot(const string& username, CK_SLOT_ID_PTR slot) {
+  if (username.empty()) {
+    LOG(WARNING) << "Warning: No username: Using default PKCS #11 slot.";
+    *slot = Pkcs11Init::kDefaultTpmSlotId;
+    return true;
+  }
+  const char *kChapsDaemonName = "chaps";
+  FilePath token_path =
+      chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName);
+  return pkcs11_init_->GetTpmTokenSlotForPath(token_path, slot);
 }
 
 }  // namespace cryptohome

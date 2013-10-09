@@ -1344,6 +1344,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
+    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -1355,6 +1356,7 @@ int main(int argc, char **argv) {
       printf("Failed to read input file.\n");
       return 1;
     }
+    gboolean is_user_specific = (key_name != "attest-ent-machine");
     chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
@@ -1365,7 +1367,8 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
           proxy.gproxy(),
           data.get(),
-          TRUE,
+          is_user_specific,
+          username.c_str(),
           key_name.c_str(),
           &chromeos::Resetter(&cert).lvalue(),
           &success,
@@ -1382,7 +1385,8 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_finish_cert_request(
               proxy.gproxy(),
               data.get(),
-              TRUE,
+              is_user_specific,
+              username.c_str(),
               key_name.c_str(),
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
@@ -1403,6 +1407,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
       action.c_str())) {
+    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -1415,6 +1420,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
           proxy.gproxy(),
           is_user_specific,
+          username.c_str(),
           key_name.c_str(),
           &exists,
           &chromeos::Resetter(&error).lvalue())) {
@@ -1430,6 +1436,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
           proxy.gproxy(),
           is_user_specific,
+          username.c_str(),
           key_name.c_str(),
           &chromeos::Resetter(&cert).lvalue(),
           &success,
@@ -1441,6 +1448,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
           proxy.gproxy(),
           is_user_specific,
+          username.c_str(),
           key_name.c_str(),
           &chromeos::Resetter(&public_key).lvalue(),
           &success,
@@ -1456,6 +1464,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_REGISTER_KEY],
       action.c_str())) {
+    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -1469,6 +1478,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_register_key(
           proxy.gproxy(),
           true,
+          username.c_str(),
           key_name.c_str(),
           &async_id,
           &chromeos::Resetter(&error).lvalue())) {
@@ -1482,6 +1492,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
       action.c_str())) {
+    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -1507,6 +1518,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(
             proxy.gproxy(),
             TRUE,
+            username.c_str(),
             key_name.c_str(),
             "cros@crosdmsregtest.com",
             device_id.get(),

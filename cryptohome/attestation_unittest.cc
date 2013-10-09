@@ -32,6 +32,7 @@ using ::testing::StartsWith;
 namespace cryptohome {
 
 static const char* kTestPath = "/tmp/attestation_test.epb";
+static const char* kTestUser = "test_user";
 
 class AttestationTest : public testing::Test {
  public:
@@ -295,29 +296,31 @@ TEST_F(AttestationTest, CertRequest) {
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
-  EXPECT_FALSE(attestation_.DoesKeyExist(false, "test"));
+  EXPECT_FALSE(attestation_.DoesKeyExist(false, kTestUser, "test"));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
+                                             kTestUser,
                                              "test",
                                              &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
                                                 "response_ca_cert")));
-  EXPECT_TRUE(attestation_.DoesKeyExist(false, "test"));
-  EXPECT_TRUE(attestation_.GetCertificateChain(false, "test", &blob));
+  EXPECT_TRUE(attestation_.DoesKeyExist(false, kTestUser, "test"));
+  EXPECT_TRUE(attestation_.GetCertificateChain(false, kTestUser, "test",
+                                               &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
                                                 "response_ca_cert")));
-  EXPECT_TRUE(attestation_.GetPublicKey(false, "test", &blob));
+  EXPECT_TRUE(attestation_.GetPublicKey(false, kTestUser, "test", &blob));
   EXPECT_TRUE(blob == GetX509PublicKey());
 }
 
 TEST_F(AttestationTest, CertRequestStorageFailure) {
-  EXPECT_CALL(key_store_, Write("test", _))
+  EXPECT_CALL(key_store_, Write(kTestUser, "test", _))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_store_, Read("test", _))
+  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<1>(GetCertifiedKeyBlob("")),
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("")),
           Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -327,23 +330,26 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
   // Expect storage failure here.
   EXPECT_FALSE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                               true,
+                                              kTestUser,
                                               "test",
                                               &blob));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              true,
+                                             kTestUser,
                                              "test",
                                              &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
                                                 "response_ca_cert")));
   // Expect storage failure here.
-  EXPECT_FALSE(attestation_.GetCertificateChain(true, "test", &blob));
-  EXPECT_TRUE(attestation_.DoesKeyExist(true, "test"));
-  EXPECT_TRUE(attestation_.GetCertificateChain(true, "test", &blob));
+  EXPECT_FALSE(attestation_.GetCertificateChain(true, kTestUser, "test",
+                                                &blob));
+  EXPECT_TRUE(attestation_.DoesKeyExist(true, kTestUser, "test"));
+  EXPECT_TRUE(attestation_.GetCertificateChain(true, kTestUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert",
                                                 "stored_ca_cert")));
-  EXPECT_TRUE(attestation_.GetPublicKey(true, "test", &blob));
+  EXPECT_TRUE(attestation_.GetPublicKey(true, kTestUser, "test", &blob));
   EXPECT_TRUE(blob == GetX509PublicKey());
 }
 
@@ -360,14 +366,17 @@ TEST_F(AttestationTest, SimpleChallenge) {
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
+                                             kTestUser,
                                              "test",
                                              &blob));
   // Expect tpm_.Sign() failure the first attempt.
   EXPECT_FALSE(attestation_.SignSimpleChallenge(false,
+                                                kTestUser,
                                                 "test",
                                                 SecureBlob("challenge"),
                                                 &blob));
   EXPECT_TRUE(attestation_.SignSimpleChallenge(false,
+                                               kTestUser,
                                                "test",
                                                SecureBlob("challenge"),
                                                &blob));
@@ -386,10 +395,12 @@ TEST_F(AttestationTest, EMKChallenge) {
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
+                                             kTestUser,
                                              "test",
                                              &blob));
   SecureBlob bad_prefix_challenge = GetEnterpriseChallenge("bad", true);
   EXPECT_FALSE(attestation_.SignEnterpriseChallenge(false,
+                                                    kTestUser,
                                                     "test",
                                                     "test_domain",
                                                     SecureBlob("test_id"),
@@ -398,6 +409,7 @@ TEST_F(AttestationTest, EMKChallenge) {
                                                     &blob));
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
   EXPECT_TRUE(attestation_.SignEnterpriseChallenge(false,
+                                                   kTestUser,
                                                    "test",
                                                    "test_domain",
                                                    SecureBlob("test_id"),
@@ -416,13 +428,14 @@ TEST_F(AttestationTest, EUKChallenge) {
   EXPECT_CALL(tpm_, Sign(_, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
                             Return(true)));
-  EXPECT_CALL(key_store_, Read("test", _))
+  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<1>(GetCertifiedKeyBlob("")),
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("")),
           Return(true)));
   chromeos::SecureBlob blob;
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
   EXPECT_TRUE(attestation_.SignEnterpriseChallenge(true,
+                                                   kTestUser,
                                                    "test",
                                                    "test_domain",
                                                    SecureBlob("test_id"),
@@ -439,11 +452,12 @@ TEST_F(AttestationTest, EUKChallenge) {
 }
 
 TEST_F(AttestationTest, Payload) {
-  EXPECT_CALL(key_store_, Write("test", GetCertifiedKeyBlob("test_payload")))
+  EXPECT_CALL(key_store_, Write(kTestUser, "test",
+                                GetCertifiedKeyBlob("test_payload")))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_store_, Read("test", _))
+  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<1>(GetCertifiedKeyBlob("stored_payload")),
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("stored_payload")),
           Return(true)));
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
@@ -455,16 +469,19 @@ TEST_F(AttestationTest, Payload) {
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
+                                             kTestUser,
                                              "test",
                                              &blob));
-  attestation_.GetKeyPayload(false, "test", &blob);
+  attestation_.GetKeyPayload(false, kTestUser, "test", &blob);
   EXPECT_EQ(0, blob.size());
-  attestation_.SetKeyPayload(false, "test", SecureBlob("test_payload"));
-  attestation_.GetKeyPayload(false, "test", &blob);
+  attestation_.SetKeyPayload(false, kTestUser, "test",
+                             SecureBlob("test_payload"));
+  attestation_.GetKeyPayload(false, kTestUser, "test", &blob);
   EXPECT_TRUE(CompareBlob(blob, "test_payload"));
 
-  attestation_.SetKeyPayload(true, "test", SecureBlob("test_payload"));
-  attestation_.GetKeyPayload(true, "test", &blob);
+  attestation_.SetKeyPayload(true, kTestUser, "test",
+                             SecureBlob("test_payload"));
+  attestation_.GetKeyPayload(true, kTestUser, "test", &blob);
   EXPECT_TRUE(CompareBlob(blob, "stored_payload"));
 }
 

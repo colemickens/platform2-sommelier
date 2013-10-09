@@ -46,24 +46,25 @@ std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
   return std::string(reinterpret_cast<const char*>(kDefaultLabel));
 }
 
-int Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path) {
+bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
+                                        CK_SLOT_ID_PTR slot) {
   CK_RV rv;
   rv = C_Initialize(NULL);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
     LOG(WARNING) << __func__ << ": C_Initialize failed.";
-    return kDefaultTpmSlotId;
+    return false;
   }
   CK_ULONG num_slots = 0;
   rv = C_GetSlotList(CK_TRUE, NULL, &num_slots);
   if (rv != CKR_OK) {
     LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
-    return kDefaultTpmSlotId;
+    return false;
   }
   scoped_array<CK_SLOT_ID> slot_list(new CK_SLOT_ID[num_slots]);
   rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
   if (rv != CKR_OK) {
     LOG(WARNING) << __func__ << ": C_GetSlotList failed.";
-    return kDefaultTpmSlotId;
+    return false;
   }
   chaps::TokenManagerClient token_manager;
   for (CK_ULONG i = 0; i < num_slots; ++i) {
@@ -72,12 +73,12 @@ int Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path) {
         chaps::IsolateCredentialManager::GetDefaultIsolateCredential(),
         slot_list[i],
         &slot_path) && (path == slot_path)) {
-      LOG(INFO) << __func__ << ": " << path.value() << " -> " << slot_list[i];
-      return slot_list[i];
+      *slot = slot_list[i];
+      return true;
     }
   }
   LOG(WARNING) << __func__ << ": Path not found.";
-  return kDefaultTpmSlotId;
+  return false;
 }
 
 bool Pkcs11Init::IsUserTokenBroken() {

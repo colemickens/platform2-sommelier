@@ -93,10 +93,12 @@ FinishCertRequestTask::FinishCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
                                              const SecureBlob& pca_response,
                                              bool is_user_specific,
+                                             const string& username,
                                              const string& key_name)
     : AttestationTask(observer, attestation),
       pca_response_(pca_response),
       is_user_specific_(is_user_specific),
+      username_(username),
       key_name_(key_name) {
 }
 
@@ -108,6 +110,7 @@ void FinishCertRequestTask::Run() {
     SecureBlob cert;
     bool status = attestation_->FinishCertRequest(pca_response_,
                                                   is_user_specific_,
+                                                  username_,
                                                   key_name_,
                                                   &cert);
     result()->set_return_status(status);
@@ -119,11 +122,13 @@ void FinishCertRequestTask::Run() {
 SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      Attestation* attestation,
                                      bool is_user_specific,
+                                     const string& username,
                                      const string& key_name,
                                      const SecureBlob& challenge)
     : AttestationTask(observer, attestation),
       is_enterprise_(false),
       is_user_specific_(is_user_specific),
+      username_(username),
       key_name_(key_name),
       challenge_(challenge) {
 }
@@ -131,6 +136,7 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
 SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      Attestation* attestation,
                                      bool is_user_specific,
+                                     const string& username,
                                      const string& key_name,
                                      const string& domain,
                                      const SecureBlob& device_id,
@@ -139,6 +145,7 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
     : AttestationTask(observer, attestation),
       is_enterprise_(true),
       is_user_specific_(is_user_specific),
+      username_(username),
       key_name_(key_name),
       domain_(domain),
       device_id_(device_id),
@@ -158,6 +165,7 @@ void SignChallengeTask::Run() {
   bool status = false;
   if (is_enterprise_) {
     status = attestation_->SignEnterpriseChallenge(is_user_specific_,
+                                                   username_,
                                                    key_name_,
                                                    domain_,
                                                    device_id_,
@@ -166,6 +174,7 @@ void SignChallengeTask::Run() {
                                                    &response);
   } else {
     status = attestation_->SignSimpleChallenge(is_user_specific_,
+                                               username_,
                                                key_name_,
                                                challenge_,
                                                &response);
@@ -178,9 +187,11 @@ void SignChallengeTask::Run() {
 RegisterKeyTask::RegisterKeyTask(AttestationTaskObserver* observer,
                                  Attestation* attestation,
                                  bool is_user_specific,
+                                 const string& username,
                                  const string& key_name)
     : AttestationTask(observer, attestation),
       is_user_specific_(is_user_specific),
+      username_(username),
       key_name_(key_name) {
 }
 
@@ -189,7 +200,9 @@ RegisterKeyTask::~RegisterKeyTask() {}
 void RegisterKeyTask::Run() {
   result()->set_return_status(FALSE);
   if (attestation_) {
-    bool status = attestation_->RegisterKey(is_user_specific_, key_name_);
+    bool status = attestation_->RegisterKey(is_user_specific_,
+                                            username_,
+                                            key_name_);
     result()->set_return_status(status);
   }
   Notify();

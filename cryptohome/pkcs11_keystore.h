@@ -18,6 +18,8 @@
 
 namespace cryptohome {
 
+class Pkcs11Init;
+
 // This class uses a PKCS #11 token as storage for key data.  The key data is
 // stored in data objects with the following attributes:
 // CKA_CLASS - CKO_DATA
@@ -34,22 +36,34 @@ namespace cryptohome {
 class Pkcs11KeyStore : public KeyStore {
  public:
   Pkcs11KeyStore();
+  Pkcs11KeyStore(Pkcs11Init* pkcs11_init);
   virtual ~Pkcs11KeyStore();
 
   // KeyStore interface.
-  virtual bool Read(const std::string& key_name,
+  virtual bool Read(const std::string& username,
+                    const std::string& key_name,
                     chromeos::SecureBlob* key_data);
-  virtual bool Write(const std::string& key_name,
+  virtual bool Write(const std::string& username,
+                     const std::string& key_name,
                      const chromeos::SecureBlob& key_data);
-  virtual bool Delete(const std::string& key_name);
-  virtual bool Register(const chromeos::SecureBlob& private_key_blob,
+  virtual bool Delete(const std::string& username,
+                      const std::string& key_name);
+  virtual bool Register(const std::string& username,
+                        const chromeos::SecureBlob& private_key_blob,
                         const chromeos::SecureBlob& public_key_der);
 
  private:
+  scoped_ptr<Pkcs11Init> default_pkcs11_init_;
+  Pkcs11Init* pkcs11_init_;
+
   // Searches for a PKCS #11 object for a given key name.  If one exists, the
   // object handle is returned, otherwise CK_INVALID_HANDLE is returned.
   CK_OBJECT_HANDLE FindObject(CK_SESSION_HANDLE session_handle,
                               const std::string& key_name);
+
+  // Gets a slot for the given user.  If |username| is empty then the default
+  // slot (0) is provided.  Returns false if no slot is found for |username|.
+  bool GetUserSlot(const std::string& username, CK_SLOT_ID_PTR slot);
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11KeyStore);
 };
