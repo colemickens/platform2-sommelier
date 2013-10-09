@@ -100,7 +100,8 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   if (!DeserializeEvents(perf_data_proto.events(), &parsed_events_))
     return false;
 
-  metadata_mask_ = perf_data_proto.metadata_mask(0);
+  if (perf_data_proto.metadata_mask_size())
+    metadata_mask_ = perf_data_proto.metadata_mask(0);
 
   if (!DeserializeBuildIDs(perf_data_proto.build_ids(),
                            &build_id_events_) ||
@@ -472,6 +473,11 @@ bool PerfSerializer::DeserializeRecordSample(
     sample_info.callchain->nr = callchain_size;
     for (size_t i = 0; i < callchain_size; ++i)
       sample_info.callchain->ips[i] = sample.callchain(i);
+  }
+  if (sample.raw_size() > 0) {
+    sample_info.raw_size = sample.raw_size();
+    sample_info.raw_data = new uint8[sample.raw_size()];
+    memset(sample_info.raw_data, 0, sample.raw_size());
   }
   if (sample.raw_size() > 0) {
     sample_info.raw_size = sample.raw_size();
