@@ -1784,6 +1784,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   CellularOperatorInfo::CellularOperator cellular_operator;
 
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnknown;
+
   cellular_operator.identifier_ = "vzw";
   capability_->mdn_ = "";
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
@@ -1791,6 +1794,10 @@ TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
   capability_->mdn_ = "10123456789";
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+  capability_->mdn_ = "1021232333";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
+  EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
 
   cellular_operator.identifier_ = "foo";
   capability_->mdn_ = "";
@@ -1904,6 +1911,8 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   const char kIccid[] = "1234567";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   capability_->sim_identifier_.clear();
   capability_->mdn_ = "0000000000";
   CellularService::OLP olp;
@@ -1918,6 +1927,8 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   EXPECT_FALSE(service_->auto_connect());
 
   capability_->mdn_ = "1231231122";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnknown;
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
@@ -1950,6 +1961,30 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  EXPECT_TRUE(service_->auto_connect());
+
+  // SubscriptionStateUnprovisioned overrides valid MDN.
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
+  capability_->mdn_ = "1231231122";
+  capability_->sim_identifier_.clear();
+  service_->SetAutoConnect(false);
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(service_);
+  EXPECT_FALSE(service_->auto_connect());
+
+  // SubscriptionStateProvisioned overrides invalid MDN.
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateProvisioned;
+  capability_->mdn_ = "0000000000";
+  capability_->sim_identifier_.clear();
+  service_->SetAutoConnect(false);
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(service_);
   EXPECT_TRUE(service_->auto_connect());
 }
 
@@ -2013,6 +2048,19 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
 
   // No MDN, no ICCID.
   capability_->mdn_ = "0000000";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnknown;
+  capability_->sim_identifier_.clear();
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(PendingActivationStore::kIdentifierICCID, _))
+      .Times(0);
+  capability_->UpdatePendingActivationState();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+
+  // Valid MDN, but subsciption_state_ Unprovisioned
+  capability_->mdn_ = "1234567";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   capability_->sim_identifier_.clear();
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
@@ -2077,22 +2125,33 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
 
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
+  // Setting expectations for multiple test cases below.
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
+      .Times(4);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid))
+      .Times(2);
+
   // Device is connected.
   cellular_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
-      .Times(3);
   capability_->UpdatePendingActivationState();
 
   // Device is linked.
   cellular_->state_ = Cellular::kStateLinked;
   capability_->UpdatePendingActivationState();
 
-  // Got valid MDN.
+  // Got valid MDN, subscription_state_ is kSubscriptionStateUnknown
   cellular_->state_ = Cellular::kStateRegistered;
-  capability_->mdn_ = "1231223";
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid))
-      .Times(1);
+  capability_->mdn_ = "1020304";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnknown;
+  capability_->UpdatePendingActivationState();
+
+  // Got invalid MDN, subscription_state_ is kSubscriptionStateProvisioned
+  cellular_->state_ = Cellular::kStateRegistered;
+  capability_->mdn_ = "0000000";
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateProvisioned;
   capability_->UpdatePendingActivationState();
 
   Mock::VerifyAndClearExpectations(service_);
@@ -2100,6 +2159,8 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
 
   // Timed out, not registered.
   capability_->mdn_.clear();
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnknown;
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID,
                                  kIccid))
@@ -2202,6 +2263,16 @@ TEST_F(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateProvisioned;
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
+  EXPECT_TRUE(capability_->IsServiceActivationRequired());
+
+  capability_->subscription_state_ =
+      CellularCapabilityUniversal::kSubscriptionStateUnknown;
   capability_->mdn_ = "0000000000";
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 

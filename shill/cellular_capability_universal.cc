@@ -147,6 +147,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       scanning_(false),
       scanning_or_searching_(false),
       scan_interval_(0),
+      subscription_state_(kSubscriptionStateUnknown),
       sim_present_(false),
       reset_done_(false),
       scanning_or_searching_timeout_milliseconds_(
@@ -474,19 +475,23 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
   // We're assuming that when this function gets called, |sim_identifier_| will
   // be non-empty. We still check here that is non-empty, though something is
   // wrong if it is empty.
-  if (IsMdnValid()) {
-    SLOG(Cellular, 2) << "Already acquired a valid MDN. Already activated.";
-    return;
-  }
-
   if (sim_identifier_.empty()) {
     SLOG(Cellular, 2) << "SIM identifier not available. Nothing to do.";
     return;
   }
 
+  if (IsMdnValid()) {
+    SLOG(Cellular, 2) << "Already acquired a valid MDN. Already activated.";
+    return;
+  }
+
   // There should be a cellular service at this point.
-  if (cellular()->service().get())
+  if (cellular()->service().get()) {
+    if (cellular()->service()->activation_state() == kActivationStateActivated)
+      return;
+
     cellular()->service()->SetActivationState(kActivationStateActivating);
+  }
   modem_info()->pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierICCID,
       sim_identifier_,
@@ -532,10 +537,16 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
   bool registered =
       registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
 
-  // If we have a valid MDN, the service is activated. Always try to remove
-  // the ICCID from persistence.
-  bool got_mdn = IsMdnValid();
-  if (got_mdn && !sim_identifier_.empty())
+  // We know a service is activated if |subscription_state_| is
+  // kSubscriptionStateProvisioned / kSubscriptionStateOutOfData
+  // In the case that |subscription_state_| is kSubscriptionStateUnknown, we
+  // fallback on checking for a valid MDN.
+  bool activated =
+    ((subscription_state_ == kSubscriptionStateProvisioned) ||
+     (subscription_state_ == kSubscriptionStateOutOfData)) ||
+    ((subscription_state_ == kSubscriptionStateUnknown) && IsMdnValid());
+
+  if (activated && !sim_identifier_.empty())
       modem_info()->pending_activation_store()->RemoveEntry(
           PendingActivationStore::kIdentifierICCID,
           sim_identifier_);
@@ -549,9 +560,9 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
       // Either no service or already activated. Nothing to do.
       return;
 
-  // If we have a valid MDN or we can connect to the network, then the service
-  // is activated.
-  if (got_mdn || cellular()->state() == Cellular::kStateConnected ||
+  // Besides the indicators above, a connected service also indicates an
+  // activated SIM.
+  if (activated || cellular()->state() == Cellular::kStateConnected ||
       cellular()->state() == Cellular::kStateLinked) {
     SLOG(Cellular, 2) << "Marking service as activated.";
     service->SetActivationState(kActivationStateActivated);
@@ -617,7 +628,10 @@ string CellularCapabilityUniversal::GetMdnForOLP(
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
   // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
   if (cellular_operator.identifier() == kVzwIdentifier) {
-    if (mdn_.empty()) {
+    // subscription_state_ is the definitive indicator of whether we need
+    // activation. The OLP expects an all zero MDN in that case.
+    if (subscription_state_ == kSubscriptionStateUnprovisioned ||
+        mdn_.empty()) {
       return string(kVzwMdnLength, '0');
     }
     if (mdn_.length() > kVzwMdnLength) {
@@ -670,7 +684,9 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
           sim_identifier_);
-  if (!sim_identifier_.empty() &&
+  if ((subscription_state_ == kSubscriptionStateUnknown ||
+       subscription_state_ == kSubscriptionStateUnprovisioned) &&
+      !sim_identifier_.empty() &&
       (state == PendingActivationStore::kStatePending ||
        state == PendingActivationStore::kStatePendingTimeout))
     activation_state = kActivationStateActivating;
@@ -1211,11 +1227,23 @@ void CellularCapabilityUniversal::InitAPNList() {
 }
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
+  // subscription_state_ is the definitive answer. If that does not work,
+  // fallback on MDN based logic.
+  if (subscription_state_ == kSubscriptionStateProvisioned ||
+      subscription_state_ == kSubscriptionStateOutOfData)
+    return false;
+
+  // We are in the process of activating, ignore all other clues from the
+  // network and use our own knowledge about the activation state.
   if (!sim_identifier_.empty() &&
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
           sim_identifier_) != PendingActivationStore::kStateUnknown)
     return false;
+
+  // Network notification that the service needs to be activated.
+  if (subscription_state_ == kSubscriptionStateUnprovisioned)
+    return true;
 
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
@@ -1872,6 +1900,7 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     const DBusPropertiesMap &properties,
     const vector<string> &/* invalidated_properties */) {
   SLOG(Cellular, 2) << __func__;
+  uint32 uint_value;
   string imei;
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEM3GPP_PROPERTY_IMEI,
@@ -1883,7 +1912,6 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
   string operator_name = serving_operator_.GetName();
   MMModem3gppRegistrationState state = registration_state_;
   bool registration_changed = false;
-  uint32 uint_value;
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE,
                                 &uint_value)) {
@@ -1900,6 +1928,11 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     registration_changed = true;
   if (registration_changed)
     On3GPPRegistrationChanged(state, operator_code, operator_name);
+  if (DBusProperties::GetUint32(properties,
+                                MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE,
+                                &uint_value))
+    On3GPPSubscriptionStateChanged(
+        static_cast<MMModem3gppSubscriptionState>(uint_value));
 
   uint32 locks = 0;
   if (DBusProperties::GetUint32(
@@ -1982,6 +2015,36 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
 
   // If the modem registered with the network and the current ICCID is pending
   // activation, then reset the modem.
+  UpdatePendingActivationState();
+}
+
+void CellularCapabilityUniversal::On3GPPSubscriptionStateChanged(
+    MMModem3gppSubscriptionState updated_state) {
+  SLOG(Cellular, 2) << __func__ << ": Updated subscription state = "
+                    << updated_state;
+
+  // A one-to-one enum mapping.
+  switch (updated_state) {
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN:
+      subscription_state_ = kSubscriptionStateUnknown;
+      break;
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED:
+      subscription_state_ = kSubscriptionStateProvisioned;
+      break;
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED:
+      subscription_state_ = kSubscriptionStateUnprovisioned;
+      break;
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA:
+      subscription_state_ = kSubscriptionStateOutOfData;
+      break;
+    default:
+      LOG(ERROR) << "Unrecognized MMModem3gppSubscriptionState: "
+                 << updated_state;
+      subscription_state_ = kSubscriptionStateUnknown;
+      return;
+  }
+
+  UpdateServiceActivationState();
   UpdatePendingActivationState();
 }
 

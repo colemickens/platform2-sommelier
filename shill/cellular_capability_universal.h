@@ -281,6 +281,16 @@ class CellularCapabilityUniversal : public CellularCapability {
     uint32 retries_left;
   };
 
+  // SubscriptionState represents the provisioned state of SIM. It is used
+  // currently by activation logic for LTE to determine if activation process is
+  // complete.
+  enum SubscriptionState {
+    kSubscriptionStateUnknown = 0,
+    kSubscriptionStateUnprovisioned = 1,
+    kSubscriptionStateProvisioned = 2,
+    kSubscriptionStateOutOfData = 3
+  };
+
   // Methods used in starting a modem
   void EnableModem(bool deferralbe,
                    Error *error,
@@ -380,6 +390,7 @@ class CellularCapabilityUniversal : public CellularCapability {
       MMModem3gppRegistrationState updated_state,
       std::string updated_operator_code,
       std::string updated_operator_name);
+  void On3GPPSubscriptionStateChanged(MMModem3gppSubscriptionState state);
   void OnFacilityLocksChanged(uint32 locks);
 
   // SIM property change handlers
@@ -477,6 +488,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   bool scanning_or_searching_;
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
+  SubscriptionState subscription_state_;
   Stringmaps apn_list_;
   std::string sim_path_;
   bool sim_present_;
