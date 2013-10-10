@@ -202,7 +202,7 @@ TEST(PerfReaderTest, Test1Cycle) {
                                    i, &pr);
   }
 
-  std::map<string, string> metadata;
+  std::map<string, std::vector<string> > metadata;
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {

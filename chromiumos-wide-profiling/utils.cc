@@ -318,6 +318,49 @@ long int GetFileSizeFromHandle(FILE* fp) {
   return file_size;
 }
 
+// Concatenates a vector of strings to a single string, using the following
+// format:
+// { |vec[0]|, |vec[1]|, ... , |vec[n-1]| }
+string ConcatStringVector(const std::vector<string>& strings) {
+  string result = "{ ";
+  for (size_t i = 0; i < strings.size(); ++i) {
+    result += strings[i];
+    if (i + 1 < strings.size())
+      result += ", ";
+  }
+  result += " }";
+  return result;
+}
+
+// Compares the contents of two sets of metadata, organized as key-value pairs:
+// <metadata type, metadata value>
+// Returns true if there is no metadata type with mismatched values.
+// If a metadata type exists in one but not in the other, it does not count as a
+// mismatch.
+bool CompareMetadata(const quipper::MetadataSet& input,
+                     const quipper::MetadataSet& output) {
+  quipper::MetadataSet::const_iterator iter;
+  int num_metadata_mismatches = 0;
+  for (iter = input.begin(); iter != input.end(); ++iter) {
+    const string& type = iter->first;
+    if (output.find(type) == output.end())
+      continue;
+    // TODO(sque): For event type metadata, compare the event type sub-fields.
+    // Event type metadata is of the format:
+    // # event : name = cycles, type = 0, config = 0x0, config1 = 0x0,
+    //     config2 = 0x0, excl_usr = 0, excl_kern = 0, id = { 11, 12 }
+    const std::vector<string>& input_values = iter->second;
+    const std::vector<string>& output_values = output.at(type);
+    if (input_values != output_values) {
+      LOG(ERROR) << "Mismatch in input and output metadata of type " << type
+                 << ": [" << ConcatStringVector(input_values) << "] vs ["
+                 << ConcatStringVector(output_values) << "]";
+      ++num_metadata_mismatches;
+    }
+  }
+  return (num_metadata_mismatches == 0);
+}
+
 }  // namespace
 
 namespace quipper {
@@ -345,13 +388,13 @@ const char* kSupportedMetadata[] = {
 
 namespace {
 
-// Returns the number of lines at the beginning of |report| containing metadata.
 // Stores the metadata types found in |report| in |*seen_metadata|.
+// Returns the number of lines at the beginning of |report| containing metadata.
 // Each string in |report| is a line of the report.
 // TODO(sque): This function is huge.  It should be refactored into smaller
 // helper functions.
-int CountReportMetadata(const std::vector<string>& report,
-                        std::map<string, string>* seen_metadata) {
+int ExtractReportMetadata(const std::vector<string>& report,
+                          MetadataSet* seen_metadata) {
   size_t index = 0;
   while (index < report.size()) {
     const string& line = report[index];
@@ -382,7 +425,7 @@ int CountReportMetadata(const std::vector<string>& report,
     if (seen_metadata && metadata_is_supported) {
       string value = line.substr(index_of_colon + 1, string::npos);
       TrimWhitespace(&value);
-      (*seen_metadata)[key] = value;
+      (*seen_metadata)[key].push_back(value);
     }
 
     ++index;
@@ -512,16 +555,34 @@ bool ComparePerfReportsByFields(const string& quipper_input,
                       sort_fields, true));
   CHECK(GetPerfReport(quipper_output, &quipper_output_report,
                       sort_fields, true));
-  int input_size = quipper_input_report.size();
-  int output_size = quipper_output_report.size();
 
-  // Compare the output strings.
-  if (input_size != output_size)
+  // Extract the metadata from the reports.
+  MetadataSet input_metadata, output_metadata;
+  int input_index =
+      ExtractReportMetadata(quipper_input_report, &input_metadata);
+  int output_index =
+      ExtractReportMetadata(quipper_output_report, &output_metadata);
+
+  if (!CompareMetadata(input_metadata, output_metadata)) {
+    LOG(ERROR) << "Mismatch between input and output metadata.";
     return false;
+  }
 
-  for (int i = 0; i < input_size; i++) {
-    if (quipper_input_report[i] != quipper_output_report[i])
-      return false;
+  if (input_index < 0) {
+    LOG(ERROR) << "Could not find start of input report body.";
+    return false;
+  }
+  if (output_index < 0) {
+    LOG(ERROR) << "Could not find start of output report body.";
+    return false;
+  }
+
+  // Compare the output log contents after the metadata.
+  if (!std::equal(quipper_input_report.begin() + input_index,
+                  quipper_input_report.end(),
+                  quipper_output_report.begin() + output_index)) {
+    LOG(ERROR) << "Input and output report contents don't match.";
+    return false;
   }
 
   return true;
@@ -529,7 +590,7 @@ bool ComparePerfReportsByFields(const string& quipper_input,
 
 bool ComparePipedPerfReports(const string& quipper_input,
                              const string& quipper_output,
-                             std::map<string, string>* seen_metadata) {
+                             MetadataSet* seen_metadata) {
   // Generate a perf report for each file.
   std::vector<string> quipper_input_report, quipper_output_report;
   CHECK(GetPerfReport(quipper_input, &quipper_input_report,
@@ -542,8 +603,9 @@ bool ComparePipedPerfReports(const string& quipper_input,
   // TODO(sque): The chromiumos perf tool does not show metadata for piped data,
   // but other perf tools might.  We should check that the metadata values match
   // when both the input and output reports have metadata.
-  int input_index = CountReportMetadata(quipper_input_report, NULL);
-  int output_index = CountReportMetadata(quipper_output_report, seen_metadata);
+  int input_index = ExtractReportMetadata(quipper_input_report, NULL);
+  int output_index =
+      ExtractReportMetadata(quipper_output_report, seen_metadata);
 
   if (input_index < 0)
     return false;

@@ -16,6 +16,11 @@
 
 namespace quipper {
 
+// Container for all the metadata from one perf report.  The key is the metadata
+// type, as shown in |kSupportedMetadata|.  The value is a vector of all the
+// occurrences of that type.  For some types, there is only one occurrence.
+typedef std::map<string, std::vector<string> > MetadataSet;
+
 extern const char* kSupportedMetadata[];
 
 // Path to the perf executable.
@@ -86,7 +91,7 @@ bool ComparePerfReports(const string& quipper_input,
 // by quipper.
 bool ComparePipedPerfReports(const string& quipper_input,
                              const string& quipper_output,
-                             std::map<string, string>* seen_metadata);
+                             MetadataSet* seen_metadata);
 
 // Given a perf data file, get the list of build ids and create a map from
 // filenames to build ids.
