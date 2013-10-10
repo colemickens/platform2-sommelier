@@ -479,21 +479,30 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     return false;
   }
 
-  if (!args.ContainsString(kSSIDProperty)) {
+  vector<uint8_t> ssid;
+  if (args.ContainsString(kWifiHexSsid)) {
+    string ssid_hex_string = args.GetString(kWifiHexSsid);
+    if (!base::HexStringToBytes(ssid_hex_string, &ssid)) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            "Hex SSID parameter is not valid");
+      return false;
+    }
+  } else if (args.ContainsString(kSSIDProperty)) {
+    string ssid_string = args.GetString(kSSIDProperty);
+    ssid = vector<uint8_t>(ssid_string.begin(), ssid_string.end());
+  } else {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           kManagerErrorSSIDRequired);
     return false;
   }
 
-  string ssid = args.GetString(kSSIDProperty);
-
-  if (ssid.length() < 1) {
+  if (ssid.size() < 1) {
     Error::PopulateAndLog(error, Error::kInvalidNetworkName,
                           kManagerErrorSSIDTooShort);
     return false;
   }
 
-  if (ssid.length() > IEEE_80211::kMaxSSIDLen) {
+  if (ssid.size() > IEEE_80211::kMaxSSIDLen) {
     Error::PopulateAndLog(error, Error::kInvalidNetworkName,
                           kManagerErrorSSIDTooLong);
     return false;
@@ -508,7 +517,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     return false;
   }
 
-  *ssid_bytes = vector<uint8_t>(ssid.begin(), ssid.end());
+  *ssid_bytes = ssid;
   *mode = mode_test;
   *security_method = security_method_test;
 

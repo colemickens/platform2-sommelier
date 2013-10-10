@@ -139,6 +139,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(kModeProperty);
   IgnoreParameterForConfigure(kSSIDProperty);
   IgnoreParameterForConfigure(kSecurityProperty);
+  IgnoreParameterForConfigure(kWifiHexSsid);
 
   InitializeCustomMetrics();
 

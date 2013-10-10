@@ -1056,6 +1056,7 @@ TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
   args.SetString(kTypeProperty, kTypeWifi);
   args.SetString(kSSIDProperty, simple_ssid_string());
   args.SetString(kSecurityProperty, kSecurityNone);
+  args.SetString(kWifiHexSsid, "This is ignored even if it is invalid hex.");
   const string kGUID = "aguid";
   args.SetString(kGuidProperty, kGUID);
 

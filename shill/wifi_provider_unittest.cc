@@ -198,6 +198,8 @@ class WiFiProviderTest : public testing::Test {
                             KeyValueStore *args) {
     args->SetString(kTypeProperty, kTypeWifi);
     if (ssid) {
+      // TODO(pstew): When Chrome switches to using kWifiHexSsid primarily for
+      // GetService and friends, we should switch to doing so here ourselves.
       args->SetString(kSSIDProperty, ssid);
     }
     if (mode) {
@@ -695,6 +697,35 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_NE(service0.get(), service2.get());
   EXPECT_EQ(2, GetServices().size());
+}
+
+TEST_F(WiFiProviderTest, GetServiceByHexSsid) {
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  const string kSSID("bar");
+  const string kHexSsid(base::HexEncode(kSSID.c_str(), kSSID.length()));
+
+  KeyValueStore args;
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kWifiHexSsid, kHexSsid);
+  args.SetString(kSecurityProperty, kSecurityPsk);
+  args.SetBool(kWifiHiddenSsid, false);
+
+  Error error;
+  WiFiServiceRefPtr service = GetWiFiService(args, &error);
+  Mock::VerifyAndClearExpectations(&manager_);
+  EXPECT_TRUE(error.IsSuccess());
+  const string service_ssid(service->ssid().begin(), service->ssid().end());
+  EXPECT_EQ(kSSID, service_ssid);
+  EXPECT_EQ(kModeManaged, service->mode());
+  EXPECT_TRUE(service->IsSecurityMatch(kSecurityPsk));
+  EXPECT_FALSE(service->hidden_ssid());
+
+
+  // While here, make sure FindSimilarService also supports kWifiHexSsid.
+  Error find_error;
+  ServiceRefPtr find_service = provider_.FindSimilarService(args, &find_error);
+  EXPECT_TRUE(find_error.IsSuccess());
+  EXPECT_EQ(service.get(), find_service.get());
 }
 
 TEST_F(WiFiProviderTest, FindSimilarService) {
