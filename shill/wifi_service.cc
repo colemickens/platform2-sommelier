@@ -103,13 +103,11 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                            &ieee80211w_required_);
 
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
+  store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
+
   string ssid_string(
       reinterpret_cast<const char *>(ssid_.data()), ssid_.size());
-  if (WiFi::SanitizeSSID(&ssid_string)) {
-    // WifiHexSsid property should only be present if Name property
-    // has been munged.
-    store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
-  }
+  WiFi::SanitizeSSID(&ssid_string);
   set_friendly_name(ssid_string);
 
   SetEapCredentials(new EapCredentials());

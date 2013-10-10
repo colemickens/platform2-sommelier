@@ -1410,12 +1410,16 @@ Properties	boolean AutoConnect [readwrite]
 
 		string WiFi.HexSSID [readonly]
 
-			(WiFi only) If the service's SSID contains
-			unprintable characters then this property is
-			present and holds a hex-encoded copy of the SSID.
+			(WiFi only) This property holds a hex-encoded copy
+			of the SSID.  Since the Name property is enforced
+			by the D-Bus protocol to be a valid UTF-8 string
+			but SSIDs can be an abitrary sequence of bytes, this
+			property will always contain the true value of the
+			SSID, while the Name property may differ from the
+			true representation.
 
 			See also the Name property. (Note that there is
-			no SSID property.)
+			no SSID property for reasons explained above.)
 
 		string WiFi.SSID [readonly]
 
