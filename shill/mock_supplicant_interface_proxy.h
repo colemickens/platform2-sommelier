@@ -39,6 +39,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
                void(const std::map<std::string, ::DBus::Variant> &args));
   MOCK_METHOD1(SelectNetwork, void(const ::DBus::Path &network));
   MOCK_METHOD1(SetFastReauth, void(bool enabled));
+  MOCK_METHOD1(SetRoamThreshold, void(uint16_t threshold));
   MOCK_METHOD1(SetScanInterval, void(int32_t seconds));
   MOCK_METHOD1(SetDisableHighBitrates, void(bool disable_high_bitrates));
 

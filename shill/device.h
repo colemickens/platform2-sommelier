@@ -376,7 +376,7 @@ class Device : public base::RefCounted<Device> {
   virtual void SetupConnectionHealthChecker();
 
   // Checks the network connectivity status by creating a TCP connection, and
-  // optionally sending a small amout of data.
+  // optionally sending a small amount of data.
   void RequestConnectionHealthCheck();
 
   // Responds to the result from connection health checker in a device specific

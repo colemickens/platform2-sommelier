@@ -71,6 +71,7 @@ const char *WiFi::kDefaultBgscanMethod =
 const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
 const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
 const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
+const uint16 WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
 // Scan interval while connected.
 const uint16 WiFi::kBackgroundScanIntervalSeconds = 3601;
 // Age (in seconds) beyond which a BSS cache entry will not be preserved,
@@ -118,6 +119,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       eap_state_handler_(new SupplicantEAPStateHandler()),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
+      roam_threshold_db_(kDefaultRoamThresholdDb),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
       progressive_scan_enabled_(false),
       scan_configuration_("Full scan"),
@@ -164,6 +166,10 @@ WiFi::WiFi(ControlInterface *control_interface,
   HelpRegisterConstDerivedBool(store,
                                kScanningProperty,
                                &WiFi::GetScanPending);
+  HelpRegisterDerivedUint16(store,
+                            kRoamThresholdProperty,
+                            &WiFi::GetRoamThreshold,
+                            &WiFi::SetRoamThreshold);
   HelpRegisterDerivedUint16(store,
                             kScanIntervalProperty,
                             &WiFi::GetScanInterval,
@@ -712,6 +718,12 @@ bool WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
   // We do not update kNetworkPropertyBgscan for |pending_service_| or
   // |current_service_|, because supplicant does not allow for
   // reconfiguration without disconnect and reconnect.
+  return true;
+}
+
+bool WiFi::SetRoamThreshold(const uint16 &threshold, Error */*error*/) {
+  roam_threshold_db_ = threshold;
+  supplicant_interface_proxy_->SetRoamThreshold(threshold);
   return true;
 }
 
@@ -1913,7 +1925,14 @@ void WiFi::ConnectToSupplicant() {
   }
 
   try {
-    // Helps with passing WiFiRomaing.001SSIDSwitchBack.
+    supplicant_interface_proxy_->SetRoamThreshold(roam_threshold_db_);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "Failed to set roam_threshold. "
+               << "May be running an older version of wpa_supplicant.";
+  }
+
+  try {
+    // Helps with passing WiFiRoaming.001SSIDSwitchBack.
     supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << "Failed to set scan_interval. "

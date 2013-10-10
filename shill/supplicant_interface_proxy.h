@@ -11,8 +11,8 @@
 #include <base/basictypes.h>
 
 #include "shill/dbus_proxies/supplicant-interface.h"
-#include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/refptr_types.h"
+#include "shill/supplicant_interface_proxy_interface.h"
 
 namespace shill {
 
@@ -49,6 +49,7 @@ class SupplicantInterfaceProxy
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void SelectNetwork(const ::DBus::Path &network);
   virtual void SetFastReauth(bool enabled);
+  virtual void SetRoamThreshold(uint16 threshold);
   virtual void SetScanInterval(int seconds);
   virtual void SetDisableHighBitrates(bool disable_high_bitrates);
 

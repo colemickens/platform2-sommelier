@@ -257,6 +257,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const char *kDefaultBgscanMethod;
   static const uint16 kDefaultBgscanShortIntervalSeconds;
   static const int32 kDefaultBgscanSignalThresholdDbm;
+  static const uint16 kDefaultRoamThresholdDb;
   static const uint16 kDefaultScanIntervalSeconds;
   static const uint16 kBackgroundScanIntervalSeconds;
   static const time_t kMaxBSSResumeAgeSeconds;
@@ -287,7 +288,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   int32 GetBgscanSignalThreshold(Error */* error */) {
     return bgscan_signal_threshold_dbm_;
   }
-  uint16 GetScanInterval(Error */* error */) { return scan_interval_seconds_; }
+  // These methods can't be 'const' because they are passed to
+  // HelpRegisterDerivedUint16 which don't take const methods.
+  uint16 GetRoamThreshold(Error */* error */) /*const*/ {
+    return roam_threshold_db_;
+  }
+  uint16 GetScanInterval(Error */* error */) /*const*/ {
+    return scan_interval_seconds_;
+  }
 
   // RPC accessor for |link_statistics_|.
   KeyValueStore GetLinkStatistics(Error *error);
@@ -297,6 +305,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const int &argument, const std::string &method, Error *error);
   bool SetBgscanShortInterval(const uint16 &seconds, Error *error);
   bool SetBgscanSignalThreshold(const int32 &dbm, Error *error);
+  bool SetRoamThreshold(const uint16 &threshold, Error */*error*/);
   bool SetScanInterval(const uint16 &seconds, Error *error);
   void ClearBgscanMethod(const int &argument, Error *error);
 
@@ -502,6 +511,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string bgscan_method_;
   uint16 bgscan_short_interval_seconds_;
   int32 bgscan_signal_threshold_dbm_;
+  uint16 roam_threshold_db_;
   uint16 scan_interval_seconds_;
 
   bool progressive_scan_enabled_;

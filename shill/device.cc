@@ -153,6 +153,7 @@ Device::Device(ControlInterface *control_interface,
   // TODO(cmasone): Figure out what shill concept maps to flimflam's "Network".
   // known_properties_.push_back(kNetworksProperty);
 
+  // kRoamThresholdProperty: Registered in WiFi
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
 
@@ -288,7 +289,7 @@ string Device::GetStorageIdentifier() {
 
 vector<GeolocationInfo> Device::GetGeolocationObjects() const {
   return vector<GeolocationInfo>();
-};
+}
 
 string Device::GetTechnologyString(Error */*error*/) {
   return Technology::NameFromIdentifier(technology());

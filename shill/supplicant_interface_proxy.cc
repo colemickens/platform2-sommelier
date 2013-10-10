@@ -160,6 +160,18 @@ void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   }
 }
 
+void SupplicantInterfaceProxy::SetRoamThreshold(uint16 threshold) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    proxy_.RoamThreshold(threshold);
+    return;
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
+               << " threshold: " << threshold;
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
   SLOG(DBus, 2) << __func__;
   try {
