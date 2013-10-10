@@ -867,14 +867,13 @@ bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
     return false;
   }
 
-  // TODO: Use shared constants instead: http://crosbug.com/39706
   UpdaterState state = UPDATER_IDLE;
   std::string operation = current_operation;
-  if (operation == "UPDATE_STATUS_DOWNLOADING" ||
-      operation == "UPDATE_STATUS_VERIFYING" ||
-      operation == "UPDATE_STATUS_FINALIZING") {
+  if (operation == update_engine::kUpdateStatusDownloading ||
+      operation == update_engine::kUpdateStatusVerifying ||
+      operation == update_engine::kUpdateStatusFinalizing) {
     state = UPDATER_UPDATING;
-  } else if (operation == "UPDATE_STATUS_UPDATED_NEED_REBOOT") {
+  } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
     state = UPDATER_UPDATED;
   }
   state_controller_->HandleUpdaterStateChange(state);
