@@ -260,14 +260,21 @@ if [ -f "$STATEFUL_UPDATE" ] ; then
   DEVELOPER_NEW="${DEVELOPER_TARGET}_new"
   DEVELOPER_OLD="${DEVELOPER_TARGET}_old"
   STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
-  # Remove old state in case this process got interrupted by a reset, this is
-  # usually a no-op.
-  rm -rf "$DEVELOPER_OLD" "$VAR_OLD"
-  # The moves can fail if they were previously interrupted mid-op.
-  mv "$DEVELOPER_TARGET" "$DEVELOPER_OLD" || true
-  mv "$VAR_TARGET" "$VAR_OLD" || true
-  mv "$DEVELOPER_NEW" "$DEVELOPER_TARGET" || true
-  mv "$VAR_NEW" "$VAR_TARGET" || true
+
+  # Only replace the developer and var_overlay directories if new replacements
+  # are available.
+  if [ -d "$DEVELOPER_NEW" -a -d "$VAR_NEW" ]; then
+    clobber-log -- "Updating from $DEVELOPER_NEW && $VAR_NEW."
+    rm -rf "$DEVELOPER_OLD" "$VAR_OLD"
+    mv "$VAR_TARGET" "$VAR_OLD" || true
+    mv "$DEVELOPER_TARGET" "$DEVELOPER_OLD" || true
+    mv "$VAR_NEW" "$VAR_TARGET"
+    mv "$DEVELOPER_NEW" "$DEVELOPER_TARGET"
+  else
+    clobber-log -- "Statuful update did not find $DEVELOPER_NEW && $VAR_NEW."
+    clobber-log -- "Keeping old development tools."
+  fi
+
   # Check for clobber.
   if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ]; then
     # Removes all dirs except the new dev_image and var_overlay.
