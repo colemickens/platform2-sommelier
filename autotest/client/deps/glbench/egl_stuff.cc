@@ -114,7 +114,6 @@ const GLContext EGLInterface::CreateContext() {
 
 void EGLInterface::CheckError() {
   CHECK_EQ(eglGetError(), EGL_SUCCESS);
-  CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 }
 
 void EGLInterface::DeleteContext(const GLContext& context) {
