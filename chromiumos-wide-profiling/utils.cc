@@ -136,19 +136,24 @@ const double kPerfReportEntryErrorThreshold = 0.05;
 
 const char kPerfReportCommentCharacter = '#';
 const char kPerfReportMetadataFieldCharacter = ':';
+const char kMetadataDelimiter = ',';
 
 const char kReportExtension[] = ".report";
+const char kEventMetadataType[] = "event";
+
+// Splits a character array by |delimiter| into a vector of strings tokens.
+void SplitString(const string& str,
+                 char delimiter,
+                 std::vector<string>* tokens) {
+  std::stringstream ss(str);
+  std::string token;
+  while (std::getline(ss, token, delimiter))
+    tokens->push_back(token);
+}
 
 void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
-  // TODO(rohinmshah): Use something from base.
-  std::vector<char>::const_iterator start = bytes.begin();
-  std::vector<char>::const_iterator end =
-      std::find(start, bytes.end(), kNewLineDelimiter);
-  while (end != bytes.end()) {
-    lines->push_back(string(start, end));
-    start = end + 1;
-    end = std::find(start, bytes.end(), kNewLineDelimiter);
-  }
+  if (!bytes.empty())
+    SplitString(string(&bytes[0], bytes.size()), kNewLineDelimiter, lines);
 }
 
 bool CallPerfReport(const string& filename,
@@ -231,11 +236,8 @@ int ParsePerfReportSection(const std::vector<string>& report, size_t index,
   dso_to_num_samples->clear();
   while (index < report.size() && !report[index].empty()) {
     const string& item = report[index++];
-    std::stringstream ss(item);
     std::vector<string> tokens;
-    std::string token;
-    while (std::getline(ss, token, ','))
-      tokens.push_back(token);
+    SplitString(item, kMetadataDelimiter, &tokens);
 
     if (tokens.size() != NUM_PERF_REPORT_FIELDS)
       return kPerfReportParseError;
@@ -326,10 +328,37 @@ string ConcatStringVector(const std::vector<string>& strings) {
   for (size_t i = 0; i < strings.size(); ++i) {
     result += strings[i];
     if (i + 1 < strings.size())
-      result += ", ";
+      result += string(kMetadataDelimiter, 1) + " ";
   }
   result += " }";
   return result;
+}
+
+// Returns a set of event metadata in key/value format, extracted from a line of
+// metadata from perf report, in |metadata_string|.
+// TODO(sque): add a unit test for this.
+bool GetEventMetadata(const string& metadata_string,
+                      quipper::MetadataSet* metadata_map) {
+  string input = metadata_string.c_str();
+  // Event type metadata is of the format:
+  // # event : name = cycles, type = 0, config = 0x0, config1 = 0x0,
+  //     config2 = 0x0, excl_usr = 0, excl_kern = 0, id = { 11, 12 }
+  std::vector<string> metadata_pairs;
+  SplitString(input, kMetadataDelimiter, &metadata_pairs);
+  for (size_t i = 0; i < metadata_pairs.size(); ++i) {
+    const string& pair = metadata_pairs[i];
+    // Further split the event sub-field string into key-value pairs.
+    size_t equal_sign_position = pair.find("=");
+    if (equal_sign_position == string::npos)
+      continue;
+    string key = pair.substr(0, equal_sign_position);
+    string value = pair.substr(equal_sign_position + 1);
+    TrimWhitespace(&key);
+    TrimWhitespace(&value);
+    // Make sure this is not overwriting an existing key-value pair.
+    CHECK(metadata_map->find(key) == metadata_map->end());
+  }
+  return true;
 }
 
 // Compares the contents of two sets of metadata, organized as key-value pairs:
@@ -345,17 +374,69 @@ bool CompareMetadata(const quipper::MetadataSet& input,
     const string& type = iter->first;
     if (output.find(type) == output.end())
       continue;
-    // TODO(sque): For event type metadata, compare the event type sub-fields.
-    // Event type metadata is of the format:
-    // # event : name = cycles, type = 0, config = 0x0, config1 = 0x0,
-    //     config2 = 0x0, excl_usr = 0, excl_kern = 0, id = { 11, 12 }
     const std::vector<string>& input_values = iter->second;
     const std::vector<string>& output_values = output.at(type);
-    if (input_values != output_values) {
+    if (input_values == output_values)
+      continue;
+    if (type != kEventMetadataType) {
       LOG(ERROR) << "Mismatch in input and output metadata of type " << type
                  << ": [" << ConcatStringVector(input_values) << "] vs ["
                  << ConcatStringVector(output_values) << "]";
       ++num_metadata_mismatches;
+      continue;
+    }
+    // There may be multiple event types.  Make sure the number is the same
+    // between input and output.
+    if (input_values.size() != output_values.size()) {
+      LOG(ERROR) << "Input and output metadata have different numbers of event"
+                 << " types: " << input_values.size() << " vs "
+                 << output_values.size();
+      ++num_metadata_mismatches;
+      continue;
+    }
+
+    // For the event type metadata strings, further break them down by
+    // sub-field.
+    for (size_t i = 0; i < input_values.size(); ++i) {
+      quipper::MetadataSet input_event_metadata;
+      quipper::MetadataSet output_event_metadata;
+      CHECK(GetEventMetadata(input_values[i], &input_event_metadata));
+      CHECK(GetEventMetadata(output_values[i], &output_event_metadata));
+      // There's a recursive call here.  Make sure that the recursive call is
+      // not triggered again, by checking that none of the event type sub-fields
+      // has the key |kEventMetadataType|.
+      CHECK(input_event_metadata.find(kEventMetadataType) ==
+            input_event_metadata.end());
+      CHECK(output_event_metadata.find(kEventMetadataType) ==
+            output_event_metadata.end());
+      // The event sub-fields have the same format as the general metadata, so
+      // reuse this function to check the sub-fields.
+      // e.g.
+      //
+      // input_event_metadata = {
+      //   hostname : localhost,
+      //   os release : 3.4.0,
+      //   perf version : 3.4.2,
+      //   arch : x86_64,
+      //   nrcpus online : 2,
+      //   nrcpus avail : 2,
+      //   event : name = cycles, type = 0, config = 0x0, config1 = 0x0,
+      //           config2 = 0x0, excl_usr = 0, excl_kern = 0, id = { 11, 12 }
+      // }
+      //
+      // The event field in the above data can be shown in a similar format:
+      // event_data = {
+      //   name: cycles
+      //   type: 0,
+      //   config: 0x0,
+      //   config1: 0x0,
+      //   config2: 0x0,
+      //   excl_usr: 0,
+      //   excl_kern: 0,
+      //   id: { 11, 12 },
+      // }
+      if (!CompareMetadata(input_event_metadata, output_event_metadata))
+        ++num_metadata_mismatches;
     }
   }
   return (num_metadata_mismatches == 0);
