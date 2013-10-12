@@ -86,14 +86,22 @@
       }],
       ['deps != ""', {
         'cflags+': [
+          # We don't care about getting rid of duplicate cflags, so we use
+          # @ to expand to list.
           '>!@(<(pkg-config) >(deps) --cflags)',
         ],
         'link_settings': {
+          # We don't care about getting rid of duplicate ldflags, so we use
+          # @ to expand to list.
           'ldflags+': [
             '>!@(<(pkg-config) >(deps) --libs-only-L --libs-only-other)',
           ],
           'libraries+': [
-            '>!@(<(pkg-config) >(deps) --libs-only-l)',
+            # Note there's no @ here intentionally, we want to keep libraries
+            # returned by pkg-config as a single string in order to maintain
+            # order for linking (rather than a list of individual libraries
+            # which GYP would make unique for us).
+            '>!(<(pkg-config) >(deps) --libs-only-l)',
           ],
         },
       }],
