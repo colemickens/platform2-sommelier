@@ -1010,6 +1010,20 @@ void CellularCapabilityUniversal::UpdateOperatorInfo() {
     SLOG(Cellular, 2) << "Assuming operator '" << operator_id_
                       << "' as serving operator.";
     serving_operator_.SetCode(operator_id_);
+  } else if (!serving_operator_.GetCode().empty() && operator_id_.empty()) {
+    // Sometimes the SIM may fail to report an operator code. Since we build
+    // the APN list based on home provider, report that the serving operator
+    // is the home provider.
+    // TODO(armansito): This is clearly not the best behavior for the roaming
+    // case: we are now reporting that the roaming carrier is the same as the
+    // home carrier. While this is not preferable, we don't have any home
+    // provider to report either way, so this won't hurt the user experience.
+    // This is a quick fix needed for the M31 release (crbug.com/306310).
+    // Remove it with a better approach for M32 (crbug.com/298408).
+    SLOG(Cellular, 2) << "Home provider is unknown but serving operator is. "
+                      << "Reporting serving operator as home provider.";
+    operator_id_ = serving_operator_.GetCode();
+    SetHomeProvider();
   }
 
   const string &network_id = serving_operator_.GetCode();
