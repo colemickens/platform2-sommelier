@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_OBSERVER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AUDIO_OBSERVER_H_
 
-#include "base/time.h"
-
 namespace power_manager {
 namespace system {
 
@@ -16,8 +14,8 @@ class AudioObserver {
  public:
   virtual ~AudioObserver() {}
 
-  // Called periodically when audio activity is detected.
-  virtual void OnAudioActivity(base::TimeTicks last_activity_time) = 0;
+  // Called when audio activity starts or stops.
+  virtual void OnAudioStateChange(bool active) = 0;
 };
 
 }  // namespace system

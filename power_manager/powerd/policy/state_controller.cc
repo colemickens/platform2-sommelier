@@ -173,6 +173,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       disable_idle_suspend_(false),
       allow_docked_mode_(false),
       ignore_external_policy_(false),
+      audio_is_active_(false),
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
       use_audio_activity_(true),
@@ -339,10 +340,14 @@ void StateController::HandleVideoActivity() {
   UpdateState();
 }
 
-void StateController::HandleAudioActivity() {
+void StateController::HandleAudioStateChange(bool active) {
   DCHECK(initialized_);
-  VLOG(1) << "Saw audio activity";
-  last_audio_activity_time_ = clock_->GetCurrentTime();
+  VLOG(1) << "Audio is " << (active ? "active" : "inactive");
+  if (active)
+    audio_inactive_time_ = base::TimeTicks();
+  else if (audio_is_active_)
+    audio_inactive_time_ = clock_->GetCurrentTime();
+  audio_is_active_ = active;
   UpdateState();
 }
 
@@ -542,10 +547,20 @@ void StateController::MergeDelaysFromPolicy(
   }
 }
 
+base::TimeTicks StateController::GetLastAudioActivityTime() const {
+  // Unlike user and video activity, which are reported as discrete events,
+  // audio activity is only reported when it starts or stops. If audio is
+  // currently active, report the last-active time as "now". This means that
+  // a timeout will be scheduled unnecessarily, but if audio is still active
+  // later, the subsequent call to UpdateState() will again see audio as
+  // recently being active and not perform any actions.
+  return audio_is_active_ ? clock_->GetCurrentTime() : audio_inactive_time_;
+}
+
 base::TimeTicks StateController::GetLastActivityTimeForIdle() const {
   base::TimeTicks last_time = last_user_activity_time_;
   if (use_audio_activity_)
-    last_time = std::max(last_time, last_audio_activity_time_);
+    last_time = std::max(last_time, GetLastAudioActivityTime());
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   return last_time;
@@ -563,7 +578,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff() const {
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   if (keep_screen_on_for_audio_ || delegate_->IsHdmiAudioActive())
-    last_time = std::max(last_time, last_audio_activity_time_);
+    last_time = std::max(last_time, GetLastAudioActivityTime());
   return last_time;
 }
 

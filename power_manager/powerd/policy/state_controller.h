@@ -151,7 +151,9 @@ class StateController : public PrefsObserver {
   // Handles notification of different types of activity.
   void HandleUserActivity();
   void HandleVideoActivity();
-  void HandleAudioActivity();
+
+  // Handle audio activity starting or stopping.
+  void HandleAudioStateChange(bool active);
 
   // Adds an idle notification on behalf of an external process.
   // TODO(derat): Kill this.  "Idle" is poorly defined here, e.g. should it
@@ -226,6 +228,11 @@ class StateController : public PrefsObserver {
   bool waiting_for_initial_display_mode() const {
     return initial_display_mode_timeout_id_ != 0;
   }
+
+  // Returns the last time at which audio was active. If audio is currently
+  // active, returns the current time. If audio has never been active, returns
+  // a null time.
+  base::TimeTicks GetLastAudioActivityTime() const;
 
   // Returns the last time at which activity occurred that should defer
   // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
@@ -361,7 +368,13 @@ class StateController : public PrefsObserver {
 
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
-  base::TimeTicks last_audio_activity_time_;
+
+  // Is audio currently active?
+  bool audio_is_active_;
+
+  // If audio is inactive, the time at which it transitioned from the active
+  // state to the inactive state. Unset if audio is active.
+  base::TimeTicks audio_inactive_time_;
 
   // Most recent externally-supplied policy.
   PowerManagementPolicy policy_;

@@ -409,7 +409,7 @@ TEST_F(StateControllerTest, AudioDefersSuspend) {
 
   // Report audio activity and check that the controller goes through the
   // usual dim->off->lock progression.
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(true);
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
@@ -417,9 +417,18 @@ TEST_F(StateControllerTest, AudioDefersSuspend) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
 
-  // Report additional audio activity.  The controller should wait for the
-  // full suspend delay before suspending.
-  controller_.HandleAudioActivity();
+  // The next timeout will be set based on the last audio activity time, which
+  // was "now" at the time of the last call to UpdateState(). When that timeout
+  // occurs, it should schedule another timeout after the idle delay without
+  // triggering any actions.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // After the audio stops, the controller should wait for the full suspend
+  // delay before suspending.
+  controller_.HandleAudioStateChange(false);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
@@ -602,7 +611,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   AdvanceTime(kIdleDelay / 2);
   controller_.HandleUserActivity();
   AdvanceTime(kIdleDelay / 2);
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(true);
   controller_.HandleVideoActivity();
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay / 2));
   EXPECT_EQ(kShutDown, delegate_.GetActions());
@@ -641,6 +650,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   prefs_.SetInt64(kIgnoreExternalPolicyPref, 1);
   prefs_.NotifyObservers(kIgnoreExternalPolicyPref);
   controller_.HandlePowerSourceChange(POWER_AC);
+  controller_.HandleAudioStateChange(false);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
 }
 
@@ -699,25 +709,23 @@ TEST_F(StateControllerTest, PolicyDisablingVideo) {
   // reporting video and audio activity along the way.  The screen should
   // be locked (since |use_video_activity| is false).
   controller_.HandleVideoActivity();
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(true);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   controller_.HandleVideoActivity();
-  controller_.HandleAudioActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
   controller_.HandleVideoActivity();
-  controller_.HandleAudioActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
 
-  // The system shouldn't suspend until a full |kIdleDelay| after the last
-  // report of audio activity, since |use_audio_activity| is false.
+  // The system shouldn't suspend until a full |kIdleDelay| after the audio
+  // activity stops, since |use_audio_activity| is false.
   controller_.HandleVideoActivity();
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(false);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
@@ -749,30 +757,25 @@ TEST_F(StateControllerTest, KeepScreenOnForAudioPref) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 
   // After audio is reported, screen-off should be deferred.
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(true);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Continue reporting audio activity; the screen should stay on.
-  controller_.HandleAudioActivity();
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  const base::TimeDelta kHalfScreenOffDelay = default_ac_screen_off_delay_ / 2;
-  AdvanceTime(kHalfScreenOffDelay);
-  controller_.HandleAudioActivity();
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  AdvanceTime(kHalfScreenOffDelay);
-  controller_.HandleAudioActivity();
+  AdvanceTime(default_ac_screen_off_delay_);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // After the audio activity stops, the screen should be turned off after
   // the normal screen-off delay.
+  controller_.HandleAudioStateChange(false);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
 
   // Audio activity should turn the screen back on.
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(true);
   EXPECT_EQ(kScreenOn, delegate_.GetActions());
 
   // Turn the screen off again and check that the next action is suspending.
+  controller_.HandleAudioStateChange(false);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
@@ -791,20 +794,17 @@ TEST_F(StateControllerTest, KeepScreenOnForHdmiAudio) {
 
   // The screen should be dimmed but stay on while HDMI is active and audio is
   // playing.
-  controller_.HandleAudioActivity();
-  const base::TimeDelta kHalfScreenOffDelay = default_ac_screen_off_delay_ / 2;
-  AdvanceTime(kHalfScreenOffDelay);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleAudioActivity();
-  AdvanceTime(kHalfScreenOffDelay);
+  controller_.HandleAudioStateChange(true);
+  AdvanceTime(default_ac_screen_off_delay_);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // After audio stops, the screen should turn off after the usual delay.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfScreenOffDelay));
+  controller_.HandleAudioStateChange(false);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
 
   // Audio activity should turn the screen back on.
-  controller_.HandleAudioActivity();
+  controller_.HandleAudioStateChange(true);
   EXPECT_EQ(kScreenOn, delegate_.GetActions());
 }
 

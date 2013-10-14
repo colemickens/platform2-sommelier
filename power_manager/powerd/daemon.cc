@@ -431,16 +431,19 @@ void Daemon::Init() {
 
   input_controller_->Init(prefs_);
 
+  // Initialize |state_controller_| before |audio_client_| to ensure that the
+  // former is ready to receive the initial notification if audio is already
+  // playing.
+  const PowerSource power_source =
+      power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;
+  state_controller_->Init(power_source, input_->QueryLidState());
+  state_controller_initialized_ = true;
+
   if (util::IsDBusServiceConnected(cras::kCrasServiceName,
                                    cras::kCrasServicePath,
                                    cras::kCrasControlInterface, NULL)) {
     audio_client_->LoadInitialState();
   }
-
-  const PowerSource power_source =
-      power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;
-  state_controller_->Init(power_source, input_->QueryLidState());
-  state_controller_initialized_ = true;
 
   peripheral_battery_watcher_->Init();
 }
@@ -617,9 +620,11 @@ void Daemon::HandleLidOpened() {
     state_controller_->HandleLidStateChange(LID_OPEN);
 }
 
-void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
-  if (state_controller_initialized_)
-    state_controller_->HandleAudioActivity();
+void Daemon::OnAudioStateChange(bool active) {
+  // |state_controller_| needs to be ready at this point -- since notifications
+  // only arrive when the audio state changes, skipping any is unsafe.
+  CHECK(state_controller_initialized_);
+  state_controller_->HandleAudioStateChange(active);
 }
 
 void Daemon::OnPowerStatusUpdate() {

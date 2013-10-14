@@ -17,10 +17,6 @@ namespace system {
 
 namespace {
 
-// Frequency with which observers should be notified while audio is playing, in
-// milliseconds.
-const int kNotifyObserversMs = 5000;
-
 // Maximum amount of time to wait for a reply after making a D-Bus method call
 // to CRAS.
 const int kDBusTimeoutMs = 5000;
@@ -94,12 +90,10 @@ AudioClient::AudioClient()
       headphone_jack_plugged_(false),
       hdmi_active_(false),
       mute_stored_(false),
-      originally_muted_(false),
-      notify_observers_timeout_id_(0) {
+      originally_muted_(false) {
 }
 
 AudioClient::~AudioClient() {
-  util::RemoveTimeout(&notify_observers_timeout_id_);
 }
 
 void AudioClient::AddObserver(AudioObserver* observer) {
@@ -243,23 +237,11 @@ void AudioClient::UpdateNumActiveStreams() {
 
   if (num_active_streams_ && !old_num_streams) {
     LOG(INFO) << "Audio playback started";
-    NotifyObservers();
-    DCHECK_EQ(notify_observers_timeout_id_, 0U);
-    notify_observers_timeout_id_ = g_timeout_add(
-        kNotifyObserversMs, NotifyObserversThunk, this);
+    FOR_EACH_OBSERVER(AudioObserver, observers_, OnAudioStateChange(true));
   } else if (!num_active_streams_ && old_num_streams) {
     LOG(INFO) << "Audio playback stopped";
-    util::RemoveTimeout(&notify_observers_timeout_id_);
+    FOR_EACH_OBSERVER(AudioObserver, observers_, OnAudioStateChange(false));
   }
-}
-
-gboolean AudioClient::NotifyObservers() {
-  // TODO(derat): Instead of notifying repeatedly, only notify when playback
-  // starts or stops. This will require reworking StateController.
-  DCHECK_GT(num_active_streams_, 0);
-  FOR_EACH_OBSERVER(AudioObserver, observers_,
-                    OnAudioActivity(base::TimeTicks::Now()));
-  return TRUE;
 }
 
 }  // namespace system

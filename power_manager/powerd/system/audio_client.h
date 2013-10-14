@@ -7,11 +7,6 @@
 
 #include "base/basictypes.h"
 #include "base/observer_list.h"
-#include "base/time.h"
-#include "power_manager/common/signal_callback.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 namespace system {
@@ -45,15 +40,10 @@ class AudioClient {
   // Updates the client's view of connected audio devices.
   void UpdateDevices();
 
-  // Updates |num_active_streams_|. Starts or stops
-  // |notify_observers_timeout_id_| on changes between zero and nonzero counts.
+  // Updates |num_active_streams_| and notifies observers if the state changed.
   void UpdateNumActiveStreams();
 
  private:
-  // Called periodically while |num_active_streams_| is nonzero to notify
-  // |observers_| about audio playback.
-  SIGNAL_CALLBACK_0(AudioClient, gboolean, NotifyObservers);
-
   // Number of audio streams (either input or output) currently active.
   int num_active_streams_;
 
@@ -69,9 +59,6 @@ class AudioClient {
 
   // The state the system was in before the call to MuteSystem().
   bool originally_muted_;
-
-  // GLib timeout ID for running NotifyObservers(), or 0 if unset.
-  guint notify_observers_timeout_id_;
 
   ObserverList<AudioObserver> observers_;
 

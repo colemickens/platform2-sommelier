@@ -106,7 +106,7 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void HandleLidOpened() OVERRIDE;
 
   // Overridden from system::AudioObserver:
-  virtual void OnAudioActivity(base::TimeTicks last_audio_time) OVERRIDE;
+  virtual void OnAudioStateChange(bool active) OVERRIDE;
 
   // Overridden from system::PowerSupplyObserver:
   virtual void OnPowerStatusUpdate() OVERRIDE;
