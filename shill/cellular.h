@@ -10,7 +10,6 @@
 
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
-#include <base/gtest_prod_util.h>  // for FRIEND_TEST_ALL_PREFIXES
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_properties.h"
@@ -59,6 +58,7 @@ class Cellular : public Device, public RPCTaskDelegate {
     kStateLinked,
   };
 
+  // This enum must be kept in sync with ModemManager's MMModemState enum.
   enum ModemState {
     kModemStateFailed = -1,
     kModemStateUnknown = 0,
@@ -176,27 +176,32 @@ class Cellular : public Device, public RPCTaskDelegate {
       const std::vector<std::string> &invalidated_properties);
 
   // Inherited from Device.
-  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void LinkEvent(unsigned int flags, unsigned int change);
+  virtual void Start(Error *error, const EnabledStateChangedCallback &callback)
+      override;
+  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback)
+      override;
+  virtual void LinkEvent(unsigned int flags, unsigned int change) override;
   virtual void Scan(ScanType /*scan_type*/, Error *error,
-                    const std::string &/*reason*/);
+                    const std::string &/*reason*/) override;
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
-                                 const ResultCallback &callback);
+                                 const ResultCallback &callback) override;
   virtual void RequirePIN(const std::string &pin, bool require,
-                          Error *error, const ResultCallback &callback);
+                          Error *error, const ResultCallback &callback)
+      override;
   virtual void EnterPIN(const std::string &pin,
-                        Error *error, const ResultCallback &callback);
+                        Error *error, const ResultCallback &callback) override;
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          Error *error, const ResultCallback &callback);
+                          Error *error, const ResultCallback &callback)
+      override;
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         Error *error, const ResultCallback &callback);
-  virtual void Reset(Error *error, const ResultCallback &callback);
+                         Error *error, const ResultCallback &callback) override;
+  virtual void Reset(Error *error, const ResultCallback &callback) override;
   virtual void SetCarrier(const std::string &carrier,
-                          Error *error, const ResultCallback &callback);
+                          Error *error, const ResultCallback &callback)
+      override;
   virtual void DropConnection() override;
   virtual void SetServiceState(Service::ConnectState state) override;
   virtual void SetServiceFailure(Service::ConnectFailure failure_state)

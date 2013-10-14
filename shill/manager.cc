@@ -1090,16 +1090,19 @@ void Manager::AddTerminationAction(const string &name,
 }
 
 void Manager::TerminationActionComplete(const string &name) {
+  SLOG(Manager, 2) << __func__;
   termination_actions_.ActionComplete(name);
 }
 
 void Manager::RemoveTerminationAction(const string &name) {
+  SLOG(Manager, 2) << __func__;
   if (termination_actions_.IsEmpty()) {
     return;
   }
   termination_actions_.Remove(name);
   if (termination_actions_.IsEmpty() && power_manager_.get()) {
     if (suspend_delay_registered_) {
+      SLOG(Manager, 2) << "Unregistering suspend delay.";
       power_manager_->UnregisterSuspendDelay(suspend_delay_id_);
       suspend_delay_registered_ = false;
       suspend_delay_id_ = 0;

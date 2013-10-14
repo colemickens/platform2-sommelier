@@ -69,7 +69,7 @@ class Device : public base::RefCounted<Device> {
   // cases where we want to SetEnabledNonPersistent, but don't care
   // about the results.
   virtual void SetEnabled(bool enable);
-  // Enable or disable the device. Unlikely SetEnabledPersistent, it does not
+  // Enable or disable the device. Unlike SetEnabledPersistent, it does not
   // save the setting in the profile.
   //
   // TODO(quiche): Replace both of the next two methods with calls to
@@ -224,12 +224,12 @@ class Device : public base::RefCounted<Device> {
   }
 
   // Suspend event handler. Called by Manager before the system
-  // suspends. For this callback to be useful, the device must specify
-  // a suspend delay. Otherwise, there is no guarantee that the device
-  // will have time to complete its suspend actions, before the system
-  // is suspended.
+  // suspends. This handler, along with any other suspect handlers,
+  // will have Manager::kTerminationActionsTimeoutMilliseconds to
+  // execute before the system enters the suspend state.
   //
-  // TODO(quiche): Add support for suspend delays. crbug.com/215582
+  // Code that needs to run on exit, as well as on suspend, should use
+  // Manager::AddTerminationAction, rather than OnBeforeSuspend.
   virtual void OnBeforeSuspend();
 
   // Resume event handler. Called by Manager as the system resumes.

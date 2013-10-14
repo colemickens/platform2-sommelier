@@ -12,6 +12,7 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/logging.h"
 
 using base::Bind;
 using base::Callback;
@@ -43,6 +44,7 @@ void HookTable::Remove(const std::string &name) {
 }
 
 void HookTable::ActionComplete(const std::string &name) {
+  SLOG(Manager, 2) << __func__ << ": " << name;
   HookTableMap::iterator it = hook_table_.find(name);
   if (it != hook_table_.end()) {
     HookAction *action = &it->second;
@@ -59,6 +61,7 @@ void HookTable::ActionComplete(const std::string &name) {
 
 void HookTable::Run(int timeout_ms,
                     const Callback<void(const Error &)> &done) {
+  SLOG(Manager, 2) << __func__;
   if (hook_table_.empty()) {
     done.Run(Error(Error::kSuccess));
     return;
@@ -85,6 +88,7 @@ void HookTable::Run(int timeout_ms,
 }
 
 bool HookTable::AllActionsComplete() {
+  SLOG(Manager, 2) << __func__;
   for (HookTableMap::const_iterator it = hook_table_.begin();
        it != hook_table_.end(); ++it) {
     const HookAction &action = it->second;
