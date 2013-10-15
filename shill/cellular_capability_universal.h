@@ -172,7 +172,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kIpConfigPropertyMethod[];
 
   // Modem Model ID strings.  From modem firmware via modemmanager.
-  static const char kALT3100ModelId[];
   static const char kE362ModelId[];
 
   // Generic service name prefix, shown when the correct carrier name is

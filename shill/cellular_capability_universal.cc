@@ -69,7 +69,6 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kIpConfigPropertyMethod[] = "method";
-const char CellularCapabilityUniversal::kALT3100ModelId[] = "ALT3100";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
@@ -814,7 +813,7 @@ bool CellularCapabilityUniversal::AllowRoaming() {
 }
 
 bool CellularCapabilityUniversal::ShouldDetectOutOfCredit() const {
-  return model_id_ == kALT3100ModelId || model_id_ == kE362ModelId;
+  return model_id_ == kE362ModelId;
 }
 
 void CellularCapabilityUniversal::GetProperties() {
