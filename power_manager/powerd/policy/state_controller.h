@@ -6,7 +6,6 @@
 #define POWER_MANAGER_POWERD_POLICY_STATE_CONTROLLER_H_
 #pragma once
 
-#include <set>
 #include <string>
 
 #include "base/basictypes.h"
@@ -83,10 +82,6 @@ class StateController : public PrefsObserver {
     // mode" and on if the system isn't in docked mode.
     virtual void UpdatePanelForDockedMode(bool docked) = 0;
 
-    // Announces that an idle notification requested via
-    // AddIdleNotification() has been triggered.
-    virtual void EmitIdleNotification(base::TimeDelta delay) = 0;
-
     // Announces that the idle action will be performed soon (with "soon"
     // defined by the PowerManagementPolicy |idle_warning_ms| delays).
     virtual void EmitIdleActionImminent() = 0;
@@ -154,13 +149,6 @@ class StateController : public PrefsObserver {
 
   // Handle audio activity starting or stopping.
   void HandleAudioStateChange(bool active);
-
-  // Adds an idle notification on behalf of an external process.
-  // TODO(derat): Kill this.  "Idle" is poorly defined here, e.g. should it
-  // include video activity?  Chrome should handle this itself
-  // (notifications are currently used by Chrome for kiosk mode and
-  // screensavers).
-  void AddIdleNotification(base::TimeDelta delay);
 
   // PrefsInterface::Observer implementation:
   virtual void OnPrefChanged(const std::string& pref_name) OVERRIDE;
@@ -360,11 +348,6 @@ class StateController : public PrefsObserver {
 
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_;
-
-  // Externally-requested idle notifications added via
-  // AddIdleNotification() that haven't yet fired.  (Notifications are only
-  // sent once.)
-  std::set<base::TimeDelta> pending_idle_notifications_;
 
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;

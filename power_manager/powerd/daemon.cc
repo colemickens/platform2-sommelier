@@ -218,10 +218,6 @@ class Daemon::StateControllerDelegate
     daemon_->SetBacklightsDocked(docked);
   }
 
-  virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
-    daemon_->IdleEventNotify(delay.InMilliseconds());
-  }
-
   virtual void EmitIdleActionImminent() OVERRIDE {
     daemon_->dbus_sender_->EmitBareSignal(kIdleActionImminentSignal);
   }
@@ -451,25 +447,6 @@ void Daemon::Init() {
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_main_loop_run(loop);
-}
-
-void Daemon::IdleEventNotify(int64 threshold) {
-  dbus_int64_t threshold_int =
-      static_cast<dbus_int64_t>(threshold);
-
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(
-      kPowerManagerServicePath,
-      kPowerManagerInterface,
-      kIdleNotifySignal);
-  CHECK(signal);
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_INT64, &threshold_int,
-                           DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
 }
 
 void Daemon::AdjustKeyboardBrightness(int direction) {
@@ -775,11 +752,6 @@ void Daemon::RegisterDBusMessageHandler() {
                  base::Unretained(this)));
   dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
-      kRequestIdleNotification,
-      base::Bind(&Daemon::HandleRequestIdleNotificationMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
       kGetPowerSupplyPropertiesMethod,
       base::Bind(&Daemon::HandleGetPowerSupplyPropertiesMethod,
                  base::Unretained(this)));
@@ -1028,22 +1000,6 @@ DBusMessage* Daemon::HandleDecreaseKeyboardBrightnessMethod(
 DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
     DBusMessage* message) {
   AdjustKeyboardBrightness(1);
-  return NULL;
-}
-
-DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  int64 threshold = 0;
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_INT64, &threshold,
-                            DBUS_TYPE_INVALID)) {
-    state_controller_->AddIdleNotification(
-        base::TimeDelta::FromMilliseconds(threshold));
-  } else {
-    LOG(WARNING) << "Unable to read " << kRequestIdleNotification << " args";
-    dbus_error_free(&error);
-  }
   return NULL;
 }
 

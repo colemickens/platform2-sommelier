@@ -75,9 +75,6 @@ class Daemon : public policy::BacklightControllerObserver,
   void Init();
   void Run();
 
-  // Notify chrome that an idle event happened.
-  void IdleEventNotify(int64 threshold);
-
   // Overridden from policy::BacklightControllerObserver:
   virtual void OnBrightnessChanged(
       double brightness_percent,
@@ -163,7 +160,6 @@ class Daemon : public policy::BacklightControllerObserver,
   DBusMessage* HandleSetScreenBrightnessMethod(DBusMessage* message);
   DBusMessage* HandleDecreaseKeyboardBrightnessMethod(DBusMessage* message);
   DBusMessage* HandleIncreaseKeyboardBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleRequestIdleNotificationMethod(DBusMessage* message);
   DBusMessage* HandleGetPowerSupplyPropertiesMethod(DBusMessage* message);
   DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);

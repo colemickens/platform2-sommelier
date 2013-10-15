@@ -351,18 +351,6 @@ void StateController::HandleAudioStateChange(bool active) {
   UpdateState();
 }
 
-void StateController::AddIdleNotification(base::TimeDelta delay) {
-  DCHECK(initialized_);
-  if (delay <= base::TimeDelta()) {
-    LOG(WARNING) << "Ignoring idle notification request for "
-                 << util::TimeDeltaToString(delay);
-    return;
-  }
-  VLOG(1) << "Adding idle notification for " << util::TimeDeltaToString(delay);
-  pending_idle_notifications_.insert(delay);
-  UpdateState();
-}
-
 void StateController::OnPrefChanged(const std::string& pref_name) {
   DCHECK(initialized_);
   if (pref_name == kDisableIdleSuspendPref ||
@@ -727,19 +715,6 @@ void StateController::UpdateState() {
       now - GetLastActivityTimeForScreenDimOrLock();
   base::TimeDelta screen_off_duration = now - GetLastActivityTimeForScreenOff();
 
-  for (std::set<base::TimeDelta>::iterator it =
-           pending_idle_notifications_.begin();
-       it != pending_idle_notifications_.end(); ) {
-    if (*it <= idle_duration) {
-      VLOG(1) << "Emitting idle notification for "
-              << util::TimeDeltaToString(*it);
-      delegate_->EmitIdleNotification(*it);
-      pending_idle_notifications_.erase(it++);
-    } else {
-      break;
-    }
-  }
-
   HandleDelay(delays_.screen_dim, screen_dim_or_lock_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
@@ -868,12 +843,6 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
                        delays_.idle_warning));
   timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
       GetRemainingTime(GetLastActivityTimeForIdle(), now, delays_.idle));
-
-  if (!pending_idle_notifications_.empty()) {
-    timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
-        GetRemainingTime(GetLastActivityTimeForIdle(), now,
-                         *pending_idle_notifications_.begin()));
-  }
 
   util::RemoveTimeout(&action_timeout_id_);
   action_timeout_time_for_testing_ = base::TimeTicks();

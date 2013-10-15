@@ -10,7 +10,6 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/logging.h"
-#include "base/stringprintf.h"
 #include "base/time.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
@@ -40,12 +39,6 @@ const char kReportUserActivityMetrics[] = "metrics";
 // String returned by TestDelegate::GetActions() if no actions were
 // requested.
 const char kNoActions[] = "";
-
-// Returns a string describing a TestDelegate::EmitIdleNotification() call
-// with |delay|.
-std::string GetEmitIdleNotificationAction(base::TimeDelta delay) {
-  return StringPrintf("idle:%" PRId64, delay.InMilliseconds());
-}
 
 // Joins a sequence of strings describing actions (e.g. kScreenDim) such
 // that they can be compared against a string returned by
@@ -125,9 +118,6 @@ class TestDelegate : public StateController::Delegate {
   virtual void ShutDown() OVERRIDE { AppendAction(kShutDown); }
   virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
     AppendAction(docked ? kDocked : kUndocked);
-  }
-  virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
-    AppendAction(GetEmitIdleNotificationAction(delay));
   }
   virtual void EmitIdleActionImminent() OVERRIDE {
     AppendAction(kIdleImminent);
@@ -922,45 +912,6 @@ TEST_F(StateControllerTest, InvalidDelays) {
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-}
-
-// Tests that idle notifications requested by outside processes are honored.
-TEST_F(StateControllerTest, EmitIdleNotification) {
-  // Clear the optional delays and make the suspend delay long enough that
-  // it won't be hit
-  default_ac_screen_dim_delay_ = base::TimeDelta();
-  default_ac_screen_off_delay_ = base::TimeDelta();
-  default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(600);
-  Init();
-
-  // Add notifications at 40 and 50 seconds.  The 40-second one should be
-  // the first to be sent.
-  const base::TimeDelta kDelay40 = base::TimeDelta::FromSeconds(40);
-  controller_.AddIdleNotification(kDelay40);
-  const base::TimeDelta kDelay50 = base::TimeDelta::FromSeconds(50);
-  controller_.AddIdleNotification(kDelay50);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDelay40));
-  EXPECT_EQ(GetEmitIdleNotificationAction(kDelay40), delegate_.GetActions());
-
-  // Add a notification at 30 seconds.  It should be sent immediately since
-  // the user has been idle for 40 seconds.
-  const base::TimeDelta kDelay30 = base::TimeDelta::FromSeconds(30);
-  controller_.AddIdleNotification(kDelay30);
-  EXPECT_EQ(GetEmitIdleNotificationAction(kDelay30), delegate_.GetActions());
-
-  // 10 seconds later, the 50-second notification should be sent.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDelay50 - kDelay40));
-  EXPECT_EQ(GetEmitIdleNotificationAction(kDelay50), delegate_.GetActions());
-
-  // Add another 30-second notification.  If user activity is reported
-  // halfway through it, it should be deferred for 30 more seconds.
-  controller_.HandleUserActivity();
-  controller_.AddIdleNotification(kDelay30);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  AdvanceTime(kDelay30 / 2);
-  controller_.HandleUserActivity();
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDelay30));
-  EXPECT_EQ(GetEmitIdleNotificationAction(kDelay30), delegate_.GetActions());
 }
 
 // Tests that the controller cues the delegate to report metrics when user
