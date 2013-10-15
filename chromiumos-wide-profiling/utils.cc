@@ -140,6 +140,7 @@ const char kPerfReportDataFieldDelimiter = ',';
 const char kMetadataDelimiter = ',';
 
 const char kReportExtension[] = ".report";
+const char kBuildIDListExtension[] = ".buildids";
 const char kEventMetadataType[] = "event";
 
 // Splits a character array by |delimiter| into a vector of strings tokens.
@@ -748,12 +749,20 @@ bool ComparePipedPerfReports(const string& quipper_input,
 
 bool GetPerfBuildIDMap(const string& filename,
                        std::map<string, string>* output) {
-  string cmd = GetPerfCommandString(kPerfBuildIDArgs, filename);
-  std::vector<char> stdout;
-  if (!quipper::RunCommandAndGetStdout(cmd, &stdout))
-    return false;
+  // Try reading from an pre-generated report.  If it doesn't exist, call perf
+  // buildid-list.
+  std::vector<char> buildid_list;
+  LOG(INFO) << filename + kBuildIDListExtension;
+  if (!quipper::FileToBuffer(filename + kBuildIDListExtension, &buildid_list)) {
+    buildid_list.clear();
+    string cmd = GetPerfCommandString(kPerfBuildIDArgs, filename);
+    if (!quipper::RunCommandAndGetStdout(cmd, &buildid_list)) {
+      LOG(ERROR) << "Failed to run command: " << cmd;
+      return false;
+    }
+  }
   std::vector<string> lines;
-  SeparateLines(stdout, &lines);
+  SeparateLines(buildid_list, &lines);
 
   /* The output now looks like the following:
      cff4586f322eb113d59f54f6e0312767c6746524 [kernel.kallsyms]
