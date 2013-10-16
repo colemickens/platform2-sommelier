@@ -963,6 +963,7 @@ void CellularCapabilityUniversal::OnScanningOrSearchingTimeout() {
 void CellularCapabilityUniversal::UpdateOLP() {
   SLOG(Cellular, 2) << __func__;
 
+  // TODO(armansito): Do this mapping in MobileOperator (See crbug.com/298408).
   const CellularOperatorInfo *cellular_operator_info =
       modem_info()->cellular_operator_info();
   if (!cellular_operator_info)
@@ -987,6 +988,11 @@ void CellularCapabilityUniversal::UpdateOLP() {
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
                                GetMdnForOLP(*cellular_operator));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", min_);
+
+  // TODO(armansito): Define constants for the OEM IDs in MobileOperator
+  // (See crbug.com/298408).
+  string oem_id = (model_id_ == kE362ModelId) ? "GOG3" : "QUA";
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", oem_id);
   olp.SetPostData(post_data);
   cellular()->service()->SetOLP(olp);
 }

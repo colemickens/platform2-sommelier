@@ -256,6 +256,7 @@ void CellularCapabilityUniversalCDMA::UpdateOLP() {
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
                                GetMdnForOLP(*cellular_operator));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", meid());
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", "GOG2");
   olp.SetPostData(post_data);
   if (cellular()->service().get())
     cellular()->service()->SetOLP(olp);
