@@ -28,6 +28,13 @@ const CK_CHAR Pkcs11Init::kDefaultLabel[] = "User-Specific TPM Token";
 
 extern const char* kTpmOwnedFile;
 
+Pkcs11Init::Pkcs11Init() : default_platform_(new Platform),
+                           platform_(default_platform_.get()) {
+}
+
+Pkcs11Init::~Pkcs11Init() {
+}
+
 void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
                                  gchar **OUT_user_pin) {
   *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultLabel));

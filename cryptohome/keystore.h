@@ -35,6 +35,11 @@ class KeyStore {
   virtual bool Delete(const std::string& username,
                       const std::string& key_name) = 0;
 
+  // Deletes key data for all keys identified by |key_prefix|.  Returns false if
+  // key data exists but could not be deleted.
+  virtual bool DeleteByPrefix(const std::string& username,
+                              const std::string& key_prefix) = 0;
+
   // Registers a key.  |private_key_blob| holds the private key in some opaque
   // format and |public_key_der| holds the public key in PKCS #1 RSAPublicKey
   // format.  Returns true on success.

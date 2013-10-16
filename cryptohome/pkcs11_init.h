@@ -25,10 +25,8 @@ namespace cryptohome {
 
 class Pkcs11Init {
  public:
-  Pkcs11Init() : default_platform_(new Platform),
-                 platform_(default_platform_.get()) {
-  }
-  virtual ~Pkcs11Init() { }
+  Pkcs11Init();
+  virtual ~Pkcs11Init();
 
   virtual void GetTpmTokenInfo(gchar **OUT_label,
                                gchar **OUT_user_pin);

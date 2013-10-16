@@ -1456,7 +1456,7 @@ gboolean Service::TpmAttestationCreateCertRequest(gint certificate_profile,
   }
   chromeos::SecureBlob blob;
   if (attestation->CreateCertRequest(GetProfile(certificate_profile),
-                                     "",
+                                     username,
                                      request_origin,
                                      &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
@@ -1719,6 +1719,23 @@ gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
                                             username,
                                             key_name,
                                             blob);
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationDeleteKeys(gboolean is_user_specific,
+                                           gchar* username,
+                                           gchar* key_prefix,
+                                           gboolean* OUT_success,
+                                           GError** error) {
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  *OUT_success = attestation->DeleteKeysByPrefix(is_user_specific,
+                                                 username,
+                                                 key_prefix);
   return TRUE;
 }
 

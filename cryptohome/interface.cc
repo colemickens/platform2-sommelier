@@ -470,6 +470,18 @@ gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
                          payload,
                          OUT_success);
 }
+gboolean cryptohome_tpm_attestation_delete_keys(Cryptohome* self,
+                                                gboolean is_user_specific,
+                                                gchar* username,
+                                                gchar* key_prefix,
+                                                gboolean* OUT_success,
+                                                GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationDeleteKeys,
+                         is_user_specific,
+                         username,
+                         key_prefix,
+                         OUT_success);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

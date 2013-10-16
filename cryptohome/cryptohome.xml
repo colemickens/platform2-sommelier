@@ -252,6 +252,12 @@
       <arg type="ay" name="payload" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
+    <method name="TpmAttestationDeleteKeys">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_prefix" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />
     </method>

@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/callback_forward.h>
 #include <base/memory/scoped_ptr.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chromeos/secure_blob.h>
@@ -48,11 +49,17 @@ class Pkcs11KeyStore : public KeyStore {
                      const chromeos::SecureBlob& key_data);
   virtual bool Delete(const std::string& username,
                       const std::string& key_name);
+  virtual bool DeleteByPrefix(const std::string& username,
+                              const std::string& key_prefix);
   virtual bool Register(const std::string& username,
                         const chromeos::SecureBlob& private_key_blob,
                         const chromeos::SecureBlob& public_key_der);
 
  private:
+  typedef base::Callback<bool(const std::string& key_name,
+                              CK_OBJECT_HANDLE object_handle)>
+      EnumObjectsCallback;
+
   scoped_ptr<Pkcs11Init> default_pkcs11_init_;
   Pkcs11Init* pkcs11_init_;
 
@@ -64,6 +71,25 @@ class Pkcs11KeyStore : public KeyStore {
   // Gets a slot for the given user.  If |username| is empty then the default
   // slot (0) is provided.  Returns false if no slot is found for |username|.
   bool GetUserSlot(const std::string& username, CK_SLOT_ID_PTR slot);
+
+  // Enumerates all PKCS #11 objects associated with keys.  The |callback| is
+  // called once for each object.
+  bool EnumObjects(CK_SESSION_HANDLE session_handle,
+                   const EnumObjectsCallback& callback);
+
+  // Looks up the key name for the given |object_handle| which is associated
+  // with a key.  Returns true on success.
+  bool GetKeyName(CK_SESSION_HANDLE session_handle,
+                  CK_OBJECT_HANDLE object_handle,
+                  std::string* key_name);
+
+  // An EnumObjectsCallback for use with DeleteByPrefix.  Destroys the key
+  // object identified by |object_handle| if |key_name| matches |key_prefix|.
+  // Returns true on success.
+  bool DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
+                             const std::string& key_prefix,
+                             const std::string& key_name,
+                             CK_OBJECT_HANDLE object_handle);
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11KeyStore);
 };

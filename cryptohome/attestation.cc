@@ -12,6 +12,7 @@
 #include <base/string_number_conversions.h>
 #include <base/time.h>
 #include <chromeos/secure_blob.h>
+#include <google/protobuf/repeated_field.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rsa.h>
@@ -821,6 +822,31 @@ bool Attestation::SetKeyPayload(bool is_user_specific,
   }
   key.set_payload(ConvertBlobToString(payload));
   return SaveKey(is_user_specific, username, key_name, key);
+}
+
+bool Attestation::DeleteKeysByPrefix(bool is_user_specific,
+                                     const string& username,
+                                     const string& key_prefix) {
+  if (is_user_specific) {
+    return user_key_store_->DeleteByPrefix(username, key_prefix);
+  }
+  // Manipulate the device keys protobuf field.  Linear time strategy is to swap
+  // all elements we want to keep to the front and then truncate.
+  google::protobuf::RepeatedPtrField<CertifiedKey>* device_keys =
+      database_pb_.mutable_device_keys();
+  int next_keep_index = 0;
+  for (int i = 0; i < device_keys->size(); ++i) {
+    if (device_keys->Get(i).key_name().find(key_prefix) != 0) {
+      // Prefix doesn't match -> keep.
+      if (i != next_keep_index)
+        device_keys->SwapElements(next_keep_index, i);
+      ++next_keep_index;
+    }
+  }
+  while (next_keep_index < device_keys->size()) {
+    device_keys->RemoveLast();
+  }
+  return PersistDatabaseChanges();
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {

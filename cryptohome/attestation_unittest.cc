@@ -58,16 +58,16 @@ class AttestationTest : public testing::Test {
   }
 
   virtual bool WriteDB(const string& path, const string& db) {
-    serialized_db.assign(db);
+    serialized_db_.assign(db);
     return true;
   }
   virtual bool ReadDB(const string& path, string* db) {
-    db->assign(serialized_db);
+    db->assign(serialized_db_);
     return true;
   }
 
-  string serialized_db;
  protected:
+  string serialized_db_;
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
@@ -483,6 +483,49 @@ TEST_F(AttestationTest, Payload) {
                              SecureBlob("test_payload"));
   attestation_.GetKeyPayload(true, kTestUser, "test", &blob);
   EXPECT_TRUE(CompareBlob(blob, "stored_payload"));
+}
+
+// Tests DeleteKeysByPrefix with device-wide keys stored in the attestation db.
+TEST_F(AttestationTest, DeleteByPrefixDevice) {
+  // Test with an empty db.
+  ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", "prefix"));
+
+  // Test with a single matching key.
+  AttestationDatabase& db = attestation_.database_pb_;
+  db.add_device_keys()->set_key_name("prefix1");
+  ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", "prefix"));
+  EXPECT_EQ(0, db.device_keys_size());
+
+  // Test with a single non-matching key.
+  db.add_device_keys()->set_key_name("other");
+  ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", "prefix"));
+  EXPECT_EQ(1, db.device_keys_size());
+
+  // Test with an empty prefix.
+  ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", ""));
+  EXPECT_EQ(0, db.device_keys_size());
+
+  // Test with multiple matching / non-matching keys.
+  db.add_device_keys()->set_key_name("prefix1");
+  db.add_device_keys()->set_key_name("other1");
+  db.add_device_keys()->set_key_name("prefix2");
+  db.add_device_keys()->set_key_name("other2");
+  db.add_device_keys()->set_key_name("prefix3");
+  db.add_device_keys()->set_key_name("other3");
+  db.add_device_keys()->set_key_name("prefix4");
+
+  ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", "prefix"));
+
+  EXPECT_EQ(3, db.device_keys_size());
+  for (int i = 0; i < db.device_keys_size(); ++i) {
+    EXPECT_TRUE(db.device_keys(i).key_name().find("other") == 0);
+  }
+}
+
+// Tests DeleteKeysByPrefix with user-owned keys. This object does not manage
+// user-owned keys so the test is trivial.
+TEST_F(AttestationTest, DeleteByPrefixUser) {
+  EXPECT_TRUE(attestation_.DeleteKeysByPrefix(true, kTestUser, "prefix"));
 }
 
 }  // namespace cryptohome

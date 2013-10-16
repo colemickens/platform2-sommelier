@@ -30,6 +30,8 @@ class MockKeyStore : public KeyStore {
                            const chromeos::SecureBlob& key_data));
   MOCK_METHOD2(Delete, bool(const std::string& username,
                             const std::string& name));
+  MOCK_METHOD2(DeleteByPrefix, bool(const std::string& username,
+                                    const std::string& key_prefix));
   MOCK_METHOD3(Register, bool(const std::string& username,
                               const chromeos::SecureBlob&,
                               const chromeos::SecureBlob&));

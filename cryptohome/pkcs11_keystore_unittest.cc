@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "make_tests.h"
 #include "mock_pkcs11_init.h"
 
 using chaps::Attributes;
@@ -34,12 +35,11 @@ namespace cryptohome {
 
 typedef chaps::ChapsProxyMock Pkcs11Mock;
 
-const uint64_t kDefaultHandle = 7;  // Arbitrary non-zero value.
+const uint64_t kSession = 7;  // Arbitrary non-zero value.
 const char* kDefaultUser = "test_user";
 
 // Implements a fake PKCS #11 object store.  Labeled data blobs can be stored
-// and later retrieved.  No handle management is performed, the emitted handles
-// are always kDefaultHandle.  The mocked interface is ChapsInterface so these
+// and later retrieved.  The mocked interface is ChapsInterface so these
 // tests must be linked with the Chaps PKCS #11 library.  The mock class itself
 // is part of the Chaps package; it is reused here to avoid duplication (see
 // chaps_proxy_mock.h).
@@ -49,30 +49,35 @@ class KeyStoreTest : public testing::Test {
       : pkcs11_(false),  // Do not pre-initialize the mock PKCS #11 library.
                          // This just controls whether the first call to
                          // C_Initialize returns 'already initialized'.
-        find_status_(false) {}
+        next_handle_(1) {}
   virtual ~KeyStoreTest() {}
 
   void SetUp() {
+    helper_.SetUpSystemSalt();
     ON_CALL(pkcs11_, OpenSession(_, 0, _, _))
-        .WillByDefault(DoAll(SetArgumentPointee<3>(kDefaultHandle), Return(0)));
-    ON_CALL(pkcs11_, CloseSession(_, kDefaultHandle))
+        .WillByDefault(DoAll(SetArgumentPointee<3>(kSession), Return(0)));
+    ON_CALL(pkcs11_, CloseSession(_, _))
         .WillByDefault(Return(0));
-    ON_CALL(pkcs11_, CreateObject(_, kDefaultHandle, _, _))
+    ON_CALL(pkcs11_, CreateObject(_, _, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::CreateObject));
-    ON_CALL(pkcs11_, DestroyObject(_, kDefaultHandle, _))
+    ON_CALL(pkcs11_, DestroyObject(_, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::DestroyObject));
-    ON_CALL(pkcs11_, GetAttributeValue(_, kDefaultHandle, kDefaultHandle, _, _))
+    ON_CALL(pkcs11_, GetAttributeValue(_, _, _, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::GetAttributeValue));
-    ON_CALL(pkcs11_, SetAttributeValue(_, kDefaultHandle, kDefaultHandle, _))
+    ON_CALL(pkcs11_, SetAttributeValue(_, _, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::SetAttributeValue));
-    ON_CALL(pkcs11_, FindObjectsInit(_, kDefaultHandle, _))
+    ON_CALL(pkcs11_, FindObjectsInit(_, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::FindObjectsInit));
-    ON_CALL(pkcs11_, FindObjects(_, kDefaultHandle, 1, _))
+    ON_CALL(pkcs11_, FindObjects(_, _, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::FindObjects));
-    ON_CALL(pkcs11_, FindObjectsFinal(_, kDefaultHandle))
+    ON_CALL(pkcs11_, FindObjectsFinal(_, _))
         .WillByDefault(Return(0));
     ON_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
         .WillByDefault(DoAll(SetArgumentPointee<1>(0), Return(true)));
+  }
+
+  void TearDown() {
+    helper_.TearDownSystemSalt();
   }
 
   // Stores a new labeled object, only CKA_LABEL and CKA_VALUE are relevant.
@@ -80,8 +85,11 @@ class KeyStoreTest : public testing::Test {
                                 uint64_t session_id,
                                 const vector<uint8_t>& attributes,
                                 uint64_t* new_object_handle) {
-    *new_object_handle = kDefaultHandle;
-    objects_[GetValue(attributes, CKA_LABEL)] = GetValue(attributes, CKA_VALUE);
+    *new_object_handle = next_handle_++;
+    string label = GetValue(attributes, CKA_LABEL);
+    handles_[*new_object_handle] = label;
+    values_[label] = GetValue(attributes, CKA_VALUE);
+    labels_[label] = *new_object_handle;
     return CKR_OK;
   }
 
@@ -89,7 +97,10 @@ class KeyStoreTest : public testing::Test {
   virtual uint32_t DestroyObject(const SecureBlob& isolate_credential,
                                  uint64_t session_id,
                                  uint64_t object_handle) {
-    objects_.erase(current_object_);
+    string label = handles_[object_handle];
+    handles_.erase(object_handle);
+    values_.erase(label);
+    labels_.erase(label);
     return CKR_OK;
   }
 
@@ -99,11 +110,16 @@ class KeyStoreTest : public testing::Test {
                                      uint64_t object_handle,
                                      const vector<uint8_t>& attributes_in,
                                      vector<uint8_t>* attributes_out) {
-    string value = objects_[current_object_];
+    string label = handles_[object_handle];
+    string value = values_[label];
     Attributes parsed;
     parsed.Parse(attributes_in);
+    if (parsed.num_attributes() == 1 &&
+        parsed.attributes()[0].type == CKA_LABEL)
+      value = label;
     if (parsed.num_attributes() != 1 ||
-        parsed.attributes()[0].type != CKA_VALUE ||
+        (parsed.attributes()[0].type != CKA_VALUE &&
+         parsed.attributes()[0].type != CKA_LABEL) ||
         (parsed.attributes()[0].pValue &&
          parsed.attributes()[0].ulValueLen != value.size()))
       return CKR_GENERAL_ERROR;
@@ -120,19 +136,25 @@ class KeyStoreTest : public testing::Test {
       uint64_t session_id,
       uint64_t object_handle,
       const std::vector<uint8_t>& attributes) {
-    objects_[current_object_] = GetValue(attributes, CKA_VALUE);
+    values_[handles_[object_handle]] = GetValue(attributes, CKA_VALUE);
     return CKR_OK;
   }
 
-  // Finds stored objects by CKA_LABEL.  Since we always use kDefaultHandle, the
-  // only side-effect needs to be whether an object was found (find_status_).
+  // Finds stored objects by CKA_LABEL.  If no CKA_LABEL find all objects.
   virtual uint32_t FindObjectsInit(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    const vector<uint8_t>& attributes) {
     string label = GetValue(attributes, CKA_LABEL);
-    find_status_ = (objects_.find(label) != objects_.end());
-    if (find_status_)
-      current_object_ = label;
+    found_objects_.clear();
+    if (label.empty()) {
+      for (map<uint64_t, string>::iterator it = handles_.begin();
+           it != handles_.end();
+           ++it) {
+        found_objects_.push_back(it->first);
+      }
+    } else if (labels_.count(label) > 0) {
+      found_objects_.push_back(labels_[label]);
+    }
     return CKR_OK;
   }
 
@@ -141,9 +163,10 @@ class KeyStoreTest : public testing::Test {
                                uint64_t session_id,
                                uint64_t max_object_count,
                                vector<uint64_t>* object_list) {
-    if (find_status_)
-      object_list->push_back(kDefaultHandle);
-    find_status_ = false;
+    while (!found_objects_.empty() && object_list->size() < max_object_count) {
+      object_list->push_back(found_objects_.back());
+      found_objects_.pop_back();
+    }
     return CKR_OK;
   }
 
@@ -158,9 +181,12 @@ class KeyStoreTest : public testing::Test {
   }
 
  private:
-  map<string, string> objects_;  // The fake object store.
-  string current_object_;  // The most recent object searched.
-  bool find_status_;  // True if last search was successful.
+  MakeTests helper_;
+  map<string, string> values_;      // The fake object store: label->value
+  map<uint64_t, string> handles_;   // The fake object store: handle->label
+  map<string, uint64_t> labels_;    // The fake object store: label->handle
+  vector<uint64_t> found_objects_;  // The most recent objects searched.
+  uint64_t next_handle_;            // Tracks handle assignment.
 
   // A helper to pull the value for a given attribute out of a serialized
   // template.
@@ -318,6 +344,46 @@ TEST_F(KeyStoreTest, Register) {
   EXPECT_TRUE(key_store.Register(kDefaultUser,
                                  SecureBlob("private_key_blob"),
                                  public_key_der));
+}
+
+// Tests that the DeleteByPrefix() method removes the correct objects and only
+// the correct objects.
+TEST_F(KeyStoreTest, DeleteByPrefix) {
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+
+  // Test with no keys.
+  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
+
+  // Test with a single matching key.
+  ASSERT_TRUE(key_store.Write(kDefaultUser, "prefix_test", SecureBlob("test")));
+  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
+  SecureBlob blob;
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "prefix_test", &blob));
+
+  // Test with a single non-matching key.
+  ASSERT_TRUE(key_store.Write(kDefaultUser, "_prefix_", SecureBlob("test")));
+  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "_prefix_", &blob));
+
+  // Test with an empty prefix.
+  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, ""));
+  EXPECT_FALSE(key_store.Read(kDefaultUser, "_prefix_", &blob));
+
+  // Test with multiple matching and non-matching keys.
+  const int kNumKeys = 110;  // Pkcs11KeyStore max is 100 for FindObjects.
+  key_store.Write(kDefaultUser, "other1", SecureBlob("test"));
+  for (int i = 0; i < kNumKeys; ++i) {
+    string key_name = string("prefix") + base::IntToString(i);
+    key_store.Write(kDefaultUser, key_name, SecureBlob(key_name));
+  }
+  ASSERT_TRUE(key_store.Write(kDefaultUser, "other2", SecureBlob("test")));
+  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "other1", &blob));
+  EXPECT_TRUE(key_store.Read(kDefaultUser, "other2", &blob));
+  for (int i = 0; i < kNumKeys; ++i) {
+    string key_name = string("prefix") + base::IntToString(i);
+    EXPECT_FALSE(key_store.Read(kDefaultUser, key_name, &blob));
+  }
 }
 
 }  // namespace cryptohome

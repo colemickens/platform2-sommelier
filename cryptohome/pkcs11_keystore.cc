@@ -7,6 +7,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
@@ -83,10 +85,8 @@ bool Pkcs11KeyStore::Read(const string& username,
   if (!session.IsValid())
     return false;
   CK_OBJECT_HANDLE key_handle = FindObject(session.handle(), key_name);
-  if (key_handle == CK_INVALID_HANDLE) {
-    LOG(INFO) << "Pkcs11KeyStore: Key not found: " << key_name;
+  if (key_handle == CK_INVALID_HANDLE)
     return false;
-  }
   // First get the attribute with a NULL buffer which will give us the length.
   CK_ATTRIBUTE attribute = {CKA_VALUE, NULL, 0};
   if (C_GetAttributeValue(session.handle(),
@@ -124,7 +124,7 @@ bool Pkcs11KeyStore::Write(const string& username,
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &object_class, sizeof(CK_OBJECT_CLASS)},
+    {CKA_CLASS, &object_class, sizeof(object_class)},
     {
       CKA_LABEL,
       string_as_array(const_cast<string*>(&key_name)),
@@ -140,9 +140,9 @@ bool Pkcs11KeyStore::Write(const string& username,
       const_cast<char*>(kApplicationID),
       arraysize(kApplicationID)
     },
-    {CKA_TOKEN, &true_value, sizeof(CK_BBOOL)},
-    {CKA_PRIVATE, &true_value, sizeof(CK_BBOOL)},
-    {CKA_MODIFIABLE, &false_value, sizeof(CK_BBOOL)}
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_MODIFIABLE, &false_value, sizeof(false_value)}
   };
   CK_OBJECT_HANDLE key_handle = CK_INVALID_HANDLE;
   if (C_CreateObject(session.handle(),
@@ -169,6 +169,26 @@ bool Pkcs11KeyStore::Delete(const string& username,
       LOG(ERROR) << "Pkcs11KeyStore: Failed to delete key data.";
       return false;
     }
+  }
+  return true;
+}
+
+bool Pkcs11KeyStore::DeleteByPrefix(const std::string& username,
+                                    const std::string& key_prefix) {
+  CK_SLOT_ID slot;
+  if (!GetUserSlot(username, &slot))
+    return false;
+  ScopedSession session(slot);
+  if (!session.IsValid())
+    return false;
+  EnumObjectsCallback callback = base::Bind(
+      &Pkcs11KeyStore::DeleteIfMatchesPrefix,
+      base::Unretained(this),
+      session.handle(),
+      key_prefix);
+  if (!EnumObjects(session.handle(), callback)) {
+    LOG(ERROR) << "Pkcs11KeyStore: Failed to delete key data.";
+    return false;
   }
   return true;
 }
@@ -211,16 +231,16 @@ bool Pkcs11KeyStore::Register(const string& username,
   CK_ULONG modulus_bits = modulus.size() * 8;
   unsigned char public_exponent[] = {1, 0, 1};
   CK_ATTRIBUTE public_key_attributes[] = {
-    {CKA_CLASS, &public_key_class, sizeof(CK_OBJECT_CLASS)},
-    {CKA_TOKEN, &true_value, sizeof(CK_BBOOL)},
-    {CKA_DERIVE, &false_value, sizeof(CK_BBOOL)},
-    {CKA_WRAP, &false_value, sizeof(CK_BBOOL)},
-    {CKA_VERIFY, &true_value, sizeof(CK_BBOOL)},
-    {CKA_VERIFY_RECOVER, &false_value, sizeof(CK_BBOOL)},
-    {CKA_ENCRYPT, &false_value, sizeof(CK_BBOOL)},
-    {CKA_KEY_TYPE, &key_type, sizeof(CK_KEY_TYPE)},
+    {CKA_CLASS, &public_key_class, sizeof(public_key_class)},
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_DERIVE, &false_value, sizeof(false_value)},
+    {CKA_WRAP, &false_value, sizeof(false_value)},
+    {CKA_VERIFY, &true_value, sizeof(true_value)},
+    {CKA_VERIFY_RECOVER, &false_value, sizeof(false_value)},
+    {CKA_ENCRYPT, &false_value, sizeof(false_value)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
     {CKA_ID, id.data(), id.size()},
-    {CKA_MODULUS_BITS, &modulus_bits, sizeof(CK_ULONG)},
+    {CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits)},
     {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
     {CKA_MODULUS, modulus.data(), modulus.size()}
   };
@@ -237,17 +257,17 @@ bool Pkcs11KeyStore::Register(const string& username,
   // Construct a PKCS #11 template for the private key object.
   CK_OBJECT_CLASS private_key_class = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE private_key_attributes[] = {
-    {CKA_CLASS, &private_key_class, sizeof(CK_OBJECT_CLASS)},
-    {CKA_TOKEN, &true_value, sizeof(CK_BBOOL)},
-    {CKA_PRIVATE, &true_value, sizeof(CK_BBOOL)},
-    {CKA_SENSITIVE, &true_value, sizeof(CK_BBOOL)},
-    {CKA_EXTRACTABLE, &false_value, sizeof(CK_BBOOL)},
-    {CKA_DERIVE, &false_value, sizeof(CK_BBOOL)},
-    {CKA_UNWRAP, &false_value, sizeof(CK_BBOOL)},
-    {CKA_SIGN, &true_value, sizeof(CK_BBOOL)},
-    {CKA_SIGN_RECOVER, &false_value, sizeof(CK_BBOOL)},
-    {CKA_DECRYPT, &false_value, sizeof(CK_BBOOL)},
-    {CKA_KEY_TYPE, &key_type, sizeof(CK_KEY_TYPE)},
+    {CKA_CLASS, &private_key_class, sizeof(private_key_class)},
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+    {CKA_EXTRACTABLE, &false_value, sizeof(false_value)},
+    {CKA_DERIVE, &false_value, sizeof(false_value)},
+    {CKA_UNWRAP, &false_value, sizeof(false_value)},
+    {CKA_SIGN, &true_value, sizeof(true_value)},
+    {CKA_SIGN_RECOVER, &false_value, sizeof(false_value)},
+    {CKA_DECRYPT, &false_value, sizeof(false_value)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
     {CKA_ID, id.data(), id.size()},
     {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
     {CKA_MODULUS, modulus.data(), modulus.size()},
@@ -280,7 +300,7 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &object_class, sizeof(CK_OBJECT_CLASS)},
+    {CKA_CLASS, &object_class, sizeof(object_class)},
     {
       CKA_LABEL,
       string_as_array(const_cast<string*>(&key_name)),
@@ -291,9 +311,9 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
       const_cast<char*>(kApplicationID),
       arraysize(kApplicationID)
     },
-    {CKA_TOKEN, &true_value, sizeof(CK_BBOOL)},
-    {CKA_PRIVATE, &true_value, sizeof(CK_BBOOL)},
-    {CKA_MODIFIABLE, &false_value, sizeof(CK_BBOOL)}
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_MODIFIABLE, &false_value, sizeof(false_value)}
   };
   CK_OBJECT_HANDLE key_handle = CK_INVALID_HANDLE;
   CK_ULONG count = 0;
@@ -315,6 +335,87 @@ bool Pkcs11KeyStore::GetUserSlot(const string& username, CK_SLOT_ID_PTR slot) {
   FilePath token_path =
       chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName);
   return pkcs11_init_->GetTpmTokenSlotForPath(token_path, slot);
+}
+
+bool Pkcs11KeyStore::EnumObjects(
+    CK_SESSION_HANDLE session_handle,
+    const Pkcs11KeyStore::EnumObjectsCallback& callback) {
+  // Assemble a search template.
+  CK_OBJECT_CLASS object_class = CKO_DATA;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_ATTRIBUTE attributes[] = {
+    {CKA_CLASS, &object_class, sizeof(object_class)},
+    {
+      CKA_APPLICATION,
+      const_cast<char*>(kApplicationID),
+      arraysize(kApplicationID)
+    },
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_MODIFIABLE, &false_value, sizeof(false_value)}
+  };
+  const CK_ULONG kMaxHandles = 100;  // Arbitrary.
+  CK_OBJECT_HANDLE handles[kMaxHandles];
+  CK_ULONG count = 0;
+  if ((C_FindObjectsInit(session_handle,
+                         attributes,
+                         arraysize(attributes)) != CKR_OK) ||
+      (C_FindObjects(session_handle, handles, kMaxHandles, &count) != CKR_OK)) {
+    LOG(ERROR) << "Key search failed.";
+    return false;
+  }
+  while (count > 0) {
+    for (CK_ULONG i = 0; i < count; ++i) {
+      std::string key_name;
+      if (!GetKeyName(session_handle, handles[i], &key_name)) {
+        LOG(WARNING) << "Found key object but failed to get name.";
+        continue;
+      }
+      if (!callback.Run(key_name, handles[i]))
+        return false;
+    }
+    if (C_FindObjects(session_handle, handles, kMaxHandles, &count) != CKR_OK) {
+      LOG(ERROR) << "Key search continuation failed.";
+      return false;
+    }
+  }
+  if (C_FindObjectsFinal(session_handle) != CKR_OK) {
+    LOG(WARNING) << "Failed to finalize key search.";
+  }
+  return true;
+}
+
+bool Pkcs11KeyStore::GetKeyName(CK_SESSION_HANDLE session_handle,
+                                CK_OBJECT_HANDLE object_handle,
+                                std::string* key_name) {
+  CK_ATTRIBUTE attribute = {CKA_LABEL, NULL, 0};
+  if (C_GetAttributeValue(session_handle, object_handle, &attribute, 1) !=
+      CKR_OK) {
+    LOG(ERROR) << "C_GetAttributeValue(CKA_LABEL) [length] failed.";
+    return false;
+  }
+  key_name->resize(attribute.ulValueLen);
+  attribute.pValue = string_as_array(key_name);
+  if (C_GetAttributeValue(session_handle, object_handle, &attribute, 1) !=
+      CKR_OK) {
+    LOG(ERROR) << "C_GetAttributeValue(CKA_LABEL) failed.";
+    return false;
+  }
+  return true;
+}
+
+bool Pkcs11KeyStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
+                                           const std::string& key_prefix,
+                                           const std::string& key_name,
+                                           CK_OBJECT_HANDLE object_handle) {
+  if (key_name.find(key_prefix) == 0) {
+    if (C_DestroyObject(session_handle, object_handle) != CKR_OK) {
+      LOG(ERROR) << "C_DestroyObject failed.";
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace cryptohome

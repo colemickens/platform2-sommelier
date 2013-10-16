@@ -80,6 +80,7 @@ namespace switches {
     "tpm_attestation_key_status",
     "tpm_attestation_register_key",
     "tpm_attestation_enterprise_challenge",
+    "tpm_attestation_delete",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -118,6 +119,7 @@ namespace switches {
     ACTION_TPM_ATTESTATION_KEY_STATUS,
     ACTION_TPM_ATTESTATION_REGISTER_KEY,
     ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE,
+    ACTION_TPM_ATTESTATION_DELETE
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -1499,6 +1501,7 @@ int main(int argc, char **argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
+    gboolean is_user_specific = (key_name != "attest-ent-machine");
     string contents;
     if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
@@ -1517,7 +1520,7 @@ int main(int argc, char **argv) {
     gint async_id = -1;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(
             proxy.gproxy(),
-            TRUE,
+            is_user_specific,
             username.c_str(),
             key_name.c_str(),
             "cros@crosdmsregtest.com",
@@ -1539,6 +1542,34 @@ int main(int argc, char **argv) {
     file_util::WriteFileDescriptor(STDOUT_FILENO,
                                    response_data.data(),
                                    response_data.length());
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_DELETE],
+      action.c_str())) {
+    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
+      return 1;
+    }
+    gboolean is_user_specific = (key_name != "attest-ent-machine");
+    chromeos::glib::ScopedError error;
+    gboolean success = FALSE;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_delete_keys(
+            proxy.gproxy(),
+            is_user_specific,
+            username.c_str(),
+            key_name.c_str(),
+            &success,
+            &chromeos::Resetter(&error).lvalue())) {
+      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("Delete operation failed.\n");
+      return 1;
+    }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

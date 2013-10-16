@@ -289,6 +289,12 @@ gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
                                                     GArray* payload,
                                                     gboolean* OUT_success,
                                                     GError **error);
+gboolean cryptohome_tpm_attestation_delete_keys(Cryptohome* self,
+                                                gboolean is_user_specific,
+                                                gchar* username,
+                                                gchar* key_prefix,
+                                                gboolean* OUT_success,
+                                                GError** error);
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

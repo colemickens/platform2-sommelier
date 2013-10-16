@@ -12,6 +12,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/secure_blob.h>
+#include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <openssl/evp.h>
 
@@ -268,6 +269,18 @@ class Attestation : public base::PlatformThread::Delegate {
                              const std::string& username,
                              const chromeos::SecureBlob& payload);
 
+  // Deletes all keys where the key name has the given |key_prefix|.
+  // Returns true on success.
+  //
+  // Parameters
+  //
+  //   is_user_specific - Whether the key is associated with the current user.
+  //   username - The current user canonical email address.
+  //   key_prefix - The key name prefix.
+  virtual bool DeleteKeysByPrefix(bool is_user_specific,
+                                  const std::string& username,
+                                  const std::string& key_prefix);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);
@@ -492,6 +505,8 @@ class Attestation : public base::PlatformThread::Delegate {
   // the |origin| of the certificate request.  The strategy is to find an index
   // which has not already been used by another user for the same origin.
   int ChooseTemporalIndex(const std::string& user, const std::string& origin);
+
+  FRIEND_TEST(AttestationTest, DeleteByPrefixDevice);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };
