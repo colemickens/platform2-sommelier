@@ -270,7 +270,7 @@ TEST(PerfSerializeTest, TestMmapMd5s) {
     }
 
     PerfSerializer deserializer;
-    const string output_perf_data = output_path + test_file + ".ser.comm.out";
+    const string output_perf_data = output_path + test_file + ".ser.mmap.out";
     // Make sure the data can be deserialized after replacing the filenames with
     // Md5sum prefixes.  No need to check the output.
     EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
