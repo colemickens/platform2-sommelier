@@ -134,18 +134,22 @@ class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
 template<class C, class T>
 class CustomAccessor : public AccessorInterface<T> {
  public:
-  // |target| is the object on which to call the methods |getter| and |setter|
-  // |setter| is allowed to be NULL, in which case we will simply reject
-  // attempts to set via the accessor. |setter| should return true if the
-  // value was changed, and false otherwise.
-  // It is an error to pass NULL for either of the other two arguments.
+  // |target| is the object on which to call the methods |getter|, |setter|
+  // and |clearer|.  |setter| is allowed to be NULL, in which case we will
+  // simply reject attempts to set via the accessor. |setter| should return
+  // true if the value was changed, and false otherwise.  |clearer| is allowed
+  // to be NULL (which is what happens if it is not passed to the constructor),
+  // in which case, |setter| is called is called with the default value.
+  // It is an error to pass NULL for either |target| or |getter|.
   CustomAccessor(C *target,
                  T(C::*getter)(Error *error),
-                 bool(C::*setter)(const T &value, Error *error))
+                 bool(C::*setter)(const T &value, Error *error),
+                 void(C::*clearer)(Error *error))
       : target_(target),
         default_value_(),
         getter_(getter),
-        setter_(setter) {
+        setter_(setter),
+        clearer_(clearer) {
     DCHECK(target);
     DCHECK(getter);  // otherwise, use CustomWriteOnlyAccessor
     if (setter_) {
@@ -153,9 +157,19 @@ class CustomAccessor : public AccessorInterface<T> {
       default_value_ = Get(&e);
     }
   }
+  CustomAccessor(C *target,
+                 T(C::*getter)(Error *error),
+                 bool(C::*setter)(const T &value, Error *error))
+      : CustomAccessor(target, getter, setter, NULL) {}
   virtual ~CustomAccessor() {}
 
-  void Clear(Error *error) { Set(default_value_, error); }
+  void Clear(Error *error) {
+    if (clearer_) {
+      (target_->*clearer_)(error);
+    } else {
+      Set(default_value_, error);
+    }
+  }
   T Get(Error *error) {
     return (target_->*getter_)(error);
   }
@@ -175,6 +189,7 @@ class CustomAccessor : public AccessorInterface<T> {
   T default_value_;
   T(C::*const getter_)(Error *error);
   bool(C::*const setter_)(const T &value, Error *error);
+  void(C::*const clearer_)(Error *error);
   DISALLOW_COPY_AND_ASSIGN(CustomAccessor);
 };
 

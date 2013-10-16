@@ -340,6 +340,18 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     accessor.Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
+  {
+    // Custom read-only accessor with custom clear method.
+    Error error;
+    CustomAccessor<StringWrapper, string> accessor(&wrapper,
+                                                   &StringWrapper::Get,
+                                                   NULL,
+                                                   &StringWrapper::Clear);
+    wrapper.value_ = "empty this";
+    accessor.Clear(&error);
+    ASSERT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(wrapper.value_.empty());
+  }
 }
 
 TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
