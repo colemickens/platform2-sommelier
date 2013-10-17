@@ -369,7 +369,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
     //   event.mmap.len   = 0xffffffff7fff7dff
     //   event.mmap.pgoff = 0x80008200
     pgoff = 0;
-  } else if (pgoff < len) {
+  } else if (pgoff < len && pgoff != 0) {
     // This handles the case where the mmap offset somewhere between the start
     // and the end of the mmap region.  This is the case for the kernel DSO on
     // x86_64.  e.g.
@@ -380,8 +380,8 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
     // Sanity check to make sure pgoff is valid.
     // TODO(sque): does not protect against wraparound.
     CHECK_GE(start + pgoff, start);
-    len -= event->pgoff;
-    start += event->pgoff;
+    start = event->pgoff;
+    len = event->start + event->len - start;
     pgoff = 0;
   }
   if (!mapper->MapWithID(start, len, id, true))
