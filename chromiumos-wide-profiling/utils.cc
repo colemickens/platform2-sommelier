@@ -136,6 +136,7 @@ const double kPerfReportEntryErrorThreshold = 0.05;
 
 const char kPerfReportCommentCharacter = '#';
 const char kPerfReportMetadataFieldCharacter = ':';
+const char kPerfReportDataFieldDelimiter = ',';
 const char kMetadataDelimiter = ',';
 
 const char kReportExtension[] = ".report";
@@ -237,7 +238,7 @@ int ParsePerfReportSection(const std::vector<string>& report, size_t index,
   while (index < report.size() && !report[index].empty()) {
     const string& item = report[index++];
     std::vector<string> tokens;
-    SplitString(item, kMetadataDelimiter, &tokens);
+    SplitString(item, kPerfReportDataFieldDelimiter, &tokens);
 
     if (tokens.size() != NUM_PERF_REPORT_FIELDS)
       return kPerfReportParseError;
@@ -440,6 +441,22 @@ bool CompareMetadata(const quipper::MetadataSet& input,
     }
   }
   return (num_metadata_mismatches == 0);
+}
+
+// For each string in |*lines|:
+// 1. Separate the string fields by |kPerfReportDataFieldDelimiter|.
+// 2. Trim whitespace from each field.
+// 3. Combine the fields in the format:
+//    { field0, field1, field2, ... }
+void FormatLineFields(std::vector<string>* lines) {
+  for (size_t i = 0; i < lines->size(); ++i) {
+    string& line = lines->at(i);
+    std::vector<string> line_fields;
+    SplitString(line, kPerfReportDataFieldDelimiter, &line_fields);
+    for (size_t j = 0; j < line_fields.size(); ++j)
+      TrimWhitespace(&line_fields[j]);
+    line = ConcatStringVector(line_fields);
+  }
 }
 
 }  // namespace
@@ -657,6 +674,14 @@ bool ComparePerfReportsByFields(const string& quipper_input,
     LOG(ERROR) << "Could not find start of output report body.";
     return false;
   }
+
+  // Trim whitespace in each of the comma-separated fields.
+  // e.g. a line line this:
+  //     10.32,829,libc-2.15.so              ,[.] 0x00000000000b7e52
+  // becomes this:
+  //     10.32,829,libc-2.15.so,[.] 0x00000000000b7e52
+  FormatLineFields(&quipper_input_report);
+  FormatLineFields(&quipper_output_report);
 
   // Compare the output log contents after the metadata.
   if (!std::equal(quipper_input_report.begin() + input_index,
