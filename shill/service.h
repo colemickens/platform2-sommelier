@@ -471,7 +471,8 @@ class Service : public base::RefCounted<Service> {
   void HelpRegisterDerivedBool(
       const std::string &name,
       bool(Service::*get)(Error *error),
-      bool(Service::*set)(const bool &value, Error *error));
+      bool(Service::*set)(const bool &value, Error *error),
+      void(Service::*clear)(Error *error));
   void HelpRegisterDerivedInt32(
       const std::string &name,
       int32(Service::*get)(Error *error),
@@ -503,6 +504,11 @@ class Service : public base::RefCounted<Service> {
   // RPC setter for the the "AutoConnect" property. Updates the |manager_|.
   // (cf. SetAutoConnect, which does not update the manager.)
   virtual bool SetAutoConnectFull(const bool &connect, Error *error);
+
+  // RPC clear method for the "AutoConnect" property.  Sets the AutoConnect
+  // property back to its default value, and clears the "Favorite" property
+  // to indicate that the AutoConnect property can be enabled automatically.
+  void ClearAutoConnect(Error *error);
 
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }

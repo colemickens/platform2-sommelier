@@ -174,6 +174,10 @@ class ServiceTest : public PropertyStoreTest {
     return service_->GetAutoConnect(error);
   }
 
+  void ClearAutoConnect(Error *error) {
+    service_->ClearAutoConnect(error);
+  }
+
   bool SetAutoConnectFull(bool connect, Error *error) {
     return service_->SetAutoConnectFull(connect, error);
   }
@@ -1623,6 +1627,43 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
   EXPECT_TRUE(service_->favorite());
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+}
+
+TEST_F(ServiceTest, ClearAutoConnect) {
+  EXPECT_FALSE(service_->auto_connect());
+  Error error;
+  EXPECT_FALSE(GetAutoConnect(&error));
+  EXPECT_TRUE(error.IsSuccess());
+
+  // unset -> false
+  EXPECT_FALSE(service_->favorite());
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
+  ClearAutoConnect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(GetAutoConnect(NULL));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // false -> false
+  SetAutoConnectFull(false, &error);
+  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_TRUE(service_->favorite());
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
+  ClearAutoConnect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(GetAutoConnect(NULL));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // true -> false
+  SetAutoConnectFull(true, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(GetAutoConnect(NULL));
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
+  ClearAutoConnect(&error);
+  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 

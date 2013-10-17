@@ -141,7 +141,8 @@ Service::Service(ControlInterface *control_interface,
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
-                          &Service::SetAutoConnectFull);
+                          &Service::SetAutoConnectFull,
+                          &Service::ClearAutoConnect);
 
   // kActivationStateProperty: Registered in CellularService
   // kCellularApnProperty: Registered in CellularService
@@ -175,7 +176,7 @@ Service::Service(ControlInterface *control_interface,
                                  &Service::GetHTTPProxyPort);
   HelpRegisterConstDerivedRpcIdentifier(kIPConfigProperty,
                                         &Service::GetIPConfigRpcIdentifier);
-  HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, NULL);
+  HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, NULL, NULL);
   // kModeProperty: Registered in WiFiService
 
   HelpRegisterDerivedString(kNameProperty,
@@ -1089,10 +1090,11 @@ bool Service::IsPortalDetectionAuto() const {
 void Service::HelpRegisterDerivedBool(
     const string &name,
     bool(Service::*get)(Error *),
-    bool(Service::*set)(const bool&, Error *)) {
+    bool(Service::*set)(const bool&, Error *),
+    void(Service::*clear)(Error *)) {
   store_.RegisterDerivedBool(
       name,
-      BoolAccessor(new CustomAccessor<Service, bool>(this, get, set)));
+      BoolAccessor(new CustomAccessor<Service, bool>(this, get, set, clear)));
 }
 
 void Service::HelpRegisterDerivedInt32(
@@ -1205,6 +1207,24 @@ bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   }
 
   return has_value_updated;
+}
+
+void Service::ClearAutoConnect(Error */*error*/) {
+  bool should_update = false;
+  if (auto_connect()) {
+    SetAutoConnect(false);
+    should_update = true;
+  }
+
+  if (favorite_) {
+    favorite_ = false;
+    adaptor_->EmitBoolChanged(kFavoriteProperty, favorite_);
+    should_update = true;
+  }
+
+  if (should_update) {
+    manager_->UpdateService(this);
+  }
 }
 
 string Service::GetCheckPortal(Error *error) {
