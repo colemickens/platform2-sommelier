@@ -61,7 +61,7 @@ const int Service::kPriorityNone = 0;
 const char Service::kServiceSortAutoConnect[] = "AutoConnect";
 const char Service::kServiceSortConnectable[] = "Connectable";
 const char Service::kServiceSortDependency[] = "Dependency";
-const char Service::kServiceSortFavorite[] = "Favorite";
+const char Service::kServiceSortHasEverConnected[] = "HasEverConnected";
 const char Service::kServiceSortIsConnected[] = "IsConnected";
 const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
@@ -110,12 +110,12 @@ Service::Service(ControlInterface *control_interface,
       previous_state_(kStateIdle),
       failure_(kFailureUnknown),
       auto_connect_(false),
+      retain_auto_connect_(false),
       check_portal_(kCheckPortalAuto),
       connectable_(false),
       error_(ConnectFailureToString(failure_)),
       error_details_(kErrorDetailsNone),
       explicitly_disconnected_(false),
-      favorite_(false),
       priority_(kPriorityNone),
       crypto_algorithm_(kCryptoNone),
       key_rotation_(false),
@@ -171,7 +171,6 @@ Service::Service(ControlInterface *control_interface,
   // see an autotest depending on it.
   store_.RegisterConstString(kErrorProperty, &error_);
   store_.RegisterConstString(kErrorDetailsProperty, &error_details_);
-  store_.RegisterConstBool(kFavoriteProperty, &favorite_);
   HelpRegisterConstDerivedUint16(kHTTPProxyPortProperty,
                                  &Service::GetHTTPProxyPort);
   HelpRegisterConstDerivedRpcIdentifier(kIPConfigProperty,
@@ -400,10 +399,15 @@ bool Service::Load(StoreInterface *storage) {
     LOG(WARNING) << "Service is not available in the persistent store: " << id;
     return false;
   }
-  storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
+
+  auto_connect_ = false;
+  retain_auto_connect_ =
+      storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
+  // The legacy "Favorite" flag will override retain_auto_connect_ if present.
+  storage->GetBool(id, kStorageFavorite, &retain_auto_connect_);
+
   LoadString(storage, id, kStorageCheckPortal, kCheckPortalAuto,
              &check_portal_);
-  storage->GetBool(id, kStorageFavorite, &favorite_);
   LoadString(storage, id, kStorageGUID, "", &guid_);
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
   if (!storage->GetInt(id, kStoragePriority, &priority_)) {
@@ -427,9 +431,9 @@ bool Service::Load(StoreInterface *storage) {
 
 bool Service::Unload() {
   auto_connect_ = IsAutoConnectByDefault();
+  retain_auto_connect_ = false;
   check_portal_ = kCheckPortalAuto;
   explicitly_disconnected_ = false;
-  favorite_ = false;
   guid_ = "";
   has_ever_connected_ = false;
   priority_ = kPriorityNone;
@@ -456,13 +460,21 @@ bool Service::Save(StoreInterface *storage) {
 
   storage->SetString(id, kStorageType, GetTechnologyString());
 
-  storage->SetBool(id, kStorageAutoConnect, auto_connect_);
+  if (retain_auto_connect_) {
+    storage->SetBool(id, kStorageAutoConnect, auto_connect_);
+  } else {
+    storage->DeleteKey(id, kStorageAutoConnect);
+  }
+
+  // Remove this legacy flag.
+  storage->DeleteKey(id, kStorageFavorite);
+
   if (check_portal_ == kCheckPortalAuto) {
     storage->DeleteKey(id, kStorageCheckPortal);
   } else {
     storage->SetString(id, kStorageCheckPortal, check_portal_);
   }
-  storage->SetBool(id, kStorageFavorite, favorite_);
+
   SaveString(storage, id, kStorageGUID, guid_, false, true);
   storage->SetBool(id, kStorageHasEverConnected, has_ever_connected_);
   storage->SetString(id, kStorageName, friendly_name_);
@@ -613,15 +625,15 @@ bool Service::IsDependentOn(const ServiceRefPtr &b) const {
   return connection_->GetLowerConnection() == b->connection();
 }
 
-void Service::MakeFavorite() {
-  if (favorite_) {
+void Service::EnableAndRetainAutoConnect() {
+  if (retain_auto_connect_) {
     // We do not want to clobber the value of auto_connect_ (it may
     // be user-set). So return early.
     return;
   }
 
-  MarkAsFavorite();
   SetAutoConnect(true);
+  RetainAutoConnect();
 }
 
 void Service::SetConnection(const ConnectionRefPtr &connection) {
@@ -906,8 +918,8 @@ bool Service::Compare(ServiceRefPtr a,
     return ret;
   }
 
-  if (DecideBetween(a->favorite(), b->favorite(), &ret)) {
-    *reason = kServiceSortFavorite;
+  if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
+    *reason = kServiceSortHasEverConnected;
     return ret;
   }
 
@@ -1201,30 +1213,21 @@ bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   }
 
   // In order to protect this user-set value from changing automatically
-  // when connected, set the favorite flag now.
-  if (!connect && !favorite_) {
-    MarkAsFavorite();
+  // when connected, mark the auto_connect flag as saved now.
+  if (!connect && !retain_auto_connect_) {
+    RetainAutoConnect();
   }
 
   return has_value_updated;
 }
 
 void Service::ClearAutoConnect(Error */*error*/) {
-  bool should_update = false;
   if (auto_connect()) {
     SetAutoConnect(false);
-    should_update = true;
-  }
-
-  if (favorite_) {
-    favorite_ = false;
-    adaptor_->EmitBoolChanged(kFavoriteProperty, favorite_);
-    should_update = true;
-  }
-
-  if (should_update) {
     manager_->UpdateService(this);
   }
+
+  retain_auto_connect_ = false;
 }
 
 string Service::GetCheckPortal(Error *error) {
@@ -1261,9 +1264,8 @@ bool Service::SetGuid(const string &guid, Error */*error*/) {
   return true;
 }
 
-void Service::MarkAsFavorite() {
-  favorite_ = true;
-  adaptor_->EmitBoolChanged(kFavoriteProperty, favorite_);
+void Service::RetainAutoConnect() {
+  retain_auto_connect_ = true;
 }
 
 void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,

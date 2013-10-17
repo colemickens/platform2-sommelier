@@ -128,10 +128,10 @@ void VPNService::InitDriverPropertyStore() {
   driver_->InitPropertyStore(mutable_store());
 }
 
-void VPNService::MakeFavorite() {
-  // The base MakeFavorite method also sets auto_connect_ to true
+void VPNService::EnableAndRetainAutoConnect() {
+  // The base EnableAndRetainAutoConnect method also sets auto_connect_ to true
   // which is not desirable for VPN services.
-  MarkAsFavorite();
+  RetainAutoConnect();
 }
 
 void VPNService::SetConnection(const ConnectionRefPtr &connection) {

@@ -406,7 +406,7 @@ class ManagerTest : public PropertyStoreTest {
                                                           dispatcher(),
                                                           metrics(),
                                                           manager());
-    service->MakeFavorite();
+    service->EnableAndRetainAutoConnect();
     service->SetConnectable(true);
     return service;
   }
@@ -2355,8 +2355,8 @@ TEST_F(ManagerTest, SortServices) {
   manager()->UpdateService(mock_service2);
   EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
-  // Favorite.
-  mock_service10->MakeFavorite();
+  // HasEverConnected.
+  mock_service10->has_ever_connected_ = true;
   manager()->UpdateService(mock_service10);
   EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
@@ -2742,31 +2742,30 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
                                 metrics(),
                                 manager()));
   manager()->RegisterService(mock_service);
-  EXPECT_FALSE(mock_service->favorite());
+  EXPECT_FALSE(mock_service->retain_auto_connect());
   EXPECT_FALSE(mock_service->auto_connect());
 
   EXPECT_CALL(*mock_service.get(), IsConnected())
       .WillRepeatedly(Return(true));
   manager()->UpdateService(mock_service);
-  // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
-  // to mock out MakeFavorite. And mocking that out would break the
-  // SortServices test. (crbug.com/206367)
-  EXPECT_TRUE(mock_service->favorite());
+  // We can't EXPECT_CALL(..., EnableAndRetainAutoConnect), because that
+  // requires us to mock out EnableAndRetainAutoConnect. And mocking that out
+  // would break the SortServices test. (crbug.com/206367)
+  EXPECT_TRUE(mock_service->retain_auto_connect());
   EXPECT_TRUE(mock_service->auto_connect());
 }
 
-TEST_F(ManagerTest, UpdateServiceConnectedPersistFavorite) {
+TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   // This tests the case where the user connects to a service that is
   // currently associated with a profile.  We want to make sure that the
-  // favorite flag is set and that the flag is saved to the current
-  // profile.
+  // auto_connect flag is set and that the is saved to the current profile.
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
                                 metrics(),
                                 manager()));
   manager()->RegisterService(mock_service);
-  EXPECT_FALSE(mock_service->favorite());
+  EXPECT_FALSE(mock_service->retain_auto_connect());
   EXPECT_FALSE(mock_service->auto_connect());
 
   scoped_refptr<MockProfile> profile(
@@ -2779,10 +2778,10 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistFavorite) {
   EXPECT_CALL(*profile,
               UpdateService(static_cast<ServiceRefPtr>(mock_service)));
   manager()->UpdateService(mock_service);
-  // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
-  // to mock out MakeFavorite. And mocking that out would break the
-  // SortServices test. (crbug.com/206367)
-  EXPECT_TRUE(mock_service->favorite());
+  // We can't EXPECT_CALL(..., EnableAndRetainAutoConnect), because that
+  // requires us to mock out EnableAndRetainAutoConnect. And mocking that out
+  // would break the SortServices test. (crbug.com/206367)
+  EXPECT_TRUE(mock_service->retain_auto_connect());
   EXPECT_TRUE(mock_service->auto_connect());
   // This releases the ref on the mock profile.
   mock_service->set_profile(NULL);

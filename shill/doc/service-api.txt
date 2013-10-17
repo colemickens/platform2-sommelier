@@ -202,8 +202,8 @@ Properties	boolean AutoConnect [readwrite]
 
 			On a successful connection, this property may be
 			set to true automatically, depending on the service
-			type and the Favorite property (see the documentation
-			for the Favorite property for details).
+			type and if this property was not explicitly set on
+			the service before.
 
 		boolean Cellular.ActivateOverNonCellularNetwork [readonly]
 
@@ -577,17 +577,6 @@ Properties	boolean AutoConnect [readwrite]
 			This property is only valid when the service is in a
 			failure state. Otherwise it might be empty or not
 			present at all.
-
-		boolean Favorite [readonly]
-
-			This indicates to the UI if the AutoConnect property
-			is in its final state, and will not be set to true on
-			a successful connection.  This value will be set to
-			true after the first successful connection, or if the
-			AutoConnect property has explicitly been set to false.
-			As an exception to this rule, VPN services are never
-			automatically set to auto-connect, regardless of the
-			Favorite state.
 
 		string GUID [readwrite]
 

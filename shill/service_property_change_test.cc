@@ -51,11 +51,11 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetGuid("some garbage", &error);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_FALSE(service->favorite());
-  EXPECT_CALL(*adaptor, EmitBoolChanged(kAutoConnectProperty, _))
-      .Times(AnyNumber());
-  EXPECT_CALL(*adaptor, EmitBoolChanged(kFavoriteProperty, _));
-  service->MakeFavorite();
+  // Depending on our caller, AutoConnect may be true.
+  service->ClearAutoConnect(NULL);
+  EXPECT_FALSE(service->auto_connect());
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kAutoConnectProperty, _));
+  service->SetAutoConnect(true);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_EQ(0, service->priority());

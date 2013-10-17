@@ -223,11 +223,11 @@ TEST_F(VPNServiceTest, InitPropertyStore) {
   service_->InitDriverPropertyStore();
 }
 
-TEST_F(VPNServiceTest, MakeFavorite) {
-  EXPECT_FALSE(service_->favorite());
+TEST_F(VPNServiceTest, EnableAndRetainAutoConnect) {
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_FALSE(service_->auto_connect());
-  service_->MakeFavorite();
-  EXPECT_TRUE(service_->favorite());
+  service_->EnableAndRetainAutoConnect();
+  EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_FALSE(service_->auto_connect());
 }
 

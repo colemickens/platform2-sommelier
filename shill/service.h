@@ -271,7 +271,9 @@ class Service : public base::RefCounted<Service> {
   // Returns whether this service has had recent connection issues.
   virtual bool HasRecentConnectionIssues();
 
-  virtual void MakeFavorite();
+  // If the AutoConnect property has not already been marked as saved, set
+  // its value to true and mark it saved.
+  virtual void EnableAndRetainAutoConnect();
 
   // Set the connection for this service.  If the connection is non-NULL, create
   // an HTTP Proxy that will utilize this service's connection to serve
@@ -314,8 +316,8 @@ class Service : public base::RefCounted<Service> {
     return explicitly_disconnected_;
   }
 
-  bool favorite() const { return favorite_; }
-  // Setter is deliberately omitted; use MakeFavorite.
+  bool retain_auto_connect() const { return retain_auto_connect_; }
+  // Setter is deliberately omitted; use EnableAndRetainAutoConnect.
 
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
   const std::string &friendly_name() const { return friendly_name_; }
@@ -506,8 +508,8 @@ class Service : public base::RefCounted<Service> {
   virtual bool SetAutoConnectFull(const bool &connect, Error *error);
 
   // RPC clear method for the "AutoConnect" property.  Sets the AutoConnect
-  // property back to its default value, and clears the "Favorite" property
-  // to indicate that the AutoConnect property can be enabled automatically.
+  // property back to its default value, and clears the retain_auto_connect_
+  // property to allow the AutoConnect property to be enabled automatically.
   void ClearAutoConnect(Error *error);
 
   // Property accessors reserved for subclasses
@@ -517,9 +519,10 @@ class Service : public base::RefCounted<Service> {
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
-  // Mark the serivce as a favorite, without affecting its auto_connect
-  // property. (cf. MakeFavorite)
-  void MarkAsFavorite();
+  // Save the serivce's auto_connect value, without affecting its auto_connect
+  // property itself. (cf. EnableAndRetainAutoConnect)
+  void RetainAutoConnect();
+
   // Inform base class of the security properties for the service.
   //
   // NB: When adding a call to this function from a subclass, please check
@@ -595,7 +598,7 @@ class Service : public base::RefCounted<Service> {
 
   static const char kServiceSortAutoConnect[];
   static const char kServiceSortConnectable[];
-  static const char kServiceSortFavorite[];
+  static const char kServiceSortHasEverConnected[];
   static const char kServiceSortIsConnected[];
   static const char kServiceSortDependency[];
   static const char kServiceSortIsConnecting[];
@@ -685,12 +688,17 @@ class Service : public base::RefCounted<Service> {
   ConnectState previous_state_;
   ConnectFailure failure_;
   bool auto_connect_;
+
+  // Denotes whether the value of auto_connect_ property value should be
+  // retained, i.e. only be allowed to change via explicit property changes
+  // from the UI.
+  bool retain_auto_connect_;
+
   std::string check_portal_;
   bool connectable_;
   std::string error_;
   std::string error_details_;
   bool explicitly_disconnected_;
-  bool favorite_;
   int32 priority_;
   uint8 crypto_algorithm_;
   bool key_rotation_;

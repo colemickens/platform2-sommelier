@@ -1016,8 +1016,8 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
   SLOG(Manager, 2) << "IsConnected(): " << to_update->IsConnected();
   SLOG(Manager, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
-    to_update->MakeFavorite();
-    // Persists the updated favorite setting in the profile.
+    to_update->EnableAndRetainAutoConnect();
+    // Persists the updated auto_connect setting in the profile.
     SaveServiceToProfile(to_update);
   }
   SortServices();
@@ -1448,7 +1448,8 @@ void Manager::AutoConnect() {
                        << " IsFailed: " << service->IsFailed()
                        << " connectable: " << service->connectable()
                        << " auto_connect: " << service->auto_connect()
-                       << " favorite: " << service->favorite()
+                       << " retain_auto_connect: "
+                       << service->retain_auto_connect()
                        << " priority: " << service->priority()
                        << " crypto_algorithm: " << service->crypto_algorithm()
                        << " key_rotation: " << service->key_rotation()

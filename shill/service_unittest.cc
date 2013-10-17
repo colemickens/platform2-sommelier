@@ -335,7 +335,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          kFavoriteProperty,
+                                          kConnectableProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -448,6 +448,86 @@ TEST_F(ServiceTest, LoadFail) {
   EXPECT_FALSE(service_->Load(&storage));
 }
 
+TEST_F(ServiceTest, LoadAutoConnect) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(storage_id_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetBool(storage_id_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetString(storage_id_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetInt(storage_id_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
+
+  // Three of each expectation so we can test Favorite == unset, false, true.
+  EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageAutoConnect, _))
+      .WillOnce(Return(false))
+      .WillOnce(Return(false))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+  EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageFavorite, _))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+
+  // AutoConnect is unset, Favorite is unset.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_FALSE(service_->retain_auto_connect());
+
+  // AutoConnect is unset, Favorite is false.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_FALSE(service_->retain_auto_connect());
+
+  // AutoConnect is unset, Favorite is true.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
+
+  // AutoConnect is false, Favorite is unset.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
+
+  // AutoConnect is false, Favorite is false.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_FALSE(service_->retain_auto_connect());
+
+  // AutoConnect is false, Favorite is true.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
+
+  // AutoConnect is true, Favorite is unset.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
+
+  // AutoConnect is true, Favorite is false (invalid case).
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->auto_connect());
+  EXPECT_FALSE(service_->retain_auto_connect());
+
+  // AutoConnect is true, Favorite is true.
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
+}
+
 TEST_F(ServiceTest, SaveString) {
   MockStore storage;
   static const char kKey[] = "test-key";
@@ -490,12 +570,44 @@ TEST_F(ServiceTest, Save) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageFavorite))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageAutoConnect))
+      .WillOnce(Return(true));
   EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage,
               SetBool(storage_id_,
                       Service::kStorageSaveCredentials,
                       service_->save_credentials()));
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
+  EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(ServiceTest, RetainAutoConnect) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, SetString(storage_id_, _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageFavorite))
+      .Times(2);
+  EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageAutoConnect))
+      .Times(0);
+  EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*eap_, Save(&storage, storage_id_, true)).Times(2);
+
+  // AutoConnect flag set true.
+  service_->EnableAndRetainAutoConnect();
+  EXPECT_CALL(storage,
+              SetBool(storage_id_, Service::kStorageAutoConnect, true));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // AutoConnect flag set false.
+  EXPECT_CALL(storage,
+              SetBool(storage_id_, Service::kStorageAutoConnect, false));
+  service_->SetAutoConnect(false);
   EXPECT_TRUE(service_->Save(&storage));
 }
 
@@ -641,23 +753,23 @@ TEST_F(ServiceTest, CompleteCellularActivation) {
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
-TEST_F(ServiceTest, MakeFavorite) {
-  EXPECT_FALSE(service_->favorite());
+TEST_F(ServiceTest, EnableAndRetainAutoConnect) {
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_FALSE(service_->auto_connect());
 
-  service_->MakeFavorite();
-  EXPECT_TRUE(service_->favorite());
+  service_->EnableAndRetainAutoConnect();
+  EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_TRUE(service_->auto_connect());
 }
 
-TEST_F(ServiceTest, ReMakeFavorite) {
-  service_->MakeFavorite();
-  EXPECT_TRUE(service_->favorite());
+TEST_F(ServiceTest, ReRetainAutoConnect) {
+  service_->EnableAndRetainAutoConnect();
+  EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_TRUE(service_->auto_connect());
 
   service_->SetAutoConnect(false);
-  service_->MakeFavorite();
-  EXPECT_TRUE(service_->favorite());
+  service_->EnableAndRetainAutoConnect();
+  EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_FALSE(service_->auto_connect());
 }
 
@@ -827,7 +939,7 @@ TEST_F(ServiceTest, ConfigureBadProperty) {
 }
 
 TEST_F(ServiceTest, ConfigureBoolProperty) {
-  service_->MakeFavorite();
+  service_->EnableAndRetainAutoConnect();
   service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
@@ -897,7 +1009,7 @@ TEST_F(ServiceTest, ConfigureIntProperty) {
 }
 
 TEST_F(ServiceTest, ConfigureIgnoredProperty) {
-  service_->MakeFavorite();
+  service_->EnableAndRetainAutoConnect();
   service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
@@ -1589,18 +1701,18 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
 
   // false -> false
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   SetAutoConnectFull(false, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
-  EXPECT_TRUE(service_->favorite());
+  EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
-  // Clear the |favorite_| flag for the next test.
+  // Clear the |retain_auto_connect_| flag for the next test.
   service_->Unload();
-  ASSERT_FALSE(service_->favorite());
+  ASSERT_FALSE(service_->retain_auto_connect());
 
   // false -> true
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
@@ -1608,7 +1720,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // true -> true
@@ -1617,7 +1729,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // true -> false
@@ -1626,7 +1738,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
-  EXPECT_TRUE(service_->favorite());
+  EXPECT_TRUE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 
@@ -1637,22 +1749,22 @@ TEST_F(ServiceTest, ClearAutoConnect) {
   EXPECT_TRUE(error.IsSuccess());
 
   // unset -> false
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   ClearAutoConnect(&error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // false -> false
   SetAutoConnectFull(false, &error);
   EXPECT_FALSE(GetAutoConnect(NULL));
-  EXPECT_TRUE(service_->favorite());
-  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
+  EXPECT_TRUE(service_->retain_auto_connect());
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   ClearAutoConnect(&error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
@@ -1662,7 +1774,7 @@ TEST_F(ServiceTest, ClearAutoConnect) {
   EXPECT_TRUE(GetAutoConnect(NULL));
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
   ClearAutoConnect(&error);
-  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->retain_auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }

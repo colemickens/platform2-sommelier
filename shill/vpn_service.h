@@ -32,7 +32,7 @@ class VPNService : public Service {
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
-  virtual void MakeFavorite();
+  virtual void EnableAndRetainAutoConnect();
   virtual void SetConnection(const ConnectionRefPtr &connection);
   virtual bool SetNameProperty(const std::string &name, Error *error);
 
