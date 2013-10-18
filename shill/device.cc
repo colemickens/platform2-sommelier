@@ -992,7 +992,7 @@ void Device::OnEnabledStateChanged(const ResultCallback &callback,
 void Device::SetEnabled(bool enable) {
   SLOG(Device, 2) << __func__ << "(" << enable << ")";
   Error error;
-  SetEnabledInternal(enable, false, &error, ResultCallback());
+  SetEnabledChecked(enable, false, &error, ResultCallback());
 
   // SetEnabledInternal might fail here if there is an unfinished enable or
   // disable operation. Don't log error in this case, as this method is only
@@ -1009,19 +1009,19 @@ void Device::SetEnabled(bool enable) {
 void Device::SetEnabledNonPersistent(bool enable,
                                      Error *error,
                                      const ResultCallback &callback) {
-  SetEnabledInternal(enable, false, error, callback);
+  SetEnabledChecked(enable, false, error, callback);
 }
 
 void Device::SetEnabledPersistent(bool enable,
                                   Error *error,
                                   const ResultCallback &callback) {
-  SetEnabledInternal(enable, true, error, callback);
+  SetEnabledChecked(enable, true, error, callback);
 }
 
-void Device::SetEnabledInternal(bool enable,
-                                bool persist,
-                                Error *error,
-                                const ResultCallback &callback) {
+void Device::SetEnabledChecked(bool enable,
+                               bool persist,
+                               Error *error,
+                               const ResultCallback &callback) {
   DCHECK(error);
   SLOG(Device, 2) << "Device " << link_name_ << " "
                   << (enable ? "starting" : "stopping");
@@ -1035,6 +1035,7 @@ void Device::SetEnabledInternal(bool enable,
                    "Cannot disable while the device is enabling.");
       return;
     }
+    LOG(INFO) << "Already in desired enable state.";
     error->Reset();
     return;
   }
@@ -1050,13 +1051,18 @@ void Device::SetEnabledInternal(bool enable,
     manager_->UpdateDevice(this);
   }
 
+  SetEnabledUnchecked(enable, error, callback);
+}
+
+void Device::SetEnabledUnchecked(bool enable, Error *error,
+                                 const ResultCallback &on_enable_complete) {
   enabled_pending_ = enable;
-  EnabledStateChangedCallback enabled_callback =
+  EnabledStateChangedCallback chained_callback =
       Bind(&Device::OnEnabledStateChanged,
-           weak_ptr_factory_.GetWeakPtr(), callback);
+           weak_ptr_factory_.GetWeakPtr(), on_enable_complete);
   if (enable) {
     running_ = true;
-    Start(error, enabled_callback);
+    Start(error, chained_callback);
   } else {
     running_ = false;
     DestroyIPConfig();         // breaks a reference cycle
@@ -1068,7 +1074,7 @@ void Device::SetEnabledInternal(bool enable,
                     << (connection_ ? "is set." : "is not set.");
     SLOG(Device, 3) << "Device " << link_name_ << " selected_service_ "
                     << (selected_service_ ? "is set." : "is not set.");
-    Stop(error, enabled_callback);
+    Stop(error, chained_callback);
   }
 }
 

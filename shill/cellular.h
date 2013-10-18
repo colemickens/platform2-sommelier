@@ -204,6 +204,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state)
       override;
   virtual void OnNoNetworkRouting() override;
+  virtual void OnAfterResume() override;
 
   void StartModemCallback(const EnabledStateChangedCallback &callback,
                           const Error &error);
@@ -307,6 +308,11 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, ModemStateChangeStaleConnected);
   FRIEND_TEST(CellularTest, ModemStateChangeValidConnected);
   FRIEND_TEST(CellularTest, Notify);
+  FRIEND_TEST(CellularTest, OnAfterResumeDisableInProgressWantDisabled);
+  FRIEND_TEST(CellularTest, OnAfterResumeDisableQueuedWantEnabled);
+  FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantDisabled);
+  FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
+  FRIEND_TEST(CellularTest, OnAfterResumePowerDownInProgressWantEnabled);
   FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularTest, OnPPPDied);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
@@ -318,6 +324,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StopModemCallback);
   FRIEND_TEST(CellularTest, StopModemCallbackFail);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
+  FRIEND_TEST(CellularTest, StopPPPOnTermination);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -370,6 +377,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   // This function does the final cleanup once a disconnect request terminates.
   // Returns true, if the device state is successfully changed.
   bool DisconnectCleanup();
+
+  // Executed after the asynchronous CellularCapability::StartModem
+  // call from OnAfterResume completes.
+  static void LogRestartModemResult(const Error &error);
 
   // Terminate the pppd process associated with this Device, and remove the
   // association between the PPPDevice and our CellularService. If this

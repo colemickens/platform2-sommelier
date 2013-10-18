@@ -466,6 +466,39 @@ void Cellular::OnNoNetworkRouting() {
   RequestConnectionHealthCheck();
 }
 
+void Cellular::OnAfterResume() {
+  SLOG(Cellular, 2) << __func__;
+  if (enabled_persistent()) {
+    LOG(INFO) << "Restarting modem after resume.";
+
+    // If we started disabling the modem before suspend, but that
+    // suspend is still in progress, then we are not yet in
+    // kStateDisabled. That's a problem, because Cellular::Start
+    // returns immediately in that case. Hack around that by forcing
+    // |state_| here.
+    //
+    // TODO(quiche): Remove this hack. Maybe
+    // CellularCapabilityUniversal should generate separate
+    // notifications for Stop_Disable, and Stop_PowerDown. Then we'd
+    // update our state to kStateDisabled when Stop_Disable completes.
+    state_ = kStateDisabled;
+
+    Error error;
+    SetEnabledUnchecked(true, &error, Bind(LogRestartModemResult));
+    if (error.IsSuccess()) {
+      LOG(INFO) << "Modem restart completed immediately.";
+    } else if (error.IsOngoing()) {
+      LOG(INFO) << "Modem restart in progress.";
+    } else {
+      LOG(WARNING) << "Modem restart failed: " << error;
+    }
+  }
+  // TODO(quiche): Consider if this should be conditional. If, e.g.,
+  // the device was still disabling when we suspended, will trying to
+  // renew DHCP here cause problems?
+  Device::OnAfterResume();
+}
+
 void Cellular::OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::Result result) {
   SLOG(Cellular, 2) << __func__ << "(Result = "
@@ -845,6 +878,7 @@ bool Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
 void Cellular::StartTermination() {
   LOG(INFO) << __func__;
   Error error;
+  StopPPP();
   SetEnabledNonPersistent(
       false,
       &error,
@@ -875,6 +909,15 @@ bool Cellular::DisconnectCleanup() {
   }
   capability_->DisconnectCleanup();
   return succeeded;
+}
+
+// static
+void Cellular::LogRestartModemResult(const Error &error) {
+  if (error.IsSuccess()) {
+    LOG(INFO) << "Modem restart completed.";
+  } else {
+    LOG(WARNING) << "Attempt to restart modem failed: " << error;
+  }
 }
 
 void Cellular::StartPPP(const string &serial_device) {

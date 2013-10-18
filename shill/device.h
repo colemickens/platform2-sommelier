@@ -65,12 +65,15 @@ class Device : public base::RefCounted<Device> {
          int interface_index,
          Technology::Identifier technology);
 
-  // Enable or disable the device.
+  // Enable or disable the device. This is a convenience method for
+  // cases where we want to SetEnabledNonPersistent, but don't care
+  // about the results.
   virtual void SetEnabled(bool enable);
   // Enable or disable the device. Unlikely SetEnabledPersistent, it does not
   // save the setting in the profile.
   //
-  // TODO(benchan): Combine it with SetEnabledPersistent.
+  // TODO(quiche): Replace both of the next two methods with calls to
+  // SetEnabledChecked.
   virtual void SetEnabledNonPersistent(bool enable,
                                        Error *error,
                                        const ResultCallback &callback);
@@ -81,6 +84,21 @@ class Device : public base::RefCounted<Device> {
   virtual void SetEnabledPersistent(bool enable,
                                     Error *error,
                                     const ResultCallback &callback);
+  // Enable or disable the Device, depending on |enable|.
+  // Save the new setting to the profile, if |persist| is true.
+  // Report synchronous errors using |error|, and asynchronous completion
+  // with |callback|.
+  virtual void SetEnabledChecked(bool enable,
+                                 bool persist,
+                                 Error *error,
+                                 const ResultCallback &callback);
+  // Similar to SetEnabledChecked, but without sanity checking, and
+  // without saving the new value of |enable| to the profile. If you
+  // are sane (i.e. not Cellular), you should use
+  // SetEnabledChecked instead.
+  virtual void SetEnabledUnchecked(bool enable,
+                                   Error *error,
+                                   const ResultCallback &callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -463,9 +481,6 @@ class Device : public base::RefCounted<Device> {
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
-
-  void SetEnabledInternal(bool enable, bool persist,
-                          Error *error, const ResultCallback &callback);
 
   // Right now, Devices reference IPConfigs directly when persisted to disk
   // It's not clear that this makes sense long-term, but that's how it is now.

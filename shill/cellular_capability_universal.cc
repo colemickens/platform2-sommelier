@@ -377,6 +377,10 @@ void CellularCapabilityUniversal::Stop_PowerDown(
     Stop_PowerDownCompleted(callback, error);
 }
 
+// Note: if we were in the middle of powering down the modem when the
+// system suspended, we might not get this event from
+// ModemManager. And we might not even get a timeout from dbus-c++,
+// because StartModem re-initializes proxies.
 void CellularCapabilityUniversal::Stop_PowerDownCompleted(
     const ResultCallback &callback,
     const Error &error) {
