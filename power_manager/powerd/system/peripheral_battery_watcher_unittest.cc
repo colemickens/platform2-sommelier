@@ -28,7 +28,7 @@ namespace {
 
 // Abort if it an expected battery update hasn't been received after this
 // many milliseconds.
-const int kUpdateTimeoutMs = 1000;
+const int kUpdateTimeoutMs = 30 * 1000;
 
 const char kDeviceModelName[] = "Test HID Mouse";
 
