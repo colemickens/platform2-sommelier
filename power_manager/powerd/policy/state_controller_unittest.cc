@@ -1124,13 +1124,37 @@ TEST_F(StateControllerTest, IdleWarnings) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
-  // Setting the idle action to "do nothing" should send an idle-deferred
-  // message if idle-imminent was already sent.
+  // If the warning delay is cleared after the idle-imminent signal has been
+  // sent, an idle-deferred signal should be sent.
+  ResetLastStepDelay();
   policy.mutable_ac_delays()->set_idle_warning_ms(
       kIdleWarningDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleUserActivity();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  policy.mutable_ac_delays()->set_idle_warning_ms(0);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+
+  // The same signals should be sent again if the delay is added and removed
+  // without the time advancing.
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      kIdleWarningDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  policy.mutable_ac_delays()->set_idle_warning_ms(0);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+
+  // Setting the idle action to "do nothing" should send an idle-deferred
+  // message if idle-imminent was already sent.
+  controller_.HandleUserActivity();
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      kIdleWarningDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
