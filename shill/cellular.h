@@ -60,6 +60,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   };
 
   enum ModemState {
+    kModemStateFailed = -1,
     kModemStateUnknown = 0,
     kModemStateInitializing = 1,
     kModemStateLocked = 2,

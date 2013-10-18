@@ -190,6 +190,7 @@ void CellularCapabilityGSM::StartModem(Error *error,
 
 bool CellularCapabilityGSM::IsUnderlyingDeviceRegistered() const {
   switch (cellular()->modem_state()) {
+    case Cellular::kModemStateFailed:
     case Cellular::kModemStateUnknown:
     case Cellular::kModemStateDisabled:
     case Cellular::kModemStateInitializing:

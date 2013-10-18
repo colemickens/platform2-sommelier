@@ -183,6 +183,8 @@ string Cellular::GetStateString(State state) {
 // static
 string Cellular::GetModemStateString(ModemState modem_state) {
   switch (modem_state) {
+    case kModemStateFailed:
+      return "CellularModemStateFailed";
     case kModemStateUnknown:
       return "CellularModemStateUnknown";
     case kModemStateInitializing:
@@ -277,6 +279,7 @@ bool Cellular::IsModemRegistered() const {
 // static
 bool Cellular::IsEnabledModemState(ModemState state) {
   switch (state) {
+    case kModemStateFailed:
     case kModemStateUnknown:
     case kModemStateDisabled:
     case kModemStateInitializing:

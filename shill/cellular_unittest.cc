@@ -494,6 +494,8 @@ TEST_F(CellularTest, GetStateString) {
 }
 
 TEST_F(CellularTest, GetModemStateString) {
+  EXPECT_EQ("CellularModemStateFailed",
+            Cellular::GetModemStateString(Cellular::kModemStateFailed));
   EXPECT_EQ("CellularModemStateUnknown",
             Cellular::GetModemStateString(Cellular::kModemStateUnknown));
   EXPECT_EQ("CellularModemStateInitializing",
