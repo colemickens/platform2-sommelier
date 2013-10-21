@@ -53,7 +53,6 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal.
 const char kSessionStarted[] = "started";
-const char kSessionStopped[] = "stopped";
 
 // Path containing the number of wakeup events.
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";

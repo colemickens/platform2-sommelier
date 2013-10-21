@@ -32,7 +32,6 @@ namespace {
 const char kOnline[] = "1";
 const char kOffline[] = "0";
 const char kPresent[] = "1";
-const char kNotPresent[] = "0";
 const char kACType[] = "Mains";
 const char kBatteryType[] = "Battery";
 const char kUSBType[] = "USB";

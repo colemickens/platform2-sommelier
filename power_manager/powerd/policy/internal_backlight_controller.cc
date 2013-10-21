@@ -24,8 +24,7 @@ namespace policy {
 
 namespace {
 
-// Minimum and maximum valid values for percentages.
-const double kMinPercent = 0.0;
+// Maximum valid value for percentages.
 const double kMaxPercent = 100.0;
 
 // When going into the idle-induced dim state, the backlight dims to this
@@ -42,12 +41,6 @@ const double kDimmedBrightnessFraction = 0.1;
 // This is a fraction rather than a percent so it won't change if
 // kDefaultLevelToPercentExponent is modified.
 const double kDefaultMinVisibleBrightnessFraction = 0.0065;
-
-// Number of light sensor responses required to overcome temporal hysteresis.
-const int kAlsHystResponse = 2;
-
-// Backlight change (in %) required to overcome light sensor level hysteresis.
-const int kAlsHystPercent = 3;
 
 // Value for |level_to_percent_exponent_|, assuming that at least
 // |kMinLevelsForNonLinearScale| brightness levels are available -- if not, we
