@@ -30,16 +30,6 @@ std::string MsToString(int64 time_ms) {
   return util::TimeDeltaToString(base::TimeDelta::FromMilliseconds(time_ms));
 }
 
-// Returns the time until an event occurring |delay| after |start| will
-// happen, assuming that the current time is |now|.  Returns an empty
-// base::TimeDelta if the event has already happened or happens at |now|.
-base::TimeDelta GetRemainingTime(base::TimeTicks start,
-                                 base::TimeTicks now,
-                                 base::TimeDelta delay) {
-  base::TimeTicks event_time = start + delay;
-  return event_time > now ? event_time - now : base::TimeDelta();
-}
-
 // Returns the minimum positive value after comparing |a| and |b|.  If one
 // is zero or negative, the other is returned.  If both are zero or
 // negative, an empty base::TimeDelta is returned.
@@ -53,6 +43,24 @@ base::TimeDelta GetMinPositiveTimeDelta(base::TimeDelta a, base::TimeDelta b) {
   } else {
     return b;
   }
+}
+
+// Helper function for ScheduleActionTimeout() to compute how long to sleep
+// before calling UpdateState() to perform the next-occurring action. Given
+// |now| and an action that should be performed |action_delay| after
+// |last_activity_time|, updates |timeout| to be the minimum of its current
+// value and the time to wait before performing the action. Does nothing if
+// |action_delay| is unset or if the action should've been performed already.
+void UpdateActionTimeout(base::TimeTicks now,
+                         base::TimeTicks last_activity_time,
+                         base::TimeDelta action_delay,
+                         base::TimeDelta* timeout) {
+  if (action_delay <= base::TimeDelta())
+    return;
+
+  const base::TimeTicks action_time = last_activity_time + action_delay;
+  if (action_time > now)
+    *timeout = GetMinPositiveTimeDelta(*timeout, action_time - now);
 }
 
 // Helper function for UpdateState.  The general pattern here is:
@@ -111,14 +119,6 @@ StateController::TestApi::TestApi(StateController* controller)
 
 StateController::TestApi::~TestApi() {
   controller_ = NULL;
-}
-
-void StateController::TestApi::SetCurrentTime(base::TimeTicks current_time) {
-  controller_->clock_->set_current_time_for_testing(current_time);
-}
-
-base::TimeTicks StateController::TestApi::GetActionTimeoutTime() {
-  return controller_->action_timeout_time_for_testing_;
 }
 
 void StateController::TestApi::TriggerActionTimeout() {
@@ -535,20 +535,22 @@ void StateController::MergeDelaysFromPolicy(
   }
 }
 
-base::TimeTicks StateController::GetLastAudioActivityTime() const {
+base::TimeTicks StateController::GetLastAudioActivityTime(
+    base::TimeTicks now) const {
   // Unlike user and video activity, which are reported as discrete events,
   // audio activity is only reported when it starts or stops. If audio is
-  // currently active, report the last-active time as "now". This means that
+  // currently active, report the last-active time as |now|. This means that
   // a timeout will be scheduled unnecessarily, but if audio is still active
   // later, the subsequent call to UpdateState() will again see audio as
   // recently being active and not perform any actions.
-  return audio_is_active_ ? clock_->GetCurrentTime() : audio_inactive_time_;
+  return audio_is_active_ ? now : audio_inactive_time_;
 }
 
-base::TimeTicks StateController::GetLastActivityTimeForIdle() const {
+base::TimeTicks StateController::GetLastActivityTimeForIdle(
+    base::TimeTicks now) const {
   base::TimeTicks last_time = last_user_activity_time_;
   if (use_audio_activity_)
-    last_time = std::max(last_time, GetLastAudioActivityTime());
+    last_time = std::max(last_time, GetLastAudioActivityTime(now));
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   return last_time;
@@ -561,12 +563,13 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDimOrLock() const {
   return last_time;
 }
 
-base::TimeTicks StateController::GetLastActivityTimeForScreenOff() const {
+base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
+    base::TimeTicks now) const {
   base::TimeTicks last_time = last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   if (keep_screen_on_for_audio_ || delegate_->IsHdmiAudioActive())
-    last_time = std::max(last_time, GetLastAudioActivityTime());
+    last_time = std::max(last_time, GetLastAudioActivityTime(now));
   return last_time;
 }
 
@@ -710,10 +713,11 @@ void StateController::PerformAction(Action action) {
 
 void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
-  base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle();
+  base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
   base::TimeDelta screen_dim_or_lock_duration =
       now - GetLastActivityTimeForScreenDimOrLock();
-  base::TimeDelta screen_off_duration = now - GetLastActivityTimeForScreenOff();
+  base::TimeDelta screen_off_duration =
+      now - GetLastActivityTimeForScreenOff(now);
 
   HandleDelay(delays_.screen_dim, screen_dim_or_lock_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
@@ -826,23 +830,18 @@ void StateController::UpdateState() {
 }
 
 void StateController::ScheduleActionTimeout(base::TimeTicks now) {
+  // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
-
-  // Find the minimum of the delays that hasn't yet occurred.
-  timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
-      GetRemainingTime(GetLastActivityTimeForScreenDimOrLock(), now,
-                       delays_.screen_dim));
-  timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
-      GetRemainingTime(GetLastActivityTimeForScreenOff(), now,
-                       delays_.screen_off));
-  timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
-      GetRemainingTime(GetLastActivityTimeForScreenDimOrLock(), now,
-                       delays_.screen_lock));
-  timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
-      GetRemainingTime(GetLastActivityTimeForIdle(), now,
-                       delays_.idle_warning));
-  timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
-      GetRemainingTime(GetLastActivityTimeForIdle(), now, delays_.idle));
+  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(),
+                      delays_.screen_dim, &timeout_delay);
+  UpdateActionTimeout(now, GetLastActivityTimeForScreenOff(now),
+                      delays_.screen_off, &timeout_delay);
+  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(),
+                      delays_.screen_lock, &timeout_delay);
+  UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
+                      delays_.idle_warning, &timeout_delay);
+  UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
+                      delays_.idle, &timeout_delay);
 
   util::RemoveTimeout(&action_timeout_id_);
   action_timeout_time_for_testing_ = base::TimeTicks();

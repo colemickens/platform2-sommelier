@@ -99,12 +99,10 @@ class StateController : public PrefsObserver {
     explicit TestApi(StateController* controller);
     ~TestApi();
 
-    // Sets a fake current time for |controller_|.
-    void SetCurrentTime(base::TimeTicks current_time);
-
-    // Returns the time at which |controller_|'s action timeout is next
-    // scheduled to fire, or base::TimeTicks() if it's unscheduled.
-    base::TimeTicks GetActionTimeoutTime();
+    Clock* clock() { return controller_->clock_.get(); }
+    base::TimeTicks action_timeout_time() const {
+      return controller_->action_timeout_time_for_testing_;
+    }
 
     // Runs StateController::HandleActionTimeout(). May only be called if a
     // timeout is actually registered.
@@ -218,14 +216,13 @@ class StateController : public PrefsObserver {
   }
 
   // Returns the last time at which audio was active. If audio is currently
-  // active, returns the current time. If audio has never been active, returns
-  // a null time.
-  base::TimeTicks GetLastAudioActivityTime() const;
+  // active, returns |now|. If audio has never been active, returns a null time.
+  base::TimeTicks GetLastAudioActivityTime(base::TimeTicks now) const;
 
   // Returns the last time at which activity occurred that should defer
   // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
   // |use_video_activity_| into account.
-  base::TimeTicks GetLastActivityTimeForIdle() const;
+  base::TimeTicks GetLastActivityTimeForIdle(base::TimeTicks now) const;
 
   // Returns the last time at which activity occurred that should defer the
   // screen getting dimmed or locked.
@@ -235,7 +232,7 @@ class StateController : public PrefsObserver {
   // screen getting turned off.  This is generally the same as
   // GetLastActivityTimeForScreenDimOrLock() but may differ if
   // |keep_screen_on_for_audio_| is set.
-  base::TimeTicks GetLastActivityTimeForScreenOff() const;
+  base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
 
   // Updates |last_user_activity_time_| to contain the current time and
   // calls |delegate_|'s ReportUserActivityMetrics() method.

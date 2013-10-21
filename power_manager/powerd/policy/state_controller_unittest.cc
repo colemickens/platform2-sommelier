@@ -11,6 +11,7 @@
 #include "base/compiler_specific.h"
 #include "base/logging.h"
 #include "base/time.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/state_controller.h"
@@ -211,7 +212,7 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
-    test_api_.SetCurrentTime(now_);
+    test_api_.clock()->set_current_time_for_testing(now_);
     controller_.Init(initial_power_source_, initial_lid_state_);
 
     if (send_initial_display_mode_)
@@ -221,14 +222,14 @@ class StateControllerTest : public testing::Test {
   // Advances |now_| by |interval_|.
   void AdvanceTime(base::TimeDelta interval) {
     now_ += interval;
-    test_api_.SetCurrentTime(now_);
+    test_api_.clock()->set_current_time_for_testing(now_);
   }
 
   // Checks that |controller_|'s action timeout is scheduled for |now_| and then
   // runs it.  Returns false if the timeout isn't scheduled or is scheduled for
   // a different time.
   bool TriggerTimeout() WARN_UNUSED_RESULT {
-    base::TimeTicks timeout_time = test_api_.GetActionTimeoutTime();
+    base::TimeTicks timeout_time = test_api_.action_timeout_time();
     if (timeout_time == base::TimeTicks()) {
       LOG(ERROR) << "Ignoring request to trigger unscheduled timeout at "
                  << now_.ToInternalValue();
@@ -330,7 +331,7 @@ TEST_F(StateControllerTest, BasicDelays) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // No further timeouts should be scheduled at this point.
-  EXPECT_TRUE(test_api_.GetActionTimeoutTime().is_null());
+  EXPECT_TRUE(test_api_.action_timeout_time().is_null());
 
   // When the system resumes, the screen should be undimmed and turned back
   // on.
@@ -1411,6 +1412,32 @@ TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
   EXPECT_EQ(kDocked, delegate_.GetActions());
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+}
+
+// Tests that active audio activity doesn't result in a very-short timeout due
+// to the passage of time between successive measurements of "now" in
+// StateController (http://crbug.com/308419).
+TEST_F(StateControllerTest, AudioDelay) {
+  Init();
+
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(0);
+  policy.mutable_ac_delays()->set_screen_off_ms(0);
+  policy.mutable_ac_delays()->set_screen_lock_ms(0);
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+
+  // Make "now" advance if GetCurrentTime() is called multiple times; then check
+  // that the delay that's scheduled after audio starts is somewhere in the
+  // ballpark of kIdleDelay.
+  const base::TimeTicks start_time = test_api_.clock()->GetCurrentTime();
+  test_api_.clock()->set_time_step_for_testing(
+      base::TimeDelta::FromMilliseconds(1));
+  controller_.HandleAudioStateChange(true);
+  const base::TimeDelta timeout = test_api_.action_timeout_time() - start_time;
+  EXPECT_GT(timeout.InSeconds(), (kIdleDelay / 2).InSeconds());
+  EXPECT_LE(timeout.InSeconds(), kIdleDelay.InSeconds());
 }
 
 }  // namespace policy

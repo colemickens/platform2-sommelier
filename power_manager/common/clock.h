@@ -28,6 +28,9 @@ class Clock {
   void set_current_wall_time_for_testing(base::Time now) {
     current_wall_time_for_testing_ = now;
   }
+  void set_time_step_for_testing(base::TimeDelta step) {
+    time_step_for_testing_ = step;
+  }
 
   // Returns the last-set monotonically-increasing time, or the actual time
   // if |current_time_for_testing_| is unset.
@@ -40,6 +43,10 @@ class Clock {
  private:
   base::TimeTicks current_time_for_testing_;
   base::Time current_wall_time_for_testing_;
+
+  // Amount of time that |current_*time_for_testing_| should be advanced by each
+  // successive call to GetCurrent*Time().
+  base::TimeDelta time_step_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(Clock);
 };

@@ -11,13 +11,19 @@ Clock::Clock() {}
 Clock::~Clock() {}
 
 base::TimeTicks Clock::GetCurrentTime() {
-  return !current_time_for_testing_.is_null() ? current_time_for_testing_ :
-      base::TimeTicks::Now();
+  if (current_time_for_testing_.is_null())
+    return base::TimeTicks::Now();
+
+  current_time_for_testing_ += time_step_for_testing_;
+  return current_time_for_testing_;
 }
 
 base::Time Clock::GetCurrentWallTime() {
-  return !current_wall_time_for_testing_.is_null() ?
-      current_wall_time_for_testing_ : base::Time::Now();
+  if (current_wall_time_for_testing_.is_null())
+    return base::Time::Now();
+
+  current_wall_time_for_testing_ += time_step_for_testing_;
+  return current_wall_time_for_testing_;
 }
 
 }  // namespace power_manager
