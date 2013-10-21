@@ -337,7 +337,7 @@ fi
 
 TOUCHUI_FLAGS=
 if is_board link; then
-  TOUCHUI_FLAGS="--touch-calibration=45,45,0,50"
+  TOUCHUI_FLAGS="--touch-calibration=0,0,0,50"
 fi
 
 # Device Manager Server used to fetch the enterprise policy, if applicable.
