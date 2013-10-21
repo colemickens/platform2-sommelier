@@ -69,9 +69,6 @@ const char kLegalCharacters[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890-+_";
 
-// The name of the pref that Chrome sets to track who the owner is.
-const char kDeviceOwnerPref[] = "cros.device.owner";
-
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
