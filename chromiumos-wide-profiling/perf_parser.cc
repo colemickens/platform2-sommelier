@@ -17,9 +17,6 @@ namespace quipper {
 
 namespace {
 
-// For kernel MMAP events, the pid is -1.
-const uint32 kKernelPid = kuint32max;
-
 struct EventAndTime {
   ParsedEvent* event;
   uint64 time;
