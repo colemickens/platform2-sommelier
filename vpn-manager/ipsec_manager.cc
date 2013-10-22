@@ -53,7 +53,6 @@ namespace {
 
 const char kDefaultCertSlot[] = "0";
 const char kIpsecCaCertsName[] = "cacert.der";
-const char kIpsecConnectionName[] = "ipsec_managed";
 const char kIpsecStarterConfName[] = "ipsec.conf";
 const char kIpsecSecretsName[] = "ipsec.secrets";
 const char kIpsecGroupName[] = "ipsec";
