@@ -116,8 +116,14 @@ class WifiProxy(shill_proxy.ShillProxy):
             discovery_time = time.time() - start_time
             service_object = self.find_matching_service(discovery_params)
             if service_object:
-                service_properties = service_object.GetProperties(
-                        utf8_strings=True)
+                try:
+                    service_properties = service_object.GetProperties(
+                            utf8_strings=True)
+                except dbus.exceptions.DBusException:
+                    # This usually means the service handle has become invalid.
+                    # Which is sort of like not getting a handle back from
+                    # find_matching_service in the first place.
+                    continue
                 strength = self.dbus2primitive(
                         service_properties[self.SERVICE_PROPERTY_STRENGTH])
                 if strength > 0:

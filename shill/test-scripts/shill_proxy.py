@@ -289,7 +289,11 @@ class ShillProxy(object):
         start_time = time.time()
         successful = False
         while time.time() < start_time + timeout_seconds:
-            properties = dbus_object.GetProperties(utf8_strings=True)
+            try:
+                properties = dbus_object.GetProperties(utf8_strings=True)
+            except dbus.exceptions.DBusException:
+                value = '(object reference became invalid)'
+                break
             value = properties.get(property_name, None)
             if value in expected_values:
                 successful = True
