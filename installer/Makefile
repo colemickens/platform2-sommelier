@@ -7,8 +7,9 @@ OUT ?= $(PWD)/build
 include common.mk
 
 CXXFLAGS += -DCHROMEOS_ENVIRONMENT
+CFLAGS += -I$(SRC)/.. -I$(SRC)/../verity/include
 
-LDFLAGS += -lvboot_host -ldm-bht
+LDLIBS += -lvboot_host -ldm-bht
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(C_OBJECTS) \
@@ -19,7 +20,7 @@ all: CXX_STATIC_BINARY(cros_installer)
 cros_installer: CXX_STATIC_BINARY(cros_installer)
 
 UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
-CXX_BINARY(cros_installer_unittest): LDFLAGS += $(UNITTEST_LIBS)
+CXX_BINARY(cros_installer_unittest): LDLIBS += $(UNITTEST_LIBS)
 CXX_BINARY(cros_installer_unittest): \
 		$(C_OBJECTS) \
 		$(filter-out %_main.o,$(CXX_OBJECTS))
