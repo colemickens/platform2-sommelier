@@ -18,7 +18,6 @@ static const uint8_t kTpUdhi               = 0x40;
 static const uint8_t kTypeOfAddrNumMask    = 0x70;
 static const uint8_t kTypeOfAddrNumIntl    = 0x10;
 static const uint8_t kTypeOfAddrNumAlpha   = 0x50;
-static const uint8_t kTypeOfAddrIntlE164   = 0x91;
 
 // SMS user data header information element IDs
 static const uint8_t kConcatenatedSms8bit = 0x00;
