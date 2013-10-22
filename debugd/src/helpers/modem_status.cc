@@ -19,7 +19,6 @@
 // doesn't emit constants for enums defined in headers.
 // TODO(ellyjones): fix that
 const uint32_t kModemTypeGsm = 1;
-const uint32_t kModemTypeCdma = 2;
 
 const char* kCromoPath = "/org/chromium/ModemManager";
 const char* kCromoService = "org.chromium.ModemManager";
