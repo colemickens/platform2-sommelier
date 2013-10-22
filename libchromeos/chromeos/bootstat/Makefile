@@ -20,7 +20,8 @@ COMMAND_OBJS = bootstat.o
 COMMAND_LDFLAGS = $(LDFLAGS)
 
 TEST_OBJS = log_unit_tests.o
-TEST_LDFLAGS = $(LDFLAGS) -lgtest
+TEST_LDFLAGS = $(LDFLAGS)
+TEST_LDLIBS = -lgtest
 
 OBJS = $(LIB_OBJS) $(TEST_OBJS) $(COMMAND_OBJS)
 
@@ -44,7 +45,7 @@ $(LIB): $(LIB_OBJS)
 	$(AR) rcs $@ $^
 
 $(TEST): $(TEST_OBJS) $(LIB)
-	$(CXX) $(TEST_LDFLAGS) -o $@ $^
+	$(CXX) $(TEST_LDFLAGS) -o $@ $^ $(TEST_LDLIBS)
 
 clean:
 	rm -f $(COMMAND) $(LIB) $(OBJS) $(TEST)
