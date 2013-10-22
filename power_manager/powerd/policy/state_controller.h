@@ -130,7 +130,9 @@ class StateController : public PrefsObserver {
     return last_user_activity_time_;
   }
 
-  void Init(PowerSource power_source, LidState lid_state);
+  void Init(PowerSource power_source,
+            LidState lid_state,
+            SessionState session_state);
 
   // Handles various changes to external state.
   void HandlePowerSourceChange(PowerSource source);
@@ -215,6 +217,14 @@ class StateController : public PrefsObserver {
     return initial_display_mode_timeout_id_ != 0;
   }
 
+  // Should inactivity-triggered actions be deferred due to StateController
+  // waiting for user activity to be seen during the current session?
+  bool waiting_for_initial_user_activity() const {
+    return wait_for_initial_user_activity_ &&
+        session_state_ == SESSION_STARTED &&
+        !saw_user_activity_during_current_session_;
+  }
+
   // Returns the last time at which audio was active. If audio is currently
   // active, returns |now|. If audio has never been active, returns a null time.
   base::TimeTicks GetLastAudioActivityTime(base::TimeTicks now) const;
@@ -226,7 +236,8 @@ class StateController : public PrefsObserver {
 
   // Returns the last time at which activity occurred that should defer the
   // screen getting dimmed or locked.
-  base::TimeTicks GetLastActivityTimeForScreenDimOrLock() const;
+  base::TimeTicks GetLastActivityTimeForScreenDimOrLock(
+      base::TimeTicks now) const;
 
   // Returns the last time at which activity occurred that should defer the
   // screen getting turned off.  This is generally the same as
@@ -291,6 +302,9 @@ class StateController : public PrefsObserver {
   // Current state of the lid.
   LidState lid_state_;
 
+  // Current user session state.
+  SessionState session_state_;
+
   // Current system update state.
   UpdaterState updater_state_;
 
@@ -317,6 +331,9 @@ class StateController : public PrefsObserver {
   // to not annoy the user the next time).  Reset when the session state
   // changes.
   bool saw_user_activity_soon_after_screen_dim_or_off_;
+
+  // True if user activity has been observed during the current session.
+  bool saw_user_activity_during_current_session_;
 
   // Should the system only idle-suspend if a USB input device is
   // connected?  This is controlled by the
@@ -365,6 +382,7 @@ class StateController : public PrefsObserver {
   Delays delays_;
   bool use_audio_activity_;
   bool use_video_activity_;
+  bool wait_for_initial_user_activity_;
 
   // Default settings loaded from prefs.
   Delays pref_ac_delays_;

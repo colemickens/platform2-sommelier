@@ -157,6 +157,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       initial_display_mode_timeout_id_(0),
       power_source_(POWER_AC),
       lid_state_(LID_NOT_PRESENT),
+      session_state_(SESSION_STOPPED),
       updater_state_(UPDATER_IDLE),
       display_mode_(DISPLAY_NORMAL),
       screen_dimmed_(false),
@@ -167,6 +168,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       lid_closed_action_performed_(false),
       turned_panel_off_for_docked_mode_(false),
       saw_user_activity_soon_after_screen_dim_or_off_(false),
+      saw_user_activity_during_current_session_(false),
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
       avoid_suspend_when_headphone_jack_plugged_(false),
@@ -177,7 +179,8 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
       use_audio_activity_(true),
-      use_video_activity_(true) {
+      use_video_activity_(true),
+      wait_for_initial_user_activity_(false) {
   prefs_->AddObserver(this);
 }
 
@@ -187,12 +190,15 @@ StateController::~StateController() {
   prefs_->RemoveObserver(this);
 }
 
-void StateController::Init(PowerSource power_source, LidState lid_state) {
+void StateController::Init(PowerSource power_source,
+                           LidState lid_state,
+                           SessionState session_state) {
   LoadPrefs();
 
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
   lid_state_ = lid_state;
+  session_state_ = session_state;
 
   initial_display_mode_timeout_id_ = g_timeout_add(
       kInitialDisplayModeTimeoutMs,
@@ -227,8 +233,13 @@ void StateController::HandleLidStateChange(LidState state) {
 
 void StateController::HandleSessionStateChange(SessionState state) {
   DCHECK(initialized_);
+  if (state == session_state_)
+    return;
+
   VLOG(1) << "Session state changed to " << SessionStateToString(state);
+  session_state_ = state;
   saw_user_activity_soon_after_screen_dim_or_off_ = false;
+  saw_user_activity_during_current_session_ = false;
   UpdateLastUserActivityTime();
   UpdateSettingsAndState();
 }
@@ -321,6 +332,9 @@ void StateController::HandleUserActivity() {
             << "or soon after it was turned off";
     saw_user_activity_soon_after_screen_dim_or_off_ = true;
   }
+
+  if (session_state_ == SESSION_STARTED)
+    saw_user_activity_during_current_session_ = true;
 
   UpdateLastUserActivityTime();
   if (old_saw_user_activity != saw_user_activity_soon_after_screen_dim_or_off_)
@@ -444,6 +458,10 @@ std::string StateController::GetPolicyDebugString(
     str += "user_activity_factor=" + base::DoubleToString(
         policy.user_activity_screen_dim_delay_factor()) + " ";
   }
+  if (policy.has_wait_for_initial_user_activity()) {
+    str += "wait_for_initial_user_activity=" +
+        base::IntToString(policy.wait_for_initial_user_activity()) + " ";
+  }
 
   if (policy.has_reason())
     str += "(" + policy.reason() + ")";
@@ -548,7 +566,8 @@ base::TimeTicks StateController::GetLastAudioActivityTime(
 
 base::TimeTicks StateController::GetLastActivityTimeForIdle(
     base::TimeTicks now) const {
-  base::TimeTicks last_time = last_user_activity_time_;
+  base::TimeTicks last_time =
+      waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_audio_activity_)
     last_time = std::max(last_time, GetLastAudioActivityTime(now));
   if (use_video_activity_)
@@ -556,8 +575,10 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
   return last_time;
 }
 
-base::TimeTicks StateController::GetLastActivityTimeForScreenDimOrLock() const {
-  base::TimeTicks last_time = last_user_activity_time_;
+base::TimeTicks StateController::GetLastActivityTimeForScreenDimOrLock(
+    base::TimeTicks now) const {
+  base::TimeTicks last_time =
+      waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   return last_time;
@@ -565,7 +586,8 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDimOrLock() const {
 
 base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
     base::TimeTicks now) const {
-  base::TimeTicks last_time = last_user_activity_time_;
+  base::TimeTicks last_time =
+      waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   if (keep_screen_on_for_audio_ || delegate_->IsHdmiAudioActive())
@@ -619,6 +641,7 @@ void StateController::UpdateSettingsAndState() {
   delays_ = on_ac ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;
   use_video_activity_ = true;
+  wait_for_initial_user_activity_ = false;
   double presentation_factor = 1.0;
   double user_activity_factor = 1.0;
 
@@ -632,9 +655,9 @@ void StateController::UpdateSettingsAndState() {
       lid_closed_action_ = ProtoActionToAction(policy_.lid_closed_action());
 
     if (on_ac && policy_.has_ac_delays())
-        MergeDelaysFromPolicy(policy_.ac_delays(), &delays_);
+      MergeDelaysFromPolicy(policy_.ac_delays(), &delays_);
     else if (!on_ac && policy_.has_battery_delays())
-        MergeDelaysFromPolicy(policy_.battery_delays(), &delays_);
+      MergeDelaysFromPolicy(policy_.battery_delays(), &delays_);
 
     if (policy_.has_use_audio_activity())
       use_audio_activity_ = policy_.use_audio_activity();
@@ -644,6 +667,10 @@ void StateController::UpdateSettingsAndState() {
       presentation_factor = policy_.presentation_screen_dim_delay_factor();
     if (policy_.has_user_activity_screen_dim_delay_factor())
       user_activity_factor = policy_.user_activity_screen_dim_delay_factor();
+    if (policy_.has_wait_for_initial_user_activity()) {
+      wait_for_initial_user_activity_ =
+          policy_.wait_for_initial_user_activity();
+    }
   }
 
   if (presenting)
@@ -689,6 +716,10 @@ void StateController::UpdateSettingsAndState() {
           << " lid_closed=" << ActionToString(lid_closed_action_)
           << " use_audio=" << use_audio_activity_
           << " use_video=" << use_video_activity_;
+  if (wait_for_initial_user_activity_) {
+    VLOG(1) << "Deferring inactivity-triggered actions until user activity "
+            << "is observed each time a session starts";
+  }
 
   UpdateState();
 }
@@ -715,7 +746,7 @@ void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
   base::TimeDelta screen_dim_or_lock_duration =
-      now - GetLastActivityTimeForScreenDimOrLock();
+      now - GetLastActivityTimeForScreenDimOrLock(now);
   base::TimeDelta screen_off_duration =
       now - GetLastActivityTimeForScreenOff(now);
 
@@ -832,11 +863,11 @@ void StateController::UpdateState() {
 void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
-  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(),
+  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(now),
                       delays_.screen_dim, &timeout_delay);
   UpdateActionTimeout(now, GetLastActivityTimeForScreenOff(now),
                       delays_.screen_off, &timeout_delay);
-  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(),
+  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(now),
                       delays_.screen_lock, &timeout_delay);
   UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
                       delays_.idle_warning, &timeout_delay);

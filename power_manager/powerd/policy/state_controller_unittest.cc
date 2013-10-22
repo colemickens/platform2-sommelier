@@ -184,6 +184,7 @@ class StateControllerTest : public testing::Test {
         default_allow_docked_mode_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
+        initial_session_state_(SESSION_STOPPED),
         initial_display_mode_(DISPLAY_NORMAL),
         send_initial_display_mode_(true) {
   }
@@ -213,7 +214,8 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
-    controller_.Init(initial_power_source_, initial_lid_state_);
+    controller_.Init(initial_power_source_, initial_lid_state_,
+                     initial_session_state_);
 
     if (send_initial_display_mode_)
       controller_.HandleDisplayModeChange(initial_display_mode_);
@@ -305,6 +307,7 @@ class StateControllerTest : public testing::Test {
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
   LidState initial_lid_state_;
+  SessionState initial_session_state_;
 
   // Initial display mode to send in Init().
   DisplayMode initial_display_mode_;
@@ -444,6 +447,7 @@ TEST_F(StateControllerTest, LidCloseSuspendsByDefault) {
 
 // Tests that timeouts are reset when the user logs in or out.
 TEST_F(StateControllerTest, SessionStateChangeResetsTimeouts) {
+  initial_session_state_ = SESSION_STARTED;
   Init();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
@@ -842,6 +846,7 @@ TEST_F(StateControllerTest, DontSuspendBeforeOobeCompleted) {
 
 // Tests that the disable-idle-suspend pref is honored and overrides policies.
 TEST_F(StateControllerTest, DisableIdleSuspend) {
+  initial_session_state_ = SESSION_STARTED;
   default_disable_idle_suspend_ = 1;
   Init();
 
@@ -1238,6 +1243,7 @@ TEST_F(StateControllerTest, DisallowDockedMode) {
 // Tests that PowerManagementPolicy's
 // |user_activity_screen_dim_delay_factor| field is honored.
 TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
+  initial_session_state_ = SESSION_STARTED;
   Init();
 
   // Send a policy where delays are doubled if user activity is observed
@@ -1438,6 +1444,93 @@ TEST_F(StateControllerTest, AudioDelay) {
   const base::TimeDelta timeout = test_api_.action_timeout_time() - start_time;
   EXPECT_GT(timeout.InSeconds(), (kIdleDelay / 2).InSeconds());
   EXPECT_LE(timeout.InSeconds(), kIdleDelay.InSeconds());
+}
+
+// Tests that when |wait_for_initial_user_activity| policy field is set,
+// inactivity-triggered actions are deferred until user activity is reported.
+TEST_F(StateControllerTest, WaitForInitialUserActivity) {
+  initial_session_state_ = SESSION_STARTED;
+  Init();
+
+  const base::TimeDelta kWarningDelay = base::TimeDelta::FromSeconds(585);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
+
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(0);
+  policy.mutable_ac_delays()->set_screen_off_ms(0);
+  policy.mutable_ac_delays()->set_screen_lock_ms(0);
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      kWarningDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_wait_for_initial_user_activity(true);
+  controller_.HandlePolicyChange(policy);
+
+  // Before user activity is seen, the timeout should be scheduled for the
+  // soonest-occurring delay (i.e. the idle warning), but when it fires, no
+  // actions should be performed and the timeout should just be scheduled again.
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // After user activity is seen, the delays should take effect.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // Restart the session and check that the actions are avoided again.
+  // User activity reported while the session is stopped should be disregarded.
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleUserActivity();
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // User activity should again result in the delays taking effect.
+  controller_.HandleUserActivity();
+  ResetLastStepDelay();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // User activity that is seen before the |wait| field is set should still be
+  // honored and result in the delays taking effect.
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandlePolicyChange(PowerManagementPolicy());
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleUserActivity();
+  controller_.HandlePolicyChange(policy);
+  ResetLastStepDelay();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // If |wait| is set after the warning has been sent, the idle-deferred signal
+  // should be emitted immediately.
+  PowerManagementPolicy policy_without_wait = policy;
+  policy_without_wait.set_wait_for_initial_user_activity(false);
+  controller_.HandlePolicyChange(policy_without_wait);
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+
+  // |wait| should have no effect when no session is ongoing.
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
 }
 
 }  // namespace policy

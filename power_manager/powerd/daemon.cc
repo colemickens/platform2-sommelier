@@ -431,7 +431,8 @@ void Daemon::Init() {
   // playing.
   const PowerSource power_source =
       power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;
-  state_controller_->Init(power_source, input_->QueryLidState());
+  state_controller_->Init(power_source, input_->QueryLidState(),
+                          session_state_);
   state_controller_initialized_ = true;
 
   if (util::IsDBusServiceConnected(cras::kCrasServiceName,

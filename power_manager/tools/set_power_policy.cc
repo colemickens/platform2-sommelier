@@ -49,6 +49,9 @@ DEFINE_int32(use_audio_activity, -1,
              "Honor audio activity (1 is true, 0 is false, -1 is unset");
 DEFINE_int32(use_video_activity, -1,
              "Honor video activity (1 is true, 0 is false, -1 is unset");
+DEFINE_int32(wait_for_initial_user_activity, -1,
+             "Wait for initial user activity before enforcing delays "
+             "(1 is true, 0 is false, -1 is unset");
 DEFINE_double(presentation_screen_dim_delay_factor, 0.0,
               "Factor by which the screen-dim delay is scaled while presenting "
               "(less than 1.0 means unset)");
@@ -133,6 +136,10 @@ int main(int argc, char* argv[]) {
   if (FLAGS_user_activity_screen_dim_delay_factor >= 1.0) {
     policy.set_user_activity_screen_dim_delay_factor(
         FLAGS_user_activity_screen_dim_delay_factor);
+  }
+  if (FLAGS_wait_for_initial_user_activity >= 0) {
+    policy.set_wait_for_initial_user_activity(
+        FLAGS_wait_for_initial_user_activity != 0);
   }
 
   CHECK(power_manager::util::CallMethodInPowerD(power_manager::kSetPolicyMethod,
