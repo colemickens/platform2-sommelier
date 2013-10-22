@@ -101,8 +101,6 @@ COLOR ?= 1
 VERBOSE ?= 0
 MODE ?= opt
 ARCH ?= $(shell uname -m)
-NEEDS_ROOT = 1
-NEEDS_MOUNTS = 1
 
 # Put objects in a separate tree based on makefile locations
 # This means you can build a tree without touching it:
@@ -639,6 +637,11 @@ else
   USE_QEMU ?= 0
 endif
 
+# Normally we don't need to run as root or do bind mounts, so only
+# enable it by default when we're using QEMU.
+NEEDS_ROOT ?= $(USE_QEMU)
+NEEDS_MOUNTS ?= $(USE_QEMU)
+
 SYSROOT_OUT = $(OUT)
 ifneq ($(SYSROOT),)
   SYSROOT_OUT = $(subst $(SYSROOT),,$(OUT))
@@ -647,13 +650,14 @@ else
   SYSROOT = /
 endif
 
-QEMU_PATH = /build/bin/qemu-$(QEMU_ARCH)
+QEMU_NAME = qemu-$(QEMU_ARCH)
+QEMU_PATH = /build/bin/$(QEMU_NAME)
 QEMU_SYSROOT_PATH = $(SYSROOT)$(QEMU_PATH)
-QEMU_SRC_PATH = /usr/bin/qemu-$(QEMU_ARCH)
-QEMU_BINFMT_PATH = /proc/sys/fs/binfmt_misc/qemu-$(QEMU_ARCH)
+QEMU_SRC_PATH = /usr/bin/$(QEMU_NAME)
+QEMU_BINFMT_PATH = /proc/sys/fs/binfmt_misc/$(QEMU_NAME)
 QEMU_REGISTER_PATH = /proc/sys/fs/binfmt_misc/register
 
-QEMU_MAGIC_arm = ":arm:M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:/build/bin/qemu-arm:"
+QEMU_MAGIC_arm = ":$(QEMU_NAME):M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:/build/bin/qemu-arm:"
 
 
 #
@@ -672,6 +676,9 @@ ifneq ($(MAKECMDGOALS),clean)
   $(info - COLOR=$(COLOR))
   $(info - ARCH=$(ARCH))
   $(info - QEMU_ARCH=$(QEMU_ARCH))
+  $(info - USE_QEMU=$(USE_QEMU))
+  $(info - NEEDS_ROOT=$(NEEDS_ROOT))
+  $(info - NEEDS_MOUNTS=$(NEEDS_MOUNTS))
   $(info - SYSROOT=$(SYSROOT))
   $(info )
 endif
@@ -712,12 +719,12 @@ endif
 
 qemu_chroot_install:
 ifeq ($(USE_QEMU),1)
-	$(QUIET)$(ECHO) "QEMU   Preparing qemu-$(QEMU_ARCH)"
-	# Copying strategy
-	# Compare /usr/bin/qemu inode to /build/$board/build/bin/qemu, if different
-	# hard link to a temporary file, then rename temp to target. This should
-	# ensure that once $QEMU_SYSROOT_PATH exists it will always exist, regardless
-	# of simultaneous test setups.
+	$(QUIET)$(ECHO) "QEMU   Preparing $(QEMU_NAME)"
+	@# Copying strategy
+	@# Compare /usr/bin/qemu inode to /build/$board/build/bin/qemu, if different
+	@# hard link to a temporary file, then rename temp to target. This should
+	@# ensure that once $QEMU_SYSROOT_PATH exists it will always exist, regardless
+	@# of simultaneous test setups.
 	$(QUIET)if [[ ! -e $(QEMU_SYSROOT_PATH) || \
 	    `stat -c %i $(QEMU_SRC_PATH)` != `stat -c %i $(QEMU_SYSROOT_PATH)` \
 	    ]]; then \
@@ -725,22 +732,24 @@ ifeq ($(USE_QEMU),1)
 	  $(ROOT_CMD) mv -Tf $(QEMU_SYSROOT_PATH).$$$$ $(QEMU_SYSROOT_PATH); \
 	fi
 
-	# Prep the binfmt handler. First mount if needed, then unregister any bad
-	# mappings and then register our mapping.
-	# There may still be some race conditions here where one script de-registers
-	# and another script starts executing before it gets re-registered, however
-	# it should be rare.
+	@# Prep the binfmt handler. First mount if needed, then unregister any bad
+	@# mappings and then register our mapping.
+	@# There may still be some race conditions here where one script de-registers
+	@# and another script starts executing before it gets re-registered, however
+	@# it should be rare.
 	-$(QUIET)[[ -e $(QEMU_REGISTER_PATH) ]] || \
 	  $(ROOT_CMD) mount binfmt_misc -t binfmt_misc \
 	    /proc/sys/fs/binfmt_misc
 
-	-$(QUIET)[[ -e $(QEMU_BINFMT_PATH) && \
+	-$(QUIET)if [[ -e $(QEMU_BINFMT_PATH) && \
 	      `awk '$$1 == "interpreter" {print $$NF}' $(QEMU_BINFMT_PATH)` != \
-	      "$(QEMU_PATH)" ]] && \
-	  echo -1 | $(ROOT_CMD) tee $(QEMU_BINFMT_PATH)
+	      "$(QEMU_PATH)" ]]; then \
+	  echo -1 | $(ROOT_CMD) tee $(QEMU_BINFMT_PATH) >/dev/null; \
+	fi
 
-	-$(QUIET)$(if $(QEMU_MAGIC_$(ARCH)),[[ -e $(QEMU_BINFMT_PATH) ]] || \
-	  echo $(QEMU_MAGIC_$(ARCH)) | $(ROOT_CMD) tee $(QEMU_REGISTER_PATH))
+	-$(if $(QEMU_MAGIC_$(ARCH)),$(QUIET)[[ -e $(QEMU_BINFMT_PATH) ]] || \
+	  echo $(QEMU_MAGIC_$(ARCH)) | $(ROOT_CMD) tee $(QEMU_REGISTER_PATH) \
+	    >/dev/null)
 endif
 .PHONY: qemu_clean qemu_chroot_install
 
@@ -825,7 +834,7 @@ define TEST_run
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_GREEN)RUN$(COLOR_RESET)]"
   $(QUIET)(echo 1 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
-  $(QUIET)(echo $(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
+  $(QUIET)(echo $(ROOT_CMD) SRC="$(SRC)" $(QEMU_CMD) $(VALGRIND_CMD) \
     "$(strip $(call if_qemu, $(SYSROOT_OUT),$(OUT))$(TARGET_OR_MEMBER))" \
       $(if $(filter-out 0,$(words $(GTEST_ARGS.real))),$(GTEST_ARGS.real),\
            $(GTEST_ARGS)) >> "$(OUT)$(TARGET_OR_MEMBER).setup.test")
