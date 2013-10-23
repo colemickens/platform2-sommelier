@@ -38,48 +38,12 @@ const std::string kOpenSSLMagic = "Salted__";
 // common public exponent.
 const unsigned int kWellKnownExponent = 65537;
 
-// An upper bound on the amount of memory that we allow Scrypt to use when
-// performing key strengthening (32MB).  A large size is okay since we only use
-// Scrypt during the login process, before the user is logged in.  This memory
-// is managed (and freed) by the scrypt library.
-const unsigned int kScryptMaxMem = 32 * 1024 * 1024;
-
-// An upper bound on the amount of time we allow Scrypt to use when performing
-// key strenthening (1/3s) for encryption.
-const double kScryptMaxEncryptTime = 0.333;
-
-// An upper bound on the amount of time we allow Scrypt to use when performing
-// key strenthening (100s) for decryption.  This number can be high because in
-// practice, it doesn't mean much.  It simply needs to be large enough that we
-// can guarantee that the key derived during encryption can always be derived at
-// decryption time, so the typical time is usually close to 1/3s.  However,
-// because sometimes other processes may interfere, we need it to be large
-// enough to allow the same calculation to be made amidst other heavy use.
-const double kScryptMaxDecryptTime = 100.0;
-
-// Scrypt creates a header in the cipher text that we need to account for in
-// buffer sizing.
-const unsigned int kScryptHeaderLength = 128;
-
-// The number of hash rounds we originally used when converting a password to a
-// key.  This is used when converting older cryptohome vault keysets.
-const unsigned int kDefaultLegacyPasswordRounds = 1;
-
 // The current number of hash rounds we use.  Large enough to be a measurable
 // amount of time, but not add too much overhead to login (around 10ms).
 const unsigned int kDefaultPasswordRounds = 1337;
 
-// AES key size in bytes (256-bit).  This key size is used for all key creation,
-// though we currently only use 128 bits for the eCryptfs File Encryption Key
-// (FEK).  Larger than 128-bit has too great of a CPU overhead on unaccelerated
-// architectures.
-const unsigned int kDefaultAesKeySize = 32;
-
 // AES block size in bytes.
 const unsigned int  kAesBlockSize = 16;
-
-// Maximum size of the salt file.
-const int64 kSaltMax = (1 << 20);  // 1 MB
 
 void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
   // OpenSSL takes a signed integer.  On the off chance that the user requests

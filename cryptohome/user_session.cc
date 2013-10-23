@@ -15,7 +15,6 @@ using chromeos::SecureBlob;
 
 namespace cryptohome {
 
-const int kUserSessionSaltLength = 16;
 const int kUserSessionIdLength = 128;
 
 UserSession::UserSession() { }

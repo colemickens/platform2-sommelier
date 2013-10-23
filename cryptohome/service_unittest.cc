@@ -41,7 +41,6 @@ using ::testing::StartsWith;
 using ::testing::SetArgumentPointee;
 
 const char kImageDir[] = "test_image_dir";
-const char kSkelDir[] = "test_image_dir/skel";
 const char kSaltFile[] = "test_image_dir/salt";
 class ServiceInterfaceTest : public ::testing::Test {
  public:

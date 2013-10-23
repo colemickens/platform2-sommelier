@@ -61,8 +61,6 @@ using ::testing::_;
 const char kImageDir[] = "test_image_dir";
 const char kImageSaltFile[] = "test_image_dir/salt";
 const char kSkelDir[] = "test_image_dir/skel";
-const char kUserDir[] = "user";
-const char kSalt[] = "1234567890";
 const gid_t kDaemonGid = 400; // TODO: expose this in mount.h
 
 ACTION_P2(SetOwner, owner_known, owner) {

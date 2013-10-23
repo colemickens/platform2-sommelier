@@ -47,8 +47,6 @@ static const gchar * const kKernelCmdline = "/proc/cmdline";
 static const gchar * const kKernelCmdlineOption = " encrypted-stateful-key=";
 static const gchar * const kEncryptedFSType = "ext4";
 static const gchar * const kCryptDevName = "encstateful";
-static const gchar * const kTpmDev = "/dev/tpm0";
-static const gchar * const kNullDev = "/dev/null";
 static const gchar * const kNvramExport = "/tmp/lockbox.nvram";
 static const float kSizePercent = 0.3;
 static const float kMigrationSizeMultiplier = 1.1;

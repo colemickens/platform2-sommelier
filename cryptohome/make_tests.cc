@@ -66,8 +66,6 @@ const TestUserInfo kDefaultUsers[] = {
   {"testuser13@invalid.domain", "thirteen", true},
 };
 const size_t kDefaultUserCount = arraysize(kDefaultUsers);
-const char kUserHomeDir[] = "test_user_home";
-const char kRootHomeDir[] = "test_root_home";
 
 MakeTests::MakeTests() { }
 

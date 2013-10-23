@@ -36,7 +36,6 @@ using std::string;
 
 namespace cryptohome {
 
-const char kDefaultUserRoot[] = "/home/chronos";
 const char kDefaultHomeDir[] = "/home/chronos/user";
 const char kDefaultShadowRoot[] = "/home/.shadow";
 const char kDefaultSharedUser[] = "chronos";
@@ -47,10 +46,6 @@ const uid_t kMountOwnerUid = 0;
 const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const char kIncognitoUser[] = "incognito";
-// Encrypted files/directories in ecryptfs have file names that start with the
-// following constant.  When clearing tracked subdirectories, we ignore these
-// and only delete the pass-through directories.
-const char kEncryptedFilePrefix[] = "ECRYPTFS_FNEK_ENCRYPTED.";
 // Tracked directories - special sub-directories of the cryptohome
 // vault, that are visible even if not mounted. Contents is still encrypted.
 const char kVaultDir[] = "vault";
@@ -71,7 +66,6 @@ const char kGuestMountPath[] = "guestfs";
 const char kEphemeralMountPerms[] = "mode=0700";
 const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
-const char kDefaultEcryptfsCryptoAlg[] = "aes";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 const gid_t kDaemonStoreGid = 400;
 
