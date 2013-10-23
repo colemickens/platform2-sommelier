@@ -46,10 +46,6 @@ const char kManufacturerID[] = "Chromium OS";
 const CK_ULONG kMaxPinLen = 127;
 const CK_ULONG kMinPinLen = 6;
 const char kSlotDescription[] = "TPM Slot";
-const FilePath::CharType kSystemTokenPath[] =
-    FILE_PATH_LITERAL("/var/lib/chaps");
-const char kSystemTokenAuthData[] = "000000";
-const int kSystemTokenSlot = 0;
 const char kTokenLabel[] = "User-Specific TPM Token";
 const char kTokenModel[] = "";
 const char kTokenSerialNumber[] = "Not Available";
@@ -302,13 +298,6 @@ bool SlotManagerImpl::Init() {
   // TODO(dkrahn): Make this 2 once we're ready to enable the system token.
   // crosbug.com/27759.
   AddSlots(1);
-  // Setup the system token.  This is the same as for a user token so we can
-  // just do what we normally do when a user logs in.  We'll know it succeeded
-  // if the system token slot has a token inserted.
-  // TODO(dkrahn): Uncomment once we're ready to enable the system token.
-  // crosbug.com/27759.
-  //OnLogin(FilePath(kSystemTokenPath), kSystemTokenAuthData);
-  //return IsTokenPresent(kSystemTokenSlot);
   return true;
 }
 
