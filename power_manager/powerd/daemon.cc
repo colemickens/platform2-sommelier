@@ -488,7 +488,8 @@ void Daemon::Init() {
     display_backlight_controller_.reset(
         new policy::ExternalBacklightController);
     static_cast<policy::ExternalBacklightController*>(
-        display_backlight_controller_.get())->Init(display_power_setter_.get());
+        display_backlight_controller_.get())->Init(display_watcher_.get(),
+                                                   display_power_setter_.get());
   } else {
     display_backlight_.reset(new system::InternalBacklight);
     if (!display_backlight_->Init(base::FilePath(kInternalBacklightPath),

@@ -6,15 +6,21 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
+#include "power_manager/powerd/system/display/display_watcher.h"
+#include "power_manager/powerd/system/display/external_display.h"
 
 namespace power_manager {
 namespace policy {
 
+const double ExternalBacklightController::kBrightnessAdjustmentPercent = 6.25;
+
 ExternalBacklightController::ExternalBacklightController()
-    : display_power_setter_(NULL),
+    : display_watcher_(NULL),
+      display_power_setter_(NULL),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       suspended_(false),
@@ -22,11 +28,18 @@ ExternalBacklightController::ExternalBacklightController()
       currently_off_(false) {
 }
 
-ExternalBacklightController::~ExternalBacklightController() {}
+ExternalBacklightController::~ExternalBacklightController() {
+  if (display_watcher_)
+    display_watcher_->RemoveObserver(this);
+}
 
 void ExternalBacklightController::Init(
+    system::DisplayWatcherInterface* display_watcher,
     system::DisplayPowerSetterInterface* display_power_setter) {
+  display_watcher_ = display_watcher;
   display_power_setter_ = display_power_setter;
+  display_watcher_->AddObserver(this);
+  UpdateDisplays(display_watcher_->GetDisplays());
 }
 
 void ExternalBacklightController::AddObserver(
@@ -103,11 +116,13 @@ bool ExternalBacklightController::SetUserBrightnessPercent(
 }
 
 bool ExternalBacklightController::IncreaseUserBrightness() {
-  return false;
+  AdjustBrightnessByPercent(kBrightnessAdjustmentPercent);
+  return true;
 }
 
 bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
-  return false;
+  AdjustBrightnessByPercent(-kBrightnessAdjustmentPercent);
+  return true;
 }
 
 void ExternalBacklightController::SetDocked(bool docked) {}
@@ -118,6 +133,11 @@ int ExternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
 
 int ExternalBacklightController::GetNumUserAdjustments() const {
   return 0;
+}
+
+void ExternalBacklightController::OnDisplaysChanged(
+    const std::vector<system::DisplayInfo>& displays) {
+  UpdateDisplays(displays);
 }
 
 void ExternalBacklightController::UpdateScreenPowerState() {
@@ -136,6 +156,42 @@ void ExternalBacklightController::NotifyObservers() {
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
                     OnBrightnessChanged(currently_off_ ? 0.0 : 100.0,
                                         BRIGHTNESS_CHANGE_AUTOMATED, this));
+}
+
+void ExternalBacklightController::UpdateDisplays(
+    const std::vector<system::DisplayInfo>& displays) {
+  ExternalDisplayMap updated_displays;
+  for (std::vector<system::DisplayInfo>::const_iterator it = displays.begin();
+       it != displays.end(); ++it) {
+    const system::DisplayInfo& info = *it;
+    if (info.i2c_path.empty())
+      continue;
+
+    ExternalDisplayMap::const_iterator existing_display_it =
+        external_displays_.find(info.drm_path);
+    if (existing_display_it != external_displays_.end()) {
+      // TODO(derat): Need to handle changed I2C paths?
+      updated_displays[info.drm_path] = existing_display_it->second;
+    } else {
+      scoped_ptr<system::ExternalDisplay::RealDelegate> delegate(
+          new system::ExternalDisplay::RealDelegate);
+      if (!delegate->Init(info.i2c_path))
+        continue;
+      updated_displays[info.drm_path] = linked_ptr<system::ExternalDisplay>(
+          new system::ExternalDisplay(
+              delegate.PassAs<system::ExternalDisplay::Delegate>()));
+    }
+  }
+  external_displays_.swap(updated_displays);
+}
+
+void ExternalBacklightController::AdjustBrightnessByPercent(
+    double percent_offset) {
+  VLOG(1) << "Adjusting brightness by " << percent_offset << "%";
+  for (ExternalDisplayMap::const_iterator it = external_displays_.begin();
+       it != external_displays_.end(); ++it) {
+    it->second->AdjustBrightnessByPercent(percent_offset);
+  }
 }
 
 }  // namespace policy

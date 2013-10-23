@@ -9,6 +9,7 @@
 #include "base/compiler_specific.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
+#include "power_manager/powerd/system/display/display_watcher_stub.h"
 
 namespace power_manager {
 namespace policy {
@@ -17,7 +18,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
  public:
   ExternalBacklightControllerTest() {
     controller_.AddObserver(&observer_);
-    controller_.Init(&display_power_setter_);
+    controller_.Init(&display_watcher_, &display_power_setter_);
   }
 
   virtual ~ExternalBacklightControllerTest() {
@@ -26,18 +27,20 @@ class ExternalBacklightControllerTest : public ::testing::Test {
 
  protected:
   BacklightControllerObserverStub observer_;
+  system::DisplayWatcherStub display_watcher_;
   system::DisplayPowerSetterStub display_power_setter_;
   ExternalBacklightController controller_;
 };
 
-TEST_F(ExternalBacklightControllerTest, IgnoreBrightnessRequests) {
-  // ExternalBacklightController doesn't support brightness adjustments.
+TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
+  // ExternalBacklightController doesn't support absolute-brightness-related
+  // requests, but it does allow relative adjustments.
   double percent = 0.0;
   EXPECT_FALSE(controller_.GetBrightnessPercent(&percent));
   EXPECT_FALSE(controller_.SetUserBrightnessPercent(
       50.0, BacklightController::TRANSITION_INSTANT));
-  EXPECT_FALSE(controller_.IncreaseUserBrightness());
-  EXPECT_FALSE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
 }
 
 TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {
