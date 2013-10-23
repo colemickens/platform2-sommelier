@@ -155,9 +155,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual void ScanDone();
 
   // Called by WiFiService.
-  virtual void ConnectTo(
-      WiFiService *service,
-      std::map<std::string, ::DBus::Variant> service_params);
+  virtual void ConnectTo(WiFiService *service);
+
   // If |service| is connected, initiate the process of disconnecting it.
   // Otherwise, if it a pending or current service, discontinue the process
   // of connecting and return |service| to the idle state.

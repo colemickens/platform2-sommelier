@@ -36,6 +36,7 @@
 #include "shill/wifi_provider.h"
 #include "shill/wpa_supplicant.h"
 
+using std::map;
 using std::set;
 using std::string;
 using std::vector;
@@ -467,9 +468,6 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
 }
 
 void WiFiService::Connect(Error *error, const char *reason) {
-  std::map<string, DBus::Variant> params;
-  DBus::MessageIter writer;
-
   if (!connectable()) {
     LOG(ERROR) << "Can't connect. Service " << unique_name()
                << " is not connectable.";
@@ -515,6 +513,21 @@ void WiFiService::Connect(Error *error, const char *reason) {
     return;
   }
 
+  if (Is8021x()) {
+    // If EAP key management is not set, set to a default.
+    if (GetEAPKeyManagement().empty())
+      SetEAPKeyManagement("WPA-EAP");
+    ClearEAPCertification();
+  }
+
+  Service::Connect(error, reason);
+  wifi->ConnectTo(this);
+}
+
+DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
+  DBusPropertiesMap params;
+  DBus::MessageIter writer;
+
   params[WPASupplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
@@ -527,13 +540,9 @@ void WiFiService::Connect(Error *error, const char *reason) {
   }
 
   if (Is8021x()) {
-    // Is EAP key management is not set, set to a default.
-    if (GetEAPKeyManagement().empty())
-      SetEAPKeyManagement("WPA-EAP");
     vector<char> nss_identifier(ssid_.begin(), ssid_.end());
     eap()->PopulateSupplicantProperties(
         certificate_file_.get(), nss_, nss_identifier, &params);
-    ClearEAPCertification();
   } else if (security_ == kSecurityPsk ||
              security_ == kSecurityRsn ||
              security_ == kSecurityWpa) {
@@ -547,10 +556,10 @@ void WiFiService::Connect(Error *error, const char *reason) {
   } else if (security_ == kSecurityWep) {
     params[WPASupplicant::kPropertyAuthAlg].writer().
         append_string(WPASupplicant::kSecurityAuthAlg);
-    Error error;
+    Error unused_error;
     int key_index;
     std::vector<uint8> password_bytes;
-    ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &error);
+    ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &unused_error);
     writer = params[WPASupplicant::kPropertyWEPKey +
                     base::IntToString(key_index)].writer();
     writer << password_bytes;
@@ -559,11 +568,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
   } else if (security_ == kSecurityNone) {
     // Nothing special to do here.
   } else {
-    LOG(ERROR) << "Can't connect. Unsupported security method " << security_;
-    Error::PopulateAndLog(error,
-                          Error::kInvalidArguments,
-                          Error::GetDefaultMessage(Error::kInvalidArguments));
-    return;
+    NOTIMPLEMENTED() << "Unsupported security method " << security_;
   }
 
   params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
@@ -581,9 +586,9 @@ void WiFiService::Connect(Error *error, const char *reason) {
   writer = params[WPASupplicant::kNetworkPropertySSID].writer();
   writer << ssid_;
 
-  Service::Connect(error, reason);
-  wifi->ConnectTo(this, params);
+  return params;
 }
+
 
 void WiFiService::Disconnect(Error *error) {
   Service::Disconnect(error);

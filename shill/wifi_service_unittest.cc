@@ -84,7 +84,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->eap_.reset(eap);  // Passes ownership.
     return eap;
   }
-  bool CheckConnectable(const std::string &security, const char *passphrase,
+  bool CheckConnectable(const string &security, const char *passphrase,
                         bool is_1x_connectable) {
     Error error;
     WiFiServiceRefPtr service = MakeSimpleService(security);
@@ -445,17 +445,6 @@ MATCHER(PSKSecurityArgs, "") {
       ContainsKey(arg, WPASupplicant::kPropertyPreSharedKey);
 }
 
-MATCHER(WPA80211wSecurityArgs, "") {
-  return ContainsKey(arg, WPASupplicant::kPropertySecurityProtocol) &&
-      ContainsKey(arg, WPASupplicant::kPropertyPreSharedKey) &&
-      ContainsKey(arg, WPASupplicant::kNetworkPropertyIeee80211w);
-}
-
-MATCHER(EAPSecurityArgs, "") {
-  return ContainsKey(arg, WPASupplicant::kNetworkPropertyEapIdentity) &&
-      ContainsKey(arg, WPASupplicant::kNetworkPropertyCaPath);
-}
-
 MATCHER_P(FrequencyArg, has_arg, "") {
   return has_arg ==
       ContainsKey(arg, WPASupplicant::kNetworkPropertyFrequency);
@@ -463,18 +452,22 @@ MATCHER_P(FrequencyArg, has_arg, "") {
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWpa);
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              PSKSecurityArgs());
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityRsn);
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              PSKSecurityArgs());
 }
 
 TEST_F(WiFiServiceTest, ConnectConditions) {
@@ -484,14 +477,13 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
       new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
   wifi_service->set_profile(mock_profile);
   // With nothing else going on, the service should attempt to connect.
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(&error, "in test");
   Mock::VerifyAndClearExpectations(wifi());
 
   // But if we're already "connecting" or "connected" then we shouldn't attempt
   // again.
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), _)).Times(0);
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get())).Times(0);
   wifi_service->SetState(Service::kStateAssociating);
   wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateConfiguring);
@@ -507,10 +499,12 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityPsk);
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              PSKSecurityArgs());
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
@@ -518,20 +512,25 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   service->mutable_eap()->set_identity("identity");
   service->mutable_eap()->set_password("mumble");
   service->OnEapCredentialsChanged();
-  EXPECT_CALL(*wifi(), ConnectTo(service.get(), EAPSecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(service.get()));
   service->Connect(NULL, "in test");
+  DBusPropertiesMap params = service->GetSupplicantConfigurationParameters();
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyEapIdentity));
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyCaPath));
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   MockEapCredentials *eap = SetMockEap(service);
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
+  EXPECT_CALL(*wifi(), ConnectTo(service.get()));
   service->OnEapCredentialsChanged();
+  service->Connect(NULL, "in test");
+
   EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _, _, _));
   // The mocked function does not actually set EAP parameters so we cannot
   // expect them to be set.
-  EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
-  service->Connect(NULL, "in test");
+  service->GetSupplicantConfigurationParameters();
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
@@ -543,9 +542,11 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
 
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   wifi_service->AddEndpoint(endpoint_freq);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), FrequencyArg(false)));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              FrequencyArg(false));
 
   wifi_service = new WiFiService(control_interface(),
                                  dispatcher(),
@@ -556,10 +557,12 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  kModeAdhoc,
                                  kSecurityNone,
                                  false);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), FrequencyArg(false)));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   SetWiFiForService(wifi_service, wifi());
   wifi_service->Connect(NULL, "in test");
+
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              FrequencyArg(false));
 
   wifi_service = new WiFiService(control_interface(),
                                  dispatcher(),
@@ -572,9 +575,11 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  false);
   wifi_service->AddEndpoint(endpoint_nofreq);
   SetWiFiForService(wifi_service, wifi());
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), FrequencyArg(false)));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              FrequencyArg(false));
 
   wifi_service = new WiFiService(control_interface(),
                                  dispatcher(),
@@ -587,9 +592,10 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  false);
   wifi_service->AddEndpoint(endpoint_freq);
   SetWiFiForService(wifi_service, wifi());
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), FrequencyArg(true)));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              FrequencyArg(true));
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
@@ -600,77 +606,58 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
   wifi_service->AddEndpoint(endpoint);
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WPA80211wSecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+
+  DBusPropertiesMap params =
+      wifi_service->GetSupplicantConfigurationParameters();
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kPropertySecurityProtocol));
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kPropertyPreSharedKey));
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyIeee80211w));
 }
 
-MATCHER(WEPSecurityArgsKeyIndex0, "") {
+MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
+  uint32 index_u32 = index;
   return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("0")) &&
+      ContainsKey(arg,
+                  WPASupplicant::kPropertyWEPKey + base::IntToString(index)) &&
       ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
       (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
-           reader().get_uint32() == 0);
-}
-
-MATCHER(WEPSecurityArgsKeyIndex1, "") {
-  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("1")) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
-           reader().get_uint32() == 1);
-}
-
-MATCHER(WEPSecurityArgsKeyIndex2, "") {
-  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("2")) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
-           reader().get_uint32() == 2);
-}
-
-MATCHER(WEPSecurityArgsKeyIndex3, "") {
-  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("3")) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
-           reader().get_uint32() == 3);
+           reader().get_uint32() == index_u32);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWep);
   Error error;
   wifi_service->SetPassphrase("0:abcdefghijklm", &error);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              WEPSecurityArgsKeyIndex(0));
 
   wifi_service->SetPassphrase("abcdefghijklm", &error);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              WEPSecurityArgsKeyIndex(0));
 
   wifi_service->SetPassphrase("1:abcdefghijklm", &error);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex1()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              WEPSecurityArgsKeyIndex(1));
 
   wifi_service->SetPassphrase("2:abcdefghijklm", &error);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex2()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              WEPSecurityArgsKeyIndex(2));
 
   wifi_service->SetPassphrase("3:abcdefghijklm", &error);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex3()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
-}
-
-
-MATCHER(DynamicWEPArgs, "") {
-  return ContainsKey(arg, WPASupplicant::kNetworkPropertyEapIdentity) &&
-      ContainsKey(arg, WPASupplicant::kNetworkPropertyCaPath) &&
-      !ContainsKey(arg, WPASupplicant::kPropertySecurityProtocol);
+  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
+              WEPSecurityArgsKeyIndex(3));
 }
 
 // Dynamic WEP + 802.1x.
@@ -681,9 +668,13 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   wifi_service->mutable_eap()->set_identity("something");
   wifi_service->mutable_eap()->set_password("mumble");
   wifi_service->OnEapCredentialsChanged();
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), DynamicWEPArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
+  DBusPropertiesMap params =
+      wifi_service->GetSupplicantConfigurationParameters();
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyEapIdentity));
+  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyCaPath));
+  EXPECT_FALSE(ContainsKey(params, WPASupplicant::kPropertySecurityProtocol));
 }
 
 TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
@@ -1244,8 +1235,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   const char *reason;
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
-  EXPECT_CALL(*wifi(), ConnectTo(_, _))
-      .Times(0);
+  EXPECT_CALL(*wifi(), ConnectTo(_)).Times(0);
   service->AutoConnect();
   dispatcher()->DispatchPendingEvents();
 
@@ -1255,7 +1245,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(service->IsAutoConnectable(&reason));
-  EXPECT_CALL(*wifi(), ConnectTo(_, _));
+  EXPECT_CALL(*wifi(), ConnectTo(_));
   service->AutoConnect();
   dispatcher()->DispatchPendingEvents();
 

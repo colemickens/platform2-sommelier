@@ -457,8 +457,7 @@ void WiFi::ScanDone() {
                               weak_ptr_factory_.GetWeakPtr()));
 }
 
-void WiFi::ConnectTo(WiFiService *service,
-                     map<string, DBus::Variant> service_params) {
+void WiFi::ConnectTo(WiFiService *service) {
   CHECK(service) << "Can't connect to NULL service.";
   DBus::Path network_path;
 
@@ -486,6 +485,8 @@ void WiFi::ConnectTo(WiFiService *service,
   network_path = FindNetworkRpcidForService(service, &unused_error);
   if (network_path.empty()) {
     try {
+      DBusPropertiesMap service_params =
+          service->GetSupplicantConfigurationParameters();
       const uint32_t scan_ssid = 1;  // "True": Use directed probe.
       service_params[WPASupplicant::kNetworkPropertyScanSSID].writer().
           append_uint32(scan_ssid);

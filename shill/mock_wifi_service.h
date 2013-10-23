@@ -52,6 +52,7 @@ class MockWiFiService : public WiFiService {
   MOCK_CONST_METHOD0(HasEndpoints, bool());
   MOCK_CONST_METHOD0(IsRemembered, bool());
   MOCK_METHOD0(ResetWiFi, void());
+  MOCK_CONST_METHOD0(GetSupplicantConfigurationParameters, DBusPropertiesMap());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFiService);

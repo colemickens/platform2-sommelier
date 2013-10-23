@@ -12,6 +12,7 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/dbus_proxies/supplicant-interface.h"
+#include "shill/dbus_properties.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
@@ -141,6 +142,9 @@ class WiFiService : public Service {
 
   // Called by WiFiProvider to reset the WiFi device reference on shutdown.
   virtual void ResetWiFi();
+
+  // Called by WiFi to retrieve configuration parameters for wpa_supplicant.
+  virtual DBusPropertiesMap GetSupplicantConfigurationParameters() const;
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".

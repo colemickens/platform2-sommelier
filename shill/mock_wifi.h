@@ -42,9 +42,7 @@ class MockWiFi : public WiFi {
                           const std::string &reason));
   MOCK_METHOD1(DisconnectFrom, void(WiFiService *service));
   MOCK_METHOD1(ClearCachedCredentials, void(const WiFiService *service));
-  MOCK_METHOD2(ConnectTo,
-               void(WiFiService *service,
-                    std::map<std::string, ::DBus::Variant> service_params));
+  MOCK_METHOD1(ConnectTo, void(WiFiService *service));
   MOCK_CONST_METHOD0(IsIdle, bool());
   MOCK_METHOD1(NotifyEndpointChanged,
                void(const WiFiEndpointConstRefPtr &endpoint));
