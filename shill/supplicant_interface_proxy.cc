@@ -27,7 +27,7 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
 SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 
 ::DBus::Path SupplicantInterfaceProxy::AddNetwork(
-    const std::map<std::string, ::DBus::Variant> &args) {
+    const map<string, ::DBus::Variant> &args) {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.AddNetwork(args);
@@ -88,6 +88,18 @@ void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
   }
 }
 
+void SupplicantInterfaceProxy::NetworkReply(const ::DBus::Path &network,
+                                            const string &field,
+                                            const string &value) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.NetworkReply(network, field, value);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::Reassociate() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -117,8 +129,7 @@ void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
   }
 }
 
-void SupplicantInterfaceProxy::Scan(
-    const std::map<std::string, ::DBus::Variant> &args) {
+void SupplicantInterfaceProxy::Scan(const map<string, ::DBus::Variant> &args) {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.Scan(args);

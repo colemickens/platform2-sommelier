@@ -27,6 +27,7 @@
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/device.h"
+#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/file_reader.h"
 #include "shill/geolocation_info.h"
@@ -1145,6 +1146,19 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
   }
   Service::ConnectFailure failure = Service::kFailureUnknown;
   eap_state_handler_->ParseStatus(status, parameter, &failure);
+  if (failure == Service::kFailurePinMissing) {
+    // wpa_supplicant can sometimes forget the PIN on disconnect from the AP.
+    const string &pin = current_service_->eap()->pin();
+    Error unused_error;
+    string rpcid = FindNetworkRpcidForService(current_service_, &unused_error);
+    if (!pin.empty() && !rpcid.empty()) {
+      // We have a PIN configured, so we can provide it back to wpa_supplicant.
+      LOG(INFO) << "Re-supplying PIN parameter to wpa_supplicant.";
+      supplicant_interface_proxy_->NetworkReply(
+          rpcid, WPASupplicant::kEAPRequestedParameterPIN, pin);
+      failure = Service::kFailureUnknown;
+    }
+  }
   if (failure != Service::kFailureUnknown) {
     // Avoid a reporting failure twice by resetting EAP state handler early.
     eap_state_handler_->Reset();

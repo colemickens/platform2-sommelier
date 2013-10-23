@@ -39,6 +39,9 @@ class SupplicantInterfaceProxy
   virtual void EAPLogoff();
   virtual void Disconnect();
   virtual void FlushBSS(const uint32_t &age);
+  virtual void NetworkReply(const ::DBus::Path &network,
+                            const std::string &field,
+                            const std::string &value);
   virtual void Reassociate();
   virtual void RemoveAllNetworks();
   virtual void RemoveNetwork(const ::DBus::Path &network);

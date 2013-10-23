@@ -25,6 +25,9 @@ class SupplicantInterfaceProxyInterface {
   virtual void EAPLogon() = 0;
   virtual void Disconnect() = 0;
   virtual void FlushBSS(const uint32_t &age) = 0;
+  virtual void NetworkReply(const ::DBus::Path &network,
+                            const std::string &field,
+                            const std::string &value) = 0;
   virtual void Reassociate() = 0;
   virtual void RemoveAllNetworks() = 0;
   virtual void RemoveNetwork(const ::DBus::Path &network) = 0;

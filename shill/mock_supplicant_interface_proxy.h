@@ -29,6 +29,9 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD0(EAPLogon, void());
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD1(FlushBSS, void(const uint32_t &age));
+  MOCK_METHOD3(NetworkReply, void(const ::DBus::Path &network,
+                                  const std::string &field,
+                                  const std::string &value));
   MOCK_METHOD0(Reassociate, void());
   MOCK_METHOD0(RemoveAllNetworks, void());
   MOCK_METHOD1(RemoveNetwork, void(const ::DBus::Path &network));

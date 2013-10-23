@@ -109,6 +109,7 @@ class EapCredentials {
   virtual void set_password(const std::string &password) {
     password_ = password;
   }
+  virtual const std::string &pin() const { return pin_; }
 
  private:
   friend class EapCredentialsTest;

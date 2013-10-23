@@ -52,9 +52,15 @@ bool SupplicantEAPStateHandler::ParseStatus(const string &status,
       LOG(ERROR) << "EAP: Unexpected " << status << " parameter: " << parameter;
     }
   } else if (status == WPASupplicant::kEAPStatusParameterNeeded) {
-    LOG(ERROR) << "EAP: Authentication aborted due to missing authentication "
-               << "parameter: " << parameter;
-    *failure = Service::kFailureEAPAuthentication;
+    if (parameter == WPASupplicant::kEAPRequestedParameterPIN) {
+      // wpa_supplicant could have erased the PIN.  Signal to WiFi that
+      // it should supply one if possible.
+      *failure = Service::kFailurePinMissing;
+    } else {
+      LOG(ERROR) << "EAP: Authentication aborted due to missing authentication "
+                 << "parameter: " << parameter;
+      *failure = Service::kFailureEAPAuthentication;
+    }
   } else if (status == WPASupplicant::kEAPStatusStarted) {
     LOG(INFO) << "EAP: Authentication starting.";
     is_eap_in_progress_ = true;

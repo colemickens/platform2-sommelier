@@ -43,6 +43,11 @@
     </method>
     <method name="EAPLogoff"/>
     <method name="EAPLogon"/>
+    <method name="NetworkReply">
+      <arg name="network" type="o" direction="in"/>
+      <arg name="field" type="s" direction="in"/>
+      <arg name="value" type="s" direction="in"/>
+    </method>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>
     <property name="Scanning" type="b" access="read"/>

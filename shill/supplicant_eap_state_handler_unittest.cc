@@ -153,4 +153,15 @@ TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure_);
 }
 
+TEST_F(SupplicantEAPStateHandlerTest, ParameterNeededPin) {
+  StartEAP();
+  EXPECT_FALSE(handler_.ParseStatus(
+      WPASupplicant::kEAPStatusParameterNeeded,
+      WPASupplicant::kEAPRequestedParameterPIN,
+      &failure_));
+  EXPECT_TRUE(handler_.is_eap_in_progress());
+  EXPECT_EQ("", GetTLSError());
+  EXPECT_EQ(Service::kFailurePinMissing, failure_);
+}
+
 }  // namespace shill

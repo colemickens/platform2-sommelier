@@ -38,6 +38,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_link_monitor.h"
 #include "shill/mock_log.h"
@@ -89,6 +90,7 @@ using ::testing::MatchResultListener;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::NotNull;
+using ::testing::Ref;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
@@ -709,6 +711,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
   void SetPendingService(const WiFiServiceRefPtr &service) {
     wifi_->SetPendingService(service);
+  }
+  void SetServiceNetworkRpcId(
+      const WiFiServiceRefPtr &service, const string &rpcid) {
+    wifi_->rpcid_by_service_[service.get()] = rpcid;
   }
   bool SetScanInterval(uint16_t interval_seconds, Error *error) {
     return wifi_->SetScanInterval(interval_seconds, error);
@@ -2842,6 +2848,7 @@ TEST_F(WiFiMainTest, EAPCertification) {
 }
 
 TEST_F(WiFiMainTest, EAPEvent) {
+  StartWiFi();
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no current service.")));
   EXPECT_CALL(*eap_state_handler_, ParseStatus(_, _, _)).Times(0);
@@ -2863,6 +2870,32 @@ TEST_F(WiFiMainTest, EAPEvent) {
       .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailureOutOfRange),
                 Return(false)));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _));
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
+
+  MockEapCredentials *eap = new MockEapCredentials();
+  service->eap_.reset(eap);  // Passes ownership.
+  const char kNetworkRpcId[] = "/service/network/rpcid";
+  SetServiceNetworkRpcId(service, kNetworkRpcId);
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailurePinMissing),
+                Return(false)));
+  // We need a real string object since it will be returned by reference below.
+  const string kEmptyPin;
+  EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kEmptyPin));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailurePinMissing, _));
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
+
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailurePinMissing),
+                Return(false)));
+  // We need a real string object since it will be returned by reference below.
+  const string kPin("000000");
+  EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kPin));
+  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              NetworkReply(StrEq(kNetworkRpcId),
+                           StrEq(WPASupplicant::kEAPRequestedParameterPIN),
+                           Ref(kPin)));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 }
 

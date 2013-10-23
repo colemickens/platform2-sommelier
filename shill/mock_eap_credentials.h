@@ -35,6 +35,7 @@ class MockEapCredentials : public EapCredentials {
   MOCK_CONST_METHOD0(identity, const std::string &());
   MOCK_CONST_METHOD0(key_management, const std::string &());
   MOCK_METHOD1(set_password, void(const std::string &password));
+  MOCK_CONST_METHOD0(pin, const std::string &());
 
  private:
   std::string kDefaultKeyManagement;
