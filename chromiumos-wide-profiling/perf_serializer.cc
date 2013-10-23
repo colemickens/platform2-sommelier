@@ -479,11 +479,6 @@ bool PerfSerializer::DeserializeRecordSample(
     sample_info.raw_data = new uint8[sample.raw_size()];
     memset(sample_info.raw_data, 0, sample.raw_size());
   }
-  if (sample.raw_size() > 0) {
-    sample_info.raw_size = sample.raw_size();
-    sample_info.raw_data = new uint8[sample.raw_size()];
-    memset(sample_info.raw_data, 0, sample.raw_size());
-  }
   if (sample.branch_stack_size() > 0) {
     uint64 branch_stack_size = sample.branch_stack_size();
     sample_info.branch_stack =
