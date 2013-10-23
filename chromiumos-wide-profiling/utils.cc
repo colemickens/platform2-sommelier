@@ -209,9 +209,10 @@ bool GetPerfReport(const string& filename,
       use_line = true;
 
     for (size_t j = 0; quipper::kSupportedMetadata[j]; ++j) {
-      string valid_prefix = StringPrintf("%c %s",
-                                         kPerfReportCommentCharacter,
-                                         quipper::kSupportedMetadata[j]);
+      stringstream ss;
+      ss << kPerfReportCommentCharacter << " "
+         << quipper::kSupportedMetadata[j];
+      string valid_prefix = ss.str();
       if (line.substr(0, valid_prefix.size()) == valid_prefix)
         use_line = true;
     }
@@ -952,6 +953,12 @@ bool RunCommandAndGetStdout(const string& command, std::vector<char>* output) {
     return false;
 
   return true;
+}
+
+string UintToString(uint64 value) {
+  stringstream ss;
+  ss << value;
+  return ss.str();
 }
 
 }  // namespace quipper

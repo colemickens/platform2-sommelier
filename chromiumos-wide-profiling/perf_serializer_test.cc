@@ -19,8 +19,6 @@
 #include "quipper_test.h"
 #include "utils.h"
 
-using base::StringPrintf;
-
 namespace quipper {
 
 namespace {
@@ -213,7 +211,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
       CHECK(event.has_comm_event());
 
       string comm_md5_string =
-          StringPrintf("%" PRIx64, event.comm_event().comm_md5_prefix());
+          UintToString(event.mmap_event().filename_md5_prefix());
       // Make sure it fits in the comm string array, accounting for the null
       // terminator.
       struct comm_event dummy;
@@ -260,7 +258,7 @@ TEST(PerfSerializeTest, TestMmapMd5s) {
       CHECK(event.has_mmap_event());
 
       string filename_md5_string =
-          StringPrintf("%" PRIx64, event.mmap_event().filename_md5_prefix());
+          UintToString(event.mmap_event().filename_md5_prefix());
       struct mmap_event dummy;
       // Make sure the Md5 prefix string can fit in the filename buffer,
       // including the null terminator

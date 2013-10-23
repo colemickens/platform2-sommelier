@@ -143,6 +143,9 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename);
 // success, false otherwise.
 bool RunCommandAndGetStdout(const string& command, std::vector<char>* output);
 
+// Returns a string representation of an unsigned integer |value|.
+string UintToString(uint64 value);
+
 }  // namespace quipper
 
 #endif  // UTILS_H_
