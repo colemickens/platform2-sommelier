@@ -4,7 +4,7 @@
 
 #include "address_mapper.h"
 
-#include <base/logging.h>
+#include "base/logging.h"
 
 namespace quipper {
 
