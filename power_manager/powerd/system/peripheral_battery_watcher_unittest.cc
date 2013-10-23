@@ -30,6 +30,9 @@ namespace {
 // many milliseconds.
 const int kUpdateTimeoutMs = 30 * 1000;
 
+// Shorter update timeout to use when failure is expected.
+const int kShortUpdateTimeoutMs = 1000;
+
 const char kDeviceModelName[] = "Test HID Mouse";
 
 class TestSender : public DBusSenderStub {
@@ -38,9 +41,9 @@ class TestSender : public DBusSenderStub {
   virtual ~TestSender() {}
 
   // Runs |loop_| until battery status is sent through D-Bus.
-  bool RunUntilSignalSent() {
+  bool RunUntilSignalSent(int timeout_ms) {
     return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kUpdateTimeoutMs));
+        base::TimeDelta::FromMilliseconds(timeout_ms));
   }
 
   virtual void EmitBareSignal(const std::string& signal_name) {
@@ -107,7 +110,7 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
   std::string level = base::IntToString(80);
   WriteFile(capacity_file_, level);
   battery_.Init();
-  ASSERT_TRUE(test_sender_.RunUntilSignalSent());
+  ASSERT_TRUE(test_sender_.RunUntilSignalSent(kUpdateTimeoutMs));
   EXPECT_EQ(1, test_sender_.num_sent_signals());
   PeripheralBatteryStatus proto;
   EXPECT_TRUE(test_sender_.GetSentSignal(0,
@@ -119,9 +122,9 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
 
 TEST_F(PeripheralBatteryWatcherTest, NoLevelReading) {
   battery_.Init();
-  //  Without writing battery level to the capacity_file_, the loop
-  //  will timeout.
-  ASSERT_FALSE(test_sender_.RunUntilSignalSent());
+  // Without writing battery level to the capacity_file_, the loop
+  // will timeout.
+  ASSERT_FALSE(test_sender_.RunUntilSignalSent(kShortUpdateTimeoutMs));
 }
 
 }  // namespace system
