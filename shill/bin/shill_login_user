@@ -36,14 +36,12 @@ profile_link_dir="$profile_link_root/$profile_user"
 log_link_dir="${shill_state_root}/log"
 username_hash=""
 
-# For multiprofile: Choose a different link name if "chronos" exists.
-profile_user_suffix=0
-while [ -e "$profile_link_dir" ] ; do
-  profile_user_suffix=$(( profile_user_suffix + 1 ))
-  profile_user=$(printf "user%03d" $profile_user_suffix)
-  profile_name="~${profile_user}/shill"
-  profile_link_dir="$profile_link_root/$profile_user"
-done
+# We should not load multiple network profiles.  If a profile link
+# directory already exists, we should go no further.
+if [ -e "$profile_link_dir" ] ; then
+  logger -t "$script_name" "User already logged in; doing nothing."
+  exit 0
+fi
 
 if [ -n "$user" ] ; then
   profile_base=$(cryptohome-path system $user)
