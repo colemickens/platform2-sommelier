@@ -48,6 +48,7 @@ class DHCPConfig : public IPConfig {
              const std::string &request_hostname,
              const std::string &lease_file_suffix,
              bool arp_gateway,
+             bool is_minimal_config,
              GLib *glib);
   virtual ~DHCPConfig();
 
@@ -91,6 +92,7 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, StartFail);
   FRIEND_TEST(DHCPConfigTest, StartTimeout);
   FRIEND_TEST(DHCPConfigTest, StartWithHostname);
+  FRIEND_TEST(DHCPConfigTest, StartWithMinimalConfig);
   FRIEND_TEST(DHCPConfigTest, StartWithoutArpGateway);
   FRIEND_TEST(DHCPConfigTest, StartWithoutHostname);
   FRIEND_TEST(DHCPConfigTest, StartWithoutLeaseSuffix);
@@ -115,6 +117,7 @@ class DHCPConfig : public IPConfig {
   static const char kDHCPCDPathFormatPID[];
   static const int kDHCPTimeoutSeconds;
   static const char kDHCPCDUser[];
+  static const char kDHCPCDMinimalConfig[];
 
   static const char kReasonBound[];
   static const char kReasonFail[];
@@ -188,6 +191,11 @@ class DHCPConfig : public IPConfig {
   // Specifies whether to supply an argument to the DHCP client to validate
   // the acquired IP address using an ARP request to the gateway IP address.
   bool arp_gateway_;
+
+  // Specifies whether to configure the the DHCP client to request the bare
+  // minimum of options in order to escape any MTU issues with the packet size
+  // of the DHCP server's reply.
+  bool is_minimal_config_;
 
   // The PID of the spawned DHCP client. May be 0 if no client has been spawned
   // yet or the client has died.

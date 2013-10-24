@@ -242,7 +242,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     InstallMockScanSession();
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
 
-    ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
+    ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _, _)).
         WillByDefault(Return(dhcp_config_));
     ON_CALL(*dhcp_config_.get(), RequestIP()).
         WillByDefault(Return(true));
@@ -577,7 +577,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
     EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
     EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
-    EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _, _))
+        .Times(AnyNumber());
     EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
     EXPECT_CALL(wifi_provider_, IncrementConnectCount(_));
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -1179,7 +1180,7 @@ TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsNetworkUnknown) {
 }
 
 TEST_F(WiFiMainTest, UseArpGateway) {
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true, false))
       .WillOnce(Return(dhcp_config_));
   const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
 }
@@ -1976,7 +1977,7 @@ TEST_F(WiFiMainTest, StateChangeWithService) {
 TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Some backwards transitions should not trigger a Service state change.
   // Supplicant state should still be updated, however.
-  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _, _)).Times(AnyNumber());
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
@@ -2461,7 +2462,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // on the service just because supplicant entered the Completed state.
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
-  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _, _)).Times(AnyNumber());
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))

@@ -242,7 +242,7 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   scoped_refptr<MockDHCPConfig> dhcp_config(new MockDHCPConfig(
                                                     control_interface(),
                                                     kDeviceName));
-  EXPECT_CALL(*dhcp_provider, CreateConfig(_, _, _, _))
+  EXPECT_CALL(*dhcp_provider, CreateConfig(_, _, _, _, _))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP())
       .WillOnce(Return(false));
@@ -679,6 +679,14 @@ TEST_F(DeviceTest, StopTrafficMonitor) {
   // Invoke Stop() again after the traffic monitor is stopped.
   StopTrafficMonitor();
   EXPECT_FALSE(device_->traffic_monitor_.get());
+}
+
+TEST_F(DeviceTest, ShouldUseArpGateway) {
+  EXPECT_FALSE(device_->ShouldUseArpGateway());
+}
+
+TEST_F(DeviceTest, ShouldUseMinimalDHCPConfig) {
+  EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

@@ -285,7 +285,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   StartEthernet();
   SetService(mock_service_);
   EXPECT_EQ(NULL, GetSelectedService().get());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
+  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
@@ -299,7 +299,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   StartEthernet();
   SetService(mock_service_);
   EXPECT_EQ(NULL, GetSelectedService().get());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
+  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
