@@ -306,64 +306,6 @@ bool ConnectionDelegate::SendSimpleResponse(
 
 /* ------------------------------------------------------------------------ */
 
-string ConnectionDelegate::GenerateIndexDotHtml() {
-  string body;
-  vector<string> files;
-  struct dirent* dent;
-  struct dirent dent_struct;
-  int dirfd_copy;
-  DIR* dir;
-
-  body += "<html>\n";
-  body += "  <head>\n";
-  body += "    <title>P2P files</title>\n";
-  body += "  </head>\n";
-  body += "  <body>\n";
-  body += "    <h1>P2P files</h1>\n";
-  body += "    <hr>\n";
-
-  dirfd_copy = dup(dirfd_);
-  if (dirfd_copy == -1) {
-    body += "  Error duplicating directory fd.\n";
-    goto out;
-  }
-  dir = fdopendir(dirfd_copy); /* adopts dirfd_copy */
-  if (dir == NULL) {
-    close(dirfd_copy);
-    body += "  Error opening directory.\n";
-    goto out;
-  }
-  rewinddir(dir);
-  while (readdir_r(dir, &dent_struct, &dent) == 0 && dent != NULL) {
-    size_t name_len = strlen(dent->d_name);
-    if (name_len >= 4 && strcmp(dent->d_name + name_len - 4, ".p2p") == 0) {
-      files.push_back(string(dent->d_name, name_len - 4));
-    }
-  }
-  closedir(dir);
-
-  std::sort(files.begin(), files.end());
-  body += "    <ul>\n";
-  for (auto const& file : files) {
-    body += "      <li><a href=\"";
-    body += file;
-    body += "\">";
-    body += file;
-    body += "</a></li>\n";
-  }
-  body += "    </ul>\n";
-
-out:
-  body += "    <hr>\n";
-  body += "    <i>";
-  body += PACKAGE_STRING;
-  body += "</i>\n";
-  body += "  </body>\n";
-  body += "</html>\n";
-
-  return body;
-}
-
 // Attempt to parse |range_str| as a "ranges-specifier" as defined in
 // section 14.35 of RFC 2616. This is typically used in the "Range"
 // header of HTTP requests. See
@@ -564,8 +506,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
 
   // Handle /index.html
   if (uri == "/" || uri == "/index.html") {
-    response_headers["Content-Type"] = "text/html; charset=utf-8";
-    SendResponse(200, "OK", response_headers, GenerateIndexDotHtml());
+    SendSimpleResponse(404, "No index");
     req_res = p2p::util::kP2PRequestResultIndex;
     goto out;
   }

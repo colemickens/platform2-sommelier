@@ -393,50 +393,6 @@ TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
   thread_->Join();
 }
 
-TEST_F(ConnectionDelegateTest, RequestIndexClosesTheConnection) {
-  SetupDelegate();
-
-  p2p::testutil::TimeBombAbort bomb(60,
-      "Test RequestIndexClosesTheConnection timeout\n");
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultIndex));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
-
-  thread_->Start();
-  // Send an index request.
-  HTTPRequest().Send(client_fd_);
-
-  // This call will block until the server side of the client_fd_ is closed.
-  // The server should send the index, close the conection and free the
-  // resources.
-  string text_resp;
-  EXPECT_TRUE(ReadHTTPResponse(client_fd_, &text_resp));
-  thread_->Join();
-
-  HTTPResponse resp(text_resp);
-  // Check that we got a valid response.
-  ASSERT_TRUE(resp.valid_);
-  EXPECT_EQ(200, resp.http_code_);
-}
-
-TEST_F(ConnectionDelegateTest, RequestIndexThenClose) {
-  SetupDelegate();
-
-  p2p::testutil::TimeBombAbort bomb(60, "Test RequestIndexThenClose timeout\n");
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultIndex));
-  EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
-
-  thread_->Start();
-  // Send an index request and close the socket right after that.
-  HTTPRequest().Send(client_fd_);
-  EXPECT_EQ(0, close(client_fd_));
-  client_fd_ = -1;
-  thread_->Join();
-}
-
 TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
   SetupDelegate();
 
