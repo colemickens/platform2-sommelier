@@ -265,6 +265,10 @@ const char Metrics::kMetricVpnUserAuthenticationType[] =
 const int Metrics::kMetricVpnUserAuthenticationTypeMax =
     Metrics::kVpnUserAuthenticationTypeMax;
 
+// static
+const char Metrics::kMetricDHCPOptionFailureDetected[] =
+    "Network.Shill.%s.DHCPOptionFailureDetected";
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1015,6 +1019,15 @@ void Metrics::NotifyCorruptedProfile() {
   SendEnumToUMA(kMetricCorruptedProfile,
                 kCorruptedProfile,
                 kCorruptedProfileMax);
+}
+
+void Metrics::NotifyDHCPOptionFailure(const Service &service) {
+  Technology::Identifier technology = service.technology();
+  string histogram = GetFullMetricName(kMetricDHCPOptionFailureDetected,
+                                       technology);
+  SendEnumToUMA(histogram,
+                kDHCPOptionFailure,
+                kDHCPOptionFailureMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

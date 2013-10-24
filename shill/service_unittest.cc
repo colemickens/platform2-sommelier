@@ -53,6 +53,7 @@ using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::StrictMock;
+using testing::StrNe;
 using testing::SetArgumentPointee;
 using testing::Test;
 using testing::Values;
@@ -180,6 +181,39 @@ class ServiceTest : public PropertyStoreTest {
 
   bool SetAutoConnectFull(bool connect, Error *error) {
     return service_->SetAutoConnectFull(connect, error);
+  }
+
+  int GetConsecutiveDHCPFailures() {
+    return service_->consecutive_dhcp_failures_;
+  }
+
+  void SetConsecutiveDHCPFailures(int failures) {
+    service_->consecutive_dhcp_failures_ = failures;
+  }
+
+  int GetLastDHCPOptionFailure() {
+    return service_->last_dhcp_option_failure_.monotonic.tv_sec;
+  }
+
+  void SetLastDHCPOptionFailure(int monotonic_seconds) {
+    service_->last_dhcp_option_failure_ = GetTimestamp(monotonic_seconds, "");
+  }
+
+  Service::DHCPOptionFailureState GetDHCPOptionFailureState() {
+    return service_->dhcp_option_failure_state_;
+  }
+
+  void SetDHCPOptionFailureState(
+      Service::DHCPOptionFailureState failure_state) {
+    service_->dhcp_option_failure_state_ = failure_state;
+  }
+
+  int GetMaxDHCPOptionFailures() {
+    return Service::kMaxDHCPOptionFailures;
+  }
+
+  int GetDHCPOptionHoldOffPeriodSeconds() {
+    return Service::kDHCPOptionHoldOffPeriodSeconds;
   }
 
   MockManager mock_manager_;
@@ -637,12 +671,19 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_TRUE(service_->has_ever_connected_);
   service_->explicitly_disconnected_ = true;
+  SetConsecutiveDHCPFailures(100);
+  SetLastDHCPOptionFailure(200);
+  SetDHCPOptionFailureState(Service::kDHCPOptionFailureConfirmed);
   EXPECT_CALL(*eap_, Reset());
   service_->Unload();
   EXPECT_EQ(string(""), service_->ui_data_);
   EXPECT_EQ(string(""), service_->guid_);
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_FALSE(service_->has_ever_connected_);
+  EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(0, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+            GetDHCPOptionFailureState());
 }
 
 TEST_F(ServiceTest, State) {
@@ -1793,6 +1834,310 @@ TEST_F(ServiceTest, PropertyChanges) {
 // the new value is the same as the old value.
 TEST_F(ServiceTest, CustomSetterNoopChange) {
   TestCustomSetterNoopChange(service_, &mock_manager_);
+}
+
+TEST_F(ServiceTest, DHCPOptionFailureState) {
+  // We are testing the transitions out of each node in this
+  // state diagram:
+  //
+  //   [ Not Detected (send full request) ] <------------
+  //         |                  ^                       |
+  //         |                  |                       |
+  //      n * failure        failure                    |
+  //         |                  |                       |
+  //         V                  |                       |
+  //   [ Suspected (send minimal request) ]             |
+  //                       |                            |
+  //                    success                         |
+  //                       |                            |
+  //                       V                            |
+  //   [ Confirmed (send minimal request) ]             |
+  //         ^             |                            |
+  //         |      hold timer elapsed                  |
+  //         |             |                            |
+  //      success          V                            |
+  //         |     [ Retest Full Request ] ----success--/
+  //         |             |          ^
+  //         |          failure       |
+  //         |             |          |
+  //         |             V          |
+  //   [ Retest Minimal Request ]     |
+  //                       |       success
+  //                    failure       |
+  //                       |          |
+  //                       V          |
+  //                   [ Retest With No Reply (send minimal requests) ]
+
+  // Check initial state.
+  EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(0, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+            GetDHCPOptionFailureState());
+
+  // Let's make up a constant to represent enough iterations that we
+  // safely expect that the state machine won't transition as a result
+  // of more iterations.
+  const int kManyTimes = GetMaxDHCPOptionFailures() * 10;
+
+  // NotDetected -> NotDetected.
+  for (int i = 0; i < kManyTimes; ++i) {
+    service_->OnDHCPSuccess();
+    EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+    EXPECT_EQ(0, GetLastDHCPOptionFailure());
+    EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+              GetDHCPOptionFailureState());
+    EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+  }
+
+  for (int i = 0; i < GetMaxDHCPOptionFailures() - 1; ++i) {
+    service_->OnDHCPFailure();
+    EXPECT_EQ(i + 1, GetConsecutiveDHCPFailures());
+    EXPECT_EQ(0, GetLastDHCPOptionFailure());
+    EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+              GetDHCPOptionFailureState());
+    EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+  }
+
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage,
+              DeleteKey(_, StrNe(Service::kStorageLastDHCPOptionFailure)))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage,
+              DeleteKey(storage_id_, Service::kStorageLastDHCPOptionFailure));
+  EXPECT_CALL(*eap_, Save(_, _, _)).Times(AnyNumber());
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // NotDetected -> Suspected.
+  service_->OnDHCPFailure();
+  EXPECT_EQ(GetMaxDHCPOptionFailures(), GetConsecutiveDHCPFailures());
+  // This value only updates at the time the failure is confirmed.
+  EXPECT_EQ(0, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureSuspected, GetDHCPOptionFailureState());
+  EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              DeleteKey(storage_id_, Service::kStorageLastDHCPOptionFailure));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // Suspected -> NotDetected.
+  EXPECT_EQ(GetMaxDHCPOptionFailures(), GetConsecutiveDHCPFailures());
+  service_->OnDHCPFailure();
+  EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(0, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+            GetDHCPOptionFailureState());
+  EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              DeleteKey(storage_id_, Service::kStorageLastDHCPOptionFailure));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // Suspected -> Confirmed.
+  SetConsecutiveDHCPFailures(GetMaxDHCPOptionFailures());
+  SetLastDHCPOptionFailure(0);
+  SetDHCPOptionFailureState(Service::kDHCPOptionFailureSuspected);
+
+  int kFirstFailureTime = 1234;
+  EXPECT_CALL(time_, GetNow())
+      .WillRepeatedly(Return(GetTimestamp(kFirstFailureTime, "")));
+  EXPECT_CALL(*metrics(), NotifyDHCPOptionFailure(_));
+  service_->OnDHCPSuccess();
+  Mock::VerifyAndClearExpectations(metrics());
+
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureConfirmed, GetDHCPOptionFailureState());
+  EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // Confirmed -> Confirmed.
+  Mock::VerifyAndClearExpectations(&time_);
+  int kAlmostAtFirstFailureExpiry =
+      kFirstFailureTime + GetDHCPOptionHoldOffPeriodSeconds() - 1;
+  EXPECT_CALL(time_, GetNow())
+      .WillRepeatedly(Return(GetTimestamp(kAlmostAtFirstFailureExpiry, "")));
+
+  for (int i = 0; i < kManyTimes; ++i) {
+    service_->OnDHCPSuccess();
+    EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+    EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+    EXPECT_EQ(Service::kDHCPOptionFailureConfirmed,
+              GetDHCPOptionFailureState());
+    EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+  }
+
+  for (int i = 0; i < kManyTimes; ++i) {
+    service_->OnDHCPFailure();
+    EXPECT_EQ(i + 1, GetConsecutiveDHCPFailures());
+    EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+    EXPECT_EQ(Service::kDHCPOptionFailureConfirmed,
+              GetDHCPOptionFailureState());
+    EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+  }
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // Confirmed -> RetestFullRequest.
+  Mock::VerifyAndClearExpectations(&time_);
+  int kFirstFailureExpiry =
+      kFirstFailureTime + GetDHCPOptionHoldOffPeriodSeconds();
+  EXPECT_CALL(time_, GetNow())
+      .WillRepeatedly(Return(GetTimestamp(kFirstFailureExpiry, "")));
+  EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureRetestFullRequest,
+            GetDHCPOptionFailureState());
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // RetestFullRequest -> NotDetected.
+  service_->OnDHCPSuccess();
+  EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+            GetDHCPOptionFailureState());
+  EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              DeleteKey(storage_id_, Service::kStorageLastDHCPOptionFailure));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // RetestFullRequest -> RetestMinimalRequest.
+  SetDHCPOptionFailureState(Service::kDHCPOptionFailureRetestFullRequest);
+
+  service_->OnDHCPFailure();
+  EXPECT_EQ(1, GetConsecutiveDHCPFailures());
+  // This value only updates at the time the failure is confirmed.
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureRetestMinimalRequest,
+            GetDHCPOptionFailureState());
+  EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // RetestMinimalRequest -> Confirmed.
+  Mock::VerifyAndClearExpectations(&time_);
+  int kSecondFailureTime = kFirstFailureExpiry + 1;
+  EXPECT_CALL(time_, GetNow())
+      .WillRepeatedly(Return(GetTimestamp(kSecondFailureTime, "")));
+  EXPECT_CALL(*metrics(), NotifyDHCPOptionFailure(_));
+  service_->OnDHCPSuccess();
+  Mock::VerifyAndClearExpectations(metrics());
+
+  EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(kSecondFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureConfirmed, GetDHCPOptionFailureState());
+  EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kSecondFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // RetestMinimalRequest -> RetestGotNoReply.
+  SetDHCPOptionFailureState(Service::kDHCPOptionFailureRetestMinimalRequest);
+  SetConsecutiveDHCPFailures(1);
+  SetLastDHCPOptionFailure(kFirstFailureTime);
+
+  service_->OnDHCPFailure();
+  EXPECT_EQ(2, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureRetestGotNoReply,
+            GetDHCPOptionFailureState());
+  EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // RetestGotNoReply -> RetestGotNoReply.
+  for (int i = 0; i < kManyTimes; ++i) {
+    service_->OnDHCPFailure();
+    EXPECT_EQ(i + 3, GetConsecutiveDHCPFailures());
+    EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+    EXPECT_EQ(Service::kDHCPOptionFailureRetestGotNoReply,
+              GetDHCPOptionFailureState());
+    EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+  }
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // RetestGotNoReply -> RetestFullRequest.
+  service_->OnDHCPSuccess();
+  EXPECT_EQ(0, GetConsecutiveDHCPFailures());
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureRetestFullRequest,
+            GetDHCPOptionFailureState());
+  EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+
+  EXPECT_CALL(storage,
+              SetUint64(storage_id_,
+                        Service::kStorageLastDHCPOptionFailure,
+                        kFirstFailureTime));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // Load into NotDetected.
+  EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
+  EXPECT_CALL(storage,
+              GetUint64(storage_id_, Service::kStorageLastDHCPOptionFailure, _))
+      .WillOnce(Return(false));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(0, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+            GetDHCPOptionFailureState());
+  EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+  // Note that ShouldUseMinimalDHCPConfig() doesn't change this state.
+  EXPECT_EQ(Service::kDHCPOptionFailureNotDetected,
+            GetDHCPOptionFailureState());
+
+  // Load into Confirmed.
+  EXPECT_CALL(storage,
+              GetUint64(storage_id_, Service::kStorageLastDHCPOptionFailure, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(kSecondFailureTime), Return(true)));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(kSecondFailureTime, GetLastDHCPOptionFailure());
+  EXPECT_EQ(Service::kDHCPOptionFailureConfirmed, GetDHCPOptionFailureState());
+  EXPECT_TRUE(service_->ShouldUseMinimalDHCPConfig());
+  // Note that ShouldUseMinimalDHCPConfig() doesn't change this state.
+  EXPECT_EQ(Service::kDHCPOptionFailureConfirmed, GetDHCPOptionFailureState());
+
+  // Load into RetestFullRequest.
+  EXPECT_CALL(storage,
+              GetUint64(storage_id_, Service::kStorageLastDHCPOptionFailure, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(kFirstFailureTime), Return(true)));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(kFirstFailureTime, GetLastDHCPOptionFailure());
+  // At load time we believe we're confirmed...
+  EXPECT_EQ(Service::kDHCPOptionFailureConfirmed, GetDHCPOptionFailureState());
+  // But as soon as we query ShouldUseMinimalConfig, we'll switch, since
+  // kFirstFailureTime is too far in the past.
+  EXPECT_FALSE(service_->ShouldUseMinimalDHCPConfig());
+  EXPECT_EQ(Service::kDHCPOptionFailureRetestFullRequest,
+            GetDHCPOptionFailureState());
 }
 
 }  // namespace shill

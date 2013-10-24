@@ -129,8 +129,8 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
 void Ethernet::ConnectTo(EthernetService *service) {
   CHECK(service == service_.get()) << "Ethernet was asked to connect the "
                                    << "wrong service?";
+  SelectService(service);
   if (AcquireIPConfigWithLeaseName(service->GetStorageIdentifier())) {
-    SelectService(service);
     SetServiceState(Service::kStateConfiguring);
   } else {
     LOG(ERROR) << "Unable to acquire DHCP config.";

@@ -77,6 +77,7 @@ const char Service::kStorageError[] = "Error";
 const char Service::kStorageFavorite[] = "Favorite";
 const char Service::kStorageGUID[] = "GUID";
 const char Service::kStorageHasEverConnected[] = "HasEverConnected";
+const char Service::kStorageLastDHCPOptionFailure[] = "LastDHCPOptionFailure";
 const char Service::kStorageName[] = "Name";
 const char Service::kStoragePriority[] = "Priority";
 const char Service::kStorageProxyConfig[] = "ProxyConfig";
@@ -96,6 +97,10 @@ const int Service::kMisconnectsMonitorSeconds = 5 * 60;
 const int Service::kReportDisconnectsThreshold = 2;
 const int Service::kReportMisconnectsThreshold = 3;
 const int Service::kMaxDisconnectEventHistory = 20;
+const int Service::kMaxDHCPOptionFailures = 2;
+
+// If we encounter MTU issues, hold off sending a full DHCP request for 30 days.
+const int Service::kDHCPOptionHoldOffPeriodSeconds = 30 * 24 * 60 * 60;
 
 // static
 unsigned int Service::next_serial_number_ = 0;
@@ -138,7 +143,9 @@ Service::Service(ControlInterface *control_interface,
       manager_(manager),
       sockets_(new Sockets()),
       time_(Time::GetInstance()),
-      diagnostics_reporter_(DiagnosticsReporter::GetInstance()) {
+      diagnostics_reporter_(DiagnosticsReporter::GetInstance()),
+      consecutive_dhcp_failures_(0),
+      dhcp_option_failure_state_(kDHCPOptionFailureNotDetected) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull,
@@ -417,6 +424,18 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   LoadString(storage, id, kStorageUIData, "", &ui_data_);
 
+  uint64 last_dhcp_option_failure;
+  if (storage->GetUint64(id, kStorageLastDHCPOptionFailure,
+                         &last_dhcp_option_failure)) {
+    struct timeval tv = { 0, 0 };
+    tv.tv_sec = last_dhcp_option_failure;
+    last_dhcp_option_failure_ = Timestamp(tv, "");
+    dhcp_option_failure_state_ = kDHCPOptionFailureConfirmed;
+  } else {
+    last_dhcp_option_failure_ = Timestamp();
+    dhcp_option_failure_state_ = kDHCPOptionFailureNotDetected;
+  }
+
   static_ip_parameters_.Load(storage, id);
 
   if (mutable_eap()) {
@@ -440,6 +459,9 @@ bool Service::Unload() {
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
+  consecutive_dhcp_failures_ = 0;
+  last_dhcp_option_failure_ = Timestamp();
+  dhcp_option_failure_state_ = kDHCPOptionFailureNotDetected;
   if (mutable_eap()) {
     mutable_eap()->Reset();
   }
@@ -487,10 +509,24 @@ bool Service::Save(StoreInterface *storage) {
   storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
   SaveString(storage, id, kStorageUIData, ui_data_, false, true);
 
+  if (dhcp_option_failure_state_ == kDHCPOptionFailureConfirmed ||
+      dhcp_option_failure_state_ == kDHCPOptionFailureRetestMinimalRequest ||
+      dhcp_option_failure_state_ == kDHCPOptionFailureRetestFullRequest ||
+      dhcp_option_failure_state_ == kDHCPOptionFailureRetestGotNoReply) {
+    // In any of the states where we maintain a history of DHCP option
+    // failures and we haven't confirmed that this is no longer an issue,
+    // we should save the last option failure time even if it is very long ago.
+    storage->SetUint64(id, kStorageLastDHCPOptionFailure,
+                       last_dhcp_option_failure_.monotonic.tv_sec);
+  } else {
+    storage->DeleteKey(id, kStorageLastDHCPOptionFailure);
+  }
+
   static_ip_parameters_.Save(storage, id);
   if (eap()) {
     eap()->Save(storage, id, save_credentials_);
   }
+
   return true;
 }
 
@@ -789,7 +825,7 @@ void Service::ExpireEventsBefore(
   struct timeval period = (const struct timeval){ seconds_ago };
   while (!events->empty()) {
     if (events->size() < static_cast<size_t>(kMaxDisconnectEventHistory)) {
-      struct timeval elapsed = (const struct timeval){ 0 };
+      struct timeval elapsed { 0 };
       timersub(&now.monotonic, &events->front().monotonic, &elapsed);
       if (timercmp(&elapsed, &period, <)) {
         break;
@@ -1399,6 +1435,133 @@ void Service::UpdateErrorProperty() {
   }
   error_ = error;
   adaptor_->EmitStringChanged(kErrorProperty, error);
+}
+
+void Service::OnDHCPFailure() {
+  consecutive_dhcp_failures_++;
+  switch (dhcp_option_failure_state_) {
+    case kDHCPOptionFailureNotDetected:
+      // If we run into too many consecutive DHCP failures, we must suspect
+      // that this may be due in part to the number of options we are requesting
+      // from the server.  Next time, we should try asking for less options.
+      if (consecutive_dhcp_failures_ >= kMaxDHCPOptionFailures) {
+        SLOG(Service, 2) << "Service " << unique_name_ << " is failing to "
+                         << "receive DHCP responses.  The next attempt will "
+                         << "be with minimal DHCP options.";
+        dhcp_option_failure_state_ = kDHCPOptionFailureSuspected;
+      }
+      break;
+
+    case kDHCPOptionFailureSuspected:
+      // Requesting a shorter DHCP reply does not seem to have helped.  As
+      // such, we should exonerate DHCP options as the source of the failures.
+      SLOG(Service, 2) << "Service " << unique_name_ << " did not get a DHCP "
+                       << "response even with minimal options set.";
+      dhcp_option_failure_state_ = kDHCPOptionFailureNotDetected;
+
+      // Unless we set our failure count back to 0, we'll end up toggling back
+      // and forth endlessly between the Suspected and NotDetected states.
+      consecutive_dhcp_failures_ = 0;
+      break;
+
+    case kDHCPOptionFailureConfirmed:
+      // Nothing to do here.  We've previously confirmed that this network
+      // has problems with requests for a large number of DHCP options, so
+      // we'll continue to send small requests until our timeout expires.
+      break;
+
+    case kDHCPOptionFailureRetestFullRequest:
+      // This means that we are still running into issues with DHCP responses
+      // when we send a full request.  It's likely that the problem with this
+      // network still exists.  Let's confirm this by switching back to minimal
+      // requests.
+      SLOG(Service, 2) << "Service " << unique_name_ << " tried a full DHCP "
+                       << "request and it still appears to be failing.";
+      dhcp_option_failure_state_ = kDHCPOptionFailureRetestMinimalRequest;
+      break;
+
+    case kDHCPOptionFailureRetestMinimalRequest:
+      // Requesting a shorter DHCP reply does not seem to have helped.
+      // However we still have a memory of this once being a problem, so
+      // it is probably best to continue sending short requests and postpone
+      // a re-test until we get a reply.
+      SLOG(Service, 2) << "Service " << unique_name_ << " seems not to be "
+                       << "getting any DHCP responses at all.";
+      dhcp_option_failure_state_ = kDHCPOptionFailureRetestGotNoReply;
+      break;
+
+    case kDHCPOptionFailureRetestGotNoReply:
+      // Nothing to do here.  We are still failing to receive a reply.
+      break;
+  }
+}
+
+void Service::OnDHCPSuccess() {
+  consecutive_dhcp_failures_ = 0;
+  switch (dhcp_option_failure_state_) {
+    case kDHCPOptionFailureNotDetected:
+      // Nothing to do.  All is well with the world.
+      break;
+
+    case kDHCPOptionFailureSuspected:  // FALLTHROUGH
+    case kDHCPOptionFailureRetestMinimalRequest:
+      LOG(WARNING) << "Service " << unique_name_ << " can get a DHCP "
+                   << "response only with minimal options requested.";
+      // We just performed an experiment to prove that the DHCP failures we
+      // have been having might be related to the number of options we have
+      // been requesting.  It appears that as soon as we reduced the option
+      // count, our request succeeded.
+      dhcp_option_failure_state_ = kDHCPOptionFailureConfirmed;
+      last_dhcp_option_failure_ = time_->GetNow();
+      metrics_->NotifyDHCPOptionFailure(*this);
+      break;
+
+    case kDHCPOptionFailureConfirmed:
+      // Nothing to do here.  We've previously confirmed that this network
+      // has problems with requests for a large number of DHCP options, so
+      // we'll continue to send small requests until our timeout expires.
+      break;
+
+    case kDHCPOptionFailureRetestFullRequest:
+      // We expected this request to fail, since we attempted a full request
+      // on a network we previously believed dropped DHCP replies for such
+      // requests.  Let's exonerate this network.
+      SLOG(Service, 2) << "Service " << unique_name_ << " was able to receive "
+                       << "a response to a full DHCP request.  Switching back "
+                       << "to full requests by default.";
+      dhcp_option_failure_state_ = kDHCPOptionFailureNotDetected;
+      break;
+
+    case kDHCPOptionFailureRetestGotNoReply:
+      // We are finally receiving DHCP replies again.  Resume the test
+      // starting with the next time we perform a DHCP request.
+      SLOG(Service, 2) << "Service " << unique_name_ << " was finally able to "
+                       << "receive a DHCP response.";
+      dhcp_option_failure_state_ = kDHCPOptionFailureRetestFullRequest;
+      break;
+  }
+}
+
+bool Service::ShouldUseMinimalDHCPConfig() {
+  // If it's been a while since we have tested for options failures, we should
+  // re-confirm if this issue still exists.
+  if (dhcp_option_failure_state_ == kDHCPOptionFailureConfirmed) {
+    Timestamp now = time_->GetNow();
+    struct timeval elapsed { 0 };
+    timersub(&now.monotonic, &last_dhcp_option_failure_.monotonic, &elapsed);
+    struct timeval period { kDHCPOptionHoldOffPeriodSeconds };
+    if (timercmp(&elapsed, &period, >=)) {
+      SLOG(Service, 2) << "Service " << unique_name_ << " will be re-tested to "
+                       << "see if the server responds to a full DHCP request.";
+      dhcp_option_failure_state_ = kDHCPOptionFailureRetestFullRequest;
+    }
+  }
+
+  return
+      dhcp_option_failure_state_ == kDHCPOptionFailureSuspected ||
+      dhcp_option_failure_state_ == kDHCPOptionFailureConfirmed ||
+      dhcp_option_failure_state_ == kDHCPOptionFailureRetestMinimalRequest ||
+      dhcp_option_failure_state_ == kDHCPOptionFailureRetestGotNoReply;
 }
 
 }  // namespace shill

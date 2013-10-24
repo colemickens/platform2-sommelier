@@ -311,23 +311,23 @@ TEST_F(DeviceTest, SelectedService) {
   SelectService(service);
   EXPECT_TRUE(device_->selected_service_.get() == service.get());
 
-  EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->SetServiceState(Service::kStateConfiguring);
-  EXPECT_CALL(*service.get(), SetFailure(Service::kFailureOutOfRange));
+  EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   device_->SetServiceFailure(Service::kFailureOutOfRange);
 
   // Service should be returned to "Idle" state
-  EXPECT_CALL(*service.get(), state())
+  EXPECT_CALL(*service, state())
     .WillOnce(Return(Service::kStateUnknown));
-  EXPECT_CALL(*service.get(), SetState(Service::kStateIdle));
-  EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
+  EXPECT_CALL(*service, SetState(Service::kStateIdle));
+  EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   SelectService(NULL);
 
   // A service in the "Failure" state should not be reset to "Idle"
   SelectService(service);
-  EXPECT_CALL(*service.get(), state())
+  EXPECT_CALL(*service, state())
     .WillOnce(Return(Service::kStateFailure));
-  EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
+  EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   SelectService(NULL);
 }
 
@@ -338,8 +338,9 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_CALL(*service.get(), DisconnectWithFailure(Service::kFailureDHCP, _));
-  EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
+  EXPECT_CALL(*service, OnDHCPFailure());
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
+  EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   OnIPConfigUpdated(NULL, false);
 }
 
@@ -352,8 +353,11 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   SelectService(service);
   service->static_ip_parameters_.args_.SetString(kAddressProperty, "1.1.1.1");
   service->static_ip_parameters_.args_.SetInt(kPrefixlenProperty, 16);
-  EXPECT_CALL(*service.get(), SetState(_)).Times(0);
-  EXPECT_CALL(*service.get(), SetConnection(_)).Times(0);
+  // Even though we won't call DisconnectWithFailure, we should still have
+  // the service learn from the failed DHCP attempt.
+  EXPECT_CALL(*service, OnDHCPFailure());
+  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
+  EXPECT_CALL(*service, SetConnection(_)).Times(0);
   OnIPConfigUpdated(NULL, false);
 }
 
@@ -366,13 +370,14 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   SelectService(service);
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateConnected));
-  EXPECT_CALL(*service.get(), IsConnected())
+  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+  EXPECT_CALL(*service, IsConnected())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service.get(), IsPortalDetectionDisabled())
+  EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
-  EXPECT_CALL(*service.get(), SetConnection(NotNullRefPtr()));
+  EXPECT_CALL(*service, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service, OnDHCPSuccess());
+  EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
   OnIPConfigUpdated(ipconfig.get(), true);
 }
 
@@ -515,7 +520,7 @@ TEST_F(DeviceTest, Stop) {
                                 manager()));
   SelectService(service);
 
-  EXPECT_CALL(*service.get(), state()).
+  EXPECT_CALL(*service, state()).
       WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
               EmitBoolChanged(kPoweredProperty, false));
@@ -623,10 +628,10 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
   MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
   SetLinkMonitor(link_monitor);  // Passes ownership.
   SetManager(&manager);
-  EXPECT_CALL(*service.get(), state())
+  EXPECT_CALL(*service, state())
       .WillOnce(Return(Service::kStateIdle));
-  EXPECT_CALL(*service.get(), SetState(_));
-  EXPECT_CALL(*service.get(), SetConnection(_));
+  EXPECT_CALL(*service, SetState(_));
+  EXPECT_CALL(*service, SetConnection(_));
   EXPECT_TRUE(HasLinkMonitor());
   SelectService(NULL);
   EXPECT_FALSE(HasLinkMonitor());
@@ -686,6 +691,23 @@ TEST_F(DeviceTest, ShouldUseArpGateway) {
 }
 
 TEST_F(DeviceTest, ShouldUseMinimalDHCPConfig) {
+  // With no selected service, we should not choose a minimal config.
+  EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
+
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  &manager));
+  SelectService(service);
+  EXPECT_CALL(*service, ShouldUseMinimalDHCPConfig())
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_TRUE(device_->ShouldUseMinimalDHCPConfig());
   EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
 }
 

@@ -289,10 +289,9 @@ TEST_F(EthernetTest, ConnectToFailure) {
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
-  // Since we never called SelectService()...
-  EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
+  EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
   ethernet_->ConnectTo(mock_service_);
-  EXPECT_EQ(NULL, GetSelectedService().get());
+  EXPECT_EQ(mock_service_, GetSelectedService().get());
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {

@@ -261,6 +261,11 @@ class Metrics {
     kVpnUserAuthenticationTypeMax
   };
 
+  enum DHCPOptionFailure {
+    kDHCPOptionFailure = 1,
+    kDHCPOptionFailureMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -417,6 +422,11 @@ class Metrics {
   static const int kMetricVpnRemoteAuthenticationTypeMax;
   static const char kMetricVpnUserAuthenticationType[];
   static const int kMetricVpnUserAuthenticationTypeMax;
+
+  // We have detected that a DHCP server can only deliver leases if
+  // we reduce the number of options that we request of it.  This
+  // implies an infrastructure issue.
+  static const char kMetricDHCPOptionFailureDetected[];
 
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
@@ -577,6 +587,9 @@ class Metrics {
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();
+
+  // Notifies this object about a service with DHCP infrastructure problems.
+  virtual void NotifyDHCPOptionFailure(const Service &service);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);
