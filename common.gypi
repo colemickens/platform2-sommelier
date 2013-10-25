@@ -76,6 +76,7 @@
           '<(sysroot)/usr/include',
         ],
         'cflags': [
+          '-clang-syntax',
           '--sysroot=<(sysroot)',
         ],
         'link_settings': {
