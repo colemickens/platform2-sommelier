@@ -181,85 +181,78 @@ if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
   fi
 fi
 
-# If we've switched from verified mode to developer mode, clobber the state.
-# The reverse is not possible to detect reliably, but we try.
-# In addition, normal and unsupported are treated are equivalent otherwise
-# booting the first time on a legacy device would clobber state for no reason.
-# (NOTE, this will not be triggered in recovery mode.)
-
-# File used to trigger a stateful reset
+# File used to trigger a stateful reset.  Contains arguments for
+# the "clobber-state" call.  This file may exist at boot time, as
+# some use cases operate by creating this file with the necessary
+# arguments and then rebooting.
 RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 
-# File defined by clobber-state
+# This file is created by clobber-state after the transition
+# to dev mode.
 DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 
-# DEV_MODE is used to determine if we're booted in developer mode,
-# by checking only the developer and recovery switch states.
-# Values:
-# 0=recovery/non-dev mode,
-# 1=dev (SSD) mode,
-# 2=we've rebooted to handle a request for stateful wipe because of
-#   factory or power wash.
-# Of these the check below assigns 0 or 1. The remaining value(s) will
-# be assigned later.
-crossystem "devsw_boot?1" && ! crossystem "mainfw_act?recovery"
-DEV_MODE=$((! $?))
+FIRMWARE_TYPE=$(crossystem mainfw_type)
 
-# If in factory mode or a wipe process is already scheduled,
-# set DEV_MODE to 2 so that the right thing happens later.
-if [ -n "$FACTORY_MODE" -o -O "$RESET_FILE" ]; then
-  DEV_MODE=2
-fi
-
-if [ ${DEV_MODE} -eq 1 ]; then
-  FW_TYPE=$(crossystem mainfw_type)
-  # For platforms using separated normal/developer firmware, we need to display
-  # an extra page for developer mode warning.
-  if [ "${FW_TYPE}" != "developer" ]; then
-    chromeos-boot-alert warn_dev /dev/tty1
+# Check for whether we need a stateful wipe, and alert the user as
+# necessary.  We can wipe for several different reasons:
+#  + Wipe for the factory build process.  This is signaled by
+#    the existence of ${RESET_FILE} prior to reboot; the arguments
+#    for clobber-state are set up before rebooting.
+#  + User requested "power wash".  This is signaled in the same
+#    way as the factory reset, but with different arguments in
+#    ${RESET_FILE}.
+#  + Switch from verified mode to dev mode.  We do this if we're in
+#    dev mode, and ${DEV_MODE_FILE} doesn't exist.  clobber-state
+#    in this case will create the file, to prevent re-wipe.
+#  + Switch from dev mode to verified mode.  We do this if we're in
+#    verified mode, and ${DEV_MODE_FILE} still exists.  (This check
+#    isn't necessarily reliable.)
+#
+# Stateful wipe for dev mode switching is skipped if the build
+# is a debug build or if we've booted in recovery mode (meaning
+# from USB); this protects various development use cases, most
+# especially booting Chromium OS on non-Chrome hardware.
+#
+if [ -O ${RESET_FILE} ]; then
+  # Wipe requested on previous boot.  In the case of a factory wipe,
+  # there can be a special splash screen with a message localized for
+  # the factory personnel.
+  ALTERNATE_WIPE_SCREEN=/mnt/stateful_partition/wipe_splash.png
+  if [ -O "$ALTERNATE_WIPE_SCREEN" ]; then
+    chromeos-boot-alert wipe /dev/tty1 "$ALTERNATE_WIPE_SCREEN"
+  else
+    chromeos-boot-alert power_wash /dev/tty1
   fi
-fi
+elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
+  if crossystem "devsw_boot?1" ; then
+    # We've booted in dev mode.  For platforms using separated
+    # normal/developer firmware, we need to display an extra boot
+    # alert for the developer mode warning plus the 30-second delay.
+    # Note that we want this message and the delay regardless of
+    # whether we plan to wipe.
+    if [ "$FIRMWARE_TYPE" != "developer" ]; then
+      chromeos-boot-alert warn_dev /dev/tty1
+    fi
 
-# Transition to devmode
-if [ ${DEV_MODE} -eq 1 -a ! -O ${DEV_MODE_FILE} ]; then
-  # Delay the first developer mode boot by 5 minutes unless the images is a
-  # developer image.  We check the dev image here to avoid a stat(2) on normal
-  # boots
-  # TODO(wad) just have the dev_mode build stamp the stateful.
-  if crossystem "debug_build?0"; then
-    # TODO(wad) Throw up a splash.
-    chromeos-boot-alert enter_dev /dev/tty1
-    # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
-    echo "keepimg" > ${RESET_FILE}
-    clobber-log -- "Enter developer mode"
-  fi
+    if [ ! -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
+      # We're transitioning from verified boot to dev mode.
+      # TODO(wad,wfrichar) Have user provide sudo/vt2 password here.
+      chromeos-boot-alert enter_dev /dev/tty1
+      echo "keepimg" > ${RESET_FILE}
+      clobber-log -- "Enter developer mode"
+    fi
 
-  # Transition from devmode
-elif [ ${DEV_MODE} -eq 0 -a -O ${DEV_MODE_FILE} ]; then
-  # When coming back from developer mode, we don't need to clobber
-  # as aggressively. Fast will do the trick.
-  if crossystem "debug_build?0"; then
+  elif [ -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
+    # We're transitioning from dev mode to verified boot.
+    # When coming back from developer mode, we don't need to
+    # clobber as aggressively.  Fast will do the trick.
     chromeos-boot-alert leave_dev /dev/tty1
     echo "fast keepimg" > ${RESET_FILE}
     clobber-log -- "Leave developer mode"
   fi
 fi
 
-# Check if the stateful partition has requested self-destruction. If DEV_MODE is
-# 0 or 1, we've already displayed the correct localized image earlier. The only
-# case we've to handle is when DEV_MODE is 2.
-# If it's after factory finalization, then the wipe_splash.png should be used
-# to display the message. This image will contain the text to display as per
-# the factory's locale. Otherwise, we display the powerwash message.
-if [ -O "$RESET_FILE" ]; then
-  if [ ${DEV_MODE} -eq 2 ]; then
-    ALTERNATE_WIPE_SCREEN=/mnt/stateful_partition/wipe_splash.png
-    if [ -O "$ALTERNATE_WIPE_SCREEN" ]; then
-      chromeos-boot-alert wipe /dev/tty1 "$ALTERNATE_WIPE_SCREEN"
-    else
-      chromeos-boot-alert power_wash /dev/tty1
-    fi
-  fi
+if [ -O ${RESET_FILE} ]; then
   ARGS="$(cat ${RESET_FILE})"
   exec clobber-state "$ARGS"
 fi
