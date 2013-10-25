@@ -16,6 +16,7 @@ import sys
 # This can also be overridden in a specific target GYP file if required.
 _BASE_VER = '180609'
 
+
 class Platform2(object):
   def __init__(self, use_flags, board=None, host=False, libdir=None,
                incremental=True, verbose=False, enable_tests=False):
@@ -247,13 +248,17 @@ def main(argv):
                       help='the libdir for the specific board, eg /usr/lib64')
   parser.add_argument('--use_flags',
                       action=_ParseStringSetAction, help='USE flags to enable')
-  parser.add_argument('--verbose', action='store_true',
+  parser.add_argument('--verbose', action='store_true', default=None,
                       help='enable verbose log output')
 
   options = parser.parse_args(argv)
 
   if not (options.host ^ (options.board != None)):
     raise AssertionError('You must provide only one of --board or --host')
+
+  if options.verbose is None:
+    # Should convert to cros_build_lib.BooleanShellValue.
+    options.verbose = (os.environ.get('VERBOSE', '0') == '1')
 
   p2 = Platform2(options.use_flags, options.board, options.host,
                  options.libdir, options.incremental, options.verbose,
