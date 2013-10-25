@@ -400,7 +400,7 @@ bool Service::Load(StoreInterface *storage) {
     return false;
   }
 
-  auto_connect_ = false;
+  auto_connect_ = IsAutoConnectByDefault();
   retain_auto_connect_ =
       storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
   // The legacy "Favorite" flag will override retain_auto_connect_ if present.

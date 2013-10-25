@@ -10,11 +10,14 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_ethernet.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
 
+using ::testing::_;
 using ::testing::NiceMock;
+using ::testing::Return;
 
 namespace shill {
 
@@ -94,6 +97,16 @@ TEST_F(EthernetServiceTest, PropertyChanges) {
 // the new value is the same as the old value.
 TEST_F(EthernetServiceTest, CustomSetterNoopChange) {
   TestCustomSetterNoopChange(service_, &mock_manager_);
+}
+
+TEST_F(EthernetServiceTest, LoadAutoConnect) {
+  // Make sure when we try to load an Ethernet service, it sets AutoConnect
+  // to be true even if the property is not found.
+  NiceMock<MockStore> mock_store;
+  EXPECT_CALL(mock_store, ContainsGroup(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_store, GetBool(_, _, _)).WillRepeatedly(Return(false));
+  EXPECT_TRUE(service_->Load(&mock_store));
+  EXPECT_TRUE(GetAutoConnect());
 }
 
 }  // namespace shill
