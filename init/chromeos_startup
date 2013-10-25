@@ -226,7 +226,7 @@ if [ ${DEV_MODE} -eq 1 -a ! -O ${DEV_MODE_FILE} ]; then
   # developer image.  We check the dev image here to avoid a stat(2) on normal
   # boots
   # TODO(wad) just have the dev_mode build stamp the stateful.
-  if [ ! -f /root/.dev_mode ]; then
+  if crossystem "debug_build?0"; then
     # TODO(wad) Throw up a splash.
     chromeos-boot-alert enter_dev /dev/tty1
     # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
@@ -238,7 +238,7 @@ if [ ${DEV_MODE} -eq 1 -a ! -O ${DEV_MODE_FILE} ]; then
 elif [ ${DEV_MODE} -eq 0 -a -O ${DEV_MODE_FILE} ]; then
   # When coming back from developer mode, we don't need to clobber
   # as aggressively. Fast will do the trick.
-  if [ ! -f /root/.dev_mode ]; then
+  if crossystem "debug_build?0"; then
     chromeos-boot-alert leave_dev /dev/tty1
     echo "fast keepimg" > ${RESET_FILE}
     clobber-log -- "Leave developer mode"
@@ -357,11 +357,8 @@ mount_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
-# Mount stateful partition for dev packages
-# TODO(arkaitzr@chromium.org) - Only use CROS_DEBUG when cros_debug is
-# correctly set in a test VM after updating itself to itself (that is, it does
-# not fail cros_au_test_harness).
-if [ $CROS_DEBUG -eq 1 -o -f /root/.dev_mode ]; then
+# Mount stateful partition for dev packages.
+if [ $CROS_DEBUG -eq 1 ]; then
   # Capture a snapshot of "normal" mount state here, for auditability,
   # before we start applying devmode-specific changes.
   cat /proc/mounts > /var/log/mount_options.log
