@@ -15,6 +15,11 @@ class AddressMapper {
  public:
   AddressMapper() {}
 
+  // Copy constructor: copies mappings from |source| to this AddressMapper. This
+  // is useful for copying mappings from parent to child process upon fork(). It
+  // is also useful to copy kernel mappings to any process that is created.
+  AddressMapper(const AddressMapper& source);
+
   // Maps a new address range to quipper space.
   // |remove_existing_mappings| indicates whether to remove old mappings that
   // collide with the new range in real address space, indicating it has been
@@ -57,6 +62,9 @@ class AddressMapper {
   // If the result is 2^64 (all of quipper space), this returns 0.  Call
   // IsEmpty() to distinguish this from actual emptiness.
   uint64 GetMaxMappedLength() const;
+
+  // Dumps the state of the address mapper to logs. Useful for debugging.
+  void DumpToLog() const;
 
  private:
   struct MappedRange {
@@ -103,8 +111,6 @@ class AddressMapper {
 
   // Container for all the existing mappings.
   MappingList mappings_;
-
-  DISALLOW_COPY_AND_ASSIGN(AddressMapper);
 };
 
 }  // namespace quipper

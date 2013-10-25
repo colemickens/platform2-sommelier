@@ -106,8 +106,13 @@ class PerfParser : public PerfReader {
 
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
-  bool MapMmapEvent(struct mmap_event*, uint64 id);
-  bool MapForkEvent(const struct fork_event&);
+  bool MapMmapEvent(struct mmap_event* event, uint64 id);
+  bool MapForkEvent(const struct fork_event& event);
+  bool MapCommEvent(const struct comm_event& event);
+
+  // Create a process mapper for a process. Optionally pass in a parent pid
+  // |ppid| from which to copy mappings.
+  void CreateProcessMapper(uint32 pid, uint32 ppid = -1);
 
   // Does a sample event remap and then returns DSO name and offset of sample.
   bool MapSampleEvent(ParsedEvent* parsed_event);
@@ -119,9 +124,7 @@ class PerfParser : public PerfReader {
 
   // For synthetic address mapping.
   bool do_remap_;
-  AddressMapper* kernel_mapper_;
   std::map<uint32, AddressMapper*> process_mappers_;
-  std::map<uint32, uint32> child_to_parent_pid_map_;
 
   // Maps pid/tid to commands.
   std::map<PidTid, string> pidtid_to_comm_map_;

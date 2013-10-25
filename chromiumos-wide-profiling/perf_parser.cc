@@ -35,12 +35,10 @@ const char kSwapperCommandName[] = "swapper";
 }  // namespace
 
 PerfParser::PerfParser() : do_remap_(false),
-                           kernel_mapper_(new AddressMapper),
                            discard_unused_events_(false) {}
 
 PerfParser::~PerfParser() {
   ResetAddressMappers();
-  delete kernel_mapper_;
 }
 
 void PerfParser::SetOptions(const PerfParser::Options& options) {
@@ -149,6 +147,7 @@ bool PerfParser::ProcessEvents() {
         VLOG(1) << "COMM: " << event.comm.pid << ":" << event.comm.tid << ": "
                 << event.comm.comm;
         ++stats_.num_comm_events;
+        CHECK(MapCommEvent(event.comm));
         pidtid_to_comm_map_[std::make_pair(event.comm.pid, event.comm.tid)] =
             event.comm.comm;
         break;
@@ -274,47 +273,16 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
   // 3. Address space of the parent process.
 
   AddressMapper* mapper = NULL;
-  bool mapped = false;
   uint64 mapped_addr = 0;
-  switch(misc) {
-  case PERF_RECORD_MISC_KERNEL:
-    CHECK(kernel_mapper_);
-    if (kernel_mapper_->GetMappedAddress(ip, &mapped_addr)) {
-      mapper = kernel_mapper_;
-      mapped = true;
-    }
-    break;
-  case PERF_RECORD_MISC_USER: {
-    size_t loop_count = 0;
-    while (process_mappers_.find(pid) != process_mappers_.end()) {
-      if (loop_count++ > child_to_parent_pid_map_.size()) {
-        LOG(FATAL) << "Looped too many times searching for mapper.";
-        break;
-      }
-      mapper = process_mappers_[pid];
-      if (mapper->GetMappedAddress(ip, &mapped_addr)) {
-        mapped = true;
-        break;
-      }
-      if (child_to_parent_pid_map_.find(pid) == child_to_parent_pid_map_.end())
-        break;
-      pid = child_to_parent_pid_map_[pid];
-    }
-    // Some addresses in call chain and branch stack might be kernel addresses,
-    // but are not identified as such due to the topmost sample being taken from
-    // user space.  Thus if a sample doesn't map to user space, try kernel space
-    // next.
-    if (!mapper && kernel_mapper_->GetMappedAddress(ip, &mapped_addr)) {
-      mapper = kernel_mapper_;
-      mapped = true;
-    }
 
-    break;
+  // Sometimes the first event we see is a SAMPLE event and we don't have the
+  // time to create an address mapper for a process. Example, for pid 0.
+  if (process_mappers_.find(pid) == process_mappers_.end()) {
+    CreateProcessMapper(pid);
   }
-  default:
-    LOG(ERROR) << "Unknown SAMPLE MISC type: " << misc;
-    return false;
-  }
+  mapper = process_mappers_[pid];
+  bool mapped = mapper->GetMappedAddress(ip, &mapped_addr);
+  // TODO(asharif): What should we do when we cannot map a SAMPLE event?
 
   if (mapped) {
     if (name && offset) {
@@ -339,21 +307,12 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
   // addresses, both kernel and non-kernel.
 
   AddressMapper* mapper = NULL;
+
   uint32 pid = event->pid;
-  switch(event->header.misc) {
-  case PERF_RECORD_MISC_KERNEL:
-    mapper = kernel_mapper_;
-    break;
-  case PERF_RECORD_MISC_USER:
-    if (process_mappers_.find(pid) == process_mappers_.end())
-      process_mappers_[pid] = new AddressMapper;
-    mapper = process_mappers_[pid];
-    break;
-  default:
-    LOG(ERROR) << "Unknown MMAP MISC type: " << event->header.misc;
-    return false;
+  if (process_mappers_.find(pid) == process_mappers_.end()) {
+    CreateProcessMapper(pid);
   }
-  CHECK(mapper);
+  mapper = process_mappers_[pid];
 
   uint64 len = event->len;
   uint64 start = event->start;
@@ -366,8 +325,11 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
     //   event.mmap.len   = 0xffffffff7fff7dff
     //   event.mmap.pgoff = 0x80008200
     pgoff = 0;
-  } else if (string(event->filename).find("kallsyms") != string::npos &&
-             pgoff < len && pgoff != 0) {
+  } else if (id == 0 && pgoff < len && pgoff != 0) {
+    // Note that we cannot use the name of the DSO because sometimes we only
+    // have file hashes and not names. For all perf.data files, the first DSO to
+    // be mapped is the kernel DSO. So an id == 0 check suffices here.
+    //
     // This handles the case where the mmap offset somewhere between the start
     // and the end of the mmap region.  This is the case for the kernel DSO on
     // x86_64.  e.g.
@@ -385,8 +347,10 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
     // More general case where pgoff is used normally.
     // TODO: Use pgoff in address mapper.
   }
-  if (!mapper->MapWithID(start, len, id, true))
+  if (!mapper->MapWithID(start, len, id, true)) {
+    mapper->DumpToLog();
     return false;
+  }
 
   uint64 mapped_addr;
   CHECK(mapper->GetMappedAddress(start, &mapped_addr));
@@ -394,6 +358,24 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
     event->start = mapped_addr;
     event->len = len;
     event->pgoff = pgoff;
+  }
+  return true;
+}
+
+void PerfParser::CreateProcessMapper(uint32 pid, uint32 ppid) {
+  AddressMapper* mapper;
+  if (process_mappers_.find(ppid) != process_mappers_.end())
+    mapper = new AddressMapper(*process_mappers_[ppid]);
+  else
+    mapper = new AddressMapper();
+
+  process_mappers_[pid] = mapper;
+}
+
+bool PerfParser::MapCommEvent(const struct comm_event& event) {
+  uint32 pid = event.pid;
+  if (process_mappers_.find(pid) == process_mappers_.end()) {
+    CreateProcessMapper(pid);
   }
   return true;
 }
@@ -408,13 +390,8 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
 
   uint32 pid = event.pid;
   if (process_mappers_.find(pid) != process_mappers_.end()) {
-    DLOG(INFO) << "Found an existing process mapper with the new process's ID.";
+    DLOG(INFO) << "Found an existing process mapper with pid: " << pid;
     return true;
-  }
-  if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end()) {
-    LOG(ERROR) << "Forked process ID has previously been mapped to a parent "
-               << "process.";
-    return false;
   }
 
   // If the parent and child pids are the same, this is just a new thread
@@ -422,8 +399,7 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
   if (event.ppid == pid)
     return true;
 
-  process_mappers_[pid] = new AddressMapper;
-  child_to_parent_pid_map_[pid] = event.ppid;
+  CreateProcessMapper(pid, event.ppid);
   return true;
 }
 
@@ -432,7 +408,6 @@ void PerfParser::ResetAddressMappers() {
   for (iter = process_mappers_.begin(); iter != process_mappers_.end(); ++iter)
     delete iter->second;
   process_mappers_.clear();
-  child_to_parent_pid_map_.clear();
 }
 
 }  // namespace quipper

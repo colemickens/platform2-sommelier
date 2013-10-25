@@ -8,6 +8,10 @@
 
 namespace quipper {
 
+AddressMapper::AddressMapper(const AddressMapper& source) {
+  mappings_ = source.mappings_;
+}
+
 bool AddressMapper::Map(const uint64 real_addr,
                         const uint64 size,
                         const bool remove_existing_mappings) {
@@ -117,9 +121,20 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
 
   // If it still hasn't succeeded in mapping, it means there is no free space in
   // quipper space large enough for a mapping of this size.
+  DumpToLog();
   LOG(ERROR) << "Could not find space to map addr=" << std::hex << real_addr
              << " with size " << std::hex << size;
   return false;
+}
+
+void AddressMapper::DumpToLog() const {
+  MappingList::const_iterator it;
+  for (it = mappings_.begin(); it != mappings_.end(); ++it) {
+    LOG(INFO) << " real_addr: " << std::hex << it->real_addr
+              << " mapped: " << std::hex << it->mapped_addr
+              << " id: " << std::hex << it->id
+              << " size: " << std::hex << it->size;
+  }
 }
 
 bool AddressMapper::GetMappedAddress(const uint64 real_addr,

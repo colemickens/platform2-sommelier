@@ -72,6 +72,13 @@ const char* kPerfDataFiles[] = {
   // Data which contains events with non-consecutive event ids.
   // Events are cycles (id 0) and branch-misses (id 5).
   "perf.data.cycles_and_branch",
+
+  // This test first mmap()s a DSO, then fork()s to copy the mapping to the
+  // child and then modifies the mapping by mmap()ing a DSO on top of the old
+  // one. It then records SAMPLEs events in the child. It ensures the SAMPLEs in
+  // the child are attributed to the first DSO that was mmap()ed, not the second
+  // one.
+  "perf.data.remmap"
 };
 
 const char* kPerfPipedDataFiles[] = {
