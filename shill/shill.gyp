@@ -23,7 +23,7 @@
       '__STDC_FORMAT_MACROS',
       '__STDC_LIMIT_MACROS',
       'RUNDIR="/var/run/shill"',
-      'SHIMDIR="/usr/lib/shill/shims"',
+      'SHIMDIR="<(libdir)/shill/shims"',
     ],
     'conditions': [
       ['USE_cellular == 0', {
