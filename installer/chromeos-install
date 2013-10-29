@@ -552,6 +552,9 @@ echo "Copying kernel..."
 write_partition ${KERNEL_PART} ${KERNEL_IMG_SECTORS} ${START_KERN_A} \
   ${KERNEL_IMG_OFFSET} ${KERNEL_IMG} ${DST}
 
+write_partition ${KERNEL_PART} ${KERNEL_IMG_SECTORS} ${START_KERN_B} \
+  ${KERNEL_IMG_OFFSET} ${KERNEL_IMG} ${DST}
+
 # Copy kernel verification block to target HD
 copy_kernel_vblock() {
   local ret=0
@@ -599,6 +602,9 @@ echo "Copying rootfs..."
 # straight copy now.  The GPT labels and UUIDs are the only mutable naming
 # areas we have after a build.
 write_partition ${ROOTFS_PART} ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} \
+  ${ROOTFS_IMG_OFFSET} ${ROOTFS_IMG} ${DST}
+
+write_partition ${ROOTFS_PART} ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_B} \
   ${ROOTFS_IMG_OFFSET} ${ROOTFS_IMG} ${DST}
 
 if [ ${OEM_IMG_SECTORS} -gt 0 ]; then
