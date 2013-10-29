@@ -140,7 +140,7 @@ TYPED_TEST(PropertyStoreTypedTest, GetProperty) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
   Error error;
-  TypeParam property;
+  TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
 
   TypeParam read_value;
@@ -164,7 +164,7 @@ TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
   Error error;
-  TypeParam property = TypeParam();  // value-initialize primitives
+  TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
 
   // Change the value from the default (initialized above).  Should
