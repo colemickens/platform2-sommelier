@@ -12,7 +12,6 @@
         ['USE_cros_host == 0', {
           'dependencies': [
             '<(DEPTH)/chaps/chaps.gyp:*',
-            '<(DEPTH)/cros-disks/cros-disks.gyp:*',
             '<(DEPTH)/debugd/debugd.gyp:*',
             '<(DEPTH)/shill/shill.gyp:*',
           ],
@@ -21,6 +20,11 @@
               'dependencies': [
                 '<(DEPTH)/cromo/cromo.gyp:*',
                 '<(DEPTH)/mist/mist.gyp:*',
+              ],
+            }],
+            ['USE_cros_disks == 1', {
+              'dependencies': [
+                '<(DEPTH)/cros-disks/cros-disks.gyp:*',
               ],
             }],
             ['USE_gdmwimax == 1', {
