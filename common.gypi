@@ -12,6 +12,7 @@
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
     'USE_cellular%': 0,
+    'USE_cros_disks%': 0,
     'USE_cros_host%': 0,
     'USE_gdmwimax%': 0,
     'USE_test%': 0,
