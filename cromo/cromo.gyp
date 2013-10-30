@@ -55,11 +55,30 @@
     {
       'target_name': 'cromo',
       'type': 'executable',
-      'dependencies': ['libcromo'],
+      # cromo needs to export symbols, as specified in cromo.ver, to its
+      # plugins. gyp currently does not link a static library with
+      # --whole-archive, which causes some unused symbols in libcromo.a get
+      # removed. As a workaround, the 'cromo' target explicitly takes the
+      # dependencies and sources from the 'libcromo' target, instead of
+      # depending on 'libcromo'.
+      'dependencies': [
+        '../common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
+        'cromo-adaptors',
+      ],
+      'defines': [
+        'PLUGINDIR="<(libdir)/cromo/plugins"',
+      ],
       'ldflags': [
         '-Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=<(platform_root)/cromo/cromo.ver',
       ],
       'sources': [
+        'cromo_server.cc',
+        'hooktable.cc',
+        'modem_handler.cc',
+        'sms_message.cc',
+        'sms_cache.cc',
+        'syslog_helper.cc',
+        'utilities.cc',
         'carrier.cc',
         'main.cc',
         'plugin_manager.cc',
