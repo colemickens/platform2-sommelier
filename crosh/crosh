@@ -134,6 +134,10 @@ HELP_ADVANCED='
   Clear any existing PPP username and PPP password for an existing cellular
   connection.
 
+ set_time [<time string>]
+  Sets the system time if the the system has been unable to get it from the
+  network.  The <time string> uses the format of the GNU coreutils date command.
+
  sound <command> <argument>
   Low level sound configuration.  Can be used to play/record audio samples
   and enable beam forming on Pixel.
@@ -152,6 +156,9 @@ HELP_ADVANCED='
 
  syslog <message>
   Logs a message to syslog.
+
+ time_info
+  Returns the current synchronization state for the time service.
 
  tpcontrol {status|taptoclick [on|off]|sensitivity [1-5]|set <property> <value>}
  tpcontrol {syntp [on|off]}
@@ -282,6 +289,53 @@ check_keyfile() {
   (expr "$1" : '^/media/' > /dev/null) || \
   (expr "$1" : '^[^/]*$' > /dev/null)
 }
+
+cmd_set_time() (
+  local spec="$*"
+  if [ -z "${spec}" ]; then
+    echo "A date/time specification is required."
+    echo "E.g., set_time 10 February 2012 11:21am"
+    echo "(Remember to set your timezone in Settings first.)"
+    return
+  fi
+  local sec status
+  sec=$(date +%s --date="${spec}" 2>&1)
+  status=$?
+  if [ ${status} -ne 0 -o -z "${sec}" ]; then
+    echo "Unable to understand the specified time:"
+    echo "${sec}"
+    return
+  fi
+  local reply
+  reply=$(dbus-send --system --type=method_call --print-reply \
+    --dest=org.torproject.tlsdate /org/torproject/tlsdate \
+    org.torproject.tlsdate.SetTime "int64:$((sec))" 2>/dev/null)
+  status=$?
+  if [ ${status} -ne 0 ]; then
+    echo "Time not set. Unable to communicate with the time service."
+    return
+  fi
+  # Reply format: <dbus response header>\n    uint32 <code>\n
+  local code
+  code=$(echo "${reply}" | sed -n -e '$s/.*uint32 \([0-9]\).*/\1/p')
+  case "${code}" in
+  0)
+    echo "Time has been set."
+    ;;
+  1)
+    echo "Requested time was invalid (too large or too small): ${sec}"
+    ;;
+  2)
+    echo "Time not set. Network time cannot be overriden."
+    ;;
+  3)
+    echo "Time not set. There was a communication error."
+    ;;
+  *)
+    echo "An unexpected response was received: ${code}"
+    echo "Details: ${reply}"
+  esac
+)
 
 cmd_sound() (
   case "$1" in
@@ -655,6 +709,17 @@ cmd_experimental_storage() (
       echo "Could not $1 experimental storage features."
     fi
   fi
+)
+
+cmd_time_info() (
+  echo "Last time synchronization information:"
+  dbus-send --system --type=method_call --print-reply \
+      --dest=org.torproject.tlsdate /org/torproject/tlsdate \
+      org.torproject.tlsdate.LastSyncInfo 2>/dev/null |
+    sed -n \
+        -e 's/boolean/network-synchronized:/p' \
+        -e 's/string/last-source:/p' \
+        -e 's/int64/last-synced-time:/p'
 )
 
 cmd_bt_console() (
