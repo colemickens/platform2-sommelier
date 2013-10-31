@@ -11,7 +11,6 @@
       'conditions': [
         ['USE_cros_host == 0', {
           'dependencies': [
-            '<(DEPTH)/chaps/chaps.gyp:*',
             '<(DEPTH)/debugd/debugd.gyp:*',
             '<(DEPTH)/shill/shill.gyp:*',
           ],
@@ -30,6 +29,11 @@
             ['USE_gdmwimax == 1', {
               'dependencies': [
                 '<(DEPTH)/wimax_manager/wimax_manager.gyp:*',
+              ],
+            }],
+            ['USE_tpm == 1', {
+              'dependencies': [
+                '<(DEPTH)/chaps/chaps.gyp:*',
               ],
             }],
             ['USE_vpn == 1', {
