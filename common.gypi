@@ -18,6 +18,7 @@
     'USE_test%': 0,
     'USE_tpm%': 0,
     'USE_vpn%': 0,
+    'USE_wimax%': 0,
 
     'external_cflags%': '',
     'external_cxxflags%': '',
