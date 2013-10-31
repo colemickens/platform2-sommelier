@@ -400,6 +400,8 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kCellular));
 }
 
+#if !defined(DISABLE_WIMAX)
+
 TEST_F(DeviceInfoTest, CreateDeviceWiMax) {
   IPAddress address = CreateInterfaceAddress();
 
@@ -418,6 +420,8 @@ TEST_F(DeviceInfoTest, CreateDeviceWiMax) {
   // GetMACAddressFromKernel() instead.
   EXPECT_TRUE(device_info_.infos_[kTestDeviceIndex].mac_address.IsEmpty());
 }
+
+#endif  // DISABLE_WIMAX
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
   IPAddress address = CreateInterfaceAddress();

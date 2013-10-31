@@ -1655,6 +1655,8 @@ TEST_F(ManagerTest, GetServiceVPN) {
 #endif  // DISABLE_VPN
 }
 
+#if !defined(DISABLE_WIMAX)
+
 TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {
   KeyValueStore args;
   Error e;
@@ -1675,6 +1677,8 @@ TEST_F(ManagerTest, GetServiceWiMax) {
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_TRUE(service);
 }
+
+#endif  // DISABLE_WIMAX
 
 TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   // Manager calls ActiveProfile() so we need at least one profile installed.

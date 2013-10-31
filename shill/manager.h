@@ -270,7 +270,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
   VPNProvider *vpn_provider() const { return vpn_provider_.get(); }
   WiFiProvider *wifi_provider() const { return wifi_provider_.get(); }
+#if !defined(DISABLE_WIMAX)
   virtual WiMaxProvider *wimax_provider() { return wimax_provider_.get(); }
+#endif  // DISABLE_WIMAX
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }
@@ -530,7 +532,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   scoped_ptr<EthernetEapProvider> ethernet_eap_provider_;
   scoped_ptr<VPNProvider> vpn_provider_;
   scoped_ptr<WiFiProvider> wifi_provider_;
+#if !defined(DISABLE_WIMAX)
   scoped_ptr<WiMaxProvider> wimax_provider_;
+#endif  // DISABLE_WIMAX
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver *resolver_;
   bool running_;

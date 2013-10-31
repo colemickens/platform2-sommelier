@@ -70,12 +70,6 @@ class ProxyFactory {
 
   virtual DBusServiceProxyInterface *CreateDBusServiceProxy();
 
-  virtual WiMaxDeviceProxyInterface *CreateWiMaxDeviceProxy(
-      const std::string &path);
-  virtual WiMaxManagerProxyInterface *CreateWiMaxManagerProxy();
-  virtual WiMaxNetworkProxyInterface *CreateWiMaxNetworkProxy(
-      const std::string &path);
-
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
@@ -170,6 +164,16 @@ class ProxyFactory {
       const std::string &service);
 
 #endif  // DISABLE_CELLULAR
+
+#if !defined(DISABLE_WIMAX)
+
+  virtual WiMaxDeviceProxyInterface *CreateWiMaxDeviceProxy(
+      const std::string &path);
+  virtual WiMaxManagerProxyInterface *CreateWiMaxManagerProxy();
+  virtual WiMaxNetworkProxyInterface *CreateWiMaxNetworkProxy(
+      const std::string &path);
+
+#endif  // DISABLE_WIMAX
 
  protected:
   ProxyFactory();

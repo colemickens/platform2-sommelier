@@ -13,9 +13,6 @@
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_network_proxy.h"
 #include "shill/supplicant_process_proxy.h"
-#include "shill/wimax_device_proxy.h"
-#include "shill/wimax_manager_proxy.h"
-#include "shill/wimax_network_proxy.h"
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/dbus_objectmanager_proxy.h"
@@ -34,6 +31,12 @@
 #include "shill/modem_manager_proxy.h"
 #include "shill/modem_proxy.h"
 #include "shill/modem_simple_proxy.h"
+#endif
+
+#if !defined(DISABLE_WIMAX)
+#include "shill/wimax_device_proxy.h"
+#include "shill/wimax_manager_proxy.h"
+#include "shill/wimax_network_proxy.h"
 #endif
 
 using std::string;
@@ -66,20 +69,6 @@ DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
 
 DBusServiceProxyInterface *ProxyFactory::CreateDBusServiceProxy() {
   return new DBusServiceProxy(connection());
-}
-
-WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
-    const string &path) {
-  return new WiMaxDeviceProxy(connection(), path);
-}
-
-WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
-  return new WiMaxManagerProxy(connection());
-}
-
-WiMaxNetworkProxyInterface *ProxyFactory::CreateWiMaxNetworkProxy(
-    const string &path) {
-  return new WiMaxNetworkProxy(connection(), path);
 }
 
 PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
@@ -224,5 +213,23 @@ mm1::BearerProxyInterface *ProxyFactory::CreateBearerProxy(
 }
 
 #endif  // DISABLE_CELLULAR
+
+#if !defined(DISABLE_WIMAX)
+
+WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
+    const string &path) {
+  return new WiMaxDeviceProxy(connection(), path);
+}
+
+WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
+  return new WiMaxManagerProxy(connection());
+}
+
+WiMaxNetworkProxyInterface *ProxyFactory::CreateWiMaxNetworkProxy(
+    const string &path) {
+  return new WiMaxNetworkProxy(connection(), path);
+}
+
+#endif  // DISABLE_WIMAX
 
 }  // namespace shill

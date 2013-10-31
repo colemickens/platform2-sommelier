@@ -104,8 +104,10 @@ Manager::Manager(ControlInterface *control_interface,
           new VPNProvider(control_interface, dispatcher, metrics, this)),
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
+#if !defined(DISABLE_WIMAX)
       wimax_provider_(
           new WiMaxProvider(control_interface, dispatcher, metrics, this)),
+#endif  // DISABLE_WIMAX
       resolver_(Resolver::GetInstance()),
       running_(false),
       connect_profiles_to_rpc_(true),
@@ -2007,7 +2009,9 @@ void Manager::UpdateProviderMapping() {
   providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
   providers_[Technology::kVPN] = vpn_provider_.get();
   providers_[Technology::kWifi] = wifi_provider_.get();
+#if !defined(DISABLE_WIMAX)
   providers_[Technology::kWiMax] = wimax_provider_.get();
+#endif  // DISABLE_WIMAX
 }
 
 }  // namespace shill

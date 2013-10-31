@@ -109,10 +109,7 @@ DBUS_PROXY_HEADERS = \
 
 # Generates rules for copying SYSROOT XMLs locally and updates the proxy header
 # dependencies.
-DBUS_BINDINGS_XML_SYSROOT = \
-	org.chromium.WiMaxManager>wimax_manager \
-	org.chromium.WiMaxManager.Device>wimax_manager-device \
-	org.chromium.WiMaxManager.Network>wimax_manager-network
+DBUS_BINDINGS_XML_SYSROOT =
 
 # Rename local XML files with the names required by DBus to XML files with the
 # names required by the style guide, which will then be turned into generated
@@ -146,6 +143,13 @@ DBUS_BINDINGS_XML_SYSROOT += \
 	org.freedesktop.ModemManager1.Modem.Time>mm1-modem-time \
 	org.freedesktop.ModemManager1.Sim>mm1-sim
 endif  # SHILL_CELLULAR
+
+ifneq ($(SHILL_WIMAX), 0)
+DBUS_BINDINGS_XML_SYSROOT += \
+	org.chromium.WiMaxManager>wimax_manager \
+	org.chromium.WiMaxManager.Device>wimax_manager-device \
+	org.chromium.WiMaxManager.Network>wimax_manager-network
+endif  # SHILL_WIMAX
 
 define ADD_BINDING
 $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
@@ -314,12 +318,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wifi_endpoint.o \
 	wifi_provider.o \
 	wifi_service.o \
-	wimax.o \
-	wimax_device_proxy.o \
-	wimax_manager_proxy.o \
-	wimax_network_proxy.o \
-	wimax_provider.o \
-	wimax_service.o \
 	wpa_supplicant.o \
 	) \
 	$(PROTO_BINDINGS_OBJS)
@@ -449,12 +447,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wifi.o \
 	mock_wifi_provider.o \
 	mock_wifi_service.o \
-	mock_wimax.o \
-	mock_wimax_device_proxy.o \
-	mock_wimax_manager_proxy.o \
-	mock_wimax_network_proxy.o \
-	mock_wimax_provider.o \
-	mock_wimax_service.o \
 	modem_info_unittest.o \
 	netlink_manager_unittest.o \
 	netlink_message_unittest.o \
@@ -497,9 +489,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wifi_provider_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o \
-	wimax_provider_unittest.o \
-	wimax_service_unittest.o \
-	wimax_unittest.o \
 	wpa_supplicant_unittest.o \
 	)
 
@@ -619,6 +608,36 @@ $(SET_APN_HELPER_BIN): $(SET_APN_HELPER_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SET_APN_HELPER_LIBS) -o $@
 
 endif  # SHILL_CELLULAR=0
+
+# If SHILL_WIMAX=0, don't build WiMAX support into shill.
+ifeq ($(SHILL_WIMAX), 0)
+
+CPPFLAGS += -DDISABLE_WIMAX
+
+else
+
+SHILL_OBJS += $(addprefix $(BUILDDIR)/, \
+	wimax.o \
+	wimax_device_proxy.o \
+	wimax_manager_proxy.o \
+	wimax_network_proxy.o \
+	wimax_provider.o \
+	wimax_service.o \
+	)
+
+TEST_OBJS += $(addprefix $(BUILDDIR)/, \
+	mock_wimax.o \
+	mock_wimax_device_proxy.o \
+	mock_wimax_manager_proxy.o \
+	mock_wimax_network_proxy.o \
+	mock_wimax_provider.o \
+	mock_wimax_service.o \
+	wimax_provider_unittest.o \
+	wimax_service_unittest.o \
+	wimax_unittest.o \
+	)
+
+endif  # SHILL_WIMAX=0
 
 # If SHILL_VPN=0, don't build VPN support into shill.
 ifeq ($(SHILL_VPN), 0)

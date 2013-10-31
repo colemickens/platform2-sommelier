@@ -432,6 +432,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       GetWiFiInterfaceInfo(interface_index);
       break;
     case Technology::kWiMax:
+#if defined(DISABLE_WIMAX)
+      LOG(WARNING) << "WiMax support is not implemented. Ignore WiMax link "
+                   << link_name << " at index " << interface_index << ".";
+      return NULL;
+#else
       // WiMax devices are managed by WiMaxProvider.
       SLOG(Device, 2) << "WiMax link " << link_name
                       << " at index " << interface_index
@@ -444,6 +449,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       infos_[interface_index].mac_address.Clear();
       manager_->wimax_provider()->OnDeviceInfoAvailable(link_name);
       break;
+#endif  // DISABLE_WIMAX
     case Technology::kPPP:
     case Technology::kTunnel:
       // Tunnel and PPP devices are managed by the VPN code (PPP for
