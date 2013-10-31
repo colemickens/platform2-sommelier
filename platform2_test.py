@@ -114,15 +114,18 @@ class Platform2Test(object):
   def run(self):
     """Runs the test in a proper environment (e.g. qemu)."""
 
-    if not (self.user_gtest_filter and self.package in self.user_gtest_filter):
-      return
-    else:
-      positive_filters = self.gtest_filter[0] + \
-                         self.user_gtest_filter[self.package][0]
-      negative_filters = self.gtest_filter[1] + \
-                         self.user_gtest_filter[self.package][1]
-      filters = (':'.join(positive_filters), ':'.join(negative_filters))
-      gtest_filter = '%s-%s' % filters
+    positive_filters = self.gtest_filter[0]
+    negative_filters = self.gtest_filter[1]
+
+    if self.user_gtest_filter:
+      if self.package not in self.user_gtest_filter:
+        return
+      else:
+        positive_filters += self.user_gtest_filter[self.package][0]
+        negative_filters += self.user_gtest_filter[self.package][1]
+
+    filters = (':'.join(positive_filters), ':'.join(negative_filters))
+    gtest_filter = '%s-%s' % filters
 
     cmd = []
     env = {}
