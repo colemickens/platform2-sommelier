@@ -24,6 +24,9 @@ namespace cryptohome {
 const char *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 
+const char *kRemoveLRU = "remove-lru";;
+const char *kRemoveLRUIfDormant = "remove-lru-if-dormant";
+
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
       platform_(default_platform_.get()),
@@ -91,7 +94,7 @@ bool HomeDirs::FreeDiskSpace() {
   std::string owner;
   if (enterprise_owned_ || GetOwner(&owner)) {
     const base::Time timestamp_threshold =
-        base::Time::Now() - old_user_last_activity_time_;
+        base::Time::Now() - GetUserInactivityThresholdForRemoval();
     while (!timestamp_cache_->oldest_known_timestamp().is_null() &&
            timestamp_cache_->oldest_known_timestamp() <= timestamp_threshold) {
       FilePath deleted_user_dir = timestamp_cache_->RemoveOldestUser();
@@ -129,6 +132,22 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
     policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
         &ephemeral_users_enabled);
   return ephemeral_users_enabled;
+}
+
+base::TimeDelta HomeDirs::GetUserInactivityThresholdForRemoval() {
+  LoadDevicePolicy();
+  // If the policy cannot be loaded, default to LRU-if-dormant strategy.
+  std::string strategy = kRemoveLRUIfDormant;
+  if (policy_provider_->device_policy_is_loaded()) {
+    policy_provider_->GetDevicePolicy().GetCleanUpStrategy(&strategy);
+  }
+  if (strategy == kRemoveLRUIfDormant)
+    return old_user_last_activity_time_;
+  else if (strategy == kRemoveLRU)
+    return base::TimeDelta();
+  else
+    LOG(ERROR) << "Unknown strategy : " << strategy;
+  return old_user_last_activity_time_;
 }
 
 bool HomeDirs::AreCredentialsValid(const Credentials& creds) {

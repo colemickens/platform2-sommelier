@@ -152,6 +152,7 @@ class HomeDirs {
   }
 
  private:
+  base::TimeDelta GetUserInactivityThresholdForRemoval();
   bool AreEphemeralUsersEnabled();
   // Loads the device policy, either by initializing it or reloading the
   // existing one.

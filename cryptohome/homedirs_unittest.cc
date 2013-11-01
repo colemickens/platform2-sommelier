@@ -51,6 +51,14 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
   return true;
 }
 
+ACTION_P(SetCleanUpStrategy, clean_up_strategy) {
+  if (!clean_up_strategy.empty()) {
+    *arg0 = clean_up_strategy;
+    return true;
+  }
+  return false;
+}
+
 namespace {
 const char *kTestRoot = "alt_test_home_dir";
 
@@ -92,7 +100,7 @@ class HomeDirsTest : public ::testing::Test {
     homedirs_.set_shadow_root(kTestRoot);
     test_helper_.InjectSystemSalt(&platform_,
                                   StringPrintf("%s/salt", kTestRoot));
-    set_policy(true, kOwner, false);
+    set_policy(true, kOwner, false, "");
 
     // Mount() normally sets this.
     homedirs_.set_old_user_last_activity_time(kOldUserLastActivityTime);
@@ -120,7 +128,8 @@ class HomeDirsTest : public ::testing::Test {
 
   void set_policy(bool owner_known,
                   const string& owner,
-                  bool ephemeral_users_enabled) {
+                  bool ephemeral_users_enabled,
+                  const string& clean_up_strategy) {
     policy::MockDevicePolicy* device_policy = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy, LoadPolicy())
         .WillRepeatedly(Return(true));
@@ -128,6 +137,8 @@ class HomeDirsTest : public ::testing::Test {
         .WillRepeatedly(SetOwner(owner_known, owner));
     EXPECT_CALL(*device_policy, GetEphemeralUsersEnabled(_))
         .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
+    EXPECT_CALL(*device_policy, GetCleanUpStrategy(_))
+        .WillRepeatedly(SetCleanUpStrategy(clean_up_strategy));
     homedirs_.own_policy_provider(new policy::PolicyProvider(device_policy));
   }
 
@@ -235,7 +246,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
     .Times(4);
 
   // Now skip the deletion steps by not having a legit owner.
-  set_policy(false, "", false);
+  set_policy(false, "", false, "");
 
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
@@ -321,7 +332,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
     .Times(1);
 
   // Now skip the deletion steps by not having a legit owner.
-  set_policy(false, "", false);
+  set_policy(false, "", false, "");
 
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
@@ -574,7 +585,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleOldUsers) {
 }
 
 TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsers) {
-   set_policy(true, "", false);
+   set_policy(true, "", false, "");
    homedirs_.set_enterprise_owned(true);
 
   // Ensure that the two oldest user directories are deleted, but not any
@@ -599,6 +610,65 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsers) {
     .WillOnce(Return(homedir_times_[0]))
     .WillOnce(Return(homedir_times_[0]))
     .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(base::Time())); // No more users.
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[2], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true));
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, EnterpriseLRUPolicyCleanUpAllUsers) {
+   set_policy(true, "", false, "remove-lru");
+   homedirs_.set_enterprise_owned(true);
+
+  // Ensure that the two oldest user directories are deleted, but not any
+  // others.
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillRepeatedly(Return(true));
+
+  // Move this loop to a helper just for these expects.
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[1])))
+    .WillOnce(Return(FilePath(homedir_paths_[2])))
+    .WillOnce(Return(FilePath(homedir_paths_[3])))
+    .WillOnce(Return(FilePath(homedir_paths_[0])));
+  // Always return current time, so they don't be deleted if policy is not
+  // applied.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()))
     .WillOnce(Return(base::Time())); // No more users.
 
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -727,14 +797,14 @@ TEST_F(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
     .Times(0);
 
   // Now skip the deletion steps by not having a legit owner.
-  set_policy(false, "", false);
+  set_policy(false, "", false, "");
 
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
 TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
   // When ephemeral users are enabled, no cryptohomes are kept except the owner.
-  set_policy(true, kOwner, true);
+  set_policy(true, kOwner, true, "");
   // homedirs_.set_enterprise_owned(true);
 
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -783,7 +853,7 @@ TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
 
 TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
   // When ephemeral users are enabled, no cryptohomes are kept except the owner.
-  set_policy(true, "", true);
+  set_policy(true, "", true, "");
   homedirs_.set_enterprise_owned(true);
 
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -893,7 +963,7 @@ TEST_F(HomeDirsTest, GoodDecryptTest) {
   homedirs_.crypto()->set_tpm(&tpm);
   homedirs_.crypto()->set_use_tpm(false);
   ASSERT_TRUE(homedirs_.GetSystemSalt(&system_salt));
-  set_policy(false, "", false);
+  set_policy(false, "", false, "");
 
   test_helper_.users[1].InjectKeyset(&platform_);
   cryptohome::SecureBlob passkey;
@@ -911,7 +981,7 @@ TEST_F(HomeDirsTest, BadDecryptTest) {
   NiceMock<MockTpm> tpm;
   homedirs_.crypto()->set_tpm(&tpm);
   homedirs_.crypto()->set_use_tpm(false);
-  set_policy(false, "", false);
+  set_policy(false, "", false, "");
 
   test_helper_.users[4].InjectKeyset(&platform_);
 
@@ -937,7 +1007,7 @@ class KeysetManagementTest : public HomeDirsTest {
     homedirs_.crypto()->set_tpm(&tpm);
     homedirs_.crypto()->set_use_tpm(false);
     ASSERT_TRUE(homedirs_.GetSystemSalt(&system_salt_));
-    set_policy(false, "", false);
+    set_policy(false, "", false, "");
 
     // Setup the base keyset files for users[1]
     keyset_paths_.push_back(test_helper_.users[1].keyset_path);
