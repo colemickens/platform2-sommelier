@@ -49,6 +49,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
   MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
   MOCK_METHOD1(GetEndorsementPublicKey, bool(chromeos::SecureBlob*));
+  MOCK_METHOD1(GetEndorsementCredential, bool(chromeos::SecureBlob*));
   MOCK_METHOD9(MakeIdentity, bool(chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,

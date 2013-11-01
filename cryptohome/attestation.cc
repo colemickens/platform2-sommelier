@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
+#include <base/stringprintf.h>
 #include <base/time.h>
 #include <chromeos/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
@@ -847,6 +848,20 @@ bool Attestation::DeleteKeysByPrefix(bool is_user_specific,
     device_keys->RemoveLast();
   }
   return PersistDatabaseChanges();
+}
+
+bool Attestation::GetEKInfo(std::string* ek_info) {
+  SecureBlob ek_cert;
+  if (!tpm_->GetEndorsementCredential(&ek_cert)) {
+    LOG(ERROR) << "Cannot get EK certificate from TPM.  EK info not available.";
+    return false;
+  }
+  SecureBlob hash = CryptoLib::Sha256(ek_cert);
+  *ek_info = base::StringPrintf(
+      "EK Certificate:\n%s\nHash:\n%s\n",
+      CreatePEMCertificate(ConvertBlobToString(ek_cert)).c_str(),
+      base::HexEncode(hash.data(), hash.size()).c_str());
+  return true;
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {

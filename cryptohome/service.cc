@@ -1739,6 +1739,21 @@ gboolean Service::TpmAttestationDeleteKeys(gboolean is_user_specific,
   return TRUE;
 }
 
+gboolean Service::TpmAttestationGetEK(gchar** OUT_ek_info,
+                                      gboolean* OUT_success,
+                                      GError** error) {
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  std::string ek_info;
+  *OUT_success = attestation->GetEKInfo(&ek_info);
+  *OUT_ek_info = g_strndup(ek_info.data(), ek_info.size());
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11

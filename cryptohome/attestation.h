@@ -281,6 +281,13 @@ class Attestation : public base::PlatformThread::Delegate {
                                   const std::string& username,
                                   const std::string& key_prefix);
 
+  // Gets the TPM Endorsement Key (EK) certificate and returns it in PEM format
+  // in addition to a hex SHA256 hash of the raw DER encoded certificate.  The
+  // result is intended to be human readable and is always valid ASCII.  Returns
+  // true on success.  This method requires the TPM owner password to be
+  // available.
+  virtual bool GetEKInfo(std::string* ek_info);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);

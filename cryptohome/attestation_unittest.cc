@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/string_util.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -526,6 +527,19 @@ TEST_F(AttestationTest, DeleteByPrefixDevice) {
 // user-owned keys so the test is trivial.
 TEST_F(AttestationTest, DeleteByPrefixUser) {
   EXPECT_TRUE(attestation_.DeleteKeysByPrefix(true, kTestUser, "prefix"));
+}
+
+TEST_F(AttestationTest, GetEKInfo) {
+  string info;
+  EXPECT_TRUE(attestation_.GetEKInfo(&info));
+  EXPECT_TRUE(IsStringASCII(info));
+
+  // Simulate owner password not available.
+  EXPECT_CALL(tpm_, GetEndorsementCredential(_))
+      .WillRepeatedly(Return(false));
+  info.clear();
+  EXPECT_FALSE(attestation_.GetEKInfo(&info));
+  EXPECT_EQ(0, info.size());
 }
 
 }  // namespace cryptohome

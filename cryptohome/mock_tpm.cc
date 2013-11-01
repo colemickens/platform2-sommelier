@@ -4,6 +4,11 @@
 
 #include "mock_tpm.h"
 
+using testing::_;
+using testing::DoAll;
+using testing::SetArgumentPointee;
+using testing::Return;
+
 namespace cryptohome {
 
 MockTpm::MockTpm() {
@@ -23,6 +28,9 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementPublicKey(_))
       .WillByDefault(Return(true));
+  ON_CALL(*this, GetEndorsementCredential(_))
+      .WillByDefault(DoAll(SetArgumentPointee<0>(chromeos::SecureBlob("test")),
+                           Return(true)));
   ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))

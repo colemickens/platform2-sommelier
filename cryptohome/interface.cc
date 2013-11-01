@@ -482,6 +482,12 @@ gboolean cryptohome_tpm_attestation_delete_keys(Cryptohome* self,
                          key_prefix,
                          OUT_success);
 }
+gboolean cryptohome_tpm_attestation_get_ek(Cryptohome *self,
+                                           gchar** OUT_ek_info,
+                                           gboolean* OUT_success,
+                                           GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetEK, OUT_ek_info, OUT_success);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

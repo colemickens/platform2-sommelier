@@ -81,6 +81,7 @@ namespace switches {
     "tpm_attestation_register_key",
     "tpm_attestation_enterprise_challenge",
     "tpm_attestation_delete",
+    "tpm_attestation_get_ek",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -119,7 +120,8 @@ namespace switches {
     ACTION_TPM_ATTESTATION_KEY_STATUS,
     ACTION_TPM_ATTESTATION_REGISTER_KEY,
     ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE,
-    ACTION_TPM_ATTESTATION_DELETE
+    ACTION_TPM_ATTESTATION_DELETE,
+    ACTION_TPM_ATTESTATION_GET_EK,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -1570,6 +1572,27 @@ int main(int argc, char **argv) {
       printf("Delete operation failed.\n");
       return 1;
     }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_GET_EK],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean success = FALSE;
+    gchar* ek_info = NULL;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_ek(
+            proxy.gproxy(),
+            &ek_info,
+            &success,
+            &chromeos::Resetter(&error).lvalue())) {
+      printf("AsyncTpmAttestationGetEK call failed: %s.\n", error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("Failed to get EK.\n");
+      g_free(ek_info);
+      return 1;
+    }
+    printf("%s\n", ek_info);
+    g_free(ek_info);
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

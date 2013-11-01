@@ -258,6 +258,10 @@
       <arg type="s" name="key_prefix" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
+    <method name="TpmAttestationGetEK">
+      <arg type="s" name="ek_info" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />
     </method>
