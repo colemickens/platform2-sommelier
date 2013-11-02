@@ -8,6 +8,8 @@
 #include "shill/connection_health_checker.h"
 #include "shill/out_of_credits_detector.h"
 
+#include <base/time.h>
+
 namespace shill {
 
 // Detects out-of-credits condition by monitoring for the following scenarios:
