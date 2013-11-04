@@ -61,6 +61,7 @@ class DevicePolicyImpl : public DevicePolicy {
   virtual bool GetOwner(std::string* owner) const;
   virtual bool GetHttpDownloadsEnabled(bool* http_downloads_enabled) const;
   virtual bool GetAuP2PEnabled(bool* au_p2p_enabled) const;
+  virtual bool GetCleanUpStrategy(std::string* clean_up_strategy) const;
 
  protected:
   // Verifies that the policy files are owned by root and exist.

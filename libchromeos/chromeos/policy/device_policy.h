@@ -145,6 +145,10 @@ class DevicePolicy {
   // |au_p2p_enabled|. Returns true on success.
   virtual bool GetAuP2PEnabled(bool* au_p2p_enabled) const = 0;
 
+  // Writes the value of the clean_up_strategy policy in
+  // |clean_up_strategy|. Returns true on success.
+  virtual bool GetCleanUpStrategy(
+      std::string* clean_up_strategy) const = 0;
  private:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles() = 0;
