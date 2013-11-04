@@ -236,11 +236,22 @@ void Device::SetCarrier(const string &/*carrier*/,
                         "Device doesn't support SetCarrier.");
 }
 
+bool Device::IsIPv6Allowed() const {
+  return true;
+}
+
 void Device::DisableIPv6() {
+  SLOG(Device, 2) << __func__;
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
 }
 
 void Device::EnableIPv6() {
+  SLOG(Device, 2) << __func__;
+  if (!IsIPv6Allowed()) {
+    LOG(INFO) << "Skip enabling IPv6 on " << link_name_
+              << " as it is not allowed.";
+    return;
+  }
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
 }
 

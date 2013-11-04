@@ -63,6 +63,7 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
 using ::testing::Values;
@@ -80,15 +81,39 @@ class TestDevice : public Device {
              int interface_index,
              Technology::Identifier technology)
       : Device(control_interface, dispatcher, metrics, manager, link_name,
-               address, interface_index, technology) {}
+               address, interface_index, technology) {
+    ON_CALL(*this, IsIPv6Allowed())
+        .WillByDefault(Invoke(this, &TestDevice::DeviceIsIPv6Allowed));
+    ON_CALL(*this, SetIPFlag(_, _, _))
+        .WillByDefault(Invoke(this, &TestDevice::DeviceSetIPFlag));
+  }
+
   ~TestDevice() {}
+
   virtual void Start(Error *error,
                      const EnabledStateChangedCallback &callback) {
     DCHECK(error);
   }
+
   virtual void Stop(Error *error,
                     const EnabledStateChangedCallback &callback) {
     DCHECK(error);
+  }
+
+  MOCK_CONST_METHOD0(IsIPv6Allowed, bool());
+
+  MOCK_METHOD3(SetIPFlag, bool(IPAddress::Family family,
+                               const std::string &flag,
+                               const std::string &value));
+
+  virtual bool DeviceIsIPv6Allowed() const {
+    return Device::IsIPv6Allowed();
+  }
+
+  virtual bool DeviceSetIPFlag(IPAddress::Family family,
+                               const std::string &flag,
+                               const std::string &value) {
+    return Device::SetIPFlag(family, flag, value);
   }
 };
 
@@ -158,7 +183,7 @@ class DeviceTest : public PropertyStoreTest {
   }
 
   MockControl control_interface_;
-  DeviceRefPtr device_;
+  scoped_refptr<TestDevice> device_;
   MockDeviceInfo device_info_;
   MockMetrics metrics_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
@@ -239,6 +264,20 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
   device_->dhcp_provider_ = NULL;
+}
+
+TEST_F(DeviceTest, EnableIPv6) {
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv6,
+                                  StrEq(Device::kIPFlagDisableIPv6),
+                                  StrEq("0")))
+      .WillOnce(Return(true));
+  device_->EnableIPv6();
+}
+
+TEST_F(DeviceTest, EnableIPv6NotAllowed) {
+  EXPECT_CALL(*device_, IsIPv6Allowed()).WillOnce(Return(false));
+  EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
+  device_->EnableIPv6();
 }
 
 TEST_F(DeviceTest, Load) {

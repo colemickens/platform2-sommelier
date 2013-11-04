@@ -409,6 +409,22 @@ void Cellular::SetCarrier(const string &carrier,
   capability_->SetCarrier(carrier, error, callback);
 }
 
+bool Cellular::IsIPv6Allowed() const {
+  // A cellular device is disabled before the system goes into suspend mode.
+  // However, outstanding TCP sockets may not be nuked when the associated
+  // network interface goes down. When the system resumes from suspend, the
+  // cellular device is re-enabled and may reconnect to the network, which
+  // acquire a new IPv6 address on the network interface. However, those
+  // outstanding TCP sockets may initiate traffic with the old IPv6 address.
+  // Some network may not like the fact that two IPv6 addresses originated from
+  // the same modem within a connection session and may drop the connection.
+  // Here we disable IPv6 support on cellular devices to work around the issue.
+  //
+  // TODO(benchan): Resolve the IPv6 issue in a different way and then
+  // re-enable IPv6 support on cellular devices.
+  return false;
+}
+
 void Cellular::DropConnection() {
   if (ppp_device_) {
     // For PPP dongles, IP configuration is handled on the |ppp_device_|,

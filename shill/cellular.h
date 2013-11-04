@@ -202,6 +202,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   virtual void SetCarrier(const std::string &carrier,
                           Error *error, const ResultCallback &callback)
       override;
+  virtual bool IsIPv6Allowed() const override;
   virtual void DropConnection() override;
   virtual void SetServiceState(Service::ConnectState state) override;
   virtual void SetServiceFailure(Service::ConnectFailure failure_state)

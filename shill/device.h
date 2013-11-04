@@ -126,6 +126,12 @@ class Device : public base::RefCounted<Device> {
 
   virtual void SetCarrier(const std::string &carrier,
                           Error *error, const ResultCallback &callback);
+
+  // Returns true if IPv6 is allowed and should be enabled when the device
+  // tries to acquire an IP configuration. The default implementation allows
+  // IPv6, which can be overridden by a derived class.
+  virtual bool IsIPv6Allowed() const;
+
   virtual void DisableIPv6();
   virtual void EnableIPv6();
   virtual void EnableIPv6Privacy();
@@ -252,6 +258,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
+  FRIEND_TEST(DeviceTest, EnableIPv6);
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, Save);
@@ -431,6 +438,7 @@ class Device : public base::RefCounted<Device> {
   friend class DeviceTest;
   friend class EthernetTest;
   friend class OpenVPNDriverTest;
+  friend class TestDevice;
   friend class VirtualDeviceTest;
   friend class WiFiObjectTest;
 
@@ -457,11 +465,13 @@ class Device : public base::RefCounted<Device> {
   // |suffix| is injected into the storage identifier used for the configs.
   std::string SerializeIPConfigs(const std::string &suffix);
 
-  // Set an IP configuration flag on the device.  |ip_version| should be
-  // "ipv6" or "ipv4".  |flag| should be the name of the flag to be set
-  // and |value| is what this flag should be set to.
-  bool SetIPFlag(IPAddress::Family family, const std::string &flag,
-                 const std::string &value);
+  // Set an IP configuration flag on the device. |family| should be "ipv6" or
+  // "ipv4". |flag| should be the name of the flag to be set and |value| is
+  // what this flag should be set to. Overridden by unit tests to pretend
+  // writing to procfs.
+  virtual bool SetIPFlag(IPAddress::Family family,
+                         const std::string &flag,
+                         const std::string &value);
 
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
