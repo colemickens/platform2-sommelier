@@ -507,13 +507,16 @@ if [ "$DST" = "$SRC" ]; then
   exit 1
 fi
 
-# Ask for root password to be sure.
+# Ask for confirmation to be sure.
 echo "This will install from '$SRC' to '$DST'."
 echo "This will erase all data at this destination: $DST"
 if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
   read -p "Are you sure (y/N)? " SURE
   if [ "$SURE" != "y" ]; then
     echo "Ok, better safe than sorry; you answered '$SURE'."
+    # Don't run diagnostics if the user explictly bailed out.
+    trap - EXIT
+    cleanup
     exit 1
   fi
 fi
