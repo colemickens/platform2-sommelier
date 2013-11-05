@@ -261,18 +261,6 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
     return;
   }
 
-  if (!ClearHalt(out_endpoint_address_)) {
-    Complete(false);
-    return;
-  }
-
-  if (expect_response) {
-    if (!ClearHalt(in_endpoint_address_)) {
-      Complete(false);
-      return;
-    }
-  }
-
   interface_claimed_ = true;
   message_index_ = 0;
   num_usb_messages_ = switch_context_->modem_info()->usb_message_size();
