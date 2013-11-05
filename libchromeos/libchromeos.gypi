@@ -38,6 +38,10 @@
         ],
         'deps': ['<@(exported_deps)'],
       },
+      'cflags': [
+        # TODO: crosbug.com/315233
+        '-fvisibility=default',
+      ],
       'all_dependent_settings': {
         'variables': {
           'deps': [
@@ -67,6 +71,10 @@
         'exported_deps': ['openssl'],
         'deps': ['<@(exported_deps)'],
       },
+      'cflags': [
+        # TODO: crosbug.com/315233
+        '-fvisibility=default',
+      ],
       'all_dependent_settings': {
         'variables': {
           'deps': [
@@ -100,9 +108,6 @@
           ],
         },
       },
-      'cflags': [
-        '-fvisibility=hidden',
-      ],
       'ldflags': [
         '-Wl,--version-script,<(platform_root)/libchromeos/libpolicy.ver',
       ],
