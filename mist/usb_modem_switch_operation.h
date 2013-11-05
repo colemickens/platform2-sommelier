@@ -13,6 +13,7 @@
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time.h>
 
 #include "mist/usb_device_event_observer.h"
 
@@ -74,9 +75,17 @@ class UsbModemSwitchOperation
   typedef void (UsbModemSwitchOperation::*UsbTransferCompletionHandler)(
       UsbTransfer* transfer);
 
-  // Schedules the next task in the message loop for execution. At most one
-  // pending task is allowed at any time.
+  // Schedules the specified |task| in the message loop for execution. At most
+  // one pending task is allowed, so any pending task previously scheduled by
+  // ScheduleTask() or ScheduleDelayedTask() is cancelled before |task| is
+  // scheduled.
   void ScheduleTask(Task task);
+
+  // Schedules the specified |task| in the message loop for execution after the
+  // specified |delay|. At most one pending task is allowed, so any pending
+  // task previously scheduled by ScheduleTask() or ScheduleDelayedTask() is
+  // cancelled before |task| is scheduled.
+  void ScheduleDelayedTask(Task task, const base::TimeDelta& delay);
 
   // Completes the operation, which invokes the completion callback with the
   // status of the operation as |success|. The completion callback may delete
