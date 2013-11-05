@@ -622,7 +622,7 @@ bool PerfReader::ReadFromPointer(const char* perf_data, size_t size) {
 
   // Check if it is normal perf data.
   if (header_.size == sizeof(header_)) {
-    LOG(INFO) << "Perf data is in normal format.";
+    DLOG(INFO) << "Perf data is in normal format.";
     metadata_mask_ = header_.adds_features[0];
     return (ReadAttrs(data) && ReadEventTypes(data) && ReadData(data)
             && ReadMetadata(data));
@@ -970,8 +970,8 @@ bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
   if (header_.size != sizeof(header_))
     return true;
 
-  LOG(INFO) << "event_types.size: " << header_.event_types.size;
-  LOG(INFO) << "event_types.offset: " << header_.event_types.offset;
+  DLOG(INFO) << "event_types.size: " << header_.event_types.size;
+  DLOG(INFO) << "event_types.offset: " << header_.event_types.offset;
 
   return true;
 }
@@ -1114,7 +1114,7 @@ bool PerfReader::ReadData(const ConstBufferWithSize& data) {
     offset += event->header.size;
   }
 
-  LOG(INFO) << "Number of events stored: "<< events_.size();
+  DLOG(INFO) << "Number of events stored: "<< events_.size();
   return true;
 }
 
