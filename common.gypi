@@ -52,6 +52,8 @@
       '-ggdb3',
       '-fstack-protector-strong',
       '-Wformat=2',
+      '-fvisibility=internal',
+      '-Wa,--noexecstack',
     ],
     'cflags_c': [
       '<(external_cflags)',
@@ -63,6 +65,7 @@
       'ldflags': [
         '<(external_ldflags)',
         '-Wl,-z,relro',
+        '-Wl,-z,noexecstack',
         '-Wl,-z,now',
         '-Wl,--as-needed',
       ],
