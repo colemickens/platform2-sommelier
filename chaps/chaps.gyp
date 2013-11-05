@@ -26,9 +26,6 @@
       'sources': [
         '<(proto_in_dir)/attributes.proto',
       ],
-      'cflags': [
-        '-fvisibility=hidden',
-      ],
       'includes': ['../common-mk/protoc.gypi'],
     },
     {
@@ -58,6 +55,25 @@
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
+      # This is meant only for internal binaries like unittests.  All
+      # client programs should be using the shared libchaps library.
+      'target_name': 'libchaps_static',
+      'type': 'static_library',
+      'dependencies': [
+        'chaps-adaptors',
+        'chaps-protos',
+        'chaps-proxies',
+      ],
+      'sources': [
+        'attributes.cc',
+        'chaps.cc',
+        'chaps_proxy.cc',
+        'chaps_utility.cc',
+        'isolate_chromeos.cc',
+        'token_manager_client.cc',
+      ],
+    },
+    {
       'target_name': 'libchaps',
       'type': 'shared_library',
       'dependencies': [
@@ -79,7 +95,7 @@
       'type': 'executable',
       'dependencies': [
         'chaps-protos',
-        'libchaps',
+        'libchaps_static',
         '../metrics/metrics.gyp:libmetrics',
       ],
       'libraries': [
@@ -114,7 +130,7 @@
     {
       'target_name': 'chaps_client',
       'type': 'executable',
-      'dependencies': ['libchaps'],
+      'dependencies': ['libchaps_static'],
       'sources': [
         'chaps_client.cc',
       ],
@@ -136,7 +152,7 @@
           'type': 'static_library',
           'dependencies': [
             'chaps-protos',
-            'libchaps',
+            'libchaps_static',
           ],
           'sources': [
             'chaps_factory_mock.cc',
@@ -154,7 +170,7 @@
         {
           'target_name': 'chaps_test',
           'type': 'executable',
-          'dependencies': ['libchaps'],
+          'dependencies': ['libchaps_static'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chaps_test.cc',
@@ -164,7 +180,7 @@
           'target_name': 'chaps_service_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -177,7 +193,7 @@
           'target_name': 'slot_manager_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -190,7 +206,7 @@
           'target_name': 'session_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -203,7 +219,7 @@
           'target_name': 'object_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -216,7 +232,7 @@
           'target_name': 'object_policy_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -235,7 +251,7 @@
           'target_name': 'object_pool_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -248,7 +264,7 @@
           'target_name': 'object_store_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             '../metrics/metrics.gyp:libmetrics',
           ],
           'libraries': [
@@ -265,7 +281,7 @@
           'target_name': 'opencryptoki_importer_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
             '../metrics/metrics.gyp:libmetrics',
           ],
@@ -279,7 +295,7 @@
           'target_name': 'isolate_login_client_test',
           'type': 'executable',
           'dependencies': [
-            'libchaps',
+            'libchaps_static',
             'libchaps_test',
             '../metrics/metrics.gyp:libmetrics',
           ],
@@ -308,7 +324,7 @@
               'target_name': 'chapsd_test',
               'type': 'executable',
               'dependencies': [
-                'libchaps',
+                'libchaps_static',
               ],
               'includes': ['../common-mk/common_test.gypi'],
               'sources': [
@@ -320,7 +336,7 @@
               'target_name': 'tpm_utility_test',
               'type': 'executable',
               'dependencies': [
-                'libchaps',
+                'libchaps_static',
                 'libchaps_test',
               ],
               'includes': ['../common-mk/common_test.gypi'],
