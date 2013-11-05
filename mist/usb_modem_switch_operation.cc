@@ -94,10 +94,16 @@ void UsbModemSwitchOperation::Start(
   VLOG(1) << "Start modem switch operation for device '"
           << switch_context_->sys_path() << "'.";
 
-  // Defer the execution of the first task as multiple UsbModemSwitchOperation
-  // objects may be created and started in a tight loop.
-  ScheduleTask(
-      &UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface);
+  // Schedule the execution of the first task using the message loop, even when
+  // the initial delay is 0, as multiple UsbModemSwitchOperation objects may be
+  // created and started in a tight loop.
+  base::TimeDelta initial_delay = base::TimeDelta::FromMilliseconds(
+      switch_context_->modem_info()->initial_delay_ms());
+  LOG(INFO) << "Starting the modem switch operation in "
+            << initial_delay.InMilliseconds() << " ms.";
+  ScheduleDelayedTask(
+      &UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface,
+      initial_delay);
 }
 
 void UsbModemSwitchOperation::Cancel() {
@@ -112,6 +118,14 @@ void UsbModemSwitchOperation::Cancel() {
 void UsbModemSwitchOperation::ScheduleTask(Task task) {
   pending_task_.Reset(Bind(task, Unretained(this)));
   context_->event_dispatcher()->PostTask(pending_task_.callback());
+}
+
+void UsbModemSwitchOperation::ScheduleDelayedTask(
+    Task task,
+    const base::TimeDelta& delay) {
+  pending_task_.Reset(Bind(task, Unretained(this)));
+  context_->event_dispatcher()->PostDelayedTask(pending_task_.callback(),
+                                                delay);
 }
 
 void UsbModemSwitchOperation::Complete(bool success) {
