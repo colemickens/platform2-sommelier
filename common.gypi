@@ -18,6 +18,7 @@
     'USE_gdmwimax%': 0,
     'USE_passive_metrics%': 0,
     'USE_shill%': 0,
+    'USE_tcmalloc%': 0,
     'USE_test%': 0,
     'USE_tpm%': 0,
     'USE_vpn%': 0,
@@ -108,6 +109,13 @@
             # order for linking (rather than a list of individual libraries
             # which GYP would make unique for us).
             '>!(<(pkg-config) >(deps) --libs-only-l)',
+          ],
+        },
+      }],
+      ['USE_tcmalloc == 1', {
+        'link_settings': {
+          'libraries': [
+            '-ltcmalloc',
           ],
         },
       }],
