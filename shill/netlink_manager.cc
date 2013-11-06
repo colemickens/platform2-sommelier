@@ -513,15 +513,8 @@ void NetlinkManager::OnRawNlMessageReceived(InputData *data) {
   unsigned char *end = buf + data->len;
   while (buf < end) {
     nlmsghdr *msg = reinterpret_cast<nlmsghdr *>(buf);
-    // Discard the message if there're not enough bytes to a) tell the code how
-    // much space is in the message (i.e., to access nlmsg_len) or b) to hold
-    // the entire message.  The odd calculation is there to keep the code from
-    // potentially calculating an illegal address (causes a segfault on some
-    // architectures).
     size_t bytes_left = end - buf;
-    if (((bytes_left < (offsetof(nlmsghdr, nlmsg_len) +
-                        sizeof(msg->nlmsg_len))) ||
-         (bytes_left < msg->nlmsg_len))) {
+    if (bytes_left < sizeof(nlmsghdr) || bytes_left < msg->nlmsg_len) {
       LOG(ERROR) << "Discarding incomplete message.";
       return;
     }

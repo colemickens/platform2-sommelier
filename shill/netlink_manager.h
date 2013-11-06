@@ -248,6 +248,7 @@ class NetlinkManager {
   FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);
   FRIEND_TEST(NetlinkManagerTest, MessageHandler);
   FRIEND_TEST(NetlinkManagerTest, MultipartMessageHandler);
+  FRIEND_TEST(NetlinkManagerTest, OnInvalidRawNlMessageReceived);
   FRIEND_TEST(NetlinkManagerTest, TimeoutResponseHandlers);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE);
