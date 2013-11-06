@@ -45,16 +45,20 @@ add_vmodule_pattern() {
   fi
 }
 
-# Takes a wallpaper name ("default", "guest", "oem") and size ("large",
-# "small"), checks if the file exists, and appends the appropriate flag to
-# ASH_FLAGS if it does.
-add_ash_wallpaper_flag() {
+# Takes a wallpaper name and size and returns the corresponding filename.
+get_wallpaper_filename() {
   local NAME=$1
   local SIZE=$2
-  local FILE="/usr/share/chromeos-assets/wallpaper/${NAME}_${SIZE}.jpg"
-  if [ -e "$FILE" ]; then
-    ASH_FLAGS="${ASH_FLAGS} --ash-${NAME}-wallpaper-${SIZE}=${FILE}"
-  fi
+  echo "/usr/share/chromeos-assets/wallpaper/${NAME}_${SIZE}.jpg"
+}
+
+# Takes a wallpaper name ("default" or "guest"), size ("large" or "small"),
+# and filename and adds the corresponding flag to ASH_FLAGS.
+add_wallpaper_flag() {
+  local NAME=$1
+  local SIZE=$2
+  local FILE=$3
+  ASH_FLAGS="$ASH_FLAGS --ash-${NAME}-wallpaper-${SIZE}=${FILE}"
 }
 
 export USER=chronos
@@ -303,17 +307,28 @@ if use_flag_is_set disable_login_animations; then
 elif use_flag_is_set fade_boot_splash_screen; then
   ASH_FLAGS="$ASH_FLAGS --ash-animate-from-boot-splash-screen"
 fi
-add_ash_wallpaper_flag default large
-add_ash_wallpaper_flag default small
-add_ash_wallpaper_flag guest large
-add_ash_wallpaper_flag guest small
-add_ash_wallpaper_flag oem large
-add_ash_wallpaper_flag oem small
+
+if [ -e $(get_wallpaper_filename oem large) ] &&
+   [ -e $(get_wallpaper_filename oem small) ]; then
+  add_wallpaper_flag default large $(get_wallpaper_filename oem large)
+  add_wallpaper_flag default small $(get_wallpaper_filename oem small)
+  ASH_FLAGS="$ASH_FLAGS --ash-default-wallpaper-is-oem"
+elif [ -e $(get_wallpaper_filename default large) ] &&
+     [ -e $(get_wallpaper_filename default small) ]; then
+  add_wallpaper_flag default large $(get_wallpaper_filename default large)
+  add_wallpaper_flag default small $(get_wallpaper_filename default small)
+fi
+
+if [ -e $(get_wallpaper_filename guest large) ] &&
+   [ -e $(get_wallpaper_filename guest small) ]; then
+  add_wallpaper_flag guest large $(get_wallpaper_filename guest large)
+  add_wallpaper_flag guest small $(get_wallpaper_filename guest small)
+fi
 
 # Setup GPU & acceleration flags which differ between SoCs that
 # use EGL/GLX rendering
 if use_flag_is_set egl; then
-    ACCELERATED_FLAGS="--use-gl=egl"
+  ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
 PPAPI_OOP_FLAG=
