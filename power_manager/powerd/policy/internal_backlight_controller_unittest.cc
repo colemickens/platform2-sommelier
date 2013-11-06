@@ -8,9 +8,11 @@
 
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
+#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/policy.pb.h"
 #include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
@@ -253,6 +255,8 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
+
+  controller_->RemoveObserver(&observer);
 }
 
 // Test the case where the minimum visible backlight level matches the maximum
@@ -690,6 +694,93 @@ TEST_F(InternalBacklightControllerTest,
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+}
+
+TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
+  default_als_steps_ = "50.0 -1 200\n90.0 100 -1";
+  Init(POWER_AC);
+  ASSERT_EQ(PercentToLevel(50.0), backlight_.current_level());
+
+  MockBacklightControllerObserver observer;
+  controller_->AddObserver(&observer);
+
+  // When an AC brightness policy is sent while on AC power, the brightness
+  // should change immediately.
+  PowerManagementPolicy policy;
+  policy.set_ac_brightness_percent(75.0);
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+  ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
+  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+            observer.changes()[0].cause);
+
+  // Passing a battery policy while on AC shouldn't do anything.
+  observer.Clear();
+  policy.Clear();
+  policy.set_battery_brightness_percent(43.0);
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
+  EXPECT_EQ(static_cast<size_t>(0), observer.changes().size());
+
+  // The previously-set brightness should be used after switching to battery.
+  observer.Clear();
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(43.0), backlight_.current_level());
+  ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
+  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+            observer.changes()[0].cause);
+
+  // An empty policy shouldn't do anything.
+  observer.Clear();
+  policy.Clear();
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(PercentToLevel(43.0), backlight_.current_level());
+  EXPECT_EQ(static_cast<size_t>(0), observer.changes().size());
+
+  // Ambient light readings shouldn't affect the brightness after it's been set
+  // via a policy.
+  observer.Clear();
+  light_sensor_.set_lux(400);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(PercentToLevel(43.0), backlight_.current_level());
+  EXPECT_EQ(static_cast<size_t>(0), observer.changes().size());
+
+  // Set the brightness to 0% and check that the actions that usually turn the
+  // screen back on don't do anything.
+  policy.Clear();
+  policy.set_battery_brightness_percent(0.0);
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandlePowerButtonPress();
+  controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
+
+  // After sending an empty policy, user activity should increase the
+  // brightness from 0%.
+  policy.Clear();
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_GT(backlight_.current_level(), 0);
+
+  // After a policy sets the brightness to 0%, the brightness keys should still
+  // work, and after user-triggered adjustments are made, hitting the power
+  // button should turn the backlight on.
+  policy.Clear();
+  policy.set_battery_brightness_percent(0.0);
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->IncreaseUserBrightness();
+  EXPECT_GT(backlight_.current_level(), 0);
+  controller_->DecreaseUserBrightness(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandlePowerButtonPress();
+  EXPECT_GT(backlight_.current_level(), 0);
+
+  controller_->RemoveObserver(&observer);
 }
 
 }  // namespace policy

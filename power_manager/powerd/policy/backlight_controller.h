@@ -12,6 +12,9 @@
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
+
+class PowerManagementPolicy;
+
 namespace policy {
 
 class BacklightControllerObserver;
@@ -60,6 +63,9 @@ class BacklightController {
   // SetDimmingForInactivity(); this method should only be used for e.g.
   // ensuring that the user-set brightness is nonzero.
   virtual void HandleUserActivity(UserActivityType type) = 0;
+
+  // Handles an updated policy.
+  virtual void HandlePolicyChange(const PowerManagementPolicy& policy) = 0;
 
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this

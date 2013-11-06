@@ -74,6 +74,7 @@ class KeyboardBacklightController
   virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
   virtual void HandlePowerButtonPress() OVERRIDE;
   virtual void HandleUserActivity(UserActivityType type) OVERRIDE;
+  virtual void HandlePolicyChange(const PowerManagementPolicy& policy) OVERRIDE;
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;

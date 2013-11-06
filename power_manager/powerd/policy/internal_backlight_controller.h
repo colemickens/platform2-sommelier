@@ -72,6 +72,7 @@ class InternalBacklightController : public BacklightController,
   virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
   virtual void HandlePowerButtonPress() OVERRIDE;
   virtual void HandleUserActivity(UserActivityType type) OVERRIDE;
+  virtual void HandlePolicyChange(const PowerManagementPolicy& policy) OVERRIDE;
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;
@@ -94,15 +95,30 @@ class InternalBacklightController : public BacklightController,
   // Snaps |percent| to the nearest step, as defined by |step_percent_|.
   double SnapBrightnessPercentToNearestStep(double percent) const;
 
+  // Returns either |plugged_explicit_brightness_percent_| or
+  // |unplugged_explicit_brightness_percent_| depending on |power_source_|.
+  double GetExplicitBrightnessPercent() const;
+
   // Returns the brightness percent that should be used when the system is
   // in an undimmed state (|ambient_light_brightness_percent_| if
-  // |use_ambient_light_| is true or a user-set level otherwise).
+  // |use_ambient_light_| is true or a user- or policy-set level otherwise).
   double GetUndimmedBrightnessPercent() const;
 
-  // Increases the user-set brightness to the minimum visible level if it's
-  // currently set to zero.  Note that the brightness is left unchanged if
-  // an external display is connected to avoid resizing the desktop.
+  // Increases the explicitly-set brightness to the minimum visible level if
+  // it's currently set to zero. Note that the brightness is left unchanged if
+  // an external display is connected to avoid resizing the desktop, or if the
+  // brightness was set to zero via a policy.
   void EnsureUserBrightnessIsNonzero();
+
+  // Method that disables ambient light adjustments, updates the appropriate
+  // |*_explicit_brightness_percent_| member, and updates the backlight's
+  // brightness if needed. Returns true if the backlight's brightness was
+  // changed.
+  bool SetExplicitBrightnessPercent(
+      double percent,
+      TransitionStyle style,
+      BrightnessChangeCause cause,
+      PowerSource power_source);
 
   // Updates the current brightness after assessing the current state
   // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be
@@ -112,7 +128,8 @@ class InternalBacklightController : public BacklightController,
   // If the display is currently in the undimmed state, calls
   // ApplyBrightnessPercent() to update the backlight brightness.  Returns
   // true if the brightness was changed.
-  bool UpdateUndimmedBrightness(TransitionStyle style, BrightnessChangeCause);
+  bool UpdateUndimmedBrightness(TransitionStyle style,
+                                BrightnessChangeCause cause);
 
   // Sets |backlight_|'s brightness to |percent| over |transition|.  If the
   // brightness changed, notifies |observers_| that the change was due to
@@ -174,13 +191,13 @@ class InternalBacklightController : public BacklightController,
   // |ambient_light_handler_|.
   double ambient_light_brightness_percent_;
 
-  // User-set brightness percent when AC is plugged or unplugged.
-  double plugged_user_brightness_percent_;
-  double unplugged_user_brightness_percent_;
+  // User- or policy-set brightness percent when AC is plugged or unplugged.
+  double plugged_explicit_brightness_percent_;
+  double unplugged_explicit_brightness_percent_;
 
-  // True if the user explicitly requested zero brightness for the undimmed
-  // state.
-  bool user_requested_zero_;
+  // True if the most-recently-received policy message requested a specific
+  // brightness and no user adjustments have been made since then.
+  bool using_policy_brightness_;
 
   // Maximum raw brightness level for |backlight_| (0 is assumed to be the
   // minimum, with the backlight turned off).

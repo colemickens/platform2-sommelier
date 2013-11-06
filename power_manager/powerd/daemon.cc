@@ -1075,6 +1075,8 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
     return util::CreateDBusInvalidArgsErrorReply(message);
   }
   state_controller_->HandlePolicyChange(policy);
+  if (backlight_controller_)
+    backlight_controller_->HandlePolicyChange(policy);
   return NULL;
 }
 

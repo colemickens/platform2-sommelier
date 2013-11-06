@@ -55,6 +55,9 @@ void ExternalBacklightController::HandlePowerButtonPress() {}
 
 void ExternalBacklightController::HandleUserActivity(UserActivityType type) {}
 
+void ExternalBacklightController::HandlePolicyChange(
+    const PowerManagementPolicy& policy) {}
+
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed != dimmed_for_inactivity_) {
     dimmed_for_inactivity_ = dimmed;

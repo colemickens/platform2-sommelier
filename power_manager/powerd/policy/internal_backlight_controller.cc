@@ -16,6 +16,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/policy.pb.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 
@@ -103,9 +104,9 @@ InternalBacklightController::InternalBacklightController(
       als_adjustment_count_(0),
       user_adjustment_count_(0),
       ambient_light_brightness_percent_(kMaxPercent),
-      plugged_user_brightness_percent_(kMaxPercent),
-      unplugged_user_brightness_percent_(kMaxPercent),
-      user_requested_zero_(false),
+      plugged_explicit_brightness_percent_(kMaxPercent),
+      unplugged_explicit_brightness_percent_(kMaxPercent),
+      using_policy_brightness_(false),
       max_level_(0),
       min_visible_level_(0),
       instant_transitions_below_min_level_(false),
@@ -143,12 +144,12 @@ bool InternalBacklightController::Init() {
 
   const double initial_percent = LevelToPercent(current_level_);
   ambient_light_brightness_percent_ = initial_percent;
-  plugged_user_brightness_percent_ = initial_percent;
-  unplugged_user_brightness_percent_ = initial_percent;
+  plugged_explicit_brightness_percent_ = initial_percent;
+  unplugged_explicit_brightness_percent_ = initial_percent;
   prefs_->GetDouble(kInternalBacklightNoAlsAcBrightnessPref,
-                    &plugged_user_brightness_percent_);
+                    &plugged_explicit_brightness_percent_);
   prefs_->GetDouble(kInternalBacklightNoAlsBatteryBrightnessPref,
-                    &unplugged_user_brightness_percent_);
+                    &unplugged_explicit_brightness_percent_);
 
   prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
                   &instant_transitions_below_min_level_);
@@ -253,11 +254,15 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   if (got_power_source_) {
     bool plugged = source == POWER_AC;
     bool unplugged_exceeds_plugged =
-        unplugged_user_brightness_percent_ > plugged_user_brightness_percent_;
-    if (plugged && unplugged_exceeds_plugged)
-      plugged_user_brightness_percent_ = unplugged_user_brightness_percent_;
-    else if (!plugged && unplugged_exceeds_plugged)
-      unplugged_user_brightness_percent_ = plugged_user_brightness_percent_;
+        unplugged_explicit_brightness_percent_ >
+        plugged_explicit_brightness_percent_;
+    if (plugged && unplugged_exceeds_plugged) {
+      plugged_explicit_brightness_percent_ =
+          unplugged_explicit_brightness_percent_;
+    } else if (!plugged && unplugged_exceeds_plugged) {
+      unplugged_explicit_brightness_percent_ =
+          plugged_explicit_brightness_percent_;
+    }
   }
 
   power_source_ = source;
@@ -294,6 +299,29 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
   if (type != USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS &&
       type != USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS)
     EnsureUserBrightnessIsNonzero();
+}
+
+void InternalBacklightController::HandlePolicyChange(
+    const PowerManagementPolicy& policy) {
+  if (policy.has_ac_brightness_percent()) {
+    VLOG(1) << "Got policy-triggered request to set AC brightness to "
+            << policy.ac_brightness_percent() << "%";
+    SetExplicitBrightnessPercent(policy.ac_brightness_percent(),
+                                 TRANSITION_FAST,
+                                 BRIGHTNESS_CHANGE_AUTOMATED,
+                                 POWER_AC);
+  }
+  if (policy.has_battery_brightness_percent()) {
+    VLOG(1) << "Got policy-triggered request to set battery brightness to "
+            << policy.battery_brightness_percent() << "%";
+    SetExplicitBrightnessPercent(policy.battery_brightness_percent(),
+                                 TRANSITION_FAST,
+                                 BRIGHTNESS_CHANGE_AUTOMATED,
+                                 POWER_BATTERY);
+  }
+
+  using_policy_brightness_ = policy.has_ac_brightness_percent() ||
+      policy.has_battery_brightness_percent();
 }
 
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
@@ -357,15 +385,10 @@ bool InternalBacklightController::SetUserBrightnessPercent(
   VLOG(1) << "Got user-triggered request to set brightness to "
           << percent << "%";
   user_adjustment_count_++;
-  user_requested_zero_ = percent <= kEpsilon;
-  use_ambient_light_ = false;
-
-  percent = percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
-  double* user_percent = (power_source_ == POWER_AC) ?
-      &plugged_user_brightness_percent_ : &unplugged_user_brightness_percent_;
-  *user_percent = percent;
-
-  return UpdateUndimmedBrightness(style, BRIGHTNESS_CHANGE_USER_INITIATED);
+  using_policy_brightness_ = false;
+  return SetExplicitBrightnessPercent(percent, style,
+                                      BRIGHTNESS_CHANGE_USER_INITIATED,
+                                      power_source_);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
@@ -426,21 +449,48 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
   return round(percent / step_percent_) * step_percent_;
 }
 
+double InternalBacklightController::GetExplicitBrightnessPercent() const {
+  return power_source_ == POWER_AC ? plugged_explicit_brightness_percent_ :
+      unplugged_explicit_brightness_percent_;
+}
+
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {
   if (use_ambient_light_)
     return ClampPercentToVisibleRange(ambient_light_brightness_percent_);
-  if (user_requested_zero_)
-    return 0.0;
-  return ClampPercentToVisibleRange(power_source_ == POWER_AC ?
-      plugged_user_brightness_percent_ : unplugged_user_brightness_percent_);
+
+  const double percent = GetExplicitBrightnessPercent();
+  return percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
 }
 
 void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
   // Avoid turning the backlight back on if an external display is
-  // connected since doing so may result in the desktop being resized.
+  // connected since doing so may result in the desktop being resized. Also
+  // don't turn it on if a policy has forced the brightness to zero.
   if (display_mode_ == DISPLAY_NORMAL &&
-      GetUndimmedBrightnessPercent() < kMinVisiblePercent)
-    IncreaseUserBrightness();
+      GetExplicitBrightnessPercent() < kMinVisiblePercent &&
+      !using_policy_brightness_) {
+    SetExplicitBrightnessPercent(kMinVisiblePercent, TRANSITION_FAST,
+                                 BRIGHTNESS_CHANGE_AUTOMATED, power_source_);
+  }
+}
+
+bool InternalBacklightController::SetExplicitBrightnessPercent(
+    double percent,
+    TransitionStyle style,
+    BrightnessChangeCause cause,
+    PowerSource power_source) {
+  use_ambient_light_ = false;
+
+  const bool is_zero = percent <= kEpsilon;
+  percent = is_zero ? 0.0 : ClampPercentToVisibleRange(percent);
+  double* explicit_percent_ptr =
+      (power_source == POWER_AC) ? &plugged_explicit_brightness_percent_ :
+      &unplugged_explicit_brightness_percent_;
+  *explicit_percent_ptr = percent;
+
+  if (power_source != power_source_)
+    return false;
+  return UpdateUndimmedBrightness(style, cause);
 }
 
 void InternalBacklightController::UpdateState() {
@@ -492,7 +542,8 @@ void InternalBacklightController::UpdateState() {
     brightness_transition = turning_on ? TRANSITION_INSTANT :
         (already_set_initial_state_ ? TRANSITION_FAST : TRANSITION_SLOW);
 
-    // Keep the external display(s) on if the brightness was manually set to 0.
+    // Keep the external display(s) on if the brightness was explicitly set to
+    // 0.
     display_power = (brightness_percent <= kEpsilon) ?
         chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON :
         chromeos::DISPLAY_POWER_ALL_ON;
@@ -528,7 +579,8 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
     return false;
 
   if (percent <= kEpsilon) {
-    // Keep the external display(s) on if the brightness was manually set to 0.
+    // Keep the external display(s) on if the brightness was explicitly set to
+    // 0.
     SetDisplayPower(
         chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
         docked_ ? base::TimeDelta() :
