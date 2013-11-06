@@ -727,7 +727,7 @@ mount_on_loop_dev readwrite
 #
 DIRLIST="unencrypted/import_extensions"
 
-if [ -f "${ROOT}"/root/.dev_mode ]; then
+if crossystem 'cros_debug?1'; then
   DIRLIST="
     ${DIRLIST}
     var_overlay/db/pkg
@@ -735,10 +735,10 @@ if [ -f "${ROOT}"/root/.dev_mode ]; then
     dev_image
   "
 elif crossystem 'devsw_boot?1' ; then
-  # The dev switch was on when we booted; we assume it will be on
-  # for the next boot.  We touch ".developer_mode" to avoid a
-  # pointless delay after reboot while chromeos_startup wipes an
-  # empty stateful partition.
+  # This is a base build, and the dev switch was on when we booted;
+  # we assume it will be on for the next boot.  We touch
+  # ".developer_mode" to avoid a pointless delay after reboot while
+  # chromeos_startup wipes an empty stateful partition.
   #
   # See chromeos_startup for the companion code that checks for this
   # file.
