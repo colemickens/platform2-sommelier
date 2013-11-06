@@ -74,17 +74,9 @@ class UsbModemSwitchOperation
   typedef void (UsbModemSwitchOperation::*UsbTransferCompletionHandler)(
       UsbTransfer* transfer);
 
-  // Schedules the specified |task| in the message loop for execution. At most
-  // one pending task is allowed, so any pending task previously scheduled by
-  // ScheduleTask() or ScheduleDelayedTask() is cancelled before |task| is
-  // scheduled.
+  // Schedules the next task in the message loop for execution. At most one
+  // pending task is allowed at any time.
   void ScheduleTask(Task task);
-
-  // Schedules the specified |task| in the message loop for execution after the
-  // specified |delay|. At most one pending task is allowed, so any pending
-  // task previously scheduled by ScheduleTask() or ScheduleDelayedTask() is
-  // cancelled before |task| is scheduled.
-  void ScheduleDelayedTask(Task task, const base::TimeDelta& delay);
 
   // Completes the operation, which invokes the completion callback with the
   // status of the operation as |success|. The completion callback may delete

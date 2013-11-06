@@ -40,7 +40,6 @@ const char kTestConfigFileContent[] =
     "  usb_message: \"fedcba9877654210\"\n"
     "  usb_message: \"1234\"\n"
     "  expect_response: true\n"
-    "  initial_delay_ms: 2500\n"
     "}\n";
 
 }  // namespace
@@ -85,7 +84,6 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
   EXPECT_EQ(0, usb_modem_info1->final_usb_id_size());
   EXPECT_EQ(0, usb_modem_info1->usb_message_size());
   EXPECT_FALSE(usb_modem_info1->expect_response());
-  EXPECT_EQ(0, usb_modem_info1->initial_delay_ms());
 
   const UsbModemInfo* usb_modem_info2 =
       config_loader_.GetUsbModemInfo(0x1234, 0xabcd);
@@ -102,7 +100,6 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
   EXPECT_EQ("fedcba9877654210", usb_modem_info2->usb_message(1));
   EXPECT_EQ("1234", usb_modem_info2->usb_message(2));
   EXPECT_TRUE(usb_modem_info2->expect_response());
-  EXPECT_EQ(2500, usb_modem_info2->initial_delay_ms());
 }
 
 TEST_F(ConfigLoaderTest, LoadEmptyConfigFile) {

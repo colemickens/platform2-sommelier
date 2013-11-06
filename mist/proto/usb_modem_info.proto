@@ -25,7 +25,4 @@ message UsbModemInfo {
   // If true, a response is expected from the mass storage interface after
   // sending each USB message to the interface.
   optional bool expect_response = 4;
-  // Initial delay, in milliseconds, that mist should wait before starting
-  // the modem switch operation.
-  optional uint32 initial_delay_ms = 5;
 }
