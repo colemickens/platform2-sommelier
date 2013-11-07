@@ -542,4 +542,22 @@ TEST_F(AttestationTest, GetEKInfo) {
   EXPECT_EQ(0, info.size());
 }
 
+TEST_F(AttestationTest, FinalizeEndorsementData) {
+  // Simulate first login.
+  attestation_.Initialize();
+  attestation_.PrepareForEnrollment();
+  // Expect endorsement data to be available.
+  const AttestationDatabase& db = attestation_.database_pb_;
+  EXPECT_TRUE(db.has_credentials() &&
+              db.credentials().has_endorsement_public_key() &&
+              db.credentials().has_endorsement_credential());
+
+  // Simulate second login.
+  attestation_.Initialize();
+  // Expect endorsement data to be no longer available.
+  EXPECT_TRUE(db.has_credentials() &&
+              !db.credentials().has_endorsement_public_key() &&
+              !db.credentials().has_endorsement_credential());
+}
+
 }  // namespace cryptohome

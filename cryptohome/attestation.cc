@@ -219,6 +219,7 @@ void Attestation::Initialize() {
                       "This is normal if the TPM has been cleared.";
       return;
     }
+    FinalizeEndorsementData();
     LOG(INFO) << "Attestation: Valid attestation data exists.";
     // Make sure the owner password is not being held on our account.
     tpm_->RemoveOwnerDependency(Tpm::kAttestation);
@@ -303,6 +304,12 @@ void Attestation::PrepareForEnrollment() {
                                           platform_credential.size());
   credentials_pb->set_conformance_credential(conformance_credential.data(),
                                              conformance_credential.size());
+  if (!EncryptEndorsementCredential(
+      endorsement_credential,
+      credentials_pb->mutable_default_encrypted_endorsement_credential())) {
+    LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
+    return;
+  }
   IdentityKey* key_pb = database_pb_.mutable_identity_key();
   key_pb->set_identity_public_key(identity_public_key_der.data(),
                                   identity_public_key_der.size());
@@ -356,6 +363,11 @@ bool Attestation::Verify() {
   LOG(INFO) << "Attestation: Verifying data.";
   base::AutoLock lock(lock_);
   const TPMCredentials& credentials = database_pb_.credentials();
+  if (!credentials.has_endorsement_credential() ||
+      !credentials.has_endorsement_public_key()) {
+    LOG(INFO) << "Attestation: Endorsement data is not available.";
+    return false;
+  }
   SecureBlob ek_public_key = ConvertStringToBlob(
       credentials.endorsement_public_key());
   if (!VerifyEndorsementCredential(
@@ -418,8 +430,10 @@ bool Attestation::VerifyEK() {
   SecureBlob ek_public_key;
   if (database_pb_.has_credentials()) {
     const TPMCredentials& credentials = database_pb_.credentials();
-    ek_public_key = ConvertStringToBlob(credentials.endorsement_public_key());
-    ek_cert = ConvertStringToBlob(credentials.endorsement_credential());
+    if (credentials.has_endorsement_credential()) {
+      ek_public_key = ConvertStringToBlob(credentials.endorsement_public_key());
+      ek_cert = ConvertStringToBlob(credentials.endorsement_credential());
+    }
   }
   if (ek_cert.size() == 0 && !tpm_->GetEndorsementCredential(&ek_cert)) {
     LOG(ERROR) << __func__ << ": Failed to get EK certificate.";
@@ -441,12 +455,8 @@ bool Attestation::CreateEnrollRequest(SecureBlob* pca_request) {
   }
   base::AutoLock lock(lock_);
   AttestationEnrollmentRequest request_pb;
-  if (!EncryptEndorsementCredential(
-      ConvertStringToBlob(database_pb_.credentials().endorsement_credential()),
-      request_pb.mutable_encrypted_endorsement_credential())) {
-    LOG(ERROR) << __func__ << ": Failed to encrypt EK cert.";
-    return false;
-  }
+  *request_pb.mutable_encrypted_endorsement_credential() =
+      database_pb_.credentials().default_encrypted_endorsement_credential();
   request_pb.set_identity_public_key(
       database_pb_.identity_binding().identity_public_key());
   *request_pb.mutable_pcr0_quote() = database_pb_.pcr0_quote();
@@ -491,7 +501,6 @@ bool Attestation::Enroll(const SecureBlob& pca_response) {
   }
   database_pb_.mutable_identity_key()->set_identity_credential(
       ConvertBlobToString(aik_credential));
-  // TODO(dkrahn): Remove credentials and identity_binding from the database.
   if (!PersistDatabaseChanges()) {
     LOG(ERROR) << __func__ << ": Failed to persist database changes.";
     return false;
@@ -1644,6 +1653,31 @@ int Attestation::ChooseTemporalIndex(const std::string& user,
   new_record->set_temporal_index(least_used_index);
   PersistDatabaseChanges();
   return least_used_index;
+}
+
+void Attestation::FinalizeEndorsementData() {
+  if (!database_pb_.has_credentials())
+    return;
+  TPMCredentials* credentials = database_pb_.mutable_credentials();
+  if (!credentials->has_endorsement_credential())
+    return;
+  if (!credentials->has_default_encrypted_endorsement_credential()) {
+    LOG(INFO) << "Attestation: Migrating endorsement data.";
+    if (!EncryptEndorsementCredential(
+        ConvertStringToBlob(credentials->endorsement_credential()),
+        credentials->mutable_default_encrypted_endorsement_credential())) {
+      LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
+      return;
+    }
+  }
+  LOG(INFO) << "Attestation: Clearing endorsement data.";
+  ClearString(credentials->mutable_endorsement_public_key());
+  credentials->clear_endorsement_public_key();
+  ClearString(credentials->mutable_endorsement_credential());
+  credentials->clear_endorsement_credential();
+  if (!PersistDatabaseChanges()) {
+    LOG(ERROR) << "Attestation: Failed to persist database changes.";
+  }
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

@@ -513,7 +513,13 @@ class Attestation : public base::PlatformThread::Delegate {
   // which has not already been used by another user for the same origin.
   int ChooseTemporalIndex(const std::string& user, const std::string& origin);
 
+  // Ensures all endorsement data which uniquely identifies the device no longer
+  // exists in the attestation database unencrypted.  Encrypted endorsement data
+  // cannot be decrypted locally.
+  void FinalizeEndorsementData();
+
   FRIEND_TEST(AttestationTest, DeleteByPrefixDevice);
+  FRIEND_TEST(AttestationTest, FinalizeEndorsementData);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

@@ -1194,7 +1194,7 @@ int main(int argc, char **argv) {
       printf("TpmVerifyAttestationData call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
-      printf("TPM attestation data is not valid.\n");
+      printf("TPM attestation data is not valid or is not available.\n");
       return 1;
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_VERIFY_EK],
@@ -1206,7 +1206,7 @@ int main(int argc, char **argv) {
       printf("TpmVerifyEK call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
-      printf("TPM endorsement key is not valid.\n");
+      printf("TPM endorsement key is not valid or is not available.\n");
       return 1;
     }
   } else if (!strcmp(

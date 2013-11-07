@@ -12,6 +12,9 @@ message TPMCredentials {
   optional bytes endorsement_credential = 2;
   optional bytes platform_credential = 3;
   optional bytes conformance_credential = 4;
+  // The |endorsement_credential| encrypted with a public key associated with
+  // the default Chrome OS Privacy CA.
+  optional EncryptedData default_encrypted_endorsement_credential = 5;
 }
 
 // Holds information relevant to a particular AIK.
