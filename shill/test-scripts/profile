@@ -41,7 +41,8 @@ def clean_profiles():
     while True:
         active_profile = shill.get_active_profile()
         properties = active_profile.GetProperties(utf8_strings=True)
-        active_name = shill.dbus2primitive(properties['Name'])
+        active_name = shill.dbus2primitive(
+                properties[shill.PROFILE_PROPERTY_NAME])
         if active_name == 'default':
             return True
         else:
@@ -66,7 +67,7 @@ def delete_entry():
     properties = shill.dbus2primitive(
         shill.manager.GetProperties(utf8_strings=True))
     active_profile = shill.get_active_profile()
-    for path in properties['Profiles']:
+    for path in properties[shill.MANAGER_PROPERTY_PROFILES]:
         print_profile_path(path, active_profile.object_path)
         if profile_path and path != profile_path:
             continue
@@ -87,9 +88,9 @@ def list_entries():
         print_profile_path(profile.object_path, active_profile.object_path)
         properties = shill.dbus2primitive(
                 profile.GetProperties(utf8_strings=True))
-        if not 'Entries' in properties:
+        if not shill.PROFILE_PROPERTY_ENTRIES in properties:
             continue
-        for ident in properties['Entries']:
+        for ident in properties[shill.PROFILE_PROPERTY_ENTRIES]:
             print 'Entry: %s' % ident
             pprint.pprint(shill.dbus2primitive(profile.GetEntry(ident)),
                           indent=2)

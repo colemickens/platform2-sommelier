@@ -24,11 +24,16 @@ class ShillProxy(object):
     DBUS_TYPE_PROFILE = 'org.chromium.flimflam.Profile'
     DBUS_TYPE_SERVICE = 'org.chromium.flimflam.Service'
 
+    ENTRY_FIELD_NAME = 'Name'
+
     MANAGER_PROPERTY_ACTIVE_PROFILE = 'ActiveProfile'
     MANAGER_PROPERTY_DEVICES = 'Devices'
     MANAGER_PROPERTY_PROFILES = 'Profiles'
     MANAGER_PROPERTY_SERVICES = 'Services'
     MANAGER_PROPERTY_ALL_SERVICES = 'ServiceCompleteList'
+
+    PROFILE_PROPERTY_ENTRIES = 'Entries'
+    PROFILE_PROPERTY_NAME = 'Name'
 
     OBJECT_TYPE_PROPERTY_MAP = {
         'Device': ( DBUS_TYPE_DEVICE, MANAGER_PROPERTY_DEVICES ),
