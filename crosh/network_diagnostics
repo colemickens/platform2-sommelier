@@ -630,7 +630,6 @@ diag_ifall () {
   done
   if [ ${good_ifs} -eq 0 ] ; then
     fail "No good interfaces found.  You are not connected to a network."
-    get_status flimflam
     get_status shill
     get_status wpa_supplicant
     get_status cromo
@@ -752,15 +751,13 @@ diag_dhcp_lease () {
 # Probe process status of flimflam and its process descendants
 diag_flimflam () {
   fn_enter_once ${FUNCNAME} || return
-  local status=$(get_status flimflam || get_status shill)
+  local status=$(get_status shill)
   echo "${status}"
   if ! echo ${status} | fgrep -q 'running'; then
     return
   fi
   local pid=$(echo ${status} | awk '{print $4}')
   ps jx | awk '/^ *'${pid}'/ {print $10,$11,$12}' | sort | uniq -c
-  echo "Listing of /var/run/flimflam"
-  ls -al /var/run/flimflam
   echo "Listing of /var/run/shill"
   ls -al /var/run/shill
   diag_flimflam_dbus
