@@ -38,6 +38,51 @@ class WifiProxy(shill_proxy.ShillProxy):
         self.set_logging_for_test(self.TECHNOLOGY_WIFI)
 
 
+    def configure_wifi_service(self, ssid, security, security_parameters={},
+                               save_credentials=True, station_type=None,
+                               hidden_network=False, guid=None,
+                               autoconnect=None):
+        """Configure a WiFi service.
+
+        @param ssid string name of network to connect to.
+        @param security string type of security used in network (e.g. psk)
+        @param security_parameters dict of service property/value pairs that
+            make up the credentials and settings for the given security
+            type (e.g. the passphrase for psk security).
+        @param save_credentials bool True if we should save EAP credentials.
+        @param station_type string one of SUPPORTED_WIFI_STATION_TYPES.
+        @param hidden_network bool True when the SSID is not broadcasted.
+        @param guid string unique identifier for network.
+        @param autoconnect bool or None.  None indicates that this should not
+            be set one way or the other, while a boolean indicates a desired
+            value.
+
+        """
+        # |mode| is derived from the station type we're attempting to join.  It
+        # does not refer to the 802.11x (802.11a/b/g/n) type.  It refers to a
+        # shill connection mode.
+        mode = self.SUPPORTED_WIFI_STATION_TYPES[station_type]
+        config_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
+                         self.SERVICE_PROPERTY_HIDDEN: hidden_network,
+                         self.SERVICE_PROPERTY_SSID: ssid,
+                         self.SERVICE_PROPERTY_SECURITY: security,
+                         self.SERVICE_PROPERTY_MODE: mode}
+        if autoconnect is not None:
+            config_params[self.SERVICE_PROPERTY_AUTOCONNECT] = autoconnect
+        config_params.update(security_parameters)
+        if guid is not None:
+            config_params[self.SERVICE_PROPERTY_GUID] = guid
+        try:
+            self.manager.ConfigureService(config_params)
+        except dbus.exceptions.DBusException as e:
+            logging.error('Caught an error while configuring a WiFi '
+                          'service: %r', e)
+            return False
+
+        logging.info('Configured service: %s', ssid)
+        return True
+
+
     def connect_to_wifi_network(self,
                                 ssid,
                                 security,
@@ -45,6 +90,8 @@ class WifiProxy(shill_proxy.ShillProxy):
                                 save_credentials,
                                 station_type=None,
                                 hidden_network=False,
+                                guid=None,
+                                autoconnect=None,
                                 discovery_timeout_seconds=15,
                                 association_timeout_seconds=15,
                                 configuration_timeout_seconds=15):
@@ -59,11 +106,15 @@ class WifiProxy(shill_proxy.ShillProxy):
         @param save_credentials bool True if we should save EAP credentials.
         @param station_type string one of SUPPORTED_WIFI_STATION_TYPES.
         @param hidden_network bool True when the SSID is not broadcasted.
+        @param guid string unique identifier for network.
         @param discovery_timeout_seconds float timeout for service discovery.
         @param association_timeout_seconds float timeout for service
             association.
         @param configuration_timeout_seconds float timeout for DHCP
             negotiations.
+        @param autoconnect: bool or None.  None indicates that this should not
+            be set one way or the other, while a boolean indicates a desired
+            value.
         @return (successful, discovery_time, association_time,
                  configuration_time, reason)
             where successful is True iff the operation succeeded, *_time is
@@ -82,24 +133,17 @@ class WifiProxy(shill_proxy.ShillProxy):
                     configuration_time,
                     'FAIL(Invalid station type specified.)')
 
-        # mode is derived from the station type we're attempting to join.
-        # It does not refer to the 802.11x type.  It refers to a flimflam/shill
-        # connection mode.
+        # |mode| is derived from the station type we're attempting to join.  It
+        # does not refer to the 802.11x (802.11a/b/g/n) type.  It refers to a
+        # shill connection mode.
         mode = self.SUPPORTED_WIFI_STATION_TYPES[station_type]
 
         if hidden_network:
             logging.info('Configuring %s as a hidden network.', ssid)
-            config_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
-                             self.SERVICE_PROPERTY_HIDDEN: True,
-                             self.SERVICE_PROPERTY_SSID: ssid,
-                             self.SERVICE_PROPERTY_SECURITY: security,
-                             self.SERVICE_PROPERTY_MODE: mode}
-            try:
-                self.manager.ConfigureService(config_params)
-            except dbus.exceptions.DBusException, e:
-                logging.error(
-                        'Caught an error while configuring a hidden SSID: %s',
-                        e.get_dbus_message())
+            if not self.configure_wifi_service(
+                    ssid, security, save_credentials=save_credentials,
+                    station_type=station_type, hidden_network=True,
+                    autoconnect=autoconnect):
                 return (False, discovery_time, association_time,
                         configuration_time,
                         'FAIL(Failed to configure hidden SSID)')
@@ -144,6 +188,11 @@ class WifiProxy(shill_proxy.ShillProxy):
         try:
             for service_property, value in security_parameters.iteritems():
                 service_object.SetProperty(service_property, value)
+            if guid is not None:
+                service_object.SetProperty(self.SERVICE_PROPERTY_GUID, guid)
+            if autoconnect is not None:
+                service_object.SetProperty(self.SERVICE_PROPERTY_AUTOCONNECT,
+                                           autoconnect)
             service_object.Connect()
             logging.info('Called connect on service')
         except dbus.exceptions.DBusException, e:

@@ -44,7 +44,25 @@ def usage():
     print '    <Security=[none|psk|802_1x]> [Property=Value ...]'
     print '    for Property in:'
     print '\n'.join(['\t\t' + x for x in sorted(SERVICE_PROP_PARSERS.keys())])
+    print
+    print cmd, 'configure <ssid> [passphrase] [security]'
+    print '    |security| defaults to "psk" when |passphrase|',
+    print 'is given without |security|'
     return False
+
+
+def configure(ssid, security, passphrase):
+    wifi = wifi_proxy.WifiProxy()
+    security_parameters = {}
+    if passphrase is not None:
+        security_parameters[wifi.SERVICE_PROPERTY_PASSPHRASE] = passphrase
+    successful = wifi.configure_wifi_service(ssid, security,
+                                             security_parameters)
+    if successful:
+        print 'Operation succeeded.'
+    else:
+        print 'Operation failed.'
+    return successful
 
 
 def connect(ssid, security, credentials, save_credentials, timeout=15):
@@ -161,6 +179,16 @@ def main(args):
     command = args[0]
     ssid = args[1]
     save_credentials = True
+
+    if command == 'configure':
+        security = 'none'
+        passphrase = None
+        if len(args) > 2:
+            security = 'psk'
+            passphrase = args[2]
+        if len(args) > 3:
+            security = args[3]
+        return configure(ssid, security, passphrase)
 
     if command == 'connect':
         security = 'none'

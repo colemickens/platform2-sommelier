@@ -241,6 +241,18 @@ class ShillProxy(object):
         self._manager = self.get_dbus_object(self.DBUS_TYPE_MANAGER, '/')
 
 
+    def configure_service_by_guid(self, guid, properties={}):
+        """Configure a service identified by its GUID.
+
+        @param guid string unique identifier of service.
+        @param properties dictionary of service property:value pairs.
+
+        """
+        config = properties.copy()
+        config[self.SERVICE_PROPERTY_GUID] = guid
+        self.manager.ConfigureService(config)
+
+
     def set_logging(self, level, scopes):
         """Set the logging in shill to the specified |level| and |scopes|.
 
