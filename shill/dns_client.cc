@@ -46,7 +46,7 @@ const char DNSClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
 
 // Private to the implementation of resolver so callers don't include ares.h
 struct DNSClientState {
-  DNSClientState() : channel(NULL), start_time((struct timeval){0}) {}
+  DNSClientState() : channel(NULL), start_time{} {}
 
   ares_channel channel;
   map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > read_handlers;

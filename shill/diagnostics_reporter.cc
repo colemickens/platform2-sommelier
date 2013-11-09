@@ -44,7 +44,7 @@ DiagnosticsReporter *DiagnosticsReporter::GetInstance() {
 void DiagnosticsReporter::OnConnectivityEvent() {
   LOG(INFO) << "Diagnostics event triggered.";
 
-  struct timeval now = (const struct timeval){ 0 };
+  struct timeval now{};
   time_->GetTimeMonotonic(&now);
   if (last_log_stash_ &&
       last_log_stash_ + kLogStashThrottleSeconds >

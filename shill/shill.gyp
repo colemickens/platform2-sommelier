@@ -9,15 +9,17 @@
       ],
     },
     'cflags': [
-      '-Wno-missing-field-initializers',
-      '-Wno-unused-parameter',
-      '-Wno-unused-result',
-      '-Wuninitialized',
+      '-Wextra',
+      '-Werror',
+      '-Wno-unused-parameter',  # for pppd_plugin.c, base/tuple.h
     ],
     'cflags_cc': [
       '-fno-strict-aliasing',
       '-std=gnu++11',
       '-Woverloaded-virtual',
+      '-Wno-format-nonliteral',  # gcc.gnu.org/bugzilla/show_bug.cgi?id=31843
+      '-Wno-missing-field-initializers',  # for LAZY_INSTANCE_INITIALIZER
+      '-Wno-unused-result',  # crbug.com/293668
     ],
     'defines': [
       '__STDC_FORMAT_MACROS',

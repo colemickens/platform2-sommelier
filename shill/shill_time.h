@@ -19,7 +19,7 @@ namespace shill {
 // be used for presenting the time in human-readable format. Note that the
 // monotonic clock does not necessarily advance during suspend.
 struct Timestamp {
-  Timestamp() : monotonic((const struct timeval) { 0 }) {}
+  Timestamp() : monotonic{} {}
   Timestamp(const struct timeval &in_monotonic,
             const std::string &in_wall_clock)
       : monotonic(in_monotonic),
