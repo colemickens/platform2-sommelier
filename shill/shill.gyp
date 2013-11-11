@@ -120,7 +120,6 @@
       'target_name': 'libshill',
       'type': 'static_library',
       'dependencies': [
-        '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
         '../metrics/metrics.gyp:libmetrics',
         '../system_api/system_api.gyp:system_api-power_manager-protos',
         'shill-adaptors',
@@ -166,6 +165,9 @@
       },
       'conditions': [
         ['USE_cellular == 1', {
+          'dependencies': [
+            '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
+          ],
           'link_settings': {
             'libraries': [
               '-lmobile-provider'
@@ -371,18 +373,6 @@
       ]
     },
     {
-      'target_name': 'shill-pppd-plugin',
-      'type': 'shared_library',
-      'dependencies': ['shill-proxies'],
-      'sources': [
-        'shims/c_ppp.cc',
-        'shims/environment.cc',
-        'shims/ppp.cc',
-        'shims/pppd_plugin.c',
-        'shims/task_proxy.cc',
-      ]
-    },
-    {
       'target_name': 'crypto-util',
       'type': 'executable',
       'dependencies': ['shim-protos'],
@@ -456,6 +446,22 @@
           'type': 'executable',
           'sources': [
             'shims/set_apn_helper.c',
+          ]
+        },
+      ],
+    }],
+    ['USE_cellular == 1 or USE_vpn == 1', {
+      'targets': [
+        {
+          'target_name': 'shill-pppd-plugin',
+          'type': 'shared_library',
+          'dependencies': ['shill-proxies'],
+          'sources': [
+            'shims/c_ppp.cc',
+            'shims/environment.cc',
+            'shims/ppp.cc',
+            'shims/pppd_plugin.c',
+            'shims/task_proxy.cc',
           ]
         },
       ],
