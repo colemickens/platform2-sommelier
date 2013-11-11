@@ -10,15 +10,16 @@
       ],
       'conditions': [
         ['USE_cros_host == 0', {
-          'dependencies': [
-            '<(DEPTH)/debugd/debugd.gyp:*',
-            '<(DEPTH)/shill/shill.gyp:*',
-          ],
           'conditions': [
             ['USE_cellular == 1', {
               'dependencies': [
                 '<(DEPTH)/cromo/cromo.gyp:*',
                 '<(DEPTH)/mist/mist.gyp:*',
+              ],
+            }],
+            ['USE_debugd == 1', {
+              'dependencies': [
+                '<(DEPTH)/debugd/debugd.gyp:*',
               ],
             }],
             ['USE_cros_disks == 1', {
@@ -29,6 +30,11 @@
             ['USE_gdmwimax == 1', {
               'dependencies': [
                 '<(DEPTH)/wimax_manager/wimax_manager.gyp:*',
+              ],
+            }],
+            ['USE_shill == 1', {
+              'dependencies': [
+                '<(DEPTH)/shill/shill.gyp:*',
               ],
             }],
             ['USE_tpm == 1', {
