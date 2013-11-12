@@ -402,6 +402,7 @@ add_vmodule_pattern "network_portal_detector_impl=1"
 
 # Turn on logging about external displays being connected and disconnected.
 add_vmodule_pattern "*output_configurator*=1"
+add_vmodule_pattern "*ash/display*=1"
 
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
