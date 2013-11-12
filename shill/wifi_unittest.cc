@@ -827,6 +827,22 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
+  bool TDLSDiscover(const string &peer) {
+    return wifi_->TDLSDiscover(peer);
+  }
+
+  bool TDLSSetup(const string &peer) {
+    return wifi_->TDLSSetup(peer);
+  }
+
+  string TDLSStatus(const string &peer) {
+    return wifi_->TDLSStatus(peer);
+  }
+
+  bool TDLSTeardown(const string &peer) {
+    return wifi_->TDLSTeardown(peer);
+  }
+
   void TimeoutPendingConnection() {
     wifi_->PendingTimeoutHandler();
   }
@@ -3378,6 +3394,52 @@ TEST_F(WiFiMainTest, FullScanDuringProgressive) {
   // And, for the destructor.
   ExpectScanStop();
   ExpectScanIdle();
+}
+
+TEST_F(WiFiMainTest, TDLS) {
+  StartWiFi();
+  const char kPeer[] = "peer";
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
+      .WillOnce(Return())
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  EXPECT_TRUE(TDLSDiscover(kPeer));
+  EXPECT_FALSE(TDLSDiscover(kPeer));
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSSetup(StrEq(kPeer)))
+      .WillOnce(Return())
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  EXPECT_TRUE(TDLSSetup(kPeer));
+  EXPECT_FALSE(TDLSSetup(kPeer));
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  const char kStatus[] = "peachy keen";
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+      .WillOnce(Return(kStatus))
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  EXPECT_EQ(kStatus, TDLSStatus(kPeer));
+  EXPECT_EQ("", TDLSStatus(kPeer));
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSTeardown(StrEq(kPeer)))
+      .WillOnce(Return())
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  EXPECT_TRUE(TDLSTeardown(kPeer));
+  EXPECT_FALSE(TDLSTeardown(kPeer));
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
 }  // namespace shill

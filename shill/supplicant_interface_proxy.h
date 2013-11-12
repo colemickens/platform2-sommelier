@@ -52,6 +52,10 @@ class SupplicantInterfaceProxy
   virtual void SetRoamThreshold(uint16 threshold);
   virtual void SetScanInterval(int seconds);
   virtual void SetDisableHighBitrates(bool disable_high_bitrates);
+  virtual void TDLSDiscover(const std::string &peer);
+  virtual void TDLSSetup(const std::string &peer);
+  virtual std::string TDLSStatus(const std::string &peer);
+  virtual void TDLSTeardown(const std::string &peer);
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,

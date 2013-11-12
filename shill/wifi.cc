@@ -2414,4 +2414,39 @@ void WiFi::StopRequestingStationInfo() {
   link_statistics_.Clear();
 }
 
+bool WiFi::TDLSDiscover(const string &peer) {
+  try {
+    supplicant_interface_proxy_->TDLSDiscover(peer);
+  } catch (const DBus::Error &e) {  // NOLINT
+    return false;
+  }
+  return true;
+}
+
+bool WiFi::TDLSSetup(const string &peer) {
+  try {
+    supplicant_interface_proxy_->TDLSSetup(peer);
+  } catch (const DBus::Error &e) {  // NOLINT
+    return false;
+  }
+  return true;
+}
+
+string WiFi::TDLSStatus(const string &peer) {
+  try {
+    return supplicant_interface_proxy_->TDLSStatus(peer);
+  } catch (const DBus::Error &e) {  // NOLINT
+    return "";
+  }
+}
+
+bool WiFi::TDLSTeardown(const string &peer) {
+  try {
+    supplicant_interface_proxy_->TDLSTeardown(peer);
+  } catch (const DBus::Error &e) {  // NOLINT
+    return false;
+  }
+  return true;
+}
+
 }  // namespace shill

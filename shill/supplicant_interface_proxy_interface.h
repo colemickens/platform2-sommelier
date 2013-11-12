@@ -38,6 +38,10 @@ class SupplicantInterfaceProxyInterface {
   virtual void SetRoamThreshold(uint16 seconds) = 0;
   virtual void SetScanInterval(int seconds) = 0;
   virtual void SetDisableHighBitrates(bool disable_high_bitrates) = 0;
+  virtual void TDLSDiscover(const std::string &peer) = 0;
+  virtual void TDLSSetup(const std::string &peer) = 0;
+  virtual std::string TDLSStatus(const std::string &peer) = 0;
+  virtual void TDLSTeardown(const std::string &peer) = 0;
 };
 
 }  // namespace shill

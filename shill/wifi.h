@@ -197,6 +197,21 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by a WiFiService when it unloads to destroy its lease file.
   virtual void DestroyServiceLease(const WiFiService &service);
 
+  // Discover TDLS service on a remote |peer|.  Returns true if operation
+  // is initiated successfully.
+  bool TDLSDiscover(const std::string &peer);
+
+  // Setup a TDLS pairing with |peer|.  Returns true if operation is initiated
+  // successfully.
+  bool TDLSSetup(const std::string &peer);
+
+  // Return a string indicating the TDLS status with |peer|.
+  std::string TDLSStatus(const std::string &peer);
+
+  // Teardown the TDLS pairing with |peer|.  Returns true if operation is
+  // initiated successfully.
+  bool TDLSTeardown(const std::string &peer);
+
  private:
   enum ScanMethod {
     kScanMethodNone,

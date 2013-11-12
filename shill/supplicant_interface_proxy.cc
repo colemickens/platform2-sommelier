@@ -195,6 +195,46 @@ void SupplicantInterfaceProxy::SetDisableHighBitrates(
   }
 }
 
+void SupplicantInterfaceProxy::TDLSDiscover(const string &peer) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.TDLSDiscover(peer);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
+void SupplicantInterfaceProxy::TDLSSetup(const string &peer) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.TDLSSetup(peer);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
+string SupplicantInterfaceProxy::TDLSStatus(const string &peer) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.TDLSStatus(peer);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
+void SupplicantInterfaceProxy::TDLSTeardown(const string &peer) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.TDLSTeardown(peer);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
 // definitions for private class SupplicantInterfaceProxy::Proxy
 
 SupplicantInterfaceProxy::Proxy::Proxy(
