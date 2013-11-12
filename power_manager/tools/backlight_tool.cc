@@ -13,15 +13,18 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 
-DEFINE_bool(get_brightness, false, "Get current brightness level.");
-DEFINE_bool(get_brightness_percent, false, "Get current brightness percent.");
-DEFINE_bool(get_max_brightness, false, "Get max brightness level.");
-DEFINE_int64(set_brightness, -1, "Set brightness level.");
+DEFINE_bool(get_brightness, false, "Print current brightness level");
+DEFINE_bool(get_brightness_percent, false,
+            "Print current brightness as linearly-calculated percent");
+DEFINE_bool(get_max_brightness, false, "Print max brightness level");
+DEFINE_int64(set_brightness, -1, "Set brightness level");
 DEFINE_double(set_brightness_percent, -1.0,
-              "Set brightness as a percent in [0.0, 100.0].");
-DEFINE_int64(set_resume_brightness, -1, "Set brightness level on resume.");
+              "Set brightness as linearly-calculated percent in [0.0, 100.0]");
+DEFINE_int64(set_resume_brightness, -2,
+             "Set brightness level on resume; -1 clears current level");
 DEFINE_double(set_resume_brightness_percent, -1.0,
-              "Set resume brightness as a percent in [0.0, 100.0].");
+              "Set resume brightness as linearly-calculated percent in "
+              "[0.0, 100.0]");
 
 namespace {
 
@@ -35,20 +38,27 @@ int64 PercentToLevel(power_manager::system::BacklightInterface& backlight,
 
 }  // namespace
 
-// A simple tool to get and set the brightness level of the display backlight.
 int main(int argc, char* argv[]) {
+  google::SetUsageMessage(
+      "Print or set the internal panel's backlight brightness.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
   CHECK((FLAGS_get_brightness + FLAGS_get_max_brightness +
          FLAGS_get_brightness_percent) < 2)
-      << "-get_brightness and -get_brightness_percent and -get_max_brightness "
+      << "-get_brightness, -get_brightness_percent, and -get_max_brightness "
       << "are mutually exclusive";
-  CHECK(FLAGS_set_brightness < 0 || FLAGS_set_brightness_percent < 0)
+  CHECK(FLAGS_set_brightness < 0 || FLAGS_set_brightness_percent < 0.0)
       << "-set_brightness and -set_brightness_percent are mutually exclusive";
+  CHECK(FLAGS_set_resume_brightness < -1 ||
+        FLAGS_set_resume_brightness_percent < 0.0)
+      << "-set_resume_brightness and -set_resume_brightness_percent are "
+      << "mutually exclusive";
 
   power_manager::system::InternalBacklight backlight;
-  CHECK(backlight.Init(base::FilePath(power_manager::kInternalBacklightPath),
-                       power_manager::kInternalBacklightPattern));
+  if (!backlight.Init(base::FilePath(power_manager::kInternalBacklightPath),
+                      power_manager::kInternalBacklightPattern))
+    return 1;
+
   if (FLAGS_get_brightness) {
     int64 level = 0;
     CHECK(backlight.GetCurrentBrightnessLevel(&level));
@@ -64,9 +74,9 @@ int main(int argc, char* argv[]) {
     CHECK(backlight.GetCurrentBrightnessLevel(&level));
     int64 max_level = 0;
     CHECK(backlight.GetMaxBrightnessLevel(&max_level));
-    printf("%" PRIi64 "\n", static_cast<int64>((level + 0.5) * 100 /
-                                               max_level));
+    printf("%f\n", level * 100.0 / max_level);
   }
+
   if (FLAGS_set_brightness >= 0) {
     CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness,
                                        base::TimeDelta()));
@@ -75,13 +85,15 @@ int main(int argc, char* argv[]) {
     int64 new_level = PercentToLevel(backlight, FLAGS_set_brightness_percent);
     CHECK(backlight.SetBrightnessLevel(new_level, base::TimeDelta()));
   }
-  if (FLAGS_set_resume_brightness >= 0 || FLAGS_set_resume_brightness == -1) {
+
+  // -1 clears the currently-set resume brightness.
+  if (FLAGS_set_resume_brightness >= -1)
     CHECK(backlight.SetResumeBrightnessLevel(FLAGS_set_resume_brightness));
-  }
   if (FLAGS_set_resume_brightness_percent >= 0.0) {
     int64 new_level = PercentToLevel(backlight,
                                      FLAGS_set_resume_brightness_percent);
     CHECK(backlight.SetResumeBrightnessLevel(new_level));
   }
+
   return 0;
 }
