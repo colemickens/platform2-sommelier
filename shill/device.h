@@ -172,6 +172,16 @@ class Device : public base::RefCounted<Device> {
   virtual uint64 GetReceiveByteCount();
   virtual uint64 GetTransmitByteCount();
 
+  // Perform a TDLS |operation| on the underlying device, with respect
+  // to a given |peer|.  The string returned is empty for any operation
+  // other than kTDLSOperationStatus, which returns the state of the
+  // TDLS link with |peer|.  This method is only valid for WiFi devices,
+  // but needs to be declared here since it is part of the Device RPC
+  // API.
+  virtual std::string PerformTDLSOperation(const std::string &operation,
+                                           const std::string &peer,
+                                           Error *error);
+
   // Reset the persisted byte counters associated with the device.
   void ResetByteCounters();
 

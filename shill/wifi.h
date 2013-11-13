@@ -212,6 +212,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // initiated successfully.
   bool TDLSTeardown(const std::string &peer);
 
+  // Perform TDLS |operation| on |peer|.
+  virtual std::string PerformTDLSOperation(const std::string &operation,
+                                           const std::string &peer,
+                                           Error *error) override;
  private:
   enum ScanMethod {
     kScanMethodNone,

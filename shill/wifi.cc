@@ -2418,6 +2418,7 @@ bool WiFi::TDLSDiscover(const string &peer) {
   try {
     supplicant_interface_proxy_->TDLSDiscover(peer);
   } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "exception while performing TDLS discover: " << e.what();
     return false;
   }
   return true;
@@ -2427,6 +2428,7 @@ bool WiFi::TDLSSetup(const string &peer) {
   try {
     supplicant_interface_proxy_->TDLSSetup(peer);
   } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "exception while performing TDLS setup: " << e.what();
     return false;
   }
   return true;
@@ -2436,6 +2438,7 @@ string WiFi::TDLSStatus(const string &peer) {
   try {
     return supplicant_interface_proxy_->TDLSStatus(peer);
   } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "exception while getting TDLS status: " << e.what();
     return "";
   }
 }
@@ -2444,9 +2447,54 @@ bool WiFi::TDLSTeardown(const string &peer) {
   try {
     supplicant_interface_proxy_->TDLSTeardown(peer);
   } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "exception while performing TDLS teardown: " << e.what();
     return false;
   }
   return true;
+}
+
+string WiFi::PerformTDLSOperation(const string &operation,
+                                  const string &peer,
+                                  Error *error) {
+  bool success = false;
+
+  SLOG(WiFi, 2) << "TDLS command received: " << operation
+                << " for peer " << peer;
+  if (operation == kTDLSDiscoverOperation) {
+    success = TDLSDiscover(peer);
+  } else if (operation == kTDLSSetupOperation) {
+    success = TDLSSetup(peer);
+  } else if (operation == kTDLSStatusOperation) {
+    string supplicant_status = TDLSStatus(peer);
+    SLOG(WiFi, 2) << "TDLS status returned: " << supplicant_status;
+    if (!supplicant_status.empty()) {
+      if (supplicant_status == WPASupplicant::kTDLSStateConnected) {
+        return kTDLSConnectedState;
+      } else if (supplicant_status == WPASupplicant::kTDLSStateDisabled) {
+        return kTDLSDisabledState;
+      } else if (supplicant_status ==
+                 WPASupplicant::kTDLSStatePeerDoesNotExist) {
+        return kTDLSNonexistentState;
+      } else if (supplicant_status ==
+                 WPASupplicant::kTDLSStatePeerNotConnected) {
+        return kTDLSDisconnectedState;
+      } else {
+        return kTDLSUnknownState;
+      }
+    }
+  } else if (operation == kTDLSTeardownOperation) {
+    success = TDLSTeardown(peer);
+  } else {
+    error->Populate(Error::kInvalidArguments, "Unknown operation");
+    return "";
+  }
+
+  if (!success) {
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          "TDLS operation failed");
+  }
+
+  return "";
 }
 
 }  // namespace shill

@@ -38,6 +38,11 @@
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="in"/>
 		</method>
+		<method name="PerformTDLSOperation">
+			<arg type="s" direction="in"/>
+			<arg type="s" direction="in"/>
+			<arg type="s" direction="out"/>
+		</method>
 		<method name="Reset"/>
 		<method name="ResetByteCounters"/>
 		<method name="SetCarrier">

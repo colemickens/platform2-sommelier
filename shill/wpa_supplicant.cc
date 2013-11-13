@@ -132,6 +132,11 @@ const char WPASupplicant::kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
 const char WPASupplicant::kSecurityModeRSN[] = "RSN";
 const char WPASupplicant::kSecurityModeWPA[] = "WPA";
 
+const char WPASupplicant::kTDLSStateConnected[] = "connected";
+const char WPASupplicant::kTDLSStateDisabled[] = "disabled";
+const char WPASupplicant::kTDLSStatePeerDoesNotExist[] = "peer does not exist";
+const char WPASupplicant::kTDLSStatePeerNotConnected[] = "peer not connected";
+
 const uint32_t WPASupplicant::kDefaultEngine = 1;
 const uint32_t WPASupplicant::kNetworkIeee80211wDisabled = 0;
 const uint32_t WPASupplicant::kNetworkIeee80211wEnabled = 1;

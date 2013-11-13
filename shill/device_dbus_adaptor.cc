@@ -179,6 +179,15 @@ void DeviceDBusAdaptor::Reset(::DBus::Error &error) {
   ReturnResultOrDefer(tag, e, &error);
 }
 
+string DeviceDBusAdaptor::PerformTDLSOperation(const string &operation,
+                                               const string &peer,
+                                               DBus::Error &error) {
+  Error e;
+  string return_value = device_->PerformTDLSOperation(operation, peer, &e);
+  e.ToDBusError(&error);
+  return return_value;
+}
+
 void DeviceDBusAdaptor::ResetByteCounters(DBus::Error &error) {
   device_->ResetByteCounters();
 }

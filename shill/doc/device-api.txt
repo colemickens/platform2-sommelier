@@ -169,6 +169,26 @@ Methods		dict GetProperties()
 
 			Reset the device's persisted counters of transmitted
 
+		string PerformTDLSOperation(string operation,
+					    string peer) [readwrite]
+
+			(WiFi only) Perform a TDLS operation on a peer
+			station.  The |peer| argument should be a mac
+			address specified in traditional colon-separated
+			hexidecimal notation, e.g., "aa:bb:cc:dd:ee:ff".
+			algorithm.  The |operation| parameter should
+			be one of the following:
+
+				"Discover" : Perform TDLS discovery with |peer|.
+				"Setup" : Setup TDLS peering with |peer|.
+				"Status" : Return TDLS status for |peer|.
+				"Teardown" : Tear down TDLS peering with |peer|.
+
+			The method returns without an error if the operation
+			is initiated successfully with the supplicant, but
+			before it is clear whether the operation actually
+			succeeded.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

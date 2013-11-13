@@ -689,6 +689,11 @@ TEST_F(DeviceTest, ShouldUseMinimalDHCPConfig) {
   EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
 }
 
+TEST_F(DeviceTest, PerformTDLSOperation) {
+  EXPECT_EQ("",
+            device_->PerformTDLSOperation("do something", "to someone", NULL));
+}
+
 class DevicePortalDetectionTest : public DeviceTest {
  public:
   DevicePortalDetectionTest()

@@ -843,6 +843,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->TDLSTeardown(peer);
   }
 
+  string PerformTDLSOperation(const string &operation,
+                              const string &peer,
+                              Error *error) {
+    return wifi_->PerformTDLSOperation(operation, peer, error);
+  }
+
   void TimeoutPendingConnection() {
     wifi_->PendingTimeoutHandler();
   }
@@ -3396,7 +3402,7 @@ TEST_F(WiFiMainTest, FullScanDuringProgressive) {
   ExpectScanIdle();
 }
 
-TEST_F(WiFiMainTest, TDLS) {
+TEST_F(WiFiMainTest, TDLSInterfaceFunctions) {
   StartWiFi();
   const char kPeer[] = "peer";
 
@@ -3440,6 +3446,103 @@ TEST_F(WiFiMainTest, TDLS) {
   EXPECT_TRUE(TDLSTeardown(kPeer));
   EXPECT_FALSE(TDLSTeardown(kPeer));
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
+TEST_F(WiFiMainTest, PerformTDLSOperation) {
+  StartWiFi();
+  const char kPeer[] = "peer";
+
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation("Do the thing", kPeer, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
+
+  // This is the same test as TDLSInterfaceFunctions above, but using the
+  // method called by the RPC adapter.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
+      .WillOnce(Return())
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
+    EXPECT_EQ(Error::kOperationFailed, error.type());
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSSetup(StrEq(kPeer)))
+      .WillOnce(Return())
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSSetupOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSSetupOperation, kPeer, &error));
+    EXPECT_EQ(Error::kOperationFailed, error.type());
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+
+  const map<string, string> kTDLSStatusMap {
+    { "Baby, I don't care", kTDLSUnknownState },
+    { WPASupplicant::kTDLSStateConnected, kTDLSConnectedState },
+    { WPASupplicant::kTDLSStateDisabled, kTDLSDisabledState },
+    { WPASupplicant::kTDLSStatePeerDoesNotExist, kTDLSNonexistentState },
+    { WPASupplicant::kTDLSStatePeerNotConnected, kTDLSDisconnectedState },
+  };
+
+  for (const auto &it : kTDLSStatusMap) {
+    EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+        .WillOnce(Return(it.first));
+    Error error;
+    EXPECT_EQ(it.second,
+              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  }
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
+    EXPECT_EQ(Error::kOperationFailed, error.type());
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSTeardown(StrEq(kPeer)))
+      .WillOnce(Return())
+      .WillOnce(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSTeardownOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSTeardownOperation, kPeer, &error));
+    EXPECT_EQ(Error::kOperationFailed, error.type());
+  }
 }
 
 }  // namespace shill
