@@ -63,5 +63,21 @@ TEST_F(ExternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
+TEST_F(ExternalBacklightControllerTest, ResendOnChromeStart) {
+  controller_.SetDimmedForInactivity(true);
+  ASSERT_TRUE(display_power_setter_.dimmed());
+  controller_.SetOffForInactivity(true);
+  ASSERT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+
+  // Reset the power setter's dimming state so we can check that another dimming
+  // request is sent when Chrome restarts.
+  display_power_setter_.reset_num_power_calls();
+  display_power_setter_.SetDisplaySoftwareDimming(false);
+  controller_.HandleChromeStart();
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+  EXPECT_EQ(1, display_power_setter_.num_power_calls());
+  EXPECT_TRUE(display_power_setter_.dimmed());
+}
+
 }  // namespace policy
 }  // namespace power_manager

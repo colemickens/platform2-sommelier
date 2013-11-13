@@ -67,6 +67,10 @@ class BacklightController {
   // Handles an updated policy.
   virtual void HandlePolicyChange(const PowerManagementPolicy& policy) = 0;
 
+  // Handles Chrome starting (as detected by the ownership of its D-Bus object
+  // changing).
+  virtual void HandleChromeStart() = 0;
+
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this
   // one, e.g. the backlight will be turned off if SetOffForInactivity(true)

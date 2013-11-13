@@ -28,8 +28,10 @@ ExternalBacklightController::~ExternalBacklightController() {}
 
 void ExternalBacklightController::Init() {
   // If we get restarted while Chrome is running, make sure that it doesn't get
-  // wedged in a dimmed state.
+  // wedged in a dimmed or off state.
   display_power_setter_->SetDisplaySoftwareDimming(false);
+  display_power_setter_->SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON,
+                                         base::TimeDelta());
 }
 
 void ExternalBacklightController::AddObserver(
@@ -57,6 +59,14 @@ void ExternalBacklightController::HandleUserActivity(UserActivityType type) {}
 
 void ExternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {}
+
+void ExternalBacklightController::HandleChromeStart() {
+  display_power_setter_->SetDisplaySoftwareDimming(dimmed_for_inactivity_);
+  display_power_setter_->SetDisplayPower(currently_off_ ?
+                                         chromeos::DISPLAY_POWER_ALL_OFF :
+                                         chromeos::DISPLAY_POWER_ALL_ON,
+                                         base::TimeDelta());
+}
 
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed != dimmed_for_inactivity_) {

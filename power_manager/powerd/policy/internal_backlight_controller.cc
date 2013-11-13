@@ -324,6 +324,11 @@ void InternalBacklightController::HandlePolicyChange(
       policy.has_battery_brightness_percent();
 }
 
+void InternalBacklightController::HandleChromeStart() {
+  display_power_setter_->SetDisplayPower(
+      display_power_state_, base::TimeDelta());
+}
+
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed_for_inactivity_ == dimmed)
     return;

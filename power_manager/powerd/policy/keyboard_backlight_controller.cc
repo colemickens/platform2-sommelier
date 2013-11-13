@@ -178,6 +178,8 @@ void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {}
 void KeyboardBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {}
 
+void KeyboardBacklightController::HandleChromeStart() {}
+
 void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed == dimmed_for_inactivity_)
     return;

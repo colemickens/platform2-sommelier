@@ -801,6 +801,10 @@ void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
   } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     audio_client_->LoadInitialState();
+  } else if (name == chromeos::kLibCrosServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
+    if (backlight_controller_)
+      backlight_controller_->HandleChromeStart();
   }
   suspender_.HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }

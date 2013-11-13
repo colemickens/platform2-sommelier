@@ -783,5 +783,20 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   controller_->RemoveObserver(&observer);
 }
 
+TEST_F(InternalBacklightControllerTest, ResendOnChromeStart) {
+  Init(POWER_AC);
+  controller_->SetDocked(true);
+  ASSERT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+
+  // When Chrome restarts, the controller should notify it again about the
+  // current power state.
+  display_power_setter_.reset_num_power_calls();
+  controller_->HandleChromeStart();
+  EXPECT_EQ(1, display_power_setter_.num_power_calls());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+}
+
 }  // namespace policy
 }  // namespace power_manager
