@@ -39,7 +39,7 @@ class TestPrefsObserver : public PrefsObserver {
   explicit TestPrefsObserver(Prefs* prefs) : prefs_(prefs) {
     prefs_->AddObserver(this);
   }
-  ~TestPrefsObserver() {
+  virtual ~TestPrefsObserver() {
     prefs_->RemoveObserver(this);
   }
 
@@ -72,6 +72,7 @@ class TestPrefsObserver : public PrefsObserver {
 class PrefsTest : public testing::Test {
  public:
   PrefsTest() : test_api_(&prefs_) {}
+  virtual ~PrefsTest() {}
 
   virtual void SetUp() {
     paths_.clear();

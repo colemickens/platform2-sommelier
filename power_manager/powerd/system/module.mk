@@ -23,7 +23,8 @@ clean: CLEAN(powerd/libsystem.pie.a)
 CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \
 	powerd/system/ambient_light_sensor_stub.o \
 	powerd/system/backlight_stub.o \
-	powerd/system/display_power_setter_stub.o
+	powerd/system/display_power_setter_stub.o \
+	powerd/system/input_stub.o
 clean: CLEAN(powerd/libsystem_test.pie.a)
 
 CXX_BINARY(powerd/system_unittest): \

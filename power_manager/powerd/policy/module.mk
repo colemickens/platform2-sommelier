@@ -27,6 +27,7 @@ CXX_BINARY(powerd/policy_unittest): \
 	powerd/policy/ambient_light_handler_unittest.o \
 	powerd/policy/dark_resume_policy_unittest.o \
 	powerd/policy/external_backlight_controller_unittest.o \
+	powerd/policy/input_controller_unittest.o \
 	powerd/policy/internal_backlight_controller_unittest.o \
 	powerd/policy/keyboard_backlight_controller_unittest.o \
 	powerd/policy/state_controller_unittest.o \

@@ -69,7 +69,7 @@ const int kWaitPollMs = 200;
 class AsyncFileReaderTest : public ::testing::Test {
  public:
   AsyncFileReaderTest() : check_timeout_id_(0) {}
-  ~AsyncFileReaderTest() {
+  virtual ~AsyncFileReaderTest() {
     util::RemoveTimeout(&check_timeout_id_);
   }
 

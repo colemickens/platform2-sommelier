@@ -20,17 +20,12 @@ typedef unsigned int guint;
 namespace power_manager {
 
 class DBusSenderInterface;
-class MetricsReporter;
-class PrefsInterface;
 
 namespace system {
-class Input;
+class InputInterface;
 }  // namespace system
 
 namespace policy {
-
-class BacklightController;
-class StateController;
 
 // InputController responds to input events (e.g. lid open/close, power button,
 // etc.).
@@ -47,35 +42,39 @@ class InputController : public system::InputObserver {
 
     // Handles the lid being opened.
     virtual void HandleLidOpened() = 0;
+
+    // Handles the power button being pressed or released.
+    virtual void HandlePowerButtonEvent(ButtonState state) = 0;
+
+    // Defers the inactivity timeout in response to VT2 being active (since
+    // Chrome can't detect user activity).
+    virtual void DeferInactivityTimeoutForVT2() = 0;
   };
 
-  InputController(system::Input* input,
+  InputController(system::InputInterface* input,
                   Delegate* delegate,
-                  BacklightController* backlight_controller,
-                  StateController* state_controller,
-                  MetricsReporter* metrics_reporter,
-                  DBusSenderInterface* dbus_sender,
-                  const base::FilePath& run_dir);
-  ~InputController();
+                  DBusSenderInterface* dbus_sender);
+  virtual ~InputController();
 
-  void Init(PrefsInterface* prefs);
+  void Init();
+
+  // Calls CheckActiveVT(). Returns false if |check_active_vt_timeout_id_| isn't
+  // set or if the timeout is canceled.
+  bool TriggerCheckActiveVTTimeoutForTesting();
 
   // system::InputObserver implementation:
   virtual void OnLidEvent(LidState state) OVERRIDE;
   virtual void OnPowerButtonEvent(ButtonState state) OVERRIDE;
 
  private:
-  // Reports user activity to |state_controller_| if the second virtual
-  // terminal is currently active (which typically means that the user is
-  // doing something on the console in dev mode, so Chrome won't be
-  // reporting user activity to keep power management from kicking in).
+  // Asks |delegate_| to defer the inactivity timeout if the second virtual
+  // terminal is currently active (which typically means that the user is doing
+  // something on the console in dev mode, so Chrome won't be reporting user
+  // activity to keep power management from kicking in).
   SIGNAL_CALLBACK_0(InputController, gboolean, CheckActiveVT);
 
-  system::Input* input_;  // not owned
+  system::InputInterface* input_;  // not owned
   Delegate* delegate_;  // not owned
-  BacklightController* backlight_controller_;  // not owned
-  StateController* state_controller_;  // not owned
-  MetricsReporter* metrics_reporter_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned
 
   LidState lid_state_;

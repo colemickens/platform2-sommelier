@@ -148,8 +148,7 @@ class Daemon::StateControllerDelegate
     : public policy::StateController::Delegate {
  public:
   explicit StateControllerDelegate(Daemon* daemon) : daemon_(daemon) {}
-
-  ~StateControllerDelegate() {
+  virtual ~StateControllerDelegate() {
     daemon_ = NULL;
   }
 
@@ -360,8 +359,7 @@ Daemon::Daemon(PrefsInterface* prefs,
       state_controller_(new policy::StateController(
           state_controller_delegate_.get(), prefs_)),
       input_controller_(new policy::InputController(
-          input_.get(), this, backlight_controller, state_controller_.get(),
-          metrics_reporter_.get(), dbus_sender_.get(), run_dir)),
+          input_.get(), this, dbus_sender_.get())),
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
@@ -424,7 +422,7 @@ void Daemon::Init() {
   prefs_->GetBool(kUseLidPref, &use_lid);
   CHECK(input_->Init(wakeup_inputs, use_lid));
 
-  input_controller_->Init(prefs_);
+  input_controller_->Init();
 
   // Initialize |state_controller_| before |audio_client_| to ensure that the
   // former is ready to receive the initial notification if audio is already
@@ -595,6 +593,21 @@ void Daemon::HandleLidOpened() {
   suspender_.HandleLidOpened();
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(LID_OPEN);
+}
+
+void Daemon::HandlePowerButtonEvent(ButtonState state) {
+  metrics_reporter_->HandlePowerButtonEvent(state);
+
+  if (state == BUTTON_DOWN) {
+    if (backlight_controller_)
+      backlight_controller_->HandlePowerButtonPress();
+    LOG(INFO) << "Syncing state due to power button down event";
+    util::Launch("sync");
+  }
+}
+
+void Daemon::DeferInactivityTimeoutForVT2() {
+  state_controller_->HandleUserActivity();
 }
 
 void Daemon::OnAudioStateChange(bool active) {

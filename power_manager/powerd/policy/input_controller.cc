@@ -6,15 +6,12 @@
 
 #include <glib.h>
 
+#include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
-#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/input_event.pb.h"
-#include "power_manager/powerd/metrics_reporter.h"
-#include "power_manager/powerd/policy/backlight_controller.h"
-#include "power_manager/powerd/policy/state_controller.h"
-#include "power_manager/powerd/system/input.h"
+#include "power_manager/powerd/system/input_interface.h"
 
 namespace power_manager {
 namespace policy {
@@ -27,18 +24,11 @@ const int kCheckActiveVTFrequencySec = 60;
 
 } // namespace
 
-InputController::InputController(system::Input* input,
+InputController::InputController(system::InputInterface* input,
                                  Delegate* delegate,
-                                 BacklightController* backlight_controller,
-                                 StateController* state_controller,
-                                 MetricsReporter* metrics_reporter,
-                                 DBusSenderInterface* dbus_sender,
-                                 const base::FilePath& run_dir)
+                                 DBusSenderInterface* dbus_sender)
     : input_(input),
       delegate_(delegate),
-      backlight_controller_(backlight_controller),
-      state_controller_(state_controller),
-      metrics_reporter_(metrics_reporter),
       dbus_sender_(dbus_sender),
       lid_state_(LID_NOT_PRESENT),
       check_active_vt_timeout_id_(0) {
@@ -50,10 +40,17 @@ InputController::~InputController() {
   util::RemoveTimeout(&check_active_vt_timeout_id_);
 }
 
-void InputController::Init(PrefsInterface* prefs) {
+void InputController::Init() {
   OnLidEvent(input_->QueryLidState());
   check_active_vt_timeout_id_ = g_timeout_add(
       kCheckActiveVTFrequencySec * 1000, CheckActiveVTThunk, this);
+}
+
+bool InputController::TriggerCheckActiveVTTimeoutForTesting() {
+  if (!check_active_vt_timeout_id_)
+    return false;
+
+  return CheckActiveVT();
 }
 
 void InputController::OnLidEvent(LidState state) {
@@ -91,18 +88,12 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
     dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
   }
 
-  metrics_reporter_->HandlePowerButtonEvent(state);
-
-  if (state == BUTTON_DOWN) {
-    backlight_controller_->HandlePowerButtonPress();
-    LOG(INFO) << "Syncing state due to power button down event";
-    util::Launch("sync");
-  }
+  delegate_->HandlePowerButtonEvent(state);
 }
 
 gboolean InputController::CheckActiveVT() {
   if (input_->GetActiveVT() == 2)
-    state_controller_->HandleUserActivity();
+    delegate_->DeferInactivityTimeoutForVT2();
   return TRUE;
 }
 

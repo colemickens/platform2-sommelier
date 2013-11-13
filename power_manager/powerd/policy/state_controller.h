@@ -124,7 +124,7 @@ class StateController : public PrefsObserver {
   static const int kUserActivityAfterScreenOffIncreaseDelaysMs;
 
   StateController(Delegate* delegate, PrefsInterface* prefs);
-  ~StateController();
+  virtual ~StateController();
 
   base::TimeTicks last_user_activity_time() const {
     return last_user_activity_time_;

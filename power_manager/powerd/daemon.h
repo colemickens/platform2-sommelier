@@ -70,7 +70,7 @@ class Daemon : public policy::BacklightControllerObserver,
          policy::BacklightController* backlight_controller,
          policy::KeyboardBacklightController* keyboard_controller,
          const base::FilePath& run_dir);
-  ~Daemon();
+  virtual ~Daemon();
 
   void Init();
   void Run();
@@ -101,6 +101,8 @@ class Daemon : public policy::BacklightControllerObserver,
   // Overridden from policy::InputController::Delegate:
   virtual void HandleLidClosed() OVERRIDE;
   virtual void HandleLidOpened() OVERRIDE;
+  virtual void HandlePowerButtonEvent(ButtonState state) OVERRIDE;
+  virtual void DeferInactivityTimeoutForVT2() OVERRIDE;
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioStateChange(bool active) OVERRIDE;

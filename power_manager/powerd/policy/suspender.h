@@ -153,7 +153,7 @@ class Suspender : public SuspendDelayObserver {
   Suspender(Delegate* delegate,
             DBusSenderInterface* dbus_sender,
             DarkResumePolicy* dark_resume_policy);
-  ~Suspender();
+  virtual ~Suspender();
 
   void Init(PrefsInterface* prefs);
 

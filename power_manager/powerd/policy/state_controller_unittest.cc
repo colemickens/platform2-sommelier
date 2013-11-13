@@ -56,7 +56,7 @@ class TestDelegate : public StateController::Delegate {
         headphone_jack_plugged_(false),
         lid_state_(LID_OPEN) {
   }
-  ~TestDelegate() {}
+  virtual ~TestDelegate() {}
 
   void set_record_metrics_actions(bool record) {
     record_metrics_actions_ = record;

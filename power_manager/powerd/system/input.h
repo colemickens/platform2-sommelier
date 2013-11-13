@@ -16,6 +16,7 @@
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/powerd/system/input_interface.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
@@ -26,10 +27,10 @@ namespace system {
 
 class InputObserver;
 
-class Input {
+class Input : public InputInterface {
  public:
   Input();
-  ~Input();
+  virtual ~Input();
 
   void set_sysfs_input_path_for_testing(const std::string& path) {
     sysfs_input_path_for_testing_ = path;
@@ -40,33 +41,14 @@ class Input {
   // events if present.  Returns true on success.
   bool Init(const std::vector<std::string>& wakeup_input_names, bool use_lid);
 
-  // Adds or removes an observer.
-  void AddObserver(InputObserver* observer);
-  void RemoveObserver(InputObserver* observer);
-
-  // Queries the system for the current lid state.  LID_NOT_PRESENT is
-  // returned on error.
-  LidState QueryLidState();
-
-  // Checks if any USB input devices are connected, by scanning sysfs for input
-  // devices whose paths contain "usb".
-  bool IsUSBInputDeviceConnected() const;
-
-  // Returns the (1-indexed) number of the currently-active virtual terminal.
-  int GetActiveVT();
-
-  // Enable or disable special wakeup input devices.
-  bool SetWakeInputsState(bool enable);
-
-  // Enable or disable touch devices.
-  void SetTouchDevicesState(bool enable);
-
-  int num_lid_events() const {
-    return num_lid_events_;
-  }
-  int num_power_key_events() const {
-    return num_power_key_events_;
-  }
+  // InputInterface implementation:
+  virtual void AddObserver(InputObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(InputObserver* observer) OVERRIDE;
+  virtual LidState QueryLidState() OVERRIDE;
+  virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
+  virtual int GetActiveVT() OVERRIDE;
+  virtual bool SetWakeInputsState(bool enable) OVERRIDE;
+  virtual void SetTouchDevicesState(bool enable) OVERRIDE;
 
  private:
   struct IOChannelWatch {
