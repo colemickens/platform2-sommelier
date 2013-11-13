@@ -27,8 +27,8 @@ class AsyncFileReader {
   // Read file asynchronously, passing its contents to |read_cb| when done.
   // Invokes |error_cb| on failure. If a read is already in progress, abort it
   // first.  Note that |error_cb| may be invoked synchronously.
-  void StartRead(base::Callback<void(const std::string&)>* read_cb,
-                 base::Callback<void()>* error_cb);
+  void StartRead(const base::Callback<void(const std::string&)>& read_cb,
+                 const base::Callback<void()>& error_cb);
 
   // The file reader will open a file handle and keep it open even over
   // repeated reads.
@@ -79,8 +79,8 @@ class AsyncFileReader {
   std::string stored_data_;
 
   // Callbacks invoked when the read completes or encounters an error.
-  base::Callback<void(const std::string&)>* read_cb_;
-  base::Callback<void()>* error_cb_;
+  base::Callback<void(const std::string&)> read_cb_;
+  base::Callback<void()> error_cb_;
 
   // GLib source ID used to run UpdateState(), or 0 if unset.
   guint update_state_timeout_id_;

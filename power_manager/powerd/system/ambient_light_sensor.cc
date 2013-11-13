@@ -42,11 +42,7 @@ AmbientLightSensor::AmbientLightSensor()
       poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs),
       lux_value_(-1),
-      num_init_attempts_(0),
-      read_cb_(base::Bind(&AmbientLightSensor::ReadCallback,
-                          base::Unretained(this))),
-      error_cb_(base::Bind(&AmbientLightSensor::ErrorCallback,
-                           base::Unretained(this))) {
+      num_init_attempts_(0) {
 }
 
 AmbientLightSensor::~AmbientLightSensor() {
@@ -77,10 +73,13 @@ gboolean AmbientLightSensor::ReadAls() {
   if (!als_file_.HasOpenedFile() && !InitAlsFile())
     return TRUE;  // Keep the timeout alive.
 
-  // StartRead() can call |error_cb_| synchronously, so clear |poll_timeout_id_|
-  // first to make sure that we don't leak a newer timeout set by the callback.
+  // StartRead() can call the error callback synchronously, so clear
+  // |poll_timeout_id_| first to make sure that we don't leak a newer timeout
+  // set by the callback.
   poll_timeout_id_ = 0;
-  als_file_.StartRead(&read_cb_, &error_cb_);
+  als_file_.StartRead(
+      base::Bind(&AmbientLightSensor::ReadCallback, base::Unretained(this)),
+      base::Bind(&AmbientLightSensor::ErrorCallback, base::Unretained(this)));
   return FALSE;
 }
 

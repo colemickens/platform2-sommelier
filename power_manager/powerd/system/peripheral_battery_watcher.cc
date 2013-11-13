@@ -76,8 +76,6 @@ void PeripheralBatteryWatcher::GetBatteryList(
 
 gboolean PeripheralBatteryWatcher::ReadBatteryStatuses() {
   battery_readers_.clear();
-  read_callbacks_.clear();
-  error_callbacks_.clear();
 
   std::vector<base::FilePath> new_battery_list;
   GetBatteryList(&new_battery_list);
@@ -99,21 +97,16 @@ gboolean PeripheralBatteryWatcher::ReadBatteryStatuses() {
     TrimWhitespaceASCII(model_name, TRIM_TRAILING, &model_name);
 
     AsyncFileReader* reader = new AsyncFileReader;
-    ReadCallbackType* read_cb = new ReadCallbackType(
-        base::Bind(&PeripheralBatteryWatcher::ReadCallback,
-                   base::Unretained(this),
-                   path.value(), model_name));
-    ErrorCallbackType* error_cb = new ErrorCallbackType(
-        base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
-                   base::Unretained(this),
-                   path.value(), model_name));
-
     battery_readers_.push_back(reader);
-    read_callbacks_.push_back(read_cb);
-    error_callbacks_.push_back(error_cb);
 
     if (reader->Init(capacity_path.value())) {
-      reader->StartRead(read_cb, error_cb);
+      reader->StartRead(
+          base::Bind(&PeripheralBatteryWatcher::ReadCallback,
+                     base::Unretained(this),
+                     path.value(), model_name),
+          base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
+                     base::Unretained(this),
+                     path.value(), model_name));
     } else {
       LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
     }

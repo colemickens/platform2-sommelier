@@ -32,8 +32,6 @@ AsyncFileReader::AsyncFileReader()
       fd_(-1),
       aio_buffer_(NULL),
       initial_read_size_(kInitialFileReadSize),
-      read_cb_(NULL),
-      error_cb_(NULL),
       update_state_timeout_id_(0) {
 }
 
@@ -59,20 +57,20 @@ bool AsyncFileReader::HasOpenedFile() const {
 }
 
 void AsyncFileReader::StartRead(
-    base::Callback<void(const std::string&)>* read_cb,
-    base::Callback<void()>* error_cb) {
+    const base::Callback<void(const std::string&)>& read_cb,
+    const base::Callback<void()>& error_cb) {
   Reset();
 
   if (fd_ == -1) {
     LOG(ERROR) << "No file handle available.";
-    if (error_cb)
-      error_cb->Run();
+    if (!error_cb.is_null())
+      error_cb.Run();
     return;
   }
 
   if (!AsyncRead(initial_read_size_, 0)) {
-    if (error_cb)
-      error_cb->Run();
+    if (!error_cb.is_null())
+      error_cb.Run();
     return;
   }
   read_cb_ = read_cb;
@@ -113,16 +111,16 @@ gboolean AsyncFileReader::UpdateState() {
         if (AsyncRead(size * 2, aio_control_.aio_offset + size))
           break;
       }
-      if (read_cb_)
-        read_cb_->Run(stored_data_);
+      if (!read_cb_.is_null())
+        read_cb_.Run(stored_data_);
       Reset();
       break;
     }
     default: {
       LOG(ERROR) << "Error during read of file " << filename_
                  << ", status=" << status;
-      if (error_cb_)
-        error_cb_->Run();
+      if (!error_cb_.is_null())
+        error_cb_.Run();
       Reset();
       break;
     }
@@ -151,8 +149,8 @@ void AsyncFileReader::Reset() {
   delete[] aio_buffer_;
   aio_buffer_ = NULL;
   stored_data_.clear();
-  read_cb_ = NULL;
-  error_cb_ = NULL;
+  read_cb_.Reset();
+  error_cb_.Reset();
   read_in_progress_ = false;
 }
 

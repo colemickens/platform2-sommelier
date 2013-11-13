@@ -99,11 +99,10 @@ class AsyncFileReaderTest : public ::testing::Test {
       CreateFile(dummy_file_path_, size);
       CHECK(file_reader_->Init(dummy_file_path_.value()));
     }
-    read_cb_ =
-        base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this));
-    error_cb_ =
-        base::Bind(&AsyncFileReaderTest::ErrorCallback, base::Unretained(this));
-    file_reader_->StartRead(&read_cb_, &error_cb_);
+    file_reader_->StartRead(
+        base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this)),
+        base::Bind(&AsyncFileReaderTest::ErrorCallback,
+                   base::Unretained(this)));
 
     start_time_ = base::TimeTicks::Now();
 
@@ -130,10 +129,6 @@ class AsyncFileReaderTest : public ::testing::Test {
 
   // Called to indicate a read error.
   SIGNAL_CALLBACK_0(AsyncFileReaderTest, gboolean, CheckForReadCompletion);
-
-  // For passing callbacks to AsyncFileReader.
-  base::Callback<void(const std::string&)> read_cb_;
-  base::Callback<void()> error_cb_;
 
   // Indicates file read status.
   bool done_reading_;

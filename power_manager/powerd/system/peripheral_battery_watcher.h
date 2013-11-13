@@ -50,9 +50,11 @@ class PeripheralBatteryWatcher {
                          int level);
 
   // Asynchronous I/O success and error handlers, respectively.
-  void ReadCallback(const std::string& path, const std::string& model_name,
+  void ReadCallback(const std::string& path,
+                    const std::string& model_name,
                     const std::string& data);
-  void ErrorCallback(const std::string& path, const std::string& model_name);
+  void ErrorCallback(const std::string& path,
+                     const std::string& model_name);
 
   DBusSenderInterface* dbus_sender_;  // not owned
 
@@ -67,13 +69,6 @@ class PeripheralBatteryWatcher {
 
   // AsyncFileReaders for different peripheral batteries.
   ScopedVector<AsyncFileReader> battery_readers_;
-
-  typedef base::Callback<void(const std::string&)> ReadCallbackType;
-  typedef base::Callback<void()> ErrorCallbackType;
-
-  // Callbacks for asynchronous file I/O.
-  ScopedVector<ReadCallbackType> read_callbacks_;
-  ScopedVector<ErrorCallbackType> error_callbacks_;
 
   DISALLOW_COPY_AND_ASSIGN(PeripheralBatteryWatcher);
 };

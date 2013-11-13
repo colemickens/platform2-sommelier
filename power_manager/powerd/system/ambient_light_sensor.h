@@ -94,10 +94,6 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // This is the ambient light sensor asynchronous file I/O object.
   AsyncFileReader als_file_;
 
-  // Callbacks for asynchronous file I/O.
-  base::Callback<void(const std::string&)> read_cb_;
-  base::Callback<void()> error_cb_;
-
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };
 
