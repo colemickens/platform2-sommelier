@@ -81,5 +81,24 @@
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
+    {
+      'target_name': 'policy-protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '<(sysroot)/usr/include/proto',
+        'proto_out_dir': 'include/bindings',
+      },
+      'cflags': [
+        '-fvisibility=hidden',
+      ],
+      'sources': [
+        '<(proto_in_dir)/chrome_device_policy.proto',
+        '<(proto_in_dir)/chrome_extension_policy.proto',
+        '<(proto_in_dir)/device_management_backend.proto',
+        '<(proto_in_dir)/device_management_local.proto',
+        '<(proto_in_dir)/install_attributes.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
   ],
 }
