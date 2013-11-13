@@ -81,7 +81,10 @@
     {
       'target_name': 'libpolicy-<(libbase_ver)',
       'type': 'shared_library',
-      'dependencies': ['../libchromeos/libpolicy.gyp:*'],
+      'dependencies': [
+        '../libchromeos/libpolicy.gyp:*',
+        '../common-mk/external_dependencies.gyp:policy-protos',
+      ],
       'variables': {
         'exported_deps': [
           'glib-2.0',
