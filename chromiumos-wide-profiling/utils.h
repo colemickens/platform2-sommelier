@@ -24,7 +24,7 @@ typedef std::map<string, std::vector<string> > MetadataSet;
 extern const char* kSupportedMetadata[];
 
 // Path to the perf executable.
-extern const char kPerfPath[];
+string GetPerfPath();
 
 // Converts a perf data filename to the full path.
 string GetTestInputFilePath(const string& filename);

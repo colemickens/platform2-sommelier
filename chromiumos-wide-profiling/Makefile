@@ -19,7 +19,7 @@ GENERATED_OBJECTS = perf_data.pb.o
 GENERATED_HEADERS = $(GENERATED_OBJECTS:.pb.o=.pb.h)
 
 COMMON_OBJECTS = address_mapper.o perf_parser.o perf_protobuf_io.o \
-		 perf_reader.o perf_recorder.o perf_serializer.o utils.o utils_defs.o \
+		 perf_reader.o perf_recorder.o perf_serializer.o test_utils_defs.o utils.o \
 		 $(GENERATED_OBJECTS)
 
 # Rule for compiling protobuf.

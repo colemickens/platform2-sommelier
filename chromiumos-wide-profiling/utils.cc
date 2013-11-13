@@ -62,6 +62,7 @@ string GetPerfReportArgs(PerfDataType data_type, const string& sort_fields) {
     "report",                     // Tells perf to generate a perf report.
     "--symfs=/dev/null",          // Don't attempt to symbolize.
     "--stdio",                    // Output to stdio.
+    "--force",                    // Ignore file permissions.
     "--sort",                     // Specify fields by which to sort.
     kSortFieldsPlaceholder,       // Value of previous arg, listing sort fields.
     "-t ,",                       // Use comma as a separator.
@@ -98,7 +99,7 @@ string GetPerfReportArgs(PerfDataType data_type, const string& sort_fields) {
 
 string GetPerfCommandString(const string& args, const string& filename) {
   // Construct the commands.
-  string command = string(quipper::kPerfPath) + " " + args;
+  string command = quipper::GetPerfPath() + " " + args;
 
   // Redirecting stderr does lose warnings and errors, but serious errors should
   // be caught by the return value of perf report.
@@ -123,7 +124,18 @@ enum {
   NUM_PERF_REPORT_FIELDS,
 };
 
-const char kPerfBuildIDArgs[] = "buildid-list -i ";
+// Constructs a set of args for perf to list build IDs.
+string GetPerfBuildIDArgs() {
+  const char* kPerfBuildIDArgs[] = {
+    "buildid-list",               // Tells perf to list the build IDs.
+    "--force",                    // Ignore file permissions.
+    "-i",                         // Specify the input file.
+  };
+  string args;
+  for (size_t i = 0; i < arraysize(kPerfBuildIDArgs); ++i)
+    args += string(kPerfBuildIDArgs[i]) + " ";
+  return args;
+}
 
 const int kPerfReportParseError = -1;
 
@@ -756,7 +768,7 @@ bool GetPerfBuildIDMap(const string& filename,
   LOG(INFO) << filename + kBuildIDListExtension;
   if (!quipper::FileToBuffer(filename + kBuildIDListExtension, &buildid_list)) {
     buildid_list.clear();
-    string cmd = GetPerfCommandString(kPerfBuildIDArgs, filename);
+    string cmd = GetPerfCommandString(GetPerfBuildIDArgs(), filename);
     if (!quipper::RunCommandAndGetStdout(cmd, &buildid_list)) {
       LOG(ERROR) << "Failed to run command: " << cmd;
       return false;
