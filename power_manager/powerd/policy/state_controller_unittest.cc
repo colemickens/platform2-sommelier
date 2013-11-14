@@ -14,10 +14,14 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/test_util.h"
 #include "power_manager/powerd/policy/state_controller.h"
 
 namespace power_manager {
 namespace policy {
+
+using test::AppendAction;
+using test::JoinActions;
 
 namespace {
 
@@ -40,25 +44,6 @@ const char kReportUserActivityMetrics[] = "metrics";
 // String returned by TestDelegate::GetActions() if no actions were
 // requested.
 const char kNoActions[] = "";
-
-// Joins a sequence of strings describing actions (e.g. kScreenDim) such
-// that they can be compared against a string returned by
-// TestDelegate::GetActions().  The list of actions must be terminated by a
-// NULL pointer.
-std::string JoinActions(const char* action, ...) {
-  std::string actions;
-
-  va_list arg_list;
-  va_start(arg_list, action);
-  while (action) {
-    if (!actions.empty())
-      actions += ",";
-    actions += action;
-    action = va_arg(arg_list, const char*);
-  }
-  va_end(arg_list);
-  return actions;
-}
 
 // StateController::Delegate implementation that records requested actions.
 class TestDelegate : public StateController::Delegate {
@@ -109,35 +94,29 @@ class TestDelegate : public StateController::Delegate {
   virtual bool IsHeadphoneJackPlugged() OVERRIDE {
     return headphone_jack_plugged_;
   }
-  virtual void DimScreen() OVERRIDE { AppendAction(kScreenDim); }
-  virtual void UndimScreen() OVERRIDE { AppendAction(kScreenUndim); }
-  virtual void TurnScreenOff() OVERRIDE { AppendAction(kScreenOff); }
-  virtual void TurnScreenOn() OVERRIDE { AppendAction(kScreenOn); }
-  virtual void LockScreen() OVERRIDE { AppendAction(kScreenLock); }
-  virtual void Suspend() OVERRIDE { AppendAction(kSuspend); }
-  virtual void StopSession() OVERRIDE { AppendAction(kStopSession); }
-  virtual void ShutDown() OVERRIDE { AppendAction(kShutDown); }
+  virtual void DimScreen() OVERRIDE { AppendAction(&actions_, kScreenDim); }
+  virtual void UndimScreen() OVERRIDE { AppendAction(&actions_, kScreenUndim); }
+  virtual void TurnScreenOff() OVERRIDE { AppendAction(&actions_, kScreenOff); }
+  virtual void TurnScreenOn() OVERRIDE { AppendAction(&actions_, kScreenOn); }
+  virtual void LockScreen() OVERRIDE { AppendAction(&actions_, kScreenLock); }
+  virtual void Suspend() OVERRIDE { AppendAction(&actions_, kSuspend); }
+  virtual void StopSession() OVERRIDE { AppendAction(&actions_, kStopSession); }
+  virtual void ShutDown() OVERRIDE { AppendAction(&actions_, kShutDown); }
   virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
-    AppendAction(docked ? kDocked : kUndocked);
+    AppendAction(&actions_, docked ? kDocked : kUndocked);
   }
   virtual void EmitIdleActionImminent() OVERRIDE {
-    AppendAction(kIdleImminent);
+    AppendAction(&actions_, kIdleImminent);
   }
   virtual void EmitIdleActionDeferred() OVERRIDE {
-    AppendAction(kIdleDeferred);
+    AppendAction(&actions_, kIdleDeferred);
   }
   virtual void ReportUserActivityMetrics() OVERRIDE {
     if (record_metrics_actions_)
-      AppendAction(kReportUserActivityMetrics);
+      AppendAction(&actions_, kReportUserActivityMetrics);
   }
 
  private:
-  void AppendAction(const std::string& action) {
-    if (!actions_.empty())
-      actions_ += ",";
-    actions_ += action;
-  }
-
   // Should calls to ReportUserActivityMetrics() be recorded in |actions_|?
   // These are noisy, so by default, they aren't recorded.
   bool record_metrics_actions_;

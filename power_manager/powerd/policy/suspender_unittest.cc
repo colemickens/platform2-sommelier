@@ -16,10 +16,14 @@
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/test_util.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 
 namespace power_manager {
 namespace policy {
+
+using test::AppendAction;
+using test::JoinActions;
 
 namespace {
 
@@ -31,27 +35,6 @@ const char kSuspend[] = "suspend";
 const char kResume[] = "resume";
 const char kShutDown[] = "shut_down";
 const char kNoActions[] = "";
-
-// Joins a sequence of strings describing actions (e.g. kScreenDim) such
-// that they can be compared against a string returned by
-// TestDelegate::GetActions().  The list of actions must be terminated by a
-// NULL pointer.
-// TODO(derat): Move this and state_controller_unittest.cc's implementation
-// into a shared library.
-std::string JoinActions(const char* action, ...) {
-  std::string actions;
-
-  va_list arg_list;
-  va_start(arg_list, action);
-  while (action) {
-    if (!actions.empty())
-      actions += ",";
-    actions += action;
-    action = va_arg(arg_list, const char*);
-  }
-  va_end(arg_list);
-  return actions;
-}
 
 // Test implementation of Suspender::Delegate that just records the actions it
 // was asked to perform.
@@ -103,17 +86,17 @@ class TestDelegate : public Suspender::Delegate {
   }
 
   virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    AppendAction(kAnnounce);
+    AppendAction(&actions_, kAnnounce);
   }
 
   virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
-    AppendAction(kCancel);
+    AppendAction(&actions_, kCancel);
   }
 
   virtual SuspendResult Suspend(uint64 wakeup_count,
                                 bool wakeup_count_valid,
                                 base::TimeDelta duration) OVERRIDE {
-    AppendAction(kSuspend);
+    AppendAction(&actions_, kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
     suspend_duration_ = duration;
@@ -124,24 +107,23 @@ class TestDelegate : public Suspender::Delegate {
     return suspend_result_;
   }
 
-  virtual void PrepareForSuspend() { AppendAction(kPrepare); }
+  virtual void PrepareForSuspend() { AppendAction(&actions_, kPrepare); }
 
   virtual void HandleResume(bool success,
                             int num_retries,
-                            int max_retries) OVERRIDE { AppendAction(kResume); }
-
-  virtual void ShutDownForFailedSuspend() OVERRIDE { AppendAction(kShutDown); }
-
-  virtual void ShutDownForDarkResume() OVERRIDE { AppendAction(kShutDown); }
-
- private:
-  // Appends |action| to |actions_|.
-  void AppendAction(const std::string& action) {
-    if (!actions_.empty())
-      actions_ += ",";
-    actions_ += action;
+                            int max_retries) OVERRIDE {
+    AppendAction(&actions_, kResume);
   }
 
+  virtual void ShutDownForFailedSuspend() OVERRIDE {
+    AppendAction(&actions_, kShutDown);
+  }
+
+  virtual void ShutDownForDarkResume() OVERRIDE {
+    AppendAction(&actions_, kShutDown);
+  }
+
+ private:
   // Value returned by IsLidClosed().
   bool lid_closed_;
 

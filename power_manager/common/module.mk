@@ -46,7 +46,8 @@ clean: CLEAN(common/libtestrunner.pie.a)
 LIBUTIL_TEST_OBJS = \
 	common/dbus_sender_stub.o \
 	common/fake_prefs.o \
-	common/test_main_loop_runner.o
+	common/test_main_loop_runner.o \
+	common/test_util.o
 LIBUTIL_TEST_FLAGS = $(GLIB_FLAGS)
 LIBUTIL_TEST_LIBS = $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(common/libutil_test.pie.a): $(LIBUTIL_TEST_OBJS)
