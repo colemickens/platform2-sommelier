@@ -625,7 +625,7 @@ void CellularCapabilityGSM::OnRegisterReply(const ResultCallback &callback,
   callback.Run(error);
 }
 
-bool CellularCapabilityGSM::IsRegistered() {
+bool CellularCapabilityGSM::IsRegistered() const {
   return (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
           registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
 }

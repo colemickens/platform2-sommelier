@@ -57,7 +57,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
                                  const ResultCallback &callback);
-  virtual bool IsRegistered();
+  virtual bool IsRegistered() const;
   virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
   virtual void RequirePIN(const std::string &pin, bool require,

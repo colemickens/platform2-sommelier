@@ -1011,6 +1011,26 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
             capability_->registration_state_);
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, IsRegistered) {
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_IDLE;
+  EXPECT_FALSE(capability_->IsRegistered());
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
+  EXPECT_FALSE(capability_->IsRegistered());
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_DENIED;
+  EXPECT_FALSE(capability_->IsRegistered());
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN;
+  EXPECT_FALSE(capability_->IsRegistered());
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING;
+  EXPECT_TRUE(capability_->IsRegistered());
+}
+
 TEST_F(CellularCapabilityUniversalMainTest,
        UpdateRegistrationStateModemNotConnected) {
   InitProviderDB();

@@ -36,7 +36,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   virtual void GetProperties();
   virtual std::string GetRoamingStateString() const;
   virtual bool IsActivating() const;
-  virtual bool IsRegistered();
+  virtual bool IsRegistered() const;
   virtual bool IsServiceActivationRequired() const;
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,

@@ -124,7 +124,10 @@ class CellularCapability {
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
                                  const ResultCallback &callback) = 0;
-  virtual bool IsRegistered() = 0;
+  // Returns true if the modem is registered on a network, which can be a home
+  // or roaming network. It is possible that we cannot determine whether it is
+  // a home or roaming network, but we still consider the modem is registered.
+  virtual bool IsRegistered() const = 0;
   // If we are informed by means of something other than a signal indicating
   // a registration state change that the modem has unregistered from the
   // network, we need to update the network-type-specific capability object.

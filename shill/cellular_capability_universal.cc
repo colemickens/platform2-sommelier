@@ -1313,7 +1313,7 @@ void CellularCapabilityUniversal::OnRegisterReply(
   callback.Run(error);
 }
 
-bool CellularCapabilityUniversal::IsRegistered() {
+bool CellularCapabilityUniversal::IsRegistered() const {
   return IsRegisteredState(registration_state_);
 }
 

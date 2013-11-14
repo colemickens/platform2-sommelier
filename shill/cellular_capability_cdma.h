@@ -36,7 +36,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
                         const ResultCallback &callback);
   virtual void DisconnectCleanup();
   virtual bool IsActivating() const;
-  virtual bool IsRegistered();
+  virtual bool IsRegistered() const;
   virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;

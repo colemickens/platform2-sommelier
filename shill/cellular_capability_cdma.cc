@@ -251,7 +251,7 @@ bool CellularCapabilityCDMA::IsActivating() const {
       activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
 }
 
-bool CellularCapabilityCDMA::IsRegistered() {
+bool CellularCapabilityCDMA::IsRegistered() const {
   return registration_state_evdo_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
       registration_state_1x_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 }

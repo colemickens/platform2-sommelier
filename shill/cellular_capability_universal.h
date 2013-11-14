@@ -77,7 +77,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void OnServiceCreated();
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetProperties();
-  virtual bool IsRegistered();
+  virtual bool IsRegistered() const;
   virtual bool IsServiceActivationRequired() const;
   virtual void Register(const ResultCallback &callback);
 
@@ -215,6 +215,7 @@ class CellularCapabilityUniversal : public CellularCapability {
               GetOutOfCreditsDetectionType);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsRegistered);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
