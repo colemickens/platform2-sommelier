@@ -523,6 +523,80 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, IsActivating) {
   EXPECT_FALSE(capability_->IsActivating());
 }
 
+TEST_F(CellularCapabilityUniversalCDMAMainTest, IsRegistered) {
+  capability_->cdma_1x_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  EXPECT_FALSE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_1x_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_1x_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_1x_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(capability_->IsRegistered());
+
+  capability_->cdma_evdo_registration_state_ =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  EXPECT_TRUE(capability_->IsRegistered());
+}
+
 TEST_F(CellularCapabilityUniversalCDMAMainTest, SetupConnectProperties) {
   DBusPropertiesMap map;
   capability_->SetupConnectProperties(&map);

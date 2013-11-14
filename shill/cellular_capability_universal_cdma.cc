@@ -464,14 +464,10 @@ bool CellularCapabilityUniversalCDMA::IsActivating() const {
 }
 
 bool CellularCapabilityUniversalCDMA::IsRegistered() {
-  return (cdma_1x_registration_state_ ==
-              MM_MODEM_CDMA_REGISTRATION_STATE_HOME ||
-          cdma_1x_registration_state_ ==
-              MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING ||
-          cdma_evdo_registration_state_ ==
-              MM_MODEM_CDMA_REGISTRATION_STATE_HOME ||
-          cdma_evdo_registration_state_ ==
-              MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
+  return (cdma_1x_registration_state_ !=
+              MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
+          cdma_evdo_registration_state_ !=
+              MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
 }
 
 void CellularCapabilityUniversalCDMA::SetUnregistered(bool /*searching*/) {

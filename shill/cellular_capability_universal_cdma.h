@@ -84,6 +84,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
               CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsActivating);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsRegistered);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
               IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
