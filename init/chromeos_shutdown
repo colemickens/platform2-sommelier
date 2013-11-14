@@ -31,9 +31,6 @@ wait $HWCLOCK_PID
 # close to that point as we can be before stateful is unmounted).
 crash_reporter --clean_shutdown
 
-# Measure shutdown time up to this point.
-bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
-
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.
 crossystem "cros_debug?1"
@@ -47,12 +44,23 @@ if [ "$CROS_DEBUG" = "1" -a -f "$STATEFUL_UPDATE" ] ; then
   if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ] ; then
     PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
 
+    # Measure shutdown time up to this point.
+    bootstat before_preserve
+
     # We preserve a few files. Make sure preservation directory starts empty.
     rm -rf "${PRESERVE_DIR}/log"
     mkdir -p -m 0755 "${PRESERVE_DIR}"
     cp -a "${MNTS}/var/log" "${PRESERVE_DIR}"
+
+    # We are about to put this into a directory that will shortly be wiped
+    # out. Keep a timestamp where it will be preserved as well.
+    PRESERVE_METRICS="${PRESERVE_DIR}/log/metrics"
+    bootstat_archive "${PRESERVE_METRICS}/shutdown.$(date '+%Y%m%d%H%M%S')"
   fi
 fi
+
+# Measure shutdown time up to this point.
+bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
 
 # Lazy umount the tmpfs dirs under /var so we can immediately umount it.
 umount -n -l /var/run /var/lock
