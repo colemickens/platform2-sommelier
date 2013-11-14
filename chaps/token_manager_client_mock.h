@@ -32,6 +32,8 @@ class TokenManagerClientMock : public TokenManagerClient {
   MOCK_METHOD3(GetTokenPath, bool(const chromeos::SecureBlob&,
                                   int,
                                   FilePath*));
+  MOCK_METHOD2(GetTokenList, bool(const chromeos::SecureBlob&,
+                                  std::vector<std::string>*));
 };
 
 }  // namespace chaps
