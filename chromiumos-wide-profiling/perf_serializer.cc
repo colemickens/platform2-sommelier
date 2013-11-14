@@ -729,7 +729,7 @@ bool PerfSerializer::SerializeBuildIDEvent(
     PerfDataProto_PerfBuildID* to) const {
   to->set_misc(from->header.misc);
   to->set_pid(from->pid);
-  to->set_build_id(from->build_id, kBuildIDArraySize);
+  to->set_build_id_hash(from->build_id, kBuildIDArraySize);
   to->set_filename(from->filename);
   return true;
 }
@@ -746,7 +746,7 @@ bool PerfSerializer::DeserializeBuildIDEvent(
   event->header.size = size;
   event->header.misc = from.misc();
   event->pid = from.pid();
-  memcpy(event->build_id, from.build_id().c_str(), kBuildIDArraySize);
+  memcpy(event->build_id, from.build_id_hash().c_str(), kBuildIDArraySize);
 
   CHECK_GT(snprintf(event->filename, filename.size() + 1, "%s",
                     filename.c_str()),
