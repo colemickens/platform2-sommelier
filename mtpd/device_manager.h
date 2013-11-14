@@ -14,7 +14,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/memory/linked_ptr.h>
 #include <base/memory/weak_ptr.h>
+#include <base/synchronization/lock.h>
+#include <base/threading/simple_thread.h>
 
 #include "file_entry.h"
 #include "storage_info.h"
@@ -157,8 +160,21 @@ class DeviceManager {
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
   typedef std::map<uint32_t, StorageInfo> MtpStorageMap;
-  // (device handle, map of storages on the device)
-  typedef std::pair<LIBMTP_mtpdevice_t*, MtpStorageMap> MtpDevice;
+  // (device handle, map of storages on the device, device polling thread)
+  struct MtpDevice {
+    LIBMTP_mtpdevice_t* first;
+    MtpStorageMap second;
+    linked_ptr<base::SimpleThread> third;
+
+    MtpDevice() : first(NULL) {}
+
+    MtpDevice(LIBMTP_mtpdevice_t* d, const MtpStorageMap& m,
+              base::SimpleThread* t)
+      : first(d), second(m), third(t) {}
+
+    MtpDevice(const MtpDevice& rhs)
+      : first(rhs.first), second(rhs.second), third(rhs.third) {}
+  };
   // Key: device bus location, Value: MtpDevice.
   typedef std::map<std::string, MtpDevice> MtpDeviceMap;
 
@@ -217,11 +233,27 @@ class DeviceManager {
   // Callback for udev when something changes for |device|.
   void HandleDeviceNotification(udev_device* device);
 
+  // This is called by a separate thread which blocks in it
+  // polling the device specified by |mtp_device| and |usb_name|.
+  void PollDevice(LIBMTP_mtpdevice_t* mtp_device,
+                  const std::string& usb_bus_name);
+
   // Iterates through attached devices and find ones that are newly attached.
   // Then populates |device_map_| for the newly attached devices.
   // If this is called as a result of a callback, it came from |source|,
   // which needs to be properly destructed.
   void AddDevices(GSource* source);
+
+  // Re-reads the storage advertised by an already known device
+  // on the USB bus. Returns the new device structure used by libmtp.
+  LIBMTP_mtpdevice_t* UpdateDevice(const std::string& usb_bus_name);
+
+  // Shared code for both AddDevices and UpdateDevice.
+  // |add_update| is set true for add. |usb_bus_name| is only used
+  // for update which returns the new libmtp device structure,
+  // otherwise NULL.
+  LIBMTP_mtpdevice_t* AddOrUpdateDevices(bool add_update,
+                                         const std::string& usb_bus_name);
 
   // Iterates through attached devices and find ones that have been detached.
   // Then removes the detached devices from |device_map_|.
@@ -237,8 +269,10 @@ class DeviceManager {
 
   DeviceEventDelegate* delegate_;
 
-  // Map of devices and storages.
+  // Map of devices and storages. Requires |device_map_lock_| to access.
   MtpDeviceMap device_map_;
+
+  base::Lock device_map_lock_;
 
   base::WeakPtrFactory<DeviceManager> weak_ptr_factory_;
 

@@ -188,6 +188,7 @@ void DeviceManager::ProcessDeviceEvents() {
 
 std::vector<std::string> DeviceManager::EnumerateStorages() {
   std::vector<std::string> ret;
+  base::AutoLock al(device_map_lock_);
   for (MtpDeviceMap::const_iterator device_it = device_map_.begin();
        device_it != device_map_.end();
        ++device_it) {
@@ -215,6 +216,7 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
     return NULL;
 
+  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
     return NULL;
@@ -316,14 +318,15 @@ bool DeviceManager::AddStorageForTest(const std::string& storage_name,
   if (!ParseStorageName(storage_name, &device_location, &storage_id))
     return false;
 
+  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::iterator it = device_map_.find(device_location);
   if (it == device_map_.end()) {
     // New device case.
     MtpStorageMap new_storage_map;
     new_storage_map.insert(std::make_pair(storage_id, storage_info));
-    MtpDevice new_mtp_device =
-        std::make_pair(static_cast<LIBMTP_mtpdevice_t*>(NULL),
-                       new_storage_map);
+    MtpDevice new_mtp_device(static_cast<LIBMTP_mtpdevice_t*>(NULL),
+                             new_storage_map,
+                             static_cast<base::SimpleThread*>(NULL));
     device_map_.insert(std::make_pair(device_location, new_mtp_device));
     return true;
   }
@@ -457,6 +460,7 @@ bool DeviceManager::GetDeviceAndStorageId(const std::string& storage_name,
   if (!ParseStorageName(storage_name, &usb_bus_str, &id))
     return false;
 
+  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
     return false;
@@ -526,6 +530,31 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
   // they have never been observed with real MTP/PTP devices in testing.
 }
 
+class MtpPollThread : public base::SimpleThread {
+ public:
+  MtpPollThread(const base::Closure& cb)
+    : SimpleThread("MTP polling"), callback_(cb) {}
+
+  void Run() OVERRIDE {
+    callback_.Run();
+  }
+
+  base::Closure callback_;
+};
+
+void DeviceManager::PollDevice(LIBMTP_mtpdevice_t* mtp_device,
+                               const std::string& usb_bus_name) {
+  LIBMTP_event_t event;
+  uint32_t extra;
+  while (LIBMTP_Read_Event(mtp_device, &event, &extra) == 0) {
+    if (event == LIBMTP_EVENT_STORE_ADDED) {
+      LIBMTP_mtpdevice_t* new_device = UpdateDevice(usb_bus_name);
+      if (new_device)
+        mtp_device = new_device;
+    }
+  }
+}
+
 void DeviceManager::AddDevices(GSource* source) {
   if (source) {
     // Matches g_source_attach().
@@ -533,6 +562,19 @@ void DeviceManager::AddDevices(GSource* source) {
     // Matches the implicit add-ref in g_timeout_source_new_seconds().
     g_source_unref(source);
   }
+  AddOrUpdateDevices(true /* add */, "");
+}
+
+LIBMTP_mtpdevice_t* DeviceManager::UpdateDevice(
+    const std::string& usb_bus_name) {
+  return AddOrUpdateDevices(false /* update */, usb_bus_name);
+}
+
+LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
+    bool add_update,
+    const std::string& changed_usb_device_name) {
+  LIBMTP_mtpdevice_t* new_device = NULL;
+  base::AutoLock al(device_map_lock_);
 
   // Get raw devices.
   LIBMTP_raw_device_t* raw_devices = NULL;
@@ -541,25 +583,39 @@ void DeviceManager::AddDevices(GSource* source) {
       LIBMTP_Detect_Raw_Devices(&raw_devices, &raw_devices_count);
   if (err != LIBMTP_ERROR_NONE) {
     LOG(ERROR) << "LIBMTP_Detect_Raw_Devices failed with " << err;
-    return;
+    return NULL;
   }
-
-  // Iterate through raw devices.
+  // Iterate through raw devices. Look for target device, if updating.
   for (int i = 0; i < raw_devices_count; ++i) {
     const std::string usb_bus_str = RawDeviceToString(raw_devices[i]);
-    // Skip devices that have already been opened.
-    if (ContainsKey(device_map_, usb_bus_str))
-      continue;
 
+    if (add_update) {
+      // Skip devices that have already been opened.
+      if (ContainsKey(device_map_, usb_bus_str))
+        continue;
+    } else {
+      // Skip non-target device.
+      if (usb_bus_str != changed_usb_device_name)
+        continue;
+    }
     // Open the mtp device.
     LIBMTP_mtpdevice_t* mtp_device =
         LIBMTP_Open_Raw_Device_Uncached(&raw_devices[i]);
     if (!mtp_device) {
       LOG(ERROR) << "LIBMTP_Open_Raw_Device_Uncached failed for "
                  << usb_bus_str;
-      continue;
+      if (add_update)
+        continue;
+      else
+        break;
     }
-
+    if (!add_update) {
+      // We have an updated device. Replace the one in the map.
+      // Prepare to return the new one to caller.
+      LIBMTP_Release_Device(device_map_[usb_bus_str].first);
+      device_map_[usb_bus_str].first = mtp_device;
+      new_device = mtp_device;
+    }
     // Fetch fallback vendor / product info.
     scoped_ptr_malloc<char> duplicated_string;
     duplicated_string.reset(LIBMTP_Get_Manufacturername(mtp_device));
@@ -572,11 +628,18 @@ void DeviceManager::AddDevices(GSource* source) {
     if (duplicated_string.get())
       fallback_product = duplicated_string.get();
 
-    // Iterate through storages on the device and add them.
-    MtpStorageMap storage_map;
+    // Iterate through storages on the device and add any that are missing.
+    MtpStorageMap new_storage_map;
+    MtpStorageMap* storage_map_ptr;
+    if (add_update)
+      storage_map_ptr = &new_storage_map;
+    else
+      storage_map_ptr = &device_map_[usb_bus_str].second;
     for (LIBMTP_devicestorage_t* storage = mtp_device->storage;
          storage != NULL;
          storage = storage->next) {
+      if (ContainsKey(*storage_map_ptr, storage->id))
+        continue;
       const std::string storage_name =
           StorageToString(usb_bus_str, storage->id);
       StorageInfo info(storage_name,
@@ -585,19 +648,33 @@ void DeviceManager::AddDevices(GSource* source) {
                        fallback_vendor,
                        fallback_product);
       bool storage_added =
-          storage_map.insert(std::make_pair(storage->id, info)).second;
+          storage_map_ptr->insert(std::make_pair(storage->id, info)).second;
       CHECK(storage_added);
       delegate_->StorageAttached(storage_name);
       LOG(INFO) << "Added storage " << storage_name;
     }
-    bool device_added = device_map_.insert(
-        std::make_pair(usb_bus_str,
-                       std::make_pair(mtp_device, storage_map))).second;
-    CHECK(device_added);
-    LOG(INFO) << "Added device " << usb_bus_str << " with "
-              << storage_map.size() << " storages";
+    if (add_update) {
+      base::Closure callback(
+          base::Bind(&DeviceManager::PollDevice, base::Unretained(this),
+                     mtp_device, usb_bus_str));
+      scoped_ptr<base::SimpleThread> p_thread(
+          new MtpPollThread(callback));
+      p_thread.get()->Start();
+      bool device_added = device_map_.insert(
+          std::make_pair(usb_bus_str,
+                         MtpDevice(mtp_device, *storage_map_ptr,
+                                   p_thread.release()))).second;
+      CHECK(device_added);
+      LOG(INFO) << "Added device " << usb_bus_str << " with "
+                << storage_map_ptr->size() << " storages";
+    } else {
+      LOG(INFO) << "Updated device " << usb_bus_str << " with "
+                << storage_map_ptr->size() << " storages";
+      break;
+    }
   }
   free(raw_devices);
+  return new_device;
 }
 
 void DeviceManager::RemoveDevices(bool remove_all) {
@@ -613,6 +690,7 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     }
   }
 
+  base::AutoLock al(device_map_lock_);
   // Populate |devices_set| with all known attached devices.
   typedef std::set<std::string> MtpDeviceSet;
   MtpDeviceSet devices_set;
@@ -649,6 +727,7 @@ void DeviceManager::RemoveDevices(bool remove_all) {
 
     // Delete the device's map entry and cleanup.
     LIBMTP_mtpdevice_t* mtp_device = device_it->second.first;
+    linked_ptr<base::SimpleThread> p_thread(device_it->second.third);
     device_map_.erase(device_it);
 
     // |mtp_device| can be NULL in testing.
@@ -660,6 +739,9 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     // likely fail and spew a bunch of error messages. Call it anyway to
     // let libmtp do any cleanup it can.
     LIBMTP_Release_Device(mtp_device);
+
+    // This shouldn't block now.
+    p_thread.get()->Join();
   }
 }
 
