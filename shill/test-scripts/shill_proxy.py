@@ -2,9 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import dbus
+import dbus.mainloop.glib
+import gobject
 import logging
 import time
+
 
 class ShillProxyError(Exception):
     """Exceptions raised by ShillProxy and it's children."""
@@ -236,6 +240,7 @@ class ShillProxy(object):
 
     def __init__(self, bus=None):
         if bus is None:
+            dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
             bus = dbus.SystemBus()
         self._bus = bus
         self._manager = self.get_dbus_object(self.DBUS_TYPE_MANAGER, '/')
@@ -301,23 +306,48 @@ class ShillProxy(object):
             saw, and duration is how long we waited to see that value.
 
         """
-        # TODO(wiley) This should be changed to be event based (not polling).
-        value = None
         start_time = time.time()
-        successful = False
-        while time.time() < start_time + timeout_seconds:
-            try:
-                properties = dbus_object.GetProperties(utf8_strings=True)
-            except dbus.exceptions.DBusException:
-                value = '(object reference became invalid)'
-                break
-            value = properties.get(property_name, None)
-            if value in expected_values:
-                successful = True
-                break
-            time.sleep(self.POLLING_INTERVAL_SECONDS)
-        duration = time.time() - start_time
-        return successful, self.dbus2primitive(value), duration
+        duration = lambda: time.time() - start_time
+        # Check to make sure we're not already in a target state.
+        try:
+            properties = self.dbus2primitive(
+                    dbus_object.GetProperties(utf8_strings=True))
+            last_value = properties.get(property_name, '(no value found)')
+            if last_value in expected_values:
+                return True, last_value, duration()
+
+        except dbus.exceptions.DBusException:
+            return False, '(object reference became invalid)', duration()
+
+        update_queue = collections.deque()
+        signal_receiver = lambda key, value: update_queue.append((key, value))
+        receiver_ref = self._bus.add_signal_receiver(
+                signal_receiver,
+                signal_name='PropertyChanged',
+                dbus_interface=dbus_object.dbus_interface,
+                path=dbus_object.object_path)
+        context = gobject.MainLoop().get_context()
+        try:
+            while duration() < timeout_seconds:
+                while context.iteration(False):
+                    pass  # This has caused 1 or fewer events to be dispatched.
+
+                while update_queue:
+                    updated_property, last_value = map(self.dbus2primitive,
+                                                       update_queue.popleft())
+                    if property_name != updated_property:
+                        continue
+
+                    if not last_value in expected_values:
+                        continue
+
+                    return True, last_value, duration()
+
+                time.sleep(0.2)  # Give that CPU a break.  CPUs love breaks.
+        finally:
+            receiver_ref.remove()
+
+        return False, last_value, duration()
 
 
     @property
