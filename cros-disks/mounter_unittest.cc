@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/mounter.h"
-#include "cros-disks/mount-options.h"
+#include "cros-disks/mount_options.h"
 
 using std::string;
 using std::vector;

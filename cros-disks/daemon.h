@@ -7,15 +7,15 @@
 
 #include <base/basictypes.h>
 
-#include "cros-disks/archive-manager.h"
-#include "cros-disks/cros-disks-server-impl.h"
-#include "cros-disks/device-ejector.h"
-#include "cros-disks/device-event-moderator.h"
-#include "cros-disks/disk-manager.h"
-#include "cros-disks/format-manager.h"
+#include "cros-disks/archive_manager.h"
+#include "cros-disks/cros_disks_server.h"
+#include "cros-disks/device_ejector.h"
+#include "cros-disks/device_event_moderator.h"
+#include "cros-disks/disk_manager.h"
+#include "cros-disks/format_manager.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
-#include "cros-disks/session-manager-proxy.h"
+#include "cros-disks/session_manager_proxy.h"
 
 namespace cros_disks {
 
