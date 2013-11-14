@@ -253,7 +253,9 @@ Service::Service()
       homedirs_(default_homedirs_.get()),
       guest_user_(chromeos::cryptohome::home::kGuestUserName),
       legacy_mount_(true),
-      public_mount_salt_() {
+      public_mount_salt_(),
+      default_chaps_client_(new chaps::TokenManagerClient()),
+      chaps_client_(default_chaps_client_.get()) {
 }
 
 Service::~Service() {
@@ -286,21 +288,20 @@ static bool PrefixPresent(const std::vector<std::string>& prefixes,
 bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
   SecureBlob isolate =
       chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
-  chaps::TokenManagerClient chaps_client_;
   std::vector<std::string> tokens;
-  if (!chaps_client_.GetTokenList(isolate, &tokens))
+  if (!chaps_client_->GetTokenList(isolate, &tokens))
     return false;
   for (size_t i = 0; i < tokens.size(); ++i) {
     if (!PrefixPresent(exclude, tokens[i])) {
-      LOG(INFO) << "Cleaning up: " << tokens[i];
-      chaps_client_.UnloadToken(isolate, FilePath(tokens[i]));
+      LOG(INFO) << "Cleaning up PKCS #11 token: " << tokens[i];
+      chaps_client_->UnloadToken(isolate, FilePath(tokens[i]));
     }
   }
   return true;
 }
 
 bool Service::CleanUpStaleMounts(bool force) {
-  // This function is meant to aid in a clean recover from a crashed or
+  // This function is meant to aid in a clean recovery from a crashed or
   // manually restarted cryptohomed.  Cryptohomed may restart:
   // 1. Before any mounts occur
   // 2. While mounts are active
@@ -333,7 +334,7 @@ bool Service::CleanUpStaleMounts(bool force) {
     std::multimap<const std::string, const std::string>::iterator curr = match;
     bool keep = false;
     // Walk each set of sources as one group since multimaps are key ordered.
-    do {
+    for (; match != matches.end() && match->first == curr->first; ++match) {
       // Ignore known mounts.
       for (MountMap::iterator mount = mounts_.begin();
            mount != mounts_.end(); ++mount) {
@@ -354,14 +355,14 @@ bool Service::CleanUpStaleMounts(bool force) {
           skipped = true;
         }
       }
-      ++match;
-    } while (match != matches.end() && match->first == curr->first);
+    }
 
     // Delete anything that shouldn't be unmounted.
     if (keep) {
-      --match;
-      exclude.push_back(match->second);
-      matches.erase(curr, ++match);
+      std::multimap<const std::string, const std::string>::iterator it;
+      for (it = curr; it != match; ++it)
+        exclude.push_back(it->second);
+      matches.erase(curr, match);
     }
   }
   UnloadPkcs11Tokens(exclude);

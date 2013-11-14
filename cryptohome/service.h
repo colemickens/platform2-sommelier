@@ -27,6 +27,10 @@
 #include "pkcs11_init.h"
 #include "tpm_init.h"
 
+namespace chaps {
+class TokenManagerClient;
+}
+
 namespace cryptohome {
 namespace gobject {
 
@@ -113,6 +117,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void set_homedirs(cryptohome::HomeDirs* value) { homedirs_ = value; }
 
   virtual cryptohome::HomeDirs* homedirs() { return homedirs_; }
+
+  virtual void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
+    chaps_client_ = chaps_client;
+  }
 
   // Checks if the given user is the system owner.
   virtual bool IsOwner(const std::string &userid);
@@ -505,6 +513,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   bool legacy_mount_;
 
   chromeos::SecureBlob public_mount_salt_;
+
+  scoped_ptr<chaps::TokenManagerClient> default_chaps_client_;
+  chaps::TokenManagerClient* chaps_client_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

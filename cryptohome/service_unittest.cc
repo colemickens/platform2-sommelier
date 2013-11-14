@@ -10,6 +10,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
 #include <base/time.h>
+#include <chaps/token_manager_client_mock.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
@@ -315,6 +316,11 @@ class CleanUpStaleTest : public ::testing::Test {
     service_.set_install_attrs(&attrs_);
     service_.set_initialize_tpm(false);
     service_.set_platform(&platform_);
+    service_.set_chaps_client(&chaps_client_);
+    // Empty token list by default.  The effect is that there are no attempts
+    // to unload tokens unless a test explicitly sets up the token list.
+    EXPECT_CALL(chaps_client_, GetTokenList(_, _))
+        .WillRepeatedly(Return(true));
   }
 
   void TearDown() { }
@@ -323,6 +329,7 @@ class CleanUpStaleTest : public ::testing::Test {
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockInstallAttributes> attrs_;
   MockPlatform platform_;
+  chaps::TokenManagerClientMock chaps_client_;
   Service service_;
 
  private:
@@ -417,6 +424,18 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Unmount("/home/chronos/user", true, _))
     .WillOnce(Return(true));
+
+  std::vector<std::string> fake_token_list;
+  fake_token_list.push_back("/home/chronos/user/token");
+  fake_token_list.push_back("/home/user/1/token");
+  fake_token_list.push_back("/home/root/1/token");
+  EXPECT_CALL(chaps_client_, GetTokenList(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_token_list),
+                            Return(true)));
+
+  EXPECT_CALL(chaps_client_,
+              UnloadToken(_, FilePath("/home/chronos/user/token")))
+      .Times(1);
 
   // Expect that CleanUpStaleMounts() tells us it skipped no mounts.
   EXPECT_FALSE(service_.CleanUpStaleMounts(false));
