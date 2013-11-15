@@ -58,8 +58,14 @@ const char kDarkResumeDevicesPref[] = "dark_resume_devices";
 const char kDarkResumeSourcesPref[] = "dark_resume_sources";
 const char kDarkResumeBatteryMarginsPref[] = "dark_resume_battery_margins";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
-const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
 const char kAllowDockedModePref[] = "allow_docked_mode";
+const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
+const char kHasAmbientLightSensorPref[] = "has_ambient_light_sensor";
+const char kHasKeyboardBacklightPref[] = "has_keyboard_backlight";
+const char kExternalDisplayOnlyPref[] = "external_display_only";
+const char kLegacyPowerButtonPref[] = "legacy_power_button";
+const char kLockVTBeforeSuspendPref[] = "lock_vt_before_suspend";
+const char kMosysEventlogPref[] = "mosys_eventlog";
 
 // Miscellaneous constants.
 const char kReadWritePrefsDir[] = "/var/lib/power_manager";

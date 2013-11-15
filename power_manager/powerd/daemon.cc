@@ -18,7 +18,6 @@
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
-#include "base/string_split.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
@@ -375,7 +374,9 @@ Daemon::Daemon(PrefsInterface* prefs,
       session_state_(SESSION_STOPPED),
       udev_(NULL),
       state_controller_initialized_(false),
-      created_suspended_state_file_(false) {
+      created_suspended_state_file_(false),
+      lock_vt_before_suspend_(false),
+      log_suspend_with_mosys_eventlog_(false) {
   power_supply_->AddObserver(this);
   if (backlight_controller_)
     backlight_controller_->AddObserver(this);
@@ -396,6 +397,9 @@ void Daemon::Init() {
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
 
+  prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
+  prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
+
   power_supply_->Init();
   power_supply_->RefreshImmediately();
   metrics_reporter_->Init(power_supply_->power_status());
@@ -414,14 +418,7 @@ void Daemon::Init() {
   dark_resume_policy_->Init();
   suspender_.Init(prefs_);
 
-  std::string wakeup_inputs_str;
-  std::vector<std::string> wakeup_inputs;
-  if (prefs_->GetString(kWakeupInputPref, &wakeup_inputs_str))
-    base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
-  bool use_lid = true;
-  prefs_->GetBool(kUseLidPref, &use_lid);
-  CHECK(input_->Init(wakeup_inputs, use_lid));
-
+  CHECK(input_->Init(prefs_));
   input_controller_->Init();
 
   // Initialize |state_controller_| before |audio_client_| to ensure that the
@@ -522,18 +519,16 @@ void Daemon::HandleCanceledSuspendAnnouncement() {
 }
 
 void Daemon::PrepareForSuspend() {
-#ifdef MOSYS_EVENTLOG
-  // This command is run synchronously to ensure that it finishes before
-  // the system is suspended.
+  // This command is run synchronously to ensure that it finishes before the
+  // system is suspended.
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
-  util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
-#endif
+  if (log_suspend_with_mosys_eventlog_)
+    util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
 
-#ifdef SUSPEND_LOCK_VT
   // Do not let suspend change the console terminal.
-  util::RunSetuidHelper("lock_vt", "", true);
-#endif
+  if (lock_vt_before_suspend_)
+    util::RunSetuidHelper("lock_vt", "", true);
 
   // Touch a file that crash-reporter can inspect later to determine
   // whether the system was suspended while an unclean shutdown occurred.
@@ -561,10 +556,9 @@ void Daemon::HandleResume(bool suspend_was_successful,
   power_supply_->SetSuspended(false);
   state_controller_->HandleResume();
 
-#ifdef SUSPEND_LOCK_VT
   // Allow virtual terminal switching again.
-  util::RunSetuidHelper("unlock_vt", "", true);
-#endif
+  if (lock_vt_before_suspend_)
+    util::RunSetuidHelper("unlock_vt", "", true);
 
   if (created_suspended_state_file_) {
     if (!file_util::Delete(base::FilePath(kSuspendedStatePath), false))
@@ -577,11 +571,12 @@ void Daemon::HandleResume(bool suspend_was_successful,
     metrics_reporter_->HandleResume();
   }
 
-#ifdef MOSYS_EVENTLOG
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
-  util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
-#endif
+  if (log_suspend_with_mosys_eventlog_) {
+    util::RunSetuidHelper(
+        "mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
+  }
 }
 
 void Daemon::HandleLidClosed() {

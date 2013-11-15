@@ -231,6 +231,13 @@ class Daemon : public policy::BacklightControllerObserver,
   // suspending. If true, the file will be unlinked after resuming.
   bool created_suspended_state_file_;
 
+  // True if VT switching should be disabled before the system is suspended.
+  bool lock_vt_before_suspend_;
+
+  // True if the "mosys" command should be used to record suspend and resume
+  // timestamps in eventlog.
+  bool log_suspend_with_mosys_eventlog_;
+
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 

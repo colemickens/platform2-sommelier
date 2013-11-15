@@ -22,14 +22,10 @@
 #include "base/string_number_conversions.h"
 
 DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
-#ifdef MOSYS_EVENTLOG
-              "\"mosys_eventlog\", "
-#endif
-              "\"reboot\", \"shut_down\", \"suspend\", and \"unlock_vt\".");
-#ifdef MOSYS_EVENTLOG
+              "\"mosys_eventlog\", \"reboot\", \"shut_down\", \"suspend\", "
+              "and \"unlock_vt\".");
 DEFINE_string(mosys_eventlog_code, "", "Hexadecimal byte, e.g. \"0xa7\", "
               "describing the event being logged.");
-#endif
 DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
               "lowercase letter and consisting only of lowercase letters and "
               "dashes.");
@@ -97,7 +93,6 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_action == "lock_vt") {
     SetVTSwitchingAllowed(false);
-#ifdef MOSYS_EVENTLOG
   } else if (FLAGS_action == "mosys_eventlog") {
     CHECK(FLAGS_mosys_eventlog_code.size() == 4 &&
           FLAGS_mosys_eventlog_code[0] == '0' &&
@@ -106,7 +101,6 @@ int main(int argc, char* argv[]) {
           isxdigit(FLAGS_mosys_eventlog_code[3])) << "Invalid event code";
     RunCommand("mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(),
                NULL);
-#endif
   } else if (FLAGS_action == "reboot") {
     RunCommand("shutdown", "-r", "now", NULL);
   } else if (FLAGS_action == "shut_down") {

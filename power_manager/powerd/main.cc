@@ -31,6 +31,15 @@
 #define VCSID "<not set>"
 #endif
 
+using power_manager::Daemon;
+using power_manager::Prefs;
+using power_manager::policy::BacklightController;
+using power_manager::policy::ExternalBacklightController;
+using power_manager::policy::InternalBacklightController;
+using power_manager::policy::KeyboardBacklightController;
+using power_manager::system::AmbientLightSensor;
+using power_manager::system::DisplayPowerSetter;
+using power_manager::system::InternalBacklight;
 using std::string;
 
 DEFINE_string(prefs_dir, power_manager::kReadWritePrefsDir,
@@ -66,6 +75,12 @@ string GetTimeAsString(time_t utime) {
   return string(str);
 }
 
+// Convenience method that returns true if |name| exists and is true.
+bool BoolPrefIsTrue(Prefs* prefs, const std::string& name) {
+  bool value = false;
+  return prefs->GetBool(name, &value) && value;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -90,82 +105,80 @@ int main(int argc, char* argv[]) {
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   LOG(INFO) << "vcsid " << VCSID;
 
-  power_manager::Prefs prefs;
+  Prefs prefs;
   CHECK(prefs.Init(power_manager::util::GetPrefPaths(FLAGS_prefs_dir,
                                                      FLAGS_default_prefs_dir)));
   g_type_init();
 
-  scoped_ptr<power_manager::system::AmbientLightSensor> light_sensor;
-#ifdef HAS_ALS
-  light_sensor.reset(new power_manager::system::AmbientLightSensor());
-  light_sensor->Init();
-#endif
+  scoped_ptr<AmbientLightSensor> light_sensor;
+  if (BoolPrefIsTrue(&prefs, power_manager::kHasAmbientLightSensorPref)) {
+    light_sensor.reset(new power_manager::system::AmbientLightSensor());
+    light_sensor->Init();
+  }
 
-  power_manager::system::DisplayPowerSetter display_power_setter;
-
-#ifdef IS_DESKTOP
-  scoped_ptr<power_manager::policy::ExternalBacklightController>
-      display_backlight_controller(
-          new power_manager::policy::ExternalBacklightController(
-              &display_power_setter));
-  display_backlight_controller->Init();
-#else
-  scoped_ptr<power_manager::system::InternalBacklight> display_backlight(
-      new power_manager::system::InternalBacklight);
-  scoped_ptr<power_manager::policy::InternalBacklightController>
-      display_backlight_controller;
-  if (display_backlight->Init(
-          base::FilePath(power_manager::kInternalBacklightPath),
-          power_manager::kInternalBacklightPattern)) {
+  DisplayPowerSetter display_power_setter;
+  scoped_ptr<InternalBacklight> display_backlight;
+  scoped_ptr<BacklightController> display_backlight_controller;
+  if (BoolPrefIsTrue(&prefs, power_manager::kExternalDisplayOnlyPref)) {
     display_backlight_controller.reset(
-        new power_manager::policy::InternalBacklightController(
-            display_backlight.get(), &prefs, light_sensor.get(),
-            &display_power_setter));
-    if (!display_backlight_controller->Init()) {
-      LOG(ERROR) << "Cannot initialize display backlight controller";
-      display_backlight_controller.reset();
-    }
+        new ExternalBacklightController(&display_power_setter));
+    static_cast<ExternalBacklightController*>(
+        display_backlight_controller.get())->Init();
   } else {
-    LOG(ERROR) << "Cannot initialize display backlight";
-    display_backlight.reset();
+    display_backlight.reset(new InternalBacklight);
+    if (!display_backlight->Init(
+            base::FilePath(power_manager::kInternalBacklightPath),
+            power_manager::kInternalBacklightPattern)) {
+      LOG(ERROR) << "Cannot initialize display backlight";
+      display_backlight.reset();
+    } else {
+      display_backlight_controller.reset(
+          new InternalBacklightController(
+              display_backlight.get(), &prefs, light_sensor.get(),
+              &display_power_setter));
+      if (!static_cast<InternalBacklightController*>(
+              display_backlight_controller.get())->Init()) {
+        LOG(ERROR) << "Cannot initialize display backlight controller";
+        display_backlight_controller.reset();
+        display_backlight.reset();
+      }
+    }
   }
-#endif
 
-#ifdef HAS_KEYBOARD_BACKLIGHT
-  scoped_ptr<power_manager::system::InternalBacklight> keyboard_backlight(
-      new power_manager::system::InternalBacklight);
-#endif
-  scoped_ptr<power_manager::policy::KeyboardBacklightController>
-      keyboard_backlight_controller;
-#ifdef HAS_KEYBOARD_BACKLIGHT
-  if (keyboard_backlight->Init(
-          base::FilePath(power_manager::kKeyboardBacklightPath),
-          power_manager::kKeyboardBacklightPattern)) {
-#ifndef HAS_ALS
-#error KeyboardBacklightController class requires ambient light sensor
-#endif
-    keyboard_backlight_controller.reset(
-        new power_manager::policy::KeyboardBacklightController(
-            keyboard_backlight.get(), &prefs, light_sensor.get(),
-            display_backlight_controller.get()));
-    if (!keyboard_backlight_controller->Init()) {
-      LOG(ERROR) << "Cannot initialize keyboard backlight controller";
-      keyboard_backlight_controller.reset();
+  scoped_ptr<InternalBacklight> keyboard_backlight;
+  scoped_ptr<KeyboardBacklightController> keyboard_backlight_controller;
+  if (BoolPrefIsTrue(&prefs, power_manager::kHasKeyboardBacklightPref)) {
+    if (!light_sensor.get()) {
+      LOG(ERROR) << "Keyboard backlight requires ambient light sensor";
+    } else {
+      keyboard_backlight.reset(new InternalBacklight);
+      if (!keyboard_backlight->Init(
+              base::FilePath(power_manager::kKeyboardBacklightPath),
+              power_manager::kKeyboardBacklightPattern)) {
+        LOG(ERROR) << "Cannot initialize keyboard backlight";
+        keyboard_backlight.reset();
+      } else {
+        keyboard_backlight_controller.reset(
+            new KeyboardBacklightController(
+                keyboard_backlight.get(), &prefs, light_sensor.get(),
+                display_backlight_controller.get()));
+        if (!keyboard_backlight_controller->Init()) {
+          LOG(ERROR) << "Cannot initialize keyboard backlight controller";
+          keyboard_backlight_controller.reset();
+          keyboard_backlight.reset();
+        }
+      }
     }
-  } else {
-    LOG(ERROR) << "Cannot initialize keyboard backlight";
-    keyboard_backlight.reset();
   }
-#endif
 
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   base::FilePath run_dir(FLAGS_run_dir);
-  power_manager::Daemon daemon(&prefs,
-                               &metrics_lib,
-                               display_backlight_controller.get(),
-                               keyboard_backlight_controller.get(),
-                               run_dir);
+  Daemon daemon(&prefs,
+                &metrics_lib,
+                display_backlight_controller.get(),
+                keyboard_backlight_controller.get(),
+                run_dir);
   daemon.Init();
   daemon.Run();
   return 0;

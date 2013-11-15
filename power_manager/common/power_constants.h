@@ -59,6 +59,20 @@ extern const char kAllowDockedModePref[];
 // Number of user sessions that have been active on the current charge.
 // Used to persist the count across reboots for metrics-reporting.
 extern const char kNumSessionsOnCurrentChargePref[];
+// If true, the device has an ambient light sensor.
+extern const char kHasAmbientLightSensorPref[];
+// If true, the device has a keyboard backlight.
+extern const char kHasKeyboardBacklightPref[];
+// If true, the device doesn't have an internal display.
+extern const char kExternalDisplayOnlyPref[];
+// If true, the device has a legacy ACPI power button that doesn't report button
+// releases properly.
+extern const char kLegacyPowerButtonPref[];
+// If true, disable VT switching before suspending.
+extern const char kLockVTBeforeSuspendPref[];
+// If true, record suspend and resume timestamps in eventlog using the "mosys"
+// command.
+extern const char kMosysEventlogPref[];
 
 // Miscellaneous constants.
 // Default directories where read/write and read-only powerd preference files

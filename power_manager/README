@@ -1,12 +1,13 @@
 The power manager makes power-related policy decisions via C++ code running
 in userspace.  This repository contains the following directories:
 
-  common:  Code shared between powerd and tools.
-  config:  Default configuration files installed to /usr/share/power_manager.
-  dbus:    D-Bus policy configuration files.
-  powerd:  Power manager daemon running as the "power" user.
-  tools:   Utility programs; may depend on powerd code.
-  udev:    udev configuration files and scripts.
+  common:         Code shared between powerd and tools.
+  default_prefs:  Default pref files installed to /usr/share/power_manager.
+  dbus:           D-Bus policy configuration files.
+  optional_prefs: Pref files conditionally installed based on USE flags.
+  powerd:         Power manager daemon running as the "power" user.
+  tools:          Utility programs; may depend on powerd code.
+  udev:           udev configuration files and scripts.
 
 Configs:
     There are historically two forms of the KBC config files. Originally there

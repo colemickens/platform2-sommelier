@@ -16,8 +16,11 @@
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
+#include "base/string_split.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
+#include "power_manager/common/power_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/input_observer.h"
 
@@ -51,16 +54,16 @@ const char kTouchControlPath[] = "/opt/google/touch/touch-control.sh";
 
 // Physical location (as returned by EVIOCGPHYS()) of power button devices that
 // should be skipped.
-#ifdef LEGACY_POWER_BUTTON
-// Skip input events that are on the built-in keyboard. Many of these devices
-// advertise a power button but do not physically have one. Skipping will reduce
-// the wasteful waking of powerd due to keyboard events.
-const char kPowerButtonToSkip[] = "isa";
-#else
+//
 // Skip input events from the ACPI power button (identified as LNXPWRBN) if a
 // new power button is present on the keyboard.
 const char kPowerButtonToSkip[] = "LNXPWRBN";
-#endif
+
+// Skip input events that are on the built-in keyboard if a legacy power button
+// is used. Many of these devices advertise a power button but do not physically
+// have one. Skipping will reduce the wasteful waking of powerd due to keyboard
+// events.
+const char kPowerButtonToSkipForLegacy[] = "isa";
 
 // Sources of input events.
 enum InputType {
@@ -100,6 +103,7 @@ Input::Input()
       num_lid_events_(0),
       wakeups_enabled_(true),
       use_lid_(true),
+      power_button_to_skip_(kPowerButtonToSkip),
       console_fd_(-1) {}
 
 Input::~Input() {
@@ -115,8 +119,13 @@ Input::~Input() {
     close(console_fd_);
 }
 
-bool Input::Init(const vector<string>& wakeup_input_names, bool use_lid) {
-  use_lid_ = use_lid;
+bool Input::Init(PrefsInterface* prefs) {
+  prefs->GetBool(kUseLidPref, &use_lid_);
+
+  std::string wakeup_inputs_str;
+  std::vector<std::string> wakeup_input_names;
+  if (prefs->GetString(kWakeupInputPref, &wakeup_inputs_str))
+    base::SplitString(wakeup_inputs_str, '\n', &wakeup_input_names);
   for (vector<string>::const_iterator names_iter = wakeup_input_names.begin();
       names_iter != wakeup_input_names.end(); ++names_iter) {
     // Iterate through the vector of input names, and if not the empty string,
@@ -126,6 +135,11 @@ bool Input::Init(const vector<string>& wakeup_input_names, bool use_lid) {
     if ((*names_iter).length() > 0)
       wakeup_inputs_map_[*names_iter] = -1;
   }
+
+  bool legacy_power_button = false;
+  if (prefs->GetBool(kLegacyPowerButtonPref, &legacy_power_button) &&
+      legacy_power_button)
+    power_button_to_skip_ = kPowerButtonToSkipForLegacy;
 
   // Don't bother doing anything if we're running under a test.
   if (!sysfs_input_path_for_testing_.empty())

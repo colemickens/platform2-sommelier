@@ -23,6 +23,9 @@ struct udev;
 struct udev_monitor;
 
 namespace power_manager {
+
+class PrefsInterface;
+
 namespace system {
 
 class InputObserver;
@@ -36,10 +39,8 @@ class Input : public InputInterface {
     sysfs_input_path_for_testing_ = path;
   }
 
-  // |wakeup_inputs_names| contains input device names that may wake the
-  // system from resume.  If |use_lid| is true, the lid will be watched for
-  // events if present.  Returns true on success.
-  bool Init(const std::vector<std::string>& wakeup_input_names, bool use_lid);
+  // Returns true on success.
+  bool Init(PrefsInterface* prefs);
 
   // InputInterface implementation:
   virtual void AddObserver(InputObserver* observer) OVERRIDE;
@@ -113,6 +114,9 @@ class Input : public InputInterface {
 
   // Should the lid be watched for events if present?
   bool use_lid_;
+
+  // Name of the power button interface to skip monitoring.
+  const char* power_button_to_skip_;
 
   // Used to make ioctls to /dev/console to check which VT is active.
   int console_fd_;
