@@ -13,6 +13,7 @@
 
 #include "base/basictypes.h"
 #include "base/callback.h"
+#include "base/file_path.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
@@ -32,11 +33,21 @@ class InputObserver;
 
 class Input : public InputInterface {
  public:
+  // Filename within a DRM device directory containing the device's hotplug
+  // status.
+  static const char kDrmStatusFile[];
+
+  // Value in |kDrmStatusFile| indicating that the device is connected.
+  static const char kDrmStatusConnected[];
+
   Input();
   virtual ~Input();
 
-  void set_sysfs_input_path_for_testing(const std::string& path) {
+  void set_sysfs_input_path_for_testing(const base::FilePath& path) {
     sysfs_input_path_for_testing_ = path;
+  }
+  void set_sysfs_drm_path_for_testing(const base::FilePath& path) {
+    sysfs_drm_path_for_testing_ = path;
   }
 
   // Returns true on success.
@@ -47,6 +58,7 @@ class Input : public InputInterface {
   virtual void RemoveObserver(InputObserver* observer) OVERRIDE;
   virtual LidState QueryLidState() OVERRIDE;
   virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
+  virtual bool IsDisplayConnected() const OVERRIDE;
   virtual int GetActiveVT() OVERRIDE;
   virtual bool SetWakeInputsState(bool enable) OVERRIDE;
   virtual void SetTouchDevicesState(bool enable) OVERRIDE;
@@ -131,9 +143,12 @@ class Input : public InputInterface {
 
   ObserverList<InputObserver> observers_;
 
-  // Used by IsUSBInputDeviceConnected() instead of the default input path, if
-  // this string is non-empty.  Used for testing purposes.
-  std::string sysfs_input_path_for_testing_;
+  // Used by IsUSBInputDeviceConnected() instead of the default path if
+  // non-empty.
+  base::FilePath sysfs_input_path_for_testing_;
+
+  // Used by IsDisplayConnected() instead of the default path if non-empty.
+  base::FilePath sysfs_drm_path_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(Input);
 };

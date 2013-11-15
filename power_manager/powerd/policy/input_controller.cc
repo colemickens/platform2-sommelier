@@ -9,6 +9,8 @@
 #include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
+#include "power_manager/common/power_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/input_event.pb.h"
 #include "power_manager/powerd/system/input_interface.h"
@@ -30,6 +32,7 @@ InputController::InputController(system::InputInterface* input,
     : input_(input),
       delegate_(delegate),
       dbus_sender_(dbus_sender),
+      only_has_external_display_(false),
       lid_state_(LID_NOT_PRESENT),
       check_active_vt_timeout_id_(0) {
   input_->AddObserver(this);
@@ -40,8 +43,13 @@ InputController::~InputController() {
   util::RemoveTimeout(&check_active_vt_timeout_id_);
 }
 
-void InputController::Init() {
-  OnLidEvent(input_->QueryLidState());
+void InputController::Init(PrefsInterface* prefs) {
+  prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
+
+  bool use_lid = false;
+  if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
+    OnLidEvent(input_->QueryLidState());
+
   check_active_vt_timeout_id_ = g_timeout_add(
       kCheckActiveVTFrequencySec * 1000, CheckActiveVTThunk, this);
 }
@@ -79,6 +87,12 @@ void InputController::OnLidEvent(LidState state) {
 }
 
 void InputController::OnPowerButtonEvent(ButtonState state) {
+  if (state == BUTTON_DOWN && only_has_external_display_ &&
+      !input_->IsDisplayConnected()) {
+    delegate_->ShutDownForPowerButtonWithNoDisplay();
+    return;
+  }
+
   if (state != BUTTON_REPEAT) {
     InputEvent proto;
     proto.set_type(state == BUTTON_DOWN ?

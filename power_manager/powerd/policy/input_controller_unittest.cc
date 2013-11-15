@@ -8,6 +8,7 @@
 
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender_stub.h"
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_util.h"
 #include "power_manager/input_event.pb.h"
@@ -25,6 +26,7 @@ const char kLidOpened[] = "lid_opened";
 const char kPowerButtonDown[] = "power_down";
 const char kPowerButtonUp[] = "power_up";
 const char kDeferInactivity[] = "defer_inactivity";
+const char kShutDown[] = "shut_down";
 
 class TestInputControllerDelegate : public InputController::Delegate {
  public:
@@ -54,6 +56,9 @@ class TestInputControllerDelegate : public InputController::Delegate {
   virtual void DeferInactivityTimeoutForVT2() OVERRIDE {
     AppendAction(&actions_, kDeferInactivity);
   }
+  virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE {
+    AppendAction(&actions_, kShutDown);
+  }
 
  private:
   std::string actions_;
@@ -79,6 +84,7 @@ class InputControllerTest : public ::testing::Test {
     return proto.type();
   }
 
+  FakePrefs prefs_;
   system::InputStub input_;
   DBusSenderStub dbus_sender_;
   TestInputControllerDelegate delegate_;
@@ -89,7 +95,8 @@ TEST_F(InputControllerTest, LidEvents) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // An initial event about the lid state should be sent at initialization.
-  controller_.Init();
+  prefs_.SetInt64(kUseLidPref, 1);
+  controller_.Init(&prefs_);
   EXPECT_TRUE(input_.wake_inputs_enabled());
   EXPECT_TRUE(input_.touch_devices_enabled());
   EXPECT_EQ(kLidOpened, delegate_.GetActions());
@@ -111,9 +118,9 @@ TEST_F(InputControllerTest, LidEvents) {
 }
 
 TEST_F(InputControllerTest, PowerButtonEvents) {
-  controller_.Init();
-  delegate_.GetActions();
-  dbus_sender_.ClearSentSignals();
+  prefs_.SetInt64(kExternalDisplayOnlyPref, 1);
+  input_.set_display_connected(true);
+  controller_.Init(&prefs_);
 
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
@@ -122,11 +129,16 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_POWER_BUTTON_UP, GetInputEventSignalType());
+
+  // With no displays connected, the system should shut down immediately.
+  input_.set_display_connected(false);
+  input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
 }
 
 TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
-  controller_.Init();
-  delegate_.GetActions();
+  controller_.Init(&prefs_);
 
   input_.set_active_vt(1);
   EXPECT_TRUE(controller_.TriggerCheckActiveVTTimeoutForTesting());

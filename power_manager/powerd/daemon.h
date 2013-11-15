@@ -103,6 +103,7 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void HandleLidOpened() OVERRIDE;
   virtual void HandlePowerButtonEvent(ButtonState state) OVERRIDE;
   virtual void DeferInactivityTimeoutForVT2() OVERRIDE;
+  virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE;
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioStateChange(bool active) OVERRIDE;

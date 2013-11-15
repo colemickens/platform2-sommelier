@@ -429,7 +429,7 @@ void Daemon::Init() {
   suspender_.Init(prefs_);
 
   CHECK(input_->Init(prefs_));
-  input_controller_->Init();
+  input_controller_->Init(prefs_);
 
   // Initialize |state_controller_| before |audio_client_| to ensure that the
   // former is ready to receive the initial notification if audio is already
@@ -613,6 +613,13 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
 
 void Daemon::DeferInactivityTimeoutForVT2() {
   state_controller_->HandleUserActivity();
+}
+
+void Daemon::ShutDownForPowerButtonWithNoDisplay() {
+  LOG(INFO) << "Shutting down due to power button press while no display is "
+            << "connected";
+  metrics_reporter_->HandlePowerButtonEvent(BUTTON_DOWN);
+  ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
 }
 
 void Daemon::OnAudioStateChange(bool active) {

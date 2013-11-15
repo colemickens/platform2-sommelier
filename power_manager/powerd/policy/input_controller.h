@@ -20,6 +20,7 @@ typedef unsigned int guint;
 namespace power_manager {
 
 class DBusSenderInterface;
+class PrefsInterface;
 
 namespace system {
 class InputInterface;
@@ -49,6 +50,10 @@ class InputController : public system::InputObserver {
     // Defers the inactivity timeout in response to VT2 being active (since
     // Chrome can't detect user activity).
     virtual void DeferInactivityTimeoutForVT2() = 0;
+
+    // Shuts the system down in reponse to the power button being pressed while
+    // no display is connected.
+    virtual void ShutDownForPowerButtonWithNoDisplay() = 0;
   };
 
   InputController(system::InputInterface* input,
@@ -56,7 +61,7 @@ class InputController : public system::InputObserver {
                   DBusSenderInterface* dbus_sender);
   virtual ~InputController();
 
-  void Init();
+  void Init(PrefsInterface* prefs);
 
   // Calls CheckActiveVT(). Returns false if |check_active_vt_timeout_id_| isn't
   // set or if the timeout is canceled.
@@ -76,6 +81,9 @@ class InputController : public system::InputObserver {
   system::InputInterface* input_;  // not owned
   Delegate* delegate_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned
+
+  // True if the device doesn't have an internal display.
+  bool only_has_external_display_;
 
   LidState lid_state_;
 

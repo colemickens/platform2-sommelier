@@ -46,6 +46,12 @@ const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
 const char kBluetoothMatchString[] = "bluetooth";
 
+// Path containing directories describing the state of DRM devices.
+const char kSysClassDrmPath[] = "/sys/class/drm";
+
+// Glob-style pattern for device directories within kSysClassDrmPath.
+const char kDrmDeviceMatchPattern[] = "card*";
+
 const char kConsolePath[] = "/dev/tty0";
 
 // Path to an optional script used to disable touch devices when the lid is
@@ -97,6 +103,9 @@ bool GetSuffixNumber(const char* name, const char* base_name, int* suffix) {
 
 }  // namespace
 
+const char Input::kDrmStatusFile[] = "status";
+const char Input::kDrmStatusConnected[] = "connected";
+
 Input::Input()
     : lid_fd_(-1),
       num_power_key_events_(0),
@@ -142,7 +151,8 @@ bool Input::Init(PrefsInterface* prefs) {
     power_button_to_skip_ = kPowerButtonToSkipForLegacy;
 
   // Don't bother doing anything if we're running under a test.
-  if (!sysfs_input_path_for_testing_.empty())
+  if (!sysfs_input_path_for_testing_.empty() ||
+      !sysfs_drm_path_for_testing_.empty())
     return true;
 
   if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1)
@@ -190,8 +200,9 @@ LidState Input::QueryLidState() {
 
 bool Input::IsUSBInputDeviceConnected() const {
   file_util::FileEnumerator enumerator(
-      base::FilePath(sysfs_input_path_for_testing_.empty() ?
-                     kSysClassInputPath : sysfs_input_path_for_testing_),
+      sysfs_input_path_for_testing_.empty() ?
+          base::FilePath(kSysClassInputPath) :
+          sysfs_input_path_for_testing_,
       false,
       static_cast<file_util::FileEnumerator::FileType>(
           file_util::FileEnumerator::FILES |
@@ -220,6 +231,31 @@ bool Input::IsUSBInputDeviceConnected() const {
         !IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
     if (usb_at_word_head && usb_at_word_tail)
       return true;
+  }
+  return false;
+}
+
+bool Input::IsDisplayConnected() const {
+  file_util::FileEnumerator enumerator(
+      sysfs_drm_path_for_testing_.empty() ?
+          base::FilePath(kSysClassDrmPath) :
+          sysfs_drm_path_for_testing_,
+      false,
+      static_cast<file_util::FileEnumerator::FileType>(
+          file_util::FileEnumerator::FILES |
+          file_util::FileEnumerator::DIRECTORIES |
+          file_util::FileEnumerator::SHOW_SYM_LINKS),
+      kDrmDeviceMatchPattern);
+  for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
+       device_path = enumerator.Next()) {
+    base::FilePath status_path = device_path.Append(kDrmStatusFile);
+    std::string status;
+    if (file_util::ReadFileToString(status_path, &status)) {
+      // Trim whitespace to deal with trailing newlines.
+      TrimWhitespaceASCII(status, TRIM_TRAILING, &status);
+      if (status == kDrmStatusConnected)
+        return true;
+    }
   }
   return false;
 }
