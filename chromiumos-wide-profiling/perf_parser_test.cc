@@ -25,13 +25,14 @@ void CheckChronologicalOrderOfEvents(const PerfReader& reader,
   // Here a valid PerfReader is needed to read the sample info because
   // ReadPerfSampleInfo() uses the |sample_type_| member of PerfReader to
   // determine which sample info fields are present.
-  std::vector<struct perf_sample> sample_infos;
-  sample_infos.resize(events.size());
-  CHECK(reader.ReadPerfSampleInfo(**events[0]->raw_event, &sample_infos[0]));
+  struct perf_sample sample_info;
+  CHECK(reader.ReadPerfSampleInfo(**events[0]->raw_event, &sample_info));
+  uint64 prev_time = sample_info.time;
   for (unsigned int i = 1; i < events.size(); ++i) {
     struct perf_sample sample_info;
-    CHECK(reader.ReadPerfSampleInfo(**events[i]->raw_event, &sample_infos[i]));
-    CHECK_LE(sample_infos[i - 1].time, sample_infos[i].time);
+    CHECK(reader.ReadPerfSampleInfo(**events[i]->raw_event, &sample_info));
+    CHECK_LE(prev_time, sample_info.time);
+    prev_time = sample_info.time;
   }
 }
 
