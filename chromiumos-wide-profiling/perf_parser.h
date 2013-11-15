@@ -9,12 +9,27 @@
 #include <utility>
 
 #include "base/basictypes.h"
+#include "base/logging.h"
 
 #include "perf_reader.h"
 
 namespace quipper {
 
 class AddressMapper;
+
+// A struct containing all relevant info for a mapped DSO, independent of any
+// samples.
+struct DSOInfo {
+  string name;
+  string build_id;
+
+  // Comparator that allows this to be stored in a STL set.
+  bool operator<(const DSOInfo& other) const {
+    if (name == other.name)
+      return build_id < other.build_id;
+    return name < other.name;
+  }
+};
 
 struct ParsedEvent {
   // Stores address of the event pointer in |events_|.
@@ -26,11 +41,26 @@ struct ParsedEvent {
   // region.
   uint32 num_samples_in_mmap_region;
 
-  string command;  // Command associated with this sample.
+  // Command associated with this sample.
+  const string* command;
 
+  // A struct that contains a DSO + offset pair.
   struct DSOAndOffset {
-    string dso_name;
-    uint64 offset;
+    const DSOInfo* dso_info_;
+    uint64 offset_;
+
+    // Accessor methods.
+    const string& dso_name() const {
+      CHECK(dso_info_);
+      return dso_info_->name;
+    }
+    const string& build_id() const {
+      CHECK(dso_info_);
+      return dso_info_->build_id;
+    }
+    uint64 offset() const {
+      return offset_;
+    }
   } dso_and_offset;
 
   // DSO+offset info for callchain.
@@ -134,6 +164,9 @@ class PerfParser : public PerfReader {
   bool discard_unused_events_;
 
   PerfEventStats stats_;
+
+  // A set of unique DSOs that may be referenced by multiple events.
+  std::set<DSOInfo> dso_set_;
 
  private:
   // This maps a sample event and returns the mapped address, DSO name, and

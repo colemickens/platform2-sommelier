@@ -29,8 +29,9 @@ bool CompareParsedEventTimes(const EventAndTime* e1, const EventAndTime* e2) {
   return (e1->time < e2->time);
 }
 
-// Name of the kernel swapper process.
+// Name and ID of the kernel swapper process.
 const char kSwapperCommandName[] = "swapper";
+const uint32 kSwapperPid = 0;
 
 }  // namespace
 
@@ -113,6 +114,14 @@ void PerfParser::SortParsedEvents() {
 
 bool PerfParser::ProcessEvents() {
   memset(&stats_, 0, sizeof(stats_));
+
+  // Pid 0 is called the swapper process. Even though perf does not record a
+  // COMM event for pid 0, we act like we did receive a COMM event for it. Perf
+  // does this itself, example:
+  //   http://lxr.free-electrons.com/source/tools/perf/util/session.c#L1120
+  pidtid_to_comm_map_[std::make_pair(kSwapperPid, kSwapperPid)] =
+      kSwapperCommandName;
+
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
     event_t& event = *(*parsed_event.raw_event);
@@ -124,14 +133,19 @@ bool PerfParser::ProcessEvents() {
         if (MapSampleEvent(&parsed_event))
           ++stats_.num_sample_events_mapped;
         break;
-      case PERF_RECORD_MMAP:
+      case PERF_RECORD_MMAP: {
         VLOG(1) << "MMAP: " << event.mmap.filename;
         ++stats_.num_mmap_events;
         // Use the array index of the current mmap event as a unique identifier.
         CHECK(MapMmapEvent(&event.mmap, i)) << "Unable to map MMAP event!";
         // No samples in this MMAP region yet, hopefully.
         parsed_event.num_samples_in_mmap_region = 0;
+        DSOInfo dso_info;
+        // TODO(sque): Add Build ID as well.
+        dso_info.name = event.mmap.filename;
+        dso_set_.insert(dso_info);
         break;
+      }
       case PERF_RECORD_FORK:
         VLOG(1) << "FORK: " << event.fork.ppid << ":" << event.fork.ptid
                 << " -> " << event.fork.pid << ":" << event.fork.tid;
@@ -184,17 +198,15 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   perf_sample sample_info;
   if (!ReadPerfSampleInfo(*(*parsed_event->raw_event), &sample_info))
     return false;
-  uint32 pid = sample_info.pid;
-  uint32 tid = sample_info.tid;
-  PidTid pidtid = std::make_pair(pid, tid);
-  if (pidtid_to_comm_map_.find(pidtid) != pidtid_to_comm_map_.end()) {
-    parsed_event->command = pidtid_to_comm_map_[pidtid];
-  } else if (pid == 0) {
-    parsed_event->command = kSwapperCommandName;
-  } else {  // If no command found, use the pid as command.
-    char string_buf[sizeof((*parsed_event->raw_event)->comm.comm)];
-    snprintf(string_buf, arraysize(string_buf), "%u", pid);
-    parsed_event->command = string_buf;
+  PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
+  std::map<PidTid, string>::const_iterator comm_iter =
+    pidtid_to_comm_map_.find(pidtid);
+  // If there is no command found for this sample, mark it with a NULL command
+  // pointer.
+  if (comm_iter != pidtid_to_comm_map_.end()) {
+    parsed_event->command = &(comm_iter->second);
+  } else {
+    parsed_event->command = NULL;
   }
 
   struct ip_event& event = (*parsed_event->raw_event)->ip;
@@ -281,12 +293,20 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
   if (mapped) {
     if (dso_and_offset) {
       uint64 id = kuint64max;
-      CHECK(mapper->GetMappedIDAndOffset(ip, &id, &dso_and_offset->offset));
+      CHECK(mapper->GetMappedIDAndOffset(ip, &id, &dso_and_offset->offset_));
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
       ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
       CHECK_EQ((*parsed_event->raw_event)->header.type, PERF_RECORD_MMAP);
-      dso_and_offset->dso_name = (*parsed_event->raw_event)->mmap.filename;
+
+      // Find the mmap DSO filename in the set of known DSO names.
+      // TODO(sque): take build IDs into account.
+      DSOInfo dso_info;
+      dso_info.name = (*parsed_event->raw_event)->mmap.filename;
+      std::set<DSOInfo>::const_iterator dso_iter = dso_set_.find(dso_info);
+      CHECK(dso_iter != dso_set_.end());
+      dso_and_offset->dso_info_ = &(*dso_iter);
+
       ++parsed_event->num_samples_in_mmap_region;
     }
     if (do_remap_)
