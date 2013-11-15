@@ -200,14 +200,11 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   struct ip_event& event = (*parsed_event->raw_event)->ip;
 
   // Map the event IP itself.
-  string& name = parsed_event->dso_and_offset.dso_name;
-  uint64& offset = parsed_event->dso_and_offset.offset;
   if (!MapIPAndPidAndGetNameAndOffset(event.ip,
                                       event.pid,
                                       event.header.misc,
                                       reinterpret_cast<uint64*>(&event.ip),
-                                      &name,
-                                      &offset)) {
+                                      &parsed_event->dso_and_offset)) {
     mapping_failed = true;
   }
 
@@ -221,8 +218,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
                                           event.header.misc,
                                           reinterpret_cast<uint64*>(
                                               &callchain->ips[j]),
-                                          &parsed_event->callchain[j].dso_name,
-                                          &parsed_event->callchain[j].offset)) {
+                                          &parsed_event->callchain[j])) {
         mapping_failed = true;
       }
     }
@@ -240,16 +236,14 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
                                           event.header.misc,
                                           reinterpret_cast<uint64*>(
                                               &entry.from),
-                                          &parsed_entry.from.dso_name,
-                                          &parsed_entry.from.offset)) {
+                                          &parsed_entry.from)) {
         mapping_failed = true;
       }
       if (!MapIPAndPidAndGetNameAndOffset(entry.to,
                                           event.pid,
                                           event.header.misc,
                                           reinterpret_cast<uint64*>(&entry.to),
-                                          &parsed_entry.to.dso_name,
-                                          &parsed_entry.to.offset)) {
+                                          &parsed_entry.to)) {
         mapping_failed = true;
       }
       parsed_entry.predicted = entry.flags.predicted;
@@ -261,12 +255,12 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
          WritePerfSampleInfo(sample_info, *parsed_event->raw_event);
 }
 
-bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
-                                                uint32 pid,
-                                                uint16 misc,
-                                                uint64* new_ip,
-                                                string* name,
-                                                uint64* offset) {
+bool PerfParser::MapIPAndPidAndGetNameAndOffset(
+    uint64 ip,
+    uint32 pid,
+    uint16 misc,
+    uint64* new_ip,
+    ParsedEvent::DSOAndOffset* dso_and_offset) {
   // Attempt to find the synthetic address of the IP sample in this order:
   // 1. Address space of the kernel.
   // 2. Address space of its own process.
@@ -285,14 +279,14 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
   // TODO(asharif): What should we do when we cannot map a SAMPLE event?
 
   if (mapped) {
-    if (name && offset) {
+    if (dso_and_offset) {
       uint64 id = kuint64max;
-      CHECK(mapper->GetMappedIDAndOffset(ip, &id, offset));
+      CHECK(mapper->GetMappedIDAndOffset(ip, &id, &dso_and_offset->offset));
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
       ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
       CHECK_EQ((*parsed_event->raw_event)->header.type, PERF_RECORD_MMAP);
-      *name = (*parsed_event->raw_event)->mmap.filename;
+      dso_and_offset->dso_name = (*parsed_event->raw_event)->mmap.filename;
       ++parsed_event->num_samples_in_mmap_region;
     }
     if (do_remap_)

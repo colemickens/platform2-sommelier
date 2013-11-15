@@ -140,12 +140,12 @@ class PerfParser : public PerfReader {
   // offset within the DSO.  This is a private function because the API might
   // change in the future, and we don't want derived classes to be stuck with an
   // obsolete API.
-  bool MapIPAndPidAndGetNameAndOffset(uint64 ip,
-                                      uint32 pid,
-                                      uint16 misc,
-                                      uint64* new_ip,
-                                      string* name,
-                                      uint64* offset);
+  bool MapIPAndPidAndGetNameAndOffset(
+      uint64 ip,
+      uint32 pid,
+      uint16 misc,
+      uint64* new_ip,
+      ParsedEvent::DSOAndOffset* dso_and_offset);
 
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };
