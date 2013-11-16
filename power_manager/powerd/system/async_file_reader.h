@@ -11,10 +11,7 @@
 
 #include "base/basictypes.h"
 #include "base/callback.h"
-#include "power_manager/common/signal_callback.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
+#include "base/timer.h"
 
 namespace power_manager {
 namespace system {
@@ -44,11 +41,8 @@ class AsyncFileReader {
  private:
   friend class AsyncFileReaderTest;
 
-  // Callback used for AIO notification.
-  static void SigeventCallback(union sigval);
-
   // Updates the state based on whether there is an ongoing file I/O.
-  SIGNAL_CALLBACK_0(AsyncFileReader, gboolean, UpdateState);
+  void UpdateState();
 
   // Goes back to the idle state, cleans up allocated resouces.
   void Reset();
@@ -86,8 +80,8 @@ class AsyncFileReader {
   base::Callback<void(const std::string&)> read_cb_;
   base::Callback<void()> error_cb_;
 
-  // GLib source ID used to run UpdateState(), or 0 if unset.
-  guint update_state_timeout_id_;
+  // Runs UpdateState().
+  base::RepeatingTimer<AsyncFileReader> update_state_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFileReader);
 };

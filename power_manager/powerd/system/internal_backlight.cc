@@ -4,8 +4,6 @@
 
 #include "power_manager/powerd/system/internal_backlight.h"
 
-#include <glib.h>
-
 #include <cmath>
 #include <string>
 
@@ -23,7 +21,7 @@ namespace {
 
 // When animating a brightness level transition, amount of time in milliseconds
 // to wait between each update.
-const guint kTransitionIntervalMs = 30;
+const int kTransitionIntervalMs = 30;
 
 }  // namespace
 
@@ -36,14 +34,11 @@ InternalBacklight::InternalBacklight()
     : clock_(new Clock),
       max_brightness_level_(0),
       current_brightness_level_(0),
-      transition_timeout_id_(0),
       transition_start_level_(0),
       transition_end_level_(0) {
 }
 
-InternalBacklight::~InternalBacklight() {
-  CancelTransition();
-}
+InternalBacklight::~InternalBacklight() {}
 
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const base::FilePath::StringType& pattern) {
@@ -87,18 +82,10 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
   return true;
 }
 
-gboolean InternalBacklight::TriggerTransitionTimeoutForTesting() {
-  CHECK(transition_timeout_id_);
-  guint scheduled_id = transition_timeout_id_;
-  gboolean ret = HandleTransitionTimeout();
-  if (!ret) {
-    // Since the GLib timeout didn't actually fire, we need to remove it
-    // manually to ensure it won't be leaked.
-    CHECK(transition_timeout_id_ != scheduled_id);
-    util::RemoveTimeout(&scheduled_id);
-  }
-
-  return ret;
+bool InternalBacklight::TriggerTransitionTimeoutForTesting() {
+  CHECK(transition_timer_.IsRunning());
+  HandleTransitionTimeout();
+  return transition_timer_.IsRunning();
 }
 
 bool InternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
@@ -145,8 +132,9 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
   transition_end_time_ = transition_start_time_ + interval;
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
-  transition_timeout_id_ =
-      g_timeout_add(kTransitionIntervalMs, HandleTransitionTimeoutThunk, this);
+  transition_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromMilliseconds(kTransitionIntervalMs), this,
+      &InternalBacklight::HandleTransitionTimeout);
   return true;
 }
 
@@ -224,15 +212,13 @@ bool InternalBacklight::WriteBrightnessLevelToFile(const base::FilePath& path,
   return true;
 }
 
-gboolean InternalBacklight::HandleTransitionTimeout() {
+void InternalBacklight::HandleTransitionTimeout() {
   base::TimeTicks now = clock_->GetCurrentTime();
   int64 new_level = 0;
-  gboolean should_repeat_timeout = TRUE;
 
   if (now >= transition_end_time_) {
     new_level = transition_end_level_;
-    transition_timeout_id_ = 0;
-    should_repeat_timeout = FALSE;
+    transition_timer_.Stop();
   } else {
     double transition_fraction =
         (now - transition_start_time_).InMillisecondsF() /
@@ -245,11 +231,10 @@ gboolean InternalBacklight::HandleTransitionTimeout() {
 
   if (WriteBrightnessLevelToFile(brightness_path_, new_level))
     current_brightness_level_ = new_level;
-  return should_repeat_timeout;
 }
 
 void InternalBacklight::CancelTransition() {
-  util::RemoveTimeout(&transition_timeout_id_);
+  transition_timer_.Stop();
   transition_start_time_ = base::TimeTicks();
   transition_end_time_ = base::TimeTicks();
   transition_start_level_ = current_brightness_level_;

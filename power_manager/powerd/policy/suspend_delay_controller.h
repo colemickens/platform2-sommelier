@@ -13,10 +13,7 @@
 #include "base/basictypes.h"
 #include "base/observer_list.h"
 #include "base/time.h"
-#include "power_manager/common/signal_callback.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
+#include "base/timer.h"
 
 namespace power_manager {
 
@@ -89,20 +86,17 @@ class SuspendDelayController {
   // observers that it's safe to to suspend.
   void RemoveDelayFromWaitList(int delay_id);
 
-  // Called by |delay_expiration_timeout_id_| after a PrepareForSuspend() call
-  // if HandleSuspendReadiness() isn't invoked for all registered delays before
-  // the maximum delay timeout has elapsed.  Notifies observers that it's safe
-  // to suspend.
-  SIGNAL_CALLBACK_0(SuspendDelayController, gboolean, OnDelayExpiration);
+  // Called by |delay_expiration_timer_| after a PrepareForSuspend() call if
+  // HandleSuspendReadiness() isn't invoked for all registered delays before the
+  // maximum delay timeout has elapsed.  Notifies observers that it's safe to
+  // suspend.
+  void OnDelayExpiration();
 
   // Posts a NotifyObservers() call to the message loop.
   void PostNotifyObserversTask(int suspend_id);
 
   // Invokes OnReadyForSuspend() on |observers_|.
-  SIGNAL_CALLBACK_PACKED_1(SuspendDelayController,
-                           gboolean,
-                           NotifyObservers,
-                           int /* suspend_id */);
+  void NotifyObservers(int suspend_id);
 
   // Used to emit D-Bus signals.
   DBusSenderInterface* dbus_sender_;
@@ -122,11 +116,11 @@ class SuspendDelayController {
   // suspend.
   std::set<int> delay_ids_being_waited_on_;
 
-  // Task used to invoke NotifyObservers().
-  guint notify_observers_timeout_id_;
+  // Used to invoke NotifyObservers().
+  base::OneShotTimer<SuspendDelayController> notify_observers_timer_;
 
-  // Timeout used to invoke OnDelayExpiration().
-  guint delay_expiration_timeout_id_;
+  // Used to invoke OnDelayExpiration().
+  base::OneShotTimer<SuspendDelayController> delay_expiration_timer_;
 
   ObserverList<SuspendDelayObserver> observers_;
 

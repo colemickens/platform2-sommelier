@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd/system/power_supply.h"
 
-#include <glib.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -18,7 +17,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/signal_callback.h"
+#include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/power_supply_properties.pb.h"
 
 using std::map;
@@ -78,6 +77,28 @@ const int64 kTimeToEmpty = lround(3600. * (kChargeNow) / kCurrentNow);
 
 // Starting value used by |power_supply_| as "now".
 const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
+
+class TestObserver : public PowerSupplyObserver {
+ public:
+  TestObserver() {}
+  virtual ~TestObserver() {}
+
+  // Runs the event loop until OnPowerStatusUpdate() is invoked or a timeout is
+  // hit. Returns true if the method was invoked and false if it wasn't.
+  bool WaitForNotification() {
+    return runner_.StartLoop(base::TimeDelta::FromSeconds(10));
+  }
+
+  // PowerSupplyObserver overrides:
+  virtual void OnPowerStatusUpdate() OVERRIDE {
+    runner_.StopLoop();
+  }
+
+ private:
+  TestMainLoopRunner runner_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestObserver);
+};
 
 }  // namespace
 
@@ -919,6 +940,24 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
   EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
   EXPECT_LT(status.observed_battery_charge_rate, 0.0);
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
+}
+
+TEST_F(PowerSupplyTest, NotifyObserver) {
+  // Set a long polling delay to ensure that PowerSupply doesn't poll in the
+  // background during the test.
+  const base::TimeDelta kDelay = base::TimeDelta::FromSeconds(60);
+  prefs_.SetInt64(kBatteryPollIntervalPref, kDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryPollShortIntervalPref, kDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref,
+                  kDelay.InMilliseconds());
+
+  // Check that observers are notified about updates asynchronously.
+  TestObserver observer;
+  power_supply_->AddObserver(&observer);
+  power_supply_->Init();
+  ASSERT_TRUE(power_supply_->RefreshImmediately());
+  EXPECT_TRUE(observer.WaitForNotification());
+  power_supply_->RemoveObserver(&observer);
 }
 
 }  // namespace system

@@ -13,6 +13,7 @@
 #include <string>
 
 #include "base/logging.h"
+#include "base/timer.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"
@@ -165,9 +166,9 @@ class MetricsReporterTest : public Test {
 TEST_F(MetricsReporterTest, BacklightLevel) {
   power_status_.line_power_on = false;
   metrics_reporter_.Init(power_status_);
+  ASSERT_TRUE(metrics_reporter_.generate_backlight_metrics_timer_.IsRunning());
   metrics_reporter_.HandleScreenDimmedChange(true, base::TimeTicks::Now());
-  ASSERT_NE(0, metrics_reporter_.generate_backlight_metrics_timeout_id_);
-  ASSERT_TRUE(metrics_reporter_.GenerateBacklightLevelMetric());
+  metrics_reporter_.GenerateBacklightLevelMetrics();
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   const int64 kCurrentDisplayPercent = 57;
@@ -181,8 +182,7 @@ TEST_F(MetricsReporterTest, BacklightLevel) {
                    kCurrentDisplayPercent, kMetricMaxPercent);
   ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMetricMaxPercent);
-  ASSERT_NE(0, metrics_reporter_.generate_backlight_metrics_timeout_id_);
-  ASSERT_TRUE(metrics_reporter_.GenerateBacklightLevelMetric());
+  metrics_reporter_.GenerateBacklightLevelMetrics();
 
   power_status_.line_power_on = true;
   IgnoreHandlePowerStatusUpdateMetrics();
@@ -192,8 +192,7 @@ TEST_F(MetricsReporterTest, BacklightLevel) {
                    kCurrentDisplayPercent, kMetricMaxPercent);
   ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMetricMaxPercent);
-  ASSERT_NE(0, metrics_reporter_.generate_backlight_metrics_timeout_id_);
-  ASSERT_TRUE(metrics_reporter_.GenerateBacklightLevelMetric());
+  metrics_reporter_.GenerateBacklightLevelMetrics();
 }
 
 TEST_F(MetricsReporterTest, BatteryDischargeRate) {

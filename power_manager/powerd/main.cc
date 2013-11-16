@@ -7,11 +7,13 @@
 
 #include <string>
 
+#include "base/at_exit.h"
 #include "base/command_line.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
+#include "base/message_loop.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "metrics/metrics_library.h"
@@ -107,10 +109,16 @@ int main(int argc, char* argv[]) {
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   LOG(INFO) << "vcsid " << VCSID;
 
+  // The GObject type system needs to be initialized in order for DBusGProxy
+  // calls to succeed.
+  g_type_init();
+
+  base::AtExitManager at_exit_manager;
+  MessageLoopForUI message_loop;
+
   Prefs prefs;
   CHECK(prefs.Init(power_manager::util::GetPrefPaths(FLAGS_prefs_dir,
                                                      FLAGS_default_prefs_dir)));
-  g_type_init();
 
   scoped_ptr<AmbientLightSensor> light_sensor;
   if (BoolPrefIsTrue(&prefs, power_manager::kHasAmbientLightSensorPref)) {
@@ -182,6 +190,7 @@ int main(int argc, char* argv[]) {
                 keyboard_backlight_controller.get(),
                 run_dir);
   daemon.Init();
-  daemon.Run();
+
+  message_loop.Run();
   return 0;
 }

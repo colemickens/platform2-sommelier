@@ -4,8 +4,6 @@
 
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 
-#include <glib.h>
-
 #include <cmath>
 #include <cstdlib>
 #include <string>
@@ -61,14 +59,9 @@ KeyboardBacklightController::TestApi::TestApi(
 KeyboardBacklightController::TestApi::~TestApi() {}
 
 void KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
-  CHECK(controller_->video_timeout_id_);
-  guint scheduled_id = controller_->video_timeout_id_;
-  if (!controller_->HandleVideoTimeout()) {
-    // Since the GLib timeout didn't actually fire, we need to remove it
-    // manually to ensure it won't be leaked.
-    CHECK(controller_->video_timeout_id_ != scheduled_id);
-    util::RemoveTimeout(&scheduled_id);
-  }
+  CHECK(controller_->video_timer_.IsRunning());
+  controller_->video_timer_.Stop();
+  controller_->HandleVideoTimeout();
 }
 
 KeyboardBacklightController::KeyboardBacklightController(
@@ -95,7 +88,6 @@ KeyboardBacklightController::KeyboardBacklightController(
       user_step_index_(-1),
       percent_for_ambient_light_(100.0),
       ignore_ambient_light_(false),
-      video_timeout_id_(0),
       num_als_adjustments_(0),
       num_user_adjustments_(0),
       display_brightness_is_zero_(false) {
@@ -107,7 +99,6 @@ KeyboardBacklightController::KeyboardBacklightController(
 }
 
 KeyboardBacklightController::~KeyboardBacklightController() {
-  util::RemoveTimeout(&video_timeout_id_ );
   display_backlight_controller_->RemoveObserver(this);
 }
 
@@ -156,10 +147,11 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
     UpdateState();
   }
 
-  util::RemoveTimeout(&video_timeout_id_);
+  video_timer_.Stop();
   if (is_fullscreen) {
-    video_timeout_id_ =
-        g_timeout_add(kVideoTimeoutIntervalMs, HandleVideoTimeoutThunk, this);
+    video_timer_.Start(FROM_HERE,
+        base::TimeDelta::FromMilliseconds(kVideoTimeoutIntervalMs),
+        this, &KeyboardBacklightController::HandleVideoTimeout);
   }
 }
 
@@ -340,13 +332,11 @@ void KeyboardBacklightController::ReadUserStepsPref() {
   }
 }
 
-gboolean KeyboardBacklightController::HandleVideoTimeout() {
+void KeyboardBacklightController::HandleVideoTimeout() {
   if (fullscreen_video_playing_)
     VLOG(1) << "Fullscreen video stopped";
   fullscreen_video_playing_ = false;
-  video_timeout_id_ = 0;
   UpdateState();
-  return FALSE;
 }
 
 int64 KeyboardBacklightController::PercentToLevel(double percent) const {

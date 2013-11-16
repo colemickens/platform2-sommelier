@@ -122,27 +122,17 @@ StateController::TestApi::~TestApi() {
 }
 
 void StateController::TestApi::TriggerActionTimeout() {
-  CHECK(controller_->action_timeout_id_);
-  guint scheduled_id = controller_->action_timeout_id_;
-  if (!controller_->HandleActionTimeout()) {
-    // Since the GLib timeout didn't actually fire, we need to remove it
-    // manually to ensure it won't be leaked.
-    CHECK(controller_->action_timeout_id_ != scheduled_id);
-    util::RemoveTimeout(&scheduled_id);
-  }
+  CHECK(controller_->action_timer_.IsRunning());
+  controller_->action_timer_.Stop();
+  controller_->HandleActionTimeout();
 }
 
 bool StateController::TestApi::TriggerInitialDisplayModeTimeout() {
-  if (!controller_->initial_display_mode_timeout_id_)
+  if (!controller_->initial_display_mode_timer_.IsRunning())
     return false;
 
-  guint scheduled_id = controller_->initial_display_mode_timeout_id_;
-  if (!controller_->HandleInitialDisplayModeTimeout()) {
-    // Since the GLib timeout didn't actually fire, we need to remove it
-    // manually to ensure it won't be leaked.
-    CHECK(controller_->initial_display_mode_timeout_id_ != scheduled_id);
-    util::RemoveTimeout(&scheduled_id);
-  }
+  controller_->initial_display_mode_timer_.Stop();
+  controller_->HandleInitialDisplayModeTimeout();
   return true;
 }
 
@@ -153,8 +143,6 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       prefs_(prefs),
       clock_(new Clock),
       initialized_(false),
-      action_timeout_id_(0),
-      initial_display_mode_timeout_id_(0),
       power_source_(POWER_AC),
       lid_state_(LID_NOT_PRESENT),
       session_state_(SESSION_STOPPED),
@@ -185,8 +173,6 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
 }
 
 StateController::~StateController() {
-  util::RemoveTimeout(&action_timeout_id_);
-  util::RemoveTimeout(&initial_display_mode_timeout_id_);
   prefs_->RemoveObserver(this);
 }
 
@@ -200,9 +186,9 @@ void StateController::Init(PowerSource power_source,
   lid_state_ = lid_state;
   session_state_ = session_state;
 
-  initial_display_mode_timeout_id_ = g_timeout_add(
-      kInitialDisplayModeTimeoutMs,
-      &StateController::HandleInitialDisplayModeTimeoutThunk, this);
+  initial_display_mode_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromMilliseconds(kInitialDisplayModeTimeoutMs), this,
+      &StateController::HandleInitialDisplayModeTimeout);
 
   UpdateSettingsAndState();
   initialized_ = true;
@@ -263,7 +249,7 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
   display_mode_ = mode;
 
   if (waiting_for_initial_display_mode()) {
-    util::RemoveTimeout(&initial_display_mode_timeout_id_);
+    initial_display_mode_timer_.Stop();
     DCHECK(!waiting_for_initial_display_mode());
   } else {
     UpdateLastUserActivityTime();
@@ -874,29 +860,25 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
                       delays_.idle, &timeout_delay);
 
-  util::RemoveTimeout(&action_timeout_id_);
-  action_timeout_time_for_testing_ = base::TimeTicks();
   if (timeout_delay > base::TimeDelta()) {
-    action_timeout_id_ = g_timeout_add(
-        timeout_delay.InMilliseconds(),
-        &StateController::HandleActionTimeoutThunk, this);
-    action_timeout_time_for_testing_ = now + timeout_delay;
+    action_timer_.Start(FROM_HERE, timeout_delay, this,
+        &StateController::HandleActionTimeout);
+    action_timer_time_for_testing_ = now + timeout_delay;
+  } else {
+    action_timer_.Stop();
+    action_timer_time_for_testing_ = base::TimeTicks();
   }
 }
 
-gboolean StateController::HandleActionTimeout() {
-  action_timeout_id_ = 0;
-  action_timeout_time_for_testing_ = base::TimeTicks();
+void StateController::HandleActionTimeout() {
+  action_timer_time_for_testing_ = base::TimeTicks();
   UpdateState();
-  return FALSE;
 }
 
-gboolean StateController::HandleInitialDisplayModeTimeout() {
+void StateController::HandleInitialDisplayModeTimeout() {
   LOG(INFO) << "Didn't receive initial notification about display mode; using "
             << DisplayModeToString(display_mode_);
-  initial_display_mode_timeout_id_ = 0;
   UpdateState();
-  return FALSE;
 }
 
 }  // namespace policy

@@ -38,13 +38,10 @@ PeripheralBatteryWatcher::PeripheralBatteryWatcher(
     DBusSenderInterface* dbus_sender)
     : dbus_sender_(dbus_sender),
       peripheral_battery_path_(kDefaultPeripheralBatteryPath),
-      poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs) {
 }
 
-PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {
-  util::RemoveTimeout(&poll_timeout_id_);
-}
+PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {}
 
 void PeripheralBatteryWatcher::Init() {
   ReadBatteryStatuses();
@@ -74,7 +71,7 @@ void PeripheralBatteryWatcher::GetBatteryList(
   }
 }
 
-gboolean PeripheralBatteryWatcher::ReadBatteryStatuses() {
+void PeripheralBatteryWatcher::ReadBatteryStatuses() {
   battery_readers_.clear();
 
   std::vector<base::FilePath> new_battery_list;
@@ -111,10 +108,9 @@ gboolean PeripheralBatteryWatcher::ReadBatteryStatuses() {
       LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
     }
   }
-
-  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadBatteryStatusesThunk,
-                                   this);
-  return FALSE;
+  poll_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromMilliseconds(poll_interval_ms_),
+      this, &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 
 void PeripheralBatteryWatcher::SendBatteryStatus(const std::string& path,

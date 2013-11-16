@@ -11,12 +11,9 @@
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
+#include "base/timer.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/input_observer.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -76,11 +73,11 @@ class InputController : public system::InputObserver {
   void Init(PrefsInterface* prefs);
 
   // Calls HandlePowerButtonAcknowledgmentTimeout(). Returns false if
-  // |power_button_acknowledgment_timeout_id_| isn't set.
+  // |power_button_acknowledgment_timer_| isn't running.
   bool TriggerPowerButtonAcknowledgmentTimeoutForTesting();
 
-  // Calls CheckActiveVT(). Returns false if |check_active_vt_timeout_id_| isn't
-  // set or if the timeout is canceled.
+  // Calls CheckActiveVT(). Returns false if |check_active_vt_timer| isn't
+  // running.
   bool TriggerCheckActiveVTTimeoutForTesting();
 
   // Handles acknowledgment from that a power button press was handled.
@@ -96,13 +93,11 @@ class InputController : public system::InputObserver {
   // terminal is currently active (which typically means that the user is doing
   // something on the console in dev mode, so Chrome won't be reporting user
   // activity to keep power management from kicking in).
-  SIGNAL_CALLBACK_0(InputController, gboolean, CheckActiveVT);
+  void CheckActiveVT();
 
   // Tells |delegate_| when Chrome hasn't acknowledged a power button press
   // quickly enough.
-  SIGNAL_CALLBACK_0(InputController,
-                    gboolean,
-                    HandlePowerButtonAcknowledgmentTimeout);
+  void HandlePowerButtonAcknowledgmentTimeout();
 
   system::InputInterface* input_;  // not owned
   Delegate* delegate_;  // not owned
@@ -120,12 +115,11 @@ class InputController : public system::InputObserver {
   // Chrome has already acknowledged the event.
   base::TimeTicks expected_power_button_acknowledgment_timestamp_;
 
-  // GLib source ID for a timeout that calls
-  // HandlePowerButtonAcknowledgmentTimeout().
-  guint power_button_acknowledgment_timeout_id_;
+  // Calls HandlePowerButtonAcknowledgmentTimeout().
+  base::OneShotTimer<InputController> power_button_acknowledgment_timer_;
 
-  // GLib source ID for a timeout that calls CheckActiveVT() periodically.
-  guint check_active_vt_timeout_id_;
+  // Calls CheckActiveVT() periodically.
+  base::RepeatingTimer<InputController> check_active_vt_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(InputController);
 };

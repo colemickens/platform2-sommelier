@@ -6,7 +6,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <glib.h>
 #include <stdio.h>
 #include <sys/stat.h>
 
@@ -31,8 +30,7 @@ AsyncFileReader::AsyncFileReader()
     : read_in_progress_(false),
       fd_(-1),
       aio_buffer_(NULL),
-      initial_read_size_(kInitialFileReadSize),
-      update_state_timeout_id_(0) {
+      initial_read_size_(kInitialFileReadSize) {
 }
 
 AsyncFileReader::~AsyncFileReader() {
@@ -78,21 +76,20 @@ void AsyncFileReader::StartRead(
   read_in_progress_ = true;
 }
 
-gboolean AsyncFileReader::UpdateState() {
+void AsyncFileReader::UpdateState() {
   if (!read_in_progress_) {
-    update_state_timeout_id_ = 0;
-    return FALSE;
+    update_state_timer_.Reset();
+    return;
   }
 
   int status = aio_error(&aio_control_);
 
-  // If the read is still in-progress, keep the timeout alive.
+  // If the read is still in-progress, keep the timer running.
   if (status == EINPROGRESS)
-    return TRUE;
+    return;
 
-  // Otherwise, we'll return false later to cancel the timeout.  Reset its
-  // ID first to make sure that none of the calls to Reset() delete it.
-  update_state_timeout_id_ = 0;
+  // Otherwise, we stop the timer.
+  update_state_timer_.Stop();
 
   switch (status) {
     case ECANCELED:
@@ -125,15 +122,13 @@ gboolean AsyncFileReader::UpdateState() {
       break;
     }
   }
-
-  return FALSE;
 }
 
 void AsyncFileReader::Reset() {
   if (!read_in_progress_)
     return;
 
-  util::RemoveTimeout(&update_state_timeout_id_);
+  update_state_timer_.Stop();
 
   int cancel_result = aio_cancel(fd_, &aio_control_);
   if (cancel_result == -1) {
@@ -170,8 +165,9 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
     return false;
   }
 
-  DCHECK_EQ(update_state_timeout_id_, static_cast<guint>(0));
-  update_state_timeout_id_ = g_timeout_add(kPollMs, UpdateStateThunk, this);
+  update_state_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromMilliseconds(kPollMs), this,
+      &AsyncFileReader::UpdateState);
   return true;
 }
 

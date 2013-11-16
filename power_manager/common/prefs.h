@@ -11,13 +11,11 @@
 
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
+#include "base/files/file_path_watcher.h"
+#include "base/memory/linked_ptr.h"
 #include "base/observer_list.h"
 #include "base/time.h"
-#include "power_manager/common/inotify.h"
-#include "power_manager/common/signal_callback.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
+#include "base/timer.h"
 
 namespace power_manager {
 
@@ -91,21 +89,17 @@ class Prefs : public PrefsInterface {
   virtual void SetDouble(const std::string& name, double value) OVERRIDE;
 
  private:
+  typedef std::map<std::string, linked_ptr<base::FilePathWatcher> >
+      FileWatcherMap;
+
   // Result of a pref file read operation.
   struct PrefReadResult {
     std::string value;  // The value that was read.
     std::string path;   // The pref file from which |value| was read.
   };
 
-  // Called by |notifier_| when a pref is changed.  Notifies |observers_|.
-  static gboolean HandleFileChangedThunk(const char* name,
-                                         int watch_handle,
-                                         unsigned int mask,
-                                         gpointer data) {
-    static_cast<Prefs*>(data)->HandleFileChanged(name);
-    return TRUE;
-  }
-  void HandleFileChanged(const std::string& name);
+  // Called by |file_watcher_| when a pref is changed. Notifies |observers_|.
+  void HandleFileChanged(const base::FilePath& path, bool error);
 
   // Reads contents of pref files given by |name| from all the paths in
   // |pref_paths_| in order, where they exist.  Strips them of whitespace.
@@ -125,7 +119,9 @@ class Prefs : public PrefsInterface {
   // |last_write_time_|, and clears |prefs_to_write_|.
   void WritePrefs();
 
-  SIGNAL_CALLBACK_0(Prefs, gboolean, HandleWritePrefsTimeout);
+  // Updates |file_watchers_| to contain a watcher for every file currently in
+  // |dir|.
+  void UpdateFileWatchers(const base::FilePath& dir);
 
   // List of file paths to read from, in order of precedence.
   // A value read from the first path will be used instead of values from the
@@ -135,10 +131,13 @@ class Prefs : public PrefsInterface {
   ObserverList<PrefsObserver> observers_;
 
   // For notification of updates to pref files.
-  Inotify notifier_;
+  base::FilePathWatcher dir_watcher_;
 
-  // GLib timeout ID for calling HandleWritePrefsTimeout().
-  guint write_prefs_timeout_id_;
+  // Map from pref file basenames to base::FilePathWatchers.
+  FileWatcherMap file_watchers_;
+
+  // Calls WritePrefs().
+  base::OneShotTimer<Prefs> write_prefs_timer_;
 
   // Last time at which WritePrefs() was called.
   base::TimeTicks last_write_time_;

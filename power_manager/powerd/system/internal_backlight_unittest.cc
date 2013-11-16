@@ -6,9 +6,6 @@
 #include <gtest/gtest.h>
 #include <inttypes.h>
 
-#include <iostream>
-#include <fstream>
-
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
@@ -16,12 +13,10 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 
-using ::testing::Test;
-
 namespace power_manager {
 namespace system {
 
-class InternalBacklightTest : public Test {
+class InternalBacklightTest : public ::testing::Test {
  public:
   InternalBacklightTest() {}
 
@@ -213,7 +208,7 @@ TEST_F(InternalBacklightTest, Transitions) {
 
   // An instant transition to the maximum level shouldn't use a timer.
   backlight.SetBrightnessLevel(kMaxBrightness, base::TimeDelta());
-  EXPECT_FALSE(backlight.transition_timeout_is_set());
+  EXPECT_FALSE(backlight.transition_timer_is_running());
   EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
   EXPECT_EQ(kMaxBrightness, GetCurrentBrightness(&backlight));
 
@@ -224,7 +219,7 @@ TEST_F(InternalBacklightTest, Transitions) {
 
   // If the timeout fires at this point, we should still be at the maximum
   // level.
-  EXPECT_TRUE(backlight.transition_timeout_is_set());
+  EXPECT_TRUE(backlight.transition_timer_is_running());
   EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
   EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
   EXPECT_EQ(kMaxBrightness, GetCurrentBrightness(&backlight));
@@ -241,7 +236,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   const base::TimeTicks kEndTime = kStartTime + kDuration;
   backlight.clock()->set_current_time_for_testing(kEndTime);
   EXPECT_FALSE(backlight.TriggerTransitionTimeoutForTesting());
-  EXPECT_FALSE(backlight.transition_timeout_is_set());
+  EXPECT_FALSE(backlight.transition_timer_is_running());
   EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
   EXPECT_EQ(kHalfBrightness, GetCurrentBrightness(&backlight));
 }

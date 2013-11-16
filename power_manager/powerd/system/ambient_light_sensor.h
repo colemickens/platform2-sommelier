@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 
-#include <glib.h>
 #include <list>
 #include <string>
 
@@ -13,8 +12,8 @@
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/observer_list.h"
+#include "base/timer.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 #include "power_manager/powerd/system/async_file_reader.h"
 
@@ -60,8 +59,11 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   virtual int GetAmbientLightLux() OVERRIDE;
 
  private:
+  // Starts |poll_timer_|.
+  void StartTimer();
+
   // Handler for a periodic event that reads the ambient light sensor.
-  SIGNAL_CALLBACK_0(AmbientLightSensor, gboolean, ReadAls);
+  void ReadAls();
 
   // Asynchronous I/O success and error handlers, respectively.
   void ReadCallback(const std::string& data);
@@ -74,8 +76,8 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // overridden by tests.
   base::FilePath device_list_path_;
 
-  // GLib timeout ID for running ReadAls(), or 0 if unset.
-  guint poll_timeout_id_;
+  // Runs ReadAls().
+  base::RepeatingTimer<AmbientLightSensor> poll_timer_;
 
   // Time between polls of the sensor file, in milliseconds.
   int poll_interval_ms_;

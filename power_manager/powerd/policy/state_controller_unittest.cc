@@ -210,7 +210,7 @@ class StateControllerTest : public testing::Test {
   // runs it.  Returns false if the timeout isn't scheduled or is scheduled for
   // a different time.
   bool TriggerTimeout() WARN_UNUSED_RESULT {
-    base::TimeTicks timeout_time = test_api_.action_timeout_time();
+    base::TimeTicks timeout_time = test_api_.action_timer_time();
     if (timeout_time == base::TimeTicks()) {
       LOG(ERROR) << "Ignoring request to trigger unscheduled timeout at "
                  << now_.ToInternalValue();
@@ -313,7 +313,7 @@ TEST_F(StateControllerTest, BasicDelays) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // No further timeouts should be scheduled at this point.
-  EXPECT_TRUE(test_api_.action_timeout_time().is_null());
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
 
   // When the system resumes, the screen should be undimmed and turned back
   // on.
@@ -1420,7 +1420,7 @@ TEST_F(StateControllerTest, AudioDelay) {
   test_api_.clock()->set_time_step_for_testing(
       base::TimeDelta::FromMilliseconds(1));
   controller_.HandleAudioStateChange(true);
-  const base::TimeDelta timeout = test_api_.action_timeout_time() - start_time;
+  const base::TimeDelta timeout = test_api_.action_timer_time() - start_time;
   EXPECT_GT(timeout.InSeconds(), (kIdleDelay / 2).InSeconds());
   EXPECT_LE(timeout.InSeconds(), kIdleDelay.InSeconds());
 }

@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 
-#include <glib.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -19,7 +18,6 @@
 #include "base/string_number_conversions.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/power_supply.h"
 
 using std::map;

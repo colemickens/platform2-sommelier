@@ -11,7 +11,7 @@
 #include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
-#include "power_manager/common/signal_callback.h"
+#include "base/timer.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
@@ -140,8 +140,8 @@ class Suspender : public SuspendDelayObserver {
     // Sets the time used as "now".
     void SetCurrentWallTime(base::Time wall_time);
 
-    // Runs Suspender::RetrySuspend() if |retry_suspend_timeout_id_| is set.
-    // Returns false if the timeout wasn't set.
+    // Runs Suspender::RetrySuspend() if |retry_suspend_timer_| is running.
+    // Returns false otherwise.
     bool TriggerRetryTimeout();
 
    private:
@@ -206,8 +206,8 @@ class Suspender : public SuspendDelayObserver {
   // outstanding delays).
   void Suspend();
 
-  // Callback for |retry_suspend_timeout_id_|.
-  SIGNAL_CALLBACK_0(Suspender, gboolean, RetrySuspend);
+  // Retries a suspend attempt.
+  void RetrySuspend();
 
   // Cancels an outstanding suspend request.
   void CancelSuspend();
@@ -252,8 +252,8 @@ class Suspender : public SuspendDelayObserver {
   // Number of failed retries since RequestSuspend() was called.
   int num_retries_;
 
-  // ID of GLib timeout that will run RetrySuspend() or 0 if unset.
-  guint retry_suspend_timeout_id_;
+  // Runs RetrySuspend().
+  base::OneShotTimer<Suspender> retry_suspend_timer_;
 
   // True after this class has received notification that the system is
   // shutting down.

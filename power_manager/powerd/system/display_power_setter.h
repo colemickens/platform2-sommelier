@@ -8,11 +8,8 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/time.h"
+#include "base/timer.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/common/signal_callback.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 namespace system {
@@ -54,16 +51,8 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   // Makes an asynchronous D-Bus method call to Chrome to apply |state|.
   void SendStateToChrome(chromeos::DisplayPowerState state);
 
-  // Timeout callback that sets the passed-in state, resets |timeout_id_|,
-  // and returns FALSE to cancel the timeout.
-  SIGNAL_CALLBACK_PACKED_1(DisplayPowerSetter,
-                           gboolean,
-                           HandleTimeout,
-                           chromeos::DisplayPowerState);
-
-  // GLib source ID for timeout that will run HandleTimeout(), or 0 if no
-  // timeout is currently set.
-  guint timeout_id_;
+  // Runs SendStateToChrome().
+  base::OneShotTimer<DisplayPowerSetter> timer_;
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetter);
 };

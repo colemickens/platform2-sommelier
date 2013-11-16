@@ -7,7 +7,6 @@
 #include <inttypes.h>
 #include <libudev.h>
 #include <stdint.h>
-#include <sys/inotify.h>
 
 #include <algorithm>
 #include <cmath>
@@ -442,11 +441,6 @@ void Daemon::Init() {
   }
 
   peripheral_battery_watcher_->Init();
-}
-
-void Daemon::Run() {
-  GMainLoop* loop = g_main_loop_new(NULL, false);
-  g_main_loop_run(loop);
 }
 
 void Daemon::AdjustKeyboardBrightness(int direction) {

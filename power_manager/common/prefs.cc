@@ -4,9 +4,10 @@
 
 #include "power_manager/common/prefs.h"
 
-#include <glib.h>
-#include <sys/inotify.h>
+#include <set>
 
+#include "base/bind.h"
+#include "base/location.h"
 #include "base/logging.h"
 #include "base/file_util.h"
 #include "base/string_number_conversions.h"
@@ -17,8 +18,6 @@
 namespace power_manager {
 
 namespace {
-
-const int kFileWatchMask = IN_MODIFY | IN_CREATE | IN_DELETE;
 
 // Minimum time between batches of prefs being written to disk, in
 // milliseconds.
@@ -31,41 +30,30 @@ Prefs::TestApi::TestApi(Prefs* prefs) : prefs_(prefs) {}
 Prefs::TestApi::~TestApi() {}
 
 bool Prefs::TestApi::TriggerWriteTimeout() {
-  if (!prefs_->write_prefs_timeout_id_)
+  if (!prefs_->write_prefs_timer_.IsRunning())
     return false;
 
-  guint timeout_id = prefs_->write_prefs_timeout_id_;
-  CHECK(!prefs_->HandleWritePrefsTimeout());
-  CHECK(prefs_->write_prefs_timeout_id_ == 0);
-  util::RemoveTimeout(&timeout_id);
+  prefs_->write_prefs_timer_.Stop();
+  prefs_->WritePrefs();
   return true;
 }
 
 Prefs::Prefs()
-    : write_prefs_timeout_id_(0),
-      write_interval_(
+    : write_interval_(
           base::TimeDelta::FromMilliseconds(kDefaultWriteIntervalMs)) {
 }
 
 Prefs::~Prefs() {
-  if (write_prefs_timeout_id_) {
-    util::RemoveTimeout(&write_prefs_timeout_id_);
+  if (write_prefs_timer_.IsRunning())
     WritePrefs();
-  }
 }
 
 bool Prefs::Init(const std::vector<base::FilePath>& pref_paths) {
   CHECK(!pref_paths.empty());
   pref_paths_ = pref_paths;
-
-  if (!notifier_.Init(&Prefs::HandleFileChangedThunk, this))
-    return false;
-  if (notifier_.AddWatch(pref_paths_[0].AsUTF8Unsafe().c_str(),
-                         kFileWatchMask) < 0) {
-    return false;
-  }
-  notifier_.Start();
-  return true;
+  return dir_watcher_.Watch(
+      pref_paths_[0], false,
+      base::Bind(&Prefs::HandleFileChanged, base::Unretained(this)));
 }
 
 void Prefs::AddObserver(PrefsObserver* observer) {
@@ -78,7 +66,20 @@ void Prefs::RemoveObserver(PrefsObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-void Prefs::HandleFileChanged(const std::string& name) {
+void Prefs::HandleFileChanged(const base::FilePath& path, bool error) {
+  if (error) {
+    LOG(ERROR) << "Got error while hearing about change to " << path.value();
+    return;
+  }
+
+  // Rescan the directory if it changed.
+  if (path == pref_paths_[0]) {
+    UpdateFileWatchers(path);
+    return;
+  }
+
+  const std::string name = path.BaseName().value();
+
   // Resist the temptation to erase |name| from |prefs_to_write_| here, as
   // it would cause a race:
   // 1. SetInt64() is called and pref is written to disk.
@@ -183,10 +184,9 @@ void Prefs::ScheduleWrite() {
       base::TimeTicks::Now() - last_write_time_;
   if (last_write_time_.is_null() || time_since_last_write >= write_interval_) {
     WritePrefs();
-  } else if (!write_prefs_timeout_id_) {
-    write_prefs_timeout_id_ = g_timeout_add(
-        (write_interval_ - time_since_last_write).InMilliseconds(),
-        HandleWritePrefsTimeoutThunk, this);
+  } else if (!write_prefs_timer_.IsRunning()) {
+    write_prefs_timer_.Start(FROM_HERE, write_interval_ - time_since_last_write,
+                             this, &Prefs::WritePrefs);
   }
 }
 
@@ -204,10 +204,50 @@ void Prefs::WritePrefs() {
   last_write_time_ = base::TimeTicks::Now();
 }
 
-gboolean Prefs::HandleWritePrefsTimeout() {
-  WritePrefs();
-  write_prefs_timeout_id_ = 0;
-  return FALSE;
+void Prefs::UpdateFileWatchers(const base::FilePath& dir) {
+  // Look for files that have been created or unlinked.
+  file_util::FileEnumerator enumerator(
+      dir, false, file_util::FileEnumerator::FILES);
+  std::set<std::string> current_prefs;
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    current_prefs.insert(path.BaseName().value());
+  }
+  std::vector<std::string> added_prefs;
+  for (std::set<std::string>::const_iterator it = current_prefs.begin();
+       it != current_prefs.end(); ++it) {
+    if (file_watchers_.find(*it) == file_watchers_.end())
+      added_prefs.push_back(*it);
+  }
+  std::vector<std::string> removed_prefs;
+  for (FileWatcherMap::const_iterator it = file_watchers_.begin();
+       it != file_watchers_.end(); ++it) {
+    if (current_prefs.find(it->first) == current_prefs.end())
+      removed_prefs.push_back(it->first);
+  }
+
+  // Start watching new files.
+  for (std::vector<std::string>::const_iterator it = added_prefs.begin();
+       it != added_prefs.end(); ++it) {
+    const std::string& name = *it;
+    const base::FilePath path = dir.Append(name);
+    linked_ptr<base::FilePathWatcher> watcher(new base::FilePathWatcher);
+    if (watcher->Watch(path, false,
+            base::Bind(&Prefs::HandleFileChanged, base::Unretained(this)))) {
+      file_watchers_.insert(std::make_pair(name, watcher));
+    } else {
+      LOG(ERROR) << "Unable to watch " << path.value() << " for changes";
+    }
+    FOR_EACH_OBSERVER(PrefsObserver, observers_, OnPrefChanged(name));
+  }
+
+  // Stop watching old files.
+  for (std::vector<std::string>::const_iterator it = removed_prefs.begin();
+       it != removed_prefs.end(); ++it) {
+    const std::string& name = *it;
+    file_watchers_.erase(name);
+    FOR_EACH_OBSERVER(PrefsObserver, observers_, OnPrefChanged(name));
+  }
 }
 
 }  // namespace power_manager

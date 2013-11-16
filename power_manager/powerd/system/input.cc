@@ -589,8 +589,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   return true;
 }
 
-gboolean Input::HandleUdevEvent(GIOChannel* /* source */,
-                                GIOCondition /* condition */) {
+gboolean Input::HandleUdevEvent() {
   struct udev_device* dev = udev_monitor_receive_device(udev_monitor_);
   if (dev) {
     const char* action = udev_device_get_action(dev);

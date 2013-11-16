@@ -11,8 +11,6 @@
 #include "base/file_path.h"
 #include "base/time.h"
 
-typedef unsigned int guint;
-
 namespace power_manager {
 namespace util {
 
@@ -38,10 +36,6 @@ int RunSetuidHelper(const std::string& action,
 // in the file well.  They are read in as signed values and then cast
 // to unsigned ints.  So -10 => 4294967286
 bool GetUintFromFile(const char* filename, unsigned int* value);
-
-// Deletes a GLib timeout ID via g_source_remove() and resets the variable
-// containing it to 0.  Does nothing if |timeout_id| points at a non-zero ID.
-void RemoveTimeout(guint* timeout_id);
 
 // Clamps |percent| in the range [0.0, 100.0].
 double ClampPercent(double percent);

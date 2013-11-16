@@ -7,12 +7,10 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
+#include "base/time.h"
+#include "base/timer.h"
 #include "base/memory/scoped_ptr.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/backlight_interface.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -44,12 +42,15 @@ class InternalBacklight : public BacklightInterface {
   bool Init(const base::FilePath& base_path,
             const base::FilePath::StringType& pattern);
 
-  bool transition_timeout_is_set() const { return transition_timeout_id_ != 0; }
+  bool transition_timer_is_running() const {
+    return transition_timer_.IsRunning();
+  }
   Clock* clock() { return clock_.get(); }
 
-  // Calls HandleTransitionTimeout() as if |transition_timeout_id_| had fired
-  // and returns its return value.
-  gboolean TriggerTransitionTimeoutForTesting();
+  // Calls HandleTransitionTimeout() as if |transition_timer_| had fired
+  // and returns true if the timer is still running afterward and false if it
+  // isn't.
+  bool TriggerTransitionTimeoutForTesting();
 
   // Overridden from BacklightInterface:
   virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE;
@@ -80,9 +81,8 @@ class InternalBacklight : public BacklightInterface {
                                          int64 level);
 
   // Sets the brightness level appropriately for the current point in the
-  // transition.  When the transition is done, clears |transition_timeout_id_|
-  // and returns FALSE to cancel the timeout.
-  SIGNAL_CALLBACK_0(InternalBacklight, gboolean, HandleTransitionTimeout);
+  // transition.  When the transition is done, stops |transition_timer_|.
+  void HandleTransitionTimeout();
 
   // Cancels |transition_timeout_id_| if set.
   void CancelTransition();
@@ -100,8 +100,8 @@ class InternalBacklight : public BacklightInterface {
   int64 max_brightness_level_;
   int64 current_brightness_level_;
 
-  // GLib source ID for calling HandleTransitionTimeoutThunk().  0 if unset.
-  guint transition_timeout_id_;
+  // Calls HandleTransitionTimeout().
+  base::RepeatingTimer<InternalBacklight> transition_timer_;
 
   // Times at which the current transition started and is scheduled to end.
   base::TimeTicks transition_start_time_;

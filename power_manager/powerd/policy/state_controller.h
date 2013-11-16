@@ -12,13 +12,10 @@
 #include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
+#include "base/timer.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/policy.pb.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -100,16 +97,16 @@ class StateController : public PrefsObserver {
     ~TestApi();
 
     Clock* clock() { return controller_->clock_.get(); }
-    base::TimeTicks action_timeout_time() const {
-      return controller_->action_timeout_time_for_testing_;
+    base::TimeTicks action_timer_time() const {
+      return controller_->action_timer_time_for_testing_;
     }
 
-    // Runs StateController::HandleActionTimeout(). May only be called if a
-    // timeout is actually registered.
+    // Runs StateController::HandleActionTimeout(). May only be called if the
+    // timer is running.
     void TriggerActionTimeout();
 
     // Runs StateController::HandleInitialDisplayModeTimeout(). Returns false if
-    // no timeout was scheduled.
+    // the timer wasn't running.
     bool TriggerInitialDisplayModeTimeout() WARN_UNUSED_RESULT;
 
    private:
@@ -214,7 +211,7 @@ class StateController : public PrefsObserver {
   // Is StateController currently waiting for HandleDisplayModeChange() to be
   // called for the first time after Init() was called?
   bool waiting_for_initial_display_mode() const {
-    return initial_display_mode_timeout_id_ != 0;
+    return initial_display_mode_timer_.IsRunning();
   }
 
   // Should inactivity-triggered actions be deferred due to StateController
@@ -267,16 +264,16 @@ class StateController : public PrefsObserver {
   // instead.
   void UpdateState();
 
-  // Cancels |action_timeout_id_| and creates a new timeout that will fire when
-  // action is next needed, given a current time of |now|.
+  // Stops |action_timer_| and resets it to fire when action is next needed,
+  // given a current time of |now|.
   void ScheduleActionTimeout(base::TimeTicks now);
 
-  // Invoked by |action_timeout_id_| when it's time to perform an action.
-  SIGNAL_CALLBACK_0(StateController, gboolean, HandleActionTimeout);
+  // Invoked by |action_timer_| when it's time to perform an action.
+  void HandleActionTimeout();
 
-  // Invoked by |initial_display_mode_timeout_id_| if the current display mode
+  // Invoked by |initial_display_mode_timer_| if the current display mode
   // wasn't received in a reasonable amount of time after Init() was called.
-  SIGNAL_CALLBACK_0(StateController, gboolean, HandleInitialDisplayModeTimeout);
+  void HandleInitialDisplayModeTimeout();
 
   Delegate* delegate_;  // not owned
 
@@ -287,14 +284,14 @@ class StateController : public PrefsObserver {
   // Has Init() been called?
   bool initialized_;
 
-  // GLib source ID for running HandleActionTimeout(). 0 if unset.
-  guint action_timeout_id_;
+  // Runs HandleActionTimeout().
+  base::OneShotTimer<StateController> action_timer_;
 
-  // GLib source ID for running HandleInitialDisplayModeTimeout(). 0 if unset.
-  guint initial_display_mode_timeout_id_;
+  // Runs HandleInitialDisplayModeTimeout().
+  base::OneShotTimer<StateController> initial_display_mode_timer_;
 
-  // Time at which |action_timeout_id_| has been scheduled to fire.
-  base::TimeTicks action_timeout_time_for_testing_;
+  // Time at which |action_timer_| has been scheduled to fire.
+  base::TimeTicks action_timer_time_for_testing_;
 
   // Current power source.
   PowerSource power_source_;

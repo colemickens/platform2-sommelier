@@ -8,17 +8,15 @@
 #include <string>
 
 #include "base/basictypes.h"
+#include "base/cancelable_callback.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
 #include "base/time.h"
-#include "power_manager/common/signal_callback.h"
+#include "base/timer.h"
 #include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -170,8 +168,8 @@ class PowerSupply {
     // Advances the time by |interval|.
     void AdvanceTime(base::TimeDelta interval);
 
-    // Calls HandlePollTimeout() and returns true if |poll_timeout_id_| was
-    // set.  Returns false if the timeout was unset.
+    // If |poll_timer_| was running, calls HandlePollTimeout() and returns true.
+    // Returns false otherwise.
     bool TriggerPollTimeout() WARN_UNUSED_RESULT;
 
    private:
@@ -268,17 +266,15 @@ class PowerSupply {
   // |battery_time_to_*|, and |line_power_on| fields must already be set.
   bool IsBatteryBelowShutdownThreshold(const PowerStatus& status) const;
 
-  // Updates |poll_timeout_id_| to call HandlePollTimeout().  Removes any
-  // existing timeout.
+  // Schedules |poll_timer_| to call HandlePollTimeout().
   void SchedulePoll(bool last_poll_succeeded);
 
-  // Handles |poll_timeout_id_| firing.  Updates |power_status_|, cancels
-  // the current timeout, and schedules a new timeout.
-  SIGNAL_CALLBACK_0(PowerSupply, gboolean, HandlePollTimeout);
+  // Handles |poll_timer_| firing. Updates |power_status_| and reschedules the
+  // timer.
+  void HandlePollTimeout();
 
-  // Handles |notify_observers_timeout_id_| firing.  Notifies |observers_|
-  // that |power_status_| has been updated and cancels the timeout.
-  SIGNAL_CALLBACK_0(PowerSupply, gboolean, HandleNotifyObserversTimeout);
+  // Notifies |observers_| that |power_status_| has been updated.
+  void NotifyObservers();
 
   // Used to read power supply-related prefs.
   PrefsInterface* prefs_;
@@ -346,14 +342,14 @@ class PowerSupply {
   // unsuccessful update and to wait before recalculating battery times.
   base::TimeDelta short_poll_delay_;
 
-  // GLib timeout ID for invoking HandlePollTimeout().
-  guint poll_timeout_id_;
+  // Calls HandlePollTimeout().
+  base::OneShotTimer<PowerSupply> poll_timer_;
 
-  // Delay used when |poll_timeout_id_| was last set.
+  // Delay used when |poll_timer_| was last started.
   base::TimeDelta current_poll_delay_for_testing_;
 
-  // GLib timeout ID for invoking HandleNotifyObserversTimeout().
-  guint notify_observers_timeout_id_;
+  // Calls NotifyObservers().
+  base::CancelableClosure notify_observers_task_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };

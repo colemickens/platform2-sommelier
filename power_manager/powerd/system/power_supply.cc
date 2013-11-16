@@ -6,8 +6,10 @@
 
 #include <cmath>
 
+#include "base/bind.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "power_manager/common/clock.h"
@@ -99,13 +101,11 @@ void PowerSupply::TestApi::AdvanceTime(base::TimeDelta interval) {
 }
 
 bool PowerSupply::TestApi::TriggerPollTimeout() {
-  if (!power_supply_->poll_timeout_id_)
+  if (!power_supply_->poll_timer_.IsRunning())
     return false;
 
-  guint old_timeout_id = power_supply_->poll_timeout_id_;
-  CHECK(!power_supply_->HandlePollTimeout());
-  CHECK(power_supply_->poll_timeout_id_ != old_timeout_id);
-  util::RemoveTimeout(&old_timeout_id);
+  power_supply_->poll_timer_.Stop();
+  power_supply_->HandlePollTimeout();
   return true;
 }
 
@@ -125,16 +125,11 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       is_suspended_(false),
       current_samples_(kMaxCurrentSamples),
       charge_samples_(kMaxChargeSamples),
-      full_factor_(1.0),
-      poll_timeout_id_(0),
-      notify_observers_timeout_id_(0) {
+      full_factor_(1.0) {
   DCHECK(prefs);
 }
 
-PowerSupply::~PowerSupply() {
-  util::RemoveTimeout(&poll_timeout_id_);
-  util::RemoveTimeout(&notify_observers_timeout_id_);
-}
+PowerSupply::~PowerSupply() {}
 
 void PowerSupply::Init() {
   GetPowerSupplyPaths();
@@ -205,9 +200,11 @@ bool PowerSupply::RefreshImmediately() {
   bool success = UpdatePowerStatus();
   if (!is_suspended_)
     SchedulePoll(success);
-  if (success && !notify_observers_timeout_id_) {
-    notify_observers_timeout_id_ =
-        g_timeout_add(0, HandleNotifyObserversTimeoutThunk, this);
+  if (success) {
+    notify_observers_task_.Reset(
+        base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
+    MessageLoop::current()->PostTask(
+        FROM_HERE, notify_observers_task_.callback());
   }
   return success;
 }
@@ -247,7 +244,7 @@ void PowerSupply::SetSuspended(bool suspended) {
   is_suspended_ = suspended;
   if (is_suspended_) {
     VLOG(1) << "Stopping polling due to suspend";
-    util::RemoveTimeout(&poll_timeout_id_);
+    poll_timer_.Stop();
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
     ResetBatterySamples(battery_stabilized_after_resume_delay_);
@@ -605,26 +602,20 @@ void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";
-  util::RemoveTimeout(&poll_timeout_id_);
-  poll_timeout_id_ = g_timeout_add(
-      delay.InMilliseconds(), HandlePollTimeoutThunk, this);
+  poll_timer_.Start(FROM_HERE, delay, this, &PowerSupply::HandlePollTimeout);
   current_poll_delay_for_testing_ = delay;
 }
 
-gboolean PowerSupply::HandlePollTimeout() {
-  poll_timeout_id_ = 0;
+void PowerSupply::HandlePollTimeout() {
   current_poll_delay_for_testing_ = base::TimeDelta();
   bool success = UpdatePowerStatus();
   SchedulePoll(success);
   if (success)
-    FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
-  return FALSE;
+    NotifyObservers();
 }
 
-gboolean PowerSupply::HandleNotifyObserversTimeout() {
-  notify_observers_timeout_id_ = 0;
+void PowerSupply::NotifyObservers() {
   FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
-  return FALSE;
 }
 
 }  // namespace system

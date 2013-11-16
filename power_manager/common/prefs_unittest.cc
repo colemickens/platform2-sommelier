@@ -11,7 +11,6 @@
 #include "base/string_number_conversions.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/common/test_main_loop_runner.h"
 
 namespace {
@@ -26,7 +25,7 @@ const char kDoubleTestFileName[] = "doublefile";
 
 // The test crashes after this many milliseconds if an expected preference
 // change notification is never received.
-const guint kPrefChangeTimeoutMs = 60 * 1000;
+const int kPrefChangeTimeoutMs = 60 * 1000;
 
 }  // namespace
 

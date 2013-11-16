@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_
 
-#include <glib.h>
-
 #include <string>
 #include <vector>
 
@@ -14,7 +12,7 @@
 #include "base/file_path.h"
 #include "base/memory/scoped_vector.h"
 #include "base/observer_list.h"
-#include "power_manager/common/signal_callback.h"
+#include "base/timer.h"
 #include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager {
@@ -38,7 +36,7 @@ class PeripheralBatteryWatcher {
  private:
   // Handler for a periodic event that reads the peripheral batteries'
   // level.
-  SIGNAL_CALLBACK_0(PeripheralBatteryWatcher, gboolean, ReadBatteryStatuses);
+  void ReadBatteryStatuses();
 
   // Fills |battery_list| with paths containing information about
   // peripheral batteries.
@@ -61,8 +59,8 @@ class PeripheralBatteryWatcher {
   // Path containing battery info for peripheral devices.
   base::FilePath peripheral_battery_path_;
 
-  // GLib timeout ID for running ReadBatteryStatuses(), or 0 if unset.
-  guint poll_timeout_id_;
+  // Calls ReadBatteryStatuses().
+  base::OneShotTimer<PeripheralBatteryWatcher> poll_timer_;
 
   // Time between polls of the peripheral battery reading, in milliseconds.
   int poll_interval_ms_;

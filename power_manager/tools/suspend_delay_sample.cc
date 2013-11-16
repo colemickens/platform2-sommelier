@@ -5,8 +5,10 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gflags/gflags.h>
 
+#include "base/at_exit.h"
 #include "base/bind.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 #include "base/string_util.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
@@ -100,11 +102,16 @@ void RegisterDBusMessageHandler() {
 }
 
 int main(int argc, char* argv[]) {
-  g_type_init();
   google::ParseCommandLineFlags(&argc, &argv, true);
-  GMainLoop* loop = g_main_loop_new(NULL, false);
+
+  // The GObject type system needs to be initialized in order for DBusGProxy
+  // calls to succeed.
+  g_type_init();
+
+  base::AtExitManager at_exit_manager;
+  MessageLoopForUI message_loop;
   RegisterDBusMessageHandler();
   RegisterSuspendDelay();
-  g_main_loop_run(loop);
+  message_loop.Run();
   return 0;
 }

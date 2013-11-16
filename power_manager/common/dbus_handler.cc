@@ -68,6 +68,7 @@ void DBusHandler::Start() {
                                      DBUS_SERVICE_DBUS,
                                      DBUS_PATH_DBUS,
                                      DBUS_INTERFACE_DBUS);
+  CHECK(proxy_) << "Failed to create proxy to listen for name owner changes";
   dbus_g_proxy_add_signal(proxy_, kNameOwnerChangedSignal,
                           G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
                           G_TYPE_INVALID);

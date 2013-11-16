@@ -6,6 +6,7 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 
+#include "base/bind.h"
 #include "base/logging.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
@@ -49,21 +50,19 @@ void SendAndUnrefMessage(DBusMessage* message) {
 
 }  // namespace
 
-DisplayPowerSetter::DisplayPowerSetter() : timeout_id_(0) {}
+DisplayPowerSetter::DisplayPowerSetter() {}
 
-DisplayPowerSetter::~DisplayPowerSetter() {
-  util::RemoveTimeout(&timeout_id_);
-}
+DisplayPowerSetter::~DisplayPowerSetter() {}
 
 void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
                                          base::TimeDelta delay) {
-  util::RemoveTimeout(&timeout_id_);
   if (delay.InMilliseconds() == 0) {
+    timer_.Stop();
     SendStateToChrome(state);
   } else {
-    timeout_id_ = g_timeout_add(delay.InMilliseconds(),
-                                HandleTimeoutThunk,
-                                CreateHandleTimeoutArgs(this, state));
+    timer_.Start(FROM_HERE, delay,
+        base::Bind(&DisplayPowerSetter::SendStateToChrome,
+                   base::Unretained(this), state));
   }
 }
 
@@ -83,12 +82,6 @@ void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
   DBusMessage* message = CreateChromeMethodCall(chromeos::kSetDisplayPower);
   dbus_message_append_args(message, DBUS_TYPE_INT32, &state, DBUS_TYPE_INVALID);
   SendAndUnrefMessage(message);
-}
-
-gboolean DisplayPowerSetter::HandleTimeout(chromeos::DisplayPowerState state) {
-  SendStateToChrome(state);
-  timeout_id_ = 0;
-  return FALSE;
 }
 
 }  // system

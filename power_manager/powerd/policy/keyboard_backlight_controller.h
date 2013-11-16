@@ -11,13 +11,10 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
 #include "base/time.h"
-#include "power_manager/common/signal_callback.h"
+#include "base/timer.h"
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -118,9 +115,8 @@ class KeyboardBacklightController
   // that user commands change the keyboard brightness by.
   void ReadUserStepsPref();
 
-  // Handles |video_timeout_id_| firing, indicating that video activity has
-  // stopped.
-  SIGNAL_CALLBACK_0(KeyboardBacklightController, gboolean, HandleVideoTimeout);
+  // Handles |video_timer_| firing, indicating that video activity has stopped.
+  void HandleVideoTimeout();
 
   int64 PercentToLevel(double percent) const;
   double LevelToPercent(int64 level) const;
@@ -206,8 +202,8 @@ class KeyboardBacklightController
   // kDisableALSPref.
   bool ignore_ambient_light_;
 
-  // GLib timeout ID for HandleVideoTimeout().
-  guint video_timeout_id_;
+  // Runs HandleVideoTimeout().
+  base::OneShotTimer<KeyboardBacklightController> video_timer_;
 
   // Counters for stat tracking.
   int num_als_adjustments_;

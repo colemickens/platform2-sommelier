@@ -39,18 +39,15 @@ const int kNumInitAttemptsBeforeLogging = 5;
 
 AmbientLightSensor::AmbientLightSensor()
     : device_list_path_(kDefaultDeviceListPath),
-      poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs),
       lux_value_(-1),
       num_init_attempts_(0) {
 }
 
-AmbientLightSensor::~AmbientLightSensor() {
-  util::RemoveTimeout(&poll_timeout_id_);
-}
+AmbientLightSensor::~AmbientLightSensor() {}
 
 void AmbientLightSensor::Init() {
-  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+  StartTimer();
 }
 
 void AmbientLightSensor::AddObserver(AmbientLightObserver* observer) {
@@ -67,20 +64,23 @@ int AmbientLightSensor::GetAmbientLightLux() {
   return lux_value_;
 }
 
-gboolean AmbientLightSensor::ReadAls() {
+void AmbientLightSensor::StartTimer() {
+  poll_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromMilliseconds(poll_interval_ms_),
+      this, &AmbientLightSensor::ReadAls);
+}
+
+void AmbientLightSensor::ReadAls() {
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
   if (!als_file_.HasOpenedFile() && !InitAlsFile())
-    return TRUE;  // Keep the timeout alive.
+    return;
 
-  // StartRead() can call the error callback synchronously, so clear
-  // |poll_timeout_id_| first to make sure that we don't leak a newer timeout
-  // set by the callback.
-  poll_timeout_id_ = 0;
+  // The timer will be restarted after the read finishes.
+  poll_timer_.Stop();
   als_file_.StartRead(
       base::Bind(&AmbientLightSensor::ReadCallback, base::Unretained(this)),
       base::Bind(&AmbientLightSensor::ErrorCallback, base::Unretained(this)));
-  return FALSE;
 }
 
 void AmbientLightSensor::ReadCallback(const std::string& data) {
@@ -96,13 +96,12 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";
   }
-  // Schedule next poll.
-  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+  StartTimer();
 }
 
 void AmbientLightSensor::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file";
-  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+  StartTimer();
 }
 
 bool AmbientLightSensor::InitAlsFile() {

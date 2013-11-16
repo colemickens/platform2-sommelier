@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <cmath>
 
-#include <glib.h>
-
 #include "base/logging.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/prefs.h"
@@ -36,22 +34,19 @@ MetricsReporter::MetricsReporter(
       display_backlight_controller_(display_backlight_controller),
       keyboard_backlight_controller_(keyboard_backlight_controller),
       session_state_(SESSION_STOPPED),
-      generate_backlight_metrics_timeout_id_(0),
       battery_energy_before_suspend_(0.0),
       on_line_power_before_suspend_(false),
       report_battery_discharge_rate_while_suspended_(false) {
 }
 
-MetricsReporter::~MetricsReporter() {
-  util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
-}
+MetricsReporter::~MetricsReporter() {}
 
 void MetricsReporter::Init(const system::PowerStatus& power_status) {
   last_power_status_ = power_status;
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
-    generate_backlight_metrics_timeout_id_ = g_timeout_add(
-        kMetricBacklightLevelIntervalMs,
-        &MetricsReporter::GenerateBacklightLevelMetricThunk, this);
+    generate_backlight_metrics_timer_.Start(FROM_HERE,
+        base::TimeDelta::FromMilliseconds(kMetricBacklightLevelIntervalMs),
+        this, &MetricsReporter::GenerateBacklightLevelMetrics);
   }
 }
 
@@ -227,23 +222,23 @@ void MetricsReporter::GenerateUserActivityMetrics() {
   }
 }
 
-gboolean MetricsReporter::GenerateBacklightLevelMetric() {
-  if (screen_dim_timestamp_.is_null() && screen_off_timestamp_.is_null()) {
-    double percent = 0.0;
-    if (display_backlight_controller_ &&
-        display_backlight_controller_->GetBrightnessPercent(&percent)) {
-      // Enum to avoid exponential histogram's varyingly-sized buckets.
-      SendEnumMetricWithPowerSource(kMetricBacklightLevelName, lround(percent),
-                                    kMetricMaxPercent);
-    }
-    if (keyboard_backlight_controller_ &&
-        keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
-      // Enum to avoid exponential histogram's varyingly-sized buckets.
-      SendEnumMetric(kMetricKeyboardBacklightLevelName, lround(percent),
-                     kMetricMaxPercent);
-    }
+void MetricsReporter::GenerateBacklightLevelMetrics() {
+  if (!screen_dim_timestamp_.is_null() || !screen_off_timestamp_.is_null())
+    return;
+
+  double percent = 0.0;
+  if (display_backlight_controller_ &&
+      display_backlight_controller_->GetBrightnessPercent(&percent)) {
+    // Enum to avoid exponential histogram's varyingly-sized buckets.
+    SendEnumMetricWithPowerSource(kMetricBacklightLevelName, lround(percent),
+                                  kMetricMaxPercent);
   }
-  return TRUE;
+  if (keyboard_backlight_controller_ &&
+      keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
+    // Enum to avoid exponential histogram's varyingly-sized buckets.
+    SendEnumMetric(kMetricKeyboardBacklightLevelName, lround(percent),
+                   kMetricMaxPercent);
+  }
 }
 
 void MetricsReporter::HandlePowerButtonEvent(ButtonState state) {

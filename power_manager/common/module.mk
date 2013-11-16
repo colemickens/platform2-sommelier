@@ -6,8 +6,7 @@ include common.mk
 
 LIBPREFS_OBJS = \
 	common/prefs.o \
-	common/power_constants.o \
-	common/inotify.o
+	common/power_constants.o
 LIBPREFS_FLAGS = $(GLIB_FLAGS)
 LIBPREFS_LIBS = $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(common/libprefs.pie.a): $(LIBPREFS_OBJS)
@@ -18,7 +17,6 @@ clean: CLEAN(common/libprefs.pie.a)
 
 LIBUTIL_OBJS = \
 	common/clock.o \
-	common/inotify.o \
 	common/power_constants.o \
 	common/util.o
 LIBUTIL_FLAGS = $(GLIB_FLAGS)

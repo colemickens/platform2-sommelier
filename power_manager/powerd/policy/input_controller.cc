@@ -4,8 +4,6 @@
 
 #include "power_manager/powerd/policy/input_controller.h"
 
-#include <glib.h>
-
 #include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/clock.h"
@@ -35,16 +33,12 @@ InputController::InputController(system::InputInterface* input,
       dbus_sender_(dbus_sender),
       clock_(new Clock),
       only_has_external_display_(false),
-      lid_state_(LID_NOT_PRESENT),
-      power_button_acknowledgment_timeout_id_(0),
-      check_active_vt_timeout_id_(0) {
+      lid_state_(LID_NOT_PRESENT) {
   input_->AddObserver(this);
 }
 
 InputController::~InputController() {
   input_->RemoveObserver(this);
-  util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
-  util::RemoveTimeout(&check_active_vt_timeout_id_);
 }
 
 void InputController::Init(PrefsInterface* prefs) {
@@ -54,25 +48,26 @@ void InputController::Init(PrefsInterface* prefs) {
   if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
     OnLidEvent(input_->QueryLidState());
 
-  check_active_vt_timeout_id_ = g_timeout_add(
-      kCheckActiveVTFrequencySec * 1000, CheckActiveVTThunk, this);
+  check_active_vt_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromSeconds(kCheckActiveVTFrequencySec),
+      this, &InputController::CheckActiveVT);
 }
 
 bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
-  if (!power_button_acknowledgment_timeout_id_)
+  if (!power_button_acknowledgment_timer_.IsRunning())
     return false;
 
-  guint old_id = power_button_acknowledgment_timeout_id_;
-  if (!HandlePowerButtonAcknowledgmentTimeout())
-    util::RemoveTimeout(&old_id);
+  power_button_acknowledgment_timer_.Stop();
+  HandlePowerButtonAcknowledgmentTimeout();
   return true;
 }
 
 bool InputController::TriggerCheckActiveVTTimeoutForTesting() {
-  if (!check_active_vt_timeout_id_)
+  if (!check_active_vt_timer_.IsRunning())
     return false;
 
-  return CheckActiveVT();
+  CheckActiveVT();
+  return true;
 }
 
 void InputController::HandlePowerButtonAcknowledgment(
@@ -81,8 +76,8 @@ void InputController::HandlePowerButtonAcknowledgment(
           << timestamp.ToInternalValue() << "; expected "
           << expected_power_button_acknowledgment_timestamp_.ToInternalValue();
   if (timestamp == expected_power_button_acknowledgment_timestamp_) {
-    util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
     expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
+    power_button_acknowledgment_timer_.Stop();
   }
 }
 
@@ -132,30 +127,27 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
 
     if (state == BUTTON_DOWN) {
       expected_power_button_acknowledgment_timestamp_ = now;
-      util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
-      power_button_acknowledgment_timeout_id_ = g_timeout_add(
-          kPowerButtonAcknowledgmentTimeoutMs,
-          HandlePowerButtonAcknowledgmentTimeoutThunk, this);
+      power_button_acknowledgment_timer_.Start(FROM_HERE,
+          base::TimeDelta::FromMilliseconds(
+              kPowerButtonAcknowledgmentTimeoutMs),
+          this, &InputController::HandlePowerButtonAcknowledgmentTimeout);
     } else {
       expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
-      util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
+      power_button_acknowledgment_timer_.Stop();
     }
   }
 
   delegate_->HandlePowerButtonEvent(state);
 }
 
-gboolean InputController::CheckActiveVT() {
+void InputController::CheckActiveVT() {
   if (input_->GetActiveVT() == 2)
     delegate_->DeferInactivityTimeoutForVT2();
-  return TRUE;
 }
 
-gboolean InputController::HandlePowerButtonAcknowledgmentTimeout() {
+void InputController::HandlePowerButtonAcknowledgmentTimeout() {
   delegate_->HandleMissingPowerButtonAcknowledgment();
   expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
-  power_button_acknowledgment_timeout_id_ = 0;
-  return FALSE;
 }
 
 }  // namespace policy

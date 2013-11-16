@@ -13,13 +13,10 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/time.h"
+#include "base/timer.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/power_supply.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 class MetricsLibraryInterface;
 
@@ -47,7 +44,7 @@ class MetricsReporter {
                   policy::BacklightController* keyboard_backlight_controller);
   ~MetricsReporter();
 
-  // Initializes the object and starts various timers.
+  // Initializes the object and starts |generate_backlight_metrics_timer_|.
   void Init(const system::PowerStatus& power_status);
 
   // Records changes to system state.
@@ -67,8 +64,7 @@ class MetricsReporter {
   void GenerateUserActivityMetrics();
 
   // Generates UMA metrics about the current backlight level.
-  // Always returns true.
-  SIGNAL_CALLBACK_0(MetricsReporter, gboolean, GenerateBacklightLevelMetric);
+  void GenerateBacklightLevelMetrics();
 
   // Handles the power button being pressed or released.
   void HandlePowerButtonEvent(ButtonState state);
@@ -139,8 +135,8 @@ class MetricsReporter {
   // Time at which the current session (if any) started.
   base::TimeTicks session_start_time_;
 
-  // GLib timeout for running GenerateBacklightLevelMetric() or 0 if unset.
-  guint generate_backlight_metrics_timeout_id_;
+  // Runs GenerateBacklightLevelMetric().
+  base::RepeatingTimer<MetricsReporter> generate_backlight_metrics_timer_;
 
   // Timestamp of the last generated battery discharge rate metric.
   base::TimeTicks last_battery_discharge_rate_metric_timestamp_;

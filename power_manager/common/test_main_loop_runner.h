@@ -5,17 +5,20 @@
 #ifndef POWER_MANAGER_COMMON_TEST_MAIN_LOOP_RUNNER_H_
 #define POWER_MANAGER_COMMON_TEST_MAIN_LOOP_RUNNER_H_
 
-#include <glib.h>
-
 #include "base/basictypes.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
-#include "power_manager/common/signal_callback.h"
+#include "base/timer.h"
+
+namespace base {
+class RunLoop;
+}
 
 namespace power_manager {
 
 // This class makes it easier to write tests that need to wait for an
-// asynchronous event to be run by the GLib event loop.  The typical usage
-// pattern is as follows:
+// asynchronous event to be run by the event loop.  The typical usage pattern is
+// as follows:
 //
 // 1. Instantiate a TestMainLoopRunner.
 // 2. Set up a callback for the asynchronous event that calls StopLoop().
@@ -36,17 +39,15 @@ class TestMainLoopRunner {
   void StopLoop();
 
  private:
-  // Called when |timeout_delay_| elapses without the loop having been stopped.
-  SIGNAL_CALLBACK_0(TestMainLoopRunner,
-                    gboolean,
-                    OnTimeout);
+  // Called when |timeout_delay| elapses without the loop having been stopped.
+  void OnTimeout();
 
-  GMainLoop* loop_;
+  scoped_ptr<base::RunLoop> runner_;
 
-  // GLib event source ID for running OnTimeout().  0 if not running.
-  guint timeout_id_;
+  // Invokes OnTimeout().
+  base::OneShotTimer<TestMainLoopRunner> timeout_timer_;
 
-  // Was |loop_| stopped as a result of OnTimeout() being called rather than
+  // Was the loop stopped as a result of OnTimeout() being called rather than
   // StopLoop()?
   bool timed_out_;
 

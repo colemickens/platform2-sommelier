@@ -4,8 +4,10 @@
 
 #include <gtest/gtest.h>
 
+#include "base/at_exit.h"
 #include "base/command_line.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
@@ -14,6 +16,8 @@ int main(int argc, char** argv) {
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::ENABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  base::AtExitManager at_exit_manager;
+  MessageLoopForUI message_loop;
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -4,42 +4,39 @@
 
 #include "power_manager/common/test_main_loop_runner.h"
 
+#include "base/location.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
+#include "base/run_loop.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager {
 
-TestMainLoopRunner::TestMainLoopRunner()
-    : loop_(g_main_loop_new(NULL, FALSE)),
-      timeout_id_(0),
-      timed_out_(false) {
-}
+TestMainLoopRunner::TestMainLoopRunner() : timed_out_(false) {}
 
-TestMainLoopRunner::~TestMainLoopRunner() {
-  util::RemoveTimeout(&timeout_id_);
-  g_main_loop_unref(loop_);
-  loop_ = NULL;
-}
+TestMainLoopRunner::~TestMainLoopRunner() {}
 
 bool TestMainLoopRunner::StartLoop(base::TimeDelta timeout_delay) {
-  CHECK(!timeout_id_) << "Loop is already running";
-  timeout_id_ =
-      g_timeout_add(timeout_delay.InMilliseconds(), OnTimeoutThunk, this);
+  CHECK(!runner_.get()) << "Loop is already running";
   timed_out_ = false;
-  g_main_loop_run(loop_);
+  timeout_timer_.Start(FROM_HERE, timeout_delay, this,
+                       &TestMainLoopRunner::OnTimeout);
+  runner_.reset(new base::RunLoop);
+  runner_->Run();
+  runner_.reset();
   return !timed_out_;
 }
 
 void TestMainLoopRunner::StopLoop() {
-  util::RemoveTimeout(&timeout_id_);
-  g_main_loop_quit(loop_);
+  CHECK(runner_.get()) << "Loop isn't running";
+  timeout_timer_.Stop();
+  runner_->Quit();
 }
 
-gboolean TestMainLoopRunner::OnTimeout() {
-  timeout_id_ = 0;
+void TestMainLoopRunner::OnTimeout() {
+  CHECK(runner_.get());
   timed_out_ = true;
-  g_main_loop_quit(loop_);
-  return FALSE;
+  runner_->Quit();
 }
 
 }  // namespace power_manager

@@ -30,12 +30,11 @@ void Suspender::TestApi::SetCurrentWallTime(base::Time wall_time) {
 }
 
 bool Suspender::TestApi::TriggerRetryTimeout() {
-  if (suspender_->retry_suspend_timeout_id_ == 0)
+  if (!suspender_->retry_suspend_timer_.IsRunning())
     return false;
 
-  guint old_id = suspender_->retry_suspend_timeout_id_;
-  if (!suspender_->RetrySuspend())
-    util::RemoveTimeout(&old_id);
+  suspender_->retry_suspend_timer_.Stop();
+  suspender_->RetrySuspend();
   return true;
 }
 
@@ -54,14 +53,12 @@ Suspender::Suspender(Delegate* delegate,
       got_external_wakeup_count_(false),
       max_retries_(0),
       num_retries_(0),
-      retry_suspend_timeout_id_(0),
       shutting_down_(false) {
   suspend_delay_controller_->AddObserver(this);
 }
 
 Suspender::~Suspender() {
   suspend_delay_controller_->RemoveObserver(this);
-  util::RemoveTimeout(&retry_suspend_timeout_id_);
 }
 
 void Suspender::Init(PrefsInterface* prefs) {
@@ -160,7 +157,7 @@ void Suspender::StartSuspendAttempt() {
   if (waiting_for_readiness_)
     return;
 
-  util::RemoveTimeout(&retry_suspend_timeout_id_);
+  retry_suspend_timer_.Stop();
   if (!got_external_wakeup_count_)
     wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
 
@@ -250,18 +247,15 @@ void Suspender::Suspend() {
   } else {
     LOG(INFO) << "Suspend attempt " << suspend_id_ << " failed; "
               << "will retry in " << retry_delay_.InMilliseconds() << " ms";
-    DCHECK(!retry_suspend_timeout_id_);
-    retry_suspend_timeout_id_ =
-        g_timeout_add(retry_delay_.InMilliseconds(), RetrySuspendThunk, this);
+    retry_suspend_timer_.Start(FROM_HERE, retry_delay_, this,
+                               &Suspender::RetrySuspend);
   }
 
   dark_resume_policy_->HandleResume();
   delegate_->HandleResume(success, num_retries_, max_retries_);
 }
 
-gboolean Suspender::RetrySuspend() {
-  retry_suspend_timeout_id_ = 0;
-
+void Suspender::RetrySuspend() {
   if (num_retries_ >= max_retries_) {
     LOG(ERROR) << "Retried suspend " << num_retries_ << " times; shutting down";
     delegate_->ShutDownForFailedSuspend();
@@ -270,18 +264,17 @@ gboolean Suspender::RetrySuspend() {
     LOG(WARNING) << "Retry #" << num_retries_;
     StartSuspendAttempt();
   }
-  return FALSE;
 }
 
 void Suspender::CancelSuspend() {
   if (waiting_for_readiness_) {
     LOG(INFO) << "Canceling suspend before running powerd_suspend";
     waiting_for_readiness_ = false;
-    DCHECK(!retry_suspend_timeout_id_);
+    DCHECK(!retry_suspend_timer_.IsRunning());
     delegate_->HandleCanceledSuspendAnnouncement();
-  } else if (retry_suspend_timeout_id_) {
+  } else if (retry_suspend_timer_.IsRunning()) {
     LOG(INFO) << "Canceling suspend between retries";
-    util::RemoveTimeout(&retry_suspend_timeout_id_);
+    retry_suspend_timer_.Stop();
   }
 }
 

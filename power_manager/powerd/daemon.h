@@ -22,9 +22,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/dbus_handler.h"
-#include "power_manager/common/inotify.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
@@ -73,7 +71,6 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual ~Daemon();
 
   void Init();
-  void Run();
 
   // Overridden from policy::BacklightControllerObserver:
   virtual void OnBrightnessChanged(

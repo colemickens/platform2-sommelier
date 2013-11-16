@@ -16,7 +16,6 @@
 #include "base/file_path.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/input_interface.h"
 
 // Forward declarations of structs from libudev.h.
@@ -106,16 +105,22 @@ class Input : public InputInterface {
   // file handle could have been for something other than the power key or lid.
   bool RegisterInputEvent(int fd, int event_num);
 
-  SIGNAL_CALLBACK_2(Input, gboolean, HandleUdevEvent, GIOChannel*,
-                    GIOCondition);
+  gboolean HandleUdevEvent();
+  static gboolean HandleUdevEventThunk(GIOChannel*, GIOCondition, void* data) {
+    return reinterpret_cast<Input*>(data)->HandleUdevEvent();
+  }
 
   void RegisterUdevEventHandler();
 
   // Event handler for input events. |source| contains the IO Channel that has
   // changed. |condition| contains the condition of change. |data| contains a
   // pointer to an Input object.
-  SIGNAL_CALLBACK_2(Input, gboolean, HandleInputEvent, GIOChannel*,
-                    GIOCondition);
+  gboolean HandleInputEvent(GIOChannel* source, GIOCondition condition);
+  static gboolean HandleInputEventThunk(GIOChannel* source,
+                                        GIOCondition condition,
+                                        void* data) {
+    return reinterpret_cast<Input*>(data)->HandleInputEvent(source, condition);
+  }
 
   int lid_fd_;
   int num_power_key_events_;

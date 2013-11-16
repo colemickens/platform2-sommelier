@@ -22,7 +22,7 @@ namespace policy {
 namespace {
 
 // Maximum amount of time to wait for OnReadyForSuspend() to be called.
-const guint kSuspendTimeoutMs = 5000;
+const int kSuspendTimeoutMs = 5000;
 
 class TestObserver : public SuspendDelayObserver {
  public:

@@ -4,7 +4,6 @@
 
 #include "power_manager/common/util.h"
 
-#include <glib.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -86,13 +85,6 @@ bool GetUintFromFile(const char* filename, unsigned int* value) {
       return true;
   LOG(ERROR) << "Garbage found in " << filename << "( " << buf << " )";
   return false;
-}
-
-void RemoveTimeout(guint* timeout_id) {
-  if (*timeout_id) {
-    g_source_remove(*timeout_id);
-    *timeout_id = 0;
-  }
 }
 
 double ClampPercent(double percent) {
