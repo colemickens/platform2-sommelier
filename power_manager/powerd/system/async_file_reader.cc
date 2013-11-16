@@ -20,7 +20,7 @@ namespace {
 
 // Since we don't know the file size in advance, we'll have to read successively
 // larger chunks.  Start with 4 KB and double the chunk size with each new read.
-const int kInitialFileReadSize = 4096;
+const size_t kInitialFileReadSize = 4096;
 
 // How often to poll for the AIO status.
 const int kPollMs = 100;

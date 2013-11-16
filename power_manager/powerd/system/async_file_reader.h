@@ -24,6 +24,10 @@ class AsyncFileReader {
   explicit AsyncFileReader();
   ~AsyncFileReader();
 
+  void set_initial_read_size_for_testing(size_t size) {
+    initial_read_size_ = size;
+  }
+
   // Read file asynchronously, passing its contents to |read_cb| when done.
   // Invokes |error_cb| on failure. If a read is already in progress, abort it
   // first.  Note that |error_cb| may be invoked synchronously.
@@ -73,7 +77,7 @@ class AsyncFileReader {
 
   // Number of bytes to be read for the first chunk.  This is a variable instead
   // of a constant so unit tests can modify it.
-  int initial_read_size_;
+  size_t initial_read_size_;
 
   // Accumulator for data read by AIO.
   std::string stored_data_;

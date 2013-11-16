@@ -7,10 +7,12 @@
 
 #include "base/bind.h"
 #include "base/callback.h"
+#include "base/compiler_specific.h"
 #include "base/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/async_file_reader.h"
 
@@ -25,8 +27,8 @@ const char kDummyString[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
 // Dummy file name.
 const char kDummyFileName[] = "dummy_file";
 
+// Creates |path| and writes |total_size| bytes to it.
 void CreateFile(const base::FilePath& path, size_t total_size) {
-  // Container for the string that will be written to the file.
   std::string file_contents;
 
   // Add |kDummyString| repeatedly to the file contents.
@@ -50,10 +52,10 @@ void CreateFile(const base::FilePath& path, size_t total_size) {
 // number of block read iterations required to read the file.
 // AsyncFileReader doubles the read block size each iteration, so the total file
 // size it attempts to read (as a multiple of initial read block size) is:
+//
 //   1 + 2 + 4 + ... + 2^(N-1) = 2^N - 1
-// where N = |kNumMultipleReads|;
-const int kNumMultipleReads = 5;
-
+//
+// where N is the number of reads.
 int GetMultipleReadFactor(int num_multiple_reads) {
   return (1 << num_multiple_reads) - 1;
 }
@@ -61,157 +63,116 @@ int GetMultipleReadFactor(int num_multiple_reads) {
 // Maximum time allowed for file read in milliseconds.
 const int kMaxFileReadTimeMs = 60000;
 
-// Poll interval when waiting for AsyncFileReader to finish.
-const int kWaitPollMs = 200;
-
-}
+}  // namespace
 
 class AsyncFileReaderTest : public ::testing::Test {
  public:
-  AsyncFileReaderTest() : check_timeout_id_(0) {}
-  virtual ~AsyncFileReaderTest() {
-    util::RemoveTimeout(&check_timeout_id_);
+  AsyncFileReaderTest()
+      : temp_dir_(new base::ScopedTempDir()),
+        file_reader_(new AsyncFileReader()),
+        got_error_(false) {
+    CHECK(temp_dir_->CreateUniqueTempDir());
+    CHECK(temp_dir_->IsValid());
+    path_ = temp_dir_->path().Append(kDummyFileName);
   }
+  virtual ~AsyncFileReaderTest() {}
 
-  virtual void SetUp() {
-    // Create a temporary directory for the file to read.
-    temp_dir_generator_.reset(new base::ScopedTempDir());
-    ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
-    EXPECT_TRUE(temp_dir_generator_->IsValid());
+ protected:
+  // Creates a file containing |file_size| bytes and uses AsyncFileReader to
+  // read from it, starting with an |initial_read_size|-byte chunk. Returns
+  // false if initialization failed or if the reader timed out.
+  bool WriteAndReadData(size_t file_size, size_t initial_read_size)
+      WARN_UNUSED_RESULT {
+    data_.clear();
+    got_error_ = false;
 
-    dummy_file_path_ = temp_dir_generator_->path().Append(kDummyFileName);
-
-    // Initialize the file reader.
-    file_reader_.reset(new AsyncFileReader());
-    initial_read_size_ = file_reader_->initial_read_size_;
-
-    error_found_ = false;
-    done_reading_ = false;
-  }
-
-  // Creates a file containing |size| bytes and uses AsyncFileReader to read
-  // from it.  To skip creating a file, pass in size = -1.
-  void StartReadTest(int size) {
-    // This traps multiple calls to this function without calling Setup().
-    ASSERT_FALSE(done_reading_);
-
-    if (size >= 0) {
-      CreateFile(dummy_file_path_, size);
-      CHECK(file_reader_->Init(dummy_file_path_.value()));
-    }
+    CreateFile(path_, file_size);
+    file_reader_->set_initial_read_size_for_testing(initial_read_size);
+    if (!file_reader_->Init(path_.value()))
+      return false;
     file_reader_->StartRead(
         base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this)),
         base::Bind(&AsyncFileReaderTest::ErrorCallback,
                    base::Unretained(this)));
-
-    start_time_ = base::TimeTicks::Now();
-
-    loop_ = g_main_loop_new(NULL, false);
-    check_timeout_id_ =
-        g_timeout_add(kWaitPollMs, CheckForReadCompletionThunk, this);
-    g_main_loop_run(loop_);
-
-    ASSERT_LE((base::TimeTicks::Now() - start_time_).InMilliseconds(),
-              kMaxFileReadTimeMs);
+    return loop_runner_.StartLoop(
+        base::TimeDelta::FromMilliseconds(kMaxFileReadTimeMs));
   }
 
- protected:
+  // Returns the contents of |path_|.
+  std::string ReadFile() {
+    std::string data;
+    CHECK(file_util::ReadFileToString(path_, &data));
+    return data;
+  }
+
+  // Callback for successful reads.
+  void ReadCallback(const std::string& data) {
+    loop_runner_.StopLoop();
+    data_ = data;
+  }
+
+  // Callback for read errors.
+  void ErrorCallback() {
+    loop_runner_.StopLoop();
+    got_error_ = true;
+  }
+
+  TestMainLoopRunner loop_runner_;
+
+  scoped_ptr<base::ScopedTempDir> temp_dir_;
   scoped_ptr<AsyncFileReader> file_reader_;
-  scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
-  base::FilePath dummy_file_path_;
-  int initial_read_size_;
 
-  // Called to indicate a successful read.
-  void ReadCallback(const std::string&);
+  // Test file.
+  base::FilePath path_;
 
-  // Called to indicate a read error.
-  void ErrorCallback();
+  // Data read from |path_| by |file_reader_|.
+  std::string data_;
 
-  // Called to indicate a read error.
-  SIGNAL_CALLBACK_0(AsyncFileReaderTest, gboolean, CheckForReadCompletion);
-
-  // Indicates file read status.
-  bool done_reading_;
-  bool error_found_;
-
-  // When a file read started.
-  base::TimeTicks start_time_;
-
-  // Main loop for glib.
-  GMainLoop* loop_;
-
-  // GLib timeout ID for running CheckForReadCompletion(), or 0 if unset.
-  guint check_timeout_id_;
+  // True if |file_reader_| reported an error.
+  bool got_error_;
 };
-
-
-void AsyncFileReaderTest::ReadCallback(const std::string& data) {
-  error_found_ = false;
-  done_reading_ = true;
-
-  std::string actual_file_data;
-  ASSERT_TRUE(file_util::ReadFileToString(dummy_file_path_, &actual_file_data));
-  EXPECT_EQ(actual_file_data, data);
-}
-
-void AsyncFileReaderTest::ErrorCallback() {
-  error_found_ = true;
-  done_reading_ = true;
-}
-
-gboolean AsyncFileReaderTest::CheckForReadCompletion() {
-  int64 duration_ms = (base::TimeTicks::Now() - start_time_).InMilliseconds();
-  if (!done_reading_ && duration_ms <= kMaxFileReadTimeMs)
-    return TRUE;
-  g_main_loop_quit(loop_);
-  check_timeout_id_ = 0;
-  return FALSE;
-}
 
 // Read an empty file.
 TEST_F(AsyncFileReaderTest, EmptyFileRead) {
-  StartReadTest(0);
-  EXPECT_TRUE(done_reading_);
-  EXPECT_FALSE(error_found_);
+  ASSERT_TRUE(WriteAndReadData(0, 32));
+  EXPECT_FALSE(got_error_);
+  EXPECT_EQ("", data_);
 }
 
 // Read a file with one block read, with the file size being less than the block
 // size (partial block read).
 TEST_F(AsyncFileReaderTest, SingleBlockReadPartial) {
-  StartReadTest(initial_read_size_ - 1);
-  EXPECT_TRUE(done_reading_);
-  EXPECT_FALSE(error_found_);
+  ASSERT_TRUE(WriteAndReadData(31, 32));
+  EXPECT_FALSE(got_error_);
+  EXPECT_EQ(ReadFile(), data_);
 }
 
 // Read a file with one block read, with the file size being equal to the block
 // size (full block read).
 TEST_F(AsyncFileReaderTest, SingleBlockReadFull) {
-  StartReadTest(initial_read_size_);
-  EXPECT_TRUE(done_reading_);
-  EXPECT_FALSE(error_found_);
+  ASSERT_TRUE(WriteAndReadData(32, 32));
+  EXPECT_FALSE(got_error_);
+  EXPECT_EQ(ReadFile(), data_);
 }
 
 // Read a file with multiple block reads, with the last block being a partial
 // read.
 TEST_F(AsyncFileReaderTest, MultipleBlockReadPartial) {
-  StartReadTest(
-      initial_read_size_ * GetMultipleReadFactor(kNumMultipleReads) - 1);
-  EXPECT_TRUE(done_reading_);
-  EXPECT_FALSE(error_found_);
+  ASSERT_TRUE(WriteAndReadData(32 * GetMultipleReadFactor(5) - 1, 32));
+  EXPECT_FALSE(got_error_);
+  EXPECT_EQ(ReadFile(), data_);
 }
 
 // Read a file with multiple block reads, with the last block being a full read.
 TEST_F(AsyncFileReaderTest, MultipleBlockReadFull) {
-  StartReadTest(initial_read_size_ * GetMultipleReadFactor(kNumMultipleReads));
-  EXPECT_TRUE(done_reading_);
-  EXPECT_FALSE(error_found_);
+  ASSERT_TRUE(WriteAndReadData(32 * GetMultipleReadFactor(5), 32));
+  EXPECT_FALSE(got_error_);
+  EXPECT_EQ(ReadFile(), data_);
 }
 
-// Read a file that doesn't exist.  Should end up with an error.
-TEST_F(AsyncFileReaderTest, ReadNonexistentFile) {
-  StartReadTest(-1);
-  EXPECT_TRUE(done_reading_);
-  EXPECT_TRUE(error_found_);
+// Initializing the reader with a nonexistent file should fail.
+TEST_F(AsyncFileReaderTest, InitWithMissingFile) {
+  EXPECT_FALSE(file_reader_->Init(path_.value()));
 }
 
 }  // namespace system
