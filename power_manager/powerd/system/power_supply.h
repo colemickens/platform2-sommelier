@@ -54,6 +54,9 @@ struct PowerStatus {
   // String read from sysfs describing the non-battery power source.
   std::string line_power_type;
 
+  // The charger's model name, if applicable and available.
+  std::string line_power_model_name;
+
   // Line power statistics. These may be unset even if line power is connected.
   double line_power_voltage;  // In volts.
   double line_power_current;  // In amperes.
@@ -122,6 +125,7 @@ struct PowerStatus {
   PowerSupplyProperties_BatteryState battery_state;
 };
 
+// TODO(derat): Move this struct's fields into PowerStatus.
 struct PowerInformation {
   PowerStatus power_status;
 

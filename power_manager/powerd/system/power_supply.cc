@@ -46,6 +46,14 @@ const char kMainsType[] = "Mains";
 const char kBatteryStatusCharging[] = "Charging";
 const char kBatteryStatusFull[] = "Full";
 
+// String value reported in the line power "model_name" file if an original
+// spring AC charger is connected.
+const char kOriginalSpringChargerModelName[] = "0x17";
+
+// String value reported in the line power "model_name" file if the EC firmware
+// is outdated and is incapable of reporting the model.
+const char kOldFirmwareModelName[] = "0x00";
+
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
 bool ReadAndTrimString(const base::FilePath& directory,
@@ -83,6 +91,15 @@ bool IsUsbType(const std::string& type) {
   // These are defined in drivers/power/power_supply_sysfs.c in the kernel.
   return type == "USB" || type == "USB_DCP" || type == "USB_CDP" ||
       type == "USB_ACA";
+}
+
+// Returns true if |model_name|, a line power source's model, indicates that an
+// original spring AC charger is connected. Also assumes that an original spring
+// AC charger is connected if the firmware is outdated and doesn't report the
+// model.
+bool IsOriginalSpringCharger(const std::string& model_name) {
+  return model_name == kOriginalSpringChargerModelName ||
+      model_name == kOldFirmwareModelName;
 }
 
 }  // namespace
@@ -293,10 +310,15 @@ bool PowerSupply::UpdatePowerStatus() {
     ReadInt64(line_power_path_, "online", &online_value);
     status.line_power_on = online_value != 0;
     ReadAndTrimString(line_power_path_, "type", &status.line_power_type);
+    ReadAndTrimString(line_power_path_, "model_name",
+                      &status.line_power_model_name);
+
     if (status.line_power_on) {
       status.external_power = IsUsbType(status.line_power_type) ?
-          PowerSupplyProperties_ExternalPower_USB:
-          PowerSupplyProperties_ExternalPower_AC;
+          PowerSupplyProperties_ExternalPower_USB :
+          (IsOriginalSpringCharger(status.line_power_model_name) ?
+           PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER :
+           PowerSupplyProperties_ExternalPower_AC);
       status.line_power_voltage =
           ReadScaledDouble(line_power_path_, "voltage_now");
       status.line_power_current =

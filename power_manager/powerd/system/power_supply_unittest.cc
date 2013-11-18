@@ -780,10 +780,10 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
     const char* kType = kUsbTypes[i];
     WriteValue("ac/type", kType);
     ASSERT_TRUE(UpdateStatus(&status)) << "failed for \"" << kType << "\"";
-    EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING,
-              status.battery_state) << "failed for \"" << kType << "\"";
-    EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
-              status.external_power) << "failed for \"" << kType << "\"";
+    EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state)
+        << "failed for \"" << kType << "\"";
+    EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power)
+        << "failed for \"" << kType << "\"";
   }
 
   // The USB type should be reported even when the current is 0.
@@ -794,6 +794,33 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
             status.battery_state);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
             status.external_power);
+}
+
+TEST_F(PowerSupplyTest, OriginalSpringCharger) {
+  WriteDefaultValues(POWER_AC, REPORT_CHARGE);
+  Init();
+
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ("", status.line_power_model_name);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+
+  WriteValue("ac/model_name", "0x00");
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ("0x00", status.line_power_model_name);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER,
+            status.external_power);
+
+  WriteValue("ac/model_name", "0x17");
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ("0x17", status.line_power_model_name);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER,
+            status.external_power);
+
+  WriteValue("ac/model_name", "0x1b");
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ("0x1b", status.line_power_model_name);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
 }
 
 TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {

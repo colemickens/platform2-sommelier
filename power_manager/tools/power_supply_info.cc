@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
     default:
       display.PrintStringValue("enum type", "Unknown");
   }
+  display.PrintStringValue("model name", power_status.line_power_model_name);
   display.PrintValue("voltage (V)", power_status.line_power_voltage);
   display.PrintValue("current (A)", power_status.line_power_current);
 
