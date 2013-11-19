@@ -31,6 +31,7 @@ using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::ContainsRegex;
+using testing::Mock;
 using testing::Return;
 using testing::SetArgumentPointee;
 using testing::Test;
@@ -604,6 +605,11 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithoutLease) {
 }
 
 TEST_F(DHCPConfigTest, RenewIP) {
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
+  config_->pid_ = 0;
+  EXPECT_FALSE(config_->RenewIP());  // Expect a call to Start() if pid_ is 0.
+  Mock::VerifyAndClearExpectations(minijail_.get());
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).Times(0);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 456;
   EXPECT_FALSE(config_->RenewIP());  // Expect no crash with NULL proxy.

@@ -114,7 +114,7 @@ bool DHCPConfig::RequestIP() {
 bool DHCPConfig::RenewIP() {
   SLOG(DHCP, 2) << __func__ << ": " << device_name();
   if (!pid_) {
-    return false;
+    return Start();
   }
   if (!proxy_.get()) {
     LOG(ERROR) << "Unable to renew IP before acquiring destination.";
