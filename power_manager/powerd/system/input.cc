@@ -358,6 +358,7 @@ bool Input::AddEvent(const char* name) {
   const char* kEventsToSkip[] = {
     ".",
     "..",
+    "by-id",
     "by-path",
   };
   for (size_t i = 0; i < arraysize(kEventsToSkip); ++i) {
@@ -485,7 +486,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     VLOG(1) << "Device topo phys: " << phys;
   }
 
-  if (strncmp(kPowerButtonToSkip, phys, strlen(kPowerButtonToSkip)) == 0) {
+  if (StartsWithASCII(phys, power_button_to_skip_, true /* case_sensitive */)) {
     VLOG(1) << "Skipping interface: " << phys;
     return false;
   }
