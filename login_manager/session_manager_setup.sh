@@ -6,7 +6,7 @@
 
 # Set up to start the X server ASAP, then let the startup run in the
 # background while we set up other stuff.
-XUSER=root
+XUSER=xorg
 XTTY=1
 XAUTH_FILE="/var/run/chromelogin.auth"
 xstart.sh ${XUSER} ${XTTY} ${XAUTH_FILE} &
