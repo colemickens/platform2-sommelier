@@ -82,10 +82,20 @@ std::string GetPowerStatusBatteryDebugString(
   std::string output;
   switch (status.external_power) {
     case PowerSupplyProperties_ExternalPower_AC:
-    case PowerSupplyProperties_ExternalPower_USB: {
-      const char* type = (status.external_power ==
-          PowerSupplyProperties_ExternalPower_AC) ? "AC" : "USB";
-      output = StringPrintf("On %s (%s", type, status.line_power_type.c_str());
+    case PowerSupplyProperties_ExternalPower_USB:
+    case PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER: {
+      const char* type =
+          (status.external_power == PowerSupplyProperties_ExternalPower_AC ||
+           status.external_power ==
+           PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER) ? "AC" :
+          "USB";
+
+      std::string kernel_type = status.line_power_type;
+      if (status.external_power ==
+          PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER)
+        kernel_type += "-orig-spring";
+
+      output = StringPrintf("On %s (%s", type, kernel_type.c_str());
       if (status.line_power_current || status.line_power_voltage) {
         output += StringPrintf(", %.3fA at %.1fV",
             status.line_power_current, status.line_power_voltage);
