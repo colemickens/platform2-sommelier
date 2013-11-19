@@ -35,6 +35,7 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
   // Check that this mapping does not overflow the address space.
   if (real_addr + size - 1 != kuint64max &&
       !(real_addr + size > real_addr)) {
+    DumpToLog();
     LOG(ERROR) << "Address mapping at " << std::hex << real_addr
                << " with size " << std::hex << size << " overflows.";
     return false;

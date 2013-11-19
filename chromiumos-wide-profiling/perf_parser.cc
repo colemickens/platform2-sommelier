@@ -311,36 +311,45 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
   uint64 len = event->len;
   uint64 start = event->start;
   uint64 pgoff = event->pgoff;
-  if (pgoff == start) {
-    // This handles the case where the mmap offset is the same as the start
-    // address.  This is the case for the kernel DSO on ARM and i686, as well
-    // as for some VDSO's.  e.g.
-    //   event.mmap.start = 0x80008200
-    //   event.mmap.len   = 0xffffffff7fff7dff
-    //   event.mmap.pgoff = 0x80008200
-    pgoff = 0;
-  } else if (id == 0 && pgoff < len && pgoff != 0) {
-    // Note that we cannot use the name of the DSO because sometimes we only
-    // have file hashes and not names. For all perf.data files, the first DSO to
-    // be mapped is the kernel DSO. So an id == 0 check suffices here.
-    //
-    // This handles the case where the mmap offset somewhere between the start
-    // and the end of the mmap region.  This is the case for the kernel DSO on
-    // x86_64.  e.g.
-    //   event.mmap.start = 0x0
-    //   event.mmap.len   = 0xffffffff9fffffff
-    //   event.mmap.pgoff = 0xffffffff81000190
 
-    // Sanity check to make sure pgoff is valid.
-    // TODO(sque): does not protect against wraparound.
-    CHECK_GE(start + pgoff, start);
-    start = event->pgoff;
-    len = event->len - event->pgoff;
+  // |id| == 0 corresponds to the kernel mmap. We have several cases here:
+  //
+  // For ARM and x86, in sudo mode, pgoff == start, example:
+  // start=0x80008200
+  // pgoff=0x80008200
+  // len  =0xfffffff7ff7dff
+  //
+  // For x86-64, in sudo mode, pgoff is between start and start + len. SAMPLE
+  // events lie between pgoff and pgoff + length of the real kernel binary,
+  // example:
+  // start=0x3bc00000
+  // pgoff=0xffffffffbcc00198
+  // len  =0xffffffff843fffff
+  // SAMPLE events will be found after pgoff. For kernels with ASLR, pgoff will
+  // be something only visible to the root user, and will be randomized at
+  // startup. With |remap| set to true, we should hide pgoff in this case. So we
+  // normalize all SAMPLE events relative to pgoff.
+  //
+  // For non-sudo mode, the kernel will be mapped from 0 to the pointer limit,
+  // example:
+  // start=0x0
+  // pgoff=0x0
+  // len  =0xffffffff
+  if (id == 0) {
+    // If pgoff is between start and len, we normalize the event by setting
+    // start to be pgoff just like how it is for ARM and x86. We also set len to
+    // be a much smaller number (closer to the real length of the kernel binary)
+    // because SAMPLEs are actually only seen between |event->pgoff| and
+    // |event->pgoff + kernel text size|.
+    if (pgoff > start && pgoff < start + len) {
+      len = len + start - pgoff;
+      start = pgoff;
+    }
+    // For kernels with ALSR pgoff is critical information that should not be
+    // revealed when |remap| is true.
     pgoff = 0;
-  } else if (pgoff < len && pgoff != 0) {
-    // More general case where pgoff is used normally.
-    // TODO: Use pgoff in address mapper.
   }
+
   if (!mapper->MapWithID(start, len, id, true)) {
     mapper->DumpToLog();
     return false;
