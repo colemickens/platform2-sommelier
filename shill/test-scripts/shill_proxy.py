@@ -2,42 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections
 import dbus
 import logging
-import Queue
 import time
-
-import threaded_dbus_bus
-
-
-PropertyUpdate = collections.namedtuple('PropertyUpdate',
-                                        ['property_name', 'property_value',
-                                         'object_path'])
-
-
-def _get_update_handler(queue):
-    """Build and return a signal receiver for DBus property changes.
-
-    Build a function with parameters appropriate for a DBus property update
-    handler that enqueues updates as tuples into a thread-safe queue.  We do
-    this as a standalone function and as a closure so that we isolate ourselves
-    from as many stack references as possible.
-
-    @param queue: Queue object that should have thread safe behavior.
-    @return signal handling function.
-
-    """
-    def update_handler(property_name, property_value, object_path=None):
-        if object_path is None:
-            logging.error('Dropping update with None path: (%r, %r)',
-                          property_name, property_value)
-            return
-
-        raw_tuple = property_name, property_value, object_path
-        queue.put(PropertyUpdate(*map(ShillProxy.dbus2primitive, raw_tuple)))
-    return update_handler
-
 
 class ShillProxyError(Exception):
     """Exceptions raised by ShillProxy and it's children."""
@@ -274,70 +241,6 @@ class ShillProxy(object):
         self._manager = self.get_dbus_object(self.DBUS_TYPE_MANAGER, '/')
 
 
-    def _wait_for_property_value_in(self, dbus_object, update_queue,
-                                    property_name, expected_values,
-                                    timeout_seconds):
-        """Internal implementation of wait_for_property_value_in.
-
-        Polls |update_queue| until an object with a path like that of
-        |dbus_object| signals an updated value in |expected_values| or
-        until |timeout_seconds| have passed.  Assumes that |update_queue|
-        is populated asyncronously by another thread with updates from
-        DBus.  Will check before looking at the queue whether the
-        specified property is already in |expected_states|, and will
-        return success if this is true.
-
-        @param dbus_object DBus proxy object as returned by
-            self.get_dbus_object.
-        @param update_queue Queue object asyncronously populated with DBus
-            updates as PropertyUpdate tuples.
-        @param property_name string property key in dbus_object.
-        @param expected_values iterable set of values to return successfully
-            upon seeing.
-        @param timeout_seconds float number of seconds to return if we haven't
-            seen the appropriate property value in time.
-        @return tuple(successful, final_value) where successful is True iff we
-            saw one of |expected_values| for |property_name| and
-            final_value is the member of |expected_values| we saw.
-
-        """
-        # Check to make sure we're not already in a target state.
-        try:
-            properties = self.dbus2primitive(
-                    dbus_object.GetProperties(utf8_strings=True))
-        except dbus.exceptions.DBusException:
-            return False, '(object reference became invalid)'
-
-        last_value = properties.get(property_name, None)
-        if last_value is None:
-            last_value = '(no value found)'
-        elif last_value in expected_values:
-            return True, last_value
-
-        start_time = time.time()
-        duration = lambda : time.time() - start_time
-        time_left = lambda : timeout_seconds - duration()
-        while time_left() > 0:
-            try:
-                update = update_queue.get(block=True, timeout=time_left())
-                update_queue.task_done()
-            except Queue.Empty:
-                break
-
-            if update.object_path != dbus_object.object_path:
-                logging.error('Got update from odd object path?')
-                continue
-
-            if update.property_name != property_name:
-                continue
-
-            if update.property_value in expected_values:
-                return True, update.property_value
-
-            last_value = update.property_value
-        return False, last_value
-
-
     def configure_service_by_guid(self, guid, properties={}):
         """Configure a service identified by its GUID.
 
@@ -398,21 +301,23 @@ class ShillProxy(object):
             saw, and duration is how long we waited to see that value.
 
         """
-        update_queue = Queue.Queue()
-        signal_receiver = _get_update_handler(update_queue)
+        # TODO(wiley) This should be changed to be event based (not polling).
+        value = None
         start_time = time.time()
-        threaded_bus = threaded_dbus_bus.ThreadedDBusBus()
-        receiver_context = threaded_dbus_bus.SignalReceiverContext(
-                threaded_bus, signal_receiver,
-                signal_name='PropertyChanged',
-                dbus_interface=dbus_object.dbus_interface,
-                object_path=dbus_object.object_path,
-                path_keyword='object_path')
-        with threaded_bus, receiver_context:
-            success, last_value = self._wait_for_property_value_in(
-                    dbus_object, update_queue, property_name, expected_values,
-                    timeout_seconds)
-            return  success, last_value, (time.time() - start_time)
+        successful = False
+        while time.time() < start_time + timeout_seconds:
+            try:
+                properties = dbus_object.GetProperties(utf8_strings=True)
+            except dbus.exceptions.DBusException:
+                value = '(object reference became invalid)'
+                break
+            value = properties.get(property_name, None)
+            if value in expected_values:
+                successful = True
+                break
+            time.sleep(self.POLLING_INTERVAL_SECONDS)
+        duration = time.time() - start_time
+        return successful, self.dbus2primitive(value), duration
 
 
     @property
