@@ -17,17 +17,26 @@
 #include "perf_test_files.h"
 #include "quipper_string.h"
 #include "quipper_test.h"
-#include "utils.h"
-
-namespace quipper {
+#include "test_utils.h"
 
 namespace {
+
+// Returns a string representation of an unsigned integer |value|.
+string UintToString(uint64 value) {
+  stringstream ss;
+  ss << value;
+  return ss.str();
+}
+
+}  // namespace
+
+namespace quipper {
 
 void SerializeAndDeserialize(const string& input,
                              const string& output,
                              bool do_remap,
                              bool discard_unused_events) {
-  quipper::PerfDataProto perf_data_proto;
+  PerfDataProto perf_data_proto;
   PerfSerializer::Options options;
   options.do_remap = do_remap;
   options.discard_unused_events = discard_unused_events;
@@ -54,7 +63,7 @@ void SerializeAndDeserialize(const string& input,
 
 void SerializeToFileAndBack(const string& input,
                             const string& output) {
-  quipper::PerfDataProto input_perf_data_proto;
+  PerfDataProto input_perf_data_proto;
   struct timeval pre_serialize_time;
   gettimeofday(&pre_serialize_time, NULL);
   PerfSerializer serializer;
@@ -78,7 +87,7 @@ void SerializeToFileAndBack(const string& input,
 
   EXPECT_TRUE(WriteProtobufToFile(input_perf_data_proto, input_filename));
 
-  quipper::PerfDataProto output_perf_data_proto;
+  PerfDataProto output_perf_data_proto;
   EXPECT_TRUE(ReadProtobufFromFile(&output_perf_data_proto, input_filename));
 
   PerfSerializer deserializer;
@@ -92,8 +101,6 @@ void SerializeToFileAndBack(const string& input,
   remove(input_filename.c_str());
   remove(output_filename.c_str());
 }
-
-}  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
   ScopedTempDir output_dir;
@@ -109,7 +116,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
        ++i) {
     PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
                output_perf_reader2;
-    quipper::PerfDataProto perf_data_proto, perf_data_proto1;
+    PerfDataProto perf_data_proto, perf_data_proto1;
 
     const char* test_file = perf_test_files::kPerfDataFiles[i];
     string input_perf_data = GetTestInputFilePath(test_file);
@@ -198,13 +205,13 @@ TEST(PerfSerializeTest, TestCommMd5s) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing COMM Md5sum for " << input_perf_data;
 
-    quipper::PerfDataProto perf_data_proto;
+    PerfDataProto perf_data_proto;
     PerfSerializer serializer;
     EXPECT_TRUE(serializer.SerializeFromFile(input_perf_data,
                                              &perf_data_proto));
 
     for (int j = 0; j < perf_data_proto.events_size(); ++j) {
-      quipper::PerfDataProto_PerfEvent& event =
+      PerfDataProto_PerfEvent& event =
           *perf_data_proto.mutable_events(j);
       if (event.header().type() != PERF_RECORD_COMM)
         continue;
@@ -245,13 +252,13 @@ TEST(PerfSerializeTest, TestMmapMd5s) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing MMAP Md5sum for " << input_perf_data;
 
-    quipper::PerfDataProto perf_data_proto;
+    PerfDataProto perf_data_proto;
     PerfSerializer serializer;
     EXPECT_TRUE(serializer.SerializeFromFile(input_perf_data,
                                              &perf_data_proto));
 
     for (int j = 0; j < perf_data_proto.events_size(); ++j) {
-      quipper::PerfDataProto_PerfEvent& event =
+      PerfDataProto_PerfEvent& event =
           *perf_data_proto.mutable_events(j);
       if (event.header().type() != PERF_RECORD_MMAP)
         continue;

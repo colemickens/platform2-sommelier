@@ -5,7 +5,6 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -16,19 +15,8 @@
 
 namespace quipper {
 
-// Container for all the metadata from one perf report.  The key is the metadata
-// type, as shown in |kSupportedMetadata|.  The value is a vector of all the
-// occurrences of that type.  For some types, there is only one occurrence.
-typedef std::map<string, std::vector<string> > MetadataSet;
-
-extern const char* kSupportedMetadata[];
-
-// Path to the perf executable.
-string GetPerfPath();
-
-// Converts a perf data filename to the full path.
-string GetTestInputFilePath(const string& filename);
-string GetTestOutputFilePath(const string& filename);
+// Given a valid open file handle |fp|, returns the size of the file.
+long int GetFileSizeFromHandle(FILE* fp);
 
 event_t* CallocMemoryForEvent(size_t size);
 
@@ -38,68 +26,7 @@ bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
 bool BufferToFile(const string& filename, const std::vector<char>& contents);
 
-long int GetFileSize(const string& filename);
-
-bool CompareFileContents(const string& file1, const string& file2);
-
 uint64 Md5Prefix(const string& input);
-
-// Used to create a temporary file or directory.
-// TODO(cwp-team): Move it to a different file and add unit tests to this class.
-class ScopedTempPath {
- public:
-  ScopedTempPath() {}
-  // The temporary path will be removed when the object is destroyed.
-  virtual ~ScopedTempPath();
-  const string path() const {
-    return path_;
-  }
- protected:
-  string path_;
- private:
-  DISALLOW_COPY_AND_ASSIGN(ScopedTempPath);
-};
-
-class ScopedTempFile : public ScopedTempPath {
- public:
-  // Create a temporary file.  If successful, the path will be stored in
-  // |path_|.  If not, |path_| will be an empty string.
-  ScopedTempFile();
-};
-
-class ScopedTempDir : public ScopedTempPath {
- public:
-  // Create a temporary directory.  If successful, the path will be stored in
-  // |path_|.  If not, |path_| will be an empty string.
-  ScopedTempDir();
-};
-
-// Returns true if the perf reports show the same summary.  Metadata
-// is compared if it is present in kSupportedMetadata in utils.cc.
-bool ComparePerfReportsByFields(const string& quipper_input,
-                                const string& quipper_output,
-                                const string& sort_fields);
-
-// Default implementation of ComparePerfReportsByFields(), where |sort_fields|
-// is set to a default value.
-bool ComparePerfReports(const string& quipper_input,
-                        const string& quipper_output);
-
-// Similar to ComparePerfReports, but for piped perf data files.
-// Warning: This is not commutative - |quipper_input| must be the piped perf
-// data file passed to quipper, and |quipper_output| must be the file written
-// by quipper.
-bool ComparePipedPerfReports(const string& quipper_input,
-                             const string& quipper_output,
-                             MetadataSet* seen_metadata);
-
-// Given a perf data file, get the list of build ids and create a map from
-// filenames to build ids.
-bool GetPerfBuildIDMap(const string& filename,
-                       std::map<string, string>* output);
-
-// Returns true if the perf buildid-lists are the same.
-bool ComparePerfBuildIDLists(const string& file1, const string& file2);
 
 // Returns a string that represents |array| in hexadecimal.
 string HexToString(const u8* array, size_t length);
@@ -142,9 +69,6 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename);
 // Executes |command| and stores stdout output in |output|.  Returns true on
 // success, false otherwise.
 bool RunCommandAndGetStdout(const string& command, std::vector<char>* output);
-
-// Returns a string representation of an unsigned integer |value|.
-string UintToString(uint64 value);
 
 }  // namespace quipper
 

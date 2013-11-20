@@ -19,8 +19,10 @@ GENERATED_OBJECTS = perf_data.pb.o
 GENERATED_HEADERS = $(GENERATED_OBJECTS:.pb.o=.pb.h)
 
 COMMON_OBJECTS = address_mapper.o perf_parser.o perf_protobuf_io.o \
-		 perf_reader.o perf_recorder.o perf_serializer.o test_utils_defs.o utils.o \
+		 perf_reader.o perf_recorder.o perf_serializer.o utils.o \
 		 $(GENERATED_OBJECTS)
+
+COMMON_TEST_OBJECTS = test_utils.o test_utils_defs.o
 
 # Rule for compiling protobuf.
 perf_data.pb.h perf_data.pb.cc: perf_data.proto
@@ -42,7 +44,7 @@ all: CXX_BINARY(quipper)
 # Template for unit tests.
 define TEST_RULES_template
 CXX_BINARY($(1)): LDLIBS += -lgtest -lgmock
-CXX_BINARY($(1)): $(1).o $(COMMON_OBJECTS)
+CXX_BINARY($(1)): $(1).o $(COMMON_OBJECTS) $(COMMON_TEST_OBJECTS)
 clean: CLEAN($(1))
 tests: TEST(CXX_BINARY($(1)))
 endef

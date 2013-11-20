@@ -10,7 +10,7 @@
 #include "perf_recorder.h"
 #include "quipper_string.h"
 #include "quipper_test.h"
-#include "utils.h"
+#include "test_utils.h"
 
 namespace quipper{
 
