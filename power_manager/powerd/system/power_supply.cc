@@ -30,10 +30,10 @@ const int kDefaultPollMs = 30000;
 // Default shorter time interval used after a failed poll, in milliseconds.
 const int kDefaultShortPollMs = 5000;
 
-// Default values for |current_stabilized_after_*_delay_|, in milliseconds.
-const int kDefaultCurrentStabilizedAfterStartupDelayMs = 5000;
-const int kDefaultCurrentStabilizedAfterPowerSourceChangeDelayMs = 5000;
-const int kDefaultCurrentStabilizedAfterResumeDelayMs = 5000;
+// Default values for |battery_stabilized_after_*_delay_|, in milliseconds.
+const int kDefaultBatteryStabilizedAfterStartupDelayMs = 5000;
+const int kDefaultBatteryStabilizedAfterPowerSourceChangeDelayMs = 5000;
+const int kDefaultBatteryStabilizedAfterResumeDelayMs = 5000;
 
 // Different power supply types reported by the kernel.
 const char kBatteryType[] = "Battery";
@@ -110,8 +110,9 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
 }
 
 const int PowerSupply::kMaxCurrentSamples = 5;
-
-const int PowerSupply::kCurrentStabilizedSlackMs = 50;
+const int PowerSupply::kMaxChargeSamples = 5;
+const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
+const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
@@ -121,6 +122,8 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       power_supply_path_(power_supply_path),
       low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
+      current_samples_(kMaxCurrentSamples),
+      charge_samples_(kMaxChargeSamples),
       full_factor_(1.0),
       poll_timeout_id_(0),
       notify_observers_timeout_id_(0) {
@@ -143,20 +146,20 @@ void PowerSupply::Init() {
   prefs_->GetInt64(kBatteryPollShortIntervalPref, &short_poll_ms);
   short_poll_delay_ = base::TimeDelta::FromMilliseconds(short_poll_ms);
 
-  int64 startup_ms = kDefaultCurrentStabilizedAfterStartupDelayMs;
-  prefs_->GetInt64(kBatteryCurrentStabilizedAfterStartupMsPref, &startup_ms);
-  current_stabilized_after_startup_delay_ =
+  int64 startup_ms = kDefaultBatteryStabilizedAfterStartupDelayMs;
+  prefs_->GetInt64(kBatteryStabilizedAfterStartupMsPref, &startup_ms);
+  battery_stabilized_after_startup_delay_ =
       base::TimeDelta::FromMilliseconds(startup_ms);
 
-  int64 source_ms = kDefaultCurrentStabilizedAfterPowerSourceChangeDelayMs;
-  prefs_->GetInt64(kBatteryCurrentStabilizedAfterPowerSourceChangeMsPref,
+  int64 source_ms = kDefaultBatteryStabilizedAfterPowerSourceChangeDelayMs;
+  prefs_->GetInt64(kBatteryStabilizedAfterPowerSourceChangeMsPref,
                    &source_ms);
-  current_stabilized_after_power_source_change_delay_ =
+  battery_stabilized_after_power_source_change_delay_ =
       base::TimeDelta::FromMilliseconds(source_ms);
 
-  int64 resume_ms = kDefaultCurrentStabilizedAfterResumeDelayMs;
-  prefs_->GetInt64(kBatteryCurrentStabilizedAfterResumeMsPref, &resume_ms);
-  current_stabilized_after_resume_delay_ =
+  int64 resume_ms = kDefaultBatteryStabilizedAfterResumeDelayMs;
+  prefs_->GetInt64(kBatteryStabilizedAfterResumeMsPref, &resume_ms);
+  battery_stabilized_after_resume_delay_ =
       base::TimeDelta::FromMilliseconds(resume_ms);
 
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
@@ -181,11 +184,9 @@ void PowerSupply::Init() {
             << " secs and using low battery percent threshold of "
             << low_battery_shutdown_percent_;
 
-  current_samples_.Init(kMaxCurrentSamples);
-
   // This defers the initial recording of samples until the current has
   // stabilized.
-  ResetCurrentSamples(current_stabilized_after_startup_delay_);
+  ResetBatterySamples(battery_stabilized_after_startup_delay_);
   SchedulePoll(false);
 }
 
@@ -248,7 +249,7 @@ void PowerSupply::SetSuspended(bool suspended) {
     util::RemoveTimeout(&poll_timeout_id_);
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
-    ResetCurrentSamples(current_stabilized_after_resume_delay_);
+    ResetBatterySamples(battery_stabilized_after_resume_delay_);
     RefreshImmediately();
   }
 }
@@ -259,15 +260,16 @@ void PowerSupply::HandleUdevEvent() {
     RefreshImmediately();
 }
 
-void PowerSupply::ResetCurrentSamples(base::TimeDelta stabilized_delay) {
+void PowerSupply::ResetBatterySamples(base::TimeDelta stabilized_delay) {
   current_samples_.Clear();
+  charge_samples_.Clear();
 
   const base::TimeTicks now = clock_->GetCurrentTime();
-  current_stabilized_timestamp_ =
-      std::max(current_stabilized_timestamp_, now + stabilized_delay);
+  battery_stabilized_timestamp_ =
+      std::max(battery_stabilized_timestamp_, now + stabilized_delay);
   VLOG(1) << "Waiting "
-          << (current_stabilized_timestamp_ - now).InMilliseconds()
-          << " ms for current to stabilize";
+          << (battery_stabilized_timestamp_ - now).InMilliseconds()
+          << " ms for battery current and charge to stabilize";
 }
 
 bool PowerSupply::UpdatePowerStatus() {
@@ -439,14 +441,17 @@ bool PowerSupply::UpdatePowerStatus() {
 
   if (power_status_initialized_ &&
       status.line_power_on != power_status_.line_power_on)
-    ResetCurrentSamples(current_stabilized_after_power_source_change_delay_);
+    ResetBatterySamples(battery_stabilized_after_power_source_change_delay_);
 
-  if (clock_->GetCurrentTime() >= current_stabilized_timestamp_ &&
-      battery_current > 0.0)
-    current_samples_.AddSample(battery_current);
+  base::TimeTicks now = clock_->GetCurrentTime();
+  if (now >= battery_stabilized_timestamp_) {
+    charge_samples_.AddSample(battery_charge, now);
+    if (battery_current > 0.0)
+      current_samples_.AddSample(battery_current, now);
+  }
 
+  UpdateObservedBatteryChargeRate(&status);
   status.is_calculating_battery_time = !UpdateBatteryTimeEstimates(&status);
-
   status.battery_below_shutdown_threshold =
       IsBatteryBelowShutdownThreshold(status);
 
@@ -507,7 +512,7 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   status->battery_time_to_empty = base::TimeDelta();
   status->battery_time_to_shutdown = base::TimeDelta();
 
-  if (clock_->GetCurrentTime() < current_stabilized_timestamp_)
+  if (clock_->GetCurrentTime() < battery_stabilized_timestamp_)
     return false;
 
   const double average_current = current_samples_.GetAverage();
@@ -553,6 +558,14 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   return true;
 }
 
+void PowerSupply::UpdateObservedBatteryChargeRate(PowerStatus* status) const {
+  DCHECK(status);
+  const base::TimeDelta time_delta = charge_samples_.GetTimeDelta();
+  status->observed_battery_charge_rate =
+      (time_delta.InMilliseconds() < kObservedBatteryChargeRateMinMs) ? 0.0 :
+      charge_samples_.GetValueDelta() / (time_delta.InSecondsF() / 3600);
+}
+
 bool PowerSupply::IsBatteryBelowShutdownThreshold(
     const PowerStatus& status) const {
   if (low_battery_shutdown_time_ == base::TimeDelta() &&
@@ -565,24 +578,28 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
     return false;
   }
 
-  // If we're connected to an AC ("Mains") charger, don't shut down for a
-  // low battery charge. Other types of chargers may not be able to deliver
-  // enough current to prevent the battery from discharging, though.
-  if (status.line_power_on && status.line_power_type == kMainsType)
-    return false;
-
-  return (status.battery_time_to_empty > base::TimeDelta() &&
-          status.battery_time_to_empty <= low_battery_shutdown_time_) ||
+  const bool below_threshold =
+      (status.battery_time_to_empty > base::TimeDelta() &&
+       status.battery_time_to_empty <= low_battery_shutdown_time_) ||
       status.battery_percentage <= low_battery_shutdown_percent_;
+
+  // Most AC chargers can deliver enough current to prevent the battery from
+  // discharging while the device is in use; other chargers (e.g. USB) may not
+  // be able to, though. The observed charge rate is checked to verify whether
+  // the battery's charge is increasing or decreasing.
+  if (status.line_power_on)
+    return below_threshold && status.observed_battery_charge_rate < 0.0;
+
+  return below_threshold;
 }
 
 void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
   base::TimeDelta delay = last_poll_succeeded ? poll_delay_ : short_poll_delay_;
   base::TimeTicks now = clock_->GetCurrentTime();
-  if (current_stabilized_timestamp_ > now) {
+  if (battery_stabilized_timestamp_ > now) {
     delay = std::min(delay,
-        current_stabilized_timestamp_ - now +
-        base::TimeDelta::FromMilliseconds(kCurrentStabilizedSlackMs));
+        battery_stabilized_timestamp_ - now +
+        base::TimeDelta::FromMilliseconds(kBatteryStabilizedSlackMs));
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";

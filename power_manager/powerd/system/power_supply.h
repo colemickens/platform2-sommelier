@@ -39,6 +39,8 @@ struct PowerStatus {
         battery_current(0.0),
         battery_charge(0.0),
         battery_charge_full(0.0),
+        battery_charge_full_design(0.0),
+        observed_battery_charge_rate(0.0),
         nominal_voltage(0.0),
         is_calculating_battery_time(false),
         battery_percentage(-1.0),
@@ -74,6 +76,13 @@ struct PowerStatus {
   double battery_charge_full;
   // Battery full design charge level in ampere-hours.
   double battery_charge_full_design;
+
+  // Observed rate at which the battery's charge has been changing, in amperes
+  // (i.e. change in the charge per hour). Positive if the battery's charge has
+  // increased, negative if it's decreased, and zero if the charge hasn't
+  // changed or if the rate was not calculated because too few samples were
+  // available.
+  double observed_battery_charge_rate;
 
   // The battery voltage used in calculating time remaining.  This may or may
   // not be the same as the instantaneous voltage |battery_voltage|, as voltage
@@ -175,18 +184,25 @@ class PowerSupply {
   // calculating the battery's time-to-full or -empty.
   static const int kMaxCurrentSamples;
 
-  // Additional time beyond |current_stabilized_after_*_delay_| to wait before
+  // Maximum number of samples of recent battery charge readings to hold.
+  static const int kMaxChargeSamples;
+
+  // Minimum duration of samples that need to be present in |charge_samples_|
+  // for the observed battery charge rate to be calculated.
+  static const int kObservedBatteryChargeRateMinMs;
+
+  // Additional time beyond |battery_stabilized_after_*_delay_| to wait before
   // updating the status, in milliseconds. This just ensures that the timer
   // doesn't fire before it's safe to calculate the battery time.
-  static const int kCurrentStabilizedSlackMs;
+  static const int kBatteryStabilizedSlackMs;
 
   PowerSupply(const base::FilePath& power_supply_path, PrefsInterface *prefs);
   ~PowerSupply();
 
   const PowerStatus& power_status() const { return power_status_; }
 
-  base::TimeTicks current_stabilized_timestamp() const {
-    return current_stabilized_timestamp_;
+  base::TimeTicks battery_stabilized_timestamp() const {
+    return battery_stabilized_timestamp_;
   }
 
   // Initializes the object and begins polling.
@@ -215,10 +231,10 @@ class PowerSupply {
  private:
   friend class PowerSupplyTest;
 
-  // Clears |current_samples_| and sets |current_stabilized_timestamp_| so that
-  // the current won't be sampled again until at least |stabilized_delay| in the
-  // future.
-  void ResetCurrentSamples(base::TimeDelta stabilized_delay);
+  // Clears |current_samples_| and |charge_samples_| and sets
+  // |battery_stabilized_timestamp_| so that the current and charge won't be
+  // sampled again until at least |stabilized_delay| in the future.
+  void ResetBatterySamples(base::TimeDelta stabilized_delay);
 
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
@@ -236,6 +252,10 @@ class PowerSupply {
   // |nominal_voltage|, and |battery_voltage| fields must already be
   // initialized.
   bool UpdateBatteryTimeEstimates(PowerStatus* status);
+
+  // Calculates and stores the observed (based on periodic sampling) rate at
+  // which the battery's reported charge is changing.
+  void UpdateObservedBatteryChargeRate(PowerStatus* status) const;
 
   // Returns true if |status|'s battery level is so low that the system
   // should be shut down.  |status|'s |battery_percentage|,
@@ -287,20 +307,26 @@ class PowerSupply {
 
   // Amount of time to wait after startup, a power source change, or a
   // resume event before assuming that the current can be used in battery
-  // time estimates.
-  base::TimeDelta current_stabilized_after_startup_delay_;
-  base::TimeDelta current_stabilized_after_power_source_change_delay_;
-  base::TimeDelta current_stabilized_after_resume_delay_;
+  // time estimates and the charge is accurate.
+  base::TimeDelta battery_stabilized_after_startup_delay_;
+  base::TimeDelta battery_stabilized_after_power_source_change_delay_;
+  base::TimeDelta battery_stabilized_after_resume_delay_;
 
-  // Time at which the reported current is expected to have stabilized to
-  // the point where it can be recorded in |current_samples_| and the
-  // battery's time-to-full or time-to-empty estimates can be updated.
-  base::TimeTicks current_stabilized_timestamp_;
+  // Time at which the reported current and charge are expected to have
+  // stabilized to the point where they can be recorded in |current_samples_|
+  // and |charge_samples_| and the battery's time-to-full or time-to-empty
+  // estimates can be updated.
+  base::TimeTicks battery_stabilized_timestamp_;
 
   // A collection of recent current readings (in amperes) used to calculate
   // time-to-full and time-to-empty estimates. Reset in response to changes
   // such as resuming from suspend or the power source being changed.
   RollingAverage current_samples_;
+
+  // A collection of recent charge readings (in ampere-hours) used to measure
+  // the rate at which the battery is charging or discharging. Reset in response
+  // to the same changes as |current_samples_|.
+  RollingAverage charge_samples_;
 
   // The fraction of full charge at which the battery is considered "full", in
   // the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.

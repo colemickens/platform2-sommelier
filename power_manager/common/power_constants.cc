@@ -45,12 +45,12 @@ const char kRequireUsbInputDeviceToSuspendPref[] =
     "require_usb_input_device_to_suspend";
 const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
 const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
-const char kBatteryCurrentStabilizedAfterStartupMsPref[] =
-    "battery_current_stabilized_after_startup_ms";
-const char kBatteryCurrentStabilizedAfterPowerSourceChangeMsPref[] =
-    "battery_current_stabilized_after_power_source_change_ms";
-const char kBatteryCurrentStabilizedAfterResumeMsPref[] =
-    "battery_current_stabilized_after_resume_ms";
+const char kBatteryStabilizedAfterStartupMsPref[] =
+    "battery_stabilized_after_startup_ms";
+const char kBatteryStabilizedAfterPowerSourceChangeMsPref[] =
+    "battery_stabilized_after_power_source_change_ms";
+const char kBatteryStabilizedAfterResumeMsPref[] =
+    "battery_stabilized_after_resume_ms";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
 const char kDarkResumeSuspendDurationsPref[] = "dark_resume_suspend_durations";

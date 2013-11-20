@@ -646,7 +646,12 @@ void Daemon::OnPowerStatusUpdate() {
     state_controller_->HandlePowerSourceChange(power_source);
 
   if (status.battery_is_present && status.battery_below_shutdown_threshold) {
-    LOG(INFO) << "Shutting down due to low battery";
+    LOG(INFO) << "Shutting down due to low battery ("
+              << StringPrintf("%0.2f", status.battery_percentage) << "%, "
+              << util::TimeDeltaToString(status.battery_time_to_empty)
+              << " until empty, "
+              << StringPrintf("%0.3f", status.observed_battery_charge_rate)
+              << "A observed charge rate)";
     ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonLowBattery);
   }
 
