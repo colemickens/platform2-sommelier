@@ -47,25 +47,6 @@ std::string ValueToString(T value) {
   return stream.str();
 }
 
-std::string TimeDeltaToString(base::TimeDelta time) {
-  if (time < base::TimeDelta())
-    return "calculating";
-
-  // Calculate hours, minutes, and seconds, then display in H:M:S format.
-  int hours = time.InHours();
-  time -= TimeDelta::FromHours(hours);
-  int minutes = time.InMinutes();
-  time -= TimeDelta::FromMinutes(minutes);
-  int64 seconds = time.InSeconds();
-
-  std::stringstream stream;
-  stream << std::setfill('0');
-  stream << hours << ":"
-         << std::setw(2) << minutes << ":"
-         << std::setw(2) << seconds;
-  return stream.str();
-}
-
 class InfoDisplay {
  public:
   InfoDisplay() : name_indent_(0), value_indent_(0) {}
@@ -120,10 +101,6 @@ int main(int argc, char** argv) {
   base::FilePath path(kPowerStatusPath);
   power_manager::system::PowerSupply power_supply(path, &prefs);
   power_supply.Init();
-
-  // Ensure that the battery's time-to-full or time-to-empty will be
-  // calculated immediately.
-  power_supply.clear_current_stabilized_timestamp();
 
   power_manager::system::PowerInformation power_info;
   power_manager::system::PowerStatus& power_status = power_info.power_status;
@@ -190,19 +167,13 @@ int main(int argc, char** argv) {
     display.PrintValue("current (A)", power_status.battery_current);
     display.PrintValue("charge (Ah)", power_status.battery_charge);
     display.PrintValue("full charge (Ah)", power_status.battery_charge_full);
-    if (power_status.battery_state ==
-        power_manager::PowerSupplyProperties_BatteryState_CHARGING) {
-      display.PrintValue("time to full",
-          TimeDeltaToString(power_status.battery_time_to_full));
-    } else if (power_status.battery_state ==
-               power_manager::PowerSupplyProperties_BatteryState_DISCHARGING) {
-      display.PrintValue("time to empty",
-          TimeDeltaToString(power_status.battery_time_to_empty));
-    }
     display.PrintValue("percentage", power_status.battery_percentage);
     display.PrintValue("display percentage",
         power_status.display_battery_percentage);
     display.PrintStringValue("technology", power_info.battery_technology);
+
+    // Don't print the battery time estimates -- they're wildly inaccurate since
+    // this program only takes a single reading of the current.
   }
   return 0;
 }
