@@ -142,14 +142,10 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
       home_provider_info_(NULL),
-      provider_requires_roaming_(false),
       resetting_(false),
-      scanning_supported_(false),
       scanning_(false),
       scanning_or_searching_(false),
-      scan_interval_(0),
       subscription_state_(kSubscriptionStateUnknown),
-      sim_present_(false),
       reset_done_(false),
       scanning_or_searching_timeout_milliseconds_(
           kDefaultScanningOrSearchingTimeoutMilliseconds),
@@ -160,31 +156,12 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
   PropertyStore *store = cellular->mutable_store();
 
-  store->RegisterConstString(kCarrierProperty, &carrier_);
-  store->RegisterConstBool(kSupportNetworkScanProperty, &scanning_supported_);
-  store->RegisterConstString(kEsnProperty, &esn_);
-  store->RegisterConstString(kFirmwareRevisionProperty, &firmware_revision_);
-  store->RegisterConstString(kHardwareRevisionProperty, &hardware_revision_);
-  store->RegisterConstString(kImeiProperty, &imei_);
-  store->RegisterConstString(kImsiProperty, &imsi_);
   store->RegisterConstString(kIccidProperty, &sim_identifier_);
-  store->RegisterConstString(kManufacturerProperty, &manufacturer_);
-  store->RegisterConstString(kMdnProperty, &mdn_);
-  store->RegisterConstString(kMeidProperty, &meid_);
-  store->RegisterConstString(kMinProperty, &min_);
-  store->RegisterConstString(kModelIDProperty, &model_id_);
-  store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
-  store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
-  store->RegisterConstBool(kProviderRequiresRoamingProperty,
-                           &provider_requires_roaming_);
   store->RegisterConstBool(kScanningProperty, &scanning_or_searching_);
-  store->RegisterUint16(kScanIntervalProperty, &scan_interval_);
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
   store->RegisterConstString(kSIMOperatorIdProperty, &operator_id_);
-  store->RegisterConstBool(kSIMPresentProperty, &sim_present_);
-  store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
 }
 
 KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
@@ -628,18 +605,18 @@ string CellularCapabilityUniversal::GetMdnForOLP(
     const CellularOperatorInfo::CellularOperator &cellular_operator) const {
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
   // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
+  const string &mdn = cellular()->mdn();
   if (cellular_operator.identifier() == kVzwIdentifier) {
     // subscription_state_ is the definitive indicator of whether we need
     // activation. The OLP expects an all zero MDN in that case.
-    if (subscription_state_ == kSubscriptionStateUnprovisioned ||
-        mdn_.empty()) {
+    if (subscription_state_ == kSubscriptionStateUnprovisioned || mdn.empty()) {
       return string(kVzwMdnLength, '0');
     }
-    if (mdn_.length() > kVzwMdnLength) {
-      return mdn_.substr(mdn_.length() - kVzwMdnLength);
+    if (mdn.length() > kVzwMdnLength) {
+      return mdn.substr(mdn.length() - kVzwMdnLength);
     }
   }
-  return mdn_;
+  return mdn;
 }
 
 void CellularCapabilityUniversal::ReleaseProxies() {
@@ -668,8 +645,8 @@ void CellularCapabilityUniversal::UpdateStorageIdentifier() {
     }
   }
   // If the above didn't work, append IMSI, if available.
-  if (storage_id.empty() && !imsi_.empty()) {
-    storage_id = kPrefix + imsi_;
+  if (storage_id.empty() && !cellular()->imsi().empty()) {
+    storage_id = kPrefix + cellular()->imsi();
   }
   if (!storage_id.empty()) {
     cellular()->service()->SetStorageIdentifier(storage_id);
@@ -750,7 +727,9 @@ void CellularCapabilityUniversal::SetupApnTryList() {
   if (apn_info)
     apn_try_list_.push_back(*apn_info);
 
-  apn_try_list_.insert(apn_try_list_.end(), apn_list_.begin(), apn_list_.end());
+  apn_try_list_.insert(apn_try_list_.end(),
+                       cellular()->apn_list().begin(),
+                       cellular()->apn_list().end());
 }
 
 void CellularCapabilityUniversal::SetupConnectProperties(
@@ -826,7 +805,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
 }
 
 bool CellularCapabilityUniversal::AllowRoaming() {
-  return provider_requires_roaming_ || allow_roaming_property();
+  return cellular()->provider_requires_roaming() || allow_roaming_property();
 }
 
 void CellularCapabilityUniversal::GetProperties() {
@@ -881,7 +860,8 @@ string CellularCapabilityUniversal::CreateFriendlyServiceName() {
 }
 
 void CellularCapabilityUniversal::SetHomeProvider() {
-  SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi_
+  const string &imsi = cellular()->imsi();
+  SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi
           << " SPN: " << spn_ << ")";
 
   if (!modem_info()->provider_db())
@@ -889,7 +869,7 @@ void CellularCapabilityUniversal::SetHomeProvider() {
 
   // MCCMNC can be determined either from IMSI or Operator Code. Use whichever
   // one is available. If both were reported by the SIM, use IMSI.
-  const string &network_id = imsi_.empty() ? operator_id_ : imsi_;
+  const string &network_id = imsi.empty() ? operator_id_ : imsi;
   mobile_provider *provider_info = mobile_provider_lookup_best_match(
       modem_info()->provider_db(),
       spn_.c_str(),
@@ -902,7 +882,8 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   // Even if |provider_info| is the same as |home_provider_info_|, it is
   // possible that the |spn_| has changed.  Run all the code below.
   home_provider_info_ = provider_info;
-  provider_requires_roaming_ = provider_info->requires_roaming;
+  cellular()->set_provider_requires_roaming(
+      home_provider_info_->requires_roaming);
   Cellular::Operator oper;
   // If Operator ID is available, use that as network code, otherwise
   // use what was returned from the database.
@@ -923,9 +904,10 @@ void CellularCapabilityUniversal::SetHomeProvider() {
     oper.SetName(spn_);
   }
   cellular()->set_home_provider(oper);
+  bool roaming_required = cellular()->provider_requires_roaming();
   SLOG(Cellular, 2) << "Home provider: " << oper.GetCode() << ", "
                     << oper.GetName() << ", " << oper.GetCountry()
-                    << (provider_requires_roaming_ ? ", roaming required" : "");
+                    << (roaming_required ? ", roaming required" : "");
   InitAPNList();
   UpdateServiceName();
 }
@@ -999,15 +981,15 @@ void CellularCapabilityUniversal::UpdateOLP() {
   olp.CopyFrom(*result);
   string post_data = olp.GetPostData();
   ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}", sim_identifier_);
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", imei_);
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", imsi_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", cellular()->imei());
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", cellular()->imsi());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
                                GetMdnForOLP(*cellular_operator));
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", min_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", cellular()->min());
 
   // TODO(armansito): Define constants for the OEM IDs in MobileOperator
   // (See crbug.com/298408).
-  string oem_id = (model_id_ == kE362ModelId) ? "GOG3" : "QUA";
+  string oem_id = (cellular()->model_id() == kE362ModelId) ? "GOG3" : "QUA";
   ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", oem_id);
   olp.SetPostData(post_data);
   cellular()->service()->SetOLP(olp);
@@ -1178,10 +1160,10 @@ void CellularCapabilityUniversal::OnListBearersReply(
 
 void CellularCapabilityUniversal::InitAPNList() {
   SLOG(Cellular, 2) << __func__;
+  Stringmaps apn_list;
   if (!home_provider_info_) {
     return;
   }
-  apn_list_.clear();
   for (int i = 0; i < home_provider_info_->num_apns; ++i) {
     Stringmap props;
     mobile_apn *apn = home_provider_info_->apns[i];
@@ -1213,14 +1195,9 @@ void CellularCapabilityUniversal::InitAPNList() {
       props[kApnLocalizedNameProperty] = lname->name;
       props[kApnLanguageProperty] = lname->lang;
     }
-    apn_list_.push_back(props);
+    apn_list.push_back(props);
   }
-  if (cellular()->adaptor()) {
-    cellular()->adaptor()->EmitStringmapsChanged(
-        kCellularApnListProperty, apn_list_);
-  } else {
-    LOG(ERROR) << "Null RPC service adaptor.";
-  }
+  cellular()->set_apn_list(apn_list);
 }
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
@@ -1258,9 +1235,10 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
 }
 
 bool CellularCapabilityUniversal::IsMdnValid() const {
-  // Note that |mdn_| is normalized to contain only digits in OnMdnChanged().
-  for (size_t i = 0; i < mdn_.size(); ++i) {
-    if (mdn_[i] != '0')
+  const string &mdn = cellular()->mdn();
+  // Note that |mdn| is normalized to contain only digits in OnMdnChanged().
+  for (size_t i = 0; i < mdn.size(); ++i) {
+    if (mdn[i] != '0')
       return true;
   }
   return false;
@@ -1268,12 +1246,14 @@ bool CellularCapabilityUniversal::IsMdnValid() const {
 
 // always called from an async context
 void CellularCapabilityUniversal::Register(const ResultCallback &callback) {
-  SLOG(Cellular, 2) << __func__ << " \"" << selected_network_ << "\"";
+  SLOG(Cellular, 2) << __func__ << " \"" << cellular()->selected_network()
+                    << "\"";
   CHECK(!callback.is_null());
   Error error;
   ResultCallback cb = Bind(&CellularCapabilityUniversal::OnRegisterReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_3gpp_proxy_->Register(selected_network_, &error, cb, kTimeoutRegister);
+  modem_3gpp_proxy_->Register(cellular()->selected_network(), &error, cb,
+                              kTimeoutRegister);
   if (error.IsFailure())
     callback.Run(error);
 }
@@ -1296,7 +1276,7 @@ void CellularCapabilityUniversal::OnRegisterReply(
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
-    selected_network_ = desired_network_;
+    cellular()->set_selected_network(desired_network_);
     desired_network_.clear();
     callback.Run(error);
     return;
@@ -1305,7 +1285,7 @@ void CellularCapabilityUniversal::OnRegisterReply(
   // try to register on the home network.
   if (!desired_network_.empty()) {
     desired_network_.clear();
-    selected_network_.clear();
+    cellular()->set_selected_network("");
     LOG(INFO) << "Couldn't register on selected network, trying home network";
     Register(callback);
     return;
@@ -1410,25 +1390,24 @@ void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
   SLOG(Cellular, 2) << __func__;
 
   // Error handling is weak.  The current expectation is that on any
-  // error, found_networks_ should be cleared and a property change
+  // error, found_networks should be cleared and a property change
   // notification sent out.
   //
   // TODO(jglasgow): fix error handling
+  Stringmaps found_networks;
   scanning_ = false;
   UpdateScanningProperty();
-  found_networks_.clear();
   if (!error.IsFailure()) {
     for (ScanResults::const_iterator it = results.begin();
          it != results.end(); ++it) {
-      found_networks_.push_back(ParseScanResult(*it));
+      found_networks.push_back(ParseScanResult(*it));
     }
   }
-  cellular()->adaptor()->EmitStringmapsChanged(kFoundNetworksProperty,
-                                               found_networks_);
+  cellular()->set_found_networks(found_networks);
 
   // TODO(gmorain): This check for is_null() is a work-around because
   // Cellular::Scan() passes a null callback.  Instead: 1. Have Cellular::Scan()
-  // pass in a callback. 2. Have Cellular "own" the found_networks_ property
+  // pass in a callback. 2. Have Cellular "own" the found_networks property
   // 3. Have Cellular EmitStingMapsChanged() 4. Share the code between GSM and
   // Universal.
   if (!callback.is_null())
@@ -1521,7 +1500,7 @@ string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
   // modem doesn't support it at a given time. This might be problematic if we
   // ever want to support switching between access technologies (e.g. falling
   // back to 3G when LTE is not available).
-  if (model_id_ == kE362ModelId)
+  if (cellular()->model_id() == kE362ModelId)
     return kNetworkTechnologyLte;
 
   // Order is important.  Return the highest speed technology
@@ -1594,11 +1573,11 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_PROPERTY_MANUFACTURER,
                                 &string_value))
-    OnModemManufacturerChanged(string_value);
+    cellular()->set_manufacturer(string_value);
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_PROPERTY_MODEL,
                                 &string_value))
-    OnModemModelChanged(string_value);
+    cellular()->set_model_id(string_value);
   if (DBusProperties::GetString(properties,
                                MM_MODEM_PROPERTY_REVISION,
                                &string_value))
@@ -1695,7 +1674,8 @@ bool CellularCapabilityUniversal::RetriableConnectError(
   // modemmanager does not ever return kInvalidApn for E362 modems
   // with 1.41 firmware.  It remains to be seem if this will change
   // with 3.x firmware.
-  if ((model_id_ == kE362ModelId) && (error.type() == Error::kOperationFailed))
+  if ((cellular()->model_id() == kE362ModelId) &&
+      (error.type() == Error::kOperationFailed))
     return true;
 
   return false;
@@ -1733,13 +1713,13 @@ void CellularCapabilityUniversal::OnSimPathChanged(
 
   if (!IsValidSimPath(sim_path)) {
     // Clear all data about the sim
-    imsi_ = "";
+    cellular()->set_imsi("");
     spn_ = "";
-    sim_present_ = false;
+    cellular()->set_sim_present(false);
     OnSimIdentifierChanged("");
     OnOperatorIdChanged("");
   } else {
-    sim_present_ = true;
+    cellular()->set_sim_present(true);
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path,
                                                    cellular()->dbus_owner()));
@@ -1764,33 +1744,19 @@ void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
   //
   // TODO(benchan): We should consider having the modem plugins in ModemManager
   // reporting whether network scan is supported.
-  scanning_supported_ =
-      (current_capabilities & MM_MODEM_CAPABILITY_GSM_UMTS) != 0;
-  if (cellular()->adaptor()) {
-    cellular()->adaptor()->EmitBoolChanged(
-        kSupportNetworkScanProperty, scanning_supported_);
-  }
+  cellular()->set_scanning_supported(
+      (current_capabilities & MM_MODEM_CAPABILITY_GSM_UMTS) != 0);
 }
 
 void CellularCapabilityUniversal::OnMdnChanged(
     const string &mdn) {
-  mdn_ = NormalizeMdn(mdn);
+  cellular()->set_mdn(NormalizeMdn(mdn));
   UpdatePendingActivationState();
-}
-
-void CellularCapabilityUniversal::OnModemManufacturerChanged(
-    const string &manufacturer) {
-  manufacturer_ = manufacturer;
-}
-
-void CellularCapabilityUniversal::OnModemModelChanged(
-    const string &model) {
-  model_id_ = model;
 }
 
 void CellularCapabilityUniversal::OnModemRevisionChanged(
     const string &revision) {
-  firmware_revision_ = revision;
+  cellular()->set_firmware_revision(revision);
 }
 
 void CellularCapabilityUniversal::OnModemStateChanged(
@@ -1902,7 +1868,7 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEM3GPP_PROPERTY_IMEI,
                                 &imei))
-    OnImeiChanged(imei);
+    cellular()->set_imei(imei);
 
   // Handle registration state changes as a single change
   string operator_code = serving_operator_.GetCode();
@@ -1948,10 +1914,6 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
           properties, MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS,
           &locks))
     OnFacilityLocksChanged(locks);
-}
-
-void CellularCapabilityUniversal::OnImeiChanged(const string &imei) {
-  imei_ = imei;
 }
 
 void CellularCapabilityUniversal::On3GPPRegistrationChanged(
@@ -2094,14 +2056,8 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value))
     OnSpnChanged(value);
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value))
-    OnImsiChanged(value);
+    cellular()->set_imsi(value);
   SetHomeProvider();
-}
-
-// TODO(armansito): The following methods should probably log their argument
-// values. Need to learn if any of them need to be scrubbed.
-void CellularCapabilityUniversal::OnImsiChanged(const std::string &imsi) {
-  imsi_ = imsi;
 }
 
 void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
@@ -2121,9 +2077,10 @@ void CellularCapabilityUniversal::OnOperatorIdChanged(
 
 OutOfCreditsDetector::OOCType
 CellularCapabilityUniversal::GetOutOfCreditsDetectionType() const {
-  if (model_id_ == kALT3100ModelId) {
+  const string &model_id = cellular()->model_id();
+  if (model_id == kALT3100ModelId) {
     return OutOfCreditsDetector::OOCTypeSubscriptionState;
-  } else if (model_id_ == kE362ModelId) {
+  } else if (model_id == kE362ModelId) {
     return OutOfCreditsDetector::OOCTypeActivePassive;
   } else {
     return OutOfCreditsDetector::OOCTypeNone;

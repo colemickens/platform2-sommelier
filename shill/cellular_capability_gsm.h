@@ -166,7 +166,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
 
-  // Initializes the |apn_list_| property based on the current
+  // Initializes the |apn_list| property based on the current
   // |home_provider_info_|.
   void InitAPNList();
 
@@ -224,7 +224,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   Cellular::Operator serving_operator_;
   std::string spn_;
   mobile_provider *home_provider_info_;
-  bool provider_requires_roaming_;
   std::string desired_network_;
 
   // The number of times GetIMSI() has been retried.
@@ -235,14 +234,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   int64 get_imsi_retry_delay_milliseconds_;
 
   // Properties.
-  std::string selected_network_;
-  Stringmaps found_networks_;
   std::deque<Stringmap> apn_try_list_;
   bool scanning_;
-  uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
-  bool sim_present_;
-  Stringmaps apn_list_;
 
   static unsigned int friendly_service_name_id_;
 

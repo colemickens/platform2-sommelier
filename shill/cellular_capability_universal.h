@@ -128,22 +128,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Updates the storage identifier used for the current cellular service.
   virtual void UpdateStorageIdentifier();
 
-  // Returns the operator-specific form of |mdn_|, which is passed to the online
+  // Returns the operator-specific form of |mdn|, which is passed to the online
   // payment portal of a cellular operator.
   std::string GetMdnForOLP(
       const CellularOperatorInfo::CellularOperator &cellular_operator) const;
-
-  const std::string &mdn() const { return mdn_; }
-  void set_mdn(const std::string &mdn) { mdn_ = mdn; }
-
-  const std::string &min() const { return min_; }
-  void set_min(const std::string &min) { min_ = min; }
-
-  const std::string &meid() const { return meid_; }
-  void set_meid(const std::string &meid) { meid_ = meid; }
-
-  const std::string &esn() const { return esn_; }
-  void set_esn(const std::string &esn) { esn_ = esn; }
 
  private:
   struct ModemModes {
@@ -328,7 +316,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
 
-  // Initializes the |apn_list_| property based on the current
+  // Initializes the |apn_list| property based on the current
   // |home_provider_info_|.
   void InitAPNList();
 
@@ -368,8 +356,6 @@ class CellularCapabilityUniversal : public CellularCapability {
       const std::vector<uint32> &supported_capabilities);
   void OnModemCurrentCapabilitiesChanged(uint32 current_capabilities);
   void OnMdnChanged(const std::string &mdn);
-  void OnModemManufacturerChanged(const std::string &manufacturer);
-  void OnModemModelChanged(const std::string &model);
   void OnModemRevisionChanged(const std::string &revision);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32 access_technologies);
@@ -386,7 +372,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void OnModem3GPPPropertiesChanged(
       const DBusPropertiesMap &properties,
       const std::vector<std::string> &invalidated_properties);
-  void OnImeiChanged(const std::string &imei);
   void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
                                  const std::string &operator_code,
                                  const std::string &operator_name);
@@ -402,7 +387,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnSimPropertiesChanged(
       const DBusPropertiesMap &props,
       const std::vector<std::string> &invalidated_properties);
-  void OnImsiChanged(const std::string &imsi);
   void OnSpnChanged(const std::string &spn);
   void OnSimIdentifierChanged(const std::string &id);
   void OnOperatorIdChanged(const std::string &operator_id);
@@ -471,34 +455,16 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string sim_identifier_;
   std::string operator_id_;
   mobile_provider *home_provider_info_;
-  bool provider_requires_roaming_;
   std::string desired_network_;
 
   // Properties.
-  std::string carrier_;
-  std::string esn_;
-  std::string firmware_revision_;
-  std::string hardware_revision_;
-  std::string imei_;
-  std::string imsi_;
-  std::string manufacturer_;
-  std::string mdn_;
-  std::string meid_;
-  std::string min_;
-  std::string model_id_;
-  std::string selected_network_;
-  Stringmaps found_networks_;
   std::deque<Stringmap> apn_try_list_;
   bool resetting_;
-  bool scanning_supported_;
   bool scanning_;
   bool scanning_or_searching_;
-  uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_;
-  Stringmaps apn_list_;
   std::string sim_path_;
-  bool sim_present_;
   DBus::Path bearer_path_;
   bool reset_done_;
 

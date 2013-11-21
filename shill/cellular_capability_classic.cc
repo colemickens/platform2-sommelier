@@ -65,22 +65,8 @@ CellularCapabilityClassic::CellularCapabilityClassic(
     ProxyFactory *proxy_factory,
     ModemInfo *modem_info)
     : CellularCapability(cellular, proxy_factory, modem_info),
-      scanning_supported_(false),
       weak_ptr_factory_(this) {
   PropertyStore *store = cellular->mutable_store();
-  store->RegisterConstString(kCarrierProperty, &carrier_);
-  store->RegisterConstBool(kSupportNetworkScanProperty, &scanning_supported_);
-  store->RegisterConstString(kEsnProperty, &esn_);
-  store->RegisterConstString(kFirmwareRevisionProperty, &firmware_revision_);
-  store->RegisterConstString(kHardwareRevisionProperty, &hardware_revision_);
-  store->RegisterConstString(kImeiProperty, &imei_);
-  store->RegisterConstString(kImsiProperty, &imsi_);
-  store->RegisterConstString(kManufacturerProperty, &manufacturer_);
-  store->RegisterConstString(kMdnProperty, &mdn_);
-  store->RegisterConstString(kMeidProperty, &meid_);
-  store->RegisterConstString(kMinProperty, &min_);
-  store->RegisterConstString(kModelIDProperty, &model_id_);
-
   // This class is currently instantiated only for Gobi modems so setup the
   // supported carriers list appropriately and expose it over RPC.
   supported_carriers_.push_back(kCarrierGenericUMTS);
@@ -348,17 +334,26 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
     const ResultCallback &callback,
     const DBusPropertiesMap &props,
     const Error &error) {
+  string prop_value;
   SLOG(Cellular, 2) << __func__ << " " << props.size() << " props. error "
                     << error;
   if (error.IsSuccess()) {
-    DBusProperties::GetString(props, "carrier", &carrier_);
-    DBusProperties::GetString(props, "meid", &meid_);
-    DBusProperties::GetString(props, "imei", &imei_);
-    DBusProperties::GetString(props, kModemPropertyIMSI, &imsi_);
-    DBusProperties::GetString(props, "esn", &esn_);
-    DBusProperties::GetString(props, "mdn", &mdn_);
-    DBusProperties::GetString(props, "min", &min_);
-    DBusProperties::GetString(props, "firmware_revision", &firmware_revision_);
+    if (DBusProperties::GetString(props, "carrier", &prop_value))
+      cellular()->set_carrier(prop_value);
+    if (DBusProperties::GetString(props, "meid", &prop_value))
+      cellular()->set_meid(prop_value);
+    if (DBusProperties::GetString(props, "imei", &prop_value))
+     cellular()->set_imei(prop_value);
+    if (DBusProperties::GetString(props, kModemPropertyIMSI, &prop_value))
+      cellular()->set_imsi(prop_value);
+    if (DBusProperties::GetString(props, "esn", &prop_value))
+      cellular()->set_esn(prop_value);
+    if (DBusProperties::GetString(props, "mdn", &prop_value))
+      cellular()->set_mdn(prop_value);
+    if (DBusProperties::GetString(props, "min", &prop_value))
+      cellular()->set_min(prop_value);
+    if (DBusProperties::GetString(props, "firmware_revision", &prop_value))
+      cellular()->set_firmware_revision(prop_value);
     UpdateStatus(props);
   }
   callback.Run(error);
@@ -370,9 +365,9 @@ void CellularCapabilityClassic::OnGetModemInfoReply(
     const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess()) {
-    manufacturer_ = info._1;
-    model_id_ = info._2;
-    hardware_revision_ = info._3;
+    cellular()->set_manufacturer(info._1);
+    cellular()->set_model_id(info._2);
+    cellular()->set_hardware_revision(info._3);
     SLOG(Cellular, 2) << __func__ << ": " << info._1 << ", " << info._2 << ", "
                       << info._3;
   }

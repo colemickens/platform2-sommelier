@@ -388,7 +388,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
   capability_->StartModem(&error, callback);
 
   EXPECT_TRUE(error.IsOngoing());
-  EXPECT_EQ(kImei, capability_->imei_);
+  EXPECT_EQ(kImei, cellular_->imei());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
@@ -427,14 +427,14 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
   EXPECT_TRUE(error.IsOngoing());
 
   // Verify that the modem has not been enabled.
-  EXPECT_TRUE(capability_->imei_.empty());
+  EXPECT_TRUE(cellular_->imei().empty());
   EXPECT_EQ(0, capability_->access_technologies_);
   Mock::VerifyAndClearExpectations(this);
 
   // Change the state to kModemStateEnabling and verify that it still has not
   // been enabled.
   capability_->OnModemStateChanged(Cellular::kModemStateEnabling);
-  EXPECT_TRUE(capability_->imei_.empty());
+  EXPECT_TRUE(cellular_->imei().empty());
   EXPECT_EQ(0, capability_->access_technologies_);
   Mock::VerifyAndClearExpectations(this);
 
@@ -442,14 +442,14 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
   // been enabled.
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   capability_->OnModemStateChanged(Cellular::kModemStateDisabling);
-  EXPECT_TRUE(capability_->imei_.empty());
+  EXPECT_TRUE(cellular_->imei().empty());
   EXPECT_EQ(0, capability_->access_technologies_);
   Mock::VerifyAndClearExpectations(this);
 
   // Change the state of the modem to disabled and verify that it gets enabled.
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
-  EXPECT_EQ(kImei, capability_->imei_);
+  EXPECT_EQ(kImei, cellular_->imei());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
@@ -671,15 +671,15 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   InitProviderDB();
 
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
 
   capability_->OnSimPathChanged(kSimPath);
-  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
 
-  capability_->imsi_ = "";
+  cellular_->set_imsi("");
   capability_->sim_identifier_ = "";
   capability_->operator_id_ = "";
   capability_->spn_ = "";
@@ -689,7 +689,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
-  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
@@ -706,14 +706,14 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
-  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is missing and SIM path is "/".
   capability_->OnSimPathChanged(CellularCapabilityUniversal::kRootPath);
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ(CellularCapabilityUniversal::kRootPath, capability_->sim_path_);
 
@@ -722,14 +722,14 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
-  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   // SIM is missing and SIM path is empty.
   capability_->OnSimPathChanged("");
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
 
@@ -738,7 +738,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
-  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
@@ -766,12 +766,13 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
               GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
 
-  EXPECT_EQ("", capability_->imei_);
+  EXPECT_EQ("", cellular_->imei());
   EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
             capability_->access_technologies_);
   EXPECT_FALSE(capability_->sim_proxy_.get());
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
       kTechnologyFamilyProperty, kTechnologyFamilyGsm));
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kImeiProperty, kImei));
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties, vector<string>());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
@@ -782,14 +783,14 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem3gpp_properties,
                                        vector<string>());
-  EXPECT_EQ("", capability_->imei_);
+  EXPECT_EQ("", cellular_->imei());
 
   // Changing properties on the right interface gets reflected in the
   // capabilities object
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
                                        modem3gpp_properties,
                                        vector<string>());
-  EXPECT_EQ(kImei, capability_->imei_);
+  EXPECT_EQ(kImei, cellular_->imei());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Expect to see changes when the family changes
@@ -846,7 +847,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
   EXPECT_EQ(CellularCapabilityUniversal::kGenericServiceNamePrefix,
             cellular_->service_->friendly_name().substr(0, len));
 
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   capability_->SetHomeProvider();
   EXPECT_EQ("", capability_->spn_);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
@@ -882,7 +883,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   capability_->InitProxies();
 
   SetService();
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   capability_->SetHomeProvider();
   cellular_->set_modem_state(Cellular::kModemStateConnected);
   SetRegistrationDroppedUpdateTimeout(0);
@@ -1037,7 +1038,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
   capability_->InitProxies();
   SetService();
 
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   capability_->SetHomeProvider();
   cellular_->set_modem_state(Cellular::kModemStateRegistered);
   SetRegistrationDroppedUpdateTimeout(0);
@@ -1106,29 +1107,29 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(1);
 
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
-  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   capability_->OnSimPathChanged(kSimPath);
-  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
-  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // Changing to the same SIM path should be a no-op.
   capability_->OnSimPathChanged(kSimPath);
-  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
-  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
@@ -1136,10 +1137,10 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   capability_->OnSimPathChanged("");
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(properties_proxy_.get());
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
-  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
@@ -1151,19 +1152,19 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
       .Times(1);
 
   capability_->OnSimPathChanged(kSimPath);
-  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
-  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   capability_->OnSimPathChanged("/");
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("/", capability_->sim_path_);
-  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
@@ -1194,7 +1195,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
                                        modem_properties, vector<string>());
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_TRUE(capability_->sim_proxy_.get());
-  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kImsi, cellular_->imsi());
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Updating the SIM
@@ -1215,14 +1216,14 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
                                        new_properties,
                                        vector<string>());
-  EXPECT_EQ(kNewImsi, capability_->imsi_);
+  EXPECT_EQ(kNewImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kOperatorIdentifier, cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, capability_->apn_list_.size());
+  EXPECT_EQ(4, cellular_->apn_list().size());
 
   new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
       append_string(kOperatorName);
@@ -1342,8 +1343,8 @@ TEST_F(CellularCapabilityUniversalMainTest, ScanFailure) {
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Validate that signals are emitted even if an error is reported.
-  capability_->found_networks_.clear();
-  capability_->found_networks_.push_back(Stringmap());
+  Stringmaps found_networks = { Stringmap() };
+  cellular_->set_found_networks(found_networks);
   EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
   EXPECT_CALL(*device_adaptor_,
               EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
@@ -1539,11 +1540,11 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
 
 TEST_F(CellularCapabilityUniversalMainTest, AllowRoaming) {
   EXPECT_FALSE(cellular_->allow_roaming_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
   EXPECT_FALSE(capability_->AllowRoaming());
-  capability_->provider_requires_roaming_ = true;
+  cellular_->set_provider_requires_roaming(true);
   EXPECT_TRUE(capability_->AllowRoaming());
-  capability_->provider_requires_roaming_ = false;
+  cellular_->set_provider_requires_roaming(false);
   cellular_->allow_roaming_ = true;
   EXPECT_TRUE(capability_->AllowRoaming());
 }
@@ -1554,14 +1555,14 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   static const char kCode[] = "310160";
 
   EXPECT_FALSE(capability_->home_provider_info_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   // No mobile provider DB available.
   capability_->SetHomeProvider();
   EXPECT_TRUE(cellular_->home_provider().GetName().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   InitProviderDB();
 
@@ -1570,7 +1571,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_TRUE(cellular_->home_provider().GetName().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   // Operator Code available.
   capability_->operator_id_ = "310240";
@@ -1578,24 +1579,24 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ("310240", cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, capability_->apn_list_.size());
+  EXPECT_EQ(4, cellular_->apn_list().size());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   cellular_->home_provider_.SetName("");
   cellular_->home_provider_.SetCountry("");
   cellular_->home_provider_.SetCode("");
 
   // IMSI available
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   capability_->operator_id_.clear();
   capability_->SetHomeProvider();
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, capability_->apn_list_.size());
+  EXPECT_EQ(4, cellular_->apn_list().size());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   Cellular::Operator oper;
   cellular_->set_home_provider(oper);
@@ -1604,7 +1605,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   static const char kCubic[] = "Cubic";
   capability_->spn_ = kCubic;
@@ -1612,7 +1613,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(capability_->provider_requires_roaming_);
+  EXPECT_TRUE(cellular_->provider_requires_roaming());
 
   static const char kCUBIC[] = "CUBIC";
   capability_->spn_ = kCUBIC;
@@ -1621,7 +1622,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(capability_->provider_requires_roaming_);
+  EXPECT_TRUE(cellular_->provider_requires_roaming());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
@@ -1672,7 +1673,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
 
   // Modem with an unactivated service in the 'enabled' or 'searching' state
   capability_->cellular()->modem_state_ = Cellular::kModemStateEnabled;
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   CellularService::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
@@ -1775,8 +1776,8 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
                              default_identifier_pattern));
   Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
 
-  // |capability_->imsi_| is not ""
-  capability_->imsi_ = "TESTIMSI";
+  // |cellular_->imsi_| is not ""
+  cellular_->set_imsi("TESTIMSI");
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
       GetCellularOperatorByMCCMNC(capability_->operator_id_))
       .WillOnce(Return(nullptr));
@@ -1808,23 +1809,23 @@ TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
 
   cellular_operator.identifier_ = "vzw";
-  capability_->mdn_ = "";
+  cellular_->set_mdn("");
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
-  capability_->mdn_ = "0123456789";
+  cellular_->set_mdn("0123456789");
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
-  capability_->mdn_ = "10123456789";
+  cellular_->set_mdn("10123456789");
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
-  capability_->mdn_ = "1021232333";
+  cellular_->set_mdn("1021232333");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
 
   cellular_operator.identifier_ = "foo";
-  capability_->mdn_ = "";
+  cellular_->set_mdn("");
   EXPECT_EQ("", capability_->GetMdnForOLP(cellular_operator));
-  capability_->mdn_ = "0123456789";
+  cellular_->set_mdn("0123456789");
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
-  capability_->mdn_ = "10123456789";
+  cellular_->set_mdn("10123456789");
   EXPECT_EQ("10123456789", capability_->GetMdnForOLP(cellular_operator));
 }
 
@@ -1837,10 +1838,10 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
   test_olp.SetPostData("imei=${imei}&imsi=${imsi}&mdn=${mdn}&"
                        "min=${min}&iccid=${iccid}");
 
-  capability_->imei_ = "1";
-  capability_->imsi_ = "2";
-  capability_->mdn_ = "10123456789";
-  capability_->min_ = "5";
+  cellular_->set_imei("1");
+  cellular_->set_imsi("2");
+  cellular_->set_mdn("10123456789");
+  cellular_->set_min("5");
   capability_->sim_identifier_ = "6";
   capability_->operator_id_ = "123456";
 
@@ -1870,20 +1871,20 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsMdnValid) {
-  capability_->mdn_.clear();
+  cellular_->set_mdn("");
   EXPECT_FALSE(capability_->IsMdnValid());
-  capability_->mdn_ = "0000000";
+  cellular_->set_mdn("0000000");
   EXPECT_FALSE(capability_->IsMdnValid());
-  capability_->mdn_ = "0000001";
+  cellular_->set_mdn("0000001");
   EXPECT_TRUE(capability_->IsMdnValid());
-  capability_->mdn_ = "1231223";
+  cellular_->set_mdn("1231223");
   EXPECT_TRUE(capability_->IsMdnValid());
 }
 
 TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
   const char kIccid[] = "1234567";
 
-  capability_->mdn_.clear();
+  cellular_->set_mdn("");
   capability_->sim_identifier_.clear();
 
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
@@ -1925,7 +1926,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(0);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
-  capability_->mdn_ = "1231231212";
+  cellular_->set_mdn("1231231212");
   capability_->CompleteActivation(&error);
 }
 
@@ -1934,7 +1935,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   capability_->sim_identifier_.clear();
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   CellularService::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
@@ -1946,7 +1947,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   Mock::VerifyAndClearExpectations(service_);
   EXPECT_FALSE(service_->auto_connect());
 
-  capability_->mdn_ = "1231231122";
+  cellular_->set_mdn("1231231122");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
@@ -1956,7 +1957,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   EXPECT_TRUE(service_->auto_connect());
 
   service_->SetAutoConnect(false);
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   capability_->sim_identifier_ = kIccid;
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID,
@@ -1986,7 +1987,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   // SubscriptionStateUnprovisioned overrides valid MDN.
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
-  capability_->mdn_ = "1231231122";
+  cellular_->set_mdn("1231231122");
   capability_->sim_identifier_.clear();
   service_->SetAutoConnect(false);
   EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
@@ -1998,7 +1999,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   // SubscriptionStateProvisioned overrides invalid MDN.
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateProvisioned;
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   capability_->sim_identifier_.clear();
   service_->SetAutoConnect(false);
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
@@ -2020,7 +2021,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ActivationWaitForRegisterTimeout) {
 
   // No ICCID, no MDN
   capability_->sim_identifier_.clear();
-  capability_->mdn_.clear();
+  cellular_->set_mdn("");
   capability_->reset_done_ = false;
   capability_->OnActivationWaitForRegisterTimeout();
 
@@ -2033,11 +2034,11 @@ TEST_F(CellularCapabilityUniversalMainTest, ActivationWaitForRegisterTimeout) {
   capability_->OnActivationWaitForRegisterTimeout();
 
   // Valid MDN.
-  capability_->mdn_ = "0000000001";
+  cellular_->set_mdn("0000000001");
   capability_->OnActivationWaitForRegisterTimeout();
 
   // Invalid MDN, reset done.
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   capability_->reset_done_ = true;
   capability_->OnActivationWaitForRegisterTimeout();
 
@@ -2067,7 +2068,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
 
   // No MDN, no ICCID.
-  capability_->mdn_ = "0000000";
+  cellular_->set_mdn("0000000");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
   capability_->sim_identifier_.clear();
@@ -2078,7 +2079,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Valid MDN, but subsciption_state_ Unprovisioned
-  capability_->mdn_ = "1234567";
+  cellular_->set_mdn("1234567");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   capability_->sim_identifier_.clear();
@@ -2162,14 +2163,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
 
   // Got valid MDN, subscription_state_ is kSubscriptionStateUnknown
   cellular_->state_ = Cellular::kStateRegistered;
-  capability_->mdn_ = "1020304";
+  cellular_->set_mdn("1020304");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
   capability_->UpdatePendingActivationState();
 
   // Got invalid MDN, subscription_state_ is kSubscriptionStateProvisioned
   cellular_->state_ = Cellular::kStateRegistered;
-  capability_->mdn_ = "0000000";
+  cellular_->set_mdn("0000000");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateProvisioned;
   capability_->UpdatePendingActivationState();
@@ -2178,7 +2179,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Timed out, not registered.
-  capability_->mdn_.clear();
+  cellular_->set_mdn("");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -2293,7 +2294,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
 
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   CellularService::OLP olp;
@@ -2302,11 +2303,11 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
       .WillRepeatedly(Return(&olp));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
-  capability_->mdn_ = "";
+  cellular_->set_mdn("");
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
-  capability_->mdn_ = "1234567890";
+  cellular_->set_mdn("1234567890");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
-  capability_->mdn_ = "0000000000";
+  cellular_->set_mdn("0000000000");
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 
   const char kIccid[] = "1234567890";
@@ -2326,41 +2327,41 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
-  EXPECT_FALSE(capability_->scanning_supported_);
+  EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_LTE);
-  EXPECT_FALSE(capability_->scanning_supported_);
+  EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_CDMA_EVDO);
-  EXPECT_FALSE(capability_->scanning_supported_);
+  EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_GSM_UMTS);
-  EXPECT_TRUE(capability_->scanning_supported_);
+  EXPECT_TRUE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(
       MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_CDMA_EVDO);
-  EXPECT_TRUE(capability_->scanning_supported_);
+  EXPECT_TRUE(cellular_->scanning_supported());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
-  capability_->model_id_.clear();
+  cellular_->set_model_id("");;
   capability_->access_technologies_ = 0;
   EXPECT_TRUE(capability_->GetNetworkTechnologyString().empty());
 
-  capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
+  cellular_->set_model_id(CellularCapabilityUniversal::kE362ModelId);
   EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
 
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_GPRS;
   EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
 
-  capability_->model_id_.clear();
+  cellular_->set_model_id("");;
   EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, GetOutOfCreditsDetectionType) {
-  capability_->model_id_.clear();
+  cellular_->set_model_id("");;
   EXPECT_EQ(OutOfCreditsDetector::OOCTypeNone,
             capability_->GetOutOfCreditsDetectionType());
-  capability_->model_id_ = CellularCapabilityUniversal::kALT3100ModelId;
+  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
   EXPECT_EQ(OutOfCreditsDetector::OOCTypeSubscriptionState,
             capability_->GetOutOfCreditsDetectionType());
-  capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
+  cellular_->set_model_id(CellularCapabilityUniversal::kE362ModelId);
   EXPECT_EQ(OutOfCreditsDetector::OOCTypeActivePassive,
             capability_->GetOutOfCreditsDetectionType());
 }

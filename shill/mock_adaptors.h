@@ -30,6 +30,8 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
   MOCK_METHOD2(EmitStringChanged, void(const std::string &name,
                                        const std::string &value));
+  MOCK_METHOD2(EmitStringmapChanged, void(const std::string &name,
+                                          const Stringmap &value));
   MOCK_METHOD2(EmitStringmapsChanged, void(const std::string &name,
                                            const Stringmaps &value));
   MOCK_METHOD2(EmitKeyValueStoreChanged, void(const std::string &name,

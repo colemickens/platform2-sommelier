@@ -340,10 +340,10 @@ TEST_F(CellularCapabilityGSMTest, GetIMEI) {
                        &CellularCapabilityGSMTest::InvokeGetIMEI));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
-  ASSERT_TRUE(capability_->imei_.empty());
+  ASSERT_TRUE(cellular_->imei().empty());
   capability_->GetIMEI(Bind(&CellularCapabilityGSMTest::TestCallback,
                             Unretained(this)));
-  EXPECT_EQ(kIMEI, capability_->imei_);
+  EXPECT_EQ(kIMEI, cellular_->imei());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetIMSI) {
@@ -356,12 +356,12 @@ TEST_F(CellularCapabilityGSMTest, GetIMSI) {
   SetCardProxy();
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
-  EXPECT_TRUE(capability_->imsi_.empty());
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->imsi().empty());
+  EXPECT_FALSE(cellular_->sim_present());
   capability_->GetIMSI(callback);
-  EXPECT_EQ(kIMSI, capability_->imsi_);
-  EXPECT_TRUE(capability_->sim_present_);
-  capability_->imsi_.clear();
+  EXPECT_EQ(kIMSI, cellular_->imsi());
+  EXPECT_TRUE(cellular_->sim_present());
+  cellular_->set_imsi("");
   InitProviderDB();
   capability_->GetIMSI(callback);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
@@ -383,16 +383,16 @@ TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   SetCardProxy();
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
-  EXPECT_TRUE(capability_->imsi_.empty());
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->imsi().empty());
+  EXPECT_FALSE(cellular_->sim_present());
 
   capability_->sim_lock_status_.lock_type = "sim-pin";
   capability_->GetIMSI(callback);
-  EXPECT_TRUE(capability_->imsi_.empty());
-  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->imsi().empty());
+  EXPECT_TRUE(cellular_->sim_present());
 
   capability_->sim_lock_status_.lock_type.clear();
-  capability_->sim_present_ = false;
+  cellular_->set_sim_present(false);
   capability_->get_imsi_retries_ = 0;
   EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds,
             capability_->get_imsi_retry_delay_milliseconds_);
@@ -405,8 +405,8 @@ TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   }
   EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryLimit + 1,
             capability_->get_imsi_retries_);
-  EXPECT_TRUE(capability_->imsi_.empty());
-  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(cellular_->imsi().empty());
+  EXPECT_FALSE(cellular_->sim_present());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetMSISDN) {
@@ -416,10 +416,10 @@ TEST_F(CellularCapabilityGSMTest, GetMSISDN) {
                        &CellularCapabilityGSMTest::InvokeGetMSISDN));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
-  ASSERT_TRUE(capability_->mdn_.empty());
+  ASSERT_TRUE(cellular_->mdn().empty());
   capability_->GetMSISDN(Bind(&CellularCapabilityGSMTest::TestCallback,
                             Unretained(this)));
-  EXPECT_EQ(kMSISDN, capability_->mdn_);
+  EXPECT_EQ(kMSISDN, cellular_->mdn());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetSPN) {
@@ -456,7 +456,7 @@ TEST_F(CellularCapabilityGSMTest, RegisterOnNetwork) {
   capability_->RegisterOnNetwork(kTestNetwork, &error,
                                  Bind(&CellularCapabilityGSMTest::TestCallback,
                                       Unretained(this)));
-  EXPECT_EQ(kTestNetwork, capability_->selected_network_);
+  EXPECT_EQ(kTestNetwork, cellular_->selected_network());
 }
 
 TEST_F(CellularCapabilityGSMTest, IsRegistered) {
@@ -551,10 +551,14 @@ MATCHER(SizeIs2, "") {
 
 TEST_F(CellularCapabilityGSMTest, Scan) {
   Error error;
+  Stringmaps found_networks;
+
   EXPECT_CALL(*network_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
       .WillOnce(SaveArg<1>(&scan_callback_));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  capability_->found_networks_.resize(3, Stringmap());
+  found_networks = cellular_->found_networks();
+  found_networks.resize(3);
+  cellular_->set_found_networks(found_networks);
   EXPECT_CALL(*device_adaptor_,
               EmitStringmapsChanged(kFoundNetworksProperty, SizeIs2()));
   EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
@@ -570,9 +574,10 @@ TEST_F(CellularCapabilityGSMTest, Scan) {
   EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
   InvokeScanReply();
   EXPECT_FALSE(capability_->scanning_);
-  EXPECT_EQ(2, capability_->found_networks_.size());
-  EXPECT_EQ(kScanID0, capability_->found_networks_[0][kNetworkIdProperty]);
-  EXPECT_EQ(kScanID1, capability_->found_networks_[1][kNetworkIdProperty]);
+  found_networks = cellular_->found_networks();
+  EXPECT_EQ(2, cellular_->found_networks().size());
+  EXPECT_EQ(kScanID0, found_networks[0][kNetworkIdProperty]);
+  EXPECT_EQ(kScanID1, found_networks[1][kNetworkIdProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
@@ -638,7 +643,7 @@ TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
 TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
   InitProviderDB();
   DBusPropertiesMap props;
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   props[CellularCapability::kModemPropertyIMSI].writer().append_string("");
   capability_->UpdateStatus(props);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
@@ -646,11 +651,11 @@ TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
 
 TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
   EXPECT_FALSE(cellular_->allow_roaming_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
   EXPECT_FALSE(capability_->AllowRoaming());
-  capability_->provider_requires_roaming_ = true;
+  cellular_->set_provider_requires_roaming(true);
   EXPECT_TRUE(capability_->AllowRoaming());
-  capability_->provider_requires_roaming_ = false;
+  cellular_->set_provider_requires_roaming(false);
   cellular_->allow_roaming_ = true;
   EXPECT_TRUE(capability_->AllowRoaming());
 }
@@ -658,25 +663,25 @@ TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
 TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   static const char kCountry[] = "us";
   static const char kCode[] = "310160";
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
 
   EXPECT_FALSE(capability_->home_provider_info_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   capability_->SetHomeProvider();  // No mobile provider DB available.
   EXPECT_TRUE(cellular_->home_provider().GetName().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   InitProviderDB();
   capability_->SetHomeProvider();
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, capability_->apn_list_.size());
+  EXPECT_EQ(4, cellular_->apn_list().size());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   Cellular::Operator oper;
   cellular_->set_home_provider(oper);
@@ -685,7 +690,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(cellular_->provider_requires_roaming());
 
   static const char kCubic[] = "Cubic";
   capability_->spn_ = kCubic;
@@ -693,7 +698,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(capability_->provider_requires_roaming_);
+  EXPECT_TRUE(cellular_->provider_requires_roaming());
 
   static const char kCUBIC[] = "CUBIC";
   capability_->spn_ = kCUBIC;
@@ -702,7 +707,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(capability_->provider_requires_roaming_);
+  EXPECT_TRUE(cellular_->provider_requires_roaming());
 }
 
 namespace {
@@ -714,19 +719,19 @@ MATCHER(SizeIs4, "") {
 }  // namespace
 
 TEST_F(CellularCapabilityGSMTest, InitAPNList) {
+  Stringmaps apn_list;
   InitProviderDB();
   capability_->home_provider_info_ =
       mobile_provider_lookup_by_name(modem_info_.provider_db(), "T-Mobile");
   ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_EQ(0, capability_->apn_list_.size());
+  EXPECT_EQ(0, cellular_->apn_list().size());
   EXPECT_CALL(*device_adaptor_,
               EmitStringmapsChanged(kCellularApnListProperty, SizeIs4()));
   capability_->InitAPNList();
-  EXPECT_EQ(4, capability_->apn_list_.size());
-  EXPECT_EQ("wap.voicestream.com",
-            capability_->apn_list_[1][kApnProperty]);
-  EXPECT_EQ("Web2Go/t-zones",
-            capability_->apn_list_[1][kApnNameProperty]);
+  apn_list = cellular_->apn_list();
+  EXPECT_EQ(4, apn_list.size());
+  EXPECT_EQ("wap.voicestream.com", apn_list[1][kApnProperty]);
+  EXPECT_EQ("Web2Go/t-zones", apn_list[1][kApnNameProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
@@ -775,7 +780,7 @@ TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
   EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
 
   static const char kTestCarrier[] = "A GSM Carrier";
-  capability_->carrier_ = kTestCarrier;
+  cellular_->set_carrier(kTestCarrier);
   EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
 
   static const char kHomeProvider[] = "The GSM Home Provider";
@@ -799,7 +804,7 @@ TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
   EXPECT_EQ(string(kTypeCellular) + "_" + kAddress + "_" +
             cellular_->service()->friendly_name(),
             cellular_->service()->GetStorageIdentifier());
-  capability_->imsi_ = kIMSI;
+  cellular_->set_imsi(kIMSI);
   capability_->OnServiceCreated();
   EXPECT_EQ(string(kTypeCellular) + "_" + kAddress + "_" + kIMSI,
             cellular_->service()->GetStorageIdentifier());
@@ -902,7 +907,7 @@ TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
   static const string kSuppliedApn("my.apn");
 
   SetService();
-  capability_->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   InitProviderDB();
   capability_->SetHomeProvider();
   DBusPropertiesMap props;

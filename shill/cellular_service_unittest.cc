@@ -156,7 +156,7 @@ TEST_F(CellularServiceTest, SetRoamingState) {
 
 TEST_F(CellularServiceTest, FriendlyName) {
   static const char kCarrier[] = "Cellular Carrier";
-  GetCapabilityCDMA()->carrier_ = kCarrier;
+  device_->set_carrier(kCarrier);
   service_ = new CellularService(&modem_info_, device_);
   EXPECT_EQ(kCarrier, GetFriendlyName());
 }

@@ -116,25 +116,17 @@ Cellular::Cellular(ModemInfo *modem_info,
       dbus_owner_(owner),
       dbus_service_(service),
       dbus_path_(path),
+      scanning_supported_(false),
+      provider_requires_roaming_(false),
+      scan_interval_(0),
+      sim_present_(false),
       modem_info_(modem_info),
       proxy_factory_(proxy_factory),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       allow_roaming_(false),
       explicit_disconnect_(false),
       is_ppp_authenticating_(false) {
-  PropertyStore *store = this->mutable_store();
-  // TODO(jglasgow): kDBusConnectionProperty is deprecated.
-  store->RegisterConstString(kDBusConnectionProperty, &dbus_owner_);
-  store->RegisterConstString(kDBusServiceProperty, &dbus_service_);
-  store->RegisterConstString(kDBusObjectProperty, &dbus_path_);
-  HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
-                                 &Cellular::GetTechnologyFamily);
-  HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
-                          &Cellular::GetAllowRoaming,
-                          &Cellular::SetAllowRoaming);
-  store->RegisterConstStringmap(kHomeProviderProperty,
-                                &home_provider_.ToDict());
-
+  RegisterProperties();
   // For now, only a single capability is supported.
   InitCapability(type);
 
@@ -777,10 +769,6 @@ void Cellular::OnDBusPropertiesChanged(
                                        invalidated_properties);
 }
 
-void Cellular::set_home_provider(const Operator &oper) {
-  home_provider_.CopyFrom(oper);
-}
-
 string Cellular::CreateFriendlyServiceName() {
   SLOG(Cellular, 2) << __func__;
   return capability_.get() ? capability_->CreateFriendlyServiceName() : "";
@@ -1042,6 +1030,209 @@ void Cellular::OnPPPDisconnected() {
 void Cellular::OnPPPDied(pid_t pid, int exit) {
   LOG(INFO) << __func__ << " on " << link_name();
   OnPPPDisconnected();
+}
+
+void Cellular::RegisterProperties() {
+  PropertyStore *store = this->mutable_store();
+
+  // These properties do not have setters, and events are not generated when
+  // they are changed.
+  // TODO(jglasgow): kDBusConnectionProperty is deprecated. crbug.com/323754
+  store->RegisterConstString(kDBusConnectionProperty, &dbus_owner_);
+  store->RegisterConstString(kDBusServiceProperty, &dbus_service_);
+  store->RegisterConstString(kDBusObjectProperty, &dbus_path_);
+
+  store->RegisterUint16(kScanIntervalProperty, &scan_interval_);
+
+  // These properties have setters that should be used to change their values.
+  // Events are generated whenever the values change.
+  store->RegisterConstStringmap(kHomeProviderProperty,
+                                &home_provider_.ToDict());
+  store->RegisterConstString(kCarrierProperty, &carrier_);
+  store->RegisterConstBool(kSupportNetworkScanProperty, &scanning_supported_);
+  store->RegisterConstString(kEsnProperty, &esn_);
+  store->RegisterConstString(kFirmwareRevisionProperty, &firmware_revision_);
+  store->RegisterConstString(kHardwareRevisionProperty, &hardware_revision_);
+  store->RegisterConstString(kImeiProperty, &imei_);
+  store->RegisterConstString(kImsiProperty, &imsi_);
+  store->RegisterConstString(kMdnProperty, &mdn_);
+  store->RegisterConstString(kMeidProperty, &meid_);
+  store->RegisterConstString(kMinProperty, &min_);
+  store->RegisterConstString(kManufacturerProperty, &manufacturer_);
+  store->RegisterConstString(kModelIDProperty, &model_id_);
+
+  store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
+  store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
+  store->RegisterConstBool(kProviderRequiresRoamingProperty,
+                           &provider_requires_roaming_);
+  store->RegisterConstBool(kSIMPresentProperty, &sim_present_);
+  store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
+
+  // TODO(pprabhu): Decide whether these need their own custom setters.
+  HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
+                                 &Cellular::GetTechnologyFamily);
+  HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
+                          &Cellular::GetAllowRoaming,
+                          &Cellular::SetAllowRoaming);
+}
+
+void Cellular::set_home_provider(const Operator &oper) {
+  if (home_provider_.Equals(oper))
+    return;
+
+  home_provider_.CopyFrom(oper);
+  adaptor()->EmitStringmapChanged(kHomeProviderProperty,
+                                  home_provider_.ToDict());
+}
+
+void Cellular::set_carrier(const string &carrier) {
+  if (carrier_ == carrier)
+    return;
+
+  carrier_ = carrier;
+  adaptor()->EmitStringChanged(kCarrierProperty, carrier_);
+}
+
+void Cellular::set_scanning_supported(bool scanning_supported) {
+  if (scanning_supported_ == scanning_supported)
+    return;
+
+  scanning_supported_ = scanning_supported;
+  if (adaptor())
+    adaptor()->EmitBoolChanged(kSupportNetworkScanProperty,
+                               scanning_supported_);
+  else
+    SLOG(Cellular, 2) << "Could not emit signal for property |"
+                      << kSupportNetworkScanProperty
+                      << "| change. DBus adaptor is NULL!";
+}
+
+void Cellular::set_esn(const string &esn) {
+  if (esn_ == esn)
+    return;
+
+  esn_ = esn;
+  adaptor()->EmitStringChanged(kEsnProperty, esn_);
+}
+
+void Cellular::set_firmware_revision(const std::string &firmware_revision) {
+  if (firmware_revision_ == firmware_revision)
+    return;
+
+  firmware_revision_ = firmware_revision;
+  adaptor()->EmitStringChanged(kFirmwareRevisionProperty, firmware_revision_);
+}
+
+void Cellular::set_hardware_revision(const std::string &hardware_revision) {
+  if (hardware_revision_ == hardware_revision)
+    return;
+
+  hardware_revision_ = hardware_revision;
+  adaptor()->EmitStringChanged(kHardwareRevisionProperty, hardware_revision_);
+}
+
+// TODO(armansito): The following methods should probably log their argument
+// values. Need to learn if any of them need to be scrubbed.
+void Cellular::set_imei(const std::string &imei) {
+  if (imei_ == imei)
+    return;
+
+  imei_ = imei;
+  adaptor()->EmitStringChanged(kImeiProperty, imei_);
+}
+
+void Cellular::set_imsi(const std::string &imsi) {
+  if (imsi_ == imsi)
+    return;
+
+  imsi_ = imsi;
+  adaptor()->EmitStringChanged(kImsiProperty, imsi_);
+}
+
+void Cellular::set_mdn(const std::string &mdn) {
+  if (mdn_ == mdn)
+    return;
+
+  mdn_ = mdn;
+  adaptor()->EmitStringChanged(kMdnProperty, mdn_);
+}
+
+void Cellular::set_meid(const std::string &meid) {
+  if (meid_ == meid)
+    return;
+
+  meid_ = meid;
+  adaptor()->EmitStringChanged(kMeidProperty, meid_);
+}
+
+void Cellular::set_min(const std::string &min) {
+  if (min_ == min)
+    return;
+
+  min_ = min;
+  adaptor()->EmitStringChanged(kMinProperty, min_);
+}
+
+void Cellular::set_manufacturer(const std::string &manufacturer) {
+  if (manufacturer_ == manufacturer)
+    return;
+
+  manufacturer_ = manufacturer;
+  adaptor()->EmitStringChanged(kManufacturerProperty, manufacturer_);
+}
+
+void Cellular::set_model_id(const std::string &model_id) {
+  if (model_id_ == model_id)
+    return;
+
+  model_id_ = model_id;
+  adaptor()->EmitStringChanged(kModelIDProperty, model_id_);
+}
+
+void Cellular::set_selected_network(const std::string &selected_network) {
+  if (selected_network_ == selected_network)
+    return;
+
+  selected_network_ = selected_network;
+  adaptor()->EmitStringChanged(kSelectedNetworkProperty, selected_network_);
+}
+
+void Cellular::set_found_networks(const Stringmaps &found_networks) {
+  // There is no canonical form of a Stringmaps value.
+  // So don't check for redundant updates.
+  found_networks_ = found_networks;
+  adaptor()->EmitStringmapsChanged(kFoundNetworksProperty, found_networks_);
+}
+
+void Cellular::set_provider_requires_roaming(bool provider_requires_roaming) {
+  if (provider_requires_roaming_ == provider_requires_roaming)
+    return;
+
+  provider_requires_roaming_ = provider_requires_roaming;
+  adaptor()->EmitBoolChanged(kProviderRequiresRoamingProperty,
+                             provider_requires_roaming_);
+}
+
+void Cellular::set_sim_present(bool sim_present) {
+  if (sim_present_ == sim_present)
+    return;
+
+  sim_present_ = sim_present;
+  adaptor()->EmitBoolChanged(kSIMPresentProperty, sim_present_);
+}
+
+void Cellular::set_apn_list(const Stringmaps &apn_list) {
+  // There is no canonical form of a Stringmaps value.
+  // So don't check for redundant updates.
+  apn_list_ = apn_list;
+  // See crbug.com/215581: Sometimes adaptor may be NULL when |set_apn_list| is
+  // called.
+  if (adaptor())
+    adaptor()->EmitStringmapsChanged(kCellularApnListProperty, apn_list_);
+  else
+    SLOG(Cellular, 2) << "Could not emit signal for property |"
+                      << kCellularApnListProperty
+                      << "| change. DBus adaptor is NULL!";
 }
 
 }  // namespace shill

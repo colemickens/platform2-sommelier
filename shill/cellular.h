@@ -158,12 +158,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
 
-  const std::string &dbus_owner() const { return dbus_owner_; }
-  const std::string &dbus_path() const { return dbus_path_; }
-
-  const Operator &home_provider() const { return home_provider_; }
-  void set_home_provider(const Operator &oper);
-
   void HandleNewSignalQuality(uint32 strength);
 
   // Processes a change in the modem registration state, possibly creating,
@@ -238,6 +232,55 @@ class Cellular : public Device, public RPCTaskDelegate {
   virtual void GetLogin(std::string *user, std::string *password) override;
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict) override;
+
+  // ///////////////////////////////////////////////////////////////////////////
+  // DBus Properties exposed by the Device interface of shill.
+  void RegisterProperties();
+
+  // getters
+  const std::string &dbus_owner() const { return dbus_owner_; }
+  const std::string &dbus_path() const { return dbus_path_; }
+  const Operator &home_provider() const { return home_provider_; }
+  const std::string &carrier() const { return carrier_; }
+  bool scanning_supported() const { return scanning_supported_; }
+  const std::string &esn() const { return esn_; }
+  const std::string &firmware_revision() const { return firmware_revision_; }
+  const std::string &hardware_revision() const { return hardware_revision_; }
+  const std::string &imei() const { return imei_; }
+  const std::string &imsi() const { return imsi_; }
+  const std::string &mdn() const { return mdn_; }
+  const std::string &meid() const { return meid_; }
+  const std::string &min() const { return min_; }
+  const std::string &manufacturer() const { return manufacturer_; }
+  const std::string &model_id() const { return model_id_; }
+
+  const std::string &selected_network() const { return selected_network_; }
+  const Stringmaps &found_networks() const { return found_networks_; }
+  bool provider_requires_roaming() const { return provider_requires_roaming_; }
+  bool sim_present() const { return sim_present_; }
+  const Stringmaps &apn_list() const { return apn_list_; }
+
+  // setters
+  void set_home_provider(const Operator &oper);
+  void set_carrier(const std::string &carrier);
+  void set_scanning_supported(bool scanning_supported);
+  void set_esn(const std::string &esn);
+  void set_firmware_revision(const std::string &firmware_revision);
+  void set_hardware_revision(const std::string &hardware_revision);
+  void set_imei(const std::string &imei);
+  void set_imsi(const std::string &imsi);
+  void set_mdn(const std::string &mdn);
+  void set_meid(const std::string &meid);
+  void set_min(const std::string &min);
+  void set_manufacturer(const std::string &manufacturer);
+  void set_model_id(const std::string &model_id);
+
+  void set_selected_network(const std::string &selected_network);
+  void set_found_networks(const Stringmaps &found_networks);
+  void set_provider_requires_roaming(bool provider_requires_roaming);
+  void set_sim_present(bool sim_present);
+  void set_apn_list(const Stringmaps &apn_list);
+
 
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
@@ -403,18 +446,41 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   scoped_ptr<CellularCapability> capability_;
 
+  // All DBus Properties exposed by the Cellular device.
+  // Properties common to GSM and CDMA modems.
   const std::string dbus_owner_;  // :x.y
   const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
+  Operator home_provider_;
+
+  bool scanning_supported_;
+  std::string carrier_;
+  std::string esn_;
+  std::string firmware_revision_;
+  std::string hardware_revision_;
+  std::string imei_;
+  std::string imsi_;
+  std::string manufacturer_;
+  std::string mdn_;
+  std::string meid_;
+  std::string min_;
+  std::string model_id_;
+
+  // GSM only properties.
+  // They are always exposed but are non empty only for GSM technology modems.
+  std::string selected_network_;
+  Stringmaps found_networks_;
+  bool provider_requires_roaming_;
+  uint16 scan_interval_;
+  bool sim_present_;
+  Stringmaps apn_list_;
+
 
   ModemInfo *modem_info_;
   ProxyFactory *proxy_factory_;
   PPPDeviceFactory *ppp_device_factory_;
 
   CellularServiceRefPtr service_;
-
-  // Properties
-  Operator home_provider_;
 
   // User preference to allow or disallow roaming
   bool allow_roaming_;

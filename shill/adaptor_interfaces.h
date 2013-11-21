@@ -34,6 +34,8 @@ class DeviceAdaptorInterface {
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
+  virtual void EmitStringmapChanged(const std::string &name,
+                                    const Stringmap &value) = 0;
   virtual void EmitStringmapsChanged(const std::string &name,
                                      const Stringmaps &value) = 0;
   virtual void EmitKeyValueStoreChanged(const std::string &name,

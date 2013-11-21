@@ -60,6 +60,12 @@ void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
+void DeviceDBusAdaptor::EmitStringmapChanged(const std::string &name,
+                                             const Stringmap &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::StringmapToVariant(value));
+}
+
 void DeviceDBusAdaptor::EmitStringmapsChanged(const std::string &name,
                                               const Stringmaps &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;

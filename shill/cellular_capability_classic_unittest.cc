@@ -257,7 +257,7 @@ TEST_F(CellularCapabilityTest, GetModemStatus) {
   ResultCallback callback =
       Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
   capability_->GetModemStatus(callback);
-  EXPECT_EQ(kTestCarrier, capability_->carrier_);
+  EXPECT_EQ(kTestCarrier, cellular_->carrier());
   EXPECT_EQ(kTestCarrier, cellular_->home_provider_.GetName());
 }
 
@@ -269,9 +269,9 @@ TEST_F(CellularCapabilityTest, GetModemInfo) {
   ResultCallback callback =
       Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
   capability_->GetModemInfo(callback);
-  EXPECT_EQ(kManufacturer, capability_->manufacturer_);
-  EXPECT_EQ(kModelID, capability_->model_id_);
-  EXPECT_EQ(kHWRev, capability_->hardware_revision_);
+  EXPECT_EQ(kManufacturer, cellular_->manufacturer());
+  EXPECT_EQ(kModelID, cellular_->model_id());
+  EXPECT_EQ(kHWRev, cellular_->hardware_revision());
 }
 
 TEST_F(CellularCapabilityTest, EnableModemSucceed) {
@@ -389,7 +389,7 @@ TEST_F(CellularCapabilityTest, TryApns) {
   }
   CellularCapabilityGSM *gsm_capability = GetGsmCapability();
   SetService();
-  gsm_capability->imsi_ = "310240123456789";
+  cellular_->set_imsi("310240123456789");
   InitProviderDB();
   gsm_capability->SetHomeProvider();
   ProfileRefPtr profile(new NiceMock<MockProfile>(

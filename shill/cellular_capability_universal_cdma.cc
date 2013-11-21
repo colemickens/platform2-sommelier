@@ -107,7 +107,7 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
   }
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierMEID, meid());
+          PendingActivationStore::kIdentifierMEID, cellular()->meid());
   if (state == PendingActivationStore::kStatePending) {
     SLOG(Cellular, 2) << "There's already a pending activation. Ignoring.";
     return;
@@ -122,7 +122,7 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
   // during OTA activation.
   modem_info()->pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierMEID,
-      meid(),
+      cellular()->meid(),
       PendingActivationStore::kStatePending);
 
   // Initiate OTA activation.
@@ -141,12 +141,12 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
   if (IsActivated()) {
     SLOG(Cellular, 3) << "CDMA service activated. Clear store.";
     modem_info()->pending_activation_store()->RemoveEntry(
-        PendingActivationStore::kIdentifierMEID, meid());
+        PendingActivationStore::kIdentifierMEID, cellular()->meid());
     return;
   }
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierMEID, meid());
+          PendingActivationStore::kIdentifierMEID, cellular()->meid());
   if (IsActivating() && state != PendingActivationStore::kStateFailureRetry) {
     SLOG(Cellular, 3) << "OTA activation in progress. Nothing to do.";
     return;
@@ -252,10 +252,10 @@ void CellularCapabilityUniversalCDMA::UpdateOLP() {
   CellularService::OLP olp;
   olp.CopyFrom(*result);
   string post_data = olp.GetPostData();
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", esn());
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", cellular()->esn());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
                                GetMdnForOLP(*cellular_operator));
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", meid());
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", cellular()->meid());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", "GOG2");
   olp.SetPostData(post_data);
   if (cellular()->service().get())
@@ -356,9 +356,9 @@ void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
 
   string value;
   if (DBusProperties::GetString(status_changes, "mdn", &value))
-    set_mdn(value);
+    cellular()->set_mdn(value);
   if (DBusProperties::GetString(status_changes, "min", &value))
-    set_min(value);
+    cellular()->set_min(value);
 
   SLOG(Cellular, 2) << "Activation state: "
                     << GetActivationStateString(activation_state_);
@@ -375,13 +375,13 @@ void CellularCapabilityUniversalCDMA::OnActivateReply(
     LOG(INFO) << "Activation completed successfully.";
     modem_info()->pending_activation_store()->SetActivationState(
         PendingActivationStore::kIdentifierMEID,
-        meid(),
+        cellular()->meid(),
         PendingActivationStore::kStateActivated);
   } else {
     LOG(ERROR) << "Activation failed with error: " << error;
     modem_info()->pending_activation_store()->SetActivationState(
         PendingActivationStore::kIdentifierMEID,
-        meid(),
+        cellular()->meid(),
         PendingActivationStore::kStateFailureRetry);
   }
   UpdatePendingActivationState();
@@ -457,7 +457,7 @@ void CellularCapabilityUniversalCDMA::RegisterOnNetwork(
 bool CellularCapabilityUniversalCDMA::IsActivating() const {
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierMEID, meid());
+          PendingActivationStore::kIdentifierMEID, cellular()->meid());
   return (state == PendingActivationStore::kStatePending) ||
       (state == PendingActivationStore::kStateFailureRetry) ||
       (activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING);
@@ -558,11 +558,11 @@ void CellularCapabilityUniversalCDMA::OnModemCDMAPropertiesChanged(
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEMCDMA_PROPERTY_MEID,
                                 &str_value))
-    set_meid(str_value);
+    cellular()->set_meid(str_value);
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEMCDMA_PROPERTY_ESN,
                                 &str_value))
-    set_esn(str_value);
+    cellular()->set_esn(str_value);
 
   uint32_t sid = sid_;
   uint32_t nid = nid_;

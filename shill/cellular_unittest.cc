@@ -622,8 +622,8 @@ TEST_F(CellularTest, StartCDMARegister) {
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(kMEID, GetCapabilityClassic()->meid_);
-  EXPECT_EQ(kTestCarrier, GetCapabilityClassic()->carrier_);
+  EXPECT_EQ(kMEID, device_->meid());
+  EXPECT_EQ(kTestCarrier, device_->carrier());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(kNetworkTechnology1Xrtt, device_->service_->network_technology());
@@ -669,10 +669,10 @@ TEST_F(CellularTest, StartGSMRegister) {
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(kIMEI, GetCapabilityGSM()->imei_);
-  EXPECT_EQ(kIMSI, GetCapabilityGSM()->imsi_);
+  EXPECT_EQ(kIMEI, device_->imei());
+  EXPECT_EQ(kIMSI, device_->imsi());
   EXPECT_EQ(kTestCarrierSPN, GetCapabilityGSM()->spn_);
-  EXPECT_EQ(kMSISDN, GetCapabilityGSM()->mdn_);
+  EXPECT_EQ(kMSISDN, device_->mdn());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(kNetworkTechnologyEdge, device_->service_->network_technology());
@@ -689,7 +689,7 @@ TEST_F(CellularTest, StartConnected) {
       .WillOnce(Return(true));
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
-  GetCapabilityClassic()->meid_ = kMEID;
+  device_->set_meid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
@@ -703,7 +703,7 @@ TEST_F(CellularTest, StartLinked) {
       .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
-  GetCapabilityClassic()->meid_ = kMEID;
+  device_->set_meid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _, _))
       .WillOnce(Return(dhcp_config_));
@@ -901,7 +901,7 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   SetCellularType(Cellular::kTypeUniversal);
 
   // Service activation is needed
-  GetCapabilityUniversal()->mdn_ = "0000000000";
+  device_->set_mdn("0000000000");
   CellularService::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));

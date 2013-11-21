@@ -212,23 +212,23 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged) {
 
   SetUp();
 
-  EXPECT_TRUE(capability_->meid().empty());
-  EXPECT_TRUE(capability_->esn().empty());
+  EXPECT_TRUE(cellular_->meid().empty());
+  EXPECT_TRUE(cellular_->esn().empty());
 
   // Changing properties on wrong interface will not have an effect
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_cdma_properties,
                                        vector<string>());
-  EXPECT_TRUE(capability_->meid().empty());
-  EXPECT_TRUE(capability_->esn().empty());
+  EXPECT_TRUE(cellular_->meid().empty());
+  EXPECT_TRUE(cellular_->esn().empty());
 
   // Changing properties on the right interface gets reflected in the
   // capabilities object
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEMCDMA,
                                        modem_cdma_properties,
                                        vector<string>());
-  EXPECT_EQ(kMeid, capability_->meid());
-  EXPECT_EQ(kEsn, capability_->esn());
+  EXPECT_EQ(kMeid, cellular_->meid());
+  EXPECT_EQ(kEsn, cellular_->esn());
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, OnCDMARegistrationChanged) {
@@ -375,9 +375,9 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOLP) {
   test_olp.SetMethod("POST");
   test_olp.SetPostData("esn=${esn}&mdn=${mdn}&meid=${meid}");
 
-  capability_->esn_ = "0";
-  capability_->mdn_ = "10123456789";
-  capability_->meid_= "4";
+  cellular_->set_esn("0");
+  cellular_->set_mdn("10123456789");
+  cellular_->set_meid("4");
   capability_->sid_ = 1;
 
   string sid_string = base::StringPrintf("%u", capability_->sid_);

@@ -39,6 +39,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual void EmitIntChanged(const std::string& name, int value);
   virtual void EmitStringChanged(const std::string& name,
                                  const std::string& value);
+  virtual void EmitStringmapChanged(const std::string &name,
+                                    const Stringmap &value);
   virtual void EmitStringmapsChanged(const std::string &name,
                                      const Stringmaps &value);
   virtual void EmitKeyValueStoreChanged(const std::string &name,

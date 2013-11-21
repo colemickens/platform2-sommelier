@@ -387,7 +387,7 @@ TEST_F(CellularCapabilityCDMATest, CreateFriendlyServiceName) {
   EXPECT_EQ("CDMANetwork0", capability_->CreateFriendlyServiceName());
   EXPECT_EQ("CDMANetwork1", capability_->CreateFriendlyServiceName());
   static const char kTestCarrier[] = "A Carrier";
-  capability_->carrier_ = kTestCarrier;
+  cellular_->set_carrier(kTestCarrier);
   EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
 }
 

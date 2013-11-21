@@ -130,20 +130,6 @@ class CellularCapabilityClassic : public CellularCapability {
   void StepCompletedCallback(const ResultCallback &callback, bool ignore_error,
                              CellularTaskList *tasks, const Error &error);
 
-  // Properties
-  bool scanning_supported_;
-  std::string meid_;
-  std::string imsi_;
-  std::string imei_;
-  std::string esn_;
-  std::string mdn_;
-  std::string min_;
-  std::string model_id_;
-  std::string manufacturer_;
-  std::string firmware_revision_;
-  std::string hardware_revision_;
-  std::string carrier_;
-
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
  private:

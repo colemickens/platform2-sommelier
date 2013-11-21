@@ -232,10 +232,10 @@ string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
 
 void CellularCapabilityCDMA::GetMEID(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
-  if (meid_.empty()) {
+  if (cellular()->meid().empty()) {
     // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
-    meid_ = proxy_->MEID();
-    SLOG(Cellular, 2) << "MEID: " << meid_;
+    cellular()->set_meid(proxy_->MEID());
+    SLOG(Cellular, 2) << "MEID: " << cellular()->meid();
   }
   callback.Run(Error());
 }
@@ -308,8 +308,8 @@ void CellularCapabilityCDMA::GetRegistrationState() {
 
 string CellularCapabilityCDMA::CreateFriendlyServiceName() {
   SLOG(Cellular, 2) << __func__;
-  if (!carrier_.empty()) {
-    return carrier_;
+  if (!cellular()->carrier().empty()) {
+    return cellular()->carrier();
   }
   return base::StringPrintf("CDMANetwork%u", friendly_service_name_id_++);
 }
@@ -356,8 +356,13 @@ void CellularCapabilityCDMA::OnActivationStateChangedSignal(
     uint32 activation_error,
     const DBusPropertiesMap &status_changes) {
   SLOG(Cellular, 2) << __func__;
-  DBusProperties::GetString(status_changes, "mdn", &mdn_);
-  DBusProperties::GetString(status_changes, "min", &min_);
+  string prop_value;
+
+  if (DBusProperties::GetString(status_changes, "mdn", &prop_value))
+    cellular()->set_mdn(prop_value);
+  if (DBusProperties::GetString(status_changes, "min", &prop_value))
+    cellular()->set_min(prop_value);
+
   string payment;
   if (DBusProperties::GetString(status_changes, "payment_url", &payment)) {
     olp_.SetURL(payment);
