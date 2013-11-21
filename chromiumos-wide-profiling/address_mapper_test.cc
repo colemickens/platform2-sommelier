@@ -22,7 +22,8 @@ struct Range {
   }
 };
 
-// Some address ranges to map.
+// Some address ranges to map.  It is important that none of these overlap with
+// each other, nor are any two of them contiguous.
 const Range kMapRanges[] = {
   { 0xff000000,   0x100000, 0xdeadbeef },
   { 0x00a00000,    0x10000, 0xcafebabe },
@@ -61,6 +62,9 @@ const Range kEndRegion = { 0xffffffff00000000, 0x100000000 };
 // A region toward the end of address space that overruns the end of the address
 // space.
 const Range kOutOfBoundsRegion = { 0xffffffff00000000, 0x200000000 };
+
+// A huge region that covers all of the available space.
+const Range kFullRegion = { 0, kuint64max };
 
 // Number of regularly-spaced intervals within a mapped range to test.
 const int kNumRangeTestIntervals = 8;
@@ -122,9 +126,8 @@ class AddressMapperTest : public ::testing::Test {
               << " with length of " << std::hex << range.size;
 
     // Check address at the beginning of the range and at subsequent intervals.
-    for (uint64 offset = 0;
-         offset < range.size;
-         offset += range.size / kNumRangeTestIntervals) {
+    for (int i = 0; i < kNumRangeTestIntervals; ++i) {
+      const uint64 offset = i * (range.size / kNumRangeTestIntervals);
       uint64 addr = range.addr + offset;
       EXPECT_TRUE(mapper_->GetMappedAddress(addr, &mapped_addr));
       EXPECT_EQ((void*)(expected_mapped_addr + offset), (void*)mapped_addr);
@@ -334,6 +337,29 @@ TEST_F(AddressMapperTest, OutOfBounds) {
   uint64 mapped_addr;
   EXPECT_FALSE(
       mapper_->GetMappedAddress(kOutOfBoundsRegion.addr + 0x100, &mapped_addr));
+}
+
+// Test mapping of a region that covers the entire memory space.  Then map other
+// regions over it.
+TEST_F(AddressMapperTest, FullRange) {
+  ASSERT_TRUE(MapRange(kFullRegion, false));
+  int num_expected_ranges = 1;
+  EXPECT_EQ(num_expected_ranges, mapper_->GetNumMappedRanges());
+
+  TestMappedRange(kFullRegion, 0);
+
+  // Map some smaller ranges.
+  for (size_t i = 0; i < arraysize(kMapRanges); ++i) {
+    const Range& range = kMapRanges[i];
+    // Check for collision first.
+    ASSERT_FALSE(MapRange(range, false));
+    ASSERT_TRUE(MapRange(range, true));
+
+    // Make sure the number of mapped ranges has increased by two.  The mapping
+    // should have split an existing range.
+    num_expected_ranges += 2;
+    EXPECT_EQ(num_expected_ranges, mapper_->GetNumMappedRanges());
+  }
 }
 
 int main(int argc, char * argv[]) {

@@ -50,14 +50,14 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
   for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
     if (!iter->Intersects(range))
       continue;
+    // Quit if existing ranges that collide aren't supposed to be removed.
+    if (!remove_existing_mappings)
+      return false;
     if (!old_range_found && iter->Covers(range) && iter->size > range.size) {
       old_range_found = true;
       old_range = *iter;
       continue;
     }
-    // Quit if existing ranges that collide aren't supposed to be removed.
-    if (!remove_existing_mappings)
-      return false;
     mappings_to_delete.push_back(*iter);
   }
 
@@ -85,6 +85,8 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
       CHECK(MapWithID(
           range.real_addr + range.size, gap_after, old_range.id, false));
     }
+
+    return true;
   }
 
   // Now search for a location for the new range.  It should be in the first
