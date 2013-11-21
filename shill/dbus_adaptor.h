@@ -136,13 +136,6 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
                            DBus::Error *dberror);
 
  private:
-  static const char kByteArraysSig[];
-  static const char kPathsSig[];
-  static const char kStringmapSig[];
-  static const char kStringmapsSig[];
-  static const char kStringsSig[];
-  static const char kUint16sSig[];
-
   void MethodReplyCallback(const DBus::Tag *tag, const Error &error);
   void StringMethodReplyCallback(const DBus::Tag *tag, const Error &error,
                                  const std::string &returned);

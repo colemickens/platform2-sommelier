@@ -27,13 +27,6 @@ namespace shill {
 
 // public static
 const char DBusAdaptor::kNullPath[] = "/";
-// private statics
-const char DBusAdaptor::kByteArraysSig[] = "aay";
-const char DBusAdaptor::kPathsSig[] = "ao";
-const char DBusAdaptor::kStringmapSig[] = "a{ss}";
-const char DBusAdaptor::kStringmapsSig[] = "aa{ss}";
-const char DBusAdaptor::kStringsSig[] = "as";
-const char DBusAdaptor::kUint16sSig[] = "aq";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
     : DBus::ObjectAdaptor(*conn, object_path) {
@@ -407,7 +400,7 @@ bool DBusAdaptor::IsByte(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsByteArrays(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kByteArraysSig;
+  return signature == ::DBus::type<ByteArrays>::sig();
 }
 
 // static
@@ -427,7 +420,7 @@ bool DBusAdaptor::IsPath(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsPaths(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kPathsSig;
+  return signature == ::DBus::type<vector< ::DBus::Path >>::sig();
 }
 
 // static
@@ -437,17 +430,17 @@ bool DBusAdaptor::IsString(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsStringmap(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kStringmapSig;
+  return signature == ::DBus::type<Stringmap>::sig();
 }
 
 // static
 bool DBusAdaptor::IsStringmaps(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kStringmapsSig;
+  return signature == ::DBus::type<Stringmaps>::sig();
 }
 
 // static
 bool DBusAdaptor::IsStrings(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kStringsSig;
+  return signature == ::DBus::type<Strings>::sig();
 }
 
 // static
@@ -457,7 +450,7 @@ bool DBusAdaptor::IsUint16(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsUint16s(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kUint16sSig;
+  return signature == ::DBus::type<Uint16s>::sig();
 }
 
 // static
