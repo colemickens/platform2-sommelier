@@ -117,14 +117,6 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotSupported
 
-		void MoveBefore(object service)
-
-			Silently ignored in shill.  Do not use.
-
-		void MoveAfter(object service)
-
-			Silently ignored in shill.  Do not use.
-
 		void ActivateCellularModem(string carrier)
 
 			Activate a cellular modem on the provided carrier.

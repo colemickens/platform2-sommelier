@@ -152,16 +152,6 @@ void ServiceDBusAdaptor::Remove(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
-void ServiceDBusAdaptor::MoveBefore(const ::DBus::Path& ,
-                                    ::DBus::Error &/*error*/) {
-  SLOG(DBus, 2) << __func__;
-}
-
-void ServiceDBusAdaptor::MoveAfter(const ::DBus::Path& ,
-                                   ::DBus::Error &/*error*/) {
-  SLOG(DBus, 2) << __func__;
-}
-
 void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
                                                ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;

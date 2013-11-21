@@ -23,12 +23,6 @@
 		<method name="Connect"/>
 		<method name="Disconnect"/>
 		<method name="Remove"/>
-		<method name="MoveBefore">
-			<arg type="o" direction="in"/>
-		</method>
-		<method name="MoveAfter">
-			<arg type="o" direction="in"/>
-		</method>
 		<method name="ActivateCellularModem">
 			<arg type="s" direction="in"/>
 		</method>
