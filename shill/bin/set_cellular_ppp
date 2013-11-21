@@ -47,25 +47,18 @@ dbus() {
     "${object}" "${method}" "$@"
 }
 
-get_profile_property() {
-  local profile="$1"
-  local property="$2"
+get_property() {
+  local interface="${1:?internal error}"
+  local object="${2:?internal error}"
+  local property="${3:?nternal error}"
 
-  dbus "${profile}" "${IPROFILE}.GetProperties" 2>/dev/null \
-    | sed -n "/\/${property}/{s/.* //p}"
-}
-
-get_service_property() {
-  local service="$1"
-  local property="$2"
-
-  dbus "${service}" "${ISERVICE}.GetProperties" 2>/dev/null \
+  dbus "${object}" "${interface}.GetProperties" 2>/dev/null \
     | sed -n "/\/${property}/{s/.* //p}"
 }
 
 display_username() {
   local service="$1"
-  local username="$(get_service_property ${service} ${USERNAME_PROPERTY})"
+  local username="$(get_property ${ISERVICE} ${service} ${USERNAME_PROPERTY})"
 
   if [ -n "${username}" ]; then
     echo "PPP username: " ${username}
@@ -117,7 +110,7 @@ get_default_profile() {
   local profile_name
 
   for profile in $(get_profiles); do
-    profile_name="$(get_profile_property ${profile} Name)"
+    profile_name="$(get_property ${IPROFILE} ${profile} Name)"
     if [ ${profile_name} = ${DEFAULT_PROFILE_NAME} ]; then
       echo "${profile}"
       break
@@ -130,7 +123,7 @@ get_first_cellular_service() {
   local service_type
 
   for service in $(get_services); do
-    service_type="$(get_service_property ${service} Type)"
+    service_type="$(get_property ${ISERVICE} ${service} Type)"
     if [ "${service_type}" = "cellular" ]; then
       echo "${service}"
       break
@@ -153,7 +146,8 @@ move_service_to_profile() {
   dbus "${service}" "${ISERVICE}.SetProperty" \
     "string:${PROFILE_PROPERTY}" "variant:string:${profile}"
 
-  local new_profile=$(get_service_property "${service}" "${PROFILE_PROPERTY}")
+  local new_profile=$(
+    get_property "${ISERVICE}" "${service}" "${PROFILE_PROPERTY}")
   return $([ "${new_profile}" = "${profile}" ])
 }
 
