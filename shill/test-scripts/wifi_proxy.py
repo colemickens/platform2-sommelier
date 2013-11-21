@@ -304,6 +304,31 @@ class WifiProxy(shill_proxy.ShillProxy):
         return True
 
 
+    def get_active_wifi_SSIDs(self):
+        """@return list of string SSIDs with at least one BSS we've scanned."""
+        properties = self.manager.GetProperties(utf8_strings=True)
+        services = [self.get_dbus_object(self.DBUS_TYPE_SERVICE, path)
+                    for path in properties[self.MANAGER_PROPERTY_SERVICES]]
+        wifi_services = []
+        for service in services:
+            try:
+                service_properties = self.dbus2primitive(service.GetProperties(
+                        utf8_strings=True))
+            except dbus.exceptions.DBusException as e:
+                pass  # Probably the service disappeared before GetProperties().
+            logging.debug('Considering service with properties: %r',
+                          service_properties)
+            service_type = service_properties[self.SERVICE_PROPERTY_TYPE]
+            strength = service_properties[self.SERVICE_PROPERTY_STRENGTH]
+            if service_type == 'wifi' and strength > 0:
+                # Note that this may cause terrible things if the SSID
+                # is not a valid ASCII string.
+                ssid = service_properties[self.SERVICE_PROPERTY_HEX_SSID]
+                logging.info('Found active WiFi service: %s', ssid)
+                wifi_services.append(ssid.decode('hex'))
+        return wifi_services
+
+
     def wait_for_service_states(self, ssid, states, timeout_seconds):
         """Wait for a service (ssid) to achieve one of a number of states.
 
