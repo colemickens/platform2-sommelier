@@ -133,6 +133,7 @@ static const Log common_logs[] = {
   { "platform_info", "/bin/cat /var/log/platform_info.txt" },
   { "power_supply_info", "/usr/bin/power_supply_info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
+  { "powerd.PREVIOUS", "/bin/cat /var/log/power_manager/powerd.PREVIOUS" },
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
   { "ps", "/bin/ps aux" },
