@@ -392,15 +392,18 @@ if is_board peach_pit; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
 fi
 
-# TODO(derat): We're currently (2012Q4) swamped with locking-related bug
-# reports; remove this after they've been sorted out.
-add_vmodule_pattern "screen_locker=1,webui_screen_locker=1"
+# There has been a steady supply of bug reports about screen locking. These
+# messages are useful for determining what happened within feedback reports.
+add_vmodule_pattern "screen_locker=1"
+add_vmodule_pattern "webui_screen_locker=1"
 
 # TODO(ygorshenin): Remove this once we will have logs from places
 # where shill was tested (crosbug.com/36622).
 add_vmodule_pattern "network_portal_detector_impl=1"
 
 # Turn on logging about external displays being connected and disconnected.
+# Different behavior is seen from different displays and these messages are used
+# to determine what happened within feedback reports.
 add_vmodule_pattern "*output_configurator*=1"
 add_vmodule_pattern "*ash/display*=1"
 
