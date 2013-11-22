@@ -734,7 +734,9 @@ if crossystem 'cros_debug?1'; then
     var_overlay/lib/portage
     dev_image
   "
-elif crossystem 'devsw_boot?1' ; then
+fi
+
+if crossystem 'devsw_boot?1' ; then
   # This is a base build, and the dev switch was on when we booted;
   # we assume it will be on for the next boot.  We touch
   # ".developer_mode" to avoid a pointless delay after reboot while
