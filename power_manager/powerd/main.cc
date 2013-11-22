@@ -9,6 +9,7 @@
 
 #include "base/command_line.h"
 #include "base/file_path.h"
+#include "base/file_util.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/string_util.h"
@@ -56,15 +57,19 @@ DEFINE_string(vmodule, "",
 
 namespace {
 
-// Returns true on success.
-bool SetUpLogSymlink(const string& symlink_path, const string& log_basename) {
-  unlink(symlink_path.c_str());
-  if (symlink(log_basename.c_str(), symlink_path.c_str()) == -1) {
-    PLOG(ERROR) << "Unable to create symlink " << symlink_path
-                << " pointing at " << log_basename;
-    return false;
+// Moves |latest_log_symlink| to |previous_log_symlink| and creates a relative
+// symlink at |latest_log_symlink| pointing to |log_file|. All files must be in
+// the same directory.
+void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,
+                       const base::FilePath& previous_log_symlink,
+                       const base::FilePath& log_file) {
+  CHECK_EQ(latest_log_symlink.DirName().value(), log_file.DirName().value());
+  file_util::Delete(previous_log_symlink, false);
+  file_util::Move(latest_log_symlink, previous_log_symlink);
+  if (!file_util::CreateSymbolicLink(log_file.BaseName(), latest_log_symlink)) {
+    LOG(ERROR) << "Unable to create symbolic link from "
+               << latest_log_symlink.value() << " to " << log_file.value();
   }
-  return true;
 }
 
 string GetTimeAsString(time_t utime) {
@@ -92,13 +97,12 @@ int main(int argc, char* argv[]) {
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
 
-  const string log_latest =
-      StringPrintf("%s/powerd.LATEST", FLAGS_log_dir.c_str());
-  const string log_basename =
-      StringPrintf("powerd.%s", GetTimeAsString(::time(NULL)).c_str());
-  const string log_path = FLAGS_log_dir + "/" + log_basename;
-  CHECK(SetUpLogSymlink(log_latest, log_basename));
-  logging::InitLogging(log_path.c_str(),
+  const base::FilePath log_file = base::FilePath(FLAGS_log_dir).Append(
+      StringPrintf("powerd.%s", GetTimeAsString(::time(NULL)).c_str()));
+  UpdateLogSymlinks(base::FilePath(FLAGS_log_dir).Append("powerd.LATEST"),
+                    base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"),
+                    log_file);
+  logging::InitLogging(log_file.value().c_str(),
                        logging::LOG_ONLY_TO_FILE,
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE,
