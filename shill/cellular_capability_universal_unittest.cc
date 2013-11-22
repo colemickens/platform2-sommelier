@@ -1553,7 +1553,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   static const char kCountry[] = "us";
   static const char kCode[] = "310160";
 
-  EXPECT_FALSE(capability_->home_provider_);
+  EXPECT_FALSE(capability_->home_provider_info_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   // No mobile provider DB available.
@@ -1579,7 +1579,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ("310240", cellular_->home_provider().GetCode());
   EXPECT_EQ(4, capability_->apn_list_.size());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   cellular_->home_provider_.SetName("");
@@ -1594,7 +1594,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
   EXPECT_EQ(4, capability_->apn_list_.size());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   Cellular::Operator oper;
@@ -1611,16 +1611,16 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   capability_->SetHomeProvider();
   EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_TRUE(capability_->provider_requires_roaming_);
 
   static const char kCUBIC[] = "CUBIC";
   capability_->spn_ = kCUBIC;
-  capability_->home_provider_ = NULL;
+  capability_->home_provider_info_ = NULL;
   capability_->SetHomeProvider();
   EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_TRUE(capability_->provider_requires_roaming_);
 }
 

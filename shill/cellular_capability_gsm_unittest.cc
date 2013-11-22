@@ -660,7 +660,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   static const char kCode[] = "310160";
   capability_->imsi_ = "310240123456789";
 
-  EXPECT_FALSE(capability_->home_provider_);
+  EXPECT_FALSE(capability_->home_provider_info_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   capability_->SetHomeProvider();  // No mobile provider DB available.
@@ -675,7 +675,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
   EXPECT_EQ(4, capability_->apn_list_.size());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   Cellular::Operator oper;
@@ -692,16 +692,16 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   capability_->SetHomeProvider();
   EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_TRUE(capability_->provider_requires_roaming_);
 
   static const char kCUBIC[] = "CUBIC";
   capability_->spn_ = kCUBIC;
-  capability_->home_provider_ = NULL;
+  capability_->home_provider_info_ = NULL;
   capability_->SetHomeProvider();
   EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_TRUE(capability_->provider_requires_roaming_);
 }
 
@@ -715,9 +715,9 @@ MATCHER(SizeIs4, "") {
 
 TEST_F(CellularCapabilityGSMTest, InitAPNList) {
   InitProviderDB();
-  capability_->home_provider_ =
+  capability_->home_provider_info_ =
       mobile_provider_lookup_by_name(modem_info_.provider_db(), "T-Mobile");
-  ASSERT_TRUE(capability_->home_provider_);
+  ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_EQ(0, capability_->apn_list_.size());
   EXPECT_CALL(*device_adaptor_,
               EmitStringmapsChanged(kCellularApnListProperty, SizeIs4()));

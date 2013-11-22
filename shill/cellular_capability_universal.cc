@@ -141,7 +141,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
-      home_provider_(NULL),
+      home_provider_info_(NULL),
       provider_requires_roaming_(false),
       resetting_(false),
       scanning_supported_(false),
@@ -890,32 +890,32 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   // MCCMNC can be determined either from IMSI or Operator Code. Use whichever
   // one is available. If both were reported by the SIM, use IMSI.
   const string &network_id = imsi_.empty() ? operator_id_ : imsi_;
-  mobile_provider *provider = mobile_provider_lookup_best_match(
+  mobile_provider *provider_info = mobile_provider_lookup_best_match(
       modem_info()->provider_db(),
       spn_.c_str(),
       network_id.c_str());
-  if (!provider) {
+  if (!provider_info) {
     SLOG(Cellular, 2) << "3GPP provider not found.";
     return;
   }
 
-  // Even if provider is the same as home_provider_, it is possible
-  // that the spn_ has changed.  Run all the code below.
-  home_provider_ = provider;
-  provider_requires_roaming_ = home_provider_->requires_roaming;
+  // Even if |provider_info| is the same as |home_provider_info_|, it is
+  // possible that the |spn_| has changed.  Run all the code below.
+  home_provider_info_ = provider_info;
+  provider_requires_roaming_ = provider_info->requires_roaming;
   Cellular::Operator oper;
   // If Operator ID is available, use that as network code, otherwise
   // use what was returned from the database.
   if (!operator_id_.empty()) {
     oper.SetCode(operator_id_);
-  } else if (provider->networks && provider->networks[0]) {
-    oper.SetCode(provider->networks[0]);
+  } else if (provider_info->networks && provider_info->networks[0]) {
+    oper.SetCode(provider_info->networks[0]);
   }
-  if (provider->country) {
-    oper.SetCountry(provider->country);
+  if (provider_info->country) {
+    oper.SetCountry(provider_info->country);
   }
   if (spn_.empty()) {
-    const char *name = mobile_provider_get_name(provider);
+    const char *name = mobile_provider_get_name(provider_info);
     if (name) {
       oper.SetName(name);
     }
@@ -1178,13 +1178,13 @@ void CellularCapabilityUniversal::OnListBearersReply(
 
 void CellularCapabilityUniversal::InitAPNList() {
   SLOG(Cellular, 2) << __func__;
-  if (!home_provider_) {
+  if (!home_provider_info_) {
     return;
   }
   apn_list_.clear();
-  for (int i = 0; i < home_provider_->num_apns; ++i) {
+  for (int i = 0; i < home_provider_info_->num_apns; ++i) {
     Stringmap props;
-    mobile_apn *apn = home_provider_->apns[i];
+    mobile_apn *apn = home_provider_info_->apns[i];
     if (apn->value) {
       props[kApnProperty] = apn->value;
     }

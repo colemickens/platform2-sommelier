@@ -166,7 +166,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
 
-  // Initializes the |apn_list_| property based on the current |home_provider_|.
+  // Initializes the |apn_list_| property based on the current
+  // |home_provider_info_|.
   void InitAPNList();
 
   Stringmap ParseScanResult(const GSMScanResult &result);
@@ -222,7 +223,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   uint32 access_technology_;
   Cellular::Operator serving_operator_;
   std::string spn_;
-  mobile_provider *home_provider_;
+  mobile_provider *home_provider_info_;
   bool provider_requires_roaming_;
   std::string desired_network_;
 

@@ -57,7 +57,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
-      home_provider_(NULL),
+      home_provider_info_(NULL),
       provider_requires_roaming_(false),
       get_imsi_retries_(0),
       get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds),
@@ -467,24 +467,24 @@ void CellularCapabilityGSM::SetHomeProvider() {
   if (imsi_.empty() || !modem_info()->provider_db()) {
     return;
   }
-  mobile_provider *provider =
+  mobile_provider *provider_info =
       mobile_provider_lookup_best_match(
           modem_info()->provider_db(), spn_.c_str(), imsi_.c_str());
-  if (!provider) {
+  if (!provider_info) {
     SLOG(Cellular, 2) << "GSM provider not found.";
     return;
   }
-  home_provider_ = provider;
-  provider_requires_roaming_ = home_provider_->requires_roaming;
+  home_provider_info_ = provider_info;
+  provider_requires_roaming_ = provider_info->requires_roaming;
   Cellular::Operator oper;
-  if (provider->networks && provider->networks[0]) {
-    oper.SetCode(provider->networks[0]);
+  if (provider_info->networks && provider_info->networks[0]) {
+    oper.SetCode(provider_info->networks[0]);
   }
-  if (provider->country) {
-    oper.SetCountry(provider->country);
+  if (provider_info->country) {
+    oper.SetCountry(provider_info->country);
   }
   if (spn_.empty()) {
-    const char *name = mobile_provider_get_name(provider);
+    const char *name = mobile_provider_get_name(provider_info);
     if (name) {
       oper.SetName(name);
     }
@@ -534,13 +534,13 @@ void CellularCapabilityGSM::UpdateServingOperator() {
 
 void CellularCapabilityGSM::InitAPNList() {
   SLOG(Cellular, 2) << __func__;
-  if (!home_provider_) {
+  if (!home_provider_info_) {
     return;
   }
   apn_list_.clear();
-  for (int i = 0; i < home_provider_->num_apns; ++i) {
+  for (int i = 0; i < home_provider_info_->num_apns; ++i) {
     Stringmap props;
-    mobile_apn *apn = home_provider_->apns[i];
+    mobile_apn *apn = home_provider_info_->apns[i];
     if (apn->value) {
       props[kApnProperty] = apn->value;
     }

@@ -328,7 +328,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
 
-  // Initializes the |apn_list_| property based on the current |home_provider_|.
+  // Initializes the |apn_list_| property based on the current
+  // |home_provider_info_|.
   void InitAPNList();
 
   // Updates |bearer_path_| to match the currently active bearer.
@@ -469,7 +470,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string spn_;
   std::string sim_identifier_;
   std::string operator_id_;
-  mobile_provider *home_provider_;
+  mobile_provider *home_provider_info_;
   bool provider_requires_roaming_;
   std::string desired_network_;
 
