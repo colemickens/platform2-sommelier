@@ -23,17 +23,11 @@ usage () {
 }
 
 macaddr () {
-	ifconfig "$1" | awk '/HWaddr/ { print $5 }'
+	ip addr show "$1" | awk '/link\/ether/ { print $2 }'
 }
 
-ipaddr () {
-	ifconfig "$1" | awk '/inet addr:/ { print $2 }' \
-                      | awk -F ':' '{ print $2 }'
-}
-
-netmask () {
-	ifconfig "$1" | awk '/Mask:/ { print $4 }' \
-                      | awk -F ':' '{ print $2 }'
+ipaddr_with_subnet_mask () {
+	ip addr show "$1" | awk '/inet / { print $2 }'
 }
 
 # We need to down the interface (and therefore stop flimflam) across the
@@ -42,20 +36,19 @@ renameif () {
 	old="$1" ; shift
 	new="$1" ; shift
 	initctl stop shill
-	ifconfig "$old" down
+	ip link set "$old" down
 	nameif "$new" $(macaddr "$old")
-	ifconfig "$new" up
+	ip link set "$new" up
 	initctl start shill
 }
 
 setup () {
-	oldip=$(ipaddr "$1")
-	oldnetmask=$(netmask "$1")
-        if [ ! -z $2 ] ; then
+	oldip=$(ipaddr_with_subnet_mask "$1")
+	if [ ! -z $2 ] ; then
 		test_if="$2"
 	fi
 	renameif "$1" "$test_if"
-	ifconfig "$test_if" "$oldip" netmask "$oldnetmask"
+        ip addr add "$oldip" dev "$test_if"
 }
 
 teardown () {
@@ -71,7 +64,7 @@ reach () {
         if [ ! -z $1 ] ; then
 		test_if="$1"
 	fi
-	route add -host "$ip" gw "$gw" "$test_if"
+	ip route add "$ip" via "$gw" dev "$test_if"
 }
 
 if [ -z "$1" ]; then
