@@ -44,6 +44,24 @@ void KeyValueStore::CopyFrom(const KeyValueStore &b) {
   uint_properties_ = b.uint_properties_;
 }
 
+bool KeyValueStore::Equals(const KeyValueStore &other) const {
+  // First compare sizes of all maps to detect unequal stores faster.
+  if (bool_properties_.size() != other.bool_properties_.size() ||
+      int_properties_.size() != other.int_properties_.size() ||
+      string_properties_.size() != other.string_properties_.size() ||
+      stringmap_properties_.size() != other.stringmap_properties_.size() ||
+      strings_properties_.size()!= other.strings_properties_.size() ||
+      uint_properties_.size() != other.uint_properties_.size())
+    return false;
+
+  return bool_properties_ == other.bool_properties_ &&
+         int_properties_ == other.int_properties_ &&
+         string_properties_ == other.string_properties_ &&
+         stringmap_properties_ == other.stringmap_properties_ &&
+         strings_properties_ == other.strings_properties_ &&
+         uint_properties_ == other.uint_properties_;
+}
+
 bool KeyValueStore::ContainsBool(const string &name) const {
   return ContainsKey(bool_properties_, name);
 }

@@ -32,6 +32,7 @@ class KeyValueStore {
 
   void Clear();
   void CopyFrom(const KeyValueStore &b);
+  bool Equals(const KeyValueStore &other) const;
   bool IsEmpty();
 
   bool ContainsBool(const std::string &name) const;

@@ -143,6 +143,119 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_FALSE(store_.ContainsUint(kUintKey));
 }
 
+TEST_F(KeyValueStoreTest, Equals) {
+  KeyValueStore first, second;
+
+  first.SetBool("boolKey", true);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  second.SetBool("boolKey", true);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetBool("boolKey", true);
+  second.SetBool("boolOtherKey", true);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetBool("boolKey", true);
+  second.SetBool("boolKey", false);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetInt("intKey", 123);
+  second.SetInt("intOtherKey", 123);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetInt("intKey", 123);
+  second.SetInt("intKey", 456);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetString("stringKey", "string");
+  second.SetString("stringOtherKey", "string");
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetString("stringKey", "string");
+  second.SetString("stringKey", "otherString");
+  EXPECT_FALSE(first.Equals(second));
+
+  const map<string, string> kStringmap1{ { "key", "value" } };
+  const map<string, string> kStringmap2{ { "otherKey", "value" } };
+  const map<string, string> kStringmap3{ { "key", "otherValue" } };
+
+  first.Clear();
+  second.Clear();
+  first.SetStringmap("stringmapKey", kStringmap1);
+  second.SetStringmap("stringmapOtherKey", kStringmap1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetStringmap("stringmapKey", kStringmap1);
+  second.SetStringmap("stringmapKey", kStringmap2);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetStringmap("stringmapKey", kStringmap1);
+  second.SetStringmap("stringmapKey", kStringmap3);
+  EXPECT_FALSE(first.Equals(second));
+
+  const vector<string> kStrings1{ "value" };
+  const vector<string> kStrings2{ "otherValue" };
+
+  first.Clear();
+  second.Clear();
+  first.SetStrings("stringsKey", kStrings1);
+  second.SetStrings("stringsOtherKey", kStrings1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetStrings("stringsKey", kStrings1);
+  second.SetStrings("stringsKey", kStrings2);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetUint("uintKey", 1);
+  second.SetUint("uintOtherKey", 1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetUint("uintKey", 1);
+  second.SetUint("uintKey", 2);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetBool("boolKey", true);
+  first.SetInt("intKey", 123);
+  first.SetString("stringKey", "value");
+  first.SetStringmap("stringmapKey", kStringmap1);
+  first.SetStrings("stringsKey", kStrings1);
+  first.SetUint("uintKey", 1);
+  second.SetBool("boolKey", true);
+  second.SetInt("intKey", 123);
+  second.SetString("stringKey", "value");
+  second.SetStringmap("stringmapKey", kStringmap1);
+  second.SetStrings("stringsKey", kStrings1);
+  second.SetUint("uintKey", 1);
+  EXPECT_TRUE(first.Equals(second));
+}
+
 TEST_F(KeyValueStoreTest, CopyFrom) {
   KeyValueStore donor;
   const string kBoolKey("foo");
@@ -164,24 +277,10 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   const uint32 kUintValue = 456;
   donor.SetUint(kUintKey, kUintValue);
 
-  EXPECT_FALSE(store_.ContainsBool(kBoolKey));
-  EXPECT_FALSE(store_.ContainsInt(kIntKey));
-  EXPECT_FALSE(store_.ContainsString(kStringKey));
-  EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
-  EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
-  EXPECT_FALSE(store_.ContainsUint(kUintKey));
+  EXPECT_TRUE(store_.IsEmpty());
   store_.CopyFrom(donor);
-  EXPECT_TRUE(store_.ContainsBool(kBoolKey));
-  EXPECT_EQ(kBoolValue, store_.GetBool(kBoolKey));
-  EXPECT_TRUE(store_.ContainsInt(kIntKey));
-  EXPECT_EQ(kIntValue, store_.GetInt(kIntKey));
-  EXPECT_TRUE(store_.ContainsString(kStringKey));
-  EXPECT_EQ(kStringValue, store_.GetString(kStringKey));
-  EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
-  EXPECT_EQ(kStringmapValue, store_.GetStringmap(kStringmapKey));
-  EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
-  EXPECT_EQ(kStringsValue, store_.GetStrings(kStringsKey));
-  EXPECT_TRUE(store_.ContainsUint(kUintKey));
-  EXPECT_EQ(kUintValue, store_.GetUint(kUintKey));
+  EXPECT_FALSE(store_.IsEmpty());
+  EXPECT_TRUE(donor.Equals(store_));
 }
+
 }  // namespace shill
