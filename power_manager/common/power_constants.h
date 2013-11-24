@@ -154,6 +154,7 @@ std::string LidStateToString(LidState state);
 std::string SessionStateToString(SessionState state);
 std::string UpdaterStateToString(UpdaterState state);
 std::string DisplayModeToString(DisplayMode mode);
+std::string ButtonStateToString(ButtonState state);
 
 }  // namespace power_manager
 

@@ -104,6 +104,7 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void HandlePowerButtonEvent(ButtonState state) OVERRIDE;
   virtual void DeferInactivityTimeoutForVT2() OVERRIDE;
   virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE;
+  virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE;
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioStateChange(bool active) OVERRIDE;
@@ -168,6 +169,7 @@ class Daemon : public policy::BacklightControllerObserver,
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
   DBusMessage* HandleSetPolicyMethod(DBusMessage* message);
+  DBusMessage* HandlePowerButtonAcknowledgment(DBusMessage* message);
 
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);

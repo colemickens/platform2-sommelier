@@ -159,4 +159,17 @@ std::string DisplayModeToString(DisplayMode mode) {
   }
 }
 
+std::string ButtonStateToString(ButtonState state) {
+  switch (state) {
+    case BUTTON_UP:
+      return "up";
+    case BUTTON_DOWN:
+      return "down";
+    case BUTTON_REPEAT:
+      return "repeat";
+    default:
+      return StringPrintf("unknown (%d)", state);
+  }
+}
+
 }  // namespace power_manager

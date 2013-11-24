@@ -9,6 +9,7 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
@@ -19,6 +20,7 @@ typedef unsigned int guint;
 
 namespace power_manager {
 
+class Clock;
 class DBusSenderInterface;
 class PrefsInterface;
 
@@ -54,18 +56,36 @@ class InputController : public system::InputObserver {
     // Shuts the system down in reponse to the power button being pressed while
     // no display is connected.
     virtual void ShutDownForPowerButtonWithNoDisplay() = 0;
+
+    // Handles Chrome failing to acknowledge a power button press quickly
+    // enough.
+    virtual void HandleMissingPowerButtonAcknowledgment() = 0;
   };
+
+  // Amount of time to wait for Chrome to acknowledge power button presses, in
+  // milliseconds.
+  static const int kPowerButtonAcknowledgmentTimeoutMs = 2000;
 
   InputController(system::InputInterface* input,
                   Delegate* delegate,
                   DBusSenderInterface* dbus_sender);
   virtual ~InputController();
 
+  Clock* clock_for_testing() { return clock_.get(); }
+
   void Init(PrefsInterface* prefs);
+
+  // Calls HandlePowerButtonAcknowledgmentTimeout(). Returns false if
+  // |power_button_acknowledgment_timeout_id_| isn't set.
+  bool TriggerPowerButtonAcknowledgmentTimeoutForTesting();
 
   // Calls CheckActiveVT(). Returns false if |check_active_vt_timeout_id_| isn't
   // set or if the timeout is canceled.
   bool TriggerCheckActiveVTTimeoutForTesting();
+
+  // Handles acknowledgment from that a power button press was handled.
+  // |timestamp| is the timestamp from the original event.
+  void HandlePowerButtonAcknowledgment(const base::TimeTicks& timestamp);
 
   // system::InputObserver implementation:
   virtual void OnLidEvent(LidState state) OVERRIDE;
@@ -78,14 +98,31 @@ class InputController : public system::InputObserver {
   // activity to keep power management from kicking in).
   SIGNAL_CALLBACK_0(InputController, gboolean, CheckActiveVT);
 
+  // Tells |delegate_| when Chrome hasn't acknowledged a power button press
+  // quickly enough.
+  SIGNAL_CALLBACK_0(InputController,
+                    gboolean,
+                    HandlePowerButtonAcknowledgmentTimeout);
+
   system::InputInterface* input_;  // not owned
   Delegate* delegate_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned
+
+  scoped_ptr<Clock> clock_;
 
   // True if the device doesn't have an internal display.
   bool only_has_external_display_;
 
   LidState lid_state_;
+
+  // Timestamp from the most recent power-button-down event that Chrome is
+  // expected to acknowledge. Unset when the power button isn't pressed or if
+  // Chrome has already acknowledged the event.
+  base::TimeTicks expected_power_button_acknowledgment_timestamp_;
+
+  // GLib source ID for a timeout that calls
+  // HandlePowerButtonAcknowledgmentTimeout().
+  guint power_button_acknowledgment_timeout_id_;
 
   // GLib source ID for a timeout that calls CheckActiveVT() periodically.
   guint check_active_vt_timeout_id_;

@@ -602,13 +602,8 @@ void Daemon::HandleLidOpened() {
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
   metrics_reporter_->HandlePowerButtonEvent(state);
-
-  if (state == BUTTON_DOWN) {
-    if (backlight_controller_)
-      backlight_controller_->HandlePowerButtonPress();
-    LOG(INFO) << "Syncing state due to power button down event";
-    util::Launch("sync");
-  }
+  if (state == BUTTON_DOWN && backlight_controller_)
+    backlight_controller_->HandlePowerButtonPress();
 }
 
 void Daemon::DeferInactivityTimeoutForVT2() {
@@ -620,6 +615,11 @@ void Daemon::ShutDownForPowerButtonWithNoDisplay() {
             << "connected";
   metrics_reporter_->HandlePowerButtonEvent(BUTTON_DOWN);
   ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
+}
+
+void Daemon::HandleMissingPowerButtonAcknowledgment() {
+  LOG(INFO) << "Didn't receive power button acknowledgment from Chrome";
+  util::Launch("sync");
 }
 
 void Daemon::OnAudioStateChange(bool active) {
@@ -801,6 +801,11 @@ void Daemon::RegisterDBusMessageHandler() {
       kPowerManagerInterface,
       kSetPolicyMethod,
       base::Bind(&Daemon::HandleSetPolicyMethod, base::Unretained(this)));
+  dbus_handler_.AddMethodHandler(
+      kPowerManagerInterface,
+      kHandlePowerButtonAcknowledgmentMethod,
+      base::Bind(&Daemon::HandlePowerButtonAcknowledgment,
+                 base::Unretained(this)));
   dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRegisterSuspendDelayMethod,
@@ -1111,6 +1116,23 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
   state_controller_->HandlePolicyChange(policy);
   if (backlight_controller_)
     backlight_controller_->HandlePolicyChange(policy);
+  return NULL;
+}
+
+DBusMessage* Daemon::HandlePowerButtonAcknowledgment(DBusMessage* message) {
+  DBusError error;
+  dbus_error_init(&error);
+  dbus_int64_t timestamp_internal = 0;
+  if (dbus_message_get_args(message, &error,
+                            DBUS_TYPE_INT64, &timestamp_internal,
+                            DBUS_TYPE_INVALID)) {
+    input_controller_->HandlePowerButtonAcknowledgment(
+        base::TimeTicks::FromInternalValue(timestamp_internal));
+  } else {
+    dbus_error_free(&error);
+    LOG(WARNING) << "Unable to parse "
+                 << kHandlePowerButtonAcknowledgmentMethod << " request";
+  }
   return NULL;
 }
 

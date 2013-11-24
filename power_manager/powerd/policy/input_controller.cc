@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -32,14 +33,17 @@ InputController::InputController(system::InputInterface* input,
     : input_(input),
       delegate_(delegate),
       dbus_sender_(dbus_sender),
+      clock_(new Clock),
       only_has_external_display_(false),
       lid_state_(LID_NOT_PRESENT),
+      power_button_acknowledgment_timeout_id_(0),
       check_active_vt_timeout_id_(0) {
   input_->AddObserver(this);
 }
 
 InputController::~InputController() {
   input_->RemoveObserver(this);
+  util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
   util::RemoveTimeout(&check_active_vt_timeout_id_);
 }
 
@@ -54,11 +58,32 @@ void InputController::Init(PrefsInterface* prefs) {
       kCheckActiveVTFrequencySec * 1000, CheckActiveVTThunk, this);
 }
 
+bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
+  if (!power_button_acknowledgment_timeout_id_)
+    return false;
+
+  guint old_id = power_button_acknowledgment_timeout_id_;
+  if (!HandlePowerButtonAcknowledgmentTimeout())
+    util::RemoveTimeout(&old_id);
+  return true;
+}
+
 bool InputController::TriggerCheckActiveVTTimeoutForTesting() {
   if (!check_active_vt_timeout_id_)
     return false;
 
   return CheckActiveVT();
+}
+
+void InputController::HandlePowerButtonAcknowledgment(
+    const base::TimeTicks& timestamp) {
+  VLOG(1) << "Received acknowledgment of power button press at "
+          << timestamp.ToInternalValue() << "; expected "
+          << expected_power_button_acknowledgment_timestamp_.ToInternalValue();
+  if (timestamp == expected_power_button_acknowledgment_timestamp_) {
+    util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
+    expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
+  }
 }
 
 void InputController::OnLidEvent(LidState state) {
@@ -82,24 +107,39 @@ void InputController::OnLidEvent(LidState state) {
     case LID_NOT_PRESENT:
       return;
   }
-  proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
+  proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 }
 
 void InputController::OnPowerButtonEvent(ButtonState state) {
+  LOG(INFO) << "Power button " << ButtonStateToString(state);
+
   if (state == BUTTON_DOWN && only_has_external_display_ &&
       !input_->IsDisplayConnected()) {
     delegate_->ShutDownForPowerButtonWithNoDisplay();
     return;
   }
 
+  const base::TimeTicks now = clock_->GetCurrentTime();
+
   if (state != BUTTON_REPEAT) {
     InputEvent proto;
     proto.set_type(state == BUTTON_DOWN ?
                    InputEvent_Type_POWER_BUTTON_DOWN :
                    InputEvent_Type_POWER_BUTTON_UP);
-    proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
+    proto.set_timestamp(now.ToInternalValue());
     dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+
+    if (state == BUTTON_DOWN) {
+      expected_power_button_acknowledgment_timestamp_ = now;
+      util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
+      power_button_acknowledgment_timeout_id_ = g_timeout_add(
+          kPowerButtonAcknowledgmentTimeoutMs,
+          HandlePowerButtonAcknowledgmentTimeoutThunk, this);
+    } else {
+      expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
+      util::RemoveTimeout(&power_button_acknowledgment_timeout_id_);
+    }
   }
 
   delegate_->HandlePowerButtonEvent(state);
@@ -109,6 +149,13 @@ gboolean InputController::CheckActiveVT() {
   if (input_->GetActiveVT() == 2)
     delegate_->DeferInactivityTimeoutForVT2();
   return TRUE;
+}
+
+gboolean InputController::HandlePowerButtonAcknowledgmentTimeout() {
+  delegate_->HandleMissingPowerButtonAcknowledgment();
+  expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
+  power_button_acknowledgment_timeout_id_ = 0;
+  return FALSE;
 }
 
 }  // namespace policy
