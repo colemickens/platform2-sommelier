@@ -113,6 +113,7 @@ const int PowerSupply::kMaxCurrentSamples = 5;
 const int PowerSupply::kMaxChargeSamples = 5;
 const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
+const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
@@ -580,7 +581,8 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
 
   const bool below_threshold =
       (status.battery_time_to_empty > base::TimeDelta() &&
-       status.battery_time_to_empty <= low_battery_shutdown_time_) ||
+       status.battery_time_to_empty <= low_battery_shutdown_time_ &&
+       status.battery_percentage <= kLowBatteryShutdownSafetyPercent) ||
       status.battery_percentage <= low_battery_shutdown_percent_;
 
   // Most AC chargers can deliver enough current to prevent the battery from

@@ -196,6 +196,12 @@ class PowerSupply {
   // doesn't fire before it's safe to calculate the battery time.
   static const int kBatteryStabilizedSlackMs;
 
+  // To reduce the risk of shutting down prematurely due to a bad battery
+  // time-to-empty estimate, avoid shutting down when
+  // |low_battery_shutdown_time_| is set if the battery percent is not also
+  // equal to or less than this threshold (in the range [0.0, 100.0)).
+  static const double kLowBatteryShutdownSafetyPercent;
+
   PowerSupply(const base::FilePath& power_supply_path, PrefsInterface *prefs);
   ~PowerSupply();
 

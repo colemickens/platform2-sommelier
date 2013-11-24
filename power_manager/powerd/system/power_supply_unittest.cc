@@ -886,5 +886,40 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
   EXPECT_DOUBLE_EQ(0.0, status.observed_battery_charge_rate);
 }
 
+TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
+  // Start out discharging on AC with a ludicrously-high current where all of
+  // the charge will be drained in a minute.
+  WriteDefaultValues(POWER_AC, REPORT_CHARGE);
+  WriteValue("battery/status", kDischarging);
+  WriteDoubleValue("battery/charge_full", 1.0);
+  WriteDoubleValue("battery/charge_now", 0.5);
+  WriteDoubleValue("battery/current_now", -60.0);
+  prefs_.SetInt64(kLowBatteryShutdownTimePref, 180);
+  prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
+  power_supply_->Init();
+
+  // The system shouldn't shut down initially since it's on AC power and a
+  // negative charge rate hasn't yet been observed.
+  SetStabilizedTime();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(30, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
+  EXPECT_DOUBLE_EQ(0.0, status.observed_battery_charge_rate);
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  // Even after a negative charge rate is observed, the system still shouldn't
+  // shut down, since the battery percent is greater than the safety percent.
+  test_api_->AdvanceTime(base::TimeDelta::FromMilliseconds(
+      PowerSupply::kObservedBatteryChargeRateMinMs));
+  WriteDoubleValue("battery/charge_now", 0.25);
+  ASSERT_GT(25.0, PowerSupply::kLowBatteryShutdownSafetyPercent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(15, status.battery_time_to_empty.InSeconds());
+  EXPECT_EQ(0, status.battery_time_to_shutdown.InSeconds());
+  EXPECT_LT(status.observed_battery_charge_rate, 0.0);
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+}
+
 }  // namespace system
 }  // namespace power_manager
