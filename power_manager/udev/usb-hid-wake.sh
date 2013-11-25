@@ -28,6 +28,6 @@ listed_by_type() {
 }
 
 device=/sys/bus/usb/devices/$1
-if listed_by_type $device usbhid; then
+if listed_by_type $device "usbhid btusb"; then
     echo "enabled" > $device/power/wakeup
 fi
