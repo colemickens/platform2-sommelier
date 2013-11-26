@@ -17,6 +17,7 @@
     'USE_debugd%': 0,
     'USE_gdmwimax%': 0,
     'USE_passive_metrics%': 0,
+    'USE_profile%': 0,
     'USE_shill%': 0,
     'USE_tcmalloc%': 0,
     'USE_test%': 0,
