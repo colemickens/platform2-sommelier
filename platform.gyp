@@ -32,6 +32,11 @@
                 '<(DEPTH)/wimax_manager/wimax_manager.gyp:*',
               ],
             }],
+            ['USE_profile == 1', {
+              'dependencies': [
+                '<(DEPTH)/chromiumos-wide-profiling/quipper.gyp:*',
+              ],
+            }],
             ['USE_shill == 1', {
               'dependencies': [
                 '<(DEPTH)/shill/shill.gyp:*',
