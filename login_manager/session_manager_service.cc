@@ -365,8 +365,8 @@ bool SessionManagerService::Run() {
 
   // Initializes policy subsystems which, among other things, finds and
   // validates the stored policy signing key if one is present.
-  // A corrupted policy key means that the device needs to undergo
-  // 'Powerwash', which reboots and then wipes most of the stateful partition.
+  // A corrupted policy key means that the device needs to have its data wiped.
+  // We trigger a reboot and then wipe (most of) the stateful partition.
   if (!impl_->Initialize()) {
     impl_->StartDeviceWipe(NULL, NULL);
     Finalize();
