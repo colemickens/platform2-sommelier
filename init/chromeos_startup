@@ -295,6 +295,7 @@ if [ $CROS_DEBUG -eq 1 -a -f "$STATEFUL_UPDATE" ] ; then
     # or they would already be empty from depth first traversal.
 
     find "/mnt/stateful_partition"  -depth -mindepth 1 \
+        -not -path "/mnt/stateful_partition/.labmachine" \
         -not -path "${DEVELOPER_TARGET}/*" \
         -not -path "${VAR_TARGET}/*" \
         -not -path "${PRESERVE_DIR}/*" \
