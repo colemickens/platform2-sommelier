@@ -458,12 +458,6 @@ void UsbModemSwitchOperation::ScheduleNextMessageToMassStorageEndpoint() {
     return;
   }
 
-  // Be a bit cautious, clear any halt condition on the bulk endpoints, but
-  // ignore any error as the device may already disconnect from USB.
-  ClearHalt(out_endpoint_address_);
-  if (switch_context_->modem_info()->expect_response())
-    ClearHalt(in_endpoint_address_);
-
   // After sending the last message (and receiving its response, if expected),
   // wait for the device to reconnect.
   pending_task_.Cancel();
