@@ -62,21 +62,20 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
     return false;
   }
 
-  key_.resize(safe_file_size);
+  std::vector<uint8> buffer(safe_file_size, 0);
   int data_read = file_util::ReadFile(key_file_,
-                                      reinterpret_cast<char*>(&key_[0]),
+                                      reinterpret_cast<char*>(&buffer[0]),
                                       safe_file_size);
   if (data_read != safe_file_size) {
     PLOG(ERROR) << key_file_.value() << " could not be read in its entirety!";
-    key_.resize(0);
     return false;
   }
 
-  if (!nss_->CheckPublicKeyBlob(key_)) {
+  if (!nss_->CheckPublicKeyBlob(buffer)) {
     LOG(ERROR) << "Policy key " << key_file_.value() << " is corrupted!";
     return false;
   }
-
+  key_.assign(buffer.begin(), buffer.end());
   return true;
 }
 
@@ -105,7 +104,7 @@ bool PolicyKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
 
 bool PolicyKey::Persist() {
   // It is a programming error to call this before checking for the key on disk.
-  CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
+  CHECK(HaveCheckedDisk()) << "Haven't checked disk for owner key yet!";
   if (!have_replaced_ && file_util::PathExists(key_file_)) {
     LOG(ERROR) << "Tried to overwrite owner key!";
     return false;
@@ -129,7 +128,7 @@ bool PolicyKey::Persist() {
 }
 
 bool PolicyKey::Rotate(const std::vector<uint8>& public_key_der,
-                      const std::vector<uint8>& signature) {
+                       const std::vector<uint8>& signature) {
   if (!IsPopulated()) {
     LOG(ERROR) << "Don't yet have an owner key!";
     return false;
@@ -149,7 +148,7 @@ bool PolicyKey::Rotate(const std::vector<uint8>& public_key_der,
 bool PolicyKey::ClobberCompromisedKey(
     const std::vector<uint8>& public_key_der) {
   // It is a programming error to call this before checking for the key on disk.
-  CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
+  CHECK(HaveCheckedDisk()) << "Haven't checked disk for owner key yet!";
   // It is a programming error to call this without a key already loaded.
   CHECK(IsPopulated()) << "Don't yet have an owner key!";
 
