@@ -847,6 +847,39 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
   EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
 }
 
+TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_vector_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, PopulateFromDiskIfPossible())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(key_, PopulateFromBuffer(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, ClobberCompromisedKey(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Persist())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadOrCreate())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Get())
+      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, DefunctPrefsFilePresent())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_))
+      .Times(AnyNumber());
+
+  em::ChromeDeviceSettingsProto settings;
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  EXPECT_FALSE(service_->Initialize());
+
+  policy_proto_.set_new_public_key(fake_key_);
+  EXPECT_TRUE(service_->Initialize());
+}
+
 TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   // Fake the policy file existence.
   file_util::WriteFile(policy_file_, ".", 1);

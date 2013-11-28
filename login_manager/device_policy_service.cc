@@ -154,6 +154,15 @@ bool DevicePolicyService::Initialize() {
   if (!policy_success)
     LOG(WARNING) << "Failed to load device policy data, continuing anyway.";
 
+  if (!key_success && policy_success && store()->Get().has_new_public_key()) {
+      LOG(WARNING) << "Recovering missing owner key from policy blob!";
+      std::vector<uint8> pub_key;
+      NssUtil::BlobFromBuffer(store()->Get().new_public_key(), &pub_key);
+      key_success = key()->PopulateFromBuffer(pub_key);
+      if (key_success)
+        PersistKey();
+  }
+
   ReportPolicyFileMetrics(key_success, policy_success);
   UpdateSerialNumberRecoveryFlagFile();
   return key_success;
