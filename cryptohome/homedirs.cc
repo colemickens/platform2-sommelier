@@ -7,6 +7,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
+#include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 
 #include "credentials.h"
@@ -53,7 +54,7 @@ bool HomeDirs::Init() {
 }
 
 bool HomeDirs::FreeDiskSpace() {
-  if (platform_->AmountOfFreeDiskSpace(shadow_root_) > kMinFreeSpace) {
+  if (platform_->AmountOfFreeDiskSpace(shadow_root_) > kMinFreeSpaceInBytes) {
     return false;
   }
 

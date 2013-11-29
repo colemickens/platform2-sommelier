@@ -5,6 +5,7 @@
 #include "homedirs.h"
 
 #include <base/stringprintf.h>
+#include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -340,7 +341,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
 TEST_F(FreeDiskSpaceTest, NoCacheCleanup) {
   // Pretend we have lots of free space
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kMinFreeSpace + 1));
+    .WillOnce(Return(kMinFreeSpaceInBytes + 1));
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
@@ -515,7 +516,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpOneOldUser) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(0))
     .WillOnce(Return(0))
-    .WillOnce(Return(kMinFreeSpace + 1))
+    .WillOnce(Return(kMinFreeSpaceInBytes + 1))
     .WillOnce(Return(kEnoughFreeSpace + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -561,7 +562,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleOldUsers) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(0))
     .WillOnce(Return(0))
-    .WillOnce(Return(kMinFreeSpace + 1))
+    .WillOnce(Return(kMinFreeSpaceInBytes + 1))
     .WillOnce(Return(kEnoughFreeSpace - 1))
     .WillOnce(Return(kEnoughFreeSpace + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
@@ -733,7 +734,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentOldUsers) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(0))
     .WillOnce(Return(0))
-    .WillOnce(Return(kMinFreeSpace + 1))
+    .WillOnce(Return(kMinFreeSpaceInBytes + 1))
     .WillRepeatedly(Return(kEnoughFreeSpace - 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -827,7 +828,7 @@ TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
               Return(true)));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kMinFreeSpace - 1));
+    .WillOnce(Return(kMinFreeSpaceInBytes - 1));
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -876,7 +877,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
               Return(true)));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kMinFreeSpace - 1));
+    .WillOnce(Return(kMinFreeSpaceInBytes - 1));
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));

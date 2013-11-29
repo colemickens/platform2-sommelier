@@ -26,7 +26,6 @@
 
 namespace cryptohome {
 
-const int64 kMinFreeSpace = 512 * 1LL << 20;
 const int64 kEnoughFreeSpace = 1LL << 30;
 
 extern const base::TimeDelta kOldUserLastActivityTime;

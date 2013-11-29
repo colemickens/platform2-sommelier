@@ -19,6 +19,7 @@
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -969,7 +970,7 @@ int main(int argc, char **argv) {
         printf("Cleanup reported that there was enough free space "
                "(more than %"PRIu64" Kbytes, check with `df`) "
                "so it didn't try to cut anything.\n",
-               cryptohome::kMinFreeSpace >> 10);
+               cryptohome::kMinFreeSpaceInBytes >> 10);
       }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
