@@ -27,7 +27,7 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_service.h"
-#include "login_manager/system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 using std::string;
 using std::vector;
@@ -94,7 +94,7 @@ using login_manager::FileChecker;
 using login_manager::KeyGenerator;
 using login_manager::RegenMitigator;
 using login_manager::SessionManagerService;
-using login_manager::SystemUtils;
+using login_manager::SystemUtilsImpl;
 
 int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
   // session_manager side, Chrome will use --multi-profiles flag to enable it.
   bool support_multi_profile = !cl->HasSwitch(switches::kLegacyLoginProfile);
 
-  SystemUtils system;
+  SystemUtilsImpl system;
   // We only support a single job with args, so grab all loose args
   vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
 

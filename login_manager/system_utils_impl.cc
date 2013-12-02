@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 #include <errno.h>
 #include <signal.h>
@@ -39,13 +39,13 @@ namespace gobject {
 struct SessionManager;
 }
 
-const char SystemUtils::kSignalSuccess[] = "success";
-const char SystemUtils::kSignalFailure[] = "failure";
+const char SystemUtilsImpl::kSignalSuccess[] = "success";
+const char SystemUtilsImpl::kSignalFailure[] = "failure";
 
-SystemUtils::SystemUtils() {}
-SystemUtils::~SystemUtils() {}
+SystemUtilsImpl::SystemUtilsImpl() {}
+SystemUtilsImpl::~SystemUtilsImpl() {}
 
-int SystemUtils::IsDevMode() {
+int SystemUtilsImpl::IsDevMode() {
   int dev_mode_code = system("crossystem 'cros_debug?0'");
   if (WIFEXITED(dev_mode_code)) {
     return WEXITSTATUS(dev_mode_code);
@@ -53,7 +53,7 @@ int SystemUtils::IsDevMode() {
   return -1;
 }
 
-int SystemUtils::kill(pid_t pid, uid_t owner, int signal) {
+int SystemUtilsImpl::kill(pid_t pid, uid_t owner, int signal) {
   LOG(INFO) << "Sending " << signal << " to " << pid << " as " << owner;
   uid_t uid, euid, suid;
   getresuid(&uid, &euid, &suid);
@@ -69,15 +69,15 @@ int SystemUtils::kill(pid_t pid, uid_t owner, int signal) {
   return ret;
 }
 
-time_t SystemUtils::time(time_t* t) {
+time_t SystemUtilsImpl::time(time_t* t) {
   return ::time(t);
 }
 
-pid_t SystemUtils::fork() {
+pid_t SystemUtilsImpl::fork() {
   return ::fork();
 }
 
-bool SystemUtils::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
+bool SystemUtilsImpl::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
   base::TimeTicks start = base::TimeTicks::Now();
   base::TimeDelta elapsed;
   int ret;
@@ -97,8 +97,8 @@ bool SystemUtils::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
   return errno == ECHILD;  // EINTR means we timed out.
 }
 
-bool SystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                              int32* file_size_32) {
+bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
+                                                  int32* file_size_32) {
   // Get the file size (must fit in a 32 bit int for NSS).
   int64 file_size;
   if (!file_util::GetFileSize(file, &file_size)) {
@@ -114,15 +114,15 @@ bool SystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
   return true;
 }
 
-bool SystemUtils::Exists(const base::FilePath& file) {
+bool SystemUtilsImpl::Exists(const base::FilePath& file) {
   return file_util::PathExists(file);
 }
 
-bool SystemUtils::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
-  if (!tempdir_.IsValid() && !tempdir_.CreateUniqueTempDir())
+bool SystemUtilsImpl::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
+  if (!temp_dir_.IsValid() && !temp_dir_.CreateUniqueTempDir())
     return false;
   base::FilePath local_temp_file;
-  if (file_util::CreateTemporaryFileInDir(tempdir_.path(), &local_temp_file)) {
+  if (file_util::CreateTemporaryFileInDir(temp_dir_.path(), &local_temp_file)) {
     if (chmod(local_temp_file.value().c_str(), 0644) == 0) {
       *temp_file = local_temp_file;
       return true;
@@ -134,7 +134,7 @@ bool SystemUtils::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
   return false;
 }
 
-bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
+bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
     base::FilePath* temp_file_path) {
   // Create a temporary directory to put the testing channel in.
   // It will be made write-only below; we need to be able to read it
@@ -163,15 +163,15 @@ bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
   return true;
 }
 
-bool SystemUtils::RemoveFile(const base::FilePath& filename) {
+bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
   if (file_util::DirectoryExists(filename))
     return false;
   return file_util::Delete(filename, false);
 }
 
-bool SystemUtils::AtomicFileWrite(const base::FilePath& filename,
-                                  const char* data,
-                                  int size) {
+bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
+                                      const char* data,
+                                      int size) {
   base::FilePath scratch_file;
   if (!file_util::CreateTemporaryFileInDir(filename.DirName(), &scratch_file))
     return false;
@@ -183,31 +183,31 @@ bool SystemUtils::AtomicFileWrite(const base::FilePath& filename,
                                              (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
-void SystemUtils::EmitSignal(const char* signal_name) {
+void SystemUtilsImpl::EmitSignal(const char* signal_name) {
   EmitSignalWithStringArgs(signal_name, vector<string>());
 }
 
-void SystemUtils::EmitSignalWithStringArgs(const char* signal_name,
-                                           const vector<string>& payload) {
+void SystemUtilsImpl::EmitSignalWithStringArgs(const char* signal_name,
+                                               const vector<string>& payload) {
   EmitSignalFrom(chromium::kChromiumInterface, signal_name, payload);
   EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name, payload);
 }
 
-void SystemUtils::EmitStatusSignal(const char* signal_name, bool status) {
+void SystemUtilsImpl::EmitStatusSignal(const char* signal_name, bool status) {
   EmitSignalFrom(chromium::kChromiumInterface, signal_name,
                  vector<string>(1, status ? kSignalSuccess : kSignalFailure));
   EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name,
                  vector<string>(1, status ? kSignalSuccess : kSignalFailure));
 }
 
-void SystemUtils::CallMethodOnPowerManager(const char* method_name) {
+void SystemUtilsImpl::CallMethodOnPowerManager(const char* method_name) {
   CallMethodOn(power_manager::kPowerManagerServiceName,
                power_manager::kPowerManagerServicePath,
                power_manager::kPowerManagerInterface,
                method_name);
 }
 
-scoped_ptr<ScopedDBusPendingCall> SystemUtils::CallAsyncMethodOnChromium(
+scoped_ptr<ScopedDBusPendingCall> SystemUtilsImpl::CallAsyncMethodOnChromium(
     const char* method_name) {
   DBusMessage* method = dbus_message_new_method_call(
       chromeos::kLibCrosServiceName,
@@ -224,7 +224,7 @@ scoped_ptr<ScopedDBusPendingCall> SystemUtils::CallAsyncMethodOnChromium(
   return ScopedDBusPendingCall::Create(to_return);
 }
 
-bool SystemUtils::CheckAsyncMethodSuccess(DBusPendingCall* pending_call) {
+bool SystemUtilsImpl::CheckAsyncMethodSuccess(DBusPendingCall* pending_call) {
   DCHECK(pending_call);
   // This returns NULL if |pending_call| hasn't completed yet.
   DBusMessage* reply = dbus_pending_call_steal_reply(pending_call);
@@ -248,14 +248,14 @@ bool SystemUtils::CheckAsyncMethodSuccess(DBusPendingCall* pending_call) {
   return to_return;
 }
 
-void SystemUtils::CancelAsyncMethodCall(DBusPendingCall* pending_call) {
+void SystemUtilsImpl::CancelAsyncMethodCall(DBusPendingCall* pending_call) {
   DCHECK(pending_call);
   dbus_pending_call_cancel(pending_call);
 }
 
-void SystemUtils::EmitSignalFrom(const char* interface,
-                                 const char* signal_name,
-                                 const vector<string>& payload) {
+void SystemUtilsImpl::EmitSignalFrom(const char* interface,
+                                     const char* signal_name,
+                                     const vector<string>& payload) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               login_manager::kSessionManagerServicePath,
                               interface);
@@ -280,10 +280,10 @@ void SystemUtils::EmitSignalFrom(const char* interface,
   ::dbus_message_unref(signal);
 }
 
-void SystemUtils::CallMethodOn(const char* destination,
-                               const char* path,
-                               const char* interface,
-                               const char* method_name) {
+void SystemUtilsImpl::CallMethodOn(const char* destination,
+                                   const char* path,
+                                   const char* interface,
+                                   const char* method_name) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               destination, path, interface);
   if (!proxy) {
@@ -297,7 +297,7 @@ void SystemUtils::CallMethodOn(const char* destination,
     LOG(ERROR) << interface << "." << path << " failed: " << error->message;
 }
 
-void SystemUtils::AppendToClobberLog(const char* msg) const {
+void SystemUtilsImpl::AppendToClobberLog(const char* msg) const {
   chromeos::ProcessImpl appender;
   appender.AddArg("/sbin/clobber-log");
   appender.AddArg("--");
@@ -305,9 +305,9 @@ void SystemUtils::AppendToClobberLog(const char* msg) const {
   appender.Run();
 }
 
-void SystemUtils::SetAndSendGError(ChromeOSLoginError code,
-                                   DBusGMethodInvocation* context,
-                                   const char* msg) {
+void SystemUtilsImpl::SetAndSendGError(ChromeOSLoginError code,
+                                       DBusGMethodInvocation* context,
+                                       const char* msg) {
   GError* error = NULL;
   g_set_error(&error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", msg);
   dbus_g_method_return_error(context, error);

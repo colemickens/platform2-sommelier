@@ -19,6 +19,8 @@
 #include <dbus/dbus.h>
 #include <gmock/gmock.h>
 
+#include "login_manager/system_utils_impl.h"
+
 namespace login_manager {
 
 class ScopedDBusPendingCall;
@@ -94,8 +96,9 @@ class MockSystemUtils : public SystemUtils {
   // and return it whenever asked.
   base::FilePath unique_file_path_;
 
-  SystemUtils real_utils_;
+  SystemUtilsImpl real_utils_;
   ScopedVector<ScopedDBusPendingCall> fake_calls_;
+  base::ScopedTempDir temp_dir_;
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);
 };
 }  // namespace login_manager

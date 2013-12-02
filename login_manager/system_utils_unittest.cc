@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <login_manager/system_utils.h>
+#include <login_manager/system_utils_impl.h>
 
 #include <base/file_path.h>
 #include <base/file_util.h>
@@ -24,7 +24,7 @@ TEST(SystemUtilsTest, CorrectFileWrite) {
   ASSERT_EQ(old_data.length(),
             file_util::WriteFile(scratch, old_data.c_str(), old_data.length()));
 
-  SystemUtils utils;
+  SystemUtilsImpl utils;
   ASSERT_TRUE(utils.AtomicFileWrite(scratch,
                                     new_data.c_str(),
                                     new_data.length()));

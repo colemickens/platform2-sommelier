@@ -27,6 +27,7 @@
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_session_manager.h"
 #include "login_manager/mock_system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
@@ -231,7 +232,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   int PackSignal(int signal) { return __W_EXITCODE(0, signal); }
 
   scoped_refptr<SessionManagerService> manager_;
-  SystemUtils real_utils_;
+  SystemUtilsImpl real_utils_;
   MockSystemUtils utils_;
 
   // These are bare pointers, not scoped_ptrs, because we need to give them

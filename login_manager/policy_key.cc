@@ -12,7 +12,7 @@
 
 #include "login_manager/child_job.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 
@@ -30,7 +30,7 @@ PolicyKey::PolicyKey(const FilePath& key_file, NssUtil* nss)
       have_checked_disk_(false),
       have_replaced_(false),
       nss_(nss),
-      utils_(new SystemUtils) {
+      utils_(new SystemUtilsImpl) {
 }
 
 PolicyKey::~PolicyKey() {}

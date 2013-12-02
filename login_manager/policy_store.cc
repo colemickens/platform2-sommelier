@@ -8,7 +8,7 @@
 #include <base/logging.h>
 
 #include "login_manager/login_metrics.h"
-#include "login_manager/system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 // static
@@ -47,7 +47,7 @@ const enterprise_management::PolicyFetchResponse& PolicyStore::Get() const {
 }
 
 bool PolicyStore::Persist() {
-  SystemUtils utils;
+  SystemUtilsImpl utils;
   std::string polstr;
   if (!policy_.SerializeToString(&polstr)) {
     LOG(ERROR) << "Could not serialize policy!";

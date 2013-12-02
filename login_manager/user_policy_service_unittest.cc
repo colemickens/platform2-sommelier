@@ -20,7 +20,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -84,7 +84,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   }
 
  protected:
-  SystemUtils system_utils_;
+  SystemUtilsImpl system_utils_;
   base::ScopedTempDir tmpdir_;
   FilePath key_copy_file_;
 

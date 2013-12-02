@@ -26,7 +26,7 @@
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 using chromeos::cryptohome::home::GetUserPathPrefix;
@@ -107,7 +107,7 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
   ASSERT_EQ(keygen::GenerateKey(key_file_path ,tmpdir_.path(), &nss), 0);
   ASSERT_TRUE(file_util::PathExists(key_file_path));
 
-  SystemUtils utils;
+  SystemUtilsImpl utils;
   int32 file_size = 0;
   ASSERT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
   ASSERT_GT(file_size, 0);

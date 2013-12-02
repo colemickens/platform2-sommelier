@@ -71,9 +71,9 @@ bool MockSystemUtils::CreateReadOnlyFileInTempDir(FilePath* temp_file_path) {
 base::FilePath MockSystemUtils::GetUniqueFilename() {
   if (unique_file_path_.empty()) {
     if (EnsureTempDir() &&
-        !file_util::CreateTemporaryFileInDir(tempdir_.path(),
+        !file_util::CreateTemporaryFileInDir(temp_dir_.path(),
                                              &unique_file_path_)) {
-      PLOG(ERROR) << "Could not create file in " << tempdir_.path().value();
+      PLOG(ERROR) << "Could not create file in " << temp_dir_.path().value();
       unique_file_path_.clear();
     }
   }
@@ -97,7 +97,7 @@ void MockSystemUtils::EnqueueFakePendingCall(
 }
 
 bool MockSystemUtils::EnsureTempDir() {
-  if (!tempdir_.IsValid() && !tempdir_.CreateUniqueTempDir()) {
+  if (!temp_dir_.IsValid() && !temp_dir_.CreateUniqueTempDir()) {
     PLOG(ERROR) << "Could not create temp dir";
     return false;
   }
@@ -110,7 +110,7 @@ base::FilePath MockSystemUtils::PutInsideTempdir(const base::FilePath& path) {
     std::string ascii(path.MaybeAsASCII());
     to_append = base::FilePath(ascii.substr(1, std::string::npos));
   }
-  base::FilePath to_return(tempdir_.path().Append(to_append));
+  base::FilePath to_return(temp_dir_.path().Append(to_append));
   return to_return;
 }
 

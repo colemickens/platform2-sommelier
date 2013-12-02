@@ -109,8 +109,11 @@ void DBusGMethodCompletion::Success() {
 }
 
 void DBusGMethodCompletion::Failure(const PolicyService::Error& error) {
-  SystemUtils system;
-  system.SetAndSendGError(error.code(), context_, error.message().c_str());
+  GError* gerror = NULL;
+  g_set_error(&gerror, CHROMEOS_LOGIN_ERROR, error.code(),
+              "Login error: %s", error.message().c_str());
+  dbus_g_method_return_error(context_, gerror);
+  g_error_free(gerror);
   context_ = NULL;
   delete this;
 }
