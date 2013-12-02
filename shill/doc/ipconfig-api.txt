@@ -91,3 +91,14 @@ Properties	string Address [readonly]
 			corresponds to the length of the network mask; e.g.
 			a netmask of 255.255.255.0 has a prefixlen of 24
 			(note arbitrary CIDR masks are not supported.)
+
+                string VendorEncapsulatedOptions [readonly]
+
+			Server-provided value for the DHCP option 43
+			value.  Its interpretation vairies based on
+			the DHCP server.
+
+		string WebProxyAutoDiscoveryUrl [readonly]
+
+			The Web Proxy Auto-Discovery URL for this network
+			as reported over DHCP.

@@ -109,6 +109,7 @@ class DHCPConfig : public IPConfig {
   static const char kConfigurationKeyMTU[];
   static const char kConfigurationKeyRouters[];
   static const char kConfigurationKeySubnetCIDR[];
+  static const char kConfigurationKeyVendorEncapsulatedOptions[];
   static const char kConfigurationKeyWebProxyAutoDiscoveryUrl[];
 
   static const int kDHCPCDExitPollMilliseconds;
