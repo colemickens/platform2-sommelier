@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This Makefile uses ChromeOS's common.mk for most of its functionality. Consult
-# the documentation in common-mk for recipes and other information.
+# This Makefile uses Chrome OS's common.mk for most of its functionality.
+# Consult the documentation in common-mk for recipes and other information.
 
 # This controls where we build the package. Don't fiddle with this, since things
 # like CPPFLAGS and some of the protobuf stuff depends on it.
@@ -13,8 +13,8 @@ VERBOSE ?= 0
 include common.mk
 
 PROTOC ?= protoc
-# BASE_VER is used to determine what versions of libbase and libchromeos we are
-# going to compile against
+# BASE_VER is used to determine what versions of libbase we are going to compile
+# against.
 BASE_VER ?= 180609
 PKG_CONFIG ?= pkg-config
 
@@ -27,7 +27,7 @@ DBUS_DEPS := dbus-1 dbus-glib-1
 DBUS_FLAGS := $(shell $(PKG_CONFIG) --cflags $(DBUS_DEPS))
 DBUS_LIBS := $(shell $(PKG_CONFIG) --libs $(DBUS_DEPS))
 
-GLIB_DEPS := glib-2.0 gobject-2.0 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+GLIB_DEPS := glib-2.0 gobject-2.0 libchrome-$(BASE_VER)
 GLIB_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GLIB_DEPS))
 GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
 

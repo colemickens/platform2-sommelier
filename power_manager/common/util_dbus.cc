@@ -13,37 +13,87 @@
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "base/stringprintf.h"
-#include "chromeos/dbus/dbus.h"
+#include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
 
 namespace power_manager {
 namespace util {
 
+namespace {
+
+// Maximum amount of time to wait for a reply after making a D-Bus method call.
+const int kDBusTimeoutMs = 5000;
+
+// Log a warning if a D-Bus call takes longer than this to complete.
+const int kDBusSlowCallMs = 1000;
+
+}  // namespace
+
+DBusGConnection* GetSystemDBusGConnection() {
+  GError* error = NULL;
+  DBusGConnection* connection = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+  CHECK(connection) << "Unable to get system bus connection";
+  if (error)
+    g_error_free(error);
+  return connection;
+}
+
+DBusConnection* GetSystemDBusConnection() {
+  return dbus_g_connection_get_connection(GetSystemDBusGConnection());
+}
+
+DBusMessage* CallDBusMethodAndUnref(DBusMessage* request) {
+  const std::string name = dbus_message_get_member(request);
+  DBusError error;
+  dbus_error_init(&error);
+  const base::TimeTicks start_time = base::TimeTicks::Now();
+  DBusMessage* reply = dbus_connection_send_with_reply_and_block(
+      GetSystemDBusConnection(), request, kDBusTimeoutMs, &error);
+  dbus_message_unref(request);
+
+  const base::TimeDelta duration = base::TimeTicks::Now() - start_time;
+  if (duration.InMilliseconds() > kDBusSlowCallMs)
+    LOG(WARNING) << name << " call took " << duration.InMilliseconds() << " ms";
+
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << name << " call failed: " << error.name
+               << " (" << error.message << ")";
+    dbus_error_free(&error);
+  }
+
+  // dbus_connection_send_with_reply_and_block() is documented as returning NULL
+  // in the case of an error.
+  return reply;
+}
+
 bool GetSessionState(std::string* state) {
   DCHECK(state);
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              login_manager::kSessionManagerServiceName,
-                              login_manager::kSessionManagerServicePath,
-                              login_manager::kSessionManagerInterface);
+  DBusMessage* request = dbus_message_new_method_call(
+      login_manager::kSessionManagerServiceName,
+      login_manager::kSessionManagerServicePath,
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerRetrieveSessionState);
+  DBusMessage* reply = CallDBusMethodAndUnref(request);
+  if (!reply)
+    return false;
 
-  GError* error = NULL;
-  gchar* state_arg = NULL;
-  if (dbus_g_proxy_call(proxy.gproxy(),
-                        login_manager::kSessionManagerRetrieveSessionState,
-                        &error,
-                        G_TYPE_INVALID,
-                        G_TYPE_STRING,
-                        &state_arg,
-                        G_TYPE_INVALID)) {
+  bool success = false;
+  DBusError error;
+  dbus_error_init(&error);
+  const char* state_arg = NULL;
+  if (dbus_message_get_args(reply, &error,
+                            DBUS_TYPE_STRING, &state_arg,
+                            DBUS_TYPE_INVALID)) {
     *state = state_arg;
-    g_free(state_arg);
-    return true;
+    success = true;
+  } else {
+    LOG(ERROR) << "Unable to read "
+               << login_manager::kSessionManagerRetrieveSessionState << " args";
   }
-  LOG(ERROR) << "Unable to retrieve session state from session manager: "
-             << error->message;
-  g_error_free(error);
-  return false;
+  dbus_error_free(&error);
+  dbus_message_unref(reply);
+  return success;
 }
 
 bool ParseProtocolBufferFromDBusMessage(
@@ -98,34 +148,14 @@ void CallSessionManagerMethod(const std::string& method_name,
                              DBUS_TYPE_INVALID);
   }
 
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  dbus_connection_send(connection, message, NULL);
+  dbus_connection_send(GetSystemDBusConnection(), message, NULL);
   dbus_message_unref(message);
-}
-
-void SendSignalWithIntToPowerD(const char* signal_name, int value) {
-  LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                signal_name);
-  CHECK(signal);
-  dbus_message_append_args(signal, DBUS_TYPE_INT32, &value, DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
 }
 
 bool CallMethodInPowerD(const char* method_name,
                         const google::protobuf::MessageLite& protobuf,
                         int* return_value) {
   LOG(INFO) << "Calling method '" << method_name << "' in PowerManager";
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
   DBusMessage* message = dbus_message_new_method_call(kPowerManagerServiceName,
                                                       kPowerManagerServicePath,
                                                       kPowerManagerInterface,
@@ -135,7 +165,7 @@ bool CallMethodInPowerD(const char* method_name,
   DBusError error;
   dbus_error_init(&error);
   DBusMessage* response =
-      dbus_connection_send_with_reply_and_block(connection,
+      dbus_connection_send_with_reply_and_block(GetSystemDBusConnection(),
                                                 message,
                                                 DBUS_TIMEOUT_USE_DEFAULT,
                                                 &error);
@@ -224,12 +254,9 @@ void LogDBusError(DBusMessage* message) {
 }
 
 void RequestDBusServiceName(const char* name) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
   DBusError error;
   dbus_error_init(&error);
-  if (dbus_bus_request_name(connection, name, 0, &error) < 0) {
+  if (dbus_bus_request_name(GetSystemDBusConnection(), name, 0, &error) < 0) {
     LOG(FATAL) << "Failed to register name \"" << name << "\": "
                << (dbus_error_is_set(&error) ? error.message : "Unknown error");
   }
@@ -243,8 +270,8 @@ bool IsDBusServiceConnected(const std::string& service_name,
   // passed-in name has no owner.
   GError* error = NULL;
   DBusGProxy* proxy = dbus_g_proxy_new_for_name_owner(
-      chromeos::dbus::GetSystemBusConnection().g_connection(),
-      service_name.c_str(), service_path.c_str(), interface.c_str(), &error);
+      GetSystemDBusGConnection(), service_name.c_str(), service_path.c_str(),
+      interface.c_str(), &error);
   if (!proxy) {
     g_error_free(error);
     if (connection_name_out)

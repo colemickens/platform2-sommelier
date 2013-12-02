@@ -14,8 +14,6 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
-#include "chromeos/dbus/dbus.h"
-#include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"

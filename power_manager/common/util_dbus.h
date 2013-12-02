@@ -9,10 +9,12 @@
 
 #include "base/basictypes.h"
 
+struct DBusConnection;
 struct DBusMessage;
 
-struct _DBusGProxy;
-typedef struct _DBusGProxy DBusGProxy;
+struct _DBusGConnection;
+typedef struct _DBusGConnection DBusGConnection;
+
 typedef char gchar;
 
 namespace google {
@@ -23,6 +25,18 @@ class MessageLite;
 
 namespace power_manager {
 namespace util {
+
+// Returns the DBusGConnection object corresponding to the system bus. Crashes
+// on failure.
+DBusGConnection* GetSystemDBusGConnection();
+
+// Returns the DBusConnection object corresponding to the system bus. Crashes on
+// failure.
+DBusConnection* GetSystemDBusConnection();
+
+// Invokes and frees |request| and returns the reply. The caller must free the
+// reply via dbus_message_unref(). Returns NULL on failure.
+DBusMessage* CallDBusMethodAndUnref(DBusMessage* request);
 
 // Gets session state info.  Returns true if call to session manager was
 // successful.
@@ -44,9 +58,6 @@ void AppendProtocolBufferToDBusMessage(
 // If |optional_string_arg| is non-NULL, it is passed as an argument.
 void CallSessionManagerMethod(const std::string& method_name,
                               const char* optional_string_arg);
-
-// Sends a message |signal| and int32 to the unprivileged power daemon.
-void SendSignalWithIntToPowerD(const char* signal, int value);
 
 // Calls a method |method_name| in powerd that takes a protocol buffer.  If
 // |return_value| is non-NULL, expects an integer response.  This is a

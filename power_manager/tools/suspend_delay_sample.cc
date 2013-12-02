@@ -9,7 +9,6 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/time.h"
-#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_handler.h"
 #include "power_manager/common/util_dbus.h"
@@ -42,10 +41,6 @@ bool CallMethod(const std::string& method_name,
                 const google::protobuf::MessageLite& request,
                 google::protobuf::MessageLite* reply_out) {
   LOG(INFO) << "Calling " << method_name << " method";
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-
   DBusMessage* message = dbus_message_new_method_call(
       power_manager::kPowerManagerServiceName,
       power_manager::kPowerManagerServicePath,
@@ -54,15 +49,7 @@ bool CallMethod(const std::string& method_name,
   CHECK(message);
   power_manager::util::AppendProtocolBufferToDBusMessage(request, message);
 
-  DBusError error;
-  dbus_error_init(&error);
-  DBusMessage* response = dbus_connection_send_with_reply_and_block(
-      connection, message, DBUS_TIMEOUT_USE_DEFAULT, &error);
-  dbus_message_unref(message);
-  CHECK(!dbus_error_is_set(&error))
-      << "Call to " << method_name << " failed: " << error.name
-      << " (" << error.message << ")";
-
+  DBusMessage* response = power_manager::util::CallDBusMethodAndUnref(message);
   CHECK(!reply_out ||
         power_manager::util::ParseProtocolBufferFromDBusMessage(
             response, reply_out))

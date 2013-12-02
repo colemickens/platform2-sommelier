@@ -14,14 +14,8 @@
 #include "base/callback.h"
 #include "base/memory/scoped_ptr.h"
 
-struct DBusMessage;
 struct DBusConnection;
-
-namespace chromeos {
-namespace dbus {
-class Proxy;
-}  // namespace dbus
-}  // namespace chromeos
+struct DBusMessage;
 
 namespace power_manager {
 namespace util {
@@ -83,7 +77,7 @@ class DBusHandler {
                               const gchar* new_owner);
 
   // Used to listen for NameOwnerChanged signals.
-  scoped_ptr<chromeos::dbus::Proxy> proxy_;
+  DBusGProxy* proxy_;
 
   SignalHandlerTable signal_handler_table_;
   MethodHandlerTable method_handler_table_;

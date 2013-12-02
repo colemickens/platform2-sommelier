@@ -20,7 +20,6 @@
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
-#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
@@ -330,18 +329,14 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
 
  private:
   void SendPowerStateChangedSignal(const std::string& power_state) {
-    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                                kPowerManagerServicePath,
-                                kPowerManagerInterface);
-    const char* state = power_state.c_str();
     DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                   kPowerManagerInterface,
                                                   kPowerStateChanged);
-    CHECK(signal);
+    const char* state = power_state.c_str();
     dbus_message_append_args(signal,
                              DBUS_TYPE_STRING, &state,
                              DBUS_TYPE_INVALID);
-    dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+    dbus_connection_send(util::GetSystemDBusConnection(), signal, NULL);
     dbus_message_unref(signal);
   }
 
@@ -483,18 +478,14 @@ void Daemon::SendBrightnessChangedSignal(
       NOTREACHED() << "Unhandled brightness change cause " << cause;
   }
 
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                 kPowerManagerInterface,
                                                 signal_name.c_str());
-  CHECK(signal);
   dbus_message_append_args(signal,
                            DBUS_TYPE_INT32, &brightness_percent_int,
                            DBUS_TYPE_BOOLEAN, &user_initiated,
                            DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_connection_send(util::GetSystemDBusConnection(), signal, NULL);
   dbus_message_unref(signal);
 }
 

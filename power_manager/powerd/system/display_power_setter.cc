@@ -7,8 +7,8 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include "base/logging.h"
-#include "chromeos/dbus/dbus.h"
 #include "power_manager/common/util.h"
+#include "power_manager/common/util_dbus.h"
 
 namespace power_manager {
 namespace system {
@@ -43,10 +43,7 @@ DBusMessage* CreateChromeMethodCall(const std::string& method) {
 
 // Sends |message| asynchronously and unrefs it.
 void SendAndUnrefMessage(DBusMessage* message) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  dbus_connection_send(connection, message, NULL);
+  dbus_connection_send(util::GetSystemDBusConnection(), message, NULL);
   dbus_message_unref(message);
 }
 

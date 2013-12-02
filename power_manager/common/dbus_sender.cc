@@ -11,7 +11,6 @@
 #include <climits>
 
 #include "base/logging.h"
-#include "chromeos/dbus/dbus.h"
 #include "power_manager/common/util_dbus.h"
 
 namespace power_manager {
@@ -43,9 +42,7 @@ void DBusSender::EmitSignalInternal(
   CHECK(signal);
   if (protobuf)
     util::AppendProtocolBufferToDBusMessage(*protobuf, signal);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(dbus_connection_send(connection, signal, NULL));
+  CHECK(dbus_connection_send(util::GetSystemDBusConnection(), signal, NULL));
   dbus_message_unref(signal);
 }
 

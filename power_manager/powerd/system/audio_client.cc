@@ -7,22 +7,15 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/util.h"
+#include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/system/audio_observer.h"
 
 namespace power_manager {
 namespace system {
 
 namespace {
-
-// Maximum amount of time to wait for a reply after making a D-Bus method call
-// to CRAS.
-const int kDBusTimeoutMs = 5000;
-
-// Log a warning if a D-Bus call takes longer than this to complete.
-const int kDBusSlowCallMs = 1000;
 
 // Keys within node dictionaries returned by CRAS.
 const char kTypeKey[] = "Type";
@@ -42,43 +35,13 @@ DBusMessage* CreateRequest(const std::string& method_name) {
   return request;
 }
 
-// Invokes and frees |request| and returns the reply. The caller must free the
-// reply via dbus_message_unref(). Returns NULL on failure.
-DBusMessage* CallMethodAndUnref(DBusMessage* request) {
-  const std::string name = dbus_message_get_member(request);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-
-  DBusError error;
-  dbus_error_init(&error);
-  const base::TimeTicks start_time = base::TimeTicks::Now();
-  DBusMessage* reply = dbus_connection_send_with_reply_and_block(
-      connection, request, kDBusTimeoutMs, &error);
-  dbus_message_unref(request);
-
-  const base::TimeDelta duration = base::TimeTicks::Now() - start_time;
-  if (duration.InMilliseconds() > kDBusSlowCallMs)
-    LOG(WARNING) << name << " call took " << duration.InMilliseconds() << " ms";
-
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << name << " call failed: " << error.name
-               << " (" << error.message << ")";
-    dbus_error_free(&error);
-  }
-
-  // dbus_connection_send_with_reply_and_block() is documented as returning NULL
-  // in the case of an error.
-  return reply;
-}
-
 // Sends a request to CRAS asking it to mute or unmute the system volume.
 void SetOutputMute(bool mute) {
   DBusMessage* request = CreateRequest(cras::kSetOutputMute);
   dbus_bool_t mute_arg = mute;
   dbus_message_append_args(request, DBUS_TYPE_BOOLEAN, &mute_arg,
                            DBUS_TYPE_INVALID);
-  DBusMessage* reply = CallMethodAndUnref(request);
+  DBusMessage* reply = util::CallDBusMethodAndUnref(request);
   if (reply)
     dbus_message_unref(reply);
 }
@@ -110,7 +73,8 @@ void AudioClient::MuteSystem() {
   if (mute_stored_)
     return;
 
-  DBusMessage* reply = CallMethodAndUnref(CreateRequest(cras::kGetVolumeState));
+  DBusMessage* reply = util::CallDBusMethodAndUnref(
+      CreateRequest(cras::kGetVolumeState));
   if (reply) {
     DBusError error;
     dbus_error_init(&error);
@@ -152,7 +116,8 @@ void AudioClient::UpdateDevices() {
   headphone_jack_plugged_ = false;
   hdmi_active_ = false;
 
-  DBusMessage* reply = CallMethodAndUnref(CreateRequest(cras::kGetNodes));
+  DBusMessage* reply = util::CallDBusMethodAndUnref(
+      CreateRequest(cras::kGetNodes));
   if (!reply)
     return;
 
@@ -219,7 +184,7 @@ void AudioClient::UpdateDevices() {
 
 void AudioClient::UpdateNumActiveStreams() {
   dbus_int32_t num_streams = 0;
-  DBusMessage* reply = CallMethodAndUnref(
+  DBusMessage* reply = util::CallDBusMethodAndUnref(
       CreateRequest(cras::kGetNumberOfActiveStreams));
   if (reply) {
     DBusError error;

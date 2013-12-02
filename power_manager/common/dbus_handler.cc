@@ -8,7 +8,6 @@
 
 #include "base/logging.h"
 #include "base/stringprintf.h"
-#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/util_dbus.h"
 
@@ -35,26 +34,25 @@ void AddSignalMatch(DBusConnection* connection,
 
 }  // namespace
 
-DBusHandler::DBusHandler() {}
+DBusHandler::DBusHandler() : proxy_(NULL) {}
 
-DBusHandler::~DBusHandler() {}
+DBusHandler::~DBusHandler() {
+  if (proxy_) {
+    g_object_unref(proxy_);
+    proxy_ = NULL;
+  }
+}
 
 void DBusHandler::AddSignalHandler(const std::string& interface,
                                    const std::string& member,
                                    const SignalHandler& handler) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  AddSignalMatch(connection, interface, member);
+  AddSignalMatch(GetSystemDBusConnection(), interface, member);
   signal_handler_table_[std::make_pair(interface, member)] = handler;
 }
 
 void DBusHandler::AddMethodHandler(const std::string& interface,
                                    const std::string& member,
                                    const MethodHandler& handler) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
   method_handler_table_[std::make_pair(interface, member)] = handler;
 }
 
@@ -64,29 +62,27 @@ void DBusHandler::SetNameOwnerChangedHandler(
 }
 
 void DBusHandler::Start() {
+  DCHECK(!proxy_);
   const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
-  proxy_.reset(new chromeos::dbus::Proxy(
-      chromeos::dbus::GetSystemBusConnection(),
-      DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS));
-  dbus_g_proxy_add_signal(proxy_->gproxy(), kNameOwnerChangedSignal,
+  proxy_ = dbus_g_proxy_new_for_name(GetSystemDBusGConnection(),
+                                     DBUS_SERVICE_DBUS,
+                                     DBUS_PATH_DBUS,
+                                     DBUS_INTERFACE_DBUS);
+  dbus_g_proxy_add_signal(proxy_, kNameOwnerChangedSignal,
                           G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
                           G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal(proxy_->gproxy(), kNameOwnerChangedSignal,
+  dbus_g_proxy_connect_signal(proxy_, kNameOwnerChangedSignal,
                               G_CALLBACK(HandleNameOwnerChangedThunk), this,
                               NULL);
 
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-
   CHECK(dbus_connection_add_filter(
-      connection, &HandleMessageThunk, this, NULL));
+      GetSystemDBusConnection(), &HandleMessageThunk, this, NULL));
 
   DBusObjectPathVTable vtable;
   memset(&vtable, 0, sizeof(vtable));
   vtable.message_function = &HandleMessageThunk;
   CHECK(dbus_connection_register_object_path(
-      connection, kPowerManagerServicePath, &vtable, this));
+      GetSystemDBusConnection(), kPowerManagerServicePath, &vtable, this));
 
   LOG(INFO) << "D-Bus monitoring started";
 }
