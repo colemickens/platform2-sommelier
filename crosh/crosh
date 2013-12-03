@@ -252,9 +252,14 @@ cmd_help_advanced() (
   echo "$HELP_ADVANCED"
 )
 
-cmd_exit() (
+# We move the trailing brace to the next line so that we avoid the style
+# checker from rejecting the use of braces.  We cannot use subshells here
+# as we want the exit to exit crosh itself and not the subshell.
+# http://crbug.com/318368
+cmd_exit()
+{
   exit
-)
+}
 
 check_dforward() {
   # Matches a port number between 8000 and 8999.
