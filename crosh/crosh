@@ -1389,7 +1389,7 @@ dispatch() {
     command=$line
   else
     command=$(substr "$line" "0" "$space_pos")
-    command=${command/% */}
+    command=${command% *}
     params=$(substr "$line" "$space_pos")
   fi
 
