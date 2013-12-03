@@ -58,10 +58,9 @@ int main(int argc, char* argv[]) {
   // Get the power source.
   power_manager::system::PowerSupply power_supply;
   power_supply.Init(base::FilePath(power_manager::kPowerStatusPath), &prefs);
-  power_manager::system::PowerInformation power_info;
-  CHECK(power_supply.GetPowerInformation(&power_info));
+  CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
-      power_info.power_status.line_power_on ?
+      power_supply.power_status().line_power_on ?
       power_manager::POWER_AC : power_manager::POWER_BATTERY;
 
   // Mimic powerd startup and grab the brightness level that's used.

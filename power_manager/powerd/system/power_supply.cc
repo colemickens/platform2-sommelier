@@ -226,34 +226,6 @@ bool PowerSupply::RefreshImmediately() {
   return success;
 }
 
-bool PowerSupply::GetPowerInformation(PowerInformation* info) {
-  CHECK(info);
-  if (!UpdatePowerStatus())
-    return false;
-
-  info->power_status = power_status_;
-  info->line_power_path = line_power_path_.value();
-  info->battery_path = battery_path_.value();
-  if (!info->power_status.battery_is_present)
-    return true;
-
-  info->battery_vendor.clear();
-  info->battery_model.clear();
-  info->battery_serial.clear();
-  info->battery_technology.clear();
-
-  // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
-  // defined in <linux/power_supply.h>.
-  if (file_util::PathExists(battery_path_.Append("manufacturer")))
-    ReadAndTrimString(battery_path_, "manufacturer", &info->battery_vendor);
-  else
-    ReadAndTrimString(battery_path_, "vendor", &info->battery_vendor);
-  ReadAndTrimString(battery_path_, "model_name", &info->battery_model);
-  ReadAndTrimString(battery_path_, "serial_number", &info->battery_serial);
-  ReadAndTrimString(battery_path_, "technology", &info->battery_technology);
-  return true;
-}
-
 void PowerSupply::SetSuspended(bool suspended) {
   if (is_suspended_ == suspended)
     return;
@@ -293,6 +265,9 @@ bool PowerSupply::UpdatePowerStatus() {
 
   if (battery_path_.empty() || line_power_path_.empty())
     GetPowerSupplyPaths();
+
+  status.line_power_path = line_power_path_.value();
+  status.battery_path = battery_path_.value();
 
   std::string battery_status_string;
   if (file_util::PathExists(battery_path_)) {
@@ -349,6 +324,16 @@ bool PowerSupply::UpdatePowerStatus() {
     power_status_initialized_ = true;
     return true;
   }
+
+  // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
+  // defined in <linux/power_supply.h>.
+  if (file_util::PathExists(battery_path_.Append("manufacturer")))
+    ReadAndTrimString(battery_path_, "manufacturer", &status.battery_vendor);
+  else
+    ReadAndTrimString(battery_path_, "vendor", &status.battery_vendor);
+  ReadAndTrimString(battery_path_, "model_name", &status.battery_model_name);
+  ReadAndTrimString(battery_path_, "serial_number", &status.battery_serial);
+  ReadAndTrimString(battery_path_, "technology", &status.battery_technology);
 
   double battery_voltage = ReadScaledDouble(battery_path_, "voltage_now");
   status.battery_voltage = battery_voltage;

@@ -106,9 +106,9 @@ int main(int argc, char** argv) {
   power_manager::system::PowerSupply power_supply;
   power_supply.Init(path, &prefs);
 
-  power_manager::system::PowerInformation power_info;
-  power_manager::system::PowerStatus& power_status = power_info.power_status;
-  power_supply.GetPowerInformation(&power_info);
+  CHECK(power_supply.RefreshImmediately());
+  const power_manager::system::PowerStatus& status =
+      power_supply.power_status();
 
   // NOTE, autotests (see autotest/files/client/cros/power_status.py) rely on
   // parsing this information below.
@@ -117,11 +117,10 @@ int main(int argc, char** argv) {
   display.SetIndent(0, 0);
   display.PrintString("Device: Line Power");
   display.SetIndent(2, kFieldNameColumns);
-  display.PrintValue("path", power_info.line_power_path);
-  display.PrintStringValue("online",
-                           BoolToString(power_status.line_power_on));
-  display.PrintStringValue("type", power_status.line_power_type);
-  switch (power_status.external_power) {
+  display.PrintValue("path", status.line_power_path);
+  display.PrintStringValue("online", BoolToString(status.line_power_on));
+  display.PrintStringValue("type", status.line_power_type);
+  switch (status.external_power) {
     case power_manager::PowerSupplyProperties_ExternalPower_AC:
       display.PrintStringValue("enum type", "AC");
       break;
@@ -134,22 +133,20 @@ int main(int argc, char** argv) {
     default:
       display.PrintStringValue("enum type", "Unknown");
   }
-  display.PrintStringValue("model name", power_status.line_power_model_name);
-  display.PrintValue("voltage (V)", power_status.line_power_voltage);
-  display.PrintValue("current (A)", power_status.line_power_current);
+  display.PrintStringValue("model name", status.line_power_model_name);
+  display.PrintValue("voltage (V)", status.line_power_voltage);
+  display.PrintValue("current (A)", status.line_power_current);
 
-  if (power_status.battery_is_present) {
+  if (status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");
     display.SetIndent(2, kFieldNameColumns);
-    display.PrintValue("path", power_info.battery_path);
-    display.PrintStringValue("vendor", power_info.battery_vendor);
-    display.PrintStringValue("model", power_info.battery_model);
-    display.PrintStringValue("serial number", power_info.battery_serial);
-    display.PrintStringValue("present",
-                             BoolToString(power_status.battery_is_present));
+    display.PrintValue("path", status.battery_path);
+    display.PrintStringValue("vendor", status.battery_vendor);
+    display.PrintStringValue("model name", status.battery_model_name);
+    display.PrintStringValue("serial number", status.battery_serial);
 
-    switch (power_status.battery_state) {
+    switch (status.battery_state) {
       case power_manager::PowerSupplyProperties_BatteryState_FULL:
         display.PrintStringValue("state", "Fully charged");
         break;
@@ -166,16 +163,16 @@ int main(int argc, char** argv) {
         display.PrintStringValue("state", "Unknown");
     }
 
-    display.PrintValue("voltage (V)", power_status.battery_voltage);
-    display.PrintValue("energy (Wh)", power_status.battery_energy);
-    display.PrintValue("energy rate (W)", power_status.battery_energy_rate);
-    display.PrintValue("current (A)", power_status.battery_current);
-    display.PrintValue("charge (Ah)", power_status.battery_charge);
-    display.PrintValue("full charge (Ah)", power_status.battery_charge_full);
-    display.PrintValue("percentage", power_status.battery_percentage);
+    display.PrintValue("voltage (V)", status.battery_voltage);
+    display.PrintValue("energy (Wh)", status.battery_energy);
+    display.PrintValue("energy rate (W)", status.battery_energy_rate);
+    display.PrintValue("current (A)", status.battery_current);
+    display.PrintValue("charge (Ah)", status.battery_charge);
+    display.PrintValue("full charge (Ah)", status.battery_charge_full);
+    display.PrintValue("percentage", status.battery_percentage);
     display.PrintValue("display percentage",
-        power_status.display_battery_percentage);
-    display.PrintStringValue("technology", power_info.battery_technology);
+        status.display_battery_percentage);
+    display.PrintStringValue("technology", status.battery_technology);
 
     // Don't print the battery time estimates -- they're wildly inaccurate since
     // this program only takes a single reading of the current.

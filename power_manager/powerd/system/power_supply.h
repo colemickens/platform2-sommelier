@@ -65,7 +65,7 @@ struct PowerStatus {
   double battery_energy;
 
   // Amount of energy being drained from the battery, measured in W. If
-  // positive, the source is being discharged, if negative it's being charged.
+  // positive, the source is being discharged; if negative it's being charged.
   double battery_energy_rate;
 
   // Current battery levels.
@@ -123,28 +123,14 @@ struct PowerStatus {
 
   PowerSupplyProperties_ExternalPower external_power;
   PowerSupplyProperties_BatteryState battery_state;
-};
 
-// TODO(derat): Move this struct's fields into PowerStatus.
-struct PowerInformation {
-  PowerStatus power_status;
-
+  // /sys paths from which the line power and battery information was read.
   std::string line_power_path;
   std::string battery_path;
 
-  // Amount of energy, measured in Wh, in the battery when it's considered
-  // empty.
-  double battery_energy_empty;
-
-  // Amount of energy, measured in Wh, in the battery when it's considered full.
-  double battery_energy_full;
-
-  // Amount of energy, measured in Wh, the battery is designed to hold when it's
-  // considered full.
-  double battery_energy_full_design;
-
+  // Additional information about the battery.
   std::string battery_vendor;
-  std::string battery_model;
+  std::string battery_model_name;
   std::string battery_serial;
   std::string battery_technology;
 };
@@ -225,9 +211,6 @@ class PowerSupply {
   // returns true on success.  If successful, |observers_| will be notified
   // asynchronously.
   bool RefreshImmediately();
-
-  // Fills |info|.
-  bool GetPowerInformation(PowerInformation* info);
 
   // On suspend, stops polling.  On resume, updates |power_status_|
   // immediately and schedules a poll for the near future.
