@@ -188,9 +188,9 @@ class ShillDaemonTest : public Test {
                                  &daemon_.dispatcher_,
                                  metrics_,
                                  &daemon_.glib_)),
+        dispatcher_(&daemon_.dispatcher_),
         device_info_(daemon_.control_, dispatcher_, metrics_,
                      daemon_.manager_.get()),
-        dispatcher_(&daemon_.dispatcher_),
         dispatcher_test_(dispatcher_) {
   }
   virtual ~ShillDaemonTest() {}
@@ -235,8 +235,8 @@ class ShillDaemonTest : public Test {
   MockMetrics *metrics_;
   MockManager *manager_;
   MockNetlinkManager netlink_manager_;
-  DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
+  DeviceInfo device_info_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
 };
 
