@@ -136,6 +136,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
+  FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
   FRIEND_TEST(ResolverTest, Empty);

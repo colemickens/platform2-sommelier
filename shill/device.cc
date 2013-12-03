@@ -41,6 +41,7 @@
 #include "shill/socket_info_reader.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
+#include "shill/tethering.h"
 
 using base::Bind;
 using base::FilePath;
@@ -280,6 +281,13 @@ bool Device::IsConnected() const {
 
 bool Device::IsConnectedToService(const ServiceRefPtr &service) const {
   return service == selected_service_ && IsConnected();
+}
+
+bool Device::IsConnectedViaTether() const {
+  return
+      ipconfig_.get() &&
+      ipconfig_->properties().vendor_encapsulated_options ==
+          Tethering::kAndroidVendorEncapsulatedOptions;
 }
 
 string Device::GetRpcIdentifier() const {

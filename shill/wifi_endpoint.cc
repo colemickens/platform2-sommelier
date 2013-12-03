@@ -17,6 +17,7 @@
 #include "shill/metrics.h"
 #include "shill/proxy_factory.h"
 #include "shill/supplicant_bss_proxy_interface.h"
+#include "shill/tethering.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
@@ -77,6 +78,8 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
                                bssid_[0], bssid_[1], bssid_[2],
                                bssid_[3], bssid_[4], bssid_[5]);
   bssid_hex_ = base::HexEncode(&(*bssid_.begin()), bssid_.size());
+
+  CheckForTetheringSignature();
 }
 
 WiFiEndpoint::~WiFiEndpoint() {}
@@ -239,6 +242,10 @@ bool WiFiEndpoint::has_rsn_property() const {
 
 bool WiFiEndpoint::has_wpa_property() const {
   return has_wpa_property_;
+}
+
+bool WiFiEndpoint::has_tethering_signature() const {
+  return has_tethering_signature_;
 }
 
 // static
@@ -603,6 +610,13 @@ void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
              oui != IEEE_80211::kOUIVendorMicrosoft) {
     vendor_information->oui_set.insert(oui);
   }
+}
+
+void WiFiEndpoint::CheckForTetheringSignature() {
+  has_tethering_signature_ =
+      Tethering::IsAndroidBSSID(bssid_) ||
+      (Tethering::IsLocallyAdministeredBSSID(bssid_) &&
+       Tethering::HasIosOui(vendor_information_.oui_set));
 }
 
 }  // namespace shill

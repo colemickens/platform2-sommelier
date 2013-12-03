@@ -6,6 +6,7 @@
 #define SHILL_ETHERNET_SERVICE_
 
 #include <base/basictypes.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
@@ -38,7 +39,12 @@ class EthernetService : public Service {
 
   virtual void Remove(Error *error);
 
+ protected:
+  virtual std::string GetTethering(Error *error) const override;
+
  private:
+  FRIEND_TEST(EthernetServiceTest, GetTethering);
+
   static const char kServiceType[];
 
   std::string GetDeviceRpcId(Error *error) const;

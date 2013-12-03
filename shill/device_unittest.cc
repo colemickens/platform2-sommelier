@@ -47,6 +47,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
+#include "shill/tethering.h"
 #include "shill/traffic_monitor.h"
 
 using base::Bind;
@@ -692,6 +693,25 @@ TEST_F(DeviceTest, ShouldUseMinimalDHCPConfig) {
 TEST_F(DeviceTest, PerformTDLSOperation) {
   EXPECT_EQ("",
             device_->PerformTDLSOperation("do something", "to someone", NULL));
+}
+
+TEST_F(DeviceTest, IsConnectedViaTether) {
+  EXPECT_FALSE(device_->IsConnectedViaTether());
+
+  // An empty ipconfig doesn't mean we're tethered.
+  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  EXPECT_FALSE(device_->IsConnectedViaTether());
+
+  // Add an ipconfig property that indicates this is an Android tether.
+  IPConfig::Properties properties;
+  properties.vendor_encapsulated_options =
+      Tethering::kAndroidVendorEncapsulatedOptions;
+  device_->ipconfig_->UpdateProperties(properties, true);
+  EXPECT_TRUE(device_->IsConnectedViaTether());
+
+  properties.vendor_encapsulated_options = "Some other non-empty value";
+  device_->ipconfig_->UpdateProperties(properties, true);
+  EXPECT_FALSE(device_->IsConnectedViaTether());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

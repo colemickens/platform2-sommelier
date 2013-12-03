@@ -548,6 +548,11 @@ class Service : public base::RefCounted<Service> {
   // that the semantics of SecurityLevel() are appropriate for the subclass.
   void SetSecurity(CryptoAlgorithm crypt, bool rotation, bool endpoint_auth);
 
+  // Return whether this service is suspected or confirmed to be
+  // provided by a mobile device, which is likely to be using a
+  // metered backhaul for internet connectivity.
+  virtual std::string GetTethering(Error *error) const;
+
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class EthernetEapServiceTest;
@@ -587,6 +592,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, CustomSetterNoopChange);
   FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
   FRIEND_TEST(ServiceTest, GetProperties);
+  FRIEND_TEST(ServiceTest, GetTethering);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsDependentOn);
   FRIEND_TEST(ServiceTest, Load);

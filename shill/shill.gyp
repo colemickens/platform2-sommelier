@@ -353,6 +353,7 @@
         'supplicant_network_proxy.cc',
         'supplicant_process_proxy.cc',
         'technology.cc',
+        'tethering.cc',
         'traffic_monitor.cc',
         'virtio_ethernet.cc',
         'virtual_device.cc',

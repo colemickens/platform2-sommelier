@@ -88,6 +88,7 @@ class WiFiEndpoint : public Endpoint {
   bool ieee80211w_required() const;
   bool has_rsn_property() const;
   bool has_wpa_property() const;
+  bool has_tethering_signature() const;
 
  private:
   friend class WiFiEndpointTest;
@@ -99,9 +100,11 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
+  FRIEND_TEST(WiFiEndpointTest, HasTetheringSignature);
   FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity);
   FRIEND_TEST(WiFiProviderTest, OnEndpointUpdated);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
+  FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);
    // for physical_mode_
@@ -172,6 +175,9 @@ class WiFiEndpoint : public Endpoint {
                             VendorInformation *vendor_information,
                             bool *ieee80211w_required);
 
+  // Assigns a value to |has_tethering_signature_|.
+  void CheckForTetheringSignature();
+
   // Private setter used in unit tests.
   void set_security_mode(const std::string &mode) { security_mode_ = mode; }
 
@@ -194,6 +200,7 @@ class WiFiEndpoint : public Endpoint {
   bool ieee80211w_required_;
   bool has_rsn_property_;
   bool has_wpa_property_;
+  bool has_tethering_signature_;
   SecurityFlags security_flags_;
 
   ProxyFactory *proxy_factory_;

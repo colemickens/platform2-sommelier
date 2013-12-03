@@ -79,4 +79,9 @@ void EthernetService::Remove(Error *error) {
   error->Populate(Error::kNotSupported);
 }
 
+string EthernetService::GetTethering(Error */*error*/) const {
+  return ethernet_->IsConnectedViaTether() ? kTetheringConfirmedState :
+      kTetheringNotDetectedState;
+}
+
 }  // namespace shill

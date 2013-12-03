@@ -35,6 +35,8 @@ class MockEthernet : public Ethernet {
                           const EnabledStateChangedCallback &callback));
   MOCK_METHOD1(ConnectTo, void(EthernetService *service));
   MOCK_METHOD1(DisconnectFrom, void(EthernetService *service));
+  MOCK_CONST_METHOD0(IsConnectedViaTether, bool());
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernet);
 };

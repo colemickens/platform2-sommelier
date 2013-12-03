@@ -200,6 +200,8 @@ Service::Service(ControlInterface *control_interface,
                             &Service::GetProxyConfig,
                             &Service::SetProxyConfig);
   store_.RegisterBool(kSaveCredentialsProperty, &save_credentials_);
+  HelpRegisterConstDerivedString(kTetheringProperty,
+                                 &Service::GetTethering);
   HelpRegisterDerivedString(kTypeProperty,
                             &Service::CalculateTechnology,
                             NULL);
@@ -1385,6 +1387,14 @@ bool Service::SetProxyConfig(const string &proxy_config, Error *error) {
   proxy_config_ = proxy_config;
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
+}
+
+string Service::GetTethering(Error *error) const {
+  // The "Tethering" property isn't supported by the Service base class, and
+  // therefore should not be listed in the properties returned by
+  // the GetProperties() RPC method.
+  error->Populate(Error::kNotSupported);
+  return "";
 }
 
 // static

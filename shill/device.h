@@ -162,6 +162,10 @@ class Device : public base::RefCounted<Device> {
   // no connected service, or if it does not match |service|.
   virtual bool IsConnectedToService(const ServiceRefPtr &service) const;
 
+  // Returns true if the DHCP parameters provided indicate that we are tethered
+  // to a mobile device.
+  virtual bool IsConnectedViaTether() const;
+
   // Restart the portal detection process on a connected device.  This is
   // useful if the properties on the connected service have changed in a
   // way that may affect the decision to run portal detection at all.
@@ -270,6 +274,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, EnableIPv6);
   FRIEND_TEST(DeviceTest, GetProperties);
+  FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);

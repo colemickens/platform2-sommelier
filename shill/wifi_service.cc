@@ -257,6 +257,21 @@ void WiFiService::ClearPassphrase(Error */*error*/) {
   UpdateConnectable();
 }
 
+string WiFiService::GetTethering(Error */*error*/) const {
+  if (IsConnected() && wifi_ && wifi_->IsConnectedViaTether()) {
+    return kTetheringConfirmedState;
+  }
+
+  // Only perform BSSID tests if there is exactly one matching endpoint,
+  // so we ignore campuses that may use locally administered BSSIDs.
+  if (GetEndpointCount() == 1 &&
+      (*endpoints_.begin())->has_tethering_signature()) {
+    return kTetheringSuspectedState;
+  }
+
+  return kTetheringNotDetectedState;
+}
+
 string WiFiService::GetLoadableStorageIdentifier(
     const StoreInterface &storage) const {
   set<string> groups = storage.GetGroupsWithProperties(GetStorageProperties());

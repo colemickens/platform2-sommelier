@@ -109,4 +109,12 @@ TEST_F(EthernetServiceTest, LoadAutoConnect) {
   EXPECT_TRUE(GetAutoConnect());
 }
 
+TEST_F(EthernetServiceTest, GetTethering) {
+  EXPECT_CALL(*ethernet_, IsConnectedViaTether())
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_EQ(kTetheringConfirmedState, service_->GetTethering(NULL));
+  EXPECT_EQ(kTetheringNotDetectedState, service_->GetTethering(NULL));
+}
+
 }  // namespace shill

@@ -157,6 +157,7 @@ class WiFiService : public Service {
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
   virtual void SetEAPKeyManagement(const std::string &key_management);
+  virtual std::string GetTethering(Error *error) const override;
 
  private:
   friend class WiFiServiceSecurityTest;
@@ -177,6 +178,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
+  FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);

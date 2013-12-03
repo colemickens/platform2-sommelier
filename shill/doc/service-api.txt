@@ -1313,6 +1313,27 @@ Properties	boolean AutoConnect [readwrite]
 			This property will not be present for Ethernet
 			devices.
 
+		string Tethering [readonly]
+
+			Returns a string that indicates an estimate of
+			whether the service is likely to be providing
+			internet connectivity over a mobile network backhaul.
+			The possible values of this string are:
+
+				NotDetected: Tethering is not detected.
+				Suspected: Something in the network scan
+					provides circumstantial evidence
+					that this service is tethered.
+				Confirmed: Some definitive evidence has
+					been discovered that indicates
+					either this service is tethered
+					or the server is overtly pretending
+					to be tethered.
+
+			This property is only visible in service types
+			which can support tethering.  Currently only
+			Ethernet and WiFi services support this property.
+
 		string Type [readonly]
 
 			The service type; one of:

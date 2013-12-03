@@ -2140,4 +2140,10 @@ TEST_F(ServiceTest, DHCPOptionFailureState) {
             GetDHCPOptionFailureState());
 }
 
+TEST_F(ServiceTest, GetTethering) {
+  Error error;
+  EXPECT_EQ("", service_->GetTethering(&error));
+  EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
 }  // namespace shill

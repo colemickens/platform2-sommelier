@@ -19,6 +19,7 @@
 #include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
+#include "shill/tethering.h"
 #include "shill/wpa_supplicant.h"
 
 using std::map;
@@ -751,6 +752,30 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
         MakeEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01", true, true);
     EXPECT_TRUE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
+  }
+}
+
+TEST_F(WiFiEndpointTest, HasTetheringSignature) {
+  {
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "02:1a:11:00:00:01", false, false);
+    EXPECT_TRUE(endpoint->has_tethering_signature());
+  }
+  {
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "02:1a:10:00:00:01", false, false);
+    EXPECT_FALSE(endpoint->has_tethering_signature());
+    endpoint->vendor_information_.oui_set.insert(Tethering::kIosOui);
+    endpoint->CheckForTetheringSignature();
+    EXPECT_TRUE(endpoint->has_tethering_signature());
+  }
+  {
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "04:1a:10:00:00:01", false, false);
+    EXPECT_FALSE(endpoint->has_tethering_signature());
+    endpoint->vendor_information_.oui_set.insert(Tethering::kIosOui);
+    endpoint->CheckForTetheringSignature();
+    EXPECT_FALSE(endpoint->has_tethering_signature());
   }
 }
 
