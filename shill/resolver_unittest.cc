@@ -20,7 +20,6 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const char kTestDeviceName0[] = "netdev0";
 const char kNameServer0[] = "8.8.8.8";
 const char kNameServer1[] = "8.8.9.9";
 const char kSearchDomain0[] = "chromium.org";

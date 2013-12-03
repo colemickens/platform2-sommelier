@@ -50,7 +50,6 @@ const char kTextSiteName[] = "www.chromium.org";
 const char kTextURL[] = "http://www.chromium.org/path/to/resource";
 const char kNumericURL[] = "http://10.1.1.1";
 const char kPath[] = "/path/to/resource";
-const char kBadURL[] = "xxx";
 const char kInterfaceName[] = "int0";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";

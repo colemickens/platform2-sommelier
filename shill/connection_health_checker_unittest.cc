@@ -51,7 +51,6 @@ namespace shill {
 
 namespace {
 const char kInterfaceName[] = "int0";
-const char kIPAddress_0_0_0_0[] = "0.0.0.0";
 const char kIPAddress_8_8_8_8[] = "8.8.8.8";
 const char kProxyIPAddressRemote[] = "74.125.224.84";
 const char kProxyIPAddressLocal[] = "192.23.34.1";

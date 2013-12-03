@@ -39,7 +39,6 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const int kInterfaceIndex = 123;
 const char kLocalIPAddress[] = "10.0.1.1";
 const uint8 kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";

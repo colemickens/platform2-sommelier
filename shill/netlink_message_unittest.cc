@@ -362,8 +362,6 @@ const unsigned char kNL80211_CMD_UNKNOWN[] = {
   0x04, 0x00, 0x15, 0x00,
 };
 
-const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
-
 }  // namespace
 
 class NetlinkMessageTest : public Test {

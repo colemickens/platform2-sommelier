@@ -42,7 +42,6 @@ namespace {
   static const char kTestDestinationUDN[] = "TEST1234-5678-ABCD";
   static const char kTestNonce[] = "abort abort abort";
   static const char kTestPublicKey[] = "YWJvcnQgYWJvcnQgYWJvcnQK";
-  static const char kTestSSID[] = "SomeDestinationSSID";
   static const char kTestSerializedCommandMessage[] =
       "Since we're not testing protocol buffer seriallization, and no data "
       "actually makes it to a shim, we're safe to write whatever we want here.";

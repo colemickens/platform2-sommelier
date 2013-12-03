@@ -40,7 +40,6 @@ const char kOwner[] = ":1.18";
 const char kService[] = "org.chromium.ModemManager";
 const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
 const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
-const char kAddressAsString[] = "000102030405";
 
 }  // namespace
 
