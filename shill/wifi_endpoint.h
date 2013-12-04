@@ -44,7 +44,7 @@ class WiFiEndpoint : public Endpoint {
     std::string wps_model_name;
     std::string wps_model_number;
     std::string wps_device_name;
-    std::set<uint32_t> oui_list;
+    std::set<uint32_t> oui_set;
   };
   WiFiEndpoint(ProxyFactory *proxy_factory,
                const WiFiRefPtr &device,

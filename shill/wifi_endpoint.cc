@@ -153,18 +153,18 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
     vendor_information[kVendorWPSDeviceNameProperty] =
         vendor_information_.wps_device_name;
   }
-  if (!vendor_information_.oui_list.empty()) {
-    vector<string> oui_list;
+  if (!vendor_information_.oui_set.empty()) {
+    vector<string> oui_vector;
     set<uint32_t>::const_iterator it;
-    for (it = vendor_information_.oui_list.begin();
-         it != vendor_information_.oui_list.end();
+    for (it = vendor_information_.oui_set.begin();
+         it != vendor_information_.oui_set.end();
          ++it) {
-      oui_list.push_back(
+      oui_vector.push_back(
           StringPrintf("%02x-%02x-%02x",
               *it >> 16, (*it >> 8) & 0xff, *it & 0xff));
     }
     vendor_information[kVendorOUIListProperty] =
-        JoinString(oui_list, ' ');
+        JoinString(oui_vector, ' ');
   }
   return vendor_information;
 }
@@ -601,7 +601,7 @@ void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
     ParseWPACapabilities(ie, end, ieee80211w_required);
   } else if (oui != IEEE_80211::kOUIVendorEpigram &&
              oui != IEEE_80211::kOUIVendorMicrosoft) {
-    vendor_information->oui_list.insert(oui);
+    vendor_information->oui_set.insert(oui);
   }
 }
 

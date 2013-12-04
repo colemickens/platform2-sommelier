@@ -371,7 +371,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_EQ("", vendor_information.wps_model_name);
     EXPECT_EQ("", vendor_information.wps_model_number);
     EXPECT_EQ("", vendor_information.wps_device_name);
-    EXPECT_EQ(0, vendor_information.oui_list.size());
+    EXPECT_EQ(0, vendor_information.oui_set.size());
   }
   {
     ScopedMockLog log;
@@ -399,9 +399,9 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_EQ("", vendor_information.wps_model_name);
     EXPECT_EQ("", vendor_information.wps_model_number);
     EXPECT_EQ("", vendor_information.wps_device_name);
-    EXPECT_EQ(1, vendor_information.oui_list.size());
-    EXPECT_FALSE(vendor_information.oui_list.find(kVendorOUI) ==
-                 vendor_information.oui_list.end());
+    EXPECT_EQ(1, vendor_information.oui_set.size());
+    EXPECT_FALSE(vendor_information.oui_set.find(kVendorOUI) ==
+                 vendor_information.oui_set.end());
 
     WiFiEndpointRefPtr endpoint =
         MakeOpenEndpoint(NULL, NULL, string(1, 0), "00:00:00:00:00:01");
