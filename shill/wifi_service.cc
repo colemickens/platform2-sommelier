@@ -608,7 +608,7 @@ void WiFiService::Disconnect(Error *error) {
   wifi_->DisconnectFrom(this);
 }
 
-string WiFiService::GetDeviceRpcId(Error *error) {
+string WiFiService::GetDeviceRpcId(Error *error) const {
   if (!wifi_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return DBusAdaptor::kNullPath;

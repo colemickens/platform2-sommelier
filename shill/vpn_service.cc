@@ -96,7 +96,7 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
   return id;
 }
 
-string VPNService::GetDeviceRpcId(Error *error) {
+string VPNService::GetDeviceRpcId(Error *error) const {
   error->Populate(Error::kNotSupported);
   return "/";
 }

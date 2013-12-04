@@ -249,6 +249,38 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
   DISALLOW_COPY_AND_ASSIGN(CustomWriteOnlyAccessor);
 };
 
+// CustomReadOnlyAccessor<> allows a custom getter method to be provided.
+// Set and Clear return errors automatically.
+template<class C, class T>
+class CustomReadOnlyAccessor : public AccessorInterface<T> {
+ public:
+  // |target| is the object on which to call the |getter| method.
+  // |getter| is a const method.  If a non-const method needs to be used,
+  // use the CustomAccessor with a NULL setter instead.
+  CustomReadOnlyAccessor(C *target, T(C::*getter)(Error *error) const)
+      : target_(target), getter_(getter) {
+    DCHECK(target);
+    DCHECK(getter);
+  }
+  virtual ~CustomReadOnlyAccessor() {}
+
+  void Clear(Error *error) {
+    error->Populate(Error::kInvalidArguments, "Property is read-only");
+  }
+  T Get(Error *error) {
+    return (target_->*getter_)(error);
+  }
+  bool Set(const T &value, Error *error) {
+    error->Populate(Error::kInvalidArguments, "Property is read-only");
+    return false;
+  }
+
+ private:
+  C *const target_;
+  T(C::*const getter_)(Error *error) const;
+  DISALLOW_COPY_AND_ASSIGN(CustomReadOnlyAccessor);
+};
+
 // CustomMappedAccessor<> passes an argument to the getter and setter
 // so that a generic method can be used, for example one that accesses the
 // property in a map.

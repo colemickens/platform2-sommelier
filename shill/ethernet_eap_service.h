@@ -25,7 +25,7 @@ class EthernetEapService : public Service {
   virtual ~EthernetEapService();
 
   // Inherited from Service.
-  virtual std::string GetDeviceRpcId(Error *error);
+  virtual std::string GetDeviceRpcId(Error *error) const;
   virtual std::string GetStorageIdentifier() const;
   virtual bool Is8021x() const { return true; }
   virtual bool IsVisible() const { return false; }

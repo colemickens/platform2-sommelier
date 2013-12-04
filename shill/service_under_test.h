@@ -29,7 +29,7 @@ class ServiceUnderTest : public Service {
   virtual ~ServiceUnderTest();
 
   virtual std::string GetRpcIdentifier() const;
-  virtual std::string GetDeviceRpcId(Error *error);
+  virtual std::string GetDeviceRpcId(Error *error) const;
   virtual std::string GetStorageIdentifier() const;
 
   // Getter and setter for a string array property for use in testing.

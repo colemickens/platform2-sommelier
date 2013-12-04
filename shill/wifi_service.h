@@ -205,7 +205,7 @@ class WiFiService : public Service {
       void(WiFiService::*clear)(Error *error),
       const std::string *default_value);
 
-  std::string GetDeviceRpcId(Error *error);
+  std::string GetDeviceRpcId(Error *error) const;
 
   void ClearPassphrase(Error *error);
   void UpdateConnectable();

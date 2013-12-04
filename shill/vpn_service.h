@@ -58,7 +58,7 @@ class VPNService : public Service {
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];
 
-  virtual std::string GetDeviceRpcId(Error *error);
+  virtual std::string GetDeviceRpcId(Error *error) const;
 
   // Returns the Type name of the lowest connection (presumably the "physical"
   // connection) that this service depends on.

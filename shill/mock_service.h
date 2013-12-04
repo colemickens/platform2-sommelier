@@ -42,7 +42,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(IsVisible, bool());
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_CONST_METHOD0(failure, ConnectFailure());
-  MOCK_METHOD1(GetDeviceRpcId, std::string(Error *error));
+  MOCK_CONST_METHOD1(GetDeviceRpcId, std::string(Error *error));
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_CONST_METHOD1(GetLoadableStorageIdentifier,

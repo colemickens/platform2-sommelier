@@ -502,12 +502,14 @@ class Service : public base::RefCounted<Service> {
       bool(Service::*set)(const std::string &value, Error *error));
   void HelpRegisterConstDerivedUint16(
       const std::string &name,
-      uint16(Service::*get)(Error *error));
+      uint16(Service::*get)(Error *error) const);
   void HelpRegisterConstDerivedRpcIdentifier(
       const std::string &name,
-      std::string(Service::*get)(Error *));
+      std::string(Service::*get)(Error *) const);
   void HelpRegisterConstDerivedStrings(
-      const std::string &name, Strings(Service::*get)(Error *error));
+      const std::string &name, Strings(Service::*get)(Error *error) const);
+  void HelpRegisterConstDerivedString(
+      const std::string &name, std::string(Service::*get)(Error *error) const);
 
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
@@ -655,9 +657,9 @@ class Service : public base::RefCounted<Service> {
 
   std::string GetGuid(Error *error);
 
-  virtual std::string GetDeviceRpcId(Error *error) = 0;
+  virtual std::string GetDeviceRpcId(Error *error) const = 0;
 
-  std::string GetIPConfigRpcIdentifier(Error *error);
+  std::string GetIPConfigRpcIdentifier(Error *error) const;
 
   std::string GetNameProperty(Error *error);
   // The base implementation asserts that |name| matches the current Name
@@ -670,15 +672,15 @@ class Service : public base::RefCounted<Service> {
   bool SetProfileRpcId(const std::string &profile, Error *error);
 
   // Returns TCP port of service's HTTP proxy in host order.
-  uint16 GetHTTPProxyPort(Error *error);
+  uint16 GetHTTPProxyPort(Error *error) const;
 
   std::string GetProxyConfig(Error *error);
   bool SetProxyConfig(const std::string &proxy_config, Error *error);
 
   static Strings ExtractWallClockToStrings(
       const std::deque<Timestamp> &timestamps);
-  Strings GetDisconnectsProperty(Error *error);
-  Strings GetMisconnectsProperty(Error *error);
+  Strings GetDisconnectsProperty(Error *error) const;
+  Strings GetMisconnectsProperty(Error *error) const;
 
   void ReEnableAutoConnectTask();
   // Disables autoconnect and posts a task to re-enable it after a cooldown.

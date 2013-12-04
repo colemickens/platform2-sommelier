@@ -1030,7 +1030,7 @@ void Service::OnAfterResume() {
   explicitly_disconnected_ = false;
 }
 
-string Service::GetIPConfigRpcIdentifier(Error *error) {
+string Service::GetIPConfigRpcIdentifier(Error *error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
     return DBusAdaptor::kNullPath;
@@ -1165,26 +1165,33 @@ void Service::HelpRegisterDerivedString(
 
 void Service::HelpRegisterConstDerivedRpcIdentifier(
     const string &name,
-    RpcIdentifier(Service::*get)(Error *)) {
+    RpcIdentifier(Service::*get)(Error *) const) {
   store_.RegisterDerivedRpcIdentifier(
       name,
-      RpcIdentifierAccessor(new CustomAccessor<Service, RpcIdentifier>(
-          this, get, NULL)));
+      RpcIdentifierAccessor(new CustomReadOnlyAccessor<Service, RpcIdentifier>(
+          this, get)));
 }
 
 void Service::HelpRegisterConstDerivedUint16(
     const string &name,
-    uint16(Service::*get)(Error *)) {
+    uint16(Service::*get)(Error *) const) {
   store_.RegisterDerivedUint16(
       name,
-      Uint16Accessor(new CustomAccessor<Service, uint16>(this, get, NULL)));
+      Uint16Accessor(new CustomReadOnlyAccessor<Service, uint16>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
-    const string &name, Strings(Service::*get)(Error *error)) {
+    const string &name, Strings(Service::*get)(Error *error) const) {
   store_.RegisterDerivedStrings(
       name,
-      StringsAccessor(new CustomAccessor<Service, Strings>(this, get, NULL)));
+      StringsAccessor(new CustomReadOnlyAccessor<Service, Strings>(this, get)));
+}
+
+void Service::HelpRegisterConstDerivedString(
+    const string &name, string(Service::*get)(Error *error) const) {
+  store_.RegisterDerivedString(
+      name,
+      StringAccessor(new CustomReadOnlyAccessor<Service, string>(this, get)));
 }
 
 // static
@@ -1361,7 +1368,7 @@ bool Service::SetProfileRpcId(const string &profile, Error *error) {
   return (profile_ != old_profile);
 }
 
-uint16 Service::GetHTTPProxyPort(Error */*error*/) {
+uint16 Service::GetHTTPProxyPort(Error */*error*/) const {
   if (http_proxy_.get()) {
     return static_cast<uint16>(http_proxy_->proxy_port());
   }
@@ -1391,11 +1398,11 @@ Strings Service::ExtractWallClockToStrings(
   return strings;
 }
 
-Strings Service::GetDisconnectsProperty(Error */*error*/) {
+Strings Service::GetDisconnectsProperty(Error */*error*/) const {
   return ExtractWallClockToStrings(disconnects_);
 }
 
-Strings Service::GetMisconnectsProperty(Error */*error*/) {
+Strings Service::GetMisconnectsProperty(Error */*error*/) const {
   return ExtractWallClockToStrings(misconnects_);
 }
 

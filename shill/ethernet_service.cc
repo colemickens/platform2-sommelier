@@ -55,7 +55,7 @@ void EthernetService::Disconnect(Error */*error*/) {
   ethernet_->DisconnectFrom(this);
 }
 
-std::string EthernetService::GetDeviceRpcId(Error */*error*/) {
+std::string EthernetService::GetDeviceRpcId(Error */*error*/) const {
   return ethernet_->GetRpcIdentifier();
 }
 

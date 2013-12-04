@@ -271,6 +271,9 @@ class StringWrapper {
   string Get(Error */*error*/) {
     return value_;
   }
+  string ConstGet(Error */*error*/) const {
+    return value_;
+  }
   bool Set(const string &value, Error */*error*/) {
     if (value_ == value) {
       return false;
@@ -434,6 +437,40 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ("", wrapper.value_);
+  }
+}
+
+TEST(PropertyAccessorTest, CustomReadOnlyAccessor) {
+  StringWrapper wrapper;
+  CustomReadOnlyAccessor<StringWrapper, string> accessor(
+      &wrapper, &StringWrapper::ConstGet);
+  const string orig_value = wrapper.value_ = "original value";
+  {
+    // Test reading.
+    Error error;
+    EXPECT_EQ(orig_value, accessor.Get(&error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    // Test writing.
+    Error error;
+    EXPECT_FALSE(accessor.Set("new value", &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_EQ(orig_value, accessor.Get(&error));
+  }
+  {
+    // Test writing original value -- this also fails.
+    Error error;
+    EXPECT_FALSE(accessor.Set(orig_value, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_EQ(orig_value, accessor.Get(&error));
+  }
+  {
+    // Test clearing.
+    Error error;
+    accessor.Clear(&error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_EQ(orig_value, accessor.Get(&error));
   }
 }
 

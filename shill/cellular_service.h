@@ -180,7 +180,7 @@ class CellularService : public Service {
       bool(CellularService::*get)(Error *),
       bool(CellularService::*set)(const bool&, Error *));
 
-  virtual std::string GetDeviceRpcId(Error *error);
+  virtual std::string GetDeviceRpcId(Error *error) const;
 
   Stringmap GetApn(Error *error);
   bool SetApn(const Stringmap &value, Error *error);

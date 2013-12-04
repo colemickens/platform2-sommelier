@@ -34,7 +34,7 @@ string EthernetEapService::GetStorageIdentifier() const {
                       Technology::NameFromIdentifier(technology()).c_str());
 }
 
-string EthernetEapService::GetDeviceRpcId(Error */*error*/) {
+string EthernetEapService::GetDeviceRpcId(Error */*error*/) const {
   return "/";
 }
 

@@ -167,7 +167,7 @@ string WiMaxService::GetStorageIdentifier() const {
   return storage_id_;
 }
 
-string WiMaxService::GetDeviceRpcId(Error *error) {
+string WiMaxService::GetDeviceRpcId(Error *error) const {
   if (!device_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return DBusAdaptor::kNullPath;

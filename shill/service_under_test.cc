@@ -32,7 +32,9 @@ string ServiceUnderTest::GetRpcIdentifier() const {
   return ServiceMockAdaptor::kRpcId;
 }
 
-string ServiceUnderTest::GetDeviceRpcId(Error */*error*/) { return kRpcId; }
+string ServiceUnderTest::GetDeviceRpcId(Error */*error*/) const {
+  return kRpcId;
+}
 
 string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }
 

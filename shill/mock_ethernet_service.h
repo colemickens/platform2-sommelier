@@ -22,7 +22,7 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
   MOCK_METHOD2(DisconnectWithFailure,
                void(ConnectFailure failure, Error *error));
-  MOCK_METHOD1(GetDeviceRpcId, std::string(Error *error));
+  MOCK_CONST_METHOD1(GetDeviceRpcId, std::string(Error *error));
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_CONST_METHOD0(Is8021xConnectable, bool());
   MOCK_CONST_METHOD0(IsConnected, bool());

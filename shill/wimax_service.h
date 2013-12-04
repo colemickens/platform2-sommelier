@@ -87,7 +87,7 @@ class WiMaxService : public Service {
   FRIEND_TEST(WiMaxServiceTest, StartStop);
 
   // Inherited from Service.
-  virtual std::string GetDeviceRpcId(Error *error);
+  virtual std::string GetDeviceRpcId(Error *error) const;
   virtual bool IsAutoConnectable(const char **reason) const;
 
   void OnSignalStrengthChanged(int strength);
