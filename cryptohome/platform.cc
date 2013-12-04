@@ -268,10 +268,9 @@ void Platform::LookForOpenFiles(const std::string& path_in,
   for (FilePath pid_path = proc_dir_enum.Next();
        !pid_path.empty();
        pid_path = proc_dir_enum.Next()) {
-    const char* pidstr = pid_path.BaseName().value().c_str();
     pid_t pid = 0;
     // Ignore PID 1 and errors
-    if (!base::StringToInt(pidstr, &pid) || pid <= 1) {
+    if (!base::StringToInt(pid_path.BaseName().value(), &pid) || pid <= 1) {
       continue;
     }
 
