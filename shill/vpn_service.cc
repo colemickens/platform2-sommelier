@@ -174,6 +174,30 @@ bool VPNService::IsAutoConnectable(const char **reason) const {
   return true;
 }
 
+string VPNService::GetTethering(Error *error) const {
+  ConnectionRefPtr conn = connection();
+  if (conn)
+    conn = conn->GetCarrierConnection();
+
+  string tethering;
+  if (conn) {
+    tethering = conn->tethering();
+    if (!tethering.empty()) {
+      return tethering;
+    }
+    // The underlying service may not have a Tethering property.  This is
+    // not strictly an error, so we don't print an error message.  Populating
+    // an error here just serves to propagate the lack of a property in
+    // GetProperties().
+    error->Populate(Error::kNotSupported);
+  } else {
+    Error::PopulateAndLog(error,
+                          Error::kOperationFailed,
+                          Error::GetDefaultMessage(Error::kOperationFailed));
+  }
+  return "";
+}
+
 bool VPNService::SetNameProperty(const string &name, Error *error) {
   if (name == friendly_name()) {
     return false;

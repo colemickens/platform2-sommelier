@@ -264,7 +264,7 @@ string WiFiService::GetTethering(Error */*error*/) const {
 
   // Only perform BSSID tests if there is exactly one matching endpoint,
   // so we ignore campuses that may use locally administered BSSIDs.
-  if (GetEndpointCount() == 1 &&
+  if (endpoints_.size() == 1 &&
       (*endpoints_.begin())->has_tethering_signature()) {
     return kTetheringSuspectedState;
   }

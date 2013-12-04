@@ -28,6 +28,7 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
+using testing::ReturnRefOfCopy;
 
 namespace shill {
 
@@ -382,6 +383,54 @@ TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi) {
   Error error;
   EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechologyProperty(&error));
   EXPECT_TRUE(error.IsSuccess());
+
+  // Clear expectations now, so the Return(lower_connection_) action releases
+  // the reference to |lower_connection_| allowing it to be destroyed now.
+  Mock::VerifyAndClearExpectations(connection_);
+  // Destroying the |lower_connection_| at function exit will also call an extra
+  // FlushAddresses on the |device_info_| object.
+  EXPECT_CALL(device_info_, FlushAddresses(0));
+}
+
+TEST_F(VPNServiceTest, GetTethering) {
+  scoped_refptr<Connection> null_connection;
+
+  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
+  service_->SetConnection(connection_);
+  EXPECT_EQ(connection_.get(), service_->connection().get());
+
+  // Simulate an error in the GetCarrierConnection() returning a NULL reference.
+  EXPECT_CALL(*connection_, GetCarrierConnection())
+      .WillOnce(Return(null_connection));
+
+  {
+    Error error;
+    EXPECT_EQ("", service_->GetTethering(&error));
+    EXPECT_EQ(Error::kOperationFailed, error.type());
+  }
+
+  scoped_refptr<NiceMock<MockConnection>> lower_connection_ =
+      new NiceMock<MockConnection>(&device_info_);
+
+  EXPECT_CALL(*connection_, tethering()).Times(0);
+  EXPECT_CALL(*connection_, GetCarrierConnection())
+      .WillRepeatedly(Return(lower_connection_));
+
+  const char kTethering[] = "moon unit";
+  EXPECT_CALL(*lower_connection_, tethering())
+      .WillOnce(ReturnRefOfCopy(string(kTethering)))
+      .WillOnce(ReturnRefOfCopy(string()));
+
+  {
+    Error error;
+    EXPECT_EQ(kTethering, service_->GetTethering(&error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    EXPECT_EQ("", service_->GetTethering(&error));
+    EXPECT_EQ(Error::kNotSupported, error.type());
+  }
 
   // Clear expectations now, so the Return(lower_connection_) action releases
   // the reference to |lower_connection_| allowing it to be destroyed now.

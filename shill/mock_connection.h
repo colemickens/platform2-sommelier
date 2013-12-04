@@ -32,6 +32,7 @@ class MockConnection : public Connection {
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   MOCK_METHOD0(CreateGatewayRoute, bool());
   MOCK_METHOD0(GetCarrierConnection, ConnectionRefPtr());
+  MOCK_CONST_METHOD0(tethering, std::string &());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

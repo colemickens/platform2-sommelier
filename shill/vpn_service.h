@@ -47,6 +47,7 @@ class VPNService : public Service {
  protected:
   // Inherited from Service.
   virtual bool IsAutoConnectable(const char **reason) const;
+  virtual std::string GetTethering(Error *error) const override;
 
  private:
   friend class VPNServiceTest;
@@ -54,6 +55,7 @@ class VPNService : public Service {
   FRIEND_TEST(VPNServiceTest, SetConnection);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi);
+  FRIEND_TEST(VPNServiceTest, GetTethering);
 
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];

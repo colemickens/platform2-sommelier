@@ -103,6 +103,8 @@ class Connection : public base::RefCounted<Connection> {
   virtual const IPAddress &local() const { return local_; }
   virtual const IPAddress &gateway() const { return gateway_; }
   virtual Technology::Identifier technology() const { return technology_; }
+  virtual const std::string &tethering() const { return tethering_; }
+  void set_tethering(const std::string &tethering) { tethering_ = tethering; }
 
   // Return the lowest connection on which this connection depends. In case of
   // error, a NULL is returned.
@@ -166,6 +168,11 @@ class Connection : public base::RefCounted<Connection> {
   std::string ipconfig_rpc_identifier_;
   IPAddress local_;
   IPAddress gateway_;
+
+  // Track the tethering status of the Service associated with this connection.
+  // This property is set by a service as it takes ownership of a connection,
+  // and is read by services that are bound through this connection.
+  std::string tethering_;
 
   // A binder to a lower Connection that this Connection depends on, if any.
   Binder lower_binder_;

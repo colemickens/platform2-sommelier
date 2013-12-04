@@ -1332,7 +1332,11 @@ Properties	boolean AutoConnect [readwrite]
 
 			This property is only visible in service types
 			which can support tethering.  Currently only
-			Ethernet and WiFi services support this property.
+			Ethernet and WiFi services support this property
+			directly.  VPN services make this property visible
+			if the service they're using for connectivity does
+			(i.e., if VPN connectivity is gained via Ethernet
+			or WiFi).
 
 		string Type [readonly]
 

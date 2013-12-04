@@ -680,6 +680,8 @@ void Service::SetConnection(const ConnectionRefPtr &connection) {
     // http://crbug.com/216664
     http_proxy_.reset(new HTTPProxy(connection));
     http_proxy_->Start(dispatcher_, sockets_.get());
+    Error unused_error;
+    connection->set_tethering(GetTethering(&unused_error));
   } else {
     http_proxy_.reset();
     static_ip_parameters_.ClearSavedParameters();
