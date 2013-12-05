@@ -7,12 +7,15 @@
 // fact, it will overwrite any policy set by Chrome.  To revert to powerd's
 // default policy, run it without any arguments.
 
-#include <dbus/dbus-glib-lowlevel.h>
 #include <gflags/gflags.h>
 
+#include "base/at_exit.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/common/util_dbus.h"
+#include "dbus/bus.h"
+#include "dbus/message.h"
+#include "dbus/object_proxy.h"
 #include "power_manager/policy.pb.h"
 
 // These mirror the fields from the PowerManagementPolicy protocol buffer.
@@ -99,13 +102,12 @@ power_manager::PowerManagementPolicy_Action GetAction(
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // GLib isn't used directly, but CallMethodInPowerD() needs it.
-  g_type_init();
-
   google::SetUsageMessage(
       "Configures powerd's power management policy.\n\n"
       "When called without any arguments, uses default settings.");
   google::ParseCommandLineFlags(&argc, &argv, true);
+  base::AtExitManager at_exit_manager;
+  MessageLoopForIO message_loop;
 
   power_manager::PowerManagementPolicy policy;
 
@@ -152,7 +154,23 @@ int main(int argc, char* argv[]) {
         FLAGS_wait_for_initial_user_activity != 0);
   }
 
-  CHECK(power_manager::util::CallMethodInPowerD(power_manager::kSetPolicyMethod,
-                                                policy, NULL));
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+  dbus::ObjectProxy* proxy = bus->GetObjectProxy(
+      power_manager::kPowerManagerServiceName,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+
+  dbus::MethodCall method_call(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSetPolicyMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendProtoAsArrayOfBytes(policy);
+  scoped_ptr<dbus::Response> response(
+      proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  CHECK(response.get());
+
   return 0;
 }

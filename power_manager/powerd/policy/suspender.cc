@@ -14,7 +14,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/input.h"
@@ -86,38 +85,60 @@ void Suspender::RequestSuspendWithExternalWakeupCount(uint64 wakeup_count) {
   StartSuspendAttempt();
 }
 
-DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
+void Suspender::RegisterSuspendDelay(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
   RegisterSuspendDelayRequest request;
-  if (!util::ParseProtocolBufferFromDBusMessage(message, &request)) {
-    LOG(ERROR) << "Unable to parse RegisterSuspendDelay request";
-    return util::CreateDBusInvalidArgsErrorReply(message);
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse " << kRegisterSuspendDelayMethod
+               << " request";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(method_call,
+        DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer"));
+    return;
   }
   RegisterSuspendDelayReply reply_proto;
   suspend_delay_controller_->RegisterSuspendDelay(
-      request, util::GetDBusSender(message), &reply_proto);
-  return util::CreateDBusProtocolBufferReply(message, reply_proto);
+      request, method_call->GetSender(), &reply_proto);
+
+  dbus::Response* response = dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response);
+  writer.AppendProtoAsArrayOfBytes(reply_proto);
+  response_sender.Run(response);
 }
 
-DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
+void Suspender::UnregisterSuspendDelay(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
   UnregisterSuspendDelayRequest request;
-  if (!util::ParseProtocolBufferFromDBusMessage(message, &request)) {
-    LOG(ERROR) << "Unable to parse UnregisterSuspendDelay request";
-    return util::CreateDBusInvalidArgsErrorReply(message);
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse " << kUnregisterSuspendDelayMethod
+               << " request";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(method_call,
+        DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer"));
+    return;
   }
   suspend_delay_controller_->UnregisterSuspendDelay(
-      request, util::GetDBusSender(message));
-  return NULL;
+      request, method_call->GetSender());
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
-DBusMessage* Suspender::HandleSuspendReadiness(DBusMessage* message) {
+void Suspender::HandleSuspendReadiness(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
   SuspendReadinessInfo info;
-  if (!util::ParseProtocolBufferFromDBusMessage(message, &info)) {
-    LOG(ERROR) << "Unable to parse HandleSuspendReadiness request";
-    return util::CreateDBusInvalidArgsErrorReply(message);
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopArrayOfBytesAsProto(&info)) {
+    LOG(ERROR) << "Unable to parse " << kHandleSuspendReadinessMethod
+               << " request";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(method_call,
+        DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer"));
+    return;
   }
   suspend_delay_controller_->HandleSuspendReadiness(
-      info, util::GetDBusSender(message));
-  return NULL;
+      info, method_call->GetSender());
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void Suspender::HandleLidOpened() {

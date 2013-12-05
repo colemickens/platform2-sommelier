@@ -9,8 +9,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <set>
-#include <vector>
 
 #include "base/bind.h"
 #include "base/file_util.h"
@@ -24,7 +22,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/common/util_dbus.h"
 #include "power_manager/policy.pb.h"
 #include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/metrics_constants.h"
@@ -57,6 +54,10 @@ const char kSessionStarted[] = "started";
 
 // Path containing the number of wakeup events.
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
+
+// Maximum amount of time to wait for responses to D-Bus method calls to the
+// session manager.
+const int kSessionManagerDBusTimeoutMs = 3000;
 
 // Copies fields from |status| into |proto|.
 void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
@@ -150,6 +151,35 @@ std::string GetPowerStatusBatteryDebugString(
   return output;
 }
 
+// Passes |method_call| to |handler| and passes the response to
+// |response_sender|. If |handler| returns NULL, an empty response is created
+// and sent.
+void HandleSynchronousDBusMethodCall(
+    base::Callback<dbus::Response*(dbus::MethodCall*)> handler,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  dbus::Response* response = handler.Run(method_call);
+  if (!response)
+    response = dbus::Response::FromMethodCall(method_call);
+  response_sender.Run(response);
+}
+
+// Creates a new "not supported" reply to |method_call|.
+dbus::ErrorResponse* CreateNotSupportedError(dbus::MethodCall* method_call,
+                                             std::string message) {
+  return dbus::ErrorResponse::FromMethodCall(
+      method_call, DBUS_ERROR_NOT_SUPPORTED, message);
+
+}
+
+// Creates a new "invalid args" reply to |method_call|.
+dbus::ErrorResponse* CreateInvalidArgsError(dbus::MethodCall* method_call,
+                                            std::string message) {
+  return dbus::ErrorResponse::FromMethodCall(
+      method_call, DBUS_ERROR_INVALID_ARGS, message);
+
+}
+
 }  // namespace
 
 // Performs actions requested by |state_controller_|.  The reason that
@@ -201,8 +231,12 @@ class Daemon::StateControllerDelegate
   }
 
   virtual void LockScreen() OVERRIDE {
-    util::CallSessionManagerMethod(
-        login_manager::kSessionManagerLockScreen, NULL);
+    dbus::MethodCall method_call(
+        login_manager::kSessionManagerInterface,
+        login_manager::kSessionManagerLockScreen);
+    scoped_ptr<dbus::Response> response(
+        daemon_->session_manager_dbus_proxy_->CallMethodAndBlock(
+            &method_call, kSessionManagerDBusTimeoutMs));
   }
 
   virtual void Suspend() OVERRIDE {
@@ -212,8 +246,14 @@ class Daemon::StateControllerDelegate
   virtual void StopSession() OVERRIDE {
     // This session manager method takes a string argument, although it
     // doesn't currently do anything with it.
-    util::CallSessionManagerMethod(
-        login_manager::kSessionManagerStopSession, "");
+    dbus::MethodCall method_call(
+        login_manager::kSessionManagerInterface,
+        login_manager::kSessionManagerStopSession);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString("");
+    scoped_ptr<dbus::Response> response(
+        daemon_->session_manager_dbus_proxy_->CallMethodAndBlock(
+            &method_call, kSessionManagerDBusTimeoutMs));
   }
 
   virtual void ShutDown() OVERRIDE {
@@ -332,15 +372,10 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
 
  private:
   void SendPowerStateChangedSignal(const std::string& power_state) {
-    DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                  kPowerManagerInterface,
-                                                  kPowerStateChanged);
-    const char* state = power_state.c_str();
-    dbus_message_append_args(signal,
-                             DBUS_TYPE_STRING, &state,
-                             DBUS_TYPE_INVALID);
-    dbus_connection_send(util::GetSystemDBusConnection(), signal, NULL);
-    dbus_message_unref(signal);
+    dbus::Signal signal(kPowerManagerInterface, kPowerStateChanged);
+    dbus::MessageWriter writer(&signal);
+    writer.AppendString(power_state);
+    daemon_->powerd_dbus_object_->SendSignal(&signal);
   }
 
   Daemon* daemon_;  // weak
@@ -352,8 +387,13 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
                const base::FilePath& read_only_prefs_dir,
                const base::FilePath& run_dir)
     : prefs_(new Prefs),
+      powerd_dbus_object_(NULL),
+      chrome_dbus_proxy_(NULL),
+      session_manager_dbus_proxy_(NULL),
+      cras_dbus_proxy_(NULL),
       state_controller_delegate_(new StateControllerDelegate(this)),
       dbus_sender_(new DBusSender),
+      display_power_setter_(new system::DisplayPowerSetter),
       udev_(new system::Udev),
       input_(new system::Input),
       state_controller_(new policy::StateController),
@@ -388,8 +428,7 @@ Daemon::~Daemon() {
 }
 
 void Daemon::Init() {
-  RegisterDBusMessageHandler();
-  dbus_sender_->Init(kPowerManagerServicePath, kPowerManagerInterface);
+  InitDBus();
   CHECK(udev_->Init());
 
   if (BoolPrefIsTrue(kHasAmbientLightSensorPref)) {
@@ -397,7 +436,7 @@ void Daemon::Init() {
     light_sensor_->Init();
   }
 
-  display_power_setter_.reset(new system::DisplayPowerSetter);
+  display_power_setter_->Init(chrome_dbus_proxy_);
   if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
     display_backlight_controller_.reset(
         new policy::ExternalBacklightController);
@@ -453,13 +492,8 @@ void Daemon::Init() {
                           power_supply_->power_status());
 
   std::string session_state;
-  if (util::IsDBusServiceConnected(login_manager::kSessionManagerServiceName,
-                                   login_manager::kSessionManagerServicePath,
-                                   login_manager::kSessionManagerInterface,
-                                   NULL) &&
-      util::GetSessionState(&session_state)) {
+  if (QuerySessionState(&session_state))
     OnSessionStateChange(session_state);
-  }
 
   OnPowerStatusUpdate();
 
@@ -480,11 +514,8 @@ void Daemon::Init() {
                           session_state_);
   state_controller_initialized_ = true;
 
-  if (util::IsDBusServiceConnected(cras::kCrasServiceName,
-                                   cras::kCrasServicePath,
-                                   cras::kCrasControlInterface, NULL)) {
-    audio_client_->LoadInitialState();
-  }
+  audio_client_->Init(cras_dbus_proxy_);
+  audio_client_->LoadInitialState();
 
   peripheral_battery_watcher_->Init(dbus_sender_.get());
 }
@@ -509,30 +540,12 @@ void Daemon::SendBrightnessChangedSignal(
     double brightness_percent,
     policy::BacklightController::BrightnessChangeCause cause,
     const std::string& signal_name) {
-  dbus_int32_t brightness_percent_int =
-      static_cast<dbus_int32_t>(round(brightness_percent));
-
-  dbus_bool_t user_initiated = FALSE;
-  switch (cause) {
-    case policy::BacklightController::BRIGHTNESS_CHANGE_AUTOMATED:
-      user_initiated = FALSE;
-      break;
-    case policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED:
-      user_initiated = TRUE;
-      break;
-    default:
-      NOTREACHED() << "Unhandled brightness change cause " << cause;
-  }
-
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                signal_name.c_str());
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &brightness_percent_int,
-                           DBUS_TYPE_BOOLEAN, &user_initiated,
-                           DBUS_TYPE_INVALID);
-  dbus_connection_send(util::GetSystemDBusConnection(), signal, NULL);
-  dbus_message_unref(signal);
+  dbus::Signal signal(kPowerManagerInterface, signal_name);
+  dbus::MessageWriter writer(&signal);
+  writer.AppendInt32(round(brightness_percent));
+  writer.AppendBool(cause ==
+      policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+  powerd_dbus_object_->SendSignal(&signal);
 }
 
 void Daemon::OnBrightnessChanged(
@@ -699,132 +712,145 @@ void Daemon::OnPowerStatusUpdate() {
   dbus_sender_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 }
 
-void Daemon::RegisterDBusMessageHandler() {
-  util::RequestDBusServiceName(kPowerManagerServiceName);
+void Daemon::InitDBus() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  bus_ = new dbus::Bus(options);
+  CHECK(bus_->Connect());
+  CHECK(bus_->RequestOwnershipAndBlock(kPowerManagerServiceName))
+      << "Unable to take ownership of " << kPowerManagerServiceName;
 
-  dbus_handler_.SetNameOwnerChangedHandler(
-      base::Bind(&Daemon::HandleDBusNameOwnerChanged, base::Unretained(this)));
+  chrome_dbus_proxy_ = bus_->GetObjectProxy(
+      chromeos::kLibCrosServiceName,
+      dbus::ObjectPath(chromeos::kLibCrosServicePath));
 
-  dbus_handler_.AddSignalHandler(
+  // Session manager signals.
+  session_manager_dbus_proxy_ = bus_->GetObjectProxy(
+      login_manager::kSessionManagerServiceName,
+      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
+  session_manager_dbus_proxy_->ConnectToSignal(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddSignalHandler(
-      update_engine::kUpdateEngineInterface,
-      update_engine::kStatusUpdate,
-      base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddSignalHandler(
+                 base::Unretained(this)),
+      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+
+  // CRAS signals.
+  cras_dbus_proxy_ = bus_->GetObjectProxy(
+      cras::kCrasServiceName,
+      dbus::ObjectPath(cras::kCrasServicePath));
+  cras_dbus_proxy_->ConnectToSignal(
       cras::kCrasControlInterface,
       cras::kNodesChanged,
-      base::Bind(&Daemon::HandleCrasNodesChangedSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddSignalHandler(
+      base::Bind(&Daemon::HandleCrasNodesChangedSignal, base::Unretained(this)),
+      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+  cras_dbus_proxy_->ConnectToSignal(
       cras::kCrasControlInterface,
       cras::kActiveOutputNodeChanged,
       base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddSignalHandler(
+                 base::Unretained(this)),
+      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+  cras_dbus_proxy_->ConnectToSignal(
       cras::kCrasControlInterface,
       cras::kNumberOfActiveStreamsChanged,
       base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
-                 base::Unretained(this)));
+                 base::Unretained(this)),
+      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
 
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kRequestShutdownMethod,
-      base::Bind(&Daemon::HandleRequestShutdownMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kRequestRestartMethod,
-      base::Bind(&Daemon::HandleRequestRestartMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kRequestSuspendMethod,
-      base::Bind(&Daemon::HandleRequestSuspendMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kDecreaseScreenBrightness,
-      base::Bind(&Daemon::HandleDecreaseScreenBrightnessMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kIncreaseScreenBrightness,
-      base::Bind(&Daemon::HandleIncreaseScreenBrightnessMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kGetScreenBrightnessPercent,
-      base::Bind(&Daemon::HandleGetScreenBrightnessMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kSetScreenBrightnessPercent,
-      base::Bind(&Daemon::HandleSetScreenBrightnessMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kDecreaseKeyboardBrightness,
-      base::Bind(&Daemon::HandleDecreaseKeyboardBrightnessMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kIncreaseKeyboardBrightness,
-      base::Bind(&Daemon::HandleIncreaseKeyboardBrightnessMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kGetPowerSupplyPropertiesMethod,
-      base::Bind(&Daemon::HandleGetPowerSupplyPropertiesMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kHandleVideoActivityMethod,
-      base::Bind(&Daemon::HandleVideoActivityMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kHandleUserActivityMethod,
-      base::Bind(&Daemon::HandleUserActivityMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kSetIsProjectingMethod,
-      base::Bind(&Daemon::HandleSetIsProjectingMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kSetPolicyMethod,
-      base::Bind(&Daemon::HandleSetPolicyMethod, base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kHandlePowerButtonAcknowledgmentMethod,
-      base::Bind(&Daemon::HandlePowerButtonAcknowledgment,
-                 base::Unretained(this)));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kRegisterSuspendDelayMethod,
+  // Update engine signals.
+  dbus::ObjectProxy* update_engine_proxy = bus_->GetObjectProxy(
+      update_engine::kUpdateEngineServiceName,
+      dbus::ObjectPath(update_engine::kUpdateEngineServicePath));
+  update_engine_proxy->ConnectToSignal(
+      update_engine::kUpdateEngineInterface,
+      update_engine::kStatusUpdate,
+      base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
+                 base::Unretained(this)),
+      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+
+  // Exported methods.
+  powerd_dbus_object_ = bus_->GetExportedObject(
+      dbus::ObjectPath(kPowerManagerServicePath));
+  ExportDBusMethod(kRequestShutdownMethod,
+                   &Daemon::HandleRequestShutdownMethod);
+  ExportDBusMethod(kRequestRestartMethod,
+                   &Daemon::HandleRequestRestartMethod);
+  ExportDBusMethod(kRequestSuspendMethod,
+                   &Daemon::HandleRequestSuspendMethod);
+  ExportDBusMethod(kDecreaseScreenBrightness,
+                   &Daemon::HandleDecreaseScreenBrightnessMethod);
+  ExportDBusMethod(kIncreaseScreenBrightness,
+                   &Daemon::HandleIncreaseScreenBrightnessMethod);
+  ExportDBusMethod(kGetScreenBrightnessPercent,
+                   &Daemon::HandleGetScreenBrightnessMethod);
+  ExportDBusMethod(kSetScreenBrightnessPercent,
+                   &Daemon::HandleSetScreenBrightnessMethod);
+  ExportDBusMethod(kDecreaseKeyboardBrightness,
+                   &Daemon::HandleDecreaseKeyboardBrightnessMethod);
+  ExportDBusMethod(kIncreaseKeyboardBrightness,
+                   &Daemon::HandleIncreaseKeyboardBrightnessMethod);
+  ExportDBusMethod(kGetPowerSupplyPropertiesMethod,
+                   &Daemon::HandleGetPowerSupplyPropertiesMethod);
+  ExportDBusMethod(kHandleVideoActivityMethod,
+                   &Daemon::HandleVideoActivityMethod);
+  ExportDBusMethod(kHandleUserActivityMethod,
+                   &Daemon::HandleUserActivityMethod);
+  ExportDBusMethod(kSetIsProjectingMethod,
+                   &Daemon::HandleSetIsProjectingMethod);
+  ExportDBusMethod(kSetPolicyMethod,
+                   &Daemon::HandleSetPolicyMethod);
+  ExportDBusMethod(kHandlePowerButtonAcknowledgmentMethod,
+                   &Daemon::HandlePowerButtonAcknowledgment);
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, kRegisterSuspendDelayMethod,
       base::Bind(&policy::Suspender::RegisterSuspendDelay,
-                 base::Unretained(suspender_.get())));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kUnregisterSuspendDelayMethod,
+                 base::Unretained(suspender_.get()))));
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, kUnregisterSuspendDelayMethod,
       base::Bind(&policy::Suspender::UnregisterSuspendDelay,
-                 base::Unretained(suspender_.get())));
-  dbus_handler_.AddMethodHandler(
-      kPowerManagerInterface,
-      kHandleSuspendReadinessMethod,
+                 base::Unretained(suspender_.get()))));
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, kHandleSuspendReadinessMethod,
       base::Bind(&policy::Suspender::HandleSuspendReadiness,
-                 base::Unretained(suspender_.get())));
+                 base::Unretained(suspender_.get()))));
 
-  dbus_handler_.Start();
+  // Listen for NameOwnerChanged signals from the bus itself. Register for all
+  // of these signals instead of calling individual proxies'
+  // SetNameOwnerChangedCallback() methods so that Suspender can get notified
+  // when clients with suspend delays disconnect.
+  //
+  // Note that this signal is currently connected after all other proxies have
+  // been created to ensure that it won't prevent those proxies from seeing
+  // NameOwnerChanged signals. See http://crbug.com/327172.
+  //
+  // TODO(derat): Add a better way to observe name ownership changes.
+  const char kBusServiceName[] = "org.freedesktop.DBus";
+  const char kBusServicePath[] = "/org/freedesktop/DBus";
+  const char kBusInterface[] = "org.freedesktop.DBus";
+  const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
+  dbus::ObjectProxy* proxy = bus_->GetObjectProxy(
+      kBusServiceName, dbus::ObjectPath(kBusServicePath));
+  proxy->ConnectToSignal(kBusInterface, kNameOwnerChangedSignal,
+      base::Bind(&Daemon::HandleDBusNameOwnerChanged, base::Unretained(this)),
+      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+
+  dbus_sender_->Init(powerd_dbus_object_, kPowerManagerInterface);
 }
 
-void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
-                                        const std::string& old_owner,
-                                        const std::string& new_owner) {
+void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  std::string name, old_owner, new_owner;
+  if (!reader.PopString(&name) ||
+      !reader.PopString(&old_owner) ||
+      !reader.PopString(&new_owner)) {
+    LOG(ERROR) << "Unable to parse NameOwnerChanged signal";
+    return;
+  }
+
   if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     std::string session_state;
-    if (util::GetSessionState(&session_state))
+    if (QuerySessionState(&session_state))
       OnSessionStateChange(session_state);
   } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
@@ -837,47 +863,51 @@ void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
   suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 
-bool Daemon::HandleSessionStateChangedSignal(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  const char* state = NULL;
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_STRING, &state,
-                            DBUS_TYPE_INVALID)) {
-    OnSessionStateChange(state ? state : "");
-  } else {
-    LOG(WARNING) << "Unable to read "
-                 << login_manager::kSessionStateChangedSignal << " args";
-    dbus_error_free(&error);
-  }
-  return false;
+void Daemon::HandleDBusSignalConnected(const std::string& interface,
+                                       const std::string& signal,
+                                       bool success) {
+  if (!success)
+    LOG(ERROR) << "Failed to connect to " << interface << "." << signal;
 }
 
-bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
+void Daemon::ExportDBusMethod(const std::string& method_name,
+                              DBusMethodCallMemberFunction member) {
+  DCHECK(powerd_dbus_object_);
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, method_name,
+      base::Bind(&HandleSynchronousDBusMethodCall,
+                 base::Bind(member, base::Unretained(this)))));
+}
 
-  dbus_int64_t last_checked_time = 0;
+void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  std::string state;
+  if (reader.PopString(&state)) {
+    OnSessionStateChange(state);
+  } else {
+    LOG(ERROR) << "Unable to read "
+               << login_manager::kSessionStateChangedSignal << " args";
+  }
+}
+
+void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  int64 last_checked_time = 0;
   double progress = 0.0;
-  const char* current_operation = NULL;
-  const char* new_version = NULL;
-  dbus_int64_t new_size = 0;
-
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_INT64, &last_checked_time,
-                             DBUS_TYPE_DOUBLE, &progress,
-                             DBUS_TYPE_STRING, &current_operation,
-                             DBUS_TYPE_STRING, &new_version,
-                             DBUS_TYPE_INT64, &new_size,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Unable to read args from " << update_engine::kStatusUpdate
-                 << " signal";
-    dbus_error_free(&error);
-    return false;
+  std::string operation;
+  std::string new_version;
+  int64 new_size = 0;
+  if (!reader.PopInt64(&last_checked_time) ||
+      !reader.PopDouble(&progress) ||
+      !reader.PopString(&operation) ||
+      !reader.PopString(&new_version) ||
+      !reader.PopInt64(&new_size)) {
+    LOG(ERROR) << "Unable to read args from " << update_engine::kStatusUpdate
+               << " signal";
+    return;
   }
 
   UpdaterState state = UPDATER_IDLE;
-  std::string operation = current_operation;
   if (operation == update_engine::kUpdateStatusDownloading ||
       operation == update_engine::kUpdateStatusVerifying ||
       operation == update_engine::kUpdateStatusFinalizing) {
@@ -886,48 +916,42 @@ bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
     state = UPDATER_UPDATED;
   }
   state_controller_->HandleUpdaterStateChange(state);
-
-  return false;
 }
 
-bool Daemon::HandleCrasNodesChangedSignal(DBusMessage* message) {
+void Daemon::HandleCrasNodesChangedSignal(dbus::Signal* signal) {
   audio_client_->UpdateDevices();
-  return false;
 }
 
-bool Daemon::HandleCrasActiveOutputNodeChangedSignal(DBusMessage* message) {
+void Daemon::HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal) {
   audio_client_->UpdateDevices();
-  return false;
 }
 
-bool Daemon::HandleCrasNumberOfActiveStreamsChanged(DBusMessage* message) {
+void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
   audio_client_->UpdateNumActiveStreams();
-  return false;
 }
 
-DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
+dbus::Response* Daemon::HandleRequestShutdownMethod(
+    dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestShutdownMethod << " message";
   ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
   return NULL;
 }
 
-DBusMessage* Daemon::HandleRequestRestartMethod(DBusMessage* message) {
+dbus::Response* Daemon::HandleRequestRestartMethod(
+    dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestRestartMethod << " message";
   ShutDown(SHUTDOWN_REBOOT, kShutdownReasonUserRequest);
   return NULL;
 }
 
-DBusMessage* Daemon::HandleRequestSuspendMethod(DBusMessage* message) {
+dbus::Response* Daemon::HandleRequestSuspendMethod(
+    dbus::MethodCall* method_call) {
   // Read an optional uint64 argument specifying the wakeup count that is
   // expected.
-  dbus_uint64_t external_wakeup_count = 0;
-  DBusError error;
-  dbus_error_init(&error);
-  const bool got_external_wakeup_count = dbus_message_get_args(
-      message, &error, DBUS_TYPE_UINT64, &external_wakeup_count,
-      DBUS_TYPE_INVALID);
-  dbus_error_free(&error);
-
+  dbus::MessageReader reader(method_call);
+  uint64 external_wakeup_count = 0;
+  const bool got_external_wakeup_count = reader.PopUint64(
+      &external_wakeup_count);
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
             << (got_external_wakeup_count ?
                 StringPrintf(" with external wakeup count %" PRIu64,
@@ -936,22 +960,17 @@ DBusMessage* Daemon::HandleRequestSuspendMethod(DBusMessage* message) {
   return NULL;
 }
 
-DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
-    DBusMessage* message) {
+dbus::Response* Daemon::HandleDecreaseScreenBrightnessMethod(
+    dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
-    return util::CreateDBusErrorReply(message, "Backlight uninitialized");
+    return CreateNotSupportedError(method_call, "Backlight uninitialized");
 
-  dbus_bool_t allow_off = false;
-  DBusError error;
-  dbus_error_init(&error);
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_BOOLEAN, &allow_off,
-                            DBUS_TYPE_INVALID) == FALSE) {
-    LOG(WARNING) << "Unable to read " << kDecreaseScreenBrightness << " args";
-    dbus_error_free(&error);
-  }
+  bool allow_off = false;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopBool(&allow_off))
+    LOG(ERROR) << "Unable to read " << kDecreaseScreenBrightness << " args";
   bool changed =
-      display_backlight_controller_->DecreaseUserBrightness( allow_off);
+      display_backlight_controller_->DecreaseUserBrightness(allow_off);
   double percent = 0.0;
   if (!changed &&
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
@@ -962,10 +981,10 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
   return NULL;
 }
 
-DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
-    DBusMessage* message) {
+dbus::Response* Daemon::HandleIncreaseScreenBrightnessMethod(
+    dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
-    return util::CreateDBusErrorReply(message, "Backlight uninitialized");
+    return CreateNotSupportedError(method_call, "Backlight uninitialized");
 
   bool changed = display_backlight_controller_->IncreaseUserBrightness();
   double percent = 0.0;
@@ -978,20 +997,19 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
   return NULL;
 }
 
-DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
-  double percent;
-  int dbus_style;
-  DBusError error;
-  dbus_error_init(&error);
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_DOUBLE, &percent,
-                             DBUS_TYPE_INT32, &dbus_style,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << kSetScreenBrightnessPercent
-                << ": Error reading args: " << error.message;
-    dbus_error_free(&error);
-    return util::CreateDBusInvalidArgsErrorReply(message);
+dbus::Response* Daemon::HandleSetScreenBrightnessMethod(
+    dbus::MethodCall* method_call) {
+  if (!display_backlight_controller_)
+    return CreateNotSupportedError(method_call, "Backlight uninitialized");
+
+  double percent = 0.0;
+  int dbus_style = 0;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_style)) {
+    LOG(ERROR) << "Unable to read " << kSetScreenBrightnessPercent << " args";
+    return CreateInvalidArgsError(method_call, "Expected percent and style");
   }
+
   policy::BacklightController::TransitionStyle style =
       policy::BacklightController::TRANSITION_FAST;
   switch (dbus_style) {
@@ -1002,59 +1020,56 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
       style = policy::BacklightController::TRANSITION_INSTANT;
       break;
     default:
-      LOG(WARNING) << "Invalid transition style passed ( " << dbus_style
-                  << " ).  Using default fast transition";
+      LOG(ERROR) << "Invalid transition style (" << dbus_style << ")";
   }
   display_backlight_controller_->SetUserBrightnessPercent(percent, style);
   return NULL;
 }
 
-DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
+dbus::Response* Daemon::HandleGetScreenBrightnessMethod(
+    dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
-    return util::CreateDBusErrorReply(message, "Backlight uninitialized");
+    return CreateNotSupportedError(method_call, "Backlight uninitialized");
 
   double percent = 0.0;
   if (!display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    return util::CreateDBusErrorReply(
-        message, "Could not fetch Screen Brightness");
+    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+        "Couldn't fetch brightness");
   }
-  DBusMessage* reply = util::CreateEmptyDBusReply(message);
-  CHECK(reply);
-  dbus_message_append_args(reply,
-                           DBUS_TYPE_DOUBLE, &percent,
-                           DBUS_TYPE_INVALID);
-  return reply;
+  dbus::Response* response = dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response);
+  writer.AppendDouble(percent);
+  return response;
 }
 
-DBusMessage* Daemon::HandleDecreaseKeyboardBrightnessMethod(
-    DBusMessage* message) {
+dbus::Response* Daemon::HandleDecreaseKeyboardBrightnessMethod(
+    dbus::MethodCall* method_call) {
   AdjustKeyboardBrightness(-1);
   return NULL;
 }
 
-DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
-    DBusMessage* message) {
+dbus::Response* Daemon::HandleIncreaseKeyboardBrightnessMethod(
+    dbus::MethodCall* method_call) {
   AdjustKeyboardBrightness(1);
   return NULL;
 }
 
-DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
-    DBusMessage* message) {
+dbus::Response* Daemon::HandleGetPowerSupplyPropertiesMethod(
+    dbus::MethodCall* method_call) {
   PowerSupplyProperties protobuf;
   CopyPowerStatusToProtocolBuffer(power_supply_->power_status(), &protobuf);
-  return util::CreateDBusProtocolBufferReply(message, protobuf);
+  dbus::Response* response = dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response);
+  writer.AppendProtoAsArrayOfBytes(protobuf);
+  return response;
 }
 
-DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  gboolean is_fullscreen = false;
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_BOOLEAN, &is_fullscreen,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Unable to read " << kHandleVideoActivityMethod << "args";
-    dbus_error_free(&error);
-  }
+dbus::Response* Daemon::HandleVideoActivityMethod(
+    dbus::MethodCall* method_call) {
+  bool is_fullscreen = false;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopBool(&is_fullscreen))
+    LOG(ERROR) << "Unable to read " << kHandleVideoActivityMethod << " args";
 
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleVideoActivity(is_fullscreen);
@@ -1062,13 +1077,12 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   return NULL;
 }
 
-DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  dbus_int32_t type_int = USER_ACTIVITY_OTHER;
-  dbus_message_get_args(
-      message, &error, DBUS_TYPE_INT32, &type_int, DBUS_TYPE_INVALID);
-  dbus_error_free(&error);
+dbus::Response* Daemon::HandleUserActivityMethod(
+    dbus::MethodCall* method_call) {
+  int type_int = USER_ACTIVITY_OTHER;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopInt32(&type_int))
+    LOG(ERROR) << "Unable to read " << kHandleUserActivityMethod << " args";
   UserActivityType type = static_cast<UserActivityType>(type_int);
 
   suspender_->HandleUserActivity();
@@ -1080,56 +1094,68 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
   return NULL;
 }
 
-DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
-  DBusMessage* reply = NULL;
-  DBusError error;
-  dbus_error_init(&error);
+dbus::Response* Daemon::HandleSetIsProjectingMethod(
+    dbus::MethodCall* method_call) {
   bool is_projecting = false;
-  dbus_bool_t args_ok =
-      dbus_message_get_args(message, &error,
-                            DBUS_TYPE_BOOLEAN, &is_projecting,
-                            DBUS_TYPE_INVALID);
-  if (args_ok) {
-    DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
-    state_controller_->HandleDisplayModeChange(mode);
-    if (display_backlight_controller_)
-      display_backlight_controller_->HandleDisplayModeChange(mode);
-  } else {
-    // The message was malformed so log this and return an error.
-    LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
-                 << error.message;
-    reply = util::CreateDBusInvalidArgsErrorReply(message);
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopBool(&is_projecting)) {
+    LOG(ERROR) << "Unable to read " << kSetIsProjectingMethod << " args";
+    return CreateInvalidArgsError(method_call, "Expected boolean state");
   }
-  return reply;
+
+  DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
+  state_controller_->HandleDisplayModeChange(mode);
+  if (display_backlight_controller_)
+    display_backlight_controller_->HandleDisplayModeChange(mode);
+  return NULL;
 }
 
-DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
+dbus::Response* Daemon::HandleSetPolicyMethod(dbus::MethodCall* method_call) {
   PowerManagementPolicy policy;
-  if (!util::ParseProtocolBufferFromDBusMessage(message, &policy)) {
-    LOG(WARNING) << "Unable to parse " << kSetPolicyMethod << " request";
-    return util::CreateDBusInvalidArgsErrorReply(message);
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopArrayOfBytesAsProto(&policy)) {
+    LOG(ERROR) << "Unable to parse " << kSetPolicyMethod << " request";
+    return CreateInvalidArgsError(method_call, "Expected protobuf");
   }
+
   state_controller_->HandlePolicyChange(policy);
   if (display_backlight_controller_)
     display_backlight_controller_->HandlePolicyChange(policy);
   return NULL;
 }
 
-DBusMessage* Daemon::HandlePowerButtonAcknowledgment(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  dbus_int64_t timestamp_internal = 0;
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_INT64, &timestamp_internal,
-                            DBUS_TYPE_INVALID)) {
-    input_controller_->HandlePowerButtonAcknowledgment(
-        base::TimeTicks::FromInternalValue(timestamp_internal));
-  } else {
-    dbus_error_free(&error);
-    LOG(WARNING) << "Unable to parse "
-                 << kHandlePowerButtonAcknowledgmentMethod << " request";
+dbus::Response* Daemon::HandlePowerButtonAcknowledgment(
+    dbus::MethodCall* method_call) {
+  int64 timestamp_internal = 0;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopInt64(&timestamp_internal)) {
+    LOG(ERROR) << "Unable to parse " << kHandlePowerButtonAcknowledgmentMethod
+               << " request";
+    return CreateInvalidArgsError(method_call, "Expected int64 timestamp");
   }
+  input_controller_->HandlePowerButtonAcknowledgment(
+      base::TimeTicks::FromInternalValue(timestamp_internal));
   return NULL;
+}
+
+bool Daemon::QuerySessionState(std::string* state) {
+  DCHECK(state);
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerRetrieveSessionState);
+  scoped_ptr<dbus::Response> response(
+      session_manager_dbus_proxy_->CallMethodAndBlock(
+          &method_call, kSessionManagerDBusTimeoutMs));
+  if (!response)
+    return false;
+
+  dbus::MessageReader reader(response.get());
+  if (!reader.PopString(state)) {
+    LOG(ERROR) << "Unable to read "
+               << login_manager::kSessionManagerRetrieveSessionState << " args";
+    return false;
+  }
+  return true;
 }
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {

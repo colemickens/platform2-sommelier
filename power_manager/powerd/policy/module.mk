@@ -40,11 +40,10 @@ CXX_BINARY(powerd/policy_unittest): \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a)
 CXX_BINARY(powerd/policy_unittest): \
-	CPPFLAGS += $(GLIB_FLAGS) $(DBUS_FLAGS)
+	CPPFLAGS += $(LIBCHROME_FLAGS)
 CXX_BINARY(powerd/policy_unittest): \
-	LDLIBS += $(GLIB_LIBS) $(DBUS_LIBS) -lgtest -lprotobuf-lite -ludev
+	LDLIBS += $(LIBCHROME_LIBS) -lgtest -lprotobuf-lite -ludev
 clean: CXX_BINARY(powerd/policy_unittest)
 tests: TEST(CXX_BINARY(powerd/policy_unittest))

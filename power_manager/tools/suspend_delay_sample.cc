@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <dbus/dbus-glib-lowlevel.h>
 #include <gflags/gflags.h>
 
 #include "base/at_exit.h"
 #include "base/bind.h"
 #include "base/logging.h"
+#include "base/memory/ref_counted.h"
 #include "base/message_loop.h"
-#include "base/string_util.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/common/dbus_handler.h"
-#include "power_manager/common/util_dbus.h"
+#include "dbus/bus.h"
+#include "dbus/message.h"
+#include "dbus/object_proxy.h"
 #include "power_manager/suspend.pb.h"
 
 DEFINE_int32(delay_ms, 5000,
@@ -26,92 +26,104 @@ namespace {
 // Human-readable description of the delay's purpose.
 const char kSuspendDelayDescription[] = "suspend_delay_sample";
 
-// ID corresponding to the current suspend attempt.
-int suspend_id = 0;
-
-// ID corresponding to the registered suspend delay.
-int delay_id = 0;
-
 }  // namespace
-
-power_manager::util::DBusHandler dbus_handler;
 
 // Passes |request| to powerd's |method_name| D-Bus method.
 // Copies the returned protocol buffer to |reply_out|, which may be NULL if no
 // reply is expected.
-bool CallMethod(const std::string& method_name,
+bool CallMethod(dbus::ObjectProxy* powerd_proxy,
+                const std::string& method_name,
                 const google::protobuf::MessageLite& request,
                 google::protobuf::MessageLite* reply_out) {
   LOG(INFO) << "Calling " << method_name << " method";
-  DBusMessage* message = dbus_message_new_method_call(
-      power_manager::kPowerManagerServiceName,
-      power_manager::kPowerManagerServicePath,
-      power_manager::kPowerManagerInterface,
-      method_name.c_str());
-  CHECK(message);
-  power_manager::util::AppendProtocolBufferToDBusMessage(request, message);
+  dbus::MethodCall method_call(
+      power_manager::kPowerManagerInterface, method_name);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendProtoAsArrayOfBytes(request);
 
-  DBusMessage* response = power_manager::util::CallDBusMethodAndUnref(message);
-  CHECK(!reply_out ||
-        power_manager::util::ParseProtocolBufferFromDBusMessage(
-            response, reply_out))
+  scoped_ptr<dbus::Response> response(
+      powerd_proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  if (!response)
+    return false;
+  if (!reply_out)
+    return true;
+
+  dbus::MessageReader reader(response.get());
+  CHECK(reader.PopArrayOfBytesAsProto(reply_out))
       << "Unable to parse response from call to " << method_name;
-  dbus_message_unref(response);
   return true;
 }
 
-void RegisterSuspendDelay() {
+// Registers a suspend delay and returns the corresponding ID.
+int RegisterSuspendDelay(dbus::ObjectProxy* powerd_proxy) {
   power_manager::RegisterSuspendDelayRequest request;
   request.set_timeout(
       base::TimeDelta::FromMilliseconds(FLAGS_timeout_ms).ToInternalValue());
   request.set_description(kSuspendDelayDescription);
   power_manager::RegisterSuspendDelayReply reply;
-  CHECK(CallMethod(power_manager::kRegisterSuspendDelayMethod,
+  CHECK(CallMethod(powerd_proxy, power_manager::kRegisterSuspendDelayMethod,
                    request, &reply));
-  delay_id = reply.delay_id();
-  LOG(INFO) << "Registered delay with ID " << delay_id;
+  LOG(INFO) << "Registered delay with ID " << reply.delay_id();
+  return reply.delay_id();
 }
 
-gboolean SendSuspendReady(gpointer) {
-  LOG(INFO) << "Calling " << power_manager::kHandleSuspendReadinessMethod;
+// Announces that the process is ready for suspend attempt |suspend_id|.
+void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
+                      int delay_id,
+                      int suspend_id) {
   power_manager::SuspendReadinessInfo request;
   request.set_delay_id(delay_id);
   request.set_suspend_id(suspend_id);
-  CallMethod(power_manager::kHandleSuspendReadinessMethod, request, NULL);
-  return FALSE;
+  CallMethod(powerd_proxy, power_manager::kHandleSuspendReadinessMethod,
+             request, NULL);
 }
 
-bool SuspendDelaySignaled(DBusMessage* message) {
+// Handles an announcement of a suspend attempt. Posts a task to run
+// SendSuspendReady() after a delay.
+void SuspendDelaySignaled(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
+                          int delay_id,
+                          dbus::Signal* signal) {
   power_manager::SuspendImminent info;
-  CHECK(power_manager::util::ParseProtocolBufferFromDBusMessage(message,
-                                                                &info));
-  suspend_id = info.suspend_id();
+  dbus::MessageReader reader(signal);
+  CHECK(reader.PopArrayOfBytesAsProto(&info));
+  int suspend_id = info.suspend_id();
 
   LOG(INFO) << "Got notification about suspend with ID " << suspend_id;
   LOG(INFO) << "Sleeping " << FLAGS_delay_ms << " ms before responding";
-  g_timeout_add(FLAGS_delay_ms, SendSuspendReady, NULL);
-  return true;
+  MessageLoop::current()->PostDelayedTask(FROM_HERE,
+      base::Bind(&SendSuspendReady, powerd_proxy, delay_id, suspend_id),
+      base::TimeDelta::FromMilliseconds(FLAGS_delay_ms));
 }
 
-void RegisterDBusMessageHandler() {
-  dbus_handler.AddSignalHandler(
-      power_manager::kPowerManagerInterface,
-      power_manager::kSuspendImminentSignal,
-      base::Bind(&SuspendDelaySignaled));
-  dbus_handler.Start();
+// Handles the result of an attempt to connect to a D-Bus signal.
+void DBusSignalConnected(const std::string& interface,
+                         const std::string& signal,
+                         bool success) {
+  CHECK(success) << "Unable to connect to " << interface << "." << signal;
 }
 
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-
-  // The GObject type system needs to be initialized in order for DBusGProxy
-  // calls to succeed.
-  g_type_init();
-
   base::AtExitManager at_exit_manager;
-  MessageLoopForUI message_loop;
-  RegisterDBusMessageHandler();
-  RegisterSuspendDelay();
+  MessageLoopForIO message_loop;
+
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+
+  dbus::ObjectProxy* powerd_proxy = bus->GetObjectProxy(
+      power_manager::kPowerManagerServiceName,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+  const int delay_id = RegisterSuspendDelay(powerd_proxy);
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendImminentSignal,
+      base::Bind(&SuspendDelaySignaled, make_scoped_refptr(powerd_proxy),
+                 delay_id),
+      base::Bind(&DBusSignalConnected));
+
   message_loop.Run();
   return 0;
 }

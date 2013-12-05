@@ -18,7 +18,7 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	powerd/system/rolling_average.o \
 	powerd/system/udev.o
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
-	$(GLIB_LIBS) -lrt -ludev -lprotobuf-lite
+	$(LIBCHROME_LIBS) -lrt -ludev -lprotobuf-lite
 clean: CLEAN(powerd/libsystem.pie.a)
 
 CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \
@@ -44,8 +44,8 @@ CXX_BINARY(powerd/system_unittest): \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a)
 CXX_BINARY(powerd/system_unittest): \
-	CPPFLAGS += $(GLIB_FLAGS)
+	CPPFLAGS += $(LIBCHROME_FLAGS)
 CXX_BINARY(powerd/system_unittest): \
-	LDLIBS += $(GLIB_LIBS) -lgtest -lrt -ludev -lprotobuf-lite
+	LDLIBS += $(LIBCHROME_LIBS) -lgtest -lrt -ludev -lprotobuf-lite
 clean: CXX_BINARY(powerd/system_unittest)
 tests: TEST(CXX_BINARY(powerd/system_unittest))

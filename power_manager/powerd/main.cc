@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
-#include <glib.h>
 
 #include <string>
 
@@ -82,10 +81,6 @@ int main(int argc, char* argv[]) {
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   LOG(INFO) << "vcsid " << VCSID;
-
-  // The GObject type system needs to be initialized in order for DBusGProxy
-  // calls to succeed.
-  g_type_init();
 
   base::AtExitManager at_exit_manager;
   MessageLoopForIO message_loop;

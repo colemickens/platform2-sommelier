@@ -2,86 +2,82 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <dbus/dbus-glib-lowlevel.h>
 #include <gflags/gflags.h>
-#include <inttypes.h>
-#include <iostream>
-#include <string>
+#include <stdio.h>
 
+#include "base/at_exit.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 #include "chromeos/dbus/service_constants.h"
+#include "dbus/bus.h"
+#include "dbus/message.h"
+#include "dbus/object_proxy.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/util_dbus.h"
 
-DEFINE_bool(set, false, "Set the percent instead of reading");
-DEFINE_double(percent, 0, "Percent to set to");
+DEFINE_bool(set, false, "Set the brightness to --percent");
+DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");
 DEFINE_bool(gradual, true, "Transition gradually");
 
-// Turn the request into a protobuff and send over dbus.
-bool GetCurrentBrightness(double* percent) {
-  DBusMessage* message = dbus_message_new_method_call(
-      power_manager::kPowerManagerServiceName,
-      power_manager::kPowerManagerServicePath,
+namespace {
+
+// Queries the brightness from |proxy| and saves it to |percent|, returning true
+// on success.
+bool GetCurrentBrightness(dbus::ObjectProxy* proxy, double* percent) {
+  dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
       power_manager::kGetScreenBrightnessPercent);
-  DBusMessage* response = power_manager::util::CallDBusMethodAndUnref(message);
-  if (!response) {
-    LOG(WARNING) << power_manager::kGetScreenBrightnessPercent << " failed";
+  scoped_ptr<dbus::Response> response(
+      proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  if (!response)
     return false;
-  }
-  DBusError error;
-  dbus_error_init(&error);
-  if (!dbus_message_get_args(response, &error,
-                             DBUS_TYPE_DOUBLE, percent,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Couldn't read args for response " << error.name
-                 << " (" << error.message << ")";
-    dbus_error_free(&error);
-    dbus_message_unref(response);
-    return false;
-  }
-  dbus_message_unref(response);
-  return true;
+  dbus::MessageReader reader(response.get());
+  return reader.PopDouble(percent);
 }
 
-bool SetCurrentBrightness(const double percent, int style) {
-  DBusMessage* message = dbus_message_new_method_call(
-      power_manager::kPowerManagerServiceName,
-      power_manager::kPowerManagerServicePath,
+// Asks |proxy| to set the brightness to |percent| using |style|, returning true
+// on success.
+bool SetCurrentBrightness(dbus::ObjectProxy* proxy, double percent, int style) {
+  dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
       power_manager::kSetScreenBrightnessPercent);
-  dbus_message_append_args(message,
-                           DBUS_TYPE_DOUBLE, &percent,
-                           DBUS_TYPE_INT32, &style,
-                           DBUS_TYPE_INVALID);
-  DBusMessage* response = power_manager::util::CallDBusMethodAndUnref(message);
-  if (response) {
-    dbus_message_unref(response);
-    return true;
-  }
-  return false;
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendDouble(percent);
+  writer.AppendInt32(style);
+  scoped_ptr<dbus::Response> response(
+      proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  return response.get() != NULL;
 }
+
+}  // namespace
 
 // A tool to talk to powerd and get or set the backlight level.
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
+  base::AtExitManager at_exit_manager;
+  MessageLoopForIO message_loop;
 
-  g_type_init();
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+  dbus::ObjectProxy* powerd_proxy = bus->GetObjectProxy(
+      power_manager::kPowerManagerServiceName,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  int style = FLAGS_gradual ? power_manager::kBrightnessTransitionGradual
-                            : power_manager::kBrightnessTransitionInstant;
-  double percent;
-  CHECK(GetCurrentBrightness(&percent)) << "Could not read brightness";
-  std::cout << "Current percent = " << percent << std::endl;
+  double percent = 0.0;
+  CHECK(GetCurrentBrightness(powerd_proxy, &percent));
+  printf("Current percent = %f\n", percent);
   if (FLAGS_set) {
-    if (SetCurrentBrightness(FLAGS_percent, style)) {
-      std::cout << "Set percent to " << FLAGS_percent << std::endl;
-    } else {
-      std::cout << "Error setting percent" << std::endl;
-    }
-    CHECK(GetCurrentBrightness(&percent)) << "Could not read brightness";
-    std::cout << "Current percent now = " << percent << std::endl;
+    const int style = FLAGS_gradual ?
+        power_manager::kBrightnessTransitionGradual :
+        power_manager::kBrightnessTransitionInstant;
+    CHECK(SetCurrentBrightness(powerd_proxy, FLAGS_percent, style));
+    printf("Set percent to %f\n", FLAGS_percent);
+    CHECK(GetCurrentBrightness(powerd_proxy, &percent));
+    printf("Current percent now = %f\n", percent);
   }
 
   return 0;

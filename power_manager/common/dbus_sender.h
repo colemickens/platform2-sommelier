@@ -10,6 +10,10 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 
+namespace dbus {
+class ExportedObject;
+}  // namespace dbus
+
 namespace google {
 namespace protobuf {
 class MessageLite;
@@ -21,6 +25,7 @@ namespace power_manager {
 // Interface for sending D-Bus messages.  A stub implementation can be
 // instantiated by tests to verify behavior without actually communicating with
 // D-Bus.
+// TODO(derat): Just have an EmitSignal() method that takes a dbus::Signal.
 class DBusSenderInterface {
  public:
   virtual ~DBusSenderInterface() {}
@@ -41,8 +46,8 @@ class DBusSender : public DBusSenderInterface {
   DBusSender();
   virtual ~DBusSender();
 
-  // |path| and |interface| are used when sending signals.
-  void Init(const std::string& path, const std::string& interface);
+  // |object| and |interface| are used when sending signals.
+  void Init(dbus::ExportedObject* object, const std::string& interface);
 
   // DBusSenderInterface override:
   virtual void EmitBareSignal(const std::string& signal_name) OVERRIDE;
@@ -51,12 +56,7 @@ class DBusSender : public DBusSenderInterface {
       const google::protobuf::MessageLite& protobuf) OVERRIDE;
 
  private:
-  // Emits |signal_name|, serializing |protobuf| and passing it as a byte
-  // array argument if non-NULL.
-  void EmitSignalInternal(const std::string& signal_name,
-                          const google::protobuf::MessageLite* protobuf);
-
-  std::string path_;
+  dbus::ExportedObject* object_;
   std::string interface_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusSender);

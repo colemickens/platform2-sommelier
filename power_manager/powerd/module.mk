@@ -5,13 +5,9 @@
 include common.mk
 
 powerd/powerd.o.depends: power_manager/power_supply_properties.pb.h
-LIBPOWERD_DEPS = libchromeos-$(BASE_VER)
-LIBPOWERD_FLAGS = \
-	$(GLIB_FLAGS) $(DBUS_FLAGS) \
-	$(shell $(PKG_CONFIG) --cflags $(LIBPOWERD_DEPS))
+LIBPOWERD_FLAGS = $(LIBCHROME_FLAGS)
 LIBPOWERD_LIBS = \
-	$(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lprotobuf-lite \
-	-lrt $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
+	$(LIBCHROME_LIBS) -lgflags -lmetrics -ludev -lprotobuf-lite -lrt
 LIBPOWERD_OBJS = \
 	power_manager/power_supply_properties.pb.o \
 	powerd/daemon.o \
@@ -30,8 +26,7 @@ CXX_BINARY(powerd/powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
+	CXX_STATIC_LIBRARY(common/libutil.pie.a)
 CXX_BINARY(powerd/powerd): CPPFLAGS += $(POWERD_FLAGS)
 CXX_BINARY(powerd/powerd): LDLIBS += $(POWERD_LIBS)
 clean: CXX_BINARY(powerd/powerd)
@@ -54,7 +49,6 @@ CXX_BINARY(powerd/daemon_unittest): $(DAEMON_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy_test.pie.a) \

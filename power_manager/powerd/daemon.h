@@ -6,22 +6,18 @@
 #define POWER_MANAGER_POWERD_DAEMON_H_
 #pragma once
 
-#include <dbus/dbus-glib-lowlevel.h>
-#include <glib.h>
-
-#include <map>
 #include <string>
-#include <utility>
-#include <vector>
-
-#include <ctime>
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
+#include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
-#include "power_manager/common/dbus_handler.h"
+#include "dbus/bus.h"
+#include "dbus/exported_object.h"
+#include "dbus/message.h"
+#include "dbus/object_proxy.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
@@ -54,6 +50,12 @@ class Input;
 class InternalBacklight;
 class Udev;
 }  // namespace system
+
+class Daemon;
+
+// Pointer to a member function for handling D-Bus method calls.
+typedef dbus::Response* (Daemon::*DBusMethodCallMemberFunction)(
+    dbus::MethodCall*);
 
 // Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::BacklightControllerObserver,
@@ -130,35 +132,55 @@ class Daemon : public policy::BacklightControllerObserver,
       policy::BacklightController::BrightnessChangeCause cause,
       const std::string& signal_name);
 
-  // Registers the dbus message handler with appropriate dbus events.
-  void RegisterDBusMessageHandler();
+  // Connects to the D-Bus system bus and exports methods.
+  void InitDBus();
 
   // Handles changes to D-Bus name ownership.
-  void HandleDBusNameOwnerChanged(const std::string& name,
-                                  const std::string& old_owner,
-                                  const std::string& new_owner);
+  void HandleDBusNameOwnerChanged(dbus::Signal* signal);
 
-  // Callbacks for handling dbus messages.
-  bool HandleSessionStateChangedSignal(DBusMessage* message);
-  bool HandleUpdateEngineStatusUpdateSignal(DBusMessage* message);
-  bool HandleCrasNodesChangedSignal(DBusMessage* message);
-  bool HandleCrasActiveOutputNodeChangedSignal(DBusMessage* message);
-  bool HandleCrasNumberOfActiveStreamsChanged(DBusMessage* message);
-  DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
-  DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
-  DBusMessage* HandleRequestSuspendMethod(DBusMessage* message);
-  DBusMessage* HandleDecreaseScreenBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleIncreaseScreenBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleGetScreenBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleSetScreenBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleDecreaseKeyboardBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleIncreaseKeyboardBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleGetPowerSupplyPropertiesMethod(DBusMessage* message);
-  DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
-  DBusMessage* HandleUserActivityMethod(DBusMessage* message);
-  DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
-  DBusMessage* HandleSetPolicyMethod(DBusMessage* message);
-  DBusMessage* HandlePowerButtonAcknowledgment(DBusMessage* message);
+  // Handles the result of an attempt to connect to a D-Bus signal. Logs an
+  // error on failure.
+  void HandleDBusSignalConnected(const std::string& interface,
+                                 const std::string& signal,
+                                 bool success);
+
+  // Exports |method_name| and uses |member| to handle calls.
+  void ExportDBusMethod(const std::string& method_name,
+                        DBusMethodCallMemberFunction member);
+
+  // Callbacks for handling D-Bus signals and method calls.
+  void HandleSessionStateChangedSignal(dbus::Signal* signal);
+  void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
+  void HandleCrasNodesChangedSignal(dbus::Signal* signal);
+  void HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal);
+  void HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal);
+  dbus::Response* HandleRequestShutdownMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandleRequestRestartMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandleRequestSuspendMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandleDecreaseScreenBrightnessMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleIncreaseScreenBrightnessMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleGetScreenBrightnessMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleSetScreenBrightnessMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleDecreaseKeyboardBrightnessMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleIncreaseKeyboardBrightnessMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleGetPowerSupplyPropertiesMethod(
+      dbus::MethodCall* method_call);
+  dbus::Response* HandleVideoActivityMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandleUserActivityMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandleSetIsProjectingMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandleSetPolicyMethod(dbus::MethodCall* method_call);
+  dbus::Response* HandlePowerButtonAcknowledgment(
+      dbus::MethodCall* method_call);
+
+  // Gets the current session state from the session manager, returning true on
+  // success.
+  bool QuerySessionState(std::string* state);
 
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
@@ -180,6 +202,13 @@ class Daemon : public policy::BacklightControllerObserver,
   void SetBacklightsDocked(bool docked);
 
   scoped_ptr<Prefs> prefs_;
+
+  scoped_refptr<dbus::Bus> bus_;
+  dbus::ExportedObject* powerd_dbus_object_;  // weak; owned by |bus_|
+  dbus::ObjectProxy* chrome_dbus_proxy_;  // weak; owned by |bus_|
+  dbus::ObjectProxy* session_manager_dbus_proxy_;  // weak; owned by |bus_|
+  dbus::ObjectProxy* cras_dbus_proxy_;  // weak; owned by |bus_|
+
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
   scoped_ptr<DBusSender> dbus_sender_;
 
@@ -210,13 +239,9 @@ class Daemon : public policy::BacklightControllerObserver,
   bool shutting_down_;
 
   base::FilePath run_dir_;
-  base::TimeTicks session_start_;
 
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_;
-
-  // This is the DBus helper object that dispatches DBus messages to handlers
-  util::DBusHandler dbus_handler_;
 
   // Has |state_controller_| been initialized?  Daemon::Init() invokes a
   // bunch of event-handling functions directly, but events shouldn't be

@@ -5,13 +5,12 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 #define POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "base/timer.h"
+#include "dbus/exported_object.h"
+#include "dbus/message.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
@@ -169,17 +168,20 @@ class Suspender : public SuspendDelayObserver {
   // http://crbug.com/218175).
   void RequestSuspendWithExternalWakeupCount(uint64 wakeup_count);
 
-  // Handles a RegisterSuspendDelay call and returns a reply that should be sent
-  // (or NULL if an empty reply should be sent).
-  DBusMessage* RegisterSuspendDelay(DBusMessage* message);
+  // Handles a RegisterSuspendDelay call.
+  void RegisterSuspendDelay(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
 
-  // Handles an UnregisterSuspendDelay call and returns a reply that should be
-  // sent (or NULL if an empty reply should be sent).
-  DBusMessage* UnregisterSuspendDelay(DBusMessage* message);
+  // Handles an UnregisterSuspendDelay call.
+  void UnregisterSuspendDelay(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
 
-  // Handles a HandleSuspendReadiness call and returns a reply that should be
-  // sent (or NULL if an empty reply should be sent).
-  DBusMessage* HandleSuspendReadiness(DBusMessage* message);
+  // Handles a HandleSuspendReadiness call.
+  void HandleSuspendReadiness(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
 
   // Handles the lid being opened, user activity, or the system shutting down,
   // any of which may abort an in-progress suspend attempt.

@@ -23,13 +23,9 @@ CPPFLAGS += -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -I$(SRC)/.. -I$(OUT)
 CPPFLAGS += $(CPPFLAGS-y)
 
 # shared variables
-DBUS_DEPS := dbus-1 dbus-glib-1
-DBUS_FLAGS := $(shell $(PKG_CONFIG) --cflags $(DBUS_DEPS))
-DBUS_LIBS := $(shell $(PKG_CONFIG) --libs $(DBUS_DEPS))
-
-GLIB_DEPS := glib-2.0 gobject-2.0 libchrome-$(BASE_VER)
-GLIB_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GLIB_DEPS))
-GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
+LIBCHROME_DEPS := libchrome-$(BASE_VER)
+LIBCHROME_FLAGS := $(shell $(PKG_CONFIG) --cflags $(LIBCHROME_DEPS))
+LIBCHROME_LIBS := $(shell $(PKG_CONFIG) --libs $(LIBCHROME_DEPS))
 
 ## protobuffer targets
 # Detailed instructions on how to work with these rules can be found in the

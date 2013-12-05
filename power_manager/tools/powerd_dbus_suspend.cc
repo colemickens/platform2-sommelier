@@ -5,19 +5,21 @@
 // This file is meant for debugging use to manually trigger a proper
 // suspend, excercising the full path through the power manager.
 // The actual work to suspend the system is done by powerd_suspend.
-// This tool will block and only exit after it has received a DBus
+// This tool will block and only exit after it has received a D-Bus
 // resume signal from powerd.
 
-#include <cstdio>
-#include <cstdlib>
-#include <dbus/dbus.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
 
+#include "base/at_exit.h"
+#include "base/bind.h"
 #include "base/logging.h"
-#include "base/stringprintf.h"
+#include "base/message_loop.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
+#include "dbus/bus.h"
+#include "dbus/message.h"
+#include "dbus/object_proxy.h"
 
 DEFINE_int32(delay, 1, "Delay before suspending in seconds. Useful if running "
              "interactively to ensure that typing this command isn't "
@@ -26,64 +28,68 @@ DEFINE_int32(timeout, 0, "Timeout in seconds.");
 DEFINE_uint64(wakeup_count, 0, "Wakeup count to pass to powerd or 0 if unset.");
 
 namespace {
-const int kMicrosecondsInSecond = 1000 * 1000;
+
+// Exits when notice that the system has resumed is received.
+void OnPowerStateChanged(dbus::Signal* signal) {
+  MessageLoop::current()->QuitNow();
+}
+
+// Handles the result of an attempt to connect to a D-Bus signal.
+void OnDBusSignalConnected(const std::string& interface,
+                           const std::string& signal,
+                           bool success) {
+  CHECK(success) << "Unable to connect to " << interface << "." << signal;
+}
+
+// Invoked if a PowerStateChanged signal announcing resume isn't received before
+// FLAGS_timeout.
+void OnTimeout() {
+  LOG(FATAL) << "Did not receive a resume message within the timeout.";
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // Initialization
   google::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_delay)
-    usleep(FLAGS_delay * kMicrosecondsInSecond);
-  base::TimeDelta timeout = base::TimeDelta::FromMilliseconds(-1);
-  base::TimeTicks end;
-  if (FLAGS_timeout) {
-    timeout = base::TimeDelta::FromSeconds(FLAGS_timeout);
-    end = base::TimeTicks::Now() + timeout;
-  }
+  base::AtExitManager at_exit_manager;
+  MessageLoopForIO message_loop;
 
-  DBusError error;
-  dbus_error_init(&error);
-  DBusConnection* connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
-  CHECK(!dbus_error_is_set(&error)) << error.name << ": " << error.message;
-
-  // Listen to resume signal.
-  std::string match = base::StringPrintf("type='signal',interface='%s',"
-      "member='%s',arg0='on'", power_manager::kPowerManagerInterface,
-      power_manager::kPowerStateChangedSignal);
-  dbus_bus_add_match(connection, match.c_str(), &error);
-  CHECK(!dbus_error_is_set(&error)) << error.name << ": " << error.message;
-
-  // Send suspend request.
-  DBusMessage* message = dbus_message_new_method_call(
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+  dbus::ObjectProxy* powerd_proxy = bus->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
-      power_manager::kPowerManagerServicePath,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+
+  if (FLAGS_delay)
+    sleep(FLAGS_delay);
+
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kPowerStateChangedSignal,
+      base::Bind(&OnPowerStateChanged),
+      base::Bind(&OnDBusSignalConnected));
+
+  // Send a suspend request.
+  dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
       power_manager::kRequestSuspendMethod);
-  CHECK(message);
-
   if (FLAGS_wakeup_count) {
-    dbus_message_append_args(message, DBUS_TYPE_UINT64, &FLAGS_wakeup_count,
-                             DBUS_TYPE_INVALID);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendUint64(FLAGS_wakeup_count);
+  }
+  scoped_ptr<dbus::Response> response(
+      powerd_proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  CHECK(response) << power_manager::kRequestSuspendMethod << " failed";
+
+  // Schedule a task to fire after the timeout.
+  if (FLAGS_timeout) {
+    MessageLoop::current()->PostDelayedTask(FROM_HERE,
+        base::Bind(&OnTimeout), base::TimeDelta::FromSeconds(FLAGS_timeout));
   }
 
-  CHECK(dbus_connection_send(connection, message, NULL));
-  dbus_message_unref(message);
-
-  // Process queued up operations and wait for signal.
-  do {
-    CHECK(dbus_connection_read_write(connection, timeout.InMilliseconds()))
-        << "DBusConnection closed before receiving resume signal.";
-    while ((message = dbus_connection_pop_message(connection))) {
-      if (dbus_message_is_signal(message,
-                                 power_manager::kPowerManagerInterface,
-                                 power_manager::kPowerStateChangedSignal)) {
-        exit(0);
-      }
-      dbus_message_unref(message);
-    }
-    if (FLAGS_timeout)
-      timeout = end - base::TimeTicks::Now();
-  } while (!FLAGS_timeout || timeout > base::TimeDelta());
-
-  LOG(FATAL) << "Did not receive a resume message within the timeout.";
+  message_loop.Run();
+  return 0;
 }

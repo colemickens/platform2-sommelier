@@ -4,12 +4,12 @@
 
 #include "power_manager/powerd/system/display_power_setter.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include "base/bind.h"
 #include "base/logging.h"
+#include "base/memory/scoped_ptr.h"
+#include "dbus/message.h"
+#include "dbus/object_proxy.h"
 #include "power_manager/common/util.h"
-#include "power_manager/common/util_dbus.h"
 
 namespace power_manager {
 namespace system {
@@ -31,28 +31,16 @@ std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
   }
 }
 
-// Allocates a new DBusMessage for calling |method| in Chrome.
-DBusMessage* CreateChromeMethodCall(const std::string& method) {
-  DBusMessage* message = dbus_message_new_method_call(
-      chromeos::kLibCrosServiceName,
-      chromeos::kLibCrosServicePath,
-      chromeos::kLibCrosServiceInterface,
-      method.c_str());
-  CHECK(message);
-  return message;
-}
-
-// Sends |message| asynchronously and unrefs it.
-void SendAndUnrefMessage(DBusMessage* message) {
-  dbus_connection_send(util::GetSystemDBusConnection(), message, NULL);
-  dbus_message_unref(message);
-}
-
 }  // namespace
 
-DisplayPowerSetter::DisplayPowerSetter() {}
+DisplayPowerSetter::DisplayPowerSetter() : chrome_proxy_(NULL) {}
 
 DisplayPowerSetter::~DisplayPowerSetter() {}
+
+void DisplayPowerSetter::Init(dbus::ObjectProxy* chrome_proxy) {
+  DCHECK(chrome_proxy);
+  chrome_proxy_ = chrome_proxy;
+}
 
 void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
                                          base::TimeDelta delay) {
@@ -69,19 +57,22 @@ void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
 void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
   LOG(INFO) << "Asking Chrome to " << (dimmed ? "dim" : "undim")
             << " the display in software";
-  DBusMessage* message =
-      CreateChromeMethodCall(chromeos::kSetDisplaySoftwareDimming);
-  int dimmed_int = dimmed;
-  dbus_message_append_args(
-      message, DBUS_TYPE_BOOLEAN, &dimmed_int, DBUS_TYPE_INVALID);
-  SendAndUnrefMessage(message);
+  dbus::MethodCall method_call(chromeos::kLibCrosServiceInterface,
+                               chromeos::kSetDisplaySoftwareDimming);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendBool(dimmed);
+  scoped_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 }
 
 void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
   LOG(INFO) << "Asking Chrome to turn " << DisplayPowerStateToString(state);
-  DBusMessage* message = CreateChromeMethodCall(chromeos::kSetDisplayPower);
-  dbus_message_append_args(message, DBUS_TYPE_INT32, &state, DBUS_TYPE_INVALID);
-  SendAndUnrefMessage(message);
+  dbus::MethodCall method_call(chromeos::kLibCrosServiceInterface,
+                               chromeos::kSetDisplayPower);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendInt32(state);
+  scoped_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 }
 
 }  // system

@@ -11,6 +11,10 @@
 #include "base/timer.h"
 #include "chromeos/dbus/service_constants.h"
 
+namespace dbus {
+class ObjectProxy;
+}  // namespace dbus
+
 namespace power_manager {
 namespace system {
 
@@ -42,6 +46,9 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   DisplayPowerSetter();
   virtual ~DisplayPowerSetter();
 
+  // Ownership of |chrome_proxy| remains with the caller.
+  void Init(dbus::ObjectProxy* chrome_proxy);
+
   // DisplayPowerSetterInterface implementation:
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
                                base::TimeDelta delay) OVERRIDE;
@@ -53,6 +60,8 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
 
   // Runs SendStateToChrome().
   base::OneShotTimer<DisplayPowerSetter> timer_;
+
+  dbus::ObjectProxy* chrome_proxy_;  // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetter);
 };
