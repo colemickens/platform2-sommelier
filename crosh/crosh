@@ -11,6 +11,15 @@
 # Please test that any changes continue to work in dash by running
 # '/build/$BOARD/bin/dash crosh --dash' before checking them in.
 
+# Don't allow SIGHUP to terminate crosh. This guarantees that even if the user
+# closes the crosh window, we make our way back up to the main loop, which gives
+# cleanup code in command handlers a chance to run.
+trap '' HUP
+
+# Do not let CTRL+C kill crosh itself.  This does let the user kill commands
+# that are run by crosh (like `ping`).
+trap : INT
+
 IS_BASH=0
 try_bash() {
   # If dash was explicitly requested, then nothing to do.
@@ -217,12 +226,6 @@ DEVMODE=$((!$?))
 if [ "$(echo "$@" | grep -- "--dev")" -o "$DEVMODE" = "1" ]; then
   . "$(dirname "$0")/crosh-dev"
 fi
-
-ctrl_c() {
-  return
-}
-
-trap ctrl_c INT
 
 shell_read() {
   local prompt="$1"
@@ -1423,11 +1426,6 @@ check_username() {
 check_digits() {
   expr "$1" : '^[[:digit:]]*$' > /dev/null
 }
-
-# Don't allow SIGHUP to terminate crosh. This guarantees that even if the user
-# closes the crosh window, we make our way back up to the main loop, which gives
-# cleanup code in command handlers a chance to run.
-trap '' HUP
 
 repl() {
   echo "${INTRO_TEXT}"
