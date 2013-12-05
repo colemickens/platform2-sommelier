@@ -209,23 +209,44 @@ Type 'help' for a list of commands.
 "
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
-. "/usr/sbin/chromeos-common.sh" || exit 1
-SRC=$(get_block_dev_from_partition_dev $(rootdev -s))
-if [ "$(cat /sys/block/${SRC#/dev/}/removable)" = "1" ]; then
-  REMOVABLE=1
-fi
 
-if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
-  . "$(dirname "$0")/crosh-usb"
-fi
+load_extra_crosh() {
+  # Keep `local` decl split from assignment so return code is checked.
+  local crosh_dir devmode removable src
 
-# Force dev behavior on dev images.
-/usr/bin/crossystem "cros_debug?1"
-DEVMODE=$((!$?))
+  crosh_dir=$(dirname "$0")
 
-if [ "$(echo "$@" | grep -- "--dev")" -o "$DEVMODE" = "1" ]; then
-  . "$(dirname "$0")/crosh-dev"
-fi
+  if [ -e /usr/sbin/chromeos-common.sh ]; then
+    . "/usr/sbin/chromeos-common.sh" || exit 1
+
+    src=$(get_block_dev_from_partition_dev $(rootdev -s))
+    if [ "$(cat /sys/block/${src#/dev/}/removable)" = "1" ]; then
+      removable=1
+    fi
+  fi
+
+  case "${removable}: $* " in
+  1:*|\
+  *:*" --usb "*)
+    . "${crosh_dir}/crosh-usb"
+    ;;
+  esac
+
+  # Force dev behavior on dev images.
+  if type crossystem >/dev/null 2>&1; then
+    crossystem "cros_debug?1"
+    devmode=$((!$?))
+  else
+    echo "Could not locate 'crossystem'; assuming devmode is off."
+  fi
+
+  case "${devmode}: $* " in
+  1:*|\
+  *:*" --dev "*)
+    . "${crosh_dir}/crosh-dev"
+    ;;
+  esac
+}
 
 shell_read() {
   local prompt="$1"
@@ -1447,19 +1468,24 @@ repl() {
   done
 }
 
-INPUTRC="$(dirname "$0")/inputrc.crosh"
-HISTFILE="$HOME/.crosh_history"
-shell_history -r $HISTFILE
+main() {
+  load_extra_crosh "$@"
 
-# Initialize pseudo completion support.
-if [ "$IS_BASH" = "1" ]; then
-  bind 'TAB:dynamic-complete-history' 2>/dev/null
-  for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
-    # Do not add duplicates to avoid ballooning history.
-    grep -qs "^${f}$" $HISTFILE || shell_history -s $f
-  done
-fi
+  INPUTRC="$(dirname "$0")/inputrc.crosh"
+  HISTFILE="${HOME}/.crosh_history"
+  shell_history -r "${HISTFILE}"
 
-repl
+  # Initialize pseudo completion support.
+  if [ ${IS_BASH} -eq 1 ]; then
+    bind 'TAB:dynamic-complete-history' 2>/dev/null
+    for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
+      # Do not add duplicates to avoid ballooning history.
+      grep -qs "^${f}$" $HISTFILE || shell_history -s $f
+    done
+  fi
 
-shell_history -w $HISTFILE
+  repl
+
+  shell_history -w $HISTFILE
+}
+main "$@"
