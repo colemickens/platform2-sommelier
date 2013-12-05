@@ -886,6 +886,132 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
               ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
 }
 
+TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnknownDevice) {
+  SetSockets();
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).Times(0);
+  IPAddress address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
+  ByteString mac_address;
+  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, address, &mac_address));
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
+  SetSockets();
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).Times(0);
+
+  // An improperly formatted IPv4 address should fail.
+  IPAddress empty_ipv4_address(IPAddress::kFamilyIPv4);
+  ByteString mac_address;
+  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, empty_ipv4_address, &mac_address));
+
+  // IPv6 addresses are not supported.
+  IPAddress valid_ipv6_address(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(valid_ipv6_address.SetAddressFromString(kTestIPAddress1));
+  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, valid_ipv6_address, &mac_address));
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnableToOpenSocket) {
+  SetSockets();
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+      .WillOnce(Return(-1));
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
+  ByteString mac_address;
+  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, ip_address, &mac_address));
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
+  SetSockets();
+  const int kFd = 99;
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+      .WillOnce(Return(kFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGARP, NotNull()))
+      .WillOnce(Return(-1));
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
+  ByteString mac_address;
+  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, ip_address, &mac_address));
+}
+
+MATCHER_P2(ArpreqEquals, ifname, peer, "") {
+  const struct arpreq *const areq = static_cast<struct arpreq *>(arg);
+  if (areq == NULL) {
+    return false;
+  }
+
+  const struct sockaddr_in *const protocol_address =
+      reinterpret_cast<const struct sockaddr_in *>(&areq->arp_pa);
+  const struct sockaddr_in *const hardware_address =
+      reinterpret_cast<const struct sockaddr_in *>(&areq->arp_ha);
+
+  return
+      strcmp(ifname, areq->arp_dev) == 0 &&
+      protocol_address->sin_family == AF_INET &&
+      memcmp(&protocol_address->sin_addr.s_addr,
+             peer.address().GetConstData(),
+             peer.address().GetLength()) == 0 &&
+      hardware_address->sin_family == ARPHRD_ETHER;
+}
+
+ACTION_P(SetArpreq, areq) {
+  struct arpreq *const areq_arg = static_cast<struct arpreq *>(arg2);
+  *areq_arg = areq;
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+
+  SetSockets();
+
+  const int kFd = 99;
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+      .WillRepeatedly(Return(kFd));
+
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
+
+  static uint8_t kZeroMacAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  struct arpreq zero_areq_response;
+  memcpy(zero_areq_response.arp_ha.sa_data, kZeroMacAddress,
+         sizeof(kZeroMacAddress));
+
+  static uint8_t kMacAddress[] = {0x01, 0x02, 0x03, 0xaa, 0xbb, 0xcc};
+  struct arpreq areq_response;
+  memcpy(areq_response.arp_ha.sa_data, kMacAddress, sizeof(kMacAddress));
+
+  EXPECT_CALL(*mock_sockets_, Ioctl(
+      kFd, SIOCGARP, ArpreqEquals(kTestDeviceName, ip_address)))
+          .WillOnce(DoAll(SetArpreq(zero_areq_response), Return(0)))
+          .WillOnce(DoAll(SetArpreq(areq_response), Return(0)));
+
+  ByteString mac_address;
+  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, ip_address, &mac_address));
+  EXPECT_TRUE(device_info_.GetMACAddressOfPeer(
+      kTestDeviceIndex, ip_address, &mac_address));
+  EXPECT_THAT(kMacAddress,
+              ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
+}
+
 class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
   DeviceInfoTechnologyTest()

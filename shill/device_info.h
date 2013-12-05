@@ -86,6 +86,13 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // empty ByteString on failure.
   virtual ByteString GetMACAddressFromKernel(int interface_index) const;
 
+  // Queries the kernel for the MAC address of |peer| on |interface_index|.
+  // Returns true and populates |mac_address| on success, otherwise returns
+  // false.
+  virtual bool GetMACAddressOfPeer(int interface_index,
+                                   const IPAddress &peer,
+                                   ByteString *mac_address) const;
+
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
   virtual bool GetByteCounts(int interface_index,
                              uint64 *rx_bytes, uint64 *tx_bytes) const;
