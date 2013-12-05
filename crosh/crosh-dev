@@ -6,7 +6,7 @@
 # dev-mode functionality for crosh
 
 if [ "$(basename $0)" = "crosh-dev" ]; then
-  exec "$(dirname $0)/crosh --dev"
+  exec "$(dirname $0)/crosh" --dev
 fi
 
 DEV_HELP='

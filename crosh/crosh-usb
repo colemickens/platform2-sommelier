@@ -7,7 +7,7 @@
 # media.
 
 if [ "$(basename $0)" = "crosh-usb" ]; then
-  exec "$(dirname $0)/crosh --usb"
+  exec "$(dirname $0)/crosh" --usb
 fi
 
 USB_HELP='
