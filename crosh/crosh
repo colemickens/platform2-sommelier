@@ -215,10 +215,6 @@ if [ "$(echo "$@" | grep -- "--dev")" -o "$DEVMODE" = "1" ]; then
   . "$(dirname "$0")/crosh-dev"
 fi
 
-if [ -e "$(dirname $0)/crosh-workarounds" ]; then
-  . "$(dirname "$0")/crosh-workarounds"
-fi
-
 ctrl_c() {
   return
 }
