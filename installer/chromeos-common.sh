@@ -225,7 +225,7 @@ install_hybrid_mbr() {
   # Creates a hybrid MBR which points the MBR partition 1 to GPT
   # partition 12 (ESP). This is useful on ARM boards that boot
   # from MBR formatted disks only
-  info "Creating hybrid MBR"
+  echo "Creating hybrid MBR"
   locate_gpt
   local start_esp=$(partoffset "$1" 12)
   local num_esp_sectors=$(partsize "$1" 12)
