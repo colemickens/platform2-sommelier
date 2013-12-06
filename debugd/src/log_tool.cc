@@ -137,6 +137,7 @@ static const Log common_logs[] = {
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
   { "ps", "/bin/ps aux" },
+  { "storage_info", "/bin/cat /var/log/storage_info.txt" },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
