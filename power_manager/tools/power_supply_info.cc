@@ -9,10 +9,12 @@
 #include <iostream>
 #include <string>
 
+#include "base/at_exit.h"
 #include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 #include "base/string_util.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"
@@ -91,6 +93,8 @@ class InfoDisplay {
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
+  base::AtExitManager at_exit_manager;
+  MessageLoopForUI message_loop;
 
   std::vector<base::FilePath> pref_paths;
   pref_paths.push_back(base::FilePath(FLAGS_prefs_dir));

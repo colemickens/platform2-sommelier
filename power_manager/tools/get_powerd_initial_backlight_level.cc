@@ -11,8 +11,10 @@
 #include <cstdio>
 #include <vector>
 
+#include "base/at_exit.h"
 #include "base/file_path.h"
 #include "base/logging.h"
+#include "base/message_loop.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -24,6 +26,9 @@
 #include "power_manager/powerd/system/power_supply.h"
 
 int main(int argc, char* argv[]) {
+  base::AtExitManager at_exit_manager;
+  MessageLoopForUI message_loop;
+
   // Get the max and current brightness from the real backlight and use them to
   // initialize a stub backlight (so that InternalBacklightController can do its
   // thing without changing the actual brightness level).
