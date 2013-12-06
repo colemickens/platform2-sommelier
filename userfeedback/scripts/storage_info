@@ -1,0 +1,104 @@
+#! /bin/sh
+
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This script provides various data about the internal disk to show on the
+# chrome://system page. It will run once on startup to dump output to the file
+# /var/log/storage_info.txt which will be read later by debugd when the user
+# opens the chrome://system page.
+
+STORAGE_INFO_FILE="/var/log/storage_info.txt"
+
+SSD_CMD_0="hdparm -I"
+SSD_CMD_1="smartctl -x"
+SSD_CMD_MAX=1
+
+MMC_NAME_0="cid"
+MMC_NAME_1="csd"
+MMC_NAME_2="date"
+MMC_NAME_3="enhanced_area_offset"
+MMC_NAME_4="enhanced_area_size"
+MMC_NAME_5="erase_size"
+MMC_NAME_6="fwrev"
+MMC_NAME_7="hwrev"
+MMC_NAME_8="manfid"
+MMC_NAME_9="name"
+MMC_NAME_10="oemid"
+MMC_NAME_11="preferred_erase_size"
+MMC_NAME_12="prv"
+MMC_NAME_13="raw_rpmb_size_mult"
+MMC_NAME_14="rel_sectors"
+MMC_NAME_15="serial"
+MMC_NAME_MAX=15
+
+is_blockdev() {
+  [ -b /dev/$1 ]
+}
+
+is_removable() {
+  [ $(cat /sys/block/$1/removable) -eq 1 ]
+}
+
+# We need to trim white space because vendor is padding with white space
+is_vendor_ata() {
+  [ "$(cat /sys/block/$1/device/vendor | tr -d ' ')" = "ATA" ]
+}
+
+is_internal_ssd() {
+  is_blockdev $1 && ! is_removable $1 && is_vendor_ata $1
+}
+
+is_type_mmc() {
+  [ "$(cat /sys/block/$1/device/type)" = "MMC" ]
+}
+
+is_internal_mmc() {
+  is_blockdev $1 && ! is_removable $1 && is_type_mmc $1
+}
+
+print_ssd_info() {
+  for i in $(seq 0 $SSD_CMD_MAX); do
+    # use eval for variable indirection
+    eval SSD_CMD=\$SSD_CMD_$i
+    echo "$ $SSD_CMD /dev/$1"
+    $SSD_CMD /dev/$1
+    echo ""
+  done
+}
+
+print_mmc_info() {
+  for i in $(seq 0 $MMC_NAME_MAX); do
+    eval MMC_NAME=\$MMC_NAME_$i
+    MMC_PATH=/sys/block/$1/device/$MMC_NAME
+    MMC_RESULT=$(cat $MMC_PATH 2>/dev/null)
+    printf "%-20s | %s\n" "$MMC_NAME" "$MMC_RESULT"
+  done
+}
+
+rm -f $STORAGE_INFO_FILE
+touch $STORAGE_INFO_FILE
+chmod 644 $STORAGE_INFO_FILE
+exec > $STORAGE_INFO_FILE
+
+# We need to check both sda and sdb for internal disk because:
+# 1) If we use rootdev command to determine the disk to check, it will return
+#    the usb stick, not the internal drive, when we boot from usb.
+# 2) We also can not assume that sda is an internal disk because in some
+#    systems (e.g., parrot), the usb stick might be labeled as sda and the
+#    internal disk as sdb.
+for dev in sda sdb; do
+  if is_internal_ssd $dev; then
+    print_ssd_info $dev
+  fi
+done
+
+# For devices with eMMC, the internal disk will always be labeled as mmcblk0
+# so we can check only mmcblk0, but to be safe we will check both mmcblk0 and
+# mmcblk1.
+for dev in mmcblk0 mmcblk1; do
+  if is_internal_mmc $dev; then
+    print_mmc_info $dev
+  fi
+done
