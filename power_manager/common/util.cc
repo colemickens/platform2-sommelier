@@ -113,13 +113,12 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
   return output;
 }
 
-std::vector<base::FilePath> GetPrefPaths(const std::string& read_write_path,
-                                         const std::string& read_only_path) {
+std::vector<base::FilePath> GetPrefPaths(const base::FilePath& read_write_path,
+                                         const base::FilePath& read_only_path) {
   std::vector<base::FilePath> paths;
-  paths.push_back(base::FilePath(read_write_path));
-  paths.push_back(
-      base::FilePath(read_only_path).Append(kBoardSpecificPrefsSubdir));
-  paths.push_back(base::FilePath(read_only_path));
+  paths.push_back(read_write_path);
+  paths.push_back(read_only_path.Append(kBoardSpecificPrefsSubdir));
+  paths.push_back(read_only_path);
   return paths;
 }
 

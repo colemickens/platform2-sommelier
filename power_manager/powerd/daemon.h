@@ -23,11 +23,9 @@
 #include "base/time.h"
 #include "power_manager/common/dbus_handler.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/input_controller.h"
-#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
@@ -47,12 +45,17 @@ class MetricsReporter;
 class Prefs;
 
 namespace policy {
+class BacklightController;
+class KeyboardBacklightController;
 class StateController;
 }  // namespace policy
 
 namespace system {
+class AmbientLightSensor;
 class AudioClient;
+class DisplayPowerSetter;
 class Input;
+class InternalBacklight;
 }  // namespace system
 
 // Main class within the powerd daemon that ties all other classes together.
@@ -61,12 +64,8 @@ class Daemon : public policy::BacklightControllerObserver,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
  public:
-  // Ownership of pointers remains with the caller.  |backlight_controller|
-  // and |keyboard_controller| may be NULL.
-  Daemon(PrefsInterface* prefs,
-         MetricsLibraryInterface* metrics_lib,
-         policy::BacklightController* backlight_controller,
-         policy::KeyboardBacklightController* keyboard_controller,
+  Daemon(const base::FilePath& read_write_prefs_dir,
+         const base::FilePath& read_only_prefs_dir,
          const base::FilePath& run_dir);
   virtual ~Daemon();
 
@@ -120,11 +119,15 @@ class Daemon : public policy::BacklightControllerObserver,
     SHUTDOWN_REBOOT,
   };
 
-  // Decrease / increase the keyboard brightness; direction should be +1 for
+  // Convenience method that returns true if |name| exists and is true.
+  bool BoolPrefIsTrue(const std::string& name) const;
+
+  // Decreases/increases the keyboard brightness; direction should be +1 for
   // increase and -1 for decrease.
   void AdjustKeyboardBrightness(int direction);
 
-  // Shared code between keyboard and screen brightness changed handling
+  // Emits a D-Bus signal named |signal_name| announcing that backlight
+  // brightness was changed to |brightness_percent| due to |cause|.
   void SendBrightnessChangedSignal(
       double brightness_percent,
       policy::BacklightController::BrightnessChangeCause cause,
@@ -187,12 +190,18 @@ class Daemon : public policy::BacklightControllerObserver,
   void SetBacklightsSuspended(bool suspended);
   void SetBacklightsDocked(bool docked);
 
+  scoped_ptr<Prefs> prefs_;
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
 
-  policy::BacklightController* backlight_controller_;  // non-owned
-  PrefsInterface* prefs_;  // non-owned
-  policy::KeyboardBacklightController* keyboard_controller_;  // non-owned
+  scoped_ptr<system::AmbientLightSensor> light_sensor_;
+  scoped_ptr<system::DisplayPowerSetter> display_power_setter_;
+  scoped_ptr<system::InternalBacklight> display_backlight_;
+  scoped_ptr<policy::BacklightController> display_backlight_controller_;
+  scoped_ptr<system::InternalBacklight> keyboard_backlight_;
+  scoped_ptr<policy::KeyboardBacklightController>
+      keyboard_backlight_controller_;
 
+  scoped_ptr<MetricsLibraryInterface> metrics_library_;
   scoped_ptr<MetricsReporter> metrics_reporter_;
   scoped_ptr<DBusSenderInterface> dbus_sender_;
   scoped_ptr<system::Input> input_;

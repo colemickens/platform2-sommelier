@@ -43,7 +43,8 @@ int main(int argc, char* argv[]) {
 
   power_manager::Prefs prefs;
   CHECK(prefs.Init(power_manager::util::GetPrefPaths(
-      power_manager::kReadWritePrefsDir, power_manager::kReadOnlyPrefsDir)));
+      base::FilePath(power_manager::kReadWritePrefsDir),
+      base::FilePath(power_manager::kReadOnlyPrefsDir))));
 
   scoped_ptr<power_manager::system::AmbientLightSensorStub> light_sensor;
   bool has_als = false;

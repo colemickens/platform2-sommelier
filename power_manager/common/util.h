@@ -46,8 +46,8 @@ std::string TimeDeltaToString(base::TimeDelta delta);
 // Returns a list of paths to pass when creating a Prefs object. For a given
 // preference, |read_write_path| will be checked first, then the board-specific
 // subdirectory within |read_only_path|, and finally |read_only_path|.
-std::vector<base::FilePath> GetPrefPaths(const std::string& read_write_path,
-                                         const std::string& read_only_path);
+std::vector<base::FilePath> GetPrefPaths(const base::FilePath& read_write_path,
+                                         const base::FilePath& read_only_path);
 
 }  // namespace util
 }  // namespace power_manager

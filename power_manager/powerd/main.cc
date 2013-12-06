@@ -12,36 +12,16 @@
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/message_loop.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
-#include "metrics/metrics_library.h"
-#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/daemon.h"
-#include "power_manager/powerd/policy/external_backlight_controller.h"
-#include "power_manager/powerd/policy/internal_backlight_controller.h"
-#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
-#include "power_manager/powerd/system/display_power_setter.h"
-#include "power_manager/powerd/system/internal_backlight.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
 #endif
-
-using power_manager::Daemon;
-using power_manager::Prefs;
-using power_manager::policy::BacklightController;
-using power_manager::policy::ExternalBacklightController;
-using power_manager::policy::InternalBacklightController;
-using power_manager::policy::KeyboardBacklightController;
-using power_manager::system::AmbientLightSensor;
-using power_manager::system::DisplayPowerSetter;
-using power_manager::system::InternalBacklight;
-using std::string;
 
 DEFINE_string(prefs_dir, power_manager::kReadWritePrefsDir,
               "Directory holding read/write preferences.");
@@ -72,18 +52,12 @@ void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,
   }
 }
 
-string GetTimeAsString(time_t utime) {
+std::string GetTimeAsString(time_t utime) {
   struct tm tm;
   CHECK_EQ(localtime_r(&utime, &tm), &tm);
   char str[16];
   CHECK_EQ(strftime(str, sizeof(str), "%Y%m%d-%H%M%S", &tm), 15UL);
-  return string(str);
-}
-
-// Convenience method that returns true if |name| exists and is true.
-bool BoolPrefIsTrue(Prefs* prefs, const std::string& name) {
-  bool value = false;
-  return prefs->GetBool(name, &value) && value;
+  return std::string(str);
 }
 
 }  // namespace
@@ -116,79 +90,10 @@ int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
   MessageLoopForUI message_loop;
 
-  Prefs prefs;
-  CHECK(prefs.Init(power_manager::util::GetPrefPaths(FLAGS_prefs_dir,
-                                                     FLAGS_default_prefs_dir)));
-
-  scoped_ptr<AmbientLightSensor> light_sensor;
-  if (BoolPrefIsTrue(&prefs, power_manager::kHasAmbientLightSensorPref)) {
-    light_sensor.reset(new power_manager::system::AmbientLightSensor());
-    light_sensor->Init();
-  }
-
-  DisplayPowerSetter display_power_setter;
-  scoped_ptr<InternalBacklight> display_backlight;
-  scoped_ptr<BacklightController> display_backlight_controller;
-  if (BoolPrefIsTrue(&prefs, power_manager::kExternalDisplayOnlyPref)) {
-    display_backlight_controller.reset(
-        new ExternalBacklightController(&display_power_setter));
-    static_cast<ExternalBacklightController*>(
-        display_backlight_controller.get())->Init();
-  } else {
-    display_backlight.reset(new InternalBacklight);
-    if (!display_backlight->Init(
-            base::FilePath(power_manager::kInternalBacklightPath),
-            power_manager::kInternalBacklightPattern)) {
-      LOG(ERROR) << "Cannot initialize display backlight";
-      display_backlight.reset();
-    } else {
-      display_backlight_controller.reset(
-          new InternalBacklightController(
-              display_backlight.get(), &prefs, light_sensor.get(),
-              &display_power_setter));
-      if (!static_cast<InternalBacklightController*>(
-              display_backlight_controller.get())->Init()) {
-        LOG(ERROR) << "Cannot initialize display backlight controller";
-        display_backlight_controller.reset();
-        display_backlight.reset();
-      }
-    }
-  }
-
-  scoped_ptr<InternalBacklight> keyboard_backlight;
-  scoped_ptr<KeyboardBacklightController> keyboard_backlight_controller;
-  if (BoolPrefIsTrue(&prefs, power_manager::kHasKeyboardBacklightPref)) {
-    if (!light_sensor.get()) {
-      LOG(ERROR) << "Keyboard backlight requires ambient light sensor";
-    } else {
-      keyboard_backlight.reset(new InternalBacklight);
-      if (!keyboard_backlight->Init(
-              base::FilePath(power_manager::kKeyboardBacklightPath),
-              power_manager::kKeyboardBacklightPattern)) {
-        LOG(ERROR) << "Cannot initialize keyboard backlight";
-        keyboard_backlight.reset();
-      } else {
-        keyboard_backlight_controller.reset(
-            new KeyboardBacklightController(
-                keyboard_backlight.get(), &prefs, light_sensor.get(),
-                display_backlight_controller.get()));
-        if (!keyboard_backlight_controller->Init()) {
-          LOG(ERROR) << "Cannot initialize keyboard backlight controller";
-          keyboard_backlight_controller.reset();
-          keyboard_backlight.reset();
-        }
-      }
-    }
-  }
-
-  MetricsLibrary metrics_lib;
-  metrics_lib.Init();
-  base::FilePath run_dir(FLAGS_run_dir);
-  Daemon daemon(&prefs,
-                &metrics_lib,
-                display_backlight_controller.get(),
-                keyboard_backlight_controller.get(),
-                run_dir);
+  // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
+  power_manager::Daemon daemon((base::FilePath(FLAGS_prefs_dir)),
+                               (base::FilePath(FLAGS_default_prefs_dir)),
+                               (base::FilePath(FLAGS_run_dir)));
   daemon.Init();
 
   message_loop.Run();

@@ -20,6 +20,7 @@
 #include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/service_constants.h"
+#include "metrics/metrics_library.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -29,10 +30,15 @@
 #include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/metrics_reporter.h"
-#include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/external_backlight_controller.h"
+#include "power_manager/powerd/policy/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
+#include "power_manager/powerd/system/display_power_setter.h"
 #include "power_manager/powerd/system/input.h"
+#include "power_manager/powerd/system/internal_backlight.h"
 
 namespace power_manager {
 
@@ -344,33 +350,26 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   DISALLOW_COPY_AND_ASSIGN(SuspenderDelegate);
 };
 
-Daemon::Daemon(PrefsInterface* prefs,
-               MetricsLibraryInterface* metrics_lib,
-               policy::BacklightController* backlight_controller,
-               policy::KeyboardBacklightController* keyboard_controller,
+Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
+               const base::FilePath& read_only_prefs_dir,
                const base::FilePath& run_dir)
-    : state_controller_delegate_(new StateControllerDelegate(this)),
-      backlight_controller_(backlight_controller),
-      prefs_(prefs),
-      keyboard_controller_(keyboard_controller),
-      metrics_reporter_(
-          new MetricsReporter(
-              prefs, metrics_lib, backlight_controller, keyboard_controller)),
+    : prefs_(new Prefs),
+      state_controller_delegate_(new StateControllerDelegate(this)),
       dbus_sender_(
           new DBusSender(kPowerManagerServicePath, kPowerManagerInterface)),
       input_(new system::Input),
       state_controller_(new policy::StateController(
-          state_controller_delegate_.get(), prefs_)),
+          state_controller_delegate_.get(), prefs_.get())),
       input_controller_(new policy::InputController(
           input_.get(), this, dbus_sender_.get())),
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
       shutting_down_(false),
-      power_supply_(
-          new system::PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
-      dark_resume_policy_(
-          new policy::DarkResumePolicy(power_supply_.get(), prefs)),
+      power_supply_(new system::PowerSupply(
+          base::FilePath(kPowerStatusPath), prefs_.get())),
+      dark_resume_policy_(new policy::DarkResumePolicy(
+          power_supply_.get(), prefs_.get())),
       suspender_delegate_(new SuspenderDelegate(this)),
       suspender_(suspender_delegate_.get(), dbus_sender_.get(),
                  dark_resume_policy_.get()),
@@ -381,16 +380,17 @@ Daemon::Daemon(PrefsInterface* prefs,
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false) {
+  CHECK(prefs_->Init(util::GetPrefPaths(
+      base::FilePath(read_write_prefs_dir),
+      base::FilePath(read_only_prefs_dir))));
   power_supply_->AddObserver(this);
-  if (backlight_controller_)
-    backlight_controller_->AddObserver(this);
   audio_client_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
   audio_client_->RemoveObserver(this);
-  if (backlight_controller_)
-    backlight_controller_->RemoveObserver(this);
+  if (display_backlight_controller_)
+    display_backlight_controller_->RemoveObserver(this);
   power_supply_->RemoveObserver(this);
 
   if (udev_)
@@ -401,11 +401,74 @@ void Daemon::Init() {
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
 
+  if (BoolPrefIsTrue(kHasAmbientLightSensorPref)) {
+    light_sensor_.reset(new system::AmbientLightSensor);
+    light_sensor_->Init();
+  }
+
+  display_power_setter_.reset(new system::DisplayPowerSetter);
+  if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
+    display_backlight_controller_.reset(
+        new policy::ExternalBacklightController(display_power_setter_.get()));
+    static_cast<policy::ExternalBacklightController*>(
+        display_backlight_controller_.get())->Init();
+  } else {
+    display_backlight_.reset(new system::InternalBacklight);
+    if (!display_backlight_->Init(base::FilePath(kInternalBacklightPath),
+                                  kInternalBacklightPattern)) {
+      LOG(ERROR) << "Cannot initialize display backlight";
+      display_backlight_.reset();
+    } else {
+      display_backlight_controller_.reset(
+          new policy::InternalBacklightController(
+              display_backlight_.get(), prefs_.get(), light_sensor_.get(),
+              display_power_setter_.get()));
+      if (!static_cast<policy::InternalBacklightController*>(
+              display_backlight_controller_.get())->Init()) {
+        LOG(ERROR) << "Cannot initialize display backlight controller";
+        display_backlight_controller_.reset();
+        display_backlight_.reset();
+      }
+    }
+  }
+  if (display_backlight_controller_)
+    display_backlight_controller_->AddObserver(this);
+
+  if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
+    if (!light_sensor_.get()) {
+      LOG(ERROR) << "Keyboard backlight requires ambient light sensor";
+    } else {
+      keyboard_backlight_.reset(new system::InternalBacklight);
+      if (!keyboard_backlight_->Init(base::FilePath(kKeyboardBacklightPath),
+                                     kKeyboardBacklightPattern)) {
+        LOG(ERROR) << "Cannot initialize keyboard backlight";
+        keyboard_backlight_.reset();
+      } else {
+        keyboard_backlight_controller_.reset(
+            new policy::KeyboardBacklightController(
+                keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
+                display_backlight_controller_.get()));
+        if (!keyboard_backlight_controller_->Init()) {
+          LOG(ERROR) << "Cannot initialize keyboard backlight controller";
+          keyboard_backlight_controller_.reset();
+          keyboard_backlight_.reset();
+        }
+      }
+    }
+  }
+
   prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
 
   power_supply_->Init();
   power_supply_->RefreshImmediately();
+
+  metrics_library_.reset(new MetricsLibrary);
+  metrics_library_->Init();
+
+  metrics_reporter_.reset(new MetricsReporter(
+      prefs_.get(), metrics_library_.get(), display_backlight_controller_.get(),
+      keyboard_backlight_controller_.get())),
   metrics_reporter_->Init(power_supply_->power_status());
 
   std::string session_state;
@@ -420,10 +483,10 @@ void Daemon::Init() {
   OnPowerStatusUpdate();
 
   dark_resume_policy_->Init();
-  suspender_.Init(prefs_);
+  suspender_.Init(prefs_.get());
 
-  CHECK(input_->Init(prefs_));
-  input_controller_->Init(prefs_);
+  CHECK(input_->Init(prefs_.get()));
+  input_controller_->Init(prefs_.get());
 
   // Initialize |state_controller_| before |audio_client_| to ensure that the
   // former is ready to receive the initial notification if audio is already
@@ -443,14 +506,20 @@ void Daemon::Init() {
   peripheral_battery_watcher_->Init();
 }
 
+bool Daemon::BoolPrefIsTrue(const std::string& name) const {
+  bool value = false;
+  return prefs_->GetBool(name, &value) && value;
+}
+
 void Daemon::AdjustKeyboardBrightness(int direction) {
-  if (!keyboard_controller_)
+  if (!keyboard_backlight_controller_)
     return;
 
   if (direction > 0)
-    keyboard_controller_->IncreaseUserBrightness();
+    keyboard_backlight_controller_->IncreaseUserBrightness();
   else if (direction < 0)
-    keyboard_controller_->DecreaseUserBrightness(true /* allow_off */);
+    keyboard_backlight_controller_->DecreaseUserBrightness(
+        true /* allow_off */);
 }
 
 void Daemon::SendBrightnessChangedSignal(
@@ -487,10 +556,12 @@ void Daemon::OnBrightnessChanged(
     double brightness_percent,
     policy::BacklightController::BrightnessChangeCause cause,
     policy::BacklightController* source) {
-  if (source == backlight_controller_ && backlight_controller_) {
+  if (source == display_backlight_controller_ &&
+      display_backlight_controller_) {
     SendBrightnessChangedSignal(brightness_percent, cause,
                                 kBrightnessChangedSignal);
-  } else if (source == keyboard_controller_ && keyboard_controller_) {
+  } else if (source == keyboard_backlight_controller_.get() &&
+             keyboard_backlight_controller_) {
     SendBrightnessChangedSignal(brightness_percent, cause,
                                 kKeyboardBrightnessChangedSignal);
   } else {
@@ -587,8 +658,8 @@ void Daemon::HandleLidOpened() {
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
   metrics_reporter_->HandlePowerButtonEvent(state);
-  if (state == BUTTON_DOWN && backlight_controller_)
-    backlight_controller_->HandlePowerButtonPress();
+  if (state == BUTTON_DOWN && display_backlight_controller_)
+    display_backlight_controller_->HandlePowerButtonPress();
 }
 
 void Daemon::DeferInactivityTimeoutForVT2() {
@@ -623,10 +694,10 @@ void Daemon::OnPowerStatusUpdate() {
 
   const PowerSource power_source =
       status.line_power_on ? POWER_AC : POWER_BATTERY;
-  if (backlight_controller_)
-    backlight_controller_->HandlePowerSourceChange(power_source);
-  if (keyboard_controller_)
-    keyboard_controller_->HandlePowerSourceChange(power_source);
+  if (display_backlight_controller_)
+    display_backlight_controller_->HandlePowerSourceChange(power_source);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->HandlePowerSourceChange(power_source);
   if (state_controller_initialized_)
     state_controller_->HandlePowerSourceChange(power_source);
 
@@ -823,8 +894,8 @@ void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
     audio_client_->LoadInitialState();
   } else if (name == chromeos::kLibCrosServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    if (backlight_controller_)
-      backlight_controller_->HandleChromeStart();
+    if (display_backlight_controller_)
+      display_backlight_controller_->HandleChromeStart();
   }
   suspender_.HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
@@ -930,7 +1001,7 @@ DBusMessage* Daemon::HandleRequestSuspendMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
     DBusMessage* message) {
-  if (!backlight_controller_)
+  if (!display_backlight_controller_)
     return util::CreateDBusErrorReply(message, "Backlight uninitialized");
 
   dbus_bool_t allow_off = false;
@@ -942,9 +1013,11 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
     LOG(WARNING) << "Unable to read " << kDecreaseScreenBrightness << " args";
     dbus_error_free(&error);
   }
-  bool changed = backlight_controller_->DecreaseUserBrightness(allow_off);
+  bool changed =
+      display_backlight_controller_->DecreaseUserBrightness( allow_off);
   double percent = 0.0;
-  if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
+  if (!changed &&
+      display_backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
         percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
@@ -954,12 +1027,13 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
 
 DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
     DBusMessage* message) {
-  if (!backlight_controller_)
+  if (!display_backlight_controller_)
     return util::CreateDBusErrorReply(message, "Backlight uninitialized");
 
-  bool changed = backlight_controller_->IncreaseUserBrightness();
+  bool changed = display_backlight_controller_->IncreaseUserBrightness();
   double percent = 0.0;
-  if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
+  if (!changed &&
+      display_backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
         percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
@@ -994,16 +1068,16 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
       LOG(WARNING) << "Invalid transition style passed ( " << dbus_style
                   << " ).  Using default fast transition";
   }
-  backlight_controller_->SetUserBrightnessPercent(percent, style);
+  display_backlight_controller_->SetUserBrightnessPercent(percent, style);
   return NULL;
 }
 
 DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
-  if (!backlight_controller_)
+  if (!display_backlight_controller_)
     return util::CreateDBusErrorReply(message, "Backlight uninitialized");
 
   double percent = 0.0;
-  if (!backlight_controller_->GetBrightnessPercent(&percent)) {
+  if (!display_backlight_controller_->GetBrightnessPercent(&percent)) {
     return util::CreateDBusErrorReply(
         message, "Could not fetch Screen Brightness");
   }
@@ -1045,8 +1119,8 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
     dbus_error_free(&error);
   }
 
-  if (keyboard_controller_)
-    keyboard_controller_->HandleVideoActivity(is_fullscreen);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->HandleVideoActivity(is_fullscreen);
   state_controller_->HandleVideoActivity();
   return NULL;
 }
@@ -1062,10 +1136,10 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
 
   suspender_.HandleUserActivity();
   state_controller_->HandleUserActivity();
-  if (backlight_controller_)
-    backlight_controller_->HandleUserActivity(type);
-  if (keyboard_controller_)
-    keyboard_controller_->HandleUserActivity(type);
+  if (display_backlight_controller_)
+    display_backlight_controller_->HandleUserActivity(type);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->HandleUserActivity(type);
   return NULL;
 }
 
@@ -1081,8 +1155,8 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
   if (args_ok) {
     DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
     state_controller_->HandleDisplayModeChange(mode);
-    if (backlight_controller_)
-      backlight_controller_->HandleDisplayModeChange(mode);
+    if (display_backlight_controller_)
+      display_backlight_controller_->HandleDisplayModeChange(mode);
   } else {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
@@ -1099,8 +1173,8 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
     return util::CreateDBusInvalidArgsErrorReply(message);
   }
   state_controller_->HandlePolicyChange(policy);
-  if (backlight_controller_)
-    backlight_controller_->HandlePolicyChange(policy);
+  if (display_backlight_controller_)
+    display_backlight_controller_->HandlePolicyChange(policy);
   return NULL;
 }
 
@@ -1132,10 +1206,10 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
   metrics_reporter_->HandleSessionStateChange(state);
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
-  if (backlight_controller_)
-    backlight_controller_->HandleSessionStateChange(state);
-  if (keyboard_controller_)
-    keyboard_controller_->HandleSessionStateChange(state);
+  if (display_backlight_controller_)
+    display_backlight_controller_->HandleSessionStateChange(state);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->HandleSessionStateChange(state);
 }
 
 void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
@@ -1150,10 +1224,10 @@ void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.
   if (reason != kShutdownReasonLowBattery) {
-    if (backlight_controller_)
-      backlight_controller_->SetShuttingDown(true);
-    if (keyboard_controller_)
-      keyboard_controller_->SetShuttingDown(true);
+    if (display_backlight_controller_)
+      display_backlight_controller_->SetShuttingDown(true);
+    if (keyboard_backlight_controller_)
+      keyboard_backlight_controller_->SetShuttingDown(true);
   }
 
   switch (mode) {
@@ -1182,35 +1256,35 @@ void Daemon::Suspend(bool use_external_wakeup_count,
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
-  if (backlight_controller_)
-    backlight_controller_->SetDimmedForInactivity(dimmed);
-  if (keyboard_controller_)
-    keyboard_controller_->SetDimmedForInactivity(dimmed);
+  if (display_backlight_controller_)
+    display_backlight_controller_->SetDimmedForInactivity(dimmed);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->SetDimmedForInactivity(dimmed);
   metrics_reporter_->HandleScreenDimmedChange(
       dimmed, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsOffForInactivity(bool off) {
-  if (backlight_controller_)
-    backlight_controller_->SetOffForInactivity(off);
-  if (keyboard_controller_)
-    keyboard_controller_->SetOffForInactivity(off);
+  if (display_backlight_controller_)
+    display_backlight_controller_->SetOffForInactivity(off);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->SetOffForInactivity(off);
   metrics_reporter_->HandleScreenOffChange(
       off, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsSuspended(bool suspended) {
-  if (backlight_controller_)
-    backlight_controller_->SetSuspended(suspended);
-  if (keyboard_controller_)
-    keyboard_controller_->SetSuspended(suspended);
+  if (display_backlight_controller_)
+    display_backlight_controller_->SetSuspended(suspended);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->SetSuspended(suspended);
 }
 
 void Daemon::SetBacklightsDocked(bool docked) {
-  if (backlight_controller_)
-    backlight_controller_->SetDocked(docked);
-  if (keyboard_controller_)
-    keyboard_controller_->SetDocked(docked);
+  if (display_backlight_controller_)
+    display_backlight_controller_->SetDocked(docked);
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->SetDocked(docked);
 }
 
 }  // namespace power_manager
