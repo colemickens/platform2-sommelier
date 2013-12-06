@@ -31,7 +31,9 @@
 #include "shill/error.h"
 #include "shill/file_reader.h"
 #include "shill/geolocation_info.h"
+#include "shill/icmp.h"
 #include "shill/ieee80211.h"
+#include "shill/ip_address.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -2460,12 +2462,18 @@ string WiFi::PerformTDLSOperation(const string &operation,
 
   SLOG(WiFi, 2) << "TDLS command received: " << operation
                 << " for peer " << peer;
+
+  string peer_mac_address;
+  if (!ResolvePeerMacAddress(peer, &peer_mac_address, error)) {
+    return "";
+  }
+
   if (operation == kTDLSDiscoverOperation) {
-    success = TDLSDiscover(peer);
+    success = TDLSDiscover(peer_mac_address);
   } else if (operation == kTDLSSetupOperation) {
-    success = TDLSSetup(peer);
+    success = TDLSSetup(peer_mac_address);
   } else if (operation == kTDLSStatusOperation) {
-    string supplicant_status = TDLSStatus(peer);
+    string supplicant_status = TDLSStatus(peer_mac_address);
     SLOG(WiFi, 2) << "TDLS status returned: " << supplicant_status;
     if (!supplicant_status.empty()) {
       if (supplicant_status == WPASupplicant::kTDLSStateConnected) {
@@ -2483,7 +2491,7 @@ string WiFi::PerformTDLSOperation(const string &operation,
       }
     }
   } else if (operation == kTDLSTeardownOperation) {
-    success = TDLSTeardown(peer);
+    success = TDLSTeardown(peer_mac_address);
   } else {
     error->Populate(Error::kInvalidArguments, "Unknown operation");
     return "";
@@ -2495,6 +2503,54 @@ string WiFi::PerformTDLSOperation(const string &operation,
   }
 
   return "";
+}
+
+bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
+                                 Error *error) {
+  if (!WiFiEndpoint::MakeHardwareAddressFromString(input).empty()) {
+    // Input is already a MAC address.
+    *output = input;
+    return true;
+  }
+
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  if (!ip_address.SetAddressFromString(input)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Peer is neither an IP Address nor a MAC address");
+    return false;
+  }
+
+  // Peer address was specified as an IP address which we need to resolve.
+  const DeviceInfo *device_info = manager()->device_info();
+  if (!device_info->HasDirectConnectivityTo(interface_index(), ip_address)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "IP address is not local to this interface");
+    return false;
+  }
+
+  ByteString mac_address;
+  if (device_info->GetMACAddressOfPeer(
+          interface_index(), ip_address, &mac_address)) {
+    *output = WiFiEndpoint::MakeStringFromHardwareAddress(
+        vector<uint8_t>(mac_address.GetConstData(),
+                        mac_address.GetConstData() +
+                        mac_address.GetLength()));
+    SLOG(WiFi, 2) << "ARP cache lookup returned peer: " << *output;
+    return true;
+  }
+
+  if (!Icmp().TransmitEchoRequest(ip_address)) {
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          "Failed to send ICMP reqeust to peer to setup ARP");
+  } else {
+    // ARP request was transmitted successfully, but overall the attempt
+    // to perform a TDLS operation has failed.
+    error->Populate(Error::kInProgress,
+                    "Peer MAC address was not found in the ARP cache, "
+                    "but an ARP request was sent to find it.  "
+                    "Please try again.");
+  }
+  return false;
 }
 
 }  // namespace shill

@@ -29,6 +29,9 @@ using std::vector;
 
 namespace shill {
 
+// static
+const size_t WiFiEndpoint::kBSSIDLength = 6U;
+
 WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
                            const WiFiRefPtr &device,
                            const string &rpc_id,
@@ -74,9 +77,7 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
   ssid_string_ = string(ssid_.begin(), ssid_.end());
   WiFi::SanitizeSSID(&ssid_string_);
   ssid_hex_ = base::HexEncode(&(*ssid_.begin()), ssid_.size());
-  bssid_string_ = StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
-                               bssid_[0], bssid_[1], bssid_[2],
-                               bssid_[3], bssid_[4], bssid_[5]);
+  bssid_string_ = MakeStringFromHardwareAddress(bssid_);
   bssid_hex_ = base::HexEncode(&(*bssid_.begin()), bssid_.size());
 
   CheckForTetheringSignature();
@@ -260,6 +261,7 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
                       frequency, signal_dbm, false, false);
 }
 
+
 // static
 WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
                                          const WiFiRefPtr &wifi,
@@ -276,10 +278,7 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
   writer = args[WPASupplicant::kBSSPropertySSID].writer();
   writer << vector<uint8_t>(ssid.begin(), ssid.end());
 
-  string bssid_nosep;
-  RemoveChars(bssid, ":", &bssid_nosep);
-  vector<uint8_t> bssid_bytes;
-  base::HexStringToBytes(bssid_nosep, &bssid_bytes);
+  vector<uint8_t> bssid_bytes = MakeHardwareAddressFromString(bssid);
   writer = args[WPASupplicant::kBSSPropertyBSSID].writer();
   writer << bssid_bytes;
 
@@ -617,6 +616,28 @@ void WiFiEndpoint::CheckForTetheringSignature() {
       Tethering::IsAndroidBSSID(bssid_) ||
       (Tethering::IsLocallyAdministeredBSSID(bssid_) &&
        Tethering::HasIosOui(vendor_information_.oui_set));
+}
+
+// static
+vector<uint8_t> WiFiEndpoint::MakeHardwareAddressFromString(
+    const string &bssid_string) {
+  string bssid_nosep;
+  RemoveChars(bssid_string, ":", &bssid_nosep);
+  vector<uint8_t> bssid_bytes;
+  base::HexStringToBytes(bssid_nosep, &bssid_bytes);
+  if (bssid_bytes.size() != kBSSIDLength) {
+    return vector<uint8_t>();
+  }
+  return bssid_bytes;
+}
+
+// static
+string WiFiEndpoint::MakeStringFromHardwareAddress(
+    const vector<uint8_t> &bssid) {
+  CHECK_EQ(kBSSIDLength, bssid.size());
+  return StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
+                      bssid[0], bssid[1], bssid[2],
+                      bssid[3], bssid[4], bssid[5]);
 }
 
 }  // namespace shill

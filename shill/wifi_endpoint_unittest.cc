@@ -269,6 +269,18 @@ TEST_F(WiFiEndpointTest, ParseSecurityNone) {
   EXPECT_STREQ(kSecurityNone, ParseSecurity(top_params));
 }
 
+TEST_F(WiFiEndpointTest, SSIDAndBSSIDString) {
+  const char kSSID[] = "The SSID";
+  const char kBSSID[] = "00:01:02:03:04:05";
+
+  // The MakeOpenEndpoint method translates both of the above parameters into
+  // binary equivalents before calling the Endpoint constructor.  Let's make
+  // sure the Endpoint can translate them back losslessly to strings.
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(NULL, NULL, kSSID, kBSSID);
+  EXPECT_EQ(kSSID, endpoint->ssid_string());
+  EXPECT_EQ(kBSSID, endpoint->bssid_string());
+}
+
 TEST_F(WiFiEndpointTest, SSIDWithNull) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(NULL, NULL, string(1, 0), "00:00:00:00:00:01");

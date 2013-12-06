@@ -17,6 +17,10 @@ class ByteString {
  public:
   ByteString() : begin_(data_.begin()) {}
   ByteString(const ByteString &b);
+
+  explicit ByteString(const std::vector<unsigned char> &data)
+      : data_(data), begin_(data_.begin()) {}
+
   explicit ByteString(size_t length) : data_(length), begin_(data_.begin()) {}
 
   ByteString(const unsigned char *data, size_t length)

@@ -109,6 +109,7 @@ const uint16_t kNl80211FamilyId = 0x13;
 const uint16_t kRandomScanFrequency1 = 5600;
 const uint16_t kRandomScanFrequency2 = 5560;
 const uint16_t kRandomScanFrequency3 = 2422;
+const int kInterfaceIndex = 1234;
 
 }  // namespace
 
@@ -116,7 +117,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
       : device_(new WiFi(control_interface(),
-                         NULL, NULL, manager(), "wifi", "", 0)) {
+                         NULL, NULL, manager(), "wifi", "", kInterfaceIndex)) {
   }
   virtual ~WiFiPropertyTest() {}
 
@@ -228,7 +229,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                        &manager_,
                        kDeviceName,
                        kDeviceAddress,
-                       0)),
+                       kInterfaceIndex)),
         bss_counter_(0),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(
@@ -3450,12 +3451,53 @@ TEST_F(WiFiMainTest, TDLSInterfaceFunctions) {
 
 TEST_F(WiFiMainTest, PerformTDLSOperation) {
   StartWiFi();
-  const char kPeer[] = "peer";
+  const char kPeer[] = "00:11:22:33:44:55";
 
   {
     Error error;
     EXPECT_EQ("", PerformTDLSOperation("Do the thing", kPeer, &error));
     EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
+
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, "peer", &error));
+    // This is not a valid IP address nor is it a MAC address.
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
+
+  const char kAddress[] = "192.168.1.1";
+  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
+
+  {
+    // The provided IP address is not local.
+    EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
+        .WillOnce(Return(false));
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation,
+                                       kAddress, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    Mock::VerifyAndClearExpectations(device_info());
+  }
+
+  {
+    // If the MAC address of the peer is in the ARP cache, we should
+    // perform the TDLS operation on the resolved MAC.
+    const char kResolvedMac[] = "00:11:22:33:44:55";
+    const ByteString kMacBytes(
+        WiFiEndpoint::MakeHardwareAddressFromString(kResolvedMac));
+    EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*device_info(), GetMACAddressOfPeer(kInterfaceIndex, _, _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(kMacBytes), Return(true)));
+    EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+                TDLSDiscover(StrEq(kResolvedMac)));
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation,
+                                       kAddress, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(device_info());
+    Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   }
 
   // This is the same test as TDLSInterfaceFunctions above, but using the

@@ -175,9 +175,10 @@ Methods		dict GetProperties()
 			(WiFi only) Perform a TDLS operation on a peer
 			station.  The |peer| argument should be a mac
 			address specified in traditional colon-separated
-			hexidecimal notation, e.g., "aa:bb:cc:dd:ee:ff".
-			algorithm.  The |operation| parameter should
-			be one of the following:
+			hexidecimal notation, e.g., "aa:bb:cc:dd:ee:ff",
+			or an IPv4 address on the same subnet of this
+			device, e.g., "192.168.1.1".  The |operation|
+			parameter should be one of the following:
 
 				"Discover" : Perform TDLS discovery with |peer|.
 				"Setup" : Setup TDLS peering with |peer|.

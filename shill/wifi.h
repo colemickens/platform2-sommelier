@@ -470,6 +470,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void ReportScanResultToUma(ScanState state, ScanMethod method);
   static std::string ScanStateString(ScanState state, ScanMethod type);
 
+  // Resolve the |input| string passed to PerformTDLSOperation into a MAC
+  // address.  This could be a trivial operation if this is already a MAC
+  // address, or could involve an ARP table lookup.  Returns true and
+  // populates |output| if the resolution completes, otherwise returns
+  // false and populates |error|.
+  bool ResolvePeerMacAddress(const std::string &input, std::string *output,
+                             Error *error);
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
 

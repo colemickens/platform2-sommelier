@@ -73,6 +73,14 @@ class WiFiEndpoint : public Endpoint {
   // vendor of this AP.
   std::map<std::string, std::string> GetVendorInformation() const;
 
+  // Creates a byte vector from a colon-separated hardware address string.
+  static std::vector<uint8_t> MakeHardwareAddressFromString(
+      const std::string &bssid_string);
+
+  // Creates a colon-separated hardware address string from a byte vector.
+  static std::string MakeStringFromHardwareAddress(
+      const std::vector<uint8_t> &bssid);
+
   const std::vector<uint8_t> &ssid() const;
   const std::string &ssid_string() const;
   const std::string &ssid_hex() const;
@@ -114,6 +122,8 @@ class WiFiEndpoint : public Endpoint {
     kKeyManagement802_1x,
     kKeyManagementPSK
   };
+
+  static const size_t kBSSIDLength;
 
   // Build a simple WiFiEndpoint, for testing purposes.
   static WiFiEndpoint *MakeEndpoint(ProxyFactory *proxy_factory,
