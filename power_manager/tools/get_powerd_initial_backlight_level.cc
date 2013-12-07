@@ -52,14 +52,13 @@ int main(int argc, char* argv[]) {
       has_als)
     light_sensor.reset(new power_manager::system::AmbientLightSensorStub(0));
   power_manager::system::DisplayPowerSetterStub display_power_setter;
-  power_manager::policy::InternalBacklightController backlight_controller(
-      &stub_backlight, &prefs, light_sensor.get(), &display_power_setter);
-  CHECK(backlight_controller.Init());
+  power_manager::policy::InternalBacklightController backlight_controller;
+  CHECK(backlight_controller.Init(&stub_backlight, &prefs, light_sensor.get(),
+                                  &display_power_setter));
 
   // Get the power source.
-  power_manager::system::PowerSupply power_supply(
-      base::FilePath(power_manager::kPowerStatusPath), &prefs);
-  power_supply.Init();
+  power_manager::system::PowerSupply power_supply;
+  power_supply.Init(base::FilePath(power_manager::kPowerStatusPath), &prefs);
   power_manager::system::PowerInformation power_info;
   CHECK(power_supply.GetPowerInformation(&power_info));
   const power_manager::PowerSource power_source =

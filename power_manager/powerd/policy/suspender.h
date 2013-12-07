@@ -150,12 +150,13 @@ class Suspender : public SuspendDelayObserver {
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  Suspender(Delegate* delegate,
-            DBusSenderInterface* dbus_sender,
-            DarkResumePolicy* dark_resume_policy);
+  Suspender();
   virtual ~Suspender();
 
-  void Init(PrefsInterface* prefs);
+  void Init(Delegate* delegate,
+            DBusSenderInterface* dbus_sender,
+            DarkResumePolicy* dark_resume_policy,
+            PrefsInterface* prefs);
 
   // Starts the suspend process. Note that suspending happens
   // asynchronously.

@@ -15,13 +15,14 @@
 
 namespace power_manager {
 
-DBusSender::DBusSender(const std::string& path,
-                       const std::string& interface)
-    : path_(path),
-      interface_(interface) {
-}
+DBusSender::DBusSender() {}
 
 DBusSender::~DBusSender() {}
+
+void DBusSender::Init(const std::string& path, const std::string& interface) {
+  path_ = path;
+  interface_ = interface;
+}
 
 void DBusSender::EmitBareSignal(const std::string& signal_name) {
   EmitSignalInternal(signal_name, NULL);

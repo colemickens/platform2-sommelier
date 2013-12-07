@@ -37,15 +37,16 @@ class MetricsReporter {
       const std::string& enum_name,
       PowerSource power_source);
 
-  // Ownership of pointers remains with the caller.
-  MetricsReporter(PrefsInterface* prefs,
-                  MetricsLibraryInterface* metrics_lib,
-                  policy::BacklightController* display_backlight_controller,
-                  policy::BacklightController* keyboard_backlight_controller);
+  MetricsReporter();
   ~MetricsReporter();
 
   // Initializes the object and starts |generate_backlight_metrics_timer_|.
-  void Init(const system::PowerStatus& power_status);
+  // Ownership of pointers remains with the caller.
+  void Init(PrefsInterface* prefs,
+            MetricsLibraryInterface* metrics_lib,
+            policy::BacklightController* display_backlight_controller,
+            policy::BacklightController* keyboard_backlight_controller,
+            const system::PowerStatus& power_status);
 
   // Records changes to system state.
   void HandleScreenDimmedChange(bool dimmed,

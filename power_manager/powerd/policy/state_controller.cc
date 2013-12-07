@@ -138,9 +138,9 @@ bool StateController::TestApi::TriggerInitialDisplayModeTimeout() {
 
 const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
 
-StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
-    : delegate_(delegate),
-      prefs_(prefs),
+StateController::StateController()
+    : delegate_(NULL),
+      prefs_(NULL),
       clock_(new Clock),
       initialized_(false),
       power_source_(POWER_AC),
@@ -169,16 +169,21 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       use_audio_activity_(true),
       use_video_activity_(true),
       wait_for_initial_user_activity_(false) {
-  prefs_->AddObserver(this);
 }
 
 StateController::~StateController() {
-  prefs_->RemoveObserver(this);
+  if (prefs_)
+    prefs_->RemoveObserver(this);
 }
 
-void StateController::Init(PowerSource power_source,
+void StateController::Init(Delegate* delegate,
+                           PrefsInterface* prefs,
+                           PowerSource power_source,
                            LidState lid_state,
                            SessionState session_state) {
+  delegate_ = delegate;
+  prefs_ = prefs;
+  prefs_->AddObserver(this);
   LoadPrefs();
 
   last_user_activity_time_ = clock_->GetCurrentTime();

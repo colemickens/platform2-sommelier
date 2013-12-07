@@ -103,8 +103,8 @@ int main(int argc, char** argv) {
   CHECK(prefs.Init(pref_paths));
 
   base::FilePath path(kPowerStatusPath);
-  power_manager::system::PowerSupply power_supply(path, &prefs);
-  power_supply.Init();
+  power_manager::system::PowerSupply power_supply;
+  power_supply.Init(path, &prefs);
 
   power_manager::system::PowerInformation power_info;
   power_manager::system::PowerStatus& power_status = power_info.power_status;

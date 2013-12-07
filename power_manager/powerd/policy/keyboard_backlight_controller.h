@@ -50,15 +50,15 @@ class KeyboardBacklightController
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  KeyboardBacklightController(
-      system::BacklightInterface* backlight,
-      PrefsInterface* prefs,
-      system::AmbientLightSensorInterface* sensor,
-      BacklightController* display_backlight_controller);
+  KeyboardBacklightController();
   virtual ~KeyboardBacklightController();
 
-  // Initializes the object.
-  bool Init();
+  // Initializes the object. Ownership of passed-in pointers remains with the
+  // caller. |sensor| and |display_backlight_controller| may be NULL.
+  bool Init(system::BacklightInterface* backlight,
+            PrefsInterface* prefs,
+            system::AmbientLightSensorInterface* sensor,
+            BacklightController* display_backlight_controller);
 
   // Called when a notification about video activity has been received.
   void HandleVideoActivity(bool is_fullscreen);

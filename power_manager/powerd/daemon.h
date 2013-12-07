@@ -26,7 +26,6 @@
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/input_controller.h"
-#include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -36,11 +35,11 @@
 struct udev;
 struct udev_monitor;
 
-class MetricsLibraryInterface;
+class MetricsLibrary;
 
 namespace power_manager {
 
-class DBusSenderInterface;
+class DBusSender;
 class MetricsReporter;
 class Prefs;
 
@@ -48,6 +47,7 @@ namespace policy {
 class BacklightController;
 class KeyboardBacklightController;
 class StateController;
+class Suspender;
 }  // namespace policy
 
 namespace system {
@@ -192,6 +192,7 @@ class Daemon : public policy::BacklightControllerObserver,
 
   scoped_ptr<Prefs> prefs_;
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
+  scoped_ptr<DBusSender> dbus_sender_;
 
   scoped_ptr<system::AmbientLightSensor> light_sensor_;
   scoped_ptr<system::DisplayPowerSetter> display_power_setter_;
@@ -201,23 +202,23 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<policy::KeyboardBacklightController>
       keyboard_backlight_controller_;
 
-  scoped_ptr<MetricsLibraryInterface> metrics_library_;
-  scoped_ptr<MetricsReporter> metrics_reporter_;
-  scoped_ptr<DBusSenderInterface> dbus_sender_;
   scoped_ptr<system::Input> input_;
   scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<policy::InputController> input_controller_;
   scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
+  scoped_ptr<system::PowerSupply> power_supply_;
+  scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
+  scoped_ptr<SuspenderDelegate> suspender_delegate_;
+  scoped_ptr<policy::Suspender> suspender_;
+
+  scoped_ptr<MetricsLibrary> metrics_library_;
+  scoped_ptr<MetricsReporter> metrics_reporter_;
 
   // True once the shutdown process has started. Remains true until the
   // system has powered off.
   bool shutting_down_;
 
-  scoped_ptr<system::PowerSupply> power_supply_;
-  scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
-  scoped_ptr<SuspenderDelegate> suspender_delegate_;
-  policy::Suspender suspender_;
   base::FilePath run_dir_;
   base::TimeTicks session_start_;
 
@@ -227,7 +228,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
-
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;
 

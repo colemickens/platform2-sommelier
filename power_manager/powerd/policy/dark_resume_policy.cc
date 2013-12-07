@@ -40,10 +40,9 @@ const char kDisabled[] = "disabled";
 
 }  // namespace
 
-DarkResumePolicy::DarkResumePolicy(system::PowerSupply* power_supply,
-                                   PrefsInterface* prefs)
-    : power_supply_(power_supply),
-      prefs_(prefs),
+DarkResumePolicy::DarkResumePolicy()
+    : power_supply_(NULL),
+      prefs_(NULL),
       battery_shutdown_threshold_(0.0),
       battery_suspend_level_(0.0),
       thresholds_set_(false) {
@@ -54,7 +53,11 @@ DarkResumePolicy::~DarkResumePolicy() {
   SetStates(dark_resume_devices_, kDisabled);
 }
 
-void DarkResumePolicy::Init() {
+void DarkResumePolicy::Init(system::PowerSupply* power_supply,
+                            PrefsInterface* prefs) {
+  power_supply_ = power_supply;
+  prefs_ = prefs;
+
   bool disable = false;
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
               ReadSuspendDurationsPref() &&

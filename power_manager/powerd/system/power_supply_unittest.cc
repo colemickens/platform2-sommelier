@@ -115,7 +115,7 @@ class PowerSupplyTest : public ::testing::Test {
     prefs_.SetInt64(kLowBatteryShutdownTimePref, kLowBatteryShutdownTimeSec);
     prefs_.SetDouble(kPowerSupplyFullFactorPref, kFullFactor);
 
-    power_supply_.reset(new PowerSupply(path_, &prefs_));
+    power_supply_.reset(new PowerSupply);
     test_api_.reset(new PowerSupply::TestApi(power_supply_.get()));
     test_api_->SetCurrentTime(kStartTime);
   }
@@ -127,6 +127,11 @@ class PowerSupplyTest : public ::testing::Test {
     REPORT_CHARGE,
     REPORT_ENERGY
   };
+
+  // Initializes |power_supply_|.
+  void Init() {
+    power_supply_->Init(path_, &prefs_);
+  }
 
   // Sets the time so that |power_supply_| will believe that the current
   // has stabilized.
@@ -200,7 +205,6 @@ class PowerSupplyTest : public ::testing::Test {
 
 // Test system without power supply sysfs (e.g. virtual machine).
 TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
-  power_supply_->Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   // In absence of power supply sysfs, default assumption is line power on, no
@@ -221,7 +225,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
   values["ac/type"] = kACType;
   WriteValues(values);
 
-  power_supply_->Init();
+  Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
@@ -236,7 +240,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
 // When neither a line power source nor a battery is found, PowerSupply
 // should assume that AC power is being used.
 TEST_F(PowerSupplyTest, TestNoPowerSource) {
-  power_supply_->Init();
+  Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
@@ -251,7 +255,7 @@ TEST_F(PowerSupplyTest, TestNoPowerSource) {
 // Test battery charging status.
 TEST_F(PowerSupplyTest, TestCharging) {
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
-  power_supply_->Init();
+  Init();
 
   SetStabilizedTime();
   PowerStatus power_status;
@@ -274,7 +278,7 @@ TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
   const char kACArbType[] = "ArbitraryName";
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
   WriteValue("ac/type", kACArbType);
-  power_supply_->Init();
+  Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
@@ -288,7 +292,7 @@ TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
 // values.
 TEST_F(PowerSupplyTest, TestDischarging) {
   WriteDefaultValues(POWER_BATTERY, REPORT_CHARGE);
-  power_supply_->Init();
+  Init();
 
   SetStabilizedTime();
   PowerStatus power_status;
@@ -320,7 +324,7 @@ TEST_F(PowerSupplyTest, TestDischarging) {
 // Test battery reporting energy instead of charge.
 TEST_F(PowerSupplyTest, TestEnergyDischarging) {
   WriteDefaultValues(POWER_BATTERY, REPORT_ENERGY);
-  power_supply_->Init();
+  Init();
 
   SetStabilizedTime();
   PowerStatus power_status;
@@ -369,7 +373,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
                   kResumeDelay.InMilliseconds());
 
   base::TimeTicks current_time = kStartTime;
-  power_supply_->Init();
+  Init();
 
   // The battery times should be reported as "calculating" just after
   // initialization.
@@ -439,7 +443,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   WriteDoubleValue("battery/charge_now", 0.5);
   WriteDoubleValue("battery/current_now", 0.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
-  power_supply_->Init();
+  Init();
 
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
@@ -571,7 +575,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
   WriteDoubleValue("battery/current_now", 0.1 * kEpsilon);
-  power_supply_->Init();
+  Init();
 
   // When the only available current readings are close to 0 (which would
   // result in very large time estimates), -1 estimates should be provided
@@ -603,7 +607,7 @@ TEST_F(PowerSupplyTest, FullFactor) {
   WriteDoubleValue("battery/charge_full", 1.0);
   WriteDoubleValue("battery/charge_now", kFullFactor);
   WriteDoubleValue("battery/current_now", 1.0);
-  power_supply_->Init();
+  Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
@@ -625,7 +629,7 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   WriteDoubleValue("battery/charge_full", 1.0);
   WriteDoubleValue("battery/charge_now", 1.0);
   WriteDoubleValue("battery/current_now", 0.0);
-  power_supply_->Init();
+  Init();
 
   // 100% should be reported both on AC and battery power.
   PowerStatus status;
@@ -686,7 +690,7 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   WriteDoubleValue("battery/charge_full", 1.0);
   WriteDoubleValue("battery/charge_now", (kShutdownPercent + 1.0) / 100.0);
   WriteDoubleValue("battery/current_now", -1.0);
-  power_supply_->Init();
+  Init();
 
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
@@ -745,7 +749,7 @@ TEST_F(PowerSupplyTest, LowPowerCharger) {
   // isn't full, the battery should be reported as discharging.
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
   WriteDoubleValue("battery/current_now", 0.0);
-  power_supply_->Init();
+  Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
@@ -766,7 +770,7 @@ TEST_F(PowerSupplyTest, LowPowerCharger) {
 
 TEST_F(PowerSupplyTest, ConnectedToUsb) {
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
-  power_supply_->Init();
+  Init();
 
   // Check that the "connected to USB" status is reported for all
   // USB-related strings used by the kernel.
@@ -803,7 +807,7 @@ TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {
   WriteDoubleValue("battery/charge_now", 0.5);
   WriteDoubleValue("battery/current_now", -1.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
-  power_supply_->Init();
+  Init();
   SetStabilizedTime();
 
   // The reported time until shutdown should be based only on the charge that's
@@ -844,7 +848,7 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
   WriteDoubleValue("battery/charge_full", 10.0);
   WriteDoubleValue("battery/charge_now", 10.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
-  power_supply_->Init();
+  Init();
   SetStabilizedTime();
 
   PowerStatus status;
@@ -917,7 +921,7 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
   WriteDoubleValue("battery/current_now", -60.0);
   prefs_.SetInt64(kLowBatteryShutdownTimePref, 180);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
-  power_supply_->Init();
+  Init();
 
   // The system shouldn't shut down initially since it's on AC power and a
   // negative charge rate hasn't yet been observed.
@@ -954,7 +958,7 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
   // Check that observers are notified about updates asynchronously.
   TestObserver observer;
   power_supply_->AddObserver(&observer);
-  power_supply_->Init();
+  Init();
   ASSERT_TRUE(power_supply_->RefreshImmediately());
   EXPECT_TRUE(observer.WaitForNotification());
   power_supply_->RemoveObserver(&observer);

@@ -146,8 +146,7 @@ class TestDelegate : public StateController::Delegate {
 class StateControllerTest : public testing::Test {
  public:
   StateControllerTest()
-      : controller_(&delegate_, &prefs_),
-        test_api_(&controller_),
+      : test_api_(&controller_),
         now_(base::TimeTicks::FromInternalValue(1000)),
         default_ac_suspend_delay_(base::TimeDelta::FromSeconds(120)),
         default_ac_screen_off_delay_(base::TimeDelta::FromSeconds(100)),
@@ -193,8 +192,8 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
-    controller_.Init(initial_power_source_, initial_lid_state_,
-                     initial_session_state_);
+    controller_.Init(&delegate_, &prefs_, initial_power_source_,
+                     initial_lid_state_, initial_session_state_);
 
     if (send_initial_display_mode_)
       controller_.HandleDisplayModeChange(initial_display_mode_);

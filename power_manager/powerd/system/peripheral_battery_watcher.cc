@@ -34,16 +34,16 @@ const int kDefaultPollIntervalMs = 30000;
 
 }  // namespace
 
-PeripheralBatteryWatcher::PeripheralBatteryWatcher(
-    DBusSenderInterface* dbus_sender)
-    : dbus_sender_(dbus_sender),
+PeripheralBatteryWatcher::PeripheralBatteryWatcher()
+    : dbus_sender_(NULL),
       peripheral_battery_path_(kDefaultPeripheralBatteryPath),
       poll_interval_ms_(kDefaultPollIntervalMs) {
 }
 
 PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {}
 
-void PeripheralBatteryWatcher::Init() {
+void PeripheralBatteryWatcher::Init(DBusSenderInterface* dbus_sender) {
+  dbus_sender_ = dbus_sender;
   ReadBatteryStatuses();
 }
 

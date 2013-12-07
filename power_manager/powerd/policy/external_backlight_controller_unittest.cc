@@ -15,8 +15,8 @@ namespace policy {
 
 class ExternalBacklightControllerTest : public ::testing::Test {
  public:
-  ExternalBacklightControllerTest() : controller_(&display_power_setter_) {
-    controller_.Init();
+  ExternalBacklightControllerTest() {
+    controller_.Init(&display_power_setter_);
   }
 
  protected:

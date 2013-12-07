@@ -54,12 +54,18 @@ class DarkResumePolicyTest : public ::testing::Test {
     path_ = temp_dir_generator_->path();
     file_util::CreateDirectory(path_.Append("ac"));
     file_util::CreateDirectory(path_.Append("battery"));
-    power_supply_.reset(new system::PowerSupply(path_, &prefs_));
-    dark_resume_policy_.reset(
-        new DarkResumePolicy(power_supply_.get(), &prefs_));
+    power_supply_.reset(new system::PowerSupply);
+    dark_resume_policy_.reset(new DarkResumePolicy);
   }
 
  protected:
+  // Initializes |power_supply_| and |dark_resume_policy_|.
+  void Init() {
+    power_supply_->Init(path_, &prefs_);
+    SetBattery(100.0, false);
+    dark_resume_policy_->Init(power_supply_.get(), &prefs_);
+  }
+
   void SetBattery(double charge_percent, bool ac_online) {
     map<string, string> values;
     values["ac/type"] = kACType;
@@ -100,9 +106,7 @@ class DarkResumePolicyTest : public ::testing::Test {
 TEST_F(DarkResumePolicyTest, TestShutdown) {
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 -1.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
-  power_supply_->Init();
-  SetBattery(100.0, false);
-  dark_resume_policy_->Init();
+  Init();
   EXPECT_EQ(DarkResumePolicy::SHUT_DOWN, dark_resume_policy_->GetAction());
 }
 
@@ -111,9 +115,7 @@ TEST_F(DarkResumePolicyTest, TestShutdown) {
 TEST_F(DarkResumePolicyTest, TestSuspendFirst) {
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
-  power_supply_->Init();
-  SetBattery(100.0, false);
-  dark_resume_policy_->Init();
+  Init();
   EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
             dark_resume_policy_->GetAction());
 
@@ -132,9 +134,7 @@ TEST_F(DarkResumePolicyTest, TestUserResumes) {
                                                     "20.0 50\n"
                                                     "50.0 100\n"
                                                     "80.0 500");
-  power_supply_->Init();
-  SetBattery(100.0, false);
-  dark_resume_policy_->Init();
+  Init();
   EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
             dark_resume_policy_->GetAction());
   EXPECT_EQ(500, dark_resume_policy_->GetSuspendDuration().InSeconds());
@@ -169,9 +169,7 @@ TEST_F(DarkResumePolicyTest, TestUserResumes) {
 TEST_F(DarkResumePolicyTest, TestACOnline) {
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
-  power_supply_->Init();
-  SetBattery(100.0, false);
-  dark_resume_policy_->Init();
+  Init();
   EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
             dark_resume_policy_->GetAction());
 
@@ -186,9 +184,7 @@ TEST_F(DarkResumePolicyTest, TestDisable) {
   prefs_.SetInt64(kDisableDarkResumePref, 1);
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
-  power_supply_->Init();
-  SetBattery(100.0, false);
-  dark_resume_policy_->Init();
+  Init();
   EXPECT_EQ(DarkResumePolicy::SUSPEND_INDEFINITELY,
             dark_resume_policy_->GetAction());
 }
@@ -197,9 +193,7 @@ TEST_F(DarkResumePolicyTest, TestEnable) {
   prefs_.SetInt64(kDisableDarkResumePref, 0);
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
-  power_supply_->Init();
-  SetBattery(100.0, false);
-  dark_resume_policy_->Init();
+  Init();
   EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
             dark_resume_policy_->GetAction());
 }

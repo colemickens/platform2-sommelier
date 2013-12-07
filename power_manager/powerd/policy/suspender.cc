@@ -38,14 +38,11 @@ bool Suspender::TestApi::TriggerRetryTimeout() {
   return true;
 }
 
-Suspender::Suspender(Delegate* delegate,
-                     DBusSenderInterface* dbus_sender,
-                     DarkResumePolicy* dark_resume_policy)
-    : delegate_(delegate),
-      dbus_sender_(dbus_sender),
-      dark_resume_policy_(dark_resume_policy),
+Suspender::Suspender()
+    : delegate_(NULL),
+      dbus_sender_(NULL),
+      dark_resume_policy_(NULL),
       clock_(new Clock),
-      suspend_delay_controller_(new SuspendDelayController(dbus_sender)),
       waiting_for_readiness_(false),
       suspend_id_(0),
       wakeup_count_(0),
@@ -54,14 +51,22 @@ Suspender::Suspender(Delegate* delegate,
       max_retries_(0),
       num_retries_(0),
       shutting_down_(false) {
-  suspend_delay_controller_->AddObserver(this);
 }
 
 Suspender::~Suspender() {
-  suspend_delay_controller_->RemoveObserver(this);
 }
 
-void Suspender::Init(PrefsInterface* prefs) {
+void Suspender::Init(Delegate *delegate,
+                     DBusSenderInterface *dbus_sender,
+                     DarkResumePolicy *dark_resume_policy,
+                     PrefsInterface *prefs) {
+  delegate_ = delegate;
+  dbus_sender_ = dbus_sender;
+  dark_resume_policy_ = dark_resume_policy;
+
+  suspend_delay_controller_.reset(new SuspendDelayController(dbus_sender_));
+  suspend_delay_controller_->AddObserver(this);
+
   int64 retry_delay_ms = 0;
   CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
   retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);

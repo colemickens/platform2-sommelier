@@ -62,12 +62,12 @@ class InternalBacklightControllerTest : public ::testing::Test {
     backlight_.set_current_level(initial_backlight_level_);
     light_sensor_.set_lux(initial_als_lux_);
 
-    controller_.reset(new InternalBacklightController(
-        &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : NULL,
-        &display_power_setter_));
+    controller_.reset(new InternalBacklightController);
     if (!init_time_.is_null())
       controller_->clock()->set_current_time_for_testing(init_time_);
-    CHECK(controller_->Init());
+    CHECK(controller_->Init(&backlight_, &prefs_,
+                            pass_light_sensor_ ? &light_sensor_ : NULL,
+                            &display_power_setter_));
 
     if (report_initial_power_source_)
       controller_->HandlePowerSourceChange(power_source);

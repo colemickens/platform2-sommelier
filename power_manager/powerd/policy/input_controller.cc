@@ -25,23 +25,29 @@ const int kCheckActiveVTFrequencySec = 60;
 
 } // namespace
 
-InputController::InputController(system::InputInterface* input,
-                                 Delegate* delegate,
-                                 DBusSenderInterface* dbus_sender)
-    : input_(input),
-      delegate_(delegate),
-      dbus_sender_(dbus_sender),
+InputController::InputController()
+    : input_(NULL),
+      delegate_(NULL),
+      dbus_sender_(NULL),
       clock_(new Clock),
       only_has_external_display_(false),
       lid_state_(LID_NOT_PRESENT) {
-  input_->AddObserver(this);
 }
 
 InputController::~InputController() {
-  input_->RemoveObserver(this);
+  if (input_)
+    input_->RemoveObserver(this);
 }
 
-void InputController::Init(PrefsInterface* prefs) {
+void InputController::Init(system::InputInterface* input,
+                           Delegate* delegate,
+                           DBusSenderInterface* dbus_sender,
+                           PrefsInterface* prefs) {
+  input_ = input;
+  input_->AddObserver(this);
+  delegate_ = delegate;
+  dbus_sender_ = dbus_sender;
+
   prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
 
   bool use_lid = false;

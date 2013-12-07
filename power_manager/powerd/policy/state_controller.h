@@ -120,14 +120,17 @@ class StateController : public PrefsObserver {
   // off.
   static const int kUserActivityAfterScreenOffIncreaseDelaysMs;
 
-  StateController(Delegate* delegate, PrefsInterface* prefs);
+  StateController();
   virtual ~StateController();
 
   base::TimeTicks last_user_activity_time() const {
     return last_user_activity_time_;
   }
 
-  void Init(PowerSource power_source,
+  // Ownership of |delegate| and |prefs| remains with the caller.
+  void Init(Delegate* delegate,
+            PrefsInterface* prefs,
+            PowerSource power_source,
             LidState lid_state,
             SessionState session_state);
 

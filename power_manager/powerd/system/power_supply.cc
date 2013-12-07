@@ -115,23 +115,23 @@ const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
-PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
-                         PrefsInterface* prefs)
-    : prefs_(prefs),
+PowerSupply::PowerSupply()
+    : prefs_(NULL),
       clock_(new Clock),
       power_status_initialized_(false),
-      power_supply_path_(power_supply_path),
       low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
       current_samples_(kMaxCurrentSamples),
       charge_samples_(kMaxChargeSamples),
       full_factor_(1.0) {
-  DCHECK(prefs);
 }
 
 PowerSupply::~PowerSupply() {}
 
-void PowerSupply::Init() {
+void PowerSupply::Init(const base::FilePath& power_supply_path,
+                       PrefsInterface* prefs) {
+  prefs_ = prefs;
+  power_supply_path_ = power_supply_path;
   GetPowerSupplyPaths();
 
   int64 poll_ms = kDefaultPollMs;

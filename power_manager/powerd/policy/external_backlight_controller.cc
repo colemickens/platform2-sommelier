@@ -13,20 +13,20 @@
 namespace power_manager {
 namespace policy {
 
-ExternalBacklightController::ExternalBacklightController(
-    system::DisplayPowerSetterInterface* display_power_setter)
-    : display_power_setter_(display_power_setter),
+ExternalBacklightController::ExternalBacklightController()
+    : display_power_setter_(NULL),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       suspended_(false),
       shutting_down_(false),
       currently_off_(false) {
-  DCHECK(display_power_setter_);
 }
 
 ExternalBacklightController::~ExternalBacklightController() {}
 
-void ExternalBacklightController::Init() {
+void ExternalBacklightController::Init(
+    system::DisplayPowerSetterInterface* display_power_setter) {
+  display_power_setter_ = display_power_setter;
   // If we get restarted while Chrome is running, make sure that it doesn't get
   // wedged in a dimmed or off state.
   display_power_setter_->SetDisplaySoftwareDimming(false);

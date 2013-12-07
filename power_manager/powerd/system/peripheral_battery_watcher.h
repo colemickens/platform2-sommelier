@@ -23,7 +23,7 @@ namespace system {
 
 class PeripheralBatteryWatcher {
  public:
-  explicit PeripheralBatteryWatcher(DBusSenderInterface* dbus_sender);
+  PeripheralBatteryWatcher();
   ~PeripheralBatteryWatcher();
 
   void set_battery_path_for_testing(const base::FilePath& path) {
@@ -31,7 +31,7 @@ class PeripheralBatteryWatcher {
   }
 
   // Starts polling.
-  void Init();
+  void Init(DBusSenderInterface* dbus_sender);
 
  private:
   // Handler for a periodic event that reads the peripheral batteries'

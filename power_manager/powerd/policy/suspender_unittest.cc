@@ -153,9 +153,7 @@ class TestDelegate : public Suspender::Delegate {
 class SuspenderTest : public testing::Test {
  public:
   SuspenderTest()
-      : dark_resume_policy_(NULL, &prefs_),
-        suspender_(&delegate_, &dbus_sender_, &dark_resume_policy_),
-        test_api_(&suspender_),
+      : test_api_(&suspender_),
         pref_retry_delay_ms_(10000),
         pref_num_retries_(10) {
   }
@@ -164,8 +162,8 @@ class SuspenderTest : public testing::Test {
   void Init() {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
-    suspender_.Init(&prefs_);
-    dark_resume_policy_.Init();
+    dark_resume_policy_.Init(NULL, &prefs_);
+    suspender_.Init(&delegate_, &dbus_sender_, &dark_resume_policy_, &prefs_);
   }
 
   FakePrefs prefs_;

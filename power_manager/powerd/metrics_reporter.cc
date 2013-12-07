@@ -24,15 +24,11 @@ std::string MetricsReporter::AppendPowerSourceToEnumName(
       (power_source == POWER_AC ? kMetricACSuffix : kMetricBatterySuffix);
 }
 
-MetricsReporter::MetricsReporter(
-    PrefsInterface* prefs,
-    MetricsLibraryInterface* metrics_lib,
-    policy::BacklightController* display_backlight_controller,
-    policy::BacklightController* keyboard_backlight_controller)
-    : prefs_(prefs),
-      metrics_lib_(metrics_lib),
-      display_backlight_controller_(display_backlight_controller),
-      keyboard_backlight_controller_(keyboard_backlight_controller),
+MetricsReporter::MetricsReporter()
+    : prefs_(NULL),
+      metrics_lib_(NULL),
+      display_backlight_controller_(NULL),
+      keyboard_backlight_controller_(NULL),
       session_state_(SESSION_STOPPED),
       battery_energy_before_suspend_(0.0),
       on_line_power_before_suspend_(false),
@@ -41,8 +37,18 @@ MetricsReporter::MetricsReporter(
 
 MetricsReporter::~MetricsReporter() {}
 
-void MetricsReporter::Init(const system::PowerStatus& power_status) {
+void MetricsReporter::Init(
+    PrefsInterface* prefs,
+    MetricsLibraryInterface* metrics_lib,
+    policy::BacklightController* display_backlight_controller,
+    policy::BacklightController* keyboard_backlight_controller,
+    const system::PowerStatus& power_status) {
+  prefs_ = prefs;
+  metrics_lib_ = metrics_lib;
+  display_backlight_controller_ = display_backlight_controller;
+  keyboard_backlight_controller_ = keyboard_backlight_controller;
   last_power_status_ = power_status;
+
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timer_.Start(FROM_HERE,
         base::TimeDelta::FromMilliseconds(kMetricBacklightLevelIntervalMs),

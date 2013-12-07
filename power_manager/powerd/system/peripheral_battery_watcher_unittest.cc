@@ -67,7 +67,7 @@ class TestSender : public DBusSenderStub {
 
 class PeripheralBatteryWatcherTest : public ::testing::Test {
  public:
-  PeripheralBatteryWatcherTest() : battery_(&test_sender_) {}
+  PeripheralBatteryWatcherTest() {}
   virtual ~PeripheralBatteryWatcherTest() {}
 
   virtual void SetUp() OVERRIDE {
@@ -109,7 +109,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 TEST_F(PeripheralBatteryWatcherTest, Basic) {
   std::string level = base::IntToString(80);
   WriteFile(capacity_file_, level);
-  battery_.Init();
+  battery_.Init(&test_sender_);
   ASSERT_TRUE(test_sender_.RunUntilSignalSent(kUpdateTimeoutMs));
   EXPECT_EQ(1, test_sender_.num_sent_signals());
   PeripheralBatteryStatus proto;
@@ -121,7 +121,7 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
 }
 
 TEST_F(PeripheralBatteryWatcherTest, NoLevelReading) {
-  battery_.Init();
+  battery_.Init(&test_sender_);
   // Without writing battery level to the capacity_file_, the loop
   // will timeout.
   ASSERT_FALSE(test_sender_.RunUntilSignalSent(kShortUpdateTimeoutMs));

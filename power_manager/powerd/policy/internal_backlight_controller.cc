@@ -80,16 +80,10 @@ const double InternalBacklightController::kMinVisiblePercent =
     kMaxPercent / kMaxBrightnessSteps;
 const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 
-InternalBacklightController::InternalBacklightController(
-    system::BacklightInterface* backlight,
-    PrefsInterface* prefs,
-    system::AmbientLightSensorInterface* sensor,
-    system::DisplayPowerSetterInterface* display_power_setter)
-    : backlight_(backlight),
-      prefs_(prefs),
-      display_power_setter_(display_power_setter),
-      ambient_light_handler_(
-          sensor ? new AmbientLightHandler(sensor, this) : NULL),
+InternalBacklightController::InternalBacklightController()
+    : backlight_(NULL),
+      prefs_(NULL),
+      display_power_setter_(NULL),
       clock_(new Clock),
       power_source_(POWER_BATTERY),
       display_mode_(DISPLAY_NORMAL),
@@ -117,16 +111,24 @@ InternalBacklightController::InternalBacklightController(
       current_level_(0),
       // Use all-off here to ensure that Init()'s all-on request is sent.
       display_power_state_(chromeos::DISPLAY_POWER_ALL_OFF) {
-  DCHECK(backlight_);
-  DCHECK(prefs_);
-  DCHECK(display_power_setter_);
-  if (ambient_light_handler_)
-    ambient_light_handler_->set_name("panel");
 }
 
 InternalBacklightController::~InternalBacklightController() {}
 
-bool InternalBacklightController::Init() {
+bool InternalBacklightController::Init(
+    system::BacklightInterface* backlight,
+    PrefsInterface* prefs,
+    system::AmbientLightSensorInterface* sensor,
+    system::DisplayPowerSetterInterface* display_power_setter) {
+  backlight_ = backlight;
+  prefs_ = prefs;
+  display_power_setter_ = display_power_setter;
+
+  if (sensor) {
+    ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
+    ambient_light_handler_->set_name("panel");
+  }
+
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";

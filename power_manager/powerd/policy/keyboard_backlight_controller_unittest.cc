@@ -33,8 +33,6 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_),
-        controller_(&backlight_, &prefs_, &light_sensor_,
-                    &display_backlight_controller_),
         test_api_(&controller_) {
   }
 
@@ -58,7 +56,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetString(kKeyboardBacklightUserStepsPref, user_steps_pref_);
     prefs_.SetInt64(kDisableALSPref, 0);
 
-    return controller_.Init();
+    return controller_.Init(&backlight_, &prefs_, &light_sensor_,
+                            &display_backlight_controller_);
   }
 
  protected:

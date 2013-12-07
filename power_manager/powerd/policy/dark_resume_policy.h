@@ -30,12 +30,13 @@ class DarkResumePolicy {
     SUSPEND_INDEFINITELY
   };
 
-  DarkResumePolicy(system::PowerSupply* power_supply, PrefsInterface* prefs);
+  DarkResumePolicy();
   ~DarkResumePolicy();
 
   // Reads preferences on how long to suspend, what devices are affected by
   // suspend, and what devices can wake the system up from suspend.
-  void Init();
+  // Ownership of passed-in pointers remains with the caller.
+  void Init(system::PowerSupply* power_supply, PrefsInterface* prefs);
 
   // Returns an enum that indicates what action should be taken.
   Action GetAction();

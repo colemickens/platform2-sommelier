@@ -200,7 +200,7 @@ class PowerSupply {
   // equal to or less than this threshold (in the range [0.0, 100.0)).
   static const double kLowBatteryShutdownSafetyPercent;
 
-  PowerSupply(const base::FilePath& power_supply_path, PrefsInterface *prefs);
+  PowerSupply();
   ~PowerSupply();
 
   const PowerStatus& power_status() const { return power_status_; }
@@ -209,8 +209,9 @@ class PowerSupply {
     return battery_stabilized_timestamp_;
   }
 
-  // Initializes the object and begins polling.
-  void Init();
+  // Initializes the object and begins polling. Ownership of |prefs| remains
+  // with the caller.
+  void Init(const base::FilePath& power_supply_path, PrefsInterface *prefs);
 
   // Adds or removes an observer.
   void AddObserver(PowerSupplyObserver* observer);

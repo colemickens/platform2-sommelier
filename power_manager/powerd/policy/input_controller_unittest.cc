@@ -75,13 +75,18 @@ class TestInputControllerDelegate : public InputController::Delegate {
 
 class InputControllerTest : public ::testing::Test {
  public:
-  InputControllerTest() : controller_(&input_, &delegate_, &dbus_sender_) {
+  InputControllerTest() {
     controller_.clock_for_testing()->set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
   }
   virtual ~InputControllerTest() {}
 
  protected:
+  // Initializes |controller_|.
+  void Init() {
+    controller_.Init(&input_, &delegate_, &dbus_sender_, &prefs_);
+  }
+
   // Tests that one InputEvent D-Bus signal has been sent and returns the
   // signal's |type| field.
   int GetInputEventSignalType() {
@@ -123,7 +128,7 @@ TEST_F(InputControllerTest, LidEvents) {
 
   // An initial event about the lid state should be sent at initialization.
   prefs_.SetInt64(kUseLidPref, 1);
-  controller_.Init(&prefs_);
+  Init();
   EXPECT_TRUE(input_.wake_inputs_enabled());
   EXPECT_TRUE(input_.touch_devices_enabled());
   EXPECT_EQ(kLidOpened, delegate_.GetActions());
@@ -155,7 +160,7 @@ TEST_F(InputControllerTest, LidEvents) {
 TEST_F(InputControllerTest, PowerButtonEvents) {
   prefs_.SetInt64(kExternalDisplayOnlyPref, 1);
   input_.set_display_connected(true);
-  controller_.Init(&prefs_);
+  Init();
 
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
@@ -178,7 +183,7 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
 }
 
 TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
-  controller_.Init(&prefs_);
+  Init();
 
   input_.set_active_vt(1);
   EXPECT_TRUE(controller_.TriggerCheckActiveVTTimeoutForTesting());
@@ -194,7 +199,7 @@ TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
 }
 
 TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
-  controller_.Init(&prefs_);
+  Init();
 
   // Press the power button, acknowledge the event immediately, and check that
   // no further actions are performed and that the timeout is stopped.

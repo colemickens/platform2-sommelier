@@ -38,10 +38,11 @@ class DBusSenderInterface {
 // DBusSenderInterface implementation that actually sends messages to D-Bus.
 class DBusSender : public DBusSenderInterface {
  public:
-  // |path| and |interface| are used when sending signals.
-  DBusSender(const std::string& path,
-             const std::string& interface);
+  DBusSender();
   virtual ~DBusSender();
+
+  // |path| and |interface| are used when sending signals.
+  void Init(const std::string& path, const std::string& interface);
 
   // DBusSenderInterface override:
   virtual void EmitBareSignal(const std::string& signal_name) OVERRIDE;

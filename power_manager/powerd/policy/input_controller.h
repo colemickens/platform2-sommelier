@@ -63,14 +63,16 @@ class InputController : public system::InputObserver {
   // milliseconds.
   static const int kPowerButtonAcknowledgmentTimeoutMs = 2000;
 
-  InputController(system::InputInterface* input,
-                  Delegate* delegate,
-                  DBusSenderInterface* dbus_sender);
+  InputController();
   virtual ~InputController();
 
   Clock* clock_for_testing() { return clock_.get(); }
 
-  void Init(PrefsInterface* prefs);
+  // Ownership of passed-in pointers remains with the caller.
+  void Init(system::InputInterface* input,
+            Delegate* delegate,
+            DBusSenderInterface* dbus_sender,
+            PrefsInterface* prefs);
 
   // Calls HandlePowerButtonAcknowledgmentTimeout(). Returns false if
   // |power_button_acknowledgment_timer_| isn't running.

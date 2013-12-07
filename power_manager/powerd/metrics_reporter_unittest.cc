@@ -33,10 +33,7 @@ namespace power_manager {
 
 class MetricsReporterTest : public Test {
  public:
-  MetricsReporterTest()
-      : metrics_reporter_(&prefs_, &metrics_lib_,
-                          &display_backlight_controller_,
-                          &keyboard_backlight_controller_) {
+  MetricsReporterTest() {
     metrics_reporter_.clock_.set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
     metrics_reporter_.clock_.set_current_wall_time_for_testing(
@@ -47,6 +44,13 @@ class MetricsReporterTest : public Test {
   }
 
  protected:
+  // Initializes |metrics_reporter_|.
+  void Init() {
+    metrics_reporter_.Init(&prefs_, &metrics_lib_,
+                           &display_backlight_controller_,
+                           &keyboard_backlight_controller_, power_status_);
+  }
+
   // Advances both the monotonically-increasing time and wall time by
   // |interval|.
   void AdvanceTime(base::TimeDelta interval) {
@@ -165,7 +169,7 @@ class MetricsReporterTest : public Test {
 
 TEST_F(MetricsReporterTest, BacklightLevel) {
   power_status_.line_power_on = false;
-  metrics_reporter_.Init(power_status_);
+  Init();
   ASSERT_TRUE(metrics_reporter_.generate_backlight_metrics_timer_.IsRunning());
   metrics_reporter_.HandleScreenDimmedChange(true, base::TimeTicks::Now());
   metrics_reporter_.GenerateBacklightLevelMetrics();
@@ -197,7 +201,7 @@ TEST_F(MetricsReporterTest, BacklightLevel) {
 
 TEST_F(MetricsReporterTest, BatteryDischargeRate) {
   power_status_.line_power_on = false;
-  metrics_reporter_.Init(power_status_);
+  Init();
 
   metrics_to_test_.insert(kMetricBatteryDischargeRateName);
   IgnoreHandlePowerStatusUpdateMetrics();
@@ -245,7 +249,7 @@ TEST_F(MetricsReporterTest, BatteryInfoWhenChargeStarts) {
 
   power_status_.line_power_on = false;
   power_status_.battery_charge_full_design = 100.0;
-  metrics_reporter_.Init(power_status_);
+  Init();
 
   metrics_to_test_.insert(kMetricBatteryRemainingWhenChargeStartsName);
   metrics_to_test_.insert(kMetricBatteryChargeHealthName);
@@ -282,7 +286,7 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
   ASSERT_EQ(arraysize(kAlsAdjustments), arraysize(kSessionSecs));
 
   power_status_.line_power_on = false;
-  metrics_reporter_.Init(power_status_);
+  Init();
 
   for (size_t i = 0; i < arraysize(kAlsAdjustments); ++i) {
     IgnoreHandlePowerStatusUpdateMetrics();
@@ -330,7 +334,7 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
 TEST_F(MetricsReporterTest, GenerateNumOfSessionsPerChargeMetric) {
   metrics_to_test_.insert(kMetricNumOfSessionsPerChargeName);
   power_status_.line_power_on = false;
-  metrics_reporter_.Init(power_status_);
+  Init();
 
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(true);
@@ -381,7 +385,7 @@ TEST_F(MetricsReporterTest, GenerateNumOfSessionsPerChargeMetric) {
 }
 
 TEST_F(MetricsReporterTest, SendEnumMetric) {
-  metrics_reporter_.Init(power_status_);
+  Init();
   ExpectEnumMetric("Dummy.EnumMetric", 50, 200);
   EXPECT_TRUE(metrics_reporter_.SendEnumMetric("Dummy.EnumMetric", 50, 200));
 
@@ -391,7 +395,7 @@ TEST_F(MetricsReporterTest, SendEnumMetric) {
 }
 
 TEST_F(MetricsReporterTest, SendMetric) {
-  metrics_reporter_.Init(power_status_);
+  Init();
   ExpectMetric("Dummy.Metric", 3, 1, 100, 50);
   EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric", 3, 1, 100, 50));
 
@@ -404,7 +408,7 @@ TEST_F(MetricsReporterTest, SendMetric) {
 
 TEST_F(MetricsReporterTest, SendMetricWithPowerSource) {
   power_status_.line_power_on = false;
-  metrics_reporter_.Init(power_status_);
+  Init();
   ExpectMetric("Dummy.MetricOnBattery", 3, 1, 100, 50);
   EXPECT_TRUE(metrics_reporter_.SendMetricWithPowerSource(
       "Dummy.Metric", 3, 1, 100, 50));
@@ -418,7 +422,7 @@ TEST_F(MetricsReporterTest, SendMetricWithPowerSource) {
 }
 
 TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
-  metrics_reporter_.Init(power_status_);
+  Init();
 
   // We should ignore a button release that wasn't preceded by a press.
   metrics_reporter_.HandlePowerButtonEvent(BUTTON_UP);
@@ -449,7 +453,7 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   metrics_to_test_.insert(kMetricBatteryDischargeRateWhileSuspendedName);
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
-  metrics_reporter_.Init(power_status_);
+  Init();
 
   // We shouldn't send a sample if we haven't suspended.
   IgnoreHandlePowerStatusUpdateMetrics();

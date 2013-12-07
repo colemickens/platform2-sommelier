@@ -22,12 +22,12 @@ namespace policy {
 // displays.
 class ExternalBacklightController : public BacklightController {
  public:
-  explicit ExternalBacklightController(
-      system::DisplayPowerSetterInterface* display_power_setter);
+  ExternalBacklightController();
   virtual ~ExternalBacklightController();
 
-  // Initializes the object.
-  void Init();
+  // Initializes the object. Ownership of |display_power_setter| remains with
+  // the caller.
+  void Init(system::DisplayPowerSetterInterface* display_power_setter);
 
   // BacklightController implementation:
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;

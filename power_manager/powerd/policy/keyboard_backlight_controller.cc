@@ -64,16 +64,10 @@ void KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
   controller_->HandleVideoTimeout();
 }
 
-KeyboardBacklightController::KeyboardBacklightController(
-    system::BacklightInterface* backlight,
-    PrefsInterface* prefs,
-    system::AmbientLightSensorInterface* sensor,
-    BacklightController* display_backlight_controller)
-    : backlight_(backlight),
-      prefs_(prefs),
-      display_backlight_controller_(display_backlight_controller),
-      ambient_light_handler_(
-          sensor ? new AmbientLightHandler(sensor, this) : NULL),
+KeyboardBacklightController::KeyboardBacklightController()
+    : backlight_(NULL),
+      prefs_(NULL),
+      display_backlight_controller_(NULL),
       session_state_(SESSION_STOPPED),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
@@ -91,18 +85,30 @@ KeyboardBacklightController::KeyboardBacklightController(
       num_als_adjustments_(0),
       num_user_adjustments_(0),
       display_brightness_is_zero_(false) {
-  DCHECK(backlight);
-  DCHECK(display_backlight_controller_);
-  display_backlight_controller_->AddObserver(this);
-  if (ambient_light_handler_)
-    ambient_light_handler_->set_name("keyboard");
 }
 
 KeyboardBacklightController::~KeyboardBacklightController() {
-  display_backlight_controller_->RemoveObserver(this);
+  if (display_backlight_controller_)
+    display_backlight_controller_->RemoveObserver(this);
 }
 
-bool KeyboardBacklightController::Init() {
+bool KeyboardBacklightController::Init(
+    system::BacklightInterface* backlight,
+    PrefsInterface* prefs,
+    system::AmbientLightSensorInterface* sensor,
+    BacklightController* display_backlight_controller) {
+  backlight_ = backlight;
+  prefs_ = prefs;
+
+  display_backlight_controller_ = display_backlight_controller;
+  if (display_backlight_controller_)
+    display_backlight_controller_->AddObserver(this);
+
+  if (sensor) {
+    ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
+    ambient_light_handler_->set_name("keyboard");
+  }
+
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";

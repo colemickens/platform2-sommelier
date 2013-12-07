@@ -48,17 +48,17 @@ class InternalBacklightController : public BacklightController,
   // |use_ambient_light_| to false.
   static const int kAmbientLightSensorTimeoutSec;
 
-  InternalBacklightController(
-      system::BacklightInterface* backlight,
-      PrefsInterface* prefs,
-      system::AmbientLightSensorInterface* sensor,
-      system::DisplayPowerSetterInterface* display_power_setter);
+  InternalBacklightController();
   virtual ~InternalBacklightController();
 
   Clock* clock() { return clock_.get(); }
 
-  // Initializes the object.
-  bool Init();
+  // Initializes the object. Ownership of the passed-in pointers remains with
+  // the caller.
+  bool Init(system::BacklightInterface* backlight,
+            PrefsInterface* prefs,
+            system::AmbientLightSensorInterface* sensor,
+            system::DisplayPowerSetterInterface* display_power_setter);
 
   // Converts between [0, 100] and [0, |max_level_|] brightness scales.
   double LevelToPercent(int64 level);
