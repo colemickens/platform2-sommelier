@@ -20,6 +20,7 @@ CXX_BINARY(tools/power_supply_info): \
 	common/power_constants.o \
 	tools/power_supply_info.o \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a)
 CXX_BINARY(tools/power_supply_info): CPPFLAGS += $(GLIB_FLAGS)

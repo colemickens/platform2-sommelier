@@ -11,6 +11,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/system/input.h"
+#include "power_manager/powerd/system/udev_stub.h"
 
 namespace power_manager {
 namespace system {
@@ -23,7 +24,7 @@ class InputTest : public testing::Test {
     CHECK(drm_dir_.CreateUniqueTempDir());
     input_.set_sysfs_drm_path_for_testing(drm_dir_.path());
     CHECK(device_dir_.CreateUniqueTempDir());
-    input_.Init(&prefs_);
+    input_.Init(&prefs_, &udev_);
   }
   virtual ~InputTest() {}
 
@@ -46,6 +47,7 @@ class InputTest : public testing::Test {
   // directories.
   base::ScopedTempDir device_dir_;
 
+  UdevStub udev_;
   Input input_;
 };
 
@@ -142,6 +144,16 @@ TEST_F(InputTest, IsDisplayConnected) {
   ASSERT_TRUE(file_util::WriteFile(misnamed_status_path,
       kConnectedNewline.c_str(), kConnectedNewline.size()));
   EXPECT_FALSE(input_.IsDisplayConnected());
+}
+
+TEST_F(InputTest, RegisterForUdevEvents) {
+  scoped_ptr<Input> input(new Input);
+  input->Init(&prefs_, &udev_);
+  EXPECT_TRUE(udev_.HasObserver(Input::kInputUdevSubsystem, input.get()));
+
+  Input* dead_ptr = input.get();
+  input.reset();
+  EXPECT_FALSE(udev_.HasObserver(Input::kInputUdevSubsystem, dead_ptr));
 }
 
 }  // namespace system

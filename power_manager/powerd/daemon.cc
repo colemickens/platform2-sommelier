@@ -5,7 +5,6 @@
 #include "power_manager/powerd/daemon.h"
 
 #include <inttypes.h>
-#include <libudev.h>
 #include <stdint.h>
 
 #include <algorithm>
@@ -40,6 +39,7 @@
 #include "power_manager/powerd/system/display_power_setter.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/powerd/system/internal_backlight.h"
+#include "power_manager/powerd/system/udev.h"
 
 namespace power_manager {
 
@@ -50,9 +50,6 @@ namespace {
 // shutdowns that occur while the system is suspended (i.e. probably due to
 // the battery charge reaching zero).
 const char kSuspendedStatePath[] = "/var/lib/power_manager/powerd_suspended";
-
-// Power supply subsystem for udev events.
-const char kPowerSupplyUdevSubsystem[] = "power_supply";
 
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal.
@@ -357,6 +354,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
     : prefs_(new Prefs),
       state_controller_delegate_(new StateControllerDelegate(this)),
       dbus_sender_(new DBusSender),
+      udev_(new system::Udev),
       input_(new system::Input),
       state_controller_(new policy::StateController),
       input_controller_(new policy::InputController),
@@ -371,7 +369,6 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       shutting_down_(false),
       run_dir_(run_dir),
       session_state_(SESSION_STOPPED),
-      udev_(NULL),
       state_controller_initialized_(false),
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
@@ -388,15 +385,12 @@ Daemon::~Daemon() {
   if (display_backlight_controller_)
     display_backlight_controller_->RemoveObserver(this);
   power_supply_->RemoveObserver(this);
-
-  if (udev_)
-    udev_unref(udev_);
 }
 
 void Daemon::Init() {
-  RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
   dbus_sender_->Init(kPowerManagerServicePath, kPowerManagerInterface);
+  CHECK(udev_->Init());
 
   if (BoolPrefIsTrue(kHasAmbientLightSensorPref)) {
     light_sensor_.reset(new system::AmbientLightSensor);
@@ -448,7 +442,8 @@ void Daemon::Init() {
   prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
 
-  power_supply_->Init(base::FilePath(kPowerStatusPath), prefs_.get());
+  power_supply_->Init(base::FilePath(kPowerStatusPath),
+                      prefs_.get(), udev_.get());
   power_supply_->RefreshImmediately();
 
   metrics_library_->Init();
@@ -472,7 +467,7 @@ void Daemon::Init() {
   suspender_->Init(suspender_delegate_.get(), dbus_sender_.get(),
                    dark_resume_policy_.get(), prefs_.get());
 
-  CHECK(input_->Init(prefs_.get()));
+  CHECK(input_->Init(prefs_.get(), udev_.get()));
   input_controller_->Init(input_.get(), this, dbus_sender_.get(), prefs_.get());
 
   // Initialize |state_controller_| before |audio_client_| to ensure that the
@@ -702,52 +697,6 @@ void Daemon::OnPowerStatusUpdate() {
   PowerSupplyProperties protobuf;
   CopyPowerStatusToProtocolBuffer(status, &protobuf);
   dbus_sender_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
-}
-
-gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
-                                  GIOCondition /* condition */,
-                                  gpointer data) {
-  Daemon* daemon = static_cast<Daemon*>(data);
-
-  struct udev_device* dev = udev_monitor_receive_device(daemon->udev_monitor_);
-  if (dev) {
-    LOG(INFO) << "Event on (" << udev_device_get_subsystem(dev) << ") Action "
-              << udev_device_get_action(dev);
-    CHECK(std::string(udev_device_get_subsystem(dev)) ==
-          kPowerSupplyUdevSubsystem);
-    udev_device_unref(dev);
-    daemon->power_supply_->HandleUdevEvent();
-  } else {
-    LOG(ERROR) << "Can't get receive_device()";
-    return FALSE;
-  }
-  return TRUE;
-}
-
-void Daemon::RegisterUdevEventHandler() {
-  // Create the udev object.
-  udev_ = udev_new();
-  if (!udev_)
-    LOG(ERROR) << "Can't create udev object.";
-
-  // Create the udev monitor structure.
-  udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-  if (!udev_monitor_) {
-    LOG(ERROR) << "Can't create udev monitor.";
-    udev_unref(udev_);
-  }
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                  kPowerSupplyUdevSubsystem,
-                                                  NULL);
-  udev_monitor_enable_receiving(udev_monitor_);
-
-  int fd = udev_monitor_get_fd(udev_monitor_);
-
-  GIOChannel* channel = g_io_channel_unix_new(fd);
-  g_io_add_watch(channel, G_IO_IN, &(Daemon::UdevEventHandler), this);
-
-  LOG(INFO) << "Udev controller waiting for events on subsystem "
-            << kPowerSupplyUdevSubsystem;
 }
 
 void Daemon::RegisterDBusMessageHandler() {

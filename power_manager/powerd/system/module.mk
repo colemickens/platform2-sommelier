@@ -15,7 +15,8 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	powerd/system/internal_backlight.o \
 	powerd/system/peripheral_battery_watcher.o \
 	powerd/system/power_supply.o \
-	powerd/system/rolling_average.o
+	powerd/system/rolling_average.o \
+	powerd/system/udev.o
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
 	$(GLIB_LIBS) -lrt -ludev -lprotobuf-lite
 clean: CLEAN(powerd/libsystem.pie.a)
@@ -24,7 +25,8 @@ CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \
 	powerd/system/ambient_light_sensor_stub.o \
 	powerd/system/backlight_stub.o \
 	powerd/system/display_power_setter_stub.o \
-	powerd/system/input_stub.o
+	powerd/system/input_stub.o \
+	powerd/system/udev_stub.o
 clean: CLEAN(powerd/libsystem_test.pie.a)
 
 CXX_BINARY(powerd/system_unittest): \
@@ -36,6 +38,7 @@ CXX_BINARY(powerd/system_unittest): \
 	powerd/system/power_supply_unittest.o \
 	powerd/system/rolling_average_unittest.o \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \

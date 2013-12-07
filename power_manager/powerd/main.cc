@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
   g_type_init();
 
   base::AtExitManager at_exit_manager;
-  MessageLoopForUI message_loop;
+  MessageLoopForIO message_loop;
 
   // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
   power_manager::Daemon daemon((base::FilePath(FLAGS_prefs_dir)),

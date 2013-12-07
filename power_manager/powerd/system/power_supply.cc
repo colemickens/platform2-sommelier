@@ -16,6 +16,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/udev.h"
 
 namespace power_manager {
 namespace system {
@@ -126,6 +127,7 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
   return true;
 }
 
+const char PowerSupply::kUdevSubsystem[] = "power_supply";
 const int PowerSupply::kMaxCurrentSamples = 5;
 const int PowerSupply::kMaxChargeSamples = 5;
 const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
@@ -134,6 +136,7 @@ const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
 PowerSupply::PowerSupply()
     : prefs_(NULL),
+      udev_(NULL),
       clock_(new Clock),
       power_status_initialized_(false),
       low_battery_shutdown_percent_(0.0),
@@ -143,10 +146,18 @@ PowerSupply::PowerSupply()
       full_factor_(1.0) {
 }
 
-PowerSupply::~PowerSupply() {}
+PowerSupply::~PowerSupply() {
+  if (udev_)
+    udev_->RemoveObserver(kUdevSubsystem, this);
+}
+
 
 void PowerSupply::Init(const base::FilePath& power_supply_path,
-                       PrefsInterface* prefs) {
+                       PrefsInterface* prefs,
+                       UdevInterface* udev) {
+  udev_ = udev;
+  udev_->AddObserver(kUdevSubsystem, this);
+
   prefs_ = prefs;
   power_supply_path_ = power_supply_path;
   GetPowerSupplyPaths();
@@ -241,7 +252,9 @@ void PowerSupply::SetSuspended(bool suspended) {
   }
 }
 
-void PowerSupply::HandleUdevEvent() {
+void PowerSupply::OnUdevEvent(const std::string& subsystem,
+                              const std::string& sysname,
+                              UdevObserver::Action action) {
   VLOG(1) << "Heard about udev event";
   if (!is_suspended_)
     RefreshImmediately();

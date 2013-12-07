@@ -19,6 +19,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/power_supply_properties.pb.h"
+#include "power_manager/powerd/system/udev_stub.h"
 
 using std::map;
 using std::string;
@@ -130,7 +131,7 @@ class PowerSupplyTest : public ::testing::Test {
 
   // Initializes |power_supply_|.
   void Init() {
-    power_supply_->Init(path_, &prefs_);
+    power_supply_->Init(path_, &prefs_, &udev_);
   }
 
   // Sets the time so that |power_supply_| will believe that the current
@@ -199,12 +200,14 @@ class PowerSupplyTest : public ::testing::Test {
   FakePrefs prefs_;
   scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
   FilePath path_;
+  UdevStub udev_;
   scoped_ptr<PowerSupply> power_supply_;
   scoped_ptr<PowerSupply::TestApi> test_api_;
 };
 
 // Test system without power supply sysfs (e.g. virtual machine).
 TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
+  Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   // In absence of power supply sysfs, default assumption is line power on, no
@@ -420,7 +423,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // Connect AC, report a udev event, and check that the status is updated.
   WriteValue("ac/online", kOnline);
-  power_supply_->HandleUdevEvent();
+  power_supply_->OnUdevEvent(
+      PowerSupply::kUdevSubsystem, "AC", UdevObserver::ACTION_CHANGE);
   status = power_supply_->power_status();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -989,6 +993,16 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
   ASSERT_TRUE(power_supply_->RefreshImmediately());
   EXPECT_TRUE(observer.WaitForNotification());
   power_supply_->RemoveObserver(&observer);
+}
+
+TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
+  Init();
+  EXPECT_TRUE(udev_.HasObserver(PowerSupply::kUdevSubsystem,
+                                power_supply_.get()));
+
+  PowerSupply* dead_ptr = power_supply_.get();
+  power_supply_.reset();
+  EXPECT_FALSE(udev_.HasObserver(PowerSupply::kUdevSubsystem, dead_ptr));
 }
 
 }  // namespace system

@@ -19,6 +19,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/udev_stub.h"
 
 using std::map;
 using std::string;
@@ -61,7 +62,7 @@ class DarkResumePolicyTest : public ::testing::Test {
  protected:
   // Initializes |power_supply_| and |dark_resume_policy_|.
   void Init() {
-    power_supply_->Init(path_, &prefs_);
+    power_supply_->Init(path_, &prefs_, &udev_);
     SetBattery(100.0, false);
     dark_resume_policy_->Init(power_supply_.get(), &prefs_);
   }
@@ -98,6 +99,7 @@ class DarkResumePolicyTest : public ::testing::Test {
   FakePrefs prefs_;
   scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
   base::FilePath path_;
+  system::UdevStub udev_;
   scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<DarkResumePolicy> dark_resume_policy_;
 };

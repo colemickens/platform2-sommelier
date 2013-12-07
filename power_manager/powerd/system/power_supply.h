@@ -17,6 +17,7 @@
 #include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
+#include "power_manager/powerd/system/udev_observer.h"
 
 namespace power_manager {
 
@@ -24,6 +25,8 @@ class Clock;
 class PrefsInterface;
 
 namespace system {
+
+class UdevInterface;
 
 // Structures used for passing power supply info.
 struct PowerStatus {
@@ -137,7 +140,7 @@ struct PowerStatus {
 
 // Used to read power supply status from sysfs, e.g. whether on AC or battery,
 // charge and voltage level, current, etc.
-class PowerSupply {
+class PowerSupply : public UdevObserver {
  public:
   // Helper class for testing PowerSupply.
   class TestApi {
@@ -168,6 +171,9 @@ class PowerSupply {
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
+  // Power supply subsystem for udev events.
+  static const char kUdevSubsystem[];
+
   // Maximum number of samples of the battery current to average when
   // calculating the battery's time-to-full or -empty.
   static const int kMaxCurrentSamples;
@@ -191,7 +197,7 @@ class PowerSupply {
   static const double kLowBatteryShutdownSafetyPercent;
 
   PowerSupply();
-  ~PowerSupply();
+  virtual ~PowerSupply();
 
   const PowerStatus& power_status() const { return power_status_; }
 
@@ -201,7 +207,9 @@ class PowerSupply {
 
   // Initializes the object and begins polling. Ownership of |prefs| remains
   // with the caller.
-  void Init(const base::FilePath& power_supply_path, PrefsInterface *prefs);
+  void Init(const base::FilePath& power_supply_path,
+            PrefsInterface *prefs,
+            UdevInterface* udev);
 
   // Adds or removes an observer.
   void AddObserver(PowerSupplyObserver* observer);
@@ -216,9 +224,10 @@ class PowerSupply {
   // immediately and schedules a poll for the near future.
   void SetSuspended(bool suspended);
 
-  // Handles a power supply-related udev event.  Updates |power_status_|
-  // immediately.
-  void HandleUdevEvent();
+  // UdevObserver implementation:
+  virtual void OnUdevEvent(const std::string& subsystem,
+                           const std::string& sysname,
+                           UdevObserver::Action action) OVERRIDE;
 
  private:
   friend class PowerSupplyTest;
@@ -264,8 +273,8 @@ class PowerSupply {
   // Notifies |observers_| that |power_status_| has been updated.
   void NotifyObservers();
 
-  // Used to read power supply-related prefs.
-  PrefsInterface* prefs_;
+  PrefsInterface* prefs_;  // non-owned
+  UdevInterface* udev_;  // non-owned
 
   scoped_ptr<Clock> clock_;
 

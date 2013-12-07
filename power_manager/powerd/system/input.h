@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_H_
 #define POWER_MANAGER_POWERD_SYSTEM_INPUT_H_
 
-#include <glib.h>
-
 #include <map>
 #include <string>
 #include <vector>
@@ -14,13 +12,13 @@
 #include "base/basictypes.h"
 #include "base/callback.h"
 #include "base/file_path.h"
+#include "base/memory/linked_ptr.h"
+#include "base/memory/scoped_ptr.h"
+#include "base/message_loop.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_interface.h"
-
-// Forward declarations of structs from libudev.h.
-struct udev;
-struct udev_monitor;
+#include "power_manager/powerd/system/udev_observer.h"
 
 namespace power_manager {
 
@@ -29,9 +27,15 @@ class PrefsInterface;
 namespace system {
 
 class InputObserver;
+class UdevInterface;
 
-class Input : public InputInterface {
+class Input : public InputInterface,
+              public MessageLoopForIO::Watcher,
+              public UdevObserver {
  public:
+  // udev subsystem to watch for input device-related events.
+  static const char kInputUdevSubsystem[];
+
   // Filename within a DRM device directory containing the device's hotplug
   // status.
   static const char kDrmStatusFile[];
@@ -50,7 +54,7 @@ class Input : public InputInterface {
   }
 
   // Returns true on success.
-  bool Init(PrefsInterface* prefs);
+  bool Init(PrefsInterface* prefs, UdevInterface* udev);
 
   // InputInterface implementation:
   virtual void AddObserver(InputObserver* observer) OVERRIDE;
@@ -62,28 +66,17 @@ class Input : public InputInterface {
   virtual bool SetWakeInputsState(bool enable) OVERRIDE;
   virtual void SetTouchDevicesState(bool enable) OVERRIDE;
 
+  // MessageLoopForIO::Watcher implementation:
+  virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
+  virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
+
+  // UdevObserver implementation:
+  virtual void OnUdevEvent(const std::string& subsystem,
+                           const std::string& sysname,
+                           UdevObserver::Action action) OVERRIDE;
+
  private:
-  struct IOChannelWatch {
-    IOChannelWatch() : channel(NULL), source_id(0) {}
-    IOChannelWatch(GIOChannel* channel, guint source_id)
-        : channel(channel),
-          source_id(source_id) {
-    }
-
-    GIOChannel* channel;
-    guint source_id;
-  };
-
-  // Closes the G_IO channel |channel| and its file handle.
-  void CloseIOChannel(IOChannelWatch* channel);
-
-  // Add/Remove events to handle lid and power button.
-  bool AddEvent(const char* name);
-  bool RemoveEvent(const char* name);
-
-  // Add/Remove Inputs used for enabling and disabling wakeup events.
-  bool AddWakeInput(const char* name);
-  bool RemoveWakeInput(const char* name);
+  class EventFileDescriptor;
 
   // For every "event" in /dev/input/, open a file handle, and
   // RegisterInputEvent on it if the event contains power buttons or lid.
@@ -95,38 +88,31 @@ class Input : public InputInterface {
 
   // Set power/wakeup for all tracked input devices to wakeups_enabled_
   bool SetInputWakeupStates();
+
   // Set power/wakeup for input device number |input_num|
   bool SetWakeupState(int input_num, bool enabled);
 
-  // Check that the event of handle |fd| advertises power key or lid event.
-  // If so, watch this event for changes.
-  // Returns true if the event watch was successfully created.
-  // If it returns false, it doesn't necessarily mean there was an error.  The
-  // file handle could have been for something other than the power key or lid.
+  // Adds or removes events to handle lid and power button.
+  bool AddEvent(const std::string& name);
+  bool RemoveEvent(const std::string& name);
+
+  // Adds or removes inputs used for enabling and disabling wakeup events.
+  bool AddWakeInput(const std::string& name);
+  bool RemoveWakeInput(const std::string& name);
+
+  // Starts watching |fd| for events if it corresponds to a power button or lid
+  // switch. Takes ownership of |fd| and returns true if the descriptor is now
+  // watched; the caller is responsible for closing |fd| otherwise.
   bool RegisterInputEvent(int fd, int event_num);
 
-  gboolean HandleUdevEvent();
-  static gboolean HandleUdevEventThunk(GIOChannel*, GIOCondition, void* data) {
-    return reinterpret_cast<Input*>(data)->HandleUdevEvent();
-  }
-
-  void RegisterUdevEventHandler();
-
-  // Event handler for input events. |source| contains the IO Channel that has
-  // changed. |condition| contains the condition of change. |data| contains a
-  // pointer to an Input object.
-  gboolean HandleInputEvent(GIOChannel* source, GIOCondition condition);
-  static gboolean HandleInputEventThunk(GIOChannel* source,
-                                        GIOCondition condition,
-                                        void* data) {
-    return reinterpret_cast<Input*>(data)->HandleInputEvent(source, condition);
-  }
-
+  // File descriptor corresponding to the lid switch. The EventFileDescriptor
+  // in |registered_inputs_| handles closing this FD; it's stored separately so
+  // it can be queried directly for the lid state.
   int lid_fd_;
+
   int num_power_key_events_;
   int num_lid_events_;
-  struct udev_monitor* udev_monitor_;
-  struct udev* udev_;
+
   bool wakeups_enabled_;
 
   // Should the lid be watched for events if present?
@@ -138,8 +124,10 @@ class Input : public InputInterface {
   // Used to make ioctls to /dev/console to check which VT is active.
   int console_fd_;
 
-  // Maps from an input event number to a source tag.
-  typedef std::map<int, IOChannelWatch> InputMap;
+  UdevInterface* udev_;  // non-owned
+
+  // Keyed by input event number.
+  typedef std::map<int, linked_ptr<EventFileDescriptor> > InputMap;
   InputMap registered_inputs_;
 
   // Maps from an input name to an input number.

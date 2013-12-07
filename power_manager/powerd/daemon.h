@@ -31,10 +31,6 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 
-// Forward declarations of structs from libudev.h.
-struct udev;
-struct udev_monitor;
-
 class MetricsLibrary;
 
 namespace power_manager {
@@ -56,6 +52,7 @@ class AudioClient;
 class DisplayPowerSetter;
 class Input;
 class InternalBacklight;
+class Udev;
 }  // namespace system
 
 // Main class within the powerd daemon that ties all other classes together.
@@ -133,14 +130,6 @@ class Daemon : public policy::BacklightControllerObserver,
       policy::BacklightController::BrightnessChangeCause cause,
       const std::string& signal_name);
 
-  // Handles power supply udev events.
-  static gboolean UdevEventHandler(GIOChannel*,
-                                   GIOCondition condition,
-                                   gpointer data);
-
-  // Registers udev event handler with GIO.
-  void RegisterUdevEventHandler();
-
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
@@ -202,6 +191,7 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<policy::KeyboardBacklightController>
       keyboard_backlight_controller_;
 
+  scoped_ptr<system::Udev> udev_;
   scoped_ptr<system::Input> input_;
   scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<policy::InputController> input_controller_;
@@ -225,9 +215,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_;
 
-  // For listening to udev events.
-  struct udev_monitor* udev_monitor_;
-  struct udev* udev_;
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;
 

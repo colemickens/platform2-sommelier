@@ -20,6 +20,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/udev_stub.h"
 
 // Displays info about battery and line power.
 
@@ -102,9 +103,10 @@ int main(int argc, char** argv) {
   power_manager::Prefs prefs;
   CHECK(prefs.Init(pref_paths));
 
+  power_manager::system::UdevStub udev;
   base::FilePath path(kPowerStatusPath);
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs);
+  power_supply.Init(path, &prefs, &udev);
 
   CHECK(power_supply.RefreshImmediately());
   const power_manager::system::PowerStatus& status =

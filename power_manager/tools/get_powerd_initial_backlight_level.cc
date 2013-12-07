@@ -24,6 +24,7 @@
 #include "power_manager/powerd/system/display_power_setter_stub.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/udev_stub.h"
 
 int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
@@ -56,8 +57,10 @@ int main(int argc, char* argv[]) {
                             &display_power_setter);
 
   // Get the power source.
+  power_manager::system::UdevStub udev;
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(base::FilePath(power_manager::kPowerStatusPath), &prefs);
+  power_supply.Init(
+      base::FilePath(power_manager::kPowerStatusPath), &prefs, &udev);
   CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
       power_supply.power_status().line_power_on ?
