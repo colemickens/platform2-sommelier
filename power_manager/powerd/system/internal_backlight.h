@@ -53,8 +53,8 @@ class InternalBacklight : public BacklightInterface {
   bool TriggerTransitionTimeoutForTesting();
 
   // Overridden from BacklightInterface:
-  virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE;
-  virtual bool GetCurrentBrightnessLevel(int64* current_level) OVERRIDE;
+  virtual int64 GetMaxBrightnessLevel() OVERRIDE;
+  virtual int64 GetCurrentBrightnessLevel() OVERRIDE;
   virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
       OVERRIDE;
   virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;

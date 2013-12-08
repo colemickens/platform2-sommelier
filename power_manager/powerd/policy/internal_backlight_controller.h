@@ -55,7 +55,7 @@ class InternalBacklightController : public BacklightController,
 
   // Initializes the object. Ownership of the passed-in pointers remains with
   // the caller.
-  bool Init(system::BacklightInterface* backlight,
+  void Init(system::BacklightInterface* backlight,
             PrefsInterface* prefs,
             system::AmbientLightSensorInterface* sensor,
             system::DisplayPowerSetterInterface* display_power_setter);

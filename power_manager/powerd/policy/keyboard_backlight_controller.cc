@@ -92,7 +92,7 @@ KeyboardBacklightController::~KeyboardBacklightController() {
     display_backlight_controller_->RemoveObserver(this);
 }
 
-bool KeyboardBacklightController::Init(
+void KeyboardBacklightController::Init(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
     system::AmbientLightSensorInterface* sensor,
@@ -109,11 +109,8 @@ bool KeyboardBacklightController::Init(
     ambient_light_handler_->set_name("keyboard");
   }
 
-  if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
-      !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
-    LOG(ERROR) << "Querying backlight during initialization failed";
-    return false;
-  }
+  max_level_ = backlight_->GetMaxBrightnessLevel();
+  current_level_ = backlight_->GetCurrentBrightnessLevel();
 
   ReadPrefs();
 
@@ -125,7 +122,6 @@ bool KeyboardBacklightController::Init(
 
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with initial "
             << "level " << current_level_;
-  return true;
 }
 
 void KeyboardBacklightController::AddObserver(

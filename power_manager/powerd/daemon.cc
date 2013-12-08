@@ -418,18 +418,13 @@ void Daemon::Init() {
     } else {
       display_backlight_controller_.reset(
           new policy::InternalBacklightController);
-      if (!static_cast<policy::InternalBacklightController*>(
-              display_backlight_controller_.get())->Init(
-                  display_backlight_.get(), prefs_.get(), light_sensor_.get(),
-                  display_power_setter_.get())) {
-        LOG(ERROR) << "Cannot initialize display backlight controller";
-        display_backlight_controller_.reset();
-        display_backlight_.reset();
-      }
+      static_cast<policy::InternalBacklightController*>(
+         display_backlight_controller_.get())->Init(
+             display_backlight_.get(), prefs_.get(), light_sensor_.get(),
+             display_power_setter_.get());
+      display_backlight_controller_->AddObserver(this);
     }
   }
-  if (display_backlight_controller_)
-    display_backlight_controller_->AddObserver(this);
 
   if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
     if (!light_sensor_.get()) {
@@ -443,13 +438,9 @@ void Daemon::Init() {
       } else {
         keyboard_backlight_controller_.reset(
             new policy::KeyboardBacklightController);
-        if (!keyboard_backlight_controller_->Init(
-                keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
-                display_backlight_controller_.get())) {
-          LOG(ERROR) << "Cannot initialize keyboard backlight controller";
-          keyboard_backlight_controller_.reset();
-          keyboard_backlight_.reset();
-        }
+        keyboard_backlight_controller_->Init(
+            keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
+            display_backlight_controller_.get());
       }
     }
   }

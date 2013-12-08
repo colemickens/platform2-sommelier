@@ -55,7 +55,7 @@ class KeyboardBacklightController
 
   // Initializes the object. Ownership of passed-in pointers remains with the
   // caller. |sensor| and |display_backlight_controller| may be NULL.
-  bool Init(system::BacklightInterface* backlight,
+  void Init(system::BacklightInterface* backlight,
             PrefsInterface* prefs,
             system::AmbientLightSensorInterface* sensor,
             BacklightController* display_backlight_controller);

@@ -16,18 +16,12 @@ BacklightStub::BacklightStub(int64 max_level, int64 current_level)
 
 BacklightStub::~BacklightStub() {}
 
-bool BacklightStub::GetMaxBrightnessLevel(int64* max_level) {
-  if (should_fail_)
-    return false;
-  *max_level = max_level_;
-  return true;
+int64 BacklightStub::GetMaxBrightnessLevel() {
+  return max_level_;
 }
 
-bool BacklightStub::GetCurrentBrightnessLevel(int64* current_level) {
-  if (should_fail_)
-    return false;
-  *current_level = current_level_;
-  return true;
+int64 BacklightStub::GetCurrentBrightnessLevel() {
+  return current_level_;
 }
 
 bool BacklightStub::SetBrightnessLevel(int64 level, base::TimeDelta interval) {

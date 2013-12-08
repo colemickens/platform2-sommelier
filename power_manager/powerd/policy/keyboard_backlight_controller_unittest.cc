@@ -45,7 +45,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   }
 
   // Initializes |controller_|.
-  virtual bool Init() {
+  virtual void Init() {
     backlight_.set_max_level(max_backlight_level_);
     backlight_.set_current_level(initial_backlight_level_);
     light_sensor_.set_lux(initial_als_lux_);
@@ -56,8 +56,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetString(kKeyboardBacklightUserStepsPref, user_steps_pref_);
     prefs_.SetInt64(kDisableALSPref, 0);
 
-    return controller_.Init(&backlight_, &prefs_, &light_sensor_,
-                            &display_backlight_controller_);
+    controller_.Init(&backlight_, &prefs_, &light_sensor_,
+                     &display_backlight_controller_);
   }
 
  protected:
@@ -85,13 +85,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   KeyboardBacklightController::TestApi test_api_;
 };
 
-TEST_F(KeyboardBacklightControllerTest, InitFails) {
-  backlight_.set_should_fail(true);
-  EXPECT_FALSE(Init());
-}
-
 TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
-  ASSERT_TRUE(Init());
+  Init();
 
   // GetBrightnessPercent() should initially return the backlight's
   // starting level.  (It's safe to compare levels and percents since we're
@@ -111,7 +106,7 @@ TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n100.0";
-  ASSERT_TRUE(Init());
+  Init();
   controller_.HandleSessionStateChange(SESSION_STARTED);
   light_sensor_.NotifyObservers();
   ASSERT_EQ(20, backlight_.current_level());
@@ -162,7 +157,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   initial_backlight_level_ = 20;
   als_limits_pref_ = "0.0\n20.0\n75.0";
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
-  ASSERT_TRUE(Init());
+  Init();
   ASSERT_EQ(20, backlight_.current_level());
 
   // ALS returns bad value.
@@ -204,7 +199,7 @@ TEST_F(KeyboardBacklightControllerTest, TwoValueLimitsPref) {
   // We should use reasonable limits if the user limits pref only has two
   // values instead of the expected three.
   user_limits_pref_ = "0.0\n50.0";
-  ASSERT_TRUE(Init());
+  Init();
   controller_.IncreaseUserBrightness();
   controller_.IncreaseUserBrightness();
   controller_.IncreaseUserBrightness();
@@ -215,7 +210,7 @@ TEST_F(KeyboardBacklightControllerTest, UnparseableLimitsPref) {
   // We should use reasonable limits if the user limits pref contains a
   // non-numeric value.
   user_limits_pref_ = "0.0\n50.0\nfoo";
-  ASSERT_TRUE(Init());
+  Init();
   controller_.IncreaseUserBrightness();
   controller_.IncreaseUserBrightness();
   controller_.IncreaseUserBrightness();
@@ -225,7 +220,7 @@ TEST_F(KeyboardBacklightControllerTest, UnparseableLimitsPref) {
 TEST_F(KeyboardBacklightControllerTest, SkipBogusUserStep) {
   user_steps_pref_ = "0.0\n10.0\nfoo\n60.0\n100.0";
   initial_backlight_level_ = 0;
-  ASSERT_TRUE(Init());
+  Init();
   ASSERT_EQ(0, backlight_.current_level());
 
   // The invalid value should be skipped over.
@@ -243,7 +238,7 @@ TEST_F(KeyboardBacklightControllerTest, EmptyUserStepsPref) {
   user_steps_pref_ = "";
   user_limits_pref_ = "15.0\n63.0\n87.0";
   initial_backlight_level_ = 0;
-  ASSERT_TRUE(Init());
+  Init();
   ASSERT_EQ(0, backlight_.current_level());
 
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
@@ -256,7 +251,7 @@ TEST_F(KeyboardBacklightControllerTest, SkipBogusAlsStep) {
   // Set a pref with only two values in the middle step instead of three.
   als_steps_pref_ = "20.0 -1 50\n50.0 75\n75.0 60 -1";
   initial_backlight_level_ = 20;
-  ASSERT_TRUE(Init());
+  Init();
 
   // After two readings above the bottom step's increase threshold, the
   // backlight should go to the top step.
@@ -270,7 +265,7 @@ TEST_F(KeyboardBacklightControllerTest, EmptyAlsStepsPref) {
   als_steps_pref_ = "";
   als_limits_pref_ = "20.0\n50.0\n90.0";
   initial_backlight_level_ = 0;
-  ASSERT_TRUE(Init());
+  Init();
 
   light_sensor_.set_lux(20);
   light_sensor_.NotifyObservers();
@@ -284,7 +279,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n60.0\n100.0";
   initial_backlight_level_ = 50;
-  ASSERT_TRUE(Init());
+  Init();
   light_sensor_.NotifyObservers();
   ASSERT_EQ(50, backlight_.current_level());
 
@@ -338,7 +333,7 @@ TEST_F(KeyboardBacklightControllerTest, DontBrightenToDim) {
   als_limits_pref_ = "0.0\n30.0\n100.0";
   als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
   initial_als_lux_ = 20;
-  ASSERT_TRUE(Init());
+  Init();
 
   light_sensor_.NotifyObservers();
   ASSERT_EQ(20, backlight_.current_level());
@@ -352,7 +347,7 @@ TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
   als_limits_pref_ = "0.0\n10.0\n100.0";
   als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
   initial_als_lux_ = 20;
-  ASSERT_TRUE(Init());
+  Init();
 
   light_sensor_.NotifyObservers();
   ASSERT_EQ(20, backlight_.current_level());
@@ -379,7 +374,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
   user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 15;
-  ASSERT_TRUE(Init());
+  Init();
   EXPECT_EQ(15, backlight_.current_level());
 
   // After an increase request switches to user control of the brightness
@@ -398,7 +393,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
   als_steps_pref_ = "0.0 -1 30\n30.0 20 60\n60.0 50 90\n100.0 80 -1";
   initial_backlight_level_ = 55;
   initial_als_lux_ = 85;
-  ASSERT_TRUE(Init());
+  Init();
   EXPECT_EQ(55, backlight_.current_level());
 
   // After an ambient light reading, the controller should slowly
@@ -413,7 +408,7 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
   user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 0;
-  ASSERT_TRUE(Init());
+  Init();
 
   EXPECT_EQ(0, backlight_.current_level());
 
@@ -444,7 +439,7 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseUserBrightness) {
   user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 100;
-  ASSERT_TRUE(Init());
+  Init();
 
   EXPECT_EQ(100, backlight_.current_level());
 
@@ -472,14 +467,14 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseUserBrightness) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
-  ASSERT_TRUE(Init());
+  Init();
   controller_.SetShuttingDown(true);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 }
 
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
-  ASSERT_TRUE(Init());
+  Init();
   controller_.SetDocked(true);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
@@ -495,7 +490,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n100.0";
   initial_backlight_level_ = 50;
-  ASSERT_TRUE(Init());
+  Init();
   light_sensor_.set_lux(100);
   light_sensor_.NotifyObservers();
 

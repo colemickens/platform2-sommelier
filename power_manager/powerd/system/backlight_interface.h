@@ -20,14 +20,13 @@ class BacklightInterface {
 
   // Gets the maximum brightness level (in an an arbitrary device-specific
   // range; note that 0 is always the minimum allowable value, though).
-  // Returns false on failure.
-  virtual bool GetMaxBrightnessLevel(int64* max_level) = 0;
+  virtual int64 GetMaxBrightnessLevel() = 0;
 
   // Gets the current brightness level (in an an arbitrary device-specific
-  // range).  Returns false on failure.
-  virtual bool GetCurrentBrightnessLevel(int64* current_level) = 0;
+  // range).
+  virtual int64 GetCurrentBrightnessLevel() = 0;
 
-  // Sets the backlight to |level| over |interval|.  Returns false on failure.
+  // Sets the backlight to |level| over |interval|. Returns false on failure.
   virtual bool SetBrightnessLevel(int64 level,
                                   base::TimeDelta interval) = 0;
 

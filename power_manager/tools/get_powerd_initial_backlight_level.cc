@@ -36,10 +36,9 @@ int main(int argc, char* argv[]) {
   CHECK(real_backlight.Init(
      base::FilePath(power_manager::kInternalBacklightPath),
      power_manager::kInternalBacklightPattern));
-  int64 max_level = 0, current_level = 0;
-  CHECK(real_backlight.GetMaxBrightnessLevel(&max_level));
-  CHECK(real_backlight.GetCurrentBrightnessLevel(&current_level));
-  power_manager::system::BacklightStub stub_backlight(max_level, current_level);
+  power_manager::system::BacklightStub stub_backlight(
+      real_backlight.GetMaxBrightnessLevel(),
+      real_backlight.GetCurrentBrightnessLevel());
 
   power_manager::Prefs prefs;
   CHECK(prefs.Init(power_manager::util::GetPrefPaths(
@@ -53,8 +52,8 @@ int main(int argc, char* argv[]) {
     light_sensor.reset(new power_manager::system::AmbientLightSensorStub(0));
   power_manager::system::DisplayPowerSetterStub display_power_setter;
   power_manager::policy::InternalBacklightController backlight_controller;
-  CHECK(backlight_controller.Init(&stub_backlight, &prefs, light_sensor.get(),
-                                  &display_power_setter));
+  backlight_controller.Init(&stub_backlight, &prefs, light_sensor.get(),
+                            &display_power_setter);
 
   // Get the power source.
   power_manager::system::PowerSupply power_supply;

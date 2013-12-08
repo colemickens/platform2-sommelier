@@ -29,10 +29,9 @@ DEFINE_double(set_resume_brightness_percent, -1.0,
 namespace {
 
 int64 PercentToLevel(power_manager::system::BacklightInterface& backlight,
-                     double percent) {
+                     double percent,
+                     int64 max_level) {
   percent = std::min(percent, 100.0);
-  int64 max_level = 0;
-  CHECK(backlight.GetMaxBrightnessLevel(&max_level));
   return static_cast<int64>(roundl(percent * max_level / 100.0));
 }
 
@@ -59,30 +58,23 @@ int main(int argc, char* argv[]) {
                       power_manager::kInternalBacklightPattern))
     return 1;
 
-  if (FLAGS_get_brightness) {
-    int64 level = 0;
-    CHECK(backlight.GetCurrentBrightnessLevel(&level));
+  const int64 level = backlight.GetCurrentBrightnessLevel();
+  const int64 max_level = backlight.GetMaxBrightnessLevel();
+
+  if (FLAGS_get_brightness)
     printf("%" PRIi64 "\n", level);
-  }
-  if (FLAGS_get_max_brightness) {
-    int64 max_level = 0;
-    CHECK(backlight.GetMaxBrightnessLevel(&max_level));
+  if (FLAGS_get_max_brightness)
     printf("%" PRIi64 "\n", max_level);
-  }
-  if (FLAGS_get_brightness_percent) {
-    int64 level = 0;
-    CHECK(backlight.GetCurrentBrightnessLevel(&level));
-    int64 max_level = 0;
-    CHECK(backlight.GetMaxBrightnessLevel(&max_level));
+  if (FLAGS_get_brightness_percent)
     printf("%f\n", level * 100.0 / max_level);
-  }
 
   if (FLAGS_set_brightness >= 0) {
     CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness,
                                        base::TimeDelta()));
   }
   if (FLAGS_set_brightness_percent >= 0.0) {
-    int64 new_level = PercentToLevel(backlight, FLAGS_set_brightness_percent);
+    int64 new_level = PercentToLevel(
+        backlight, FLAGS_set_brightness_percent, max_level);
     CHECK(backlight.SetBrightnessLevel(new_level, base::TimeDelta()));
   }
 
@@ -90,8 +82,8 @@ int main(int argc, char* argv[]) {
   if (FLAGS_set_resume_brightness >= -1)
     CHECK(backlight.SetResumeBrightnessLevel(FLAGS_set_resume_brightness));
   if (FLAGS_set_resume_brightness_percent >= 0.0) {
-    int64 new_level = PercentToLevel(backlight,
-                                     FLAGS_set_resume_brightness_percent);
+    int64 new_level = PercentToLevel(
+        backlight, FLAGS_set_resume_brightness_percent, max_level);
     CHECK(backlight.SetResumeBrightnessLevel(new_level));
   }
 

@@ -88,16 +88,12 @@ bool InternalBacklight::TriggerTransitionTimeoutForTesting() {
   return transition_timer_.IsRunning();
 }
 
-bool InternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
-  DCHECK(max_level);
-  *max_level = max_brightness_level_;
-  return true;
+int64 InternalBacklight::GetMaxBrightnessLevel() {
+  return max_brightness_level_;
 }
 
-bool InternalBacklight::GetCurrentBrightnessLevel(int64* current_level) {
-  DCHECK(current_level);
-  *current_level = current_brightness_level_;
-  return true;
+int64 InternalBacklight::GetCurrentBrightnessLevel() {
+  return current_brightness_level_;
 }
 
 bool InternalBacklight::SetResumeBrightnessLevel(int64 level) {

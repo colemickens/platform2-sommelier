@@ -73,14 +73,6 @@ class InternalBacklightTest : public ::testing::Test {
     return level;
   }
 
-  // Calls |backlight|'s GetCurrentBrightnessMethod().  Returns the current
-  // brightness or -1 on failure.
-  int64 GetCurrentBrightness(InternalBacklight* backlight) {
-    DCHECK(backlight);
-    int64 level = 0;
-    return backlight->GetCurrentBrightnessLevel(&level) ? level : -1;
-  }
-
  protected:
   base::FilePath test_path_;
 };
@@ -97,14 +89,8 @@ TEST_F(InternalBacklightTest, BasicTest) {
 
   InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
-
-  int64 level = 0;
-  EXPECT_TRUE(backlight.GetCurrentBrightnessLevel(&level));
-  EXPECT_EQ(kActualBrightness, level);
-
-  int64 max_level = 0;
-  EXPECT_TRUE(backlight.GetMaxBrightnessLevel(&max_level));
-  EXPECT_EQ(kMaxBrightness, max_level);
+  EXPECT_EQ(kActualBrightness, backlight.GetCurrentBrightnessLevel());
+  EXPECT_EQ(kMaxBrightness, backlight.GetMaxBrightnessLevel());
 }
 
 // Make sure things work OK when there is no actual_brightness file.
@@ -119,14 +105,8 @@ TEST_F(InternalBacklightTest, NoActualBrightnessTest) {
 
   InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
-
-  int64 level = 0;
-  EXPECT_TRUE(backlight.GetCurrentBrightnessLevel(&level));
-  EXPECT_EQ(kBrightness, level);
-
-  int64 max_level = 0;
-  EXPECT_TRUE(backlight.GetMaxBrightnessLevel(&max_level));
-  EXPECT_EQ(kMaxBrightness, max_level);
+  EXPECT_EQ(kBrightness, backlight.GetCurrentBrightnessLevel());
+  EXPECT_EQ(kMaxBrightness, backlight.GetMaxBrightnessLevel());
 }
 
 // Test that we pick the one with the greatest granularity
@@ -145,14 +125,8 @@ TEST_F(InternalBacklightTest, GranularityTest) {
 
   InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
-
-  int64 level = 0;
-  EXPECT_TRUE(backlight.GetCurrentBrightnessLevel(&level));
-  EXPECT_EQ(21, level);
-
-  int64 max_level = 0;
-  EXPECT_TRUE(backlight.GetMaxBrightnessLevel(&max_level));
-  EXPECT_EQ(255, max_level);
+  EXPECT_EQ(21, backlight.GetCurrentBrightnessLevel());
+  EXPECT_EQ(255, backlight.GetMaxBrightnessLevel());
 }
 
 // Test ignore directories starting with a "."
@@ -187,13 +161,8 @@ TEST_F(InternalBacklightTest, GlobTest) {
   InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*:kbd_backlight"));
 
-  int64 level = 0;
-  EXPECT_TRUE(backlight.GetCurrentBrightnessLevel(&level));
-  EXPECT_EQ(1, level);
-
-  int64 max_level = 0;
-  EXPECT_TRUE(backlight.GetMaxBrightnessLevel(&max_level));
-  EXPECT_EQ(2, max_level);
+  EXPECT_EQ(1, backlight.GetCurrentBrightnessLevel());
+  EXPECT_EQ(2, backlight.GetMaxBrightnessLevel());
 }
 
 TEST_F(InternalBacklightTest, Transitions) {
@@ -210,7 +179,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   backlight.SetBrightnessLevel(kMaxBrightness, base::TimeDelta());
   EXPECT_FALSE(backlight.transition_timer_is_running());
   EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
-  EXPECT_EQ(kMaxBrightness, GetCurrentBrightness(&backlight));
+  EXPECT_EQ(kMaxBrightness, backlight.GetCurrentBrightnessLevel());
 
   // Start a transition to the backlight's halfway point.
   const int64 kHalfBrightness = kMaxBrightness / 2;
@@ -222,7 +191,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   EXPECT_TRUE(backlight.transition_timer_is_running());
   EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
   EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
-  EXPECT_EQ(kMaxBrightness, GetCurrentBrightness(&backlight));
+  EXPECT_EQ(kMaxBrightness, backlight.GetCurrentBrightnessLevel());
 
   // Let half of the transition duration pass.
   const base::TimeTicks kMidpointTime = kStartTime + kDuration / 2;
@@ -230,7 +199,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
   const int64 kMidpointBrightness = (kMaxBrightness + kHalfBrightness) / 2;
   EXPECT_EQ(kMidpointBrightness, ReadBrightness(backlight_dir));
-  EXPECT_EQ(kMidpointBrightness, GetCurrentBrightness(&backlight));
+  EXPECT_EQ(kMidpointBrightness, backlight.GetCurrentBrightnessLevel());
 
   // At the end of the transition, we should return false to cancel the timeout.
   const base::TimeTicks kEndTime = kStartTime + kDuration;
@@ -238,7 +207,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   EXPECT_FALSE(backlight.TriggerTransitionTimeoutForTesting());
   EXPECT_FALSE(backlight.transition_timer_is_running());
   EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
-  EXPECT_EQ(kHalfBrightness, GetCurrentBrightness(&backlight));
+  EXPECT_EQ(kHalfBrightness, backlight.GetCurrentBrightnessLevel());
 }
 
 }  // namespace system

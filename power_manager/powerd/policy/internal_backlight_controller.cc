@@ -115,7 +115,7 @@ InternalBacklightController::InternalBacklightController()
 
 InternalBacklightController::~InternalBacklightController() {}
 
-bool InternalBacklightController::Init(
+void InternalBacklightController::Init(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
     system::AmbientLightSensorInterface* sensor,
@@ -129,11 +129,8 @@ bool InternalBacklightController::Init(
     ambient_light_handler_->set_name("panel");
   }
 
-  if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
-      !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
-    LOG(ERROR) << "Querying backlight during initialization failed";
-    return false;
-  }
+  max_level_ = backlight_->GetMaxBrightnessLevel();
+  current_level_ = backlight_->GetCurrentBrightnessLevel();
 
   if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
     min_visible_level_ = 1;
@@ -199,7 +196,6 @@ bool InternalBacklightController::Init(
             << step_percent_ << "% step and minimum-visible level of "
             << min_visible_level_ << "; current level is " << current_level_
             << " (" << LevelToPercent(current_level_) << "%)";
-  return true;
 }
 
 double InternalBacklightController::LevelToPercent(int64 raw_level) {
