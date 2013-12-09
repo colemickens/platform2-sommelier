@@ -46,6 +46,9 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_CONST_METHOD2(HasOtherAddress,
                      bool(int interface_index,
                           const IPAddress &excluded_address));
+  MOCK_CONST_METHOD2(HasDirectConnectivityTo,
+                     bool(int interface_index,
+                          const IPAddress &address));
   MOCK_CONST_METHOD1(CreateTunnelInterface,  bool(std::string *interface_name));
   MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &));

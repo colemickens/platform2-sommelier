@@ -143,6 +143,7 @@ class DeviceInfoTest : public Test {
   static const char kTestIPAddress3[];
   static const char kTestIPAddress4[];
   static const char kTestIPAddress5[];
+  static const char kTestIPAddress6[];
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
 
@@ -179,6 +180,7 @@ const char DeviceInfoTest::kTestIPAddress2[] = "fe80::1aa9:5ff:abcd:1235";
 const char DeviceInfoTest::kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
 const char DeviceInfoTest::kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
 const char DeviceInfoTest::kTestIPAddress5[] = "192.168.1.2";
+const char DeviceInfoTest::kTestIPAddress6[] = "192.168.2.2";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
@@ -790,6 +792,57 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
 
   // address5 is now on this interface.
   EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
+}
+
+TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  SendMessageToDeviceInfo(*message);
+
+  IPAddress address0(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address0.SetAddressFromString(kTestIPAddress0));
+
+  // There are no addresses on this interface.
+  EXPECT_FALSE(device_info_.HasDirectConnectivityTo(
+      kTestDeviceIndex, address0));
+
+  IPAddress address1(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address1,
+                                    IFA_F_PERMANENT,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  // No current addresses are of the same family as |address0|.
+  EXPECT_FALSE(device_info_.HasDirectConnectivityTo(
+      kTestDeviceIndex, address0));
+
+  IPAddress address6(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address6.SetAddressFromString(kTestIPAddress6));
+  address6.set_prefix(kTestIPAddressPrefix0);
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address6,
+                                    IFA_F_PERMANENT,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  // |address0| is not reachable from |address6|.
+  EXPECT_FALSE(device_info_.HasDirectConnectivityTo(
+      kTestDeviceIndex, address0));
+
+  IPAddress address5(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
+  address5.set_prefix(kTestIPAddressPrefix0);
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address5,
+                                    IFA_F_PERMANENT,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  // |address0| is reachable from |address5| which is associated with the
+  // interface.
+  EXPECT_TRUE(device_info_.HasDirectConnectivityTo(
+      kTestDeviceIndex, address0));
 }
 
 TEST_F(DeviceInfoTest, HasSubdir) {
