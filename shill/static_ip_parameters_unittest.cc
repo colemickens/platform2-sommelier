@@ -4,6 +4,8 @@
 
 #include "shill/static_ip_parameters.h"
 
+#include <base/basictypes.h>
+#include <base/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -11,6 +13,7 @@
 #include "shill/mock_store.h"
 #include "shill/property_store.h"
 
+using base::IntToString;
 using std::string;
 using std::vector;
 using testing::_;
@@ -37,75 +40,135 @@ class StaticIpParametersTest : public Test {
  public:
   StaticIpParametersTest() {}
 
-  void ExpectEmpty() {
-    EXPECT_TRUE(props_.address.empty());
-    EXPECT_TRUE(props_.gateway.empty());
-    EXPECT_FALSE(props_.mtu);
-    EXPECT_TRUE(props_.dns_servers.empty());
-    EXPECT_TRUE(props_.peer_address.empty());
-    EXPECT_FALSE(props_.subnet_prefix);
+  void ExpectEmptyIPConfig() {
+    EXPECT_TRUE(ipconfig_props_.address.empty());
+    EXPECT_TRUE(ipconfig_props_.gateway.empty());
+    EXPECT_FALSE(ipconfig_props_.mtu);
+    EXPECT_TRUE(ipconfig_props_.dns_servers.empty());
+    EXPECT_TRUE(ipconfig_props_.peer_address.empty());
+    EXPECT_FALSE(ipconfig_props_.subnet_prefix);
   }
-  void ExpectPopulated() {
-    EXPECT_EQ(kAddress, props_.address);
-    EXPECT_EQ(kGateway, props_.gateway);
-    EXPECT_EQ(kMtu, props_.mtu);
-    EXPECT_EQ(2, props_.dns_servers.size());
-    EXPECT_EQ(kNameServer0, props_.dns_servers[0]);
-    EXPECT_EQ(kNameServer1, props_.dns_servers[1]);
-    EXPECT_EQ(kPeerAddress, props_.peer_address);
-    EXPECT_EQ(kPrefixLen, props_.subnet_prefix);
+  // Modify an IP address string in some predictable way.  There's no need
+  // for the output string to be valid from a networking perspective.
+  string VersionedAddress(const string &address, int version) {
+    string returned_address = address;
+    CHECK(returned_address.length());
+    returned_address[returned_address.length() - 1] += version;
+    return returned_address;
   }
-  void Populate() {
-    props_.address = kAddress;
-    props_.gateway = kGateway;
-    props_.mtu = kMtu;
-    props_.dns_servers.push_back(kNameServer0);
-    props_.dns_servers.push_back(kNameServer1);
-    props_.peer_address = kPeerAddress;
-    props_.subnet_prefix = kPrefixLen;
+  void ExpectPopulatedIPConfigWithVersion(int version) {
+    EXPECT_EQ(VersionedAddress(kAddress, version), ipconfig_props_.address);
+    EXPECT_EQ(VersionedAddress(kGateway, version), ipconfig_props_.gateway);
+    EXPECT_EQ(kMtu + version, ipconfig_props_.mtu);
+    EXPECT_EQ(2, ipconfig_props_.dns_servers.size());
+    EXPECT_EQ(VersionedAddress(kNameServer0, version),
+              ipconfig_props_.dns_servers[0]);
+    EXPECT_EQ(VersionedAddress(kNameServer1, version),
+              ipconfig_props_.dns_servers[1]);
+    EXPECT_EQ(VersionedAddress(kPeerAddress, version),
+              ipconfig_props_.peer_address);
+    EXPECT_EQ(kPrefixLen + version, ipconfig_props_.subnet_prefix);
   }
+  void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
+  void ExpectPropertiesWithVersion(PropertyStore *store,
+                                        const string &property_prefix,
+                                        int version) {
+    string string_value;
+    Error unused_error;
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".Address",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kAddress, version), string_value);
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".Gateway",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kGateway, version), string_value);
+    int32 int_value;
+    EXPECT_TRUE(store->GetInt32Property(property_prefix + ".Mtu", &int_value,
+                                        &unused_error));
+    EXPECT_EQ(kMtu + version, int_value);
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".NameServers",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kNameServer0, version) + "," +
+              VersionedAddress(kNameServer1, version),
+              string_value);
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".PeerAddress",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kPeerAddress, version), string_value);
+    EXPECT_TRUE(store->GetInt32Property(property_prefix + ".Prefixlen",
+                                        &int_value,
+                                        &unused_error));
+    EXPECT_EQ(kPrefixLen + version, int_value);
+  }
+  void ExpectProperties(PropertyStore *store, const string &property_prefix) {
+    ExpectPropertiesWithVersion(store, property_prefix, 0);
+  }
+  void PopulateIPConfig() {
+    ipconfig_props_.address = kAddress;
+    ipconfig_props_.gateway = kGateway;
+    ipconfig_props_.mtu = kMtu;
+    ipconfig_props_.dns_servers.push_back(kNameServer0);
+    ipconfig_props_.dns_servers.push_back(kNameServer1);
+    ipconfig_props_.peer_address = kPeerAddress;
+    ipconfig_props_.subnet_prefix = kPrefixLen;
+  }
+  void SetStaticPropertiesWithVersion(PropertyStore *store, int version) {
+    Error error;
+    store->SetStringProperty(
+        "StaticIP.Address", VersionedAddress(kAddress, version), &error);
+    store->SetStringProperty(
+        "StaticIP.Gateway", VersionedAddress(kGateway, version), &error);
+    store->SetInt32Property(
+        "StaticIP.Mtu", kMtu + version, &error);
+    store->SetStringProperty(
+        "StaticIP.NameServers",
+        VersionedAddress(kNameServer0, version) + "," +
+        VersionedAddress(kNameServer1, version),
+        &error);
+    store->SetStringProperty(
+        "StaticIP.PeerAddress",
+        VersionedAddress(kPeerAddress, version),
+        &error);
+    store->SetInt32Property("StaticIP.Prefixlen", kPrefixLen + version, &error);
+  }
+  void SetStaticProperties(PropertyStore *store) {
+    SetStaticPropertiesWithVersion(store, 0);
+  }
+
  protected:
   StaticIPParameters static_params_;
-  IPConfig::Properties props_;
+  IPConfig::Properties ipconfig_props_;
 };
 
 TEST_F(StaticIpParametersTest, InitState) {
-  EXPECT_TRUE(props_.address.empty());
-  EXPECT_TRUE(props_.gateway.empty());
-  EXPECT_FALSE(props_.mtu);
-  EXPECT_TRUE(props_.dns_servers.empty());
-  EXPECT_TRUE(props_.peer_address.empty());
-  EXPECT_FALSE(props_.subnet_prefix);
+  ExpectEmptyIPConfig();
 
   // Applying an empty set of parameters on an empty set of properties should
   // be a no-op.
-  static_params_.ApplyTo(&props_);
-  ExpectEmpty();
+  static_params_.ApplyTo(&ipconfig_props_);
+  ExpectEmptyIPConfig();
 }
 
 TEST_F(StaticIpParametersTest, ApplyEmptyParameters) {
-  Populate();
-  static_params_.ApplyTo(&props_);
-  ExpectPopulated();
+  PopulateIPConfig();
+  static_params_.ApplyTo(&ipconfig_props_);
+  ExpectPopulatedIPConfig();
 }
 
 TEST_F(StaticIpParametersTest, ControlInterface) {
   PropertyStore store;
   static_params_.PlumbPropertyStore(&store);
-  Error error;
-  store.SetStringProperty("StaticIP.Address", kAddress, &error);
-  store.SetStringProperty("StaticIP.Gateway", kGateway, &error);
-  store.SetInt32Property("StaticIP.Mtu", kMtu, &error);
-  store.SetStringProperty("StaticIP.NameServers", kNameServers, &error);
-  store.SetStringProperty("StaticIP.PeerAddress", kPeerAddress, &error);
-  store.SetInt32Property("StaticIP.Prefixlen", kPrefixLen, &error);
-  static_params_.ApplyTo(&props_);
-  ExpectPopulated();
+  SetStaticProperties(&store);
+  static_params_.ApplyTo(&ipconfig_props_);
+  ExpectPopulatedIPConfig();
 
   EXPECT_TRUE(static_params_.ContainsAddress());
-  store.ClearProperty("StaticIP.Address", &error);
+  Error unused_error;
+  store.ClearProperty("StaticIP.Address", &unused_error);
   EXPECT_FALSE(static_params_.ContainsAddress());
-  store.ClearProperty("StaticIP.Mtu", &error);
+  store.ClearProperty("StaticIP.Mtu", &unused_error);
   IPConfig::Properties props;
   const string kTestAddress("test_address");
   props.address = kTestAddress;
@@ -121,7 +184,6 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
   string string_value;
-  Error unused_error;
   EXPECT_TRUE(store.GetStringProperty("StaticIP.Gateway", &string_value,
                                       &unused_error));
   EXPECT_EQ(kGateway, string_value);
@@ -160,8 +222,8 @@ TEST_F(StaticIpParametersTest, Profile) {
   EXPECT_CALL(store, GetInt(kID, "StaticIP.Prefixlen", _))
       .WillOnce(DoAll(SetArgumentPointee<2>(kPrefixLen), Return(true)));
   static_params_.Load(&store, kID);
-  static_params_.ApplyTo(&props_);
-  ExpectPopulated();
+  static_params_.ApplyTo(&ipconfig_props_);
+  ExpectPopulatedIPConfig();
 
   EXPECT_CALL(store, SetString(kID, "StaticIP.Address", kAddress))
       .WillOnce(Return(true));
@@ -179,70 +241,48 @@ TEST_F(StaticIpParametersTest, Profile) {
 }
 
 TEST_F(StaticIpParametersTest, SavedParameters) {
-  const int32 kOffset = 1234;
-  const string kPrefix("xxx");
-  PropertyStore store;
-  static_params_.PlumbPropertyStore(&store);
-  Error error;
-  store.SetStringProperty("StaticIP.Address", kPrefix + kAddress, &error);
-  store.SetStringProperty("StaticIP.Gateway", kPrefix + kGateway, &error);
-  store.SetInt32Property("StaticIP.Mtu", kOffset + kMtu, &error);
-  store.SetStringProperty(
-      "StaticIP.NameServers", kPrefix + kNameServers, &error);
-  store.SetStringProperty(
-      "StaticIP.PeerAddress", kPrefix + kPeerAddress, &error);
-  store.SetInt32Property("StaticIP.Prefixlen", kOffset + kPrefixLen, &error);
-  Populate();
-  static_params_.ApplyTo(&props_);
+  // Calling RestoreTo() when no parameters are set should not crash or
+  // add any entries.
+  static_params_.RestoreTo(&ipconfig_props_);
+  ExpectEmptyIPConfig();
 
-  string string_value;
-  Error unused_error;
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.Address", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kAddress, string_value);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.Gateway", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kGateway, string_value);
-  int32 int_value;
-  EXPECT_TRUE(store.GetInt32Property("SavedIP.Mtu", &int_value,
-                                     &unused_error));
-  EXPECT_EQ(kMtu, int_value);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.NameServers", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kNameServers, string_value);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.PeerAddress", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kPeerAddress, string_value);
-  EXPECT_TRUE(store.GetInt32Property("SavedIP.Prefixlen", &int_value,
-                                     &unused_error));
-  EXPECT_EQ(kPrefixLen, int_value);
+  PopulateIPConfig();
+  PropertyStore static_params_props;
+  static_params_.PlumbPropertyStore(&static_params_props);
+  SetStaticPropertiesWithVersion(&static_params_props, 1);
+  static_params_.ApplyTo(&ipconfig_props_);
 
-  store.ClearProperty("StaticIP.Address", &error);
-  store.ClearProperty("StaticIP.Gateway", &error);
-  store.ClearProperty("StaticIP.Mtu", &error);
-  store.ClearProperty( "StaticIP.NameServers", &error);
-  store.ClearProperty( "StaticIP.PeerAddress", &error);
-  store.ClearProperty("StaticIP.Prefixlen", &error);
+  // The version 0 properties in |ipconfig_props_| are now in SavedIP.*
+  // properties, while the version 1 StaticIP parameters are now in
+  // |ipconfig_props_|.
+  ExpectPropertiesWithVersion(&static_params_props, "SavedIP", 0);
+  ExpectPopulatedIPConfigWithVersion(1);
 
-  static_params_.ApplyTo(&props_);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.Address", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kPrefix + kAddress, string_value);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.Gateway", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kPrefix + kGateway, string_value);
-  EXPECT_TRUE(store.GetInt32Property("SavedIP.Mtu", &int_value,
-                                     &unused_error));
-  EXPECT_EQ(kOffset + kMtu, int_value);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.NameServers", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kPrefix + kNameServers, string_value);
-  EXPECT_TRUE(store.GetStringProperty("SavedIP.PeerAddress", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kPrefix + kPeerAddress, string_value);
-  EXPECT_TRUE(store.GetInt32Property("SavedIP.Prefixlen", &int_value,
-                                     &unused_error));
-  EXPECT_EQ(kOffset + kPrefixLen, int_value);
+  // Clear all "StaticIP" parameters.
+  static_params_.args_.Clear();
+
+  // Another ApplyTo() call rotates the version 1 properties in
+  // |ipconfig_props_| over to SavedIP.*.  Since there are no StaticIP
+  // parameters, |ipconfig_props_| should remain populated with version 1
+  // parameters.
+  static_params_.ApplyTo(&ipconfig_props_);
+  ExpectPropertiesWithVersion(&static_params_props, "SavedIP", 1);
+  ExpectPopulatedIPConfigWithVersion(1);
+
+  // Reset |ipconfig_props_| to version 0.
+  PopulateIPConfig();
+
+  // A RestoreTo() call moves the version 1 "SavedIP" parameters into
+  // |ipconfig_props_|.
+  SetStaticPropertiesWithVersion(&static_params_props, 2);
+  static_params_.RestoreTo(&ipconfig_props_);
+  ExpectPopulatedIPConfigWithVersion(1);
+
+  // All "SavedIP" parameters should be cleared.
+  EXPECT_TRUE(static_params_.saved_args_.IsEmpty());
+
+  // Static IP parameters should be unchanged.
+  ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);
 }
 
 }  // namespace shill

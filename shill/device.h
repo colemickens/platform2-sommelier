@@ -363,6 +363,10 @@ class Device : public base::RefCounted<Device> {
   // Callback invoked on every IP configuration update.
   void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success);
 
+  // Callback invoked when "Refresh" is invoked on an IPConfig.  This usually
+  // signals a change in static IP parameters.
+  void OnIPConfigRefreshed(const IPConfigRefPtr &ipconfig);
+
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected
   // service with Service::kFailureDHCP.

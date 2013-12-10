@@ -204,6 +204,20 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties *props) {
   ApplyInt(kPrefixlenProperty, &props->subnet_prefix);
 }
 
+void StaticIPParameters::RestoreTo(IPConfig::Properties *props) {
+  props->address = saved_args_.LookupString(kAddressProperty, "");
+  props->gateway = saved_args_.LookupString(kGatewayProperty, "");
+  props->mtu = saved_args_.LookupInt(kMtuProperty, 0);
+  props->dns_servers.clear();
+  string saved_dns_servers = saved_args_.LookupString(kNameServersProperty, "");
+  if (!saved_dns_servers.empty()) {
+    base::SplitString(saved_dns_servers, ',', &props->dns_servers);
+  }
+  props->peer_address = saved_args_.LookupString(kPeerAddressProperty, "");
+  props->subnet_prefix = saved_args_.LookupInt(kPrefixlenProperty, 0);
+  ClearSavedParameters();
+}
+
 void StaticIPParameters::ClearSavedParameters() {
   saved_args_.Clear();
 }

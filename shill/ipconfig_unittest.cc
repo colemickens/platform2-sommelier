@@ -149,6 +149,37 @@ TEST_F(IPConfigTest, UpdateCallback) {
   }
 }
 
+namespace {
+
+class RefreshCallbackTest {
+ public:
+  RefreshCallbackTest(const IPConfigRefPtr &ipconfig)
+      : ipconfig_(ipconfig),
+        called_(false) {}
+
+  void Callback(const IPConfigRefPtr &ipconfig) {
+    called_ = true;
+    EXPECT_EQ(ipconfig_.get(), ipconfig.get());
+  }
+
+  bool called() const { return called_; }
+
+ private:
+  IPConfigRefPtr ipconfig_;
+  bool called_;
+};
+
+}  // namespace {}
+
+TEST_F(IPConfigTest, RefreshCallback) {
+  RefreshCallbackTest callback_test(ipconfig_);
+  ASSERT_FALSE(callback_test.called());
+  ipconfig_->RegisterRefreshCallback(
+      Bind(&RefreshCallbackTest::Callback, Unretained(&callback_test)));
+  ipconfig_->Refresh(NULL);
+  EXPECT_TRUE(callback_test.called());
+}
+
 TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
   // The UpdateCallback should be able to drop a reference to the
   // IPConfig object without crashing.
@@ -164,6 +195,11 @@ TEST_F(IPConfigTest, PropertyChanges) {
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
   ipconfig_->ApplyStaticIPParameters(&static_ip_params);
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
+  ipconfig_->RestoreSavedIPParameters(&static_ip_params);
   Mock::VerifyAndClearExpectations(adaptor);
 
   IPConfig::Properties ip_properties;

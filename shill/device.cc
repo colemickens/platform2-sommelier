@@ -417,6 +417,8 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
                                            ShouldUseMinimalDHCPConfig());
   ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
                                          weak_ptr_factory_.GetWeakPtr()));
+  ipconfig_->RegisterRefreshCallback(Bind(&Device::OnIPConfigRefreshed,
+                                          weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
                              weak_ptr_factory_.GetWeakPtr()));
   return ipconfig_->RequestIP();
@@ -469,6 +471,10 @@ void Device::ConfigureStaticIPTask() {
     // the static information.
     OnIPConfigUpdated(ipconfig_, true);
   } else {
+    // Either |ipconfig_| has just been created in AcquireIPConfig() or
+    // we're being called by OnIPConfigRefreshed().  In either case a
+    // DHCP client has been started, and will take care of calling
+    // OnIPConfigUpdated() when it completes.
     SLOG(Device, 2) << __func__ << " " << " no static IP address.";
   }
 }
@@ -548,6 +554,15 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     OnIPConfigFailure();
     DestroyConnection();
   }
+}
+
+void Device::OnIPConfigRefreshed(const IPConfigRefPtr &ipconfig) {
+  // Clear the previously applied static IP parameters.
+  ipconfig->RestoreSavedIPParameters(
+      selected_service_->mutable_static_ip_parameters());
+
+  dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
+                             weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Device::OnIPConfigFailure() {

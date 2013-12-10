@@ -94,12 +94,21 @@ bool IPConfig::ReleaseIP(ReleaseReason reason) {
 }
 
 void IPConfig::Refresh(Error */*error*/) {
+  if (!refresh_callback_.is_null()) {
+    refresh_callback_.Run(this);
+  }
   RenewIP();
 }
 
 void IPConfig::ApplyStaticIPParameters(
     StaticIPParameters *static_ip_parameters) {
   static_ip_parameters->ApplyTo(&properties_);
+  EmitChanges();
+}
+
+void IPConfig::RestoreSavedIPParameters(
+    StaticIPParameters *static_ip_parameters) {
+  static_ip_parameters->RestoreTo(&properties_);
   EmitChanges();
 }
 
@@ -131,6 +140,11 @@ void IPConfig::UpdateProperties(const Properties &properties, bool success) {
     update_callback_.Run(this, success);
   }
   EmitChanges();
+}
+
+void IPConfig::RegisterRefreshCallback(
+    const Callback<void(const IPConfigRefPtr&)> &callback) {
+  refresh_callback_ = callback;
 }
 
 void IPConfig::RegisterUpdateCallback(

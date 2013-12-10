@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <base/logging.h>
 
 #include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
@@ -39,6 +40,10 @@ class StaticIPParameters {
   // their original values.
   void ApplyTo(IPConfig::Properties *props);
 
+  // Restore IP parameters from |saved_args_| to |props|, then clear
+  // |saved_args_|.
+  void RestoreTo(IPConfig::Properties *props);
+
   // Remove any saved parameters from a previous call to ApplyTo().
   void ClearSavedParameters();
 
@@ -48,6 +53,7 @@ class StaticIPParameters {
  private:
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
+  FRIEND_TEST(StaticIpParametersTest, SavedParameters);
 
   struct Property {
     enum Type {

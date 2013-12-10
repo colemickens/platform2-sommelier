@@ -90,6 +90,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void RegisterUpdateCallback(
       const base::Callback<void(const IPConfigRefPtr&, bool)> &callback);
 
+  // Registers a callback that's executed every time the Refresh method
+  // on the ipconfig is called.  Takes ownership of |callback|. Pass NULL
+  // to remove a callback. The callback's argument is a pointer to this IP
+  // configuration instance allowing clients to more easily manage multiple IP
+  // configurations.
+  void RegisterRefreshCallback(
+      const base::Callback<void(const IPConfigRefPtr&)> &callback);
+
   void set_properties(const Properties &props) { properties_ = props; }
   virtual const Properties &properties() const { return properties_; }
 
@@ -110,6 +118,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
   void ApplyStaticIPParameters(StaticIPParameters *static_ip_parameters);
+
+  // Restore the fields of |properties_| to their original values before
+  // static IP parameters were previously applied.
+  void RestoreSavedIPParameters(StaticIPParameters *static_ip_parameters);
 
   // |id_suffix| is used to generate a storage ID that binds this instance
   // to its associated device.
@@ -158,6 +170,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
   base::Callback<void(const IPConfigRefPtr&, bool)> update_callback_;
+  base::Callback<void(const IPConfigRefPtr&)> refresh_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };
