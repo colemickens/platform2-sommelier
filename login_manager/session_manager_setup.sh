@@ -407,6 +407,10 @@ add_vmodule_pattern "network_portal_detector_impl=1"
 add_vmodule_pattern "*output_configurator*=1"
 add_vmodule_pattern "*ash/display*=1"
 
+# Turn on plugin loading failure logging for crbug.com/314301.
+add_vmodule_pattern "*zygote*=1"
+add_vmodule_pattern "*plugin*=2"
+
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 #
