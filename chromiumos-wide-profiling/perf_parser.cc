@@ -306,6 +306,11 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
       std::set<DSOInfo>::const_iterator dso_iter = dso_set_.find(dso_info);
       CHECK(dso_iter != dso_set_.end());
       dso_and_offset->dso_info_ = &(*dso_iter);
+      if (id) {
+        // For non-kernel events, we need to preserve the pgoff.
+        // TODO(cwp-team): Add unit test for this case.
+        dso_and_offset->offset_ += (*parsed_event->raw_event)->mmap.pgoff;
+      }
 
       ++parsed_event->num_samples_in_mmap_region;
     }
