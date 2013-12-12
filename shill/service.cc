@@ -1252,20 +1252,15 @@ bool Service::GetAutoConnect(Error */*error*/) {
 bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
             << auto_connect() << "->" << connect;
-  bool has_value_updated = false;
-  if (auto_connect() != connect) {
-    SetAutoConnect(connect);
-    manager_->UpdateService(this);
-    has_value_updated = true;
+  RetainAutoConnect();
+
+  if (auto_connect() == connect) {
+    return false;
   }
 
-  // In order to protect this user-set value from changing automatically
-  // when connected, mark the auto_connect flag as saved now.
-  if (!connect && !retain_auto_connect_) {
-    RetainAutoConnect();
-  }
-
-  return has_value_updated;
+  SetAutoConnect(connect);
+  manager_->UpdateService(this);
+  return true;
 }
 
 void Service::ClearAutoConnect(Error */*error*/) {

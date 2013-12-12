@@ -1761,19 +1761,29 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
-  EXPECT_FALSE(service_->retain_auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
+  // Clear the |retain_auto_connect_| flag for the next test.
+  service_->Unload();
+  ASSERT_FALSE(service_->retain_auto_connect());
+
   // true -> true
+  service_->SetAutoConnect(true);
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   SetAutoConnectFull(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
-  EXPECT_FALSE(service_->retain_auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
+  // Clear the |retain_auto_connect_| flag for the next test.
+  service_->Unload();
+  ASSERT_FALSE(service_->retain_auto_connect());
+
   // true -> false
+  service_->SetAutoConnect(true);
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
   SetAutoConnectFull(false, &error);
   EXPECT_TRUE(error.IsSuccess());
