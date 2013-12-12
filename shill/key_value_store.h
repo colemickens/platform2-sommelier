@@ -67,6 +67,7 @@ class KeyValueStore {
   // If |name| is in this store returns its value, otherwise returns
   // |default_value|.
   bool LookupBool(const std::string &name, bool default_value) const;
+  int LookupInt(const std::string &name, int default_value) const;
   std::string LookupString(const std::string &name,
                            const std::string &default_value) const;
 

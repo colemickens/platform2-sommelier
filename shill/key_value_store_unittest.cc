@@ -42,9 +42,12 @@ TEST_F(KeyValueStoreTest, Int) {
   const string kKey("foo");
   const int kValue = 456;
   EXPECT_FALSE(store_.ContainsInt(kKey));
+  const int kDefaultValue = 789;
+  EXPECT_EQ(kDefaultValue, store_.LookupInt(kKey, kDefaultValue));
   store_.SetInt(kKey, kValue);
   EXPECT_TRUE(store_.ContainsInt(kKey));
   EXPECT_EQ(kValue, store_.GetInt(kKey));
+  EXPECT_EQ(kValue, store_.LookupInt(kKey, kDefaultValue));
   store_.RemoveInt(kKey);
   EXPECT_FALSE(store_.ContainsInt(kKey));
 }

@@ -87,19 +87,19 @@ bool KeyValueStore::ContainsUint(const string &name) const {
 }
 
 bool KeyValueStore::GetBool(const string &name) const {
-  map<string, bool>::const_iterator it(bool_properties_.find(name));
+  const auto it(bool_properties_.find(name));
   CHECK(it != bool_properties_.end()) << "for bool property " << name;
   return it->second;
 }
 
 int32 KeyValueStore::GetInt(const string &name) const {
-  map<string, int32>::const_iterator it(int_properties_.find(name));
+  const auto it(int_properties_.find(name));
   CHECK(it != int_properties_.end()) << "for int property " << name;
   return it->second;
 }
 
 const string &KeyValueStore::GetString(const string &name) const {
-  map<string, string>::const_iterator it(string_properties_.find(name));
+  const auto it(string_properties_.find(name));
   CHECK(it != string_properties_.end()) << "for string property " << name;
   return it->second;
 }
@@ -119,7 +119,7 @@ const vector<string> &KeyValueStore::GetStrings(const string &name) const {
 }
 
 uint32 KeyValueStore::GetUint(const string &name) const {
-  map<string, uint32>::const_iterator it(uint_properties_.find(name));
+  const auto it(uint_properties_.find(name));
   CHECK(it != uint_properties_.end()) << "for uint property " << name;
   return it->second;
 }
@@ -167,13 +167,18 @@ void KeyValueStore::RemoveInt(const string &name) {
 }
 
 bool KeyValueStore::LookupBool(const string &name, bool default_value) const {
-  map<string, bool>::const_iterator it(bool_properties_.find(name));
+  const auto it(bool_properties_.find(name));
   return it == bool_properties_.end() ? default_value : it->second;
+}
+
+int KeyValueStore::LookupInt(const string &name, int default_value) const {
+  const auto it(int_properties_.find(name));
+  return it == int_properties_.end() ? default_value : it->second;
 }
 
 string KeyValueStore::LookupString(const string &name,
                                    const string &default_value) const {
-  map<string, string>::const_iterator it(string_properties_.find(name));
+  const auto it(string_properties_.find(name));
   return it == string_properties_.end() ? default_value : it->second;
 }
 
