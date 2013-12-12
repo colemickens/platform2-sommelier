@@ -360,8 +360,11 @@ class Device : public base::RefCounted<Device> {
   // request was successfully sent.
   bool AcquireIPConfigWithLeaseName(const std::string &lease_name);
 
-  // Callback invoked on every IP configuration update.
-  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success);
+  // Callback invoked on successful IP configuration updates.
+  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig);
+
+  // Callback invoked on IP configuration failures.
+  void OnIPConfigFailed(const IPConfigRefPtr &ipconfig);
 
   // Callback invoked when "Refresh" is invoked on an IPConfig.  This usually
   // signals a change in static IP parameters.

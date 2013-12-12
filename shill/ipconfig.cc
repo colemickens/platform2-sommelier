@@ -129,27 +129,48 @@ bool IPConfig::Save(StoreInterface *storage, const string &id_suffix) {
   return true;
 }
 
-void IPConfig::UpdateProperties(const Properties &properties, bool success) {
+void IPConfig::UpdateProperties(const Properties &properties) {
   // Take a reference of this instance to make sure we don't get destroyed in
   // the middle of this call. (The |update_callback_| may cause a reference
   // to be dropped. See, e.g., EthernetService::Disconnect and
   // Ethernet::DropConnection.)
   IPConfigRefPtr me = this;
+
   properties_ = properties;
+
   if (!update_callback_.is_null()) {
-    update_callback_.Run(this, success);
+    update_callback_.Run(this);
   }
   EmitChanges();
 }
 
-void IPConfig::RegisterRefreshCallback(
-    const Callback<void(const IPConfigRefPtr&)> &callback) {
+void IPConfig::NotifyFailure() {
+  // Take a reference of this instance to make sure we don't get destroyed in
+  // the middle of this call. (The |update_callback_| may cause a reference
+  // to be dropped. See, e.g., EthernetService::Disconnect and
+  // Ethernet::DropConnection.)
+  IPConfigRefPtr me = this;
+
+  if (!failure_callback_.is_null()) {
+    failure_callback_.Run(this);
+  }
+}
+
+void IPConfig::RegisterUpdateCallback(const Callback &callback) {
+  update_callback_ = callback;
+}
+
+void IPConfig::RegisterFailureCallback(const Callback &callback) {
+  failure_callback_ = callback;
+}
+
+void IPConfig::RegisterRefreshCallback(const Callback &callback) {
   refresh_callback_ = callback;
 }
 
-void IPConfig::RegisterUpdateCallback(
-    const Callback<void(const IPConfigRefPtr&, bool)> &callback) {
-  update_callback_ = callback;
+void IPConfig::ResetProperties() {
+  properties_ = Properties();
+  EmitChanges();
 }
 
 void IPConfig::EmitChanges() {

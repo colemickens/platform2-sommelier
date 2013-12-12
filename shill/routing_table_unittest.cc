@@ -481,7 +481,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
   vector<IPConfig::Route> &routes = properties.routes;
-  ipconfig->UpdateProperties(properties, true);
+  ipconfig->UpdateProperties(properties);
 
   const int kMetric = 10;
   EXPECT_TRUE(routing_table_->ConfigureRoutes(kTestDeviceIndex0,
@@ -493,7 +493,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
   route.netmask = kTestRemoteNetmask4;
   route.gateway = kTestGatewayAddress4;
   routes.push_back(route);
-  ipconfig->UpdateProperties(properties, true);
+  ipconfig->UpdateProperties(properties);
 
   IPAddress destination_address(IPAddress::kFamilyIPv4);
   IPAddress source_address(IPAddress::kFamilyIPv4);
@@ -526,7 +526,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
   routes.push_back(route);
   route.host = kTestRemoteNetwork4;
   routes.push_back(route);
-  ipconfig->UpdateProperties(properties, true);
+  ipconfig->UpdateProperties(properties);
 
   EXPECT_CALL(rtnl_handler_,
               SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,

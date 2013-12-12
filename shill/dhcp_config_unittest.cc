@@ -416,50 +416,47 @@ TEST_F(DHCPConfigTest, StartWithMinimalConfig) {
 
 namespace {
 
-class UpdateCallbackTest {
+class DHCPConfigCallbackTest : public DHCPConfigTest {
  public:
-  UpdateCallbackTest(const string &message,
-                     const IPConfigRefPtr &ipconfig,
-                     bool success)
-      : message_(message),
-        ipconfig_(ipconfig),
-        success_(success),
-        called_(false) {}
-
-  void Callback(const IPConfigRefPtr &ipconfig, bool success) {
-    called_ = true;
-    EXPECT_EQ(ipconfig_.get(), ipconfig.get()) << message_;
-    EXPECT_EQ(success_, success) << message_;
+  virtual void SetUp() {
+    DHCPConfigTest::SetUp();
+    config_->RegisterUpdateCallback(
+        Bind(&DHCPConfigCallbackTest::SuccessCallback, Unretained(this)));
+    config_->RegisterFailureCallback(
+        Bind(&DHCPConfigCallbackTest::FailureCallback, Unretained(this)));
+    ip_config_ = config_;
   }
 
-  bool called() const { return called_; }
+  MOCK_METHOD1(SuccessCallback, void(const IPConfigRefPtr &ipconfig));
+  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr &ipconfig));
+
+  // The mock methods above take IPConfigRefPtr because this is the type
+  // that the registered callbacks take.  This conversion of the DHCP
+  // config ref pointer eases our work in setting up expectations.
+  const IPConfigRefPtr &ConfigRef() { return ip_config_; }
 
  private:
-  const string message_;
-  IPConfigRefPtr ipconfig_;
-  bool success_;
-  bool called_;
+  IPConfigRefPtr ip_config_;
 };
 
 void DoNothing() {}
 
 }  // namespace {}
 
-TEST_F(DHCPConfigTest, ProcessEventSignalFail) {
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
-  UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
-  EXPECT_TRUE(callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->properties().address.empty());
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
-TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
   static const char * const kReasons[] =  {
     DHCPConfig::kReasonBound,
     DHCPConfig::kReasonRebind,
@@ -470,45 +467,41 @@ TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
     DHCPConfig::Configuration conf;
     string message = string(kReasons[r]) + " failed";
     conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(r);
-    UpdateCallbackTest callback_test(message, config_, true);
-    config_->RegisterUpdateCallback(
-        Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+    EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+    EXPECT_CALL(*this, FailureCallback(_)).Times(0);
     config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
     config_->ProcessEventSignal(kReasons[r], conf);
-    EXPECT_TRUE(callback_test.called()) << message;
+    EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << message;
     EXPECT_EQ(base::StringPrintf("%zu.0.0.0", r), config_->properties().address)
         << message;
     EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   }
 }
 
-TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalUnknown) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
   static const char kReasonUnknown[] = "UNKNOWN_REASON";
-  UpdateCallbackTest callback_test(kReasonUnknown, config_, false);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->ProcessEventSignal(kReasonUnknown, conf);
-  EXPECT_FALSE(callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->properties().address.empty());
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
-TEST_F(DHCPConfigTest, ProcessEventSignalGatewayArp) {
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
-  UpdateCallbackTest success_callback_test(DHCPConfig::kReasonGatewayArp,
-                                           config_, true);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&success_callback_test)));
+  EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
   config_->Start();
   config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
-  EXPECT_TRUE(success_callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
   EXPECT_EQ("4.3.2.1", config_->properties().address);
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->is_gateway_arp_active_);
@@ -519,31 +512,24 @@ TEST_F(DHCPConfigTest, ProcessEventSignalGatewayArp) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, ::testing::EndsWith(
       "Continuing to use our previous lease, due to gateway-ARP.")));
-  UpdateCallbackTest failure_callback_test("Timeout", config_, true);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&failure_callback_test)));
+  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->lease_acquisition_timeout_callback_.callback().Run();
-  EXPECT_FALSE(failure_callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->is_gateway_arp_active_);
 
   // An official reply from a DHCP server should reset our GatewayArp state.
-  UpdateCallbackTest renew_callback_test(DHCPConfig::kReasonRenew,
-                                           config_, true);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&renew_callback_test)));
+  EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->ProcessEventSignal(DHCPConfig::kReasonRenew, conf);
-  EXPECT_TRUE(renew_callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
   EXPECT_FALSE(config_->is_gateway_arp_active_);
 }
 
-TEST_F(DHCPConfigTest, ProcessEventSignalGatewayArpNak) {
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
-  UpdateCallbackTest success_callback_test(DHCPConfig::kReasonGatewayArp,
-                                           config_, true);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&success_callback_test)));
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
   config_->Start();
   config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
@@ -552,14 +538,14 @@ TEST_F(DHCPConfigTest, ProcessEventSignalGatewayArpNak) {
   // Sending a NAK should clear is_gateway_arp_active_.
   config_->ProcessEventSignal(DHCPConfig::kReasonNak, conf);
   EXPECT_FALSE(config_->is_gateway_arp_active_);
+  Mock::VerifyAndClearExpectations(this);
 
   // If the timeout gets called, we should lose the lease since GatewayArp
   // is not active any more.
-  UpdateCallbackTest failure_callback_test("Timeout", config_, false);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&failure_callback_test)));
+  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.callback().Run();
-  EXPECT_TRUE(failure_callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
 }
 
 TEST_F(DHCPConfigTest, ReleaseIP) {
@@ -630,17 +616,16 @@ TEST_F(DHCPConfigTest, RequestIP) {
   config_->pid_ = 0;
 }
 
-TEST_F(DHCPConfigTest, RequestIPTimeout) {
-  UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
+  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   config_->proxy_.reset(proxy_.release());
   config_->RenewIP();
   config_->dispatcher_->DispatchPendingEvents();
-  EXPECT_TRUE(callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
   config_->pid_ = 0;
 }
 
@@ -694,16 +679,15 @@ TEST_F(DHCPConfigTest, StartSuccessPersistent) {
   StopRunningConfigAndExpect(config, true);
 }
 
-TEST_F(DHCPConfigTest, StartTimeout) {
-  UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
-  config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+TEST_F(DHCPConfigCallbackTest, StartTimeout) {
+  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->proxy_.reset(proxy_.release());
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
   config_->Start();
   config_->dispatcher_->DispatchPendingEvents();
-  EXPECT_TRUE(callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
 }
 
 TEST_F(DHCPConfigTest, Stop) {

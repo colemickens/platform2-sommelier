@@ -147,8 +147,12 @@ class DeviceTest : public PropertyStoreTest {
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
 
-  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
-    device_->OnIPConfigUpdated(ipconfig, success);
+  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
+    device_->OnIPConfigUpdated(ipconfig);
+  }
+
+  void OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
+    device_->OnIPConfigFailed(ipconfig);
   }
 
   void SelectService(const ServiceRefPtr service) {
@@ -360,6 +364,8 @@ TEST_F(DeviceTest, SelectedService) {
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailure) {
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
+                                                          kDeviceName);
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
@@ -369,10 +375,13 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
   EXPECT_CALL(*service, OnDHCPFailure());
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
-  OnIPConfigUpdated(NULL, false);
+  EXPECT_CALL(*ipconfig, ResetProperties());
+  OnIPConfigFailed(ipconfig.get());
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
+                                                          kDeviceName);
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
@@ -386,7 +395,9 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   EXPECT_CALL(*service, OnDHCPFailure());
   EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
   EXPECT_CALL(*service, SetConnection(_)).Times(0);
-  OnIPConfigUpdated(NULL, false);
+  // The IPConfig should retain the previous values.
+  EXPECT_CALL(*ipconfig, ResetProperties()).Times(0);
+  OnIPConfigFailed(ipconfig.get());
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
@@ -406,7 +417,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
   EXPECT_CALL(*service, OnDHCPSuccess());
   EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
-  OnIPConfigUpdated(ipconfig.get(), true);
+  OnIPConfigUpdated(ipconfig.get());
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
@@ -415,7 +426,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
   SelectService(NULL);
-  OnIPConfigUpdated(ipconfig.get(), true);
+  OnIPConfigUpdated(ipconfig.get());
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {
@@ -706,11 +717,11 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
   IPConfig::Properties properties;
   properties.vendor_encapsulated_options =
       Tethering::kAndroidVendorEncapsulatedOptions;
-  device_->ipconfig_->UpdateProperties(properties, true);
+  device_->ipconfig_->UpdateProperties(properties);
   EXPECT_TRUE(device_->IsConnectedViaTether());
 
   properties.vendor_encapsulated_options = "Some other non-empty value";
-  device_->ipconfig_->UpdateProperties(properties, true);
+  device_->ipconfig_->UpdateProperties(properties);
   EXPECT_FALSE(device_->IsConnectedViaTether());
 }
 

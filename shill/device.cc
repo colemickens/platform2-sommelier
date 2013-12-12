@@ -417,6 +417,8 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
                                            ShouldUseMinimalDHCPConfig());
   ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
                                          weak_ptr_factory_.GetWeakPtr()));
+  ipconfig_->RegisterFailureCallback(Bind(&Device::OnIPConfigFailed,
+                                          weak_ptr_factory_.GetWeakPtr()));
   ipconfig_->RegisterRefreshCallback(Bind(&Device::OnIPConfigRefreshed,
                                           weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
@@ -469,7 +471,7 @@ void Device::ConfigureStaticIPTask() {
     // If the parameters contain an IP address, apply them now and bring
     // the interface up.  When DHCP information arrives, it will supplement
     // the static information.
-    OnIPConfigUpdated(ipconfig_, true);
+    OnIPConfigUpdated(ipconfig_);
   } else {
     // Either |ipconfig_| has just been created in AcquireIPConfig() or
     // we're being called by OnIPConfigRefreshed().  In either case a
@@ -479,81 +481,83 @@ void Device::ConfigureStaticIPTask() {
   }
 }
 
-void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
-  SLOG(Device, 2) << __func__ << " " << " success: " << success;
-  if (success) {
-    CreateConnection();
-    if (selected_service_) {
-      ipconfig->ApplyStaticIPParameters(
-          selected_service_->mutable_static_ip_parameters());
-      if (selected_service_->static_ip_parameters().ContainsAddress()) {
-        // If we are using a statically configured IP address instead
-        // of a leased IP address, release any acquired lease so it may
-        // be used by others.  This allows us to merge other non-leased
-        // parameters (like DNS) when they're available from a DHCP server
-        // and not overridden by static parameters, but at the same time
-        // we avoid taking up a dynamic IP address the DHCP server could
-        // assign to someone else who might actually use it.
-        ipconfig->ReleaseIP(IPConfig::kReleaseReasonStaticIP);
-      }
+void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
+  SLOG(Device, 2) << __func__;
+  CreateConnection();
+  if (selected_service_) {
+    ipconfig->ApplyStaticIPParameters(
+        selected_service_->mutable_static_ip_parameters());
+    if (selected_service_->static_ip_parameters().ContainsAddress()) {
+      // If we are using a statically configured IP address instead
+      // of a leased IP address, release any acquired lease so it may
+      // be used by others.  This allows us to merge other non-leased
+      // parameters (like DNS) when they're available from a DHCP server
+      // and not overridden by static parameters, but at the same time
+      // we avoid taking up a dynamic IP address the DHCP server could
+      // assign to someone else who might actually use it.
+      ipconfig->ReleaseIP(IPConfig::kReleaseReasonStaticIP);
     }
-    connection_->UpdateFromIPConfig(ipconfig);
-    // SetConnection must occur after the UpdateFromIPConfig so the
-    // service can use the values derived from the connection.
-    if (selected_service_) {
-      selected_service_->OnDHCPSuccess();
-      selected_service_->SetConnection(connection_);
-    }
-    // The service state change needs to happen last, so that at the
-    // time we report the state change to the manager, the service
-    // has its connection.
-    SetServiceState(Service::kStateConnected);
-    OnConnected();
-    portal_attempts_to_online_ = 0;
-    // Subtle: Start portal detection after transitioning the service
-    // to the Connected state because this call may immediately transition
-    // to the Online state.
-    if (selected_service_) {
-      StartPortalDetection();
-    }
-    StartLinkMonitor();
-  } else {
-    // TODO(pstew): This logic gets yet more complex when multiple
-    // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
-    if (selected_service_) {
-      selected_service_->OnDHCPFailure();
-
-      if (selected_service_->static_ip_parameters().ContainsAddress()) {
-        // Consider three cases:
-        //
-        // 1. We're here because DHCP failed while starting up. There
-        //    are two subcases:
-        //    a. DHCP has failed, and Static IP config has _not yet_
-        //       completed. It's fine to do nothing, because we'll
-        //       apply the static config shortly.
-        //    b. DHCP has failed, and Static IP config has _already_
-        //       completed. It's fine to do nothing, because we can
-        //       continue to use the static config that's already
-        //       been applied.
-        //
-        // 2. We're here because a previously valid DHCP configuration
-        //    is no longer valid. There's still a static IP config,
-        //    because the condition in the if clause evaluated to true.
-        //    Furthermore, the static config includes an IP address for
-        //    us to use.
-        //
-        //    The current configuration may include some DHCP
-        //    parameters, overriden by any static parameters
-        //    provided. We continue to use this configuration, because
-        //    the only configuration element that is leased to us (IP
-        //    address) will be overriden by a static parameter.
-        return;
-      }
-    }
-
-    OnIPConfigFailure();
-    DestroyConnection();
   }
+  connection_->UpdateFromIPConfig(ipconfig);
+  // SetConnection must occur after the UpdateFromIPConfig so the
+  // service can use the values derived from the connection.
+  if (selected_service_) {
+    selected_service_->OnDHCPSuccess();
+    selected_service_->SetConnection(connection_);
+  }
+  // The service state change needs to happen last, so that at the
+  // time we report the state change to the manager, the service
+  // has its connection.
+  SetServiceState(Service::kStateConnected);
+  OnConnected();
+  portal_attempts_to_online_ = 0;
+  // Subtle: Start portal detection after transitioning the service
+  // to the Connected state because this call may immediately transition
+  // to the Online state.
+  if (selected_service_) {
+    StartPortalDetection();
+  }
+  StartLinkMonitor();
+}
+
+void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
+  SLOG(Device, 2) << __func__;
+  // TODO(pstew): This logic gets yet more complex when multiple
+  // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
+  if (selected_service_) {
+    selected_service_->OnDHCPFailure();
+
+    if (selected_service_->static_ip_parameters().ContainsAddress()) {
+      // Consider three cases:
+      //
+      // 1. We're here because DHCP failed while starting up. There
+      //    are two subcases:
+      //    a. DHCP has failed, and Static IP config has _not yet_
+      //       completed. It's fine to do nothing, because we'll
+      //       apply the static config shortly.
+      //    b. DHCP has failed, and Static IP config has _already_
+      //       completed. It's fine to do nothing, because we can
+      //       continue to use the static config that's already
+      //       been applied.
+      //
+      // 2. We're here because a previously valid DHCP configuration
+      //    is no longer valid. There's still a static IP config,
+      //    because the condition in the if clause evaluated to true.
+      //    Furthermore, the static config includes an IP address for
+      //    us to use.
+      //
+      //    The current configuration may include some DHCP
+      //    parameters, overriden by any static parameters
+      //    provided. We continue to use this configuration, because
+      //    the only configuration element that is leased to us (IP
+      //    address) will be overriden by a static parameter.
+      return;
+    }
+  }
+
+  ipconfig->ResetProperties();
+  OnIPConfigFailure();
+  DestroyConnection();
 }
 
 void Device::OnIPConfigRefreshed(const IPConfigRefPtr &ipconfig) {

@@ -682,7 +682,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                  uint16 frequency,
                  const char *mode);
   void ReportIPConfigComplete() {
-    wifi_->OnIPConfigUpdated(dhcp_config_, true);
+    wifi_->OnIPConfigUpdated(dhcp_config_);
   }
   void ReportIPConfigFailure() {
     wifi_->OnIPConfigFailure();

@@ -163,7 +163,7 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
-    UpdateProperties(IPConfig::Properties(), false);
+    NotifyFailure();
     return;
   } else if (reason == kReasonNak) {
     // If we got a NAK, this means the DHCP server is active, and any
@@ -194,17 +194,22 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
     // client is still running, so we should not cancel the timeout
     // until that completes.  In the meantime, however, we can tentatively
     // configure our network in anticipation of successful completion.
-    IPConfig::UpdateProperties(properties, true);
+    IPConfig::UpdateProperties(properties);
     is_gateway_arp_active_ = true;
   } else {
-    UpdateProperties(properties, true);
+    UpdateProperties(properties);
     is_gateway_arp_active_ = false;
   }
 }
 
-void DHCPConfig::UpdateProperties(const Properties &properties, bool success) {
+void DHCPConfig::UpdateProperties(const Properties &properties) {
   StopDHCPTimeout();
-  IPConfig::UpdateProperties(properties, success);
+  IPConfig::UpdateProperties(properties);
+}
+
+void DHCPConfig::NotifyFailure() {
+  StopDHCPTimeout();
+  IPConfig::NotifyFailure();
 }
 
 bool DHCPConfig::Start() {
@@ -507,7 +512,7 @@ void DHCPConfig::ProcessDHCPTimeout() {
   if (is_gateway_arp_active_) {
     LOG(INFO) << "Continuing to use our previous lease, due to gateway-ARP.";
   } else {
-    UpdateProperties(IPConfig::Properties(), false);
+    NotifyFailure();
   }
 }
 

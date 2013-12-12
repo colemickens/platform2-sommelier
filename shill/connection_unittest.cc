@@ -100,7 +100,7 @@ class ConnectionTest : public Test {
   }
 
   void UpdateProperties() {
-    ipconfig_->UpdateProperties(properties_, true);
+    ipconfig_->UpdateProperties(properties_);
   }
 
   bool PinHostRoute(ConnectionRefPtr connection,

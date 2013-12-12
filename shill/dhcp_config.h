@@ -67,30 +67,31 @@ class DHCPConfig : public IPConfig {
 
  protected:
   // Overrides base clase implementation.
-  virtual void UpdateProperties(const Properties &properties, bool success);
+  virtual void UpdateProperties(const Properties &properties);
+  virtual void NotifyFailure();
 
  private:
   friend class DHCPConfigTest;
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalFail);
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp);
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalGatewayArpNak);
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalSuccess);
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalUnknown);
+  FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
+  FRIEND_TEST(DHCPConfigCallbackTest, StartTimeout);
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, InitProxy);
   FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
-  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalFail);
-  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalGatewayArp);
-  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalGatewayArpNak);
-  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalSuccess);
-  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalUnknown);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPArpGW);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithLease);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithoutLease);
   FRIEND_TEST(DHCPConfigTest, RenewIP);
   FRIEND_TEST(DHCPConfigTest, RequestIP);
-  FRIEND_TEST(DHCPConfigTest, RequestIPTimeout);
   FRIEND_TEST(DHCPConfigTest, Restart);
   FRIEND_TEST(DHCPConfigTest, RestartNoClient);
   FRIEND_TEST(DHCPConfigTest, StartFail);
-  FRIEND_TEST(DHCPConfigTest, StartTimeout);
   FRIEND_TEST(DHCPConfigTest, StartWithHostname);
   FRIEND_TEST(DHCPConfigTest, StartWithMinimalConfig);
   FRIEND_TEST(DHCPConfigTest, StartWithoutArpGateway);
@@ -174,6 +175,7 @@ class DHCPConfig : public IPConfig {
   // Informs upper layers of the failure.
   void ProcessDHCPTimeout();
 
+  // Kills DHCP client process.
   void KillClient();
 
   // Store cached copies of singletons for speed/ease of testing.

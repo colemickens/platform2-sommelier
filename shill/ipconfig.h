@@ -69,6 +69,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     kReleaseReasonStaticIP
   };
 
+  typedef base::Callback<void(const IPConfigRefPtr&)> Callback;
+
   IPConfig(ControlInterface *control_interface, const std::string &device_name);
   IPConfig(ControlInterface *control_interface,
            const std::string &device_name,
@@ -82,24 +84,31 @@ class IPConfig : public base::RefCounted<IPConfig> {
   std::string GetRpcIdentifier();
 
   // Registers a callback that's executed every time the configuration
-  // properties change. Takes ownership of |callback|. Pass NULL to remove a
-  // callback. The callback's first argument is a pointer to this IP
+  // properties are acquired. Takes ownership of |callback|.  Pass NULL
+  // to remove a callback. The callback's argument is a pointer to this IP
   // configuration instance allowing clients to more easily manage multiple IP
-  // configurations. The callback's second argument is set to false if IP
-  // configuration failed.
-  void RegisterUpdateCallback(
-      const base::Callback<void(const IPConfigRefPtr&, bool)> &callback);
+  // configurations.
+  void RegisterUpdateCallback(const Callback &callback);
+
+  // Registers a callback that's executed every time the configuration
+  // properties fail to be acquired. Takes ownership of |callback|.  Pass NULL
+  // to remove a callback. The callback's argument is a pointer to this IP
+  // configuration instance allowing clients to more easily manage multiple IP
+  // configurations.
+  void RegisterFailureCallback(const Callback &callback);
 
   // Registers a callback that's executed every time the Refresh method
   // on the ipconfig is called.  Takes ownership of |callback|. Pass NULL
   // to remove a callback. The callback's argument is a pointer to this IP
   // configuration instance allowing clients to more easily manage multiple IP
   // configurations.
-  void RegisterRefreshCallback(
-      const base::Callback<void(const IPConfigRefPtr&)> &callback);
+  void RegisterRefreshCallback(const Callback &callback);
 
   void set_properties(const Properties &props) { properties_ = props; }
   virtual const Properties &properties() const { return properties_; }
+
+  // Reset the IPConfig properties to their default values.
+  virtual void ResetProperties();
 
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a
@@ -134,8 +143,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual void EmitChanges();
 
   // Updates the IP configuration properties and notifies registered listeners
-  // about the event. |success| is set to false if the IP configuration failed.
-  virtual void UpdateProperties(const Properties &properties, bool success);
+  // about the event.
+  virtual void UpdateProperties(const Properties &properties);
+
+  // Notifies registered listeners that the configuration process has failed.
+  virtual void NotifyFailure();
 
   // |id_suffix| is appended to the storage id, intended to bind this instance
   // to its associated device.
@@ -169,8 +181,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const uint serial_;
   scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  base::Callback<void(const IPConfigRefPtr&, bool)> update_callback_;
-  base::Callback<void(const IPConfigRefPtr&)> refresh_callback_;
+  Callback update_callback_;
+  Callback failure_callback_;
+  Callback refresh_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

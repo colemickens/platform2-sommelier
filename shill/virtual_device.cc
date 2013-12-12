@@ -61,7 +61,7 @@ void VirtualDevice::UpdateIPConfig(const IPConfig::Properties &properties) {
     set_ipconfig(new IPConfig(control_interface(), link_name()));
   }
   ipconfig()->set_properties(properties);
-  OnIPConfigUpdated(ipconfig(), true);
+  OnIPConfigUpdated(ipconfig());
 }
 
 void VirtualDevice::DropConnection() {

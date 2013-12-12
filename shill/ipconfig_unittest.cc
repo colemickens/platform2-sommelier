@@ -34,17 +34,54 @@ const char kDeviceName[] = "testdevice";
 class IPConfigTest : public Test {
  public:
   IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {}
-  void DropRef(const IPConfigRefPtr &/*ipconfig*/, bool /*config_success*/) {
+  void DropRef(const IPConfigRefPtr &/*ipconfig*/) {
     ipconfig_ = NULL;
   }
+
+  MOCK_METHOD1(OnIPConfigUpdated, void(const IPConfigRefPtr &ipconfig));
+  MOCK_METHOD1(OnIPConfigFailed, void(const IPConfigRefPtr &ipconfig));
+  MOCK_METHOD1(OnIPConfigRefreshed, void(const IPConfigRefPtr &ipconfig));
 
  protected:
   IPConfigMockAdaptor *GetAdaptor() {
     return dynamic_cast<IPConfigMockAdaptor *>(ipconfig_->adaptor_.get());
   }
 
-  void UpdateProperties(const IPConfig::Properties &properties, bool success) {
-    ipconfig_->UpdateProperties(properties, success);
+  void UpdateProperties(const IPConfig::Properties &properties) {
+    ipconfig_->UpdateProperties(properties);
+  }
+
+  void NotifyFailure() {
+    ipconfig_->NotifyFailure();
+  }
+
+  void ExpectPropertiesEqual(const IPConfig::Properties &properties) {
+    EXPECT_EQ(properties.address, ipconfig_->properties().address);
+    EXPECT_EQ(properties.subnet_prefix, ipconfig_->properties().subnet_prefix);
+    EXPECT_EQ(properties.broadcast_address,
+              ipconfig_->properties().broadcast_address);
+    EXPECT_EQ(properties.dns_servers.size(),
+              ipconfig_->properties().dns_servers.size());
+    if (properties.dns_servers.size() ==
+        ipconfig_->properties().dns_servers.size()) {
+      for (size_t i = 0; i < properties.dns_servers.size(); ++i) {
+        EXPECT_EQ(properties.dns_servers[i],
+                  ipconfig_->properties().dns_servers[i]);
+      }
+    }
+    EXPECT_EQ(properties.domain_search.size(),
+              ipconfig_->properties().domain_search.size());
+    if (properties.domain_search.size() ==
+        ipconfig_->properties().domain_search.size()) {
+      for (size_t i = 0; i < properties.domain_search.size(); ++i) {
+        EXPECT_EQ(properties.domain_search[i],
+                  ipconfig_->properties().domain_search[i]);
+      }
+    }
+    EXPECT_EQ(properties.gateway, ipconfig_->properties().gateway);
+    EXPECT_EQ(properties.blackhole_ipv6,
+              ipconfig_->properties().blackhole_ipv6);
+    EXPECT_EQ(properties.mtu, ipconfig_->properties().mtu);
   }
 
   MockControl control_;
@@ -89,95 +126,51 @@ TEST_F(IPConfigTest, UpdateProperties) {
   properties.address = "1.2.3.4";
   properties.subnet_prefix = 24;
   properties.broadcast_address = "11.22.33.44";
-  properties.gateway = "5.6.7.8";
   properties.dns_servers.push_back("10.20.30.40");
   properties.dns_servers.push_back("20.30.40.50");
   properties.domain_name = "foo.org";
   properties.domain_search.push_back("zoo.org");
   properties.domain_search.push_back("zoo.com");
+  properties.gateway = "5.6.7.8";
   properties.blackhole_ipv6 = true;
   properties.mtu = 700;
-  UpdateProperties(properties, true);
-  EXPECT_EQ("1.2.3.4", ipconfig_->properties().address);
-  EXPECT_EQ(24, ipconfig_->properties().subnet_prefix);
-  EXPECT_EQ("11.22.33.44", ipconfig_->properties().broadcast_address);
-  EXPECT_EQ("5.6.7.8", ipconfig_->properties().gateway);
-  ASSERT_EQ(2, ipconfig_->properties().dns_servers.size());
-  EXPECT_EQ("10.20.30.40", ipconfig_->properties().dns_servers[0]);
-  EXPECT_EQ("20.30.40.50", ipconfig_->properties().dns_servers[1]);
-  ASSERT_EQ(2, ipconfig_->properties().domain_search.size());
-  EXPECT_EQ("zoo.org", ipconfig_->properties().domain_search[0]);
-  EXPECT_EQ("zoo.com", ipconfig_->properties().domain_search[1]);
-  EXPECT_EQ("foo.org", ipconfig_->properties().domain_name);
-  EXPECT_TRUE(ipconfig_->properties().blackhole_ipv6);
-  EXPECT_EQ(700, ipconfig_->properties().mtu);
+  UpdateProperties(properties);
+  ExpectPropertiesEqual(properties);
+
+  // We should not reset on NotifyFailure.
+  NotifyFailure();
+  ExpectPropertiesEqual(properties);
+
+  // We should reset if ResetProperties is called.
+  ipconfig_->ResetProperties();
+  ExpectPropertiesEqual(IPConfig::Properties());
 }
 
-namespace {
-
-class UpdateCallbackTest {
- public:
-  UpdateCallbackTest(const IPConfigRefPtr &ipconfig, bool success)
-      : ipconfig_(ipconfig),
-        success_(success),
-        called_(false) {}
-
-  void Callback(const IPConfigRefPtr &ipconfig, bool success) {
-    called_ = true;
-    EXPECT_EQ(ipconfig_.get(), ipconfig.get());
-    EXPECT_EQ(success_, success);
-  }
-
-  bool called() const { return called_; }
-
- private:
-  IPConfigRefPtr ipconfig_;
-  bool success_;
-  bool called_;
-};
-
-}  // namespace {}
-
-TEST_F(IPConfigTest, UpdateCallback) {
-  for (int success = 0; success < 2; success++) {
-    UpdateCallbackTest callback_test(ipconfig_, success);
-    ASSERT_FALSE(callback_test.called());
-    ipconfig_->RegisterUpdateCallback(
-        Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
-    UpdateProperties(IPConfig::Properties(), success);
-    EXPECT_TRUE(callback_test.called());
-  }
-}
-
-namespace {
-
-class RefreshCallbackTest {
- public:
-  RefreshCallbackTest(const IPConfigRefPtr &ipconfig)
-      : ipconfig_(ipconfig),
-        called_(false) {}
-
-  void Callback(const IPConfigRefPtr &ipconfig) {
-    called_ = true;
-    EXPECT_EQ(ipconfig_.get(), ipconfig.get());
-  }
-
-  bool called() const { return called_; }
-
- private:
-  IPConfigRefPtr ipconfig_;
-  bool called_;
-};
-
-}  // namespace {}
-
-TEST_F(IPConfigTest, RefreshCallback) {
-  RefreshCallbackTest callback_test(ipconfig_);
-  ASSERT_FALSE(callback_test.called());
+TEST_F(IPConfigTest, Callbacks) {
+  ipconfig_->RegisterUpdateCallback(
+      Bind(&IPConfigTest::OnIPConfigUpdated, Unretained(this)));
+  ipconfig_->RegisterFailureCallback(
+      Bind(&IPConfigTest::OnIPConfigFailed, Unretained(this)));
   ipconfig_->RegisterRefreshCallback(
-      Bind(&RefreshCallbackTest::Callback, Unretained(&callback_test)));
+      Bind(&IPConfigTest::OnIPConfigRefreshed, Unretained(this)));
+
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_));
+  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
+  UpdateProperties(IPConfig::Properties());
+  Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_));
+  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
+  NotifyFailure();
+  Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_));
   ipconfig_->Refresh(NULL);
-  EXPECT_TRUE(callback_test.called());
+  Mock::VerifyAndClearExpectations(this);
 }
 
 TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
@@ -185,7 +178,7 @@ TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
   // IPConfig object without crashing.
   ipconfig_->RegisterUpdateCallback(
       Bind(&IPConfigTest::DropRef, Unretained(this)));
-  UpdateProperties(IPConfig::Properties(), true);
+  UpdateProperties(IPConfig::Properties());
 }
 
 TEST_F(IPConfigTest, PropertyChanges) {
@@ -205,12 +198,21 @@ TEST_F(IPConfigTest, PropertyChanges) {
   IPConfig::Properties ip_properties;
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
-  UpdateProperties(ip_properties, true);
+  UpdateProperties(ip_properties);
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // It is the callback's responsibility for resetting the IPConfig
+  // properties (via IPConfig::ResetProperties()).  Since NotifyFailure
+  // by itself doesn't change any properties, it should not emit any
+  // property change events either.
+  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
+  EXPECT_CALL(*adaptor, EmitStringsChanged(_, _)).Times(0);
+  NotifyFailure();
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
-  UpdateProperties(ip_properties, false);
+  ipconfig_->ResetProperties();
   Mock::VerifyAndClearExpectations(adaptor);
 }
 
