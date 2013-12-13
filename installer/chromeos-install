@@ -14,6 +14,9 @@ fi
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
 . /usr/share/misc/shflags || exit 1
 
+# TODO(installer): Clean up all these flags. There are way too many flags in
+# this script.
+
 DEFINE_string dst "" "Destination device"
 DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \
   "Skip check to ensure source is removable"
@@ -53,7 +56,8 @@ non-native arch. Note that this will probably break verity."
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
-set -e
+# Be aggressive.
+set -eu
 
 SUB_CMD_DEBUG_FLAG=""
 if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
@@ -244,7 +248,6 @@ fi
 # Where to store any related hardware diagnostics data.
 HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
 PMBRCODE=/tmp/gptmbr.bin
-TMPFILE=/tmp/install-temp-file
 TMPMNT=/tmp/install-mount-point
 mkdir -p ${TMPMNT}
 
@@ -386,102 +389,32 @@ cleanup() {
   fi
 }
 
-# We untrap on success and run cleanup ourselves. Othewise, on any failure, run
-# our custom trap method to gather any diagnostic data before cleaning up.
-trap cleanup_on_failure EXIT
+# Copy kernel verification block to target HD
+# TODO(installer): Remove once crbug.com/320117 is fixed.
+copy_kernel_vblock() {
+  local ret=0
 
-##############################################################################
+  if [ -s $VERIFY_BLOB ]; then
+    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
+        of="${DST}" conv=notrunc
+      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
+        of="${DST}" conv=notrunc
+    else
+      # We have to erase before we write else you get a boatload of I/O errors
+      flash_erase "/dev/mtd${KERNEL_PART}" 0 0
+      flash_erase "/dev/mtd${KERNEL_B_PART}" 0 0
 
-# These partition numbers are hardcoded all over the system.  Changing them
-# here is only a small piece of the puzzle.  Recommend you not think about
-# trying to do that.
-STATEFUL_PART=1
-KERNEL_PART=2
-KERNEL_IMG_OFFSET=0
-KERNEL_B_PART=4
-ROOTFS_PART=3
-ROOTFS_IMG_OFFSET=0
-OEM_PART=8
-OEM_IMG_OFFSET=0
-ESP_PART=12
-ESP_IMG_OFFSET=0
-
-# Clean media browser mounts if they've popped up.
-prepare_disk
-
-# What do we expect & require to have on the source device?
-if [ -z "$FLAGS_payload_image" ]; then
-  STATEFUL_IMG=$(make_partition_dev ${SRC} ${STATEFUL_PART})
-  KERNEL_IMG=$(make_partition_dev ${SRC} ${KERNEL_PART})
-  ROOTFS_IMG=$(make_partition_dev ${SRC} ${ROOTFS_PART})
-  OEM_IMG=$(make_partition_dev ${SRC} ${OEM_PART})
-  ESP_IMG=$(make_partition_dev ${SRC} ${ESP_PART})
-else
-  KERNEL_IMG=${FLAGS_payload_image}
-  ROOTFS_IMG=${FLAGS_payload_image}
-  OEM_IMG=${FLAGS_payload_image}
-  ESP_IMG=${FLAGS_payload_image}
-
-  locate_gpt
-
-  STATEFUL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${STATEFUL_PART})
-  KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${KERNEL_PART})
-  ROOTFS_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${ROOTFS_PART})
-  OEM_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${OEM_PART})
-  ESP_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${ESP_PART})
-
-  if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_TRUE} ]; then
-    KERNEL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" ${KERNEL_B_PART})
-    KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${KERNEL_B_PART})
-  fi
-
-  # Mount the src image
-  loop_offset_setup "${FLAGS_payload_image}" $STATEFUL_IMG_OFFSET
-  STATEFUL_IMG_LOOP=$LOOP_DEV
-  loop_offset_setup "${FLAGS_payload_image}" $ROOTFS_IMG_OFFSET
-  ROOTFS_IMG_LOOP=$LOOP_DEV
-
-  tracked_mount -o ro "$ROOTFS_IMG_LOOP" "$ROOT"
-  tracked_mount -o ro "$STATEFUL_IMG_LOOP" "$ROOT"/mnt/stateful_partition
-fi
-
-# Load the GPT helper functions and the image settings.
-. "${ROOT}/usr/sbin/write_gpt.sh"
-load_base_vars
-
-# Find our destination device.  If the user hasn't selected one, and the
-# disk layout doesn't declare it for us, do some historical autoprobing.
-: ${FLAGS_dst:=${DEFAULT_ROOTDEV}}
-if [ -z "$FLAGS_dst" ]; then
-  if [ "$ARCH" = "INTEL" ]; then
-    # This finds the first ATA device listed by parted.
-    SD_INFO=$(parted -l -s -m 2> /dev/null)
-    DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ " || :)
-    if [ -z "$DST" ]; then
-      # See if we found a MMC device instead.
-      DST=$(expr "${SD_INFO}" : ".*\(/dev/mmcblk[^:]*\)[^;]*:MMC\ " || :)
-      if [ -z "$DST" ]; then
-        # As a backup, install to /dev/sda
-        DST=/dev/sda
-      fi
+      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
+        of="/dev/mtdblock${KERNEL_PART}" conv=notrunc
+      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
+        of="/dev/mtdblock${KERNEL_B_PART}" conv=notrunc
     fi
-  else
-    DST=/dev/mmcblk0
-  fi
-else
-  DST="$FLAGS_dst"
-fi
-if [ "${DST}" = "/dev/ubi" ]; then
-  FLAGS_mtd_layout=${FLAGS_TRUE}
-fi
 
-# Check out the dst device.
-if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
-  FLAGS_skip_dst_removable=${FLAGS_TRUE}
-elif [ ! -b "${DST}" ]; then
-  echo "Error: Unable to find destination block device: ${DST}"
-  exit 1
-fi
+    ret=1
+  fi
+  echo ${ret}
+}
 
 check_removable() {
   if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
@@ -500,17 +433,283 @@ check_removable() {
     exit 1
   fi
 }
+
+STATEFUL_PART=1
+# This is defined later once we have mounted the ROOT.
+STATEFUL_FORMAT=
+
+# Wipes and expands the stateful partition.
+wipe_stateful() {
+  echo "Clearing the stateful partition..."
+  local stateful_fs_format=$(get_fs_format ${STATEFUL_PART})
+
+  case ${STATEFUL_FORMAT} in
+  ubi)
+    local phy_ubi="/dev/ubi${STATEFUL_PART}"
+    local log_ubi="${phy_ubi}_0"
+    local sysfs_name="/sys/class/mtd/mtd${STATEFUL_PART}/name"
+
+    # Do we have to initialize it first?
+    if [ ! -e ${phy_ubi} ]; then
+      ubiformat -y -e 0 /dev/mtd${STATEFUL_PART}
+      ubiattach -d ${STATEFUL_PART} -m ${STATEFUL_PART}
+    fi
+    if [ ! -e ${log_ubi} ]; then
+      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
+    fi
+    ;;
+  *)
+    loop_offset_setup ${DST} ${START_STATEFUL}
+    ;;
+  esac
+
+  # We always make any ext* stateful partitions ext4.
+  case ${stateful_fs_format} in
+  ext[234])
+    mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+      $((NUM_STATEFUL_SECTORS / 8))
+    ;;
+  ubifs)
+    mkfs.ubifs -y -x none -R 0 /dev/ubi${STATEFUL_PART}_0
+    ;;
+  esac
+
+  case ${STATEFUL_FORMAT} in
+  ubi) ;;
+  *)
+    # Need to synchronize before releasing loop device, otherwise calling
+    # loop_offset_cleanup may return "device busy" error.
+    sync
+    loop_offset_cleanup
+    ;;
+  esac
+}
+
+# Install the stateful partition content
+# Method handles copying data over to the stateful partition. This is done
+# differently than other partitions due to the EXPAND option i.e. src partition
+# and dst partitions are of different sizes. In addition, there are some special
+# tweaks we do for stateful here for various workflows.
+install_stateful() {
+  # In general, the system isn't allowed to depend on anything
+  # being in the stateful partition at startup.  We make some
+  # exceptions for dev images (only), as enumerated below:
+  #
+  # var_overlay
+  #   These are included to support gmerge, and must be kept in
+  #   sync with those listed in /etc/init/var-overlay.conf:
+  #      db/pkg
+  #      lib/portage
+  #
+  # dev_image
+  #   This provides tools specifically chosen to be mounted at
+  #   /usr/local as development only tools.
+  #
+  # Every exception added makes the dev image different from
+  # the release image, which could mask bugs.  Make sure every
+  # item you add here is well justified.
+  echo "Installing the stateful partition..."
+  case ${STATEFUL_FORMAT} in
+  ubi)
+    # We modify the global used here as it affects how we unmount later.
+    LOOP_DEV="/dev/ubi${STATEFUL_PART}_0"
+    ;;
+  *)
+    loop_offset_setup ${DST} ${START_STATEFUL}
+    ;;
+  esac
+  mount_on_loop_dev readwrite
+
+  # Whitelist files to copy onto the stateful partition.
+  #
+  # When adding to the whitelist, consider the need for related changes in
+  # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
+  #
+  local dirlist="unencrypted/import_extensions"
+  if crossystem 'cros_debug?1'; then
+    dirlist="
+      ${dirlist}
+      var_overlay/db/pkg
+      var_overlay/lib/portage
+      dev_image
+    "
+  fi
+
+  if crossystem 'devsw_boot?1' ; then
+    # This is a base build, and the dev switch was on when we booted;
+    # we assume it will be on for the next boot.  We touch
+    # ".developer_mode" to avoid a pointless delay after reboot while
+    # chromeos_startup wipes an empty stateful partition.
+    #
+    # See chromeos_startup for the companion code that checks for this
+    # file.
+    #
+    touch ${TMPMNT}/.developer_mode
+  fi
+
+  # Does our copy of 'cp' support -u? Not sure why -u is desired, but
+  # may be related to --preserve_stateful.
+  #
+  local opt_u=""
+  if cp -u /dev/null /dev/zero 2>/dev/null; then
+    opt_u="u"
+  fi
+
+  local dir
+  for dir in ${dirlist}; do
+    if [ ! -d "${ROOT}/mnt/stateful_partition/${dir}" ]; then
+      continue
+    fi
+    local parent=$(dirname "${dir}")
+    mkdir -p "${TMPMNT}/${parent}"
+    cp -a${opt_u} "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${dir}"
+  done
+
+  umount_from_loop_dev
+  case ${STATEFUL_FORMAT} in
+  ubi) ;;
+  *)
+    loop_offset_cleanup
+    ;;
+  esac
+}
+
+# Partition numbers that have assumptions about them. This list should be kept
+# to a minimal. Check copy_partition for most special casing.
+KERNEL_A_PART=2
+ROOTFS_A_PART=3
+KERNEL_B_PART=4
+ROOTFS_B_PART=5
+
+# Copy partition from src to dst (figures out partition offsets). Note, this
+# has some special casing for rootfs, kernel, and stateful partitions. In
+# addition, it only copies partitions that are equally sized over one another.
+# $1 - Partition number we are copying to.
+# $2 - src image
+# $3 - dst image.
+copy_partition() {
+  local part_num=$1
+  local src=$2
+  local dst=$3
+  local part_size=$(partsize ${src} ${part_num})
+  local src_offset=$(partoffset ${src} ${part_num})
+  local dst_offset=$(partoffset ${dst} ${part_num})
+
+  echo "Installing partition ${part_num} to ${dst}"
+
+  case ${part_num} in
+  ${STATEFUL_PART})
+    install_stateful
+    ;;
+  ${ROOTFS_A_PART}|${ROOTFS_B_PART})
+    # Always copy from ROOT_A for rootfs partitions.
+    src_offset=$(partoffset ${src} ${ROOTFS_A_PART})
+    write_partition ${part_num} ${part_size} ${dst_offset} \
+      ${src_offset} ${src} ${dst}
+    ;;
+  ${KERNEL_A_PART}|${KERNEL_B_PART})
+    if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_FALSE} ]; then
+      src_offset=$(partoffset ${src} ${KERNEL_A_PART})
+    else
+      src_offset=$(partoffset ${src} ${KERNEL_B_PART})
+    fi
+    write_partition ${part_num} ${part_size} ${dst_offset} \
+      ${src_offset} ${src} ${dst}
+    ;;
+  *)
+    local dst_part_size=$(partsize ${dst} ${part_num})
+    if [ ${part_size} -ne ${dst_part_size} -o ${part_size} -le 4096 ]; then
+      # We only copy partitions that are equally sized and greater than the
+      # min fs block size. This matches the build_image logic.
+      return
+    fi
+    write_partition ${part_num} ${part_size} ${dst_offset} \
+      ${src_offset} ${src} ${dst}
+    ;;
+  esac
+}
+
+##############################################################################
+
+# Start main logic. As little code as possible should go in here. Please make
+# sure put any helper methods above this point to make this main component as
+# simple as possible.
+
+# We untrap on success and run cleanup ourselves. Othewise, on any failure, run
+# our custom trap method to gather any diagnostic data before cleaning up.
+trap cleanup_on_failure EXIT
+
+# Clean media browser mounts if they've popped up.
+prepare_disk
+
+locate_gpt
+
+# Special handling for payload_image. This is passed in for recovery images
+# and usb installs. This is done first so we can read the gpt partition
+# file below.
+if [ -n "${FLAGS_payload_image}" ]; then
+  SRC="${FLAGS_payload_image}"
+  # Mount files that are required to be referenced (when not already mounted).
+  loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${ROOTFS_A_PART})
+  tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
+  loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${STATEFUL_PART})
+  tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
+fi
+
+# Load the GPT helper functions and the image settings.
+. "${ROOT}/usr/sbin/write_gpt.sh"
+load_base_vars
+
+# Now that we have loaded the partition table we can actually read the format
+# and partition information.
+STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
+
+# Find our destination device.  If the user hasn't selected one, and the
+# disk layout doesn't declare it for us, do some historical autoprobing.
+: ${FLAGS_dst:=${DEFAULT_ROOTDEV}}
+if [ -z "${FLAGS_dst}" ]; then
+  if [ "${ARCH}" = "INTEL" ]; then
+    # This finds the first ATA device listed by parted.
+    SD_INFO=$(parted -l -s -m 2> /dev/null)
+    DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ " || :)
+    if [ -z "$DST" ]; then
+      # See if we found a MMC device instead.
+      DST=$(expr "${SD_INFO}" : ".*\(/dev/mmcblk[^:]*\)[^;]*:MMC\ " || :)
+      if [ -z "${DST}" ]; then
+        # As a backup, install to /dev/sda
+        DST=/dev/sda
+      fi
+    fi
+  else
+    DST=/dev/mmcblk0
+  fi
+else
+  DST="${FLAGS_dst}"
+fi
+
+if [ "${DST}" = "/dev/ubi" ]; then
+  FLAGS_mtd_layout=${FLAGS_TRUE}
+fi
+
+# Check out the dst device.
+if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  FLAGS_skip_dst_removable=${FLAGS_TRUE}
+elif [ ! -b "${DST}" ]; then
+  echo "Error: Unable to find destination block device: ${DST}"
+  exit 1
+fi
+
 check_removable
 
 if [ "$DST" = "$SRC" ]; then
-  echo "Error: src and dst the same: $SRC = $DST"
+  echo "Error: src and dst are the same: $SRC = $DST"
   exit 1
 fi
 
 # Ask for confirmation to be sure.
 echo "This will install from '$SRC' to '$DST'."
 echo "This will erase all data at this destination: $DST"
-if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
+if [ ${FLAGS_yes} -eq ${FLAGS_FALSE} ]; then
   read -p "Are you sure (y/N)? " SURE
   if [ "$SURE" != "y" ]; then
     echo "Ok, better safe than sorry; you answered '$SURE'."
@@ -545,128 +744,38 @@ else
   legacy_offset_size_export "${SRC}"
 fi
 
-if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
+if [ ${FLAGS_skip_rootfs} -eq ${FLAGS_TRUE} ]; then
   echo Done installing partitons.
   exit 0
 fi
 
-# Install the content.
-echo "Copying kernel..."
-write_partition ${KERNEL_PART} ${KERNEL_IMG_SECTORS} ${START_KERN_A} \
-  ${KERNEL_IMG_OFFSET} ${KERNEL_IMG} ${DST}
+if [ ${FLAGS_preserve_stateful} -eq ${FLAGS_FALSE} ]; then
+  wipe_stateful
+fi
 
-write_partition ${KERNEL_PART} ${KERNEL_IMG_SECTORS} ${START_KERN_B} \
-  ${KERNEL_IMG_OFFSET} ${KERNEL_IMG} ${DST}
+# Install the content. Do so in reverse order to have stateful get installed
+# last. The order shouldn't matter but legacy behavior has us go in reverse
+# order.
+for CURRENT_PART in $(seq 12 -1 1); do
+  copy_partition ${CURRENT_PART} ${SRC} ${DST}
+done
 
-# Copy kernel verification block to target HD
-copy_kernel_vblock() {
-  local ret=0
 
-  if [ -s $VERIFY_BLOB ]; then
-    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
-      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
-        of="${DST}" conv=notrunc
-      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
-        of="${DST}" conv=notrunc
-    else
-      # We have to erase before we write else you get a boatload of I/O errors
-      flash_erase "/dev/mtd${KERNEL_PART}" 0 0
-      flash_erase "/dev/mtd${KERNEL_B_PART}" 0 0
-
-      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
-        of="/dev/mtdblock${KERNEL_PART}" conv=notrunc
-      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
-        of="/dev/mtdblock${KERNEL_B_PART}" conv=notrunc
-    fi
-
-    ret=1
-  fi
-  echo ${ret}
-}
+################################################################################
+# Post partition copying work and special casing
+################################################################################
 
 # The recovery image is signed with different keys from the hard-disk image. We
 # need to copy the hard disk verification block from the stateful partition so
 # that reboot from HD can be verified.
 VERIFY_BLOB="${ROOT}/mnt/stateful_partition/vmlinuz_hd.vblock"
-if [ "$FLAGS_skip_vblock" -eq "$FLAGS_FALSE" ]; then
-  VBLOCK_RET=$(copy_kernel_vblock)
-
-  if [ "${VBLOCK_RET}" -eq "1" ]; then
+if [ ${FLAGS_skip_vblock} -eq ${FLAGS_FALSE} ]; then
+  if [ $(copy_kernel_vblock) -eq 1 ]; then
     echo "Copied kernel verification blob from ${VERIFY_BLOB}"
   else
     echo "Error: kernel verification blob not found in stateful partition"
     exit 1
   fi
-fi
-
-echo "Copying rootfs..."
-# We can no longer update the label on the rootfs because that changes bits
-# that will break both the delta updater and verified boot.  We must do a
-# straight copy now.  The GPT labels and UUIDs are the only mutable naming
-# areas we have after a build.
-write_partition ${ROOTFS_PART} ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} \
-  ${ROOTFS_IMG_OFFSET} ${ROOTFS_IMG} ${DST}
-
-write_partition ${ROOTFS_PART} ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_B} \
-  ${ROOTFS_IMG_OFFSET} ${ROOTFS_IMG} ${DST}
-
-if [ ${OEM_IMG_SECTORS} -gt 0 ]; then
-  echo "Copying OEM customization..."
-  write_partition ${OEM_PART} ${OEM_IMG_SECTORS} ${START_OEM} \
-    ${OEM_IMG_OFFSET} ${OEM_IMG} ${DST}
-fi
-
-if [ ${ESP_IMG_SECTORS} -gt 0 ]; then
-  echo "Copying ESP..."
-  write_partition ${ESP_PART} ${ESP_IMG_SECTORS} ${START_ESP} \
-    ${ESP_IMG_OFFSET} ${ESP_IMG} ${DST}
-fi
-
-# If postinst fails, we should still clear stateful.
-STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
-STATEFUL_FS_FORMAT=$(get_fs_format ${STATEFUL_PART})
-if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
-  echo "Clearing the stateful partition..."
-
-  case ${STATEFUL_FORMAT} in
-  ubi)
-    local phy_ubi="/dev/ubi${STATEFUL_PART}"
-    local log_ubi="${phy_ubi}_0"
-    local sysfs_name="/sys/class/mtd/mtd${STATEFUL_PART}/name"
-
-    # Do we have to initialize it first?
-    if [ ! -e ${phy_ubi} ]; then
-      ubiformat -y -e 0 /dev/mtd${STATEFUL_PART}
-      ubiattach -d ${STATEFUL_PART} -m ${STATEFUL_PART}
-    fi
-    if [ ! -e ${log_ubi} ]; then
-      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
-    fi
-    ;;
-  *)
-    loop_offset_setup ${DST} ${START_STATEFUL}
-    ;;
-  esac
-
-  case ${STATEFUL_FS_FORMAT} in
-  ext[234])
-    mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
-      $((NUM_STATEFUL_SECTORS / 8))
-    ;;
-  ubifs)
-    mkfs.ubifs -y -x none -R 0 /dev/ubi${STATEFUL_PART}_0
-    ;;
-  esac
-
-  case ${STATEFUL_FORMAT} in
-  ubi) ;;
-  *)
-    # Need to synchronize before releasing loop device, otherwise calling
-    # loop_offset_cleanup may return "device busy" error.
-    sync
-    loop_offset_cleanup
-    ;;
-  esac
 fi
 
 POSTINST_BIOS_ARGS=""
@@ -682,96 +791,11 @@ if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
   loop_offset_setup ${DST} ${START_ROOTFS_A}
   mount_on_loop_dev
   IS_INSTALL="1" ${TMPMNT}/postinst \
-    $(make_partition_dev ${DST} ${ROOTFS_PART}) \
+    $(make_partition_dev ${DST} ${ROOTFS_A_PART}) \
     ${SUB_CMD_DEBUG_FLAG} "${POSTINST_BIOS_ARGS}"
   umount_from_loop_dev
   loop_offset_cleanup
 fi
-
-#
-# Install the stateful partition content
-#
-# In general, the system isn't allowed to depend on anything
-# being in the stateful partition at startup.  We make some
-# exceptions for dev images (only), as enumerated below:
-#
-# var_overlay
-#   These are included to support gmerge, and must be kept in
-#   sync with those listed in /etc/init/var-overlay.conf:
-#      db/pkg
-#      lib/portage
-#
-# dev_image
-#   This provides tools specifically chosen to be mounted at
-#   /usr/local as development only tools.
-#
-# Every exception added makes the dev image different from
-# the release image, which could mask bugs.  Make sure every
-# item you add here is well justified.
-#
-echo "Installing the stateful partition..."
-case ${STATEFUL_FORMAT} in
-ubi)
-  LOOP_DEV="/dev/ubi${STATEFUL_PART}_0"
-  ;;
-*)
-  loop_offset_setup ${DST} ${START_STATEFUL}
-  ;;
-esac
-mount_on_loop_dev readwrite
-
-# Whitelist files to copy onto the stateful partition.
-#
-# When adding to the whitelist, consider the need for related changes in
-# src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
-#
-DIRLIST="unencrypted/import_extensions"
-
-if crossystem 'cros_debug?1'; then
-  DIRLIST="
-    ${DIRLIST}
-    var_overlay/db/pkg
-    var_overlay/lib/portage
-    dev_image
-  "
-fi
-
-if crossystem 'devsw_boot?1' ; then
-  # This is a base build, and the dev switch was on when we booted;
-  # we assume it will be on for the next boot.  We touch
-  # ".developer_mode" to avoid a pointless delay after reboot while
-  # chromeos_startup wipes an empty stateful partition.
-  #
-  # See chromeos_startup for the companion code that checks for this
-  # file.
-  #
-  touch ${TMPMNT}/.developer_mode
-fi
-
-# Does our copy of 'cp' support -u? Not sure why -u is desired, but
-# may be related to --preserve_stateful.
-#
-OPT_U=""
-if cp -u /dev/null /dev/zero 2>/dev/null; then
-  OPT_U="u"
-fi
-
-for DIR in ${DIRLIST}; do
-  if [ ! -d "${ROOT}/mnt/stateful_partition/${DIR}" ]; then
-    continue
-  fi
-  PARENT=$(dirname "${DIR}")
-  mkdir -p "${TMPMNT}/${PARENT}"
-  cp -a${OPT_U} "${ROOT}/mnt/stateful_partition/${DIR}" "${TMPMNT}/${DIR}"
-done
-
-umount_from_loop_dev
-case ${STATEFUL_FORMAT} in
-ubi) ;;
-*)
-  loop_offset_cleanup
-  ;;
-esac
 
 # Force data to disk before we declare done.
 sync
