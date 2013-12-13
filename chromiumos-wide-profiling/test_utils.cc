@@ -478,8 +478,6 @@ namespace {
 // Stores the metadata types found in |report| in |*seen_metadata|.
 // Returns the number of lines at the beginning of |report| containing metadata.
 // Each string in |report| is a line of the report.
-// TODO(sque): This function is huge.  It should be refactored into smaller
-// helper functions.
 int ExtractReportMetadata(const std::vector<string>& report,
                           MetadataSet* seen_metadata) {
   size_t index = 0;
