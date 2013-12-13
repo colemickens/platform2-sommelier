@@ -101,9 +101,9 @@ class InputController : public system::InputObserver {
   // quickly enough.
   void HandlePowerButtonAcknowledgmentTimeout();
 
-  system::InputInterface* input_;  // not owned
-  Delegate* delegate_;  // not owned
-  DBusSenderInterface* dbus_sender_;  // not owned
+  system::InputInterface* input_;  // weak
+  Delegate* delegate_;  // weak
+  DBusSenderInterface* dbus_sender_;  // weak
 
   scoped_ptr<Clock> clock_;
 

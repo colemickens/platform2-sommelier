@@ -57,7 +57,7 @@ class ExternalBacklightController : public BacklightController {
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
   void UpdateScreenPowerState();
 
-  system::DisplayPowerSetterInterface* display_power_setter_;  // not owned
+  system::DisplayPowerSetterInterface* display_power_setter_;  // weak
 
   ObserverList<BacklightControllerObserver> observers_;
 

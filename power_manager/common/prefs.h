@@ -64,7 +64,7 @@ class Prefs : public PrefsInterface {
     bool TriggerWriteTimeout();
 
    private:
-    Prefs* prefs_;  // not owned
+    Prefs* prefs_;  // weak
 
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };

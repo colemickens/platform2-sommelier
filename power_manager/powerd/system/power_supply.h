@@ -163,7 +163,7 @@ class PowerSupply {
     bool TriggerPollTimeout() WARN_UNUSED_RESULT;
 
    private:
-    PowerSupply* power_supply_;  // not owned
+    PowerSupply* power_supply_;  // weak
 
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };

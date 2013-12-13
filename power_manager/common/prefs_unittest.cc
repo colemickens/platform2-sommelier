@@ -58,7 +58,7 @@ class TestPrefsObserver : public PrefsObserver {
   }
 
  private:
-  Prefs* prefs_;  // not owned
+  Prefs* prefs_;  // weak; owned by PrefsTest
 
   TestMainLoopRunner loop_runner_;
 

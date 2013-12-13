@@ -54,7 +54,7 @@ class PeripheralBatteryWatcher {
   void ErrorCallback(const std::string& path,
                      const std::string& model_name);
 
-  DBusSenderInterface* dbus_sender_;  // not owned
+  DBusSenderInterface* dbus_sender_;  // weak
 
   // Path containing battery info for peripheral devices.
   base::FilePath peripheral_battery_path_;

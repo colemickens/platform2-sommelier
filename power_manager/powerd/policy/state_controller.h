@@ -110,7 +110,7 @@ class StateController : public PrefsObserver {
     bool TriggerInitialDisplayModeTimeout() WARN_UNUSED_RESULT;
 
    private:
-    StateController* controller_;  // not owned
+    StateController* controller_;  // weak
 
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };

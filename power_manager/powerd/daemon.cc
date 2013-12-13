@@ -243,7 +243,7 @@ class Daemon::StateControllerDelegate
   }
 
  private:
-  Daemon* daemon_;  // not owned
+  Daemon* daemon_;  // weak
 
   DISALLOW_COPY_AND_ASSIGN(StateControllerDelegate);
 };
@@ -346,7 +346,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     dbus_message_unref(signal);
   }
 
-  Daemon* daemon_;  // not owned
+  Daemon* daemon_;  // weak
 
   DISALLOW_COPY_AND_ASSIGN(SuspenderDelegate);
 };

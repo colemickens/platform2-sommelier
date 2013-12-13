@@ -45,7 +45,7 @@ class KeyboardBacklightController
     void TriggerVideoTimeout();
 
    private:
-    KeyboardBacklightController* controller_;  // not owned
+    KeyboardBacklightController* controller_;  // weak
 
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
@@ -145,13 +145,13 @@ class KeyboardBacklightController
                               TransitionStyle transition,
                               BrightnessChangeCause cause);
 
-  // Backlight used for dimming. Non-owned.
+  // Backlight used for dimming. Weak pointer.
   system::BacklightInterface* backlight_;
 
-  // Interface for saving preferences. Non-owned.
+  // Interface for saving preferences. Weak pointer.
   PrefsInterface* prefs_;
 
-  // Controller responsible for the display's brightness. Non-owned.
+  // Controller responsible for the display's brightness. Weak pointer.
   BacklightController* display_backlight_controller_;
 
   scoped_ptr<AmbientLightHandler> ambient_light_handler_;

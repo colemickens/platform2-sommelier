@@ -145,7 +145,7 @@ class Suspender : public SuspendDelayObserver {
     bool TriggerRetryTimeout();
 
    private:
-    Suspender* suspender_;  // not owned
+    Suspender* suspender_;  // weak
 
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
@@ -218,9 +218,9 @@ class Suspender : public SuspendDelayObserver {
   void SendSuspendStateChangedSignal(SuspendState_Type type,
                                      const base::Time& wall_time);
 
-  Delegate* delegate_;  // not owned
-  DBusSenderInterface* dbus_sender_;  // not owned
-  DarkResumePolicy* dark_resume_policy_;  // not owned
+  Delegate* delegate_;  // weak
+  DBusSenderInterface* dbus_sender_;  // weak
+  DarkResumePolicy* dark_resume_policy_;  // weak
 
   scoped_ptr<Clock> clock_;
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;

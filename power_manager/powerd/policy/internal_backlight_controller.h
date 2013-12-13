@@ -148,10 +148,10 @@ class InternalBacklightController : public BacklightController,
   void SetDisplayPower(chromeos::DisplayPowerState state,
                        base::TimeDelta delay);
 
-  // Backlight used for dimming. Non-owned.
+  // Backlight used for dimming. Weak pointer.
   system::BacklightInterface* backlight_;
 
-  // Interface for saving preferences. Non-owned.
+  // Interface for saving preferences. Weak pointer.
   PrefsInterface* prefs_;
 
   // Used to turn displays on and off.

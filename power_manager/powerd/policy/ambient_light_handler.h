@@ -124,8 +124,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // |step_index_| and |power_source_|.
   double GetTargetPercent() const;
 
-  system::AmbientLightSensorInterface* sensor_;  // not owned
-  Delegate* delegate_;  // not owned
+  system::AmbientLightSensorInterface* sensor_;  // weak
+  Delegate* delegate_;  // weak
 
   PowerSource power_source_;
 
