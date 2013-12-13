@@ -75,6 +75,7 @@ class ShillProxy(object):
     DEVICE_PROPERTY_NAME = 'Name'
     DEVICE_PROPERTY_POWERED = 'Powered'
     DEVICE_PROPERTY_RECEIVE_BYTE_COUNT = 'ReceiveByteCount'
+    DEVICE_PROPERTY_SCANNING = 'Scanning'
     DEVICE_PROPERTY_TRANSMIT_BYTE_COUNT = 'TransmitByteCount'
     DEVICE_PROPERTY_TYPE = 'Type'
 
