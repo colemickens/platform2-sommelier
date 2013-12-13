@@ -527,7 +527,8 @@ bool Attestation::CreateCertRequest(CertificateProfile profile,
   request_pb.set_identity_credential(
       database_pb_.identity_key().identity_credential());
   request_pb.set_profile(profile);
-  if (!origin.empty()) {
+  if (!origin.empty() &&
+      (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
     request_pb.set_origin(origin);
     request_pb.set_temporal_index(ChooseTemporalIndex(username, origin));
   }
