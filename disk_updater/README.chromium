@@ -1,0 +1,8 @@
+DESCRIPTION="disk_updater - root disk firmware updater"
+HOMEPAGE="None"
+UPSTREAM_REPO="None"
+LOCAL_GIT_REPO="https://chromium.googlesource.com/chromiumos/platform/disk_updater"
+UPSTREAM_BUGSDB="None"
+LOCAL_BUGSDB="http://code.google.com/p/chromium/issues/list"
+LICENSE="GPLv2"
+LICENSE_FILE="LICENSE"
