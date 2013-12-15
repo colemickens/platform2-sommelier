@@ -16,9 +16,9 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/policy.pb.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/display_power_setter.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
 namespace policy {

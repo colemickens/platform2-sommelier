@@ -2,13 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstdarg>
-#include <inttypes.h>
-
 #include <gtest/gtest.h>
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/time.h"
 #include "power_manager/common/clock.h"

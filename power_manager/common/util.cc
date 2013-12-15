@@ -4,7 +4,6 @@
 
 #include "power_manager/common/util.h"
 
-#include <inttypes.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -14,6 +13,7 @@
 #include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/stringprintf.h"
 #include "base/string_number_conversions.h"

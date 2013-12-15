@@ -14,7 +14,7 @@
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
-#include "power_manager/suspend.pb.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
 namespace policy {

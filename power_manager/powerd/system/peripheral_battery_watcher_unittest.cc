@@ -16,8 +16,8 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/peripheral_battery_status.pb.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
+#include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
 namespace power_manager {
 namespace system {

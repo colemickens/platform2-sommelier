@@ -12,7 +12,6 @@
 #include "dbus/bus.h"
 #include "dbus/message.h"
 #include "dbus/object_proxy.h"
-#include "power_manager/common/power_constants.h"
 
 DEFINE_bool(set, false, "Set the brightness to --percent");
 DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");

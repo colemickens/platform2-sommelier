@@ -14,10 +14,10 @@
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "base/timer.h"
-#include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
 #include "power_manager/powerd/system/udev_observer.h"
+#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace power_manager {
 

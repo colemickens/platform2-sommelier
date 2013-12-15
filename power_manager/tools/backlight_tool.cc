@@ -2,12 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This #define is needed to avoid an "inttypes.h has already been included
+// before this header file, but without __STDC_FORMAT_MACROS defined." error
+// from base/format_macros.h when gflags/gflags.h is included first.
+#define __STDC_FORMAT_MACROS
+
 #include <gflags/gflags.h>
-#include <inttypes.h>
 
 #include <cmath>
 #include <cstdio>
 
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"

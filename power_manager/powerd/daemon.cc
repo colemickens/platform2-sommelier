@@ -4,14 +4,12 @@
 
 #include "power_manager/powerd/daemon.h"
 
-#include <inttypes.h>
-#include <stdint.h>
-
 #include <algorithm>
 #include <cmath>
 
 #include "base/bind.h"
 #include "base/file_util.h"
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
@@ -22,8 +20,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/policy.pb.h"
-#include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/metrics_reporter.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"
@@ -37,6 +33,8 @@
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/proto_bindings/policy.pb.h"
+#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace power_manager {
 

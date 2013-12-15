@@ -15,7 +15,7 @@
 #include "base/timer.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/policy.pb.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
 

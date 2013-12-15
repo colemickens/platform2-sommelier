@@ -12,7 +12,7 @@
 #include "dbus/exported_object.h"
 #include "dbus/message.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
-#include "power_manager/suspend.pb.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
 

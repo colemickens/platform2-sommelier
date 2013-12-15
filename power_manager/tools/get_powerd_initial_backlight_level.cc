@@ -6,13 +6,12 @@
 // taking the current prefs and power source and the actual backlight range into
 // account.
 
-#include <inttypes.h>
-
 #include <cstdio>
 #include <vector>
 
 #include "base/at_exit.h"
 #include "base/file_path.h"
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/message_loop.h"
 #include "power_manager/common/power_constants.h"

@@ -4,9 +4,9 @@
 
 
 #include <gtest/gtest.h>
-#include <inttypes.h>
 
 #include "base/file_util.h"
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
@@ -38,18 +38,18 @@ class InternalBacklightTest : public ::testing::Test {
 
     FILE* brightness_file = file_util::OpenFile(
         path.Append(InternalBacklight::kBrightnessFilename), "w");
-    fprintf(brightness_file, "%"PRId64"\n", brightness);
+    fprintf(brightness_file, "%" PRId64 "\n", brightness);
     file_util::CloseFile(brightness_file);
 
     FILE* max_brightness_file = file_util::OpenFile(
         path.Append(InternalBacklight::kMaxBrightnessFilename), "w");
-    fprintf(max_brightness_file, "%"PRId64"\n", max_brightness);
+    fprintf(max_brightness_file, "%" PRId64 "\n", max_brightness);
     file_util::CloseFile(max_brightness_file);
 
     if (actual_brightness >= 0) {
       FILE* actual_brightness_file = file_util::OpenFile(
           path.Append(InternalBacklight::kActualBrightnessFilename), "w");
-      fprintf(actual_brightness_file, "%"PRId64"\n", actual_brightness);
+      fprintf(actual_brightness_file, "%" PRId64 "\n", actual_brightness);
       file_util::CloseFile(actual_brightness_file);
     }
   }

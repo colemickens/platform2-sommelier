@@ -18,8 +18,8 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 using std::map;
 using std::string;

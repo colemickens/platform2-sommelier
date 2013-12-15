@@ -12,11 +12,11 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/policy.pb.h"
 #include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display_power_setter_stub.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
 namespace policy {

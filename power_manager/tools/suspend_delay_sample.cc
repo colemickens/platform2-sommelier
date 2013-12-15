@@ -14,7 +14,7 @@
 #include "dbus/bus.h"
 #include "dbus/message.h"
 #include "dbus/object_proxy.h"
-#include "power_manager/suspend.pb.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 DEFINE_int32(delay_ms, 5000,
              "Milliseconds to wait before reporting suspend readiness");

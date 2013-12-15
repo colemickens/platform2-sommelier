@@ -12,8 +12,8 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_util.h"
-#include "power_manager/input_event.pb.h"
 #include "power_manager/powerd/system/input_stub.h"
+#include "power_manager/proto_bindings/input_event.pb.h"
 
 namespace power_manager {
 namespace policy {

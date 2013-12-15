@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
-#include <inttypes.h>
 
 #include <iomanip>
 #include <iostream>

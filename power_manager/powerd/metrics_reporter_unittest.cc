@@ -6,12 +6,12 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <stdint.h>
 
 #include <cmath>
 #include <set>
 #include <string>
 
+#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/timer.h"
 #include "chromeos/dbus/service_constants.h"

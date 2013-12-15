@@ -11,8 +11,8 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/input_event.pb.h"
 #include "power_manager/powerd/system/input_interface.h"
+#include "power_manager/proto_bindings/input_event.pb.h"
 
 namespace power_manager {
 namespace policy {

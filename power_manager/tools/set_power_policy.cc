@@ -16,7 +16,7 @@
 #include "dbus/bus.h"
 #include "dbus/message.h"
 #include "dbus/object_proxy.h"
-#include "power_manager/policy.pb.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 // These mirror the fields from the PowerManagementPolicy protocol buffer.
 DEFINE_string(ac_idle_action, "",
