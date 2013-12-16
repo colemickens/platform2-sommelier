@@ -50,13 +50,15 @@ struct ParsedEvent {
     uint64 offset_;
 
     // Accessor methods.
-    const string& dso_name() const {
-      CHECK(dso_info_);
-      return dso_info_->name;
+    const string dso_name() const {
+      if (dso_info_)
+        return dso_info_->name;
+      return string();
     }
-    const string& build_id() const {
-      CHECK(dso_info_);
-      return dso_info_->build_id;
+    const string build_id() const {
+      if (dso_info_)
+        return dso_info_->build_id;
+      return string();
     }
     uint64 offset() const {
       return offset_;
