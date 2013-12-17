@@ -561,8 +561,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
       *array++ = sample.branch_stack->entries[i].from;
       *array++ = sample.branch_stack->entries[i].to;
-      *array++ =
-          *reinterpret_cast<uint64*>(&sample.branch_stack->entries[i].flags);
+      memcpy(array++, &sample.branch_stack->entries[i].flags, sizeof(uint64));
     }
   }
   return (array - initial_array_ptr) * sizeof(uint64);
