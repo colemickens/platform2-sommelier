@@ -86,6 +86,7 @@ TEST(ScopedErrorTest, All) {
   ::GError* d = ::g_error_new(::g_quark_from_static_string("error"), -1,
                               "");
   a.reset(c);  // reset form 1
+  (void)d;
 }
 
 TEST(ScopedPtrArrayTest, Construction) {
