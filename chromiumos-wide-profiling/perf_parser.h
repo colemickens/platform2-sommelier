@@ -169,6 +169,12 @@ class PerfParser : public PerfReader {
   std::set<DSOInfo> dso_set_;
 
  private:
+  // Calls MapIPAndPidAndGetNameAndOffset() on the callchain of a sample event.
+  bool MapCallchain(const struct ip_event& event,
+                    uint64 original_event_addr,
+                    struct ip_callchain* callchain,
+                    ParsedEvent* parsed_event);
+
   // This maps a sample event and returns the mapped address, DSO name, and
   // offset within the DSO.  This is a private function because the API might
   // change in the future, and we don't want derived classes to be stuck with an

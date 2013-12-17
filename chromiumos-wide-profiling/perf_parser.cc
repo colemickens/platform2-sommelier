@@ -33,6 +33,14 @@ bool CompareParsedEventTimes(const EventAndTime* e1, const EventAndTime* e2) {
 const char kSwapperCommandName[] = "swapper";
 const uint32 kSwapperPid = 0;
 
+enum CallchainContext {
+  // These entries in a callchain are special cases.
+  kCallchainInitialContextIndex = 0,    // Kernel vs user.
+  kCallchainBaseAddressIndex = 1,       // Same as the base sample address.
+  // Start reading the callchain from this entry.
+  kFirstRelevantCallchainIndex,
+};
+
 }  // namespace
 
 PerfParser::PerfParser() : do_remap_(false),
@@ -210,6 +218,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   }
 
   struct ip_event& event = (*parsed_event->raw_event)->ip;
+  uint64 unmapped_event_ip = event.ip;
 
   // Map the event IP itself.
   if (!MapIPAndPidAndGetNameAndOffset(event.ip,
@@ -220,20 +229,10 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     mapping_failed = true;
   }
 
-  // Map the callchain IPs, if any.
-  struct ip_callchain* callchain = sample_info.callchain;
-  if (callchain) {
-    parsed_event->callchain.resize(callchain->nr);
-    for (unsigned int j = 0; j < callchain->nr; ++j) {
-      if (!MapIPAndPidAndGetNameAndOffset(callchain->ips[j],
-                                          event.pid,
-                                          event.header.misc,
-                                          reinterpret_cast<uint64*>(
-                                              &callchain->ips[j]),
-                                          &parsed_event->callchain[j])) {
-        mapping_failed = true;
-      }
-    }
+  if (sample_info.callchain &&
+      !MapCallchain(event, unmapped_event_ip, sample_info.callchain,
+                    parsed_event)) {
+    mapping_failed = true;
   }
 
   // Map branch stack addresses.
@@ -263,8 +262,80 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     }
   }
 
-  return !mapping_failed &&
-         WritePerfSampleInfo(sample_info, *parsed_event->raw_event);
+  // Write the remapped data back to the raw event regardless of whether it was
+  // entirely successfully remapped.  A single failed remap should not
+  // invalidate all the other remapped entries.
+  if (!WritePerfSampleInfo(sample_info, *parsed_event->raw_event)) {
+    LOG(ERROR) << "Failed to write back remapped sample info.";
+    return false;
+  }
+
+  return !mapping_failed;
+}
+
+bool PerfParser::MapCallchain(const struct ip_event& event,
+                              uint64 original_event_addr,
+                              struct ip_callchain* callchain,
+                              ParsedEvent* parsed_event) {
+  CHECK(callchain);
+  bool mapping_failed = false;
+
+  // There should be at least two entries in the callchain.  See below.
+  CHECK_GE(callchain->nr, kFirstRelevantCallchainIndex);
+
+  // The first callchain entry should indicate that this is a kernel vs user
+  // sample.
+  uint64 callchain_context = callchain->ips[kCallchainInitialContextIndex];
+  switch (callchain_context) {
+  case PERF_CONTEXT_KERNEL:
+    CHECK_EQ(event.header.misc, PERF_RECORD_MISC_KERNEL);
+    break;
+  case PERF_CONTEXT_USER:
+    CHECK_EQ(event.header.misc, PERF_RECORD_MISC_USER);
+    break;
+  default:
+    LOG(ERROR) << "Invalid callchain context: "
+               << std::hex << callchain_context;
+    break;
+  }
+  // The second callchain entry is the same as the sample address.
+  CHECK_EQ((void*)callchain->ips[kCallchainBaseAddressIndex],
+           (void*)original_event_addr);
+  // The sample address has already been mapped so no need to map this one.
+  callchain->ips[kCallchainBaseAddressIndex] = event.ip;
+
+  // Keeps track of whether the current entry is kernel or user.
+  uint16 current_misc = event.header.misc;
+  parsed_event->callchain.resize(callchain->nr);
+  int num_entries_mapped = 0;
+  for (int j = kFirstRelevantCallchainIndex; j < callchain->nr; ++j) {
+    uint64 entry = callchain->ips[j];
+    // When a callchain context entry is found, do not attempt to symbolize
+    // it.  Instead use it to update |current_misc|.
+    switch (entry) {
+    case PERF_CONTEXT_KERNEL:
+      current_misc = PERF_RECORD_MISC_KERNEL;
+      continue;
+    case PERF_CONTEXT_USER:
+      current_misc = PERF_RECORD_MISC_USER;
+      continue;
+    default:
+      if (!MapIPAndPidAndGetNameAndOffset(
+              entry,
+              event.pid,
+              current_misc,
+              reinterpret_cast<uint64*>(&callchain->ips[j]),
+              &parsed_event->callchain[num_entries_mapped++])) {
+        mapping_failed = true;
+      }
+      break;
+    }
+  }
+  // Not all the entries were mapped.  Trim |parsed_event->callchain| to
+  // remove unused entries at the end.
+  parsed_event->callchain.resize(num_entries_mapped);
+
+  return !mapping_failed;
 }
 
 bool PerfParser::MapIPAndPidAndGetNameAndOffset(
