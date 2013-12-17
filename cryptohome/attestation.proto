@@ -150,14 +150,6 @@ message AttestationCertificateRequest {
   // The index of a temporal value.  This may be used or ignored depending on
   // the certificate profile.
   optional int32 temporal_index = 13;
-
-  // The following fields are deprecated.
-
-  // Set this field to true to include the stable ID in the issued certificate.
-  optional bool include_stable_id = 8;
-  // Set this field to true to include the device state in the issued
-  // certificate.
-  optional bool include_device_state = 9;
 }
 
 // The response from the attestation server for the certificate request.
