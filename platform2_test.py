@@ -3,6 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Wrapper for running platform2 tests.
+
+This handles the fun details like running against the right sysroot, via
+qemu, bind mounts, etc...
+"""
+
 import argparse
 import glob
 import os
@@ -14,11 +20,13 @@ from platform2 import Platform2
 
 
 class Platform2Test(object):
+  """Framework for running platform2 tests"""
+
   _BIND_MOUNT_PATHS = ('dev', 'proc', 'sys')
 
-  def __init__(self, bin, board, host, use_flags, package, framework,
+  def __init__(self, test_bin, board, host, use_flags, package, framework,
                run_as_root, gtest_filter, user_gtest_filter):
-    self.bin = bin
+    self.bin = test_bin
     self.board = board
     self.host = host
     self.package = package
@@ -26,7 +34,6 @@ class Platform2Test(object):
     self.run_as_root = run_as_root
     (self.gtest_filter, self.user_gtest_filter) = \
         self.generateGtestFilter(gtest_filter, user_gtest_filter)
-
 
     self.framework = framework
     if self.framework == 'auto':
@@ -43,6 +50,7 @@ class Platform2Test(object):
 
     Args:
       gtest_filter: A filter string as normally passed to --gtest_filter.
+
     Returns:
       A tuple of format (positive_filters, negative_filters).
     """
@@ -85,7 +93,8 @@ class Platform2Test(object):
     """Runs pre-test environment setup.
 
     Sets up any required mounts and copying any required files to run tests
-    (not those specific to tests) into the sysroot."""
+    (not those specific to tests) into the sysroot.
+    """
 
     if not self.use('cros_host'):
       for mount in self._BIND_MOUNT_PATHS:
@@ -168,6 +177,8 @@ class Platform2Test(object):
 
 
 class _ParseStringSetAction(argparse.Action):
+  """Support flags that store into a set (vs a list)."""
+
   def __call__(self, parser, namespace, values, option_string=None):
     setattr(namespace, self.dest, set(values.split()))
 
@@ -204,7 +215,6 @@ def main(argv):
 
   if options.action == 'run' and (not options.bin or len(options.bin) == 0):
     raise AssertionError('You must specify a binary for the "run" action')
-
 
   if not (options.host ^ (options.board != None)):
     raise AssertionError('You must provide only one of --board or --host')
