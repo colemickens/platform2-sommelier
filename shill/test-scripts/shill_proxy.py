@@ -24,6 +24,7 @@ class ShillProxy(object):
     DBUS_INTERFACE = 'org.chromium.flimflam'
     DBUS_SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
     DBUS_TYPE_DEVICE = 'org.chromium.flimflam.Device'
+    DBUS_TYPE_IPCONFIG = 'org.chromium.flimflam.IPConfig'
     DBUS_TYPE_MANAGER = 'org.chromium.flimflam.Manager'
     DBUS_TYPE_PROFILE = 'org.chromium.flimflam.Profile'
     DBUS_TYPE_SERVICE = 'org.chromium.flimflam.Service'
