@@ -377,7 +377,7 @@ fi
 
 GPU_FLAGS=
 if use_flag_is_set gpu_sandbox_allow_sysv_shm; then
-  GPU_FLAGS="--gpu-sandbox-allow-sysv-shm"
+  GPU_FLAGS="$GPU_FLAGS --gpu-sandbox-allow-sysv-shm"
 fi
 
 VIDEO_FLAGS=
