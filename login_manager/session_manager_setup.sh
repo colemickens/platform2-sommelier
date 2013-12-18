@@ -168,14 +168,11 @@ export BROWSER=${CHROME}
 
 USER_ID=$(id -u ${USER})
 
-SKIP_OOBE=
-
 # To always force OOBE. This works ok with test images so that they
 # always start with OOBE.
 if [ -f /root/.test_repeat_oobe ] ; then
   rm -f "${DATA_DIR}/.oobe_completed"
   rm -f "${DATA_DIR}/Local State"
-  SKIP_OOBE=
 fi
 
 SSLKEYLOGFILE=/var/log/sslkeys.log
@@ -464,7 +461,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${HIGHDPI_FLAGS} \
             ${TOUCHPAD_FLAGS} \
             ${KEYBOARD_FLAGS} \
-            ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${DMPROF_FLAGS} \
