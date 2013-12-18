@@ -119,10 +119,11 @@ class AttestationTest : public testing::Test {
     return SecureBlob(tmp.data(), tmp.length());
   }
 
-  SecureBlob GetCertifiedKeyBlob(const string& payload) {
+  SecureBlob GetCertifiedKeyBlob(const string& payload, bool include_ca_cert) {
     CertifiedKey pb;
     pb.set_certified_key_credential("stored_cert");
-    pb.set_intermediate_ca_cert("stored_ca_cert");
+    if (include_ca_cert)
+      pb.set_intermediate_ca_cert("stored_ca_cert");
     pb.set_public_key(ConvertBlobToString(GetPKCS1PublicKey()));
     pb.set_payload(payload);
     string tmp;
@@ -139,9 +140,12 @@ class AttestationTest : public testing::Test {
   string EncodeCertChain(const string& cert1, const string& cert2) {
     string chain = "-----BEGIN CERTIFICATE-----\n";
     chain += CryptoLib::Base64Encode(cert1, true);
-    chain += "-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n";
-    chain += CryptoLib::Base64Encode(cert2, true);
     chain += "-----END CERTIFICATE-----";
+    if (!cert2.empty()) {
+      chain += "\n-----BEGIN CERTIFICATE-----\n";
+      chain += CryptoLib::Base64Encode(cert2, true);
+      chain += "-----END CERTIFICATE-----";
+    }
     return chain;
   }
 
@@ -321,7 +325,7 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
   EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("")),
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -431,7 +435,7 @@ TEST_F(AttestationTest, EUKChallenge) {
                             Return(true)));
   EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("")),
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   chromeos::SecureBlob blob;
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
@@ -454,11 +458,11 @@ TEST_F(AttestationTest, EUKChallenge) {
 
 TEST_F(AttestationTest, Payload) {
   EXPECT_CALL(key_store_, Write(kTestUser, "test",
-                                GetCertifiedKeyBlob("test_payload")))
+                                GetCertifiedKeyBlob("test_payload", true)))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("stored_payload")),
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("stored_payload", true)),
           Return(true)));
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
@@ -558,6 +562,17 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
   EXPECT_TRUE(db.has_credentials() &&
               !db.credentials().has_endorsement_public_key() &&
               !db.credentials().has_endorsement_credential());
+}
+
+TEST_F(AttestationTest, CertChainWithNoIntermediateCA) {
+  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
+      .WillRepeatedly(DoAll(
+          SetArgumentPointee<2>(GetCertifiedKeyBlob("", false)),
+          Return(true)));
+  SecureBlob blob;
+  EXPECT_TRUE(attestation_.GetCertificateChain(true, kTestUser, "test",
+                                               &blob));
+  EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert", "")));
 }
 
 }  // namespace cryptohome

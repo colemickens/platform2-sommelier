@@ -1360,11 +1360,17 @@ bool Attestation::SaveKey(bool is_user_specific,
 bool Attestation::CreatePEMCertificateChain(const string& leaf_certificate,
                                             const string& intermediate_ca_cert,
                                             SecureBlob* certificate_chain) {
-  string leaf_pem = CreatePEMCertificate(leaf_certificate);
-  string ca_pem = CreatePEMCertificate(intermediate_ca_cert);
-  *certificate_chain = ConvertStringToBlob(leaf_pem + "\n" + ca_pem);
-  ClearString(&leaf_pem);
-  ClearString(&ca_pem);
+  if (leaf_certificate.empty()) {
+    LOG(ERROR) << "Certificate is empty.";
+    return false;
+  }
+  string pem = CreatePEMCertificate(leaf_certificate);
+  if (!intermediate_ca_cert.empty()) {
+    pem += "\n";
+    pem += CreatePEMCertificate(intermediate_ca_cert);
+  }
+  *certificate_chain = ConvertStringToBlob(pem);
+  ClearString(&pem);
   return true;
 }
 
