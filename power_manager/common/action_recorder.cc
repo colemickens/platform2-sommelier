@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/common/test_util.h"
+#include "power_manager/common/action_recorder.h"
 
 #include <cstdarg>
 
 namespace power_manager {
-namespace test {
 
 std::string JoinActions(const char* action, ...) {
   std::string actions;
@@ -24,11 +23,20 @@ std::string JoinActions(const char* action, ...) {
   return actions;
 }
 
-void AppendAction(std::string* current_actions, const std::string& action) {
-  if (!current_actions->empty())
-    *current_actions += ",";
-  *current_actions += action;
+ActionRecorder::ActionRecorder() {}
+
+ActionRecorder::~ActionRecorder() {}
+
+std::string ActionRecorder::GetActions() {
+  std::string actions = actions_;
+  actions_.clear();
+  return actions;
 }
 
-}  // namespace test
+void ActionRecorder::AppendAction(const std::string& new_action) {
+  if (!actions_.empty())
+    actions_ += ",";
+  actions_ += new_action;
+}
+
 }  // namespace power_manager

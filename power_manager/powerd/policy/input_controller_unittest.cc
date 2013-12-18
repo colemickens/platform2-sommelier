@@ -7,19 +7,17 @@
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/test_util.h"
 #include "power_manager/powerd/system/input_stub.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
 
 namespace power_manager {
 namespace policy {
 namespace {
-
-using test::AppendAction;
 
 const char kNoActions[] = "";
 const char kLidClosed[] = "lid_closed";
@@ -30,44 +28,33 @@ const char kDeferInactivity[] = "defer_inactivity";
 const char kShutDown[] = "shut_down";
 const char kMissingPowerButtonAcknowledgment[] = "missing_power_button_ack";
 
-class TestInputControllerDelegate : public InputController::Delegate {
+class TestInputControllerDelegate : public InputController::Delegate,
+                                    public ActionRecorder {
  public:
   TestInputControllerDelegate() {}
   virtual ~TestInputControllerDelegate() {}
 
-  // Returns a comma-separated string describing the actions that were
-  // requested since the previous call to GetActions() (i.e. results are
-  // non-repeatable).
-  std::string GetActions() {
-    std::string actions = actions_;
-    actions_.clear();
-    return actions;
-  }
-
   // InputController::Delegate implementation:
   virtual void HandleLidClosed() OVERRIDE {
-    AppendAction(&actions_, kLidClosed);
+    AppendAction(kLidClosed);
   }
   virtual void HandleLidOpened() OVERRIDE {
-    AppendAction(&actions_, kLidOpened);
+    AppendAction(kLidOpened);
   }
   virtual void HandlePowerButtonEvent(ButtonState state) {
-    AppendAction(&actions_,
-                 state == BUTTON_DOWN ? kPowerButtonDown : kPowerButtonUp);
+    AppendAction(state == BUTTON_DOWN ? kPowerButtonDown : kPowerButtonUp);
   }
   virtual void DeferInactivityTimeoutForVT2() OVERRIDE {
-    AppendAction(&actions_, kDeferInactivity);
+    AppendAction(kDeferInactivity);
   }
   virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE {
-    AppendAction(&actions_, kShutDown);
+    AppendAction(kShutDown);
   }
   virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE {
-    AppendAction(&actions_, kMissingPowerButtonAcknowledgment);
+    AppendAction(kMissingPowerButtonAcknowledgment);
   }
 
  private:
-  std::string actions_;
-
   DISALLOW_COPY_AND_ASSIGN(TestInputControllerDelegate);
 };
 

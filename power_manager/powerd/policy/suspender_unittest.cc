@@ -13,17 +13,14 @@
 #include "base/logging.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/action_recorder.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/test_util.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 
 namespace power_manager {
 namespace policy {
-
-using test::AppendAction;
-using test::JoinActions;
 
 namespace {
 
@@ -38,7 +35,7 @@ const char kNoActions[] = "";
 
 // Test implementation of Suspender::Delegate that just records the actions it
 // was asked to perform.
-class TestDelegate : public Suspender::Delegate {
+class TestDelegate : public Suspender::Delegate, public ActionRecorder {
  public:
   TestDelegate()
       : lid_closed_(false),
@@ -67,14 +64,6 @@ class TestDelegate : public Suspender::Delegate {
     return suspend_wakeup_count_valid_;
   }
 
-  // Returns a comma-separated, oldest-first list of the calls made to the
-  // delegate since the last call to GetActions().
-  std::string GetActions() {
-    std::string actions = actions_;
-    actions_.clear();
-    return actions;
-  }
-
   // Delegate implementation:
   virtual bool IsLidClosed() OVERRIDE { return lid_closed_; }
 
@@ -86,17 +75,17 @@ class TestDelegate : public Suspender::Delegate {
   }
 
   virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    AppendAction(&actions_, kAnnounce);
+    AppendAction(kAnnounce);
   }
 
   virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
-    AppendAction(&actions_, kCancel);
+    AppendAction(kCancel);
   }
 
   virtual SuspendResult Suspend(uint64 wakeup_count,
                                 bool wakeup_count_valid,
                                 base::TimeDelta duration) OVERRIDE {
-    AppendAction(&actions_, kSuspend);
+    AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
     suspend_duration_ = duration;
@@ -107,21 +96,17 @@ class TestDelegate : public Suspender::Delegate {
     return suspend_result_;
   }
 
-  virtual void PrepareForSuspend() { AppendAction(&actions_, kPrepare); }
+  virtual void PrepareForSuspend() { AppendAction(kPrepare); }
 
   virtual void HandleResume(bool success,
                             int num_retries,
                             int max_retries) OVERRIDE {
-    AppendAction(&actions_, kResume);
+    AppendAction(kResume);
   }
 
-  virtual void ShutDownForFailedSuspend() OVERRIDE {
-    AppendAction(&actions_, kShutDown);
-  }
+  virtual void ShutDownForFailedSuspend() OVERRIDE { AppendAction(kShutDown); }
 
-  virtual void ShutDownForDarkResume() OVERRIDE {
-    AppendAction(&actions_, kShutDown);
-  }
+  virtual void ShutDownForDarkResume() OVERRIDE { AppendAction(kShutDown); }
 
  private:
   // Value returned by IsLidClosed().
@@ -136,9 +121,6 @@ class TestDelegate : public Suspender::Delegate {
 
   // Callback that will be run (if non-null) when Suspend() is called.
   base::Closure suspend_callback_;
-
-  // Comma-separated list describing called methods.
-  std::string actions_;
 
   // Arguments passed to latest invocation of Suspend().
   uint64 suspend_wakeup_count_;

@@ -9,17 +9,14 @@
 #include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/time.h"
+#include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/test_util.h"
 #include "power_manager/powerd/policy/state_controller.h"
 
 namespace power_manager {
 namespace policy {
-
-using test::AppendAction;
-using test::JoinActions;
 
 namespace {
 
@@ -44,7 +41,7 @@ const char kReportUserActivityMetrics[] = "metrics";
 const char kNoActions[] = "";
 
 // StateController::Delegate implementation that records requested actions.
-class TestDelegate : public StateController::Delegate {
+class TestDelegate : public StateController::Delegate, public ActionRecorder {
  public:
   TestDelegate()
       : record_metrics_actions_(false),
@@ -71,15 +68,6 @@ class TestDelegate : public StateController::Delegate {
   }
   void set_lid_state(LidState state) { lid_state_ = state; }
 
-  // Returns a comma-separated string describing the actions that were
-  // requested since the previous call to GetActions() (i.e. results are
-  // non-repeatable).
-  std::string GetActions() {
-    std::string actions = actions_;
-    actions_.clear();
-    return actions;
-  }
-
   // StateController::Delegate overrides:
   virtual bool IsUsbInputDeviceConnected() OVERRIDE {
     return usb_input_device_connected_;
@@ -92,26 +80,26 @@ class TestDelegate : public StateController::Delegate {
   virtual bool IsHeadphoneJackPlugged() OVERRIDE {
     return headphone_jack_plugged_;
   }
-  virtual void DimScreen() OVERRIDE { AppendAction(&actions_, kScreenDim); }
-  virtual void UndimScreen() OVERRIDE { AppendAction(&actions_, kScreenUndim); }
-  virtual void TurnScreenOff() OVERRIDE { AppendAction(&actions_, kScreenOff); }
-  virtual void TurnScreenOn() OVERRIDE { AppendAction(&actions_, kScreenOn); }
-  virtual void LockScreen() OVERRIDE { AppendAction(&actions_, kScreenLock); }
-  virtual void Suspend() OVERRIDE { AppendAction(&actions_, kSuspend); }
-  virtual void StopSession() OVERRIDE { AppendAction(&actions_, kStopSession); }
-  virtual void ShutDown() OVERRIDE { AppendAction(&actions_, kShutDown); }
+  virtual void DimScreen() OVERRIDE { AppendAction(kScreenDim); }
+  virtual void UndimScreen() OVERRIDE { AppendAction(kScreenUndim); }
+  virtual void TurnScreenOff() OVERRIDE { AppendAction(kScreenOff); }
+  virtual void TurnScreenOn() OVERRIDE { AppendAction(kScreenOn); }
+  virtual void LockScreen() OVERRIDE { AppendAction(kScreenLock); }
+  virtual void Suspend() OVERRIDE { AppendAction(kSuspend); }
+  virtual void StopSession() OVERRIDE { AppendAction(kStopSession); }
+  virtual void ShutDown() OVERRIDE { AppendAction(kShutDown); }
   virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
-    AppendAction(&actions_, docked ? kDocked : kUndocked);
+    AppendAction(docked ? kDocked : kUndocked);
   }
   virtual void EmitIdleActionImminent() OVERRIDE {
-    AppendAction(&actions_, kIdleImminent);
+    AppendAction(kIdleImminent);
   }
   virtual void EmitIdleActionDeferred() OVERRIDE {
-    AppendAction(&actions_, kIdleDeferred);
+    AppendAction(kIdleDeferred);
   }
   virtual void ReportUserActivityMetrics() OVERRIDE {
     if (record_metrics_actions_)
-      AppendAction(&actions_, kReportUserActivityMetrics);
+      AppendAction(kReportUserActivityMetrics);
   }
 
  private:
@@ -133,8 +121,6 @@ class TestDelegate : public StateController::Delegate {
 
   // Lid state to be returned by QueryLidState().
   LidState lid_state_;
-
-  std::string actions_;
 
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };

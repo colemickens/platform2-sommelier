@@ -174,10 +174,10 @@
           'target_name': 'libutil_test',
           'type': 'static_library',
           'sources': [
+            'common/action_recorder.cc',
             'common/dbus_sender_stub.cc',
             'common/fake_prefs.cc',
             'common/test_main_loop_runner.cc',
-            'common/test_util.cc',
           ],
         },
         {
