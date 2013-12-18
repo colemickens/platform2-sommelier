@@ -129,8 +129,9 @@ bool PerfParser::ProcessEvents() {
   // COMM event for pid 0, we act like we did receive a COMM event for it. Perf
   // does this itself, example:
   //   http://lxr.free-electrons.com/source/tools/perf/util/session.c#L1120
+  commands_.insert(kSwapperCommandName);
   pidtid_to_comm_map_[std::make_pair(kSwapperPid, kSwapperPid)] =
-      kSwapperCommandName;
+      &(*commands_.find(kSwapperCommandName));
 
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
@@ -172,8 +173,9 @@ bool PerfParser::ProcessEvents() {
                 << event.comm.comm;
         ++stats_.num_comm_events;
         CHECK(MapCommEvent(event.comm));
+        commands_.insert(event.comm.comm);
         pidtid_to_comm_map_[std::make_pair(event.comm.pid, event.comm.tid)] =
-            event.comm.comm;
+            &(*commands_.find(event.comm.comm));
         break;
       case PERF_RECORD_LOST:
       case PERF_RECORD_THROTTLE:
@@ -209,12 +211,12 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   if (!ReadPerfSampleInfo(*(*parsed_event->raw_event), &sample_info))
     return false;
   PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
-  std::map<PidTid, string>::const_iterator comm_iter =
+  std::map<PidTid, const string*>::const_iterator comm_iter =
     pidtid_to_comm_map_.find(pidtid);
   // If there is no command found for this sample, mark it with a NULL command
   // pointer.
   if (comm_iter != pidtid_to_comm_map_.end()) {
-    parsed_event->command = &(comm_iter->second);
+    parsed_event->command = comm_iter->second;
   } else {
     parsed_event->command = NULL;
   }

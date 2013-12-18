@@ -159,7 +159,10 @@ class PerfParser : public PerfReader {
   std::map<uint32, AddressMapper*> process_mappers_;
 
   // Maps pid/tid to commands.
-  std::map<PidTid, string> pidtid_to_comm_map_;
+  std::map<PidTid, const string*> pidtid_to_comm_map_;
+
+  // A set to store the actual command strings.
+  std::set<string> commands_;
 
   // Set this flag to discard non-sample events that don't have any associated
   // sample events. e.g. MMAP regions with no samples in them.
