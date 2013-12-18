@@ -28,7 +28,7 @@
 
 int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
-  MessageLoopForUI message_loop;
+  MessageLoopForIO message_loop;
 
   // Get the max and current brightness from the real backlight and use them to
   // initialize a stub backlight (so that InternalBacklightController can do its

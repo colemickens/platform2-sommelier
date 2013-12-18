@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::ENABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   base::AtExitManager at_exit_manager;
-  MessageLoopForUI message_loop;
+  MessageLoopForIO message_loop;
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

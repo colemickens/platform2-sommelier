@@ -95,7 +95,7 @@ class InfoDisplay {
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
-  MessageLoopForUI message_loop;
+  MessageLoopForIO message_loop;
 
   std::vector<base::FilePath> pref_paths;
   pref_paths.push_back(base::FilePath(FLAGS_prefs_dir));
