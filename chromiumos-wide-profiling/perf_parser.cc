@@ -4,6 +4,8 @@
 
 #include "perf_parser.h"
 
+#include <string.h>
+
 #include <algorithm>
 #include <cstdio>
 #include <set>

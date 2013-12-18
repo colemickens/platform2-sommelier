@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <byteswap.h>
+#include <limits.h>
 
 #include <bitset>
 #include <cstdio>
