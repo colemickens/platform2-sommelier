@@ -29,6 +29,16 @@
       ]
     },
     {
+      'target_name': 'conversion_utils',
+      'type': 'static_library',
+      'sources': [
+        'conversion_utils.cc',
+      ],
+      'dependencies': [
+        'common',
+      ]
+    },
+    {
       'target_name': 'common_test',
       'type': 'static_library',
       'sources': [
@@ -72,6 +82,19 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'address_mapper_test.cc',
+          ]
+        },
+        {
+          'target_name': 'conversion_utils_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+            'common_test',
+            'conversion_utils',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'conversion_utils_test.cc',
           ]
         },
         {

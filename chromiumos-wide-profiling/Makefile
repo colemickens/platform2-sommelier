@@ -12,13 +12,15 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 CPPFLAGS += -Iperf $(PC_CFLAGS) -D__STDC_FORMAT_MACROS
 LDLIBS += $(PC_LIBS)
 
-TEST_SOURCES = address_mapper_test.cc perf_parser_test.cc perf_reader_test.cc \
+TEST_SOURCES = address_mapper_test.cc conversion_utils_test.cc \
+	       perf_parser_test.cc perf_reader_test.cc \
 	       perf_serializer_test.cc perf_recorder_test.cc utils_test.cc
 
 GENERATED_OBJECTS = perf_data.pb.o
 GENERATED_HEADERS = $(GENERATED_OBJECTS:.pb.o=.pb.h)
 
-COMMON_OBJECTS = address_mapper.o perf_parser.o perf_protobuf_io.o \
+COMMON_OBJECTS = address_mapper.o conversion_utils.o perf_parser.o \
+		 perf_protobuf_io.o \
 		 perf_reader.o perf_recorder.o perf_serializer.o utils.o \
 		 $(GENERATED_OBJECTS)
 

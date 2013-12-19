@@ -15,14 +15,15 @@ CXXFLAGS += -g -Wall -Werror -Wall -Imybase -Wno-error
 CPPFLAGS += -Iperf $(PC_CFLAGS)
 LDLIBS += -lpthread -lgcov $(PC_LIBS)
 
-MAIN_SOURCES = quipper.cc
+MAIN_SOURCES = quipper.cc perf_converter.cc
 PROGRAMS = $(MAIN_SOURCES:.cc=)
-TEST_SOURCES =
+TEST_SOURCES = conversion_utils_test.cc
 GENERATED_SOURCES = perf_data.pb.cc
 GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
 COMMON_SOURCES = utils.cc perf_reader.cc perf_parser.cc perf_serializer.cc \
 		 address_mapper.cc perf_protobuf_io.cc perf_recorder.cc \
+		 conversion_utils.cc \
 		 $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
 

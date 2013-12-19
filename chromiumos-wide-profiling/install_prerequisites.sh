@@ -3,7 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-readonly PREREQS=(build-essential protobuf-compiler libprotobuf-dev openssl)
+readonly PREREQS=(build-essential protobuf-compiler libprotobuf-dev openssl \
+  libgtest-dev)
 
 # Install quipper pre-requisites.
 sudo apt-get install ${PREREQS[@]}
