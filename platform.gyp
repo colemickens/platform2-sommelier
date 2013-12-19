@@ -6,6 +6,7 @@
       'dependencies': [
         '<(DEPTH)/libchromeos/libchromeos-<(libbase_ver).gyp:*',
         '<(DEPTH)/metrics/metrics.gyp:*',
+        '<(DEPTH)/power_manager/power_manager.gyp:*',
         '<(DEPTH)/system_api/system_api.gyp:*',
       ],
       'conditions': [
