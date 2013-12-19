@@ -312,7 +312,7 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
   uint16 current_misc = event.header.misc;
   parsed_event->callchain.resize(callchain->nr);
   int num_entries_mapped = 0;
-  for (int j = kFirstRelevantCallchainIndex; j < callchain->nr; ++j) {
+  for (unsigned int j = kFirstRelevantCallchainIndex; j < callchain->nr; ++j) {
     uint64 entry = callchain->ips[j];
     // When a callchain context entry is found, do not attempt to symbolize
     // it.  Instead use it to update |current_misc|.
