@@ -27,8 +27,9 @@ AttestationTask::~AttestationTask() {}
 
 CreateEnrollRequestTask::CreateEnrollRequestTask(
     AttestationTaskObserver* observer,
-    Attestation* attestation)
-    : AttestationTask(observer, attestation) {
+    Attestation* attestation,
+    Attestation::PCAType pca_type)
+    : AttestationTask(observer, attestation), pca_type_(pca_type) {
 }
 
 CreateEnrollRequestTask::~CreateEnrollRequestTask() {}
@@ -37,7 +38,7 @@ void CreateEnrollRequestTask::Run() {
   result()->set_return_status(FALSE);
   if (attestation_) {
     SecureBlob pca_request;
-    bool status = attestation_->CreateEnrollRequest(&pca_request);
+    bool status = attestation_->CreateEnrollRequest(pca_type_, &pca_request);
     result()->set_return_status(status);
     result()->set_return_data(pca_request);
   }
@@ -46,8 +47,10 @@ void CreateEnrollRequestTask::Run() {
 
 EnrollTask::EnrollTask(AttestationTaskObserver* observer,
                        Attestation* attestation,
+                       Attestation::PCAType pca_type,
                        const SecureBlob& pca_response)
     : AttestationTask(observer, attestation),
+      pca_type_(pca_type),
       pca_response_(pca_response) {
 }
 
@@ -56,7 +59,7 @@ EnrollTask::~EnrollTask() {}
 void EnrollTask::Run() {
   result()->set_return_status(FALSE);
   if (attestation_) {
-    bool status = attestation_->Enroll(pca_response_);
+    bool status = attestation_->Enroll(pca_type_, pca_response_);
     result()->set_return_status(status);
   }
   Notify();
@@ -64,10 +67,12 @@ void EnrollTask::Run() {
 
 CreateCertRequestTask::CreateCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
+                                             Attestation::PCAType pca_type,
                                              CertificateProfile profile,
                                              const string& username,
                                              const string& origin)
     : AttestationTask(observer, attestation),
+      pca_type_(pca_type),
       profile_(profile),
       username_(username),
       origin_(origin) {
@@ -79,7 +84,8 @@ void CreateCertRequestTask::Run() {
   result()->set_return_status(FALSE);
   if (attestation_) {
     SecureBlob pca_request;
-    bool status = attestation_->CreateCertRequest(profile_,
+    bool status = attestation_->CreateCertRequest(pca_type_,
+                                                  profile_,
                                                   username_,
                                                   origin_,
                                                   &pca_request);

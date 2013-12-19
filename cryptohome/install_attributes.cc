@@ -206,8 +206,10 @@ bool InstallAttributes::GetByIndex(int index,
   if (name) {
     name->assign(attr->name());
   }
-  value->resize(attr->value().length());
-  memcpy(&value->at(0), attr->value().c_str(), value->size());
+  if (value) {
+    value->resize(attr->value().length());
+    memcpy(&value->at(0), attr->value().c_str(), value->size());
+  }
   return true;
 }
 
@@ -286,6 +288,7 @@ bool InstallAttributes::Finalize() {
 
   LOG(INFO) << "InstallAttributes have been finalized.";
   set_is_first_install(false);
+  NotifyFinalized();
   return true;
 }
 

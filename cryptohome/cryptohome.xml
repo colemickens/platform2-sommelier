@@ -152,12 +152,18 @@
       <arg type="b" name="verified" direction="out" />
     </method>
     <method name="TpmAttestationCreateEnrollRequest">
+      <arg type="i" name="pca_type" direction="in" />
       <arg type="ay" name="pca_request" direction="out" />
     </method>
     <method name="AsyncTpmAttestationCreateEnrollRequest">
       <arg type="i" name="async_id" direction="out" />
     </method>
+    <method name="AsyncTpmAttestationCreateEnrollRequestNew">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
     <method name="TpmAttestationEnroll">
+      <arg type="i" name="pca_type" direction="in" />
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
@@ -165,13 +171,26 @@
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="TpmAttestationCreateCertRequestByProfile">
+    <method name="AsyncTpmAttestationEnrollNew">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="ay" name="pca_response" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationCreateCertRequest">
+      <arg type="i" name="pca_type" direction="in" />
       <arg type="i" name="certificate_profile" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="request_origin" direction="in" />
       <arg type="ay" name="pca_request" direction="out" />
     </method>
     <method name="AsyncTpmAttestationCreateCertRequestByProfile">
+      <arg type="i" name="certificate_profile" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="request_origin" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="AsyncTpmAttestationCreateCertRequest">
+      <arg type="i" name="pca_type" direction="in" />
       <arg type="i" name="certificate_profile" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="request_origin" direction="in" />

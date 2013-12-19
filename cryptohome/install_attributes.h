@@ -9,6 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/observer_list.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 
@@ -30,6 +31,11 @@ namespace cryptohome {
 // InstallAttributes is not thread-safe and should not be accessed in parallel.
 class InstallAttributes {
  public:
+  class Observer {
+   public:
+    virtual void OnFinalized() = 0;
+  };
+
   // Creates an instance of install attributes that will use the |tpm|. If |tpm|
   // is NULL, InstallAttributes will proceed insecurely (unless it is set with
   // set_tpm at a later time).
@@ -158,6 +164,18 @@ class InstallAttributes {
   // "lockbox_index", "secure", "invalid", "first_install" and "size".
   virtual Value* GetStatus();
 
+  void AddObserver(Observer* obs) {
+    observer_list_.AddObserver(obs);
+  }
+
+  void RemoveObserver(Observer* obs) {
+    observer_list_.RemoveObserver(obs);
+  }
+
+  void NotifyFinalized() {
+    FOR_EACH_OBSERVER(Observer, observer_list_, OnFinalized());
+  }
+
   // Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
   static const uint32_t kLockboxIndex;
   // Provides the default location for the attributes data file.
@@ -188,6 +206,8 @@ class InstallAttributes {
   SerializedInstallAttributes* attributes_;
   Lockbox* lockbox_;
   Platform* platform_;
+  ObserverList<Observer> observer_list_;
+
   DISALLOW_COPY_AND_ASSIGN(InstallAttributes);
 };
 

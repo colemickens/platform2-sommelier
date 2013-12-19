@@ -36,7 +36,7 @@ class TpmInit {
 
   virtual ~TpmInit();
 
-  virtual void Init(TpmInitCallback* notify_callback, Crypto* crypto);
+  virtual void Init(TpmInitCallback* notify_callback);
 
   // Gets random data from the TPM
   //
@@ -72,21 +72,9 @@ class TpmInit {
   // Clears the TPM password from memory and disk
   virtual void ClearStoredTpmPassword();
 
-  // Returns true if attestation data has been prepared for enrollment.
-  virtual bool IsAttestationPrepared();
-
-  // Returns true if all attestation data can be validated.
-  virtual bool VerifyAttestationData();
-
-  // Returns true if the EK certificate can be validated.
-  virtual bool VerifyEK();
-
   virtual void set_tpm(Tpm* value);
 
   virtual Tpm* get_tpm();
-
-  // Returns NULL if attestation is not available.
-  virtual Attestation* get_attestation();
 
  private:
   virtual void ThreadMain();
@@ -99,12 +87,9 @@ class TpmInit {
   TpmInitCallback* notify_callback_;
 
   bool initialize_called_;
-  bool task_done_;
   bool initialize_took_ownership_;
   int64_t initialization_time_;
-  scoped_ptr<Attestation> attestation_;
   Platform* platform_;
-  Crypto* crypto_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);
 };

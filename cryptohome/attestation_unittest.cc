@@ -17,6 +17,7 @@
 #include "attestation.pb.h"
 #include "crypto.h"
 #include "cryptolib.h"
+#include "mock_install_attributes.h"
 #include "mock_keystore.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
@@ -39,7 +40,8 @@ static const char* kTestUser = "test_user";
 class AttestationTest : public testing::Test {
  public:
   AttestationTest() : crypto_(&platform_),
-                      attestation_(&tpm_, &platform_, &crypto_),
+                      attestation_(&tpm_, &platform_, &crypto_,
+                                   &install_attributes_),
                       rsa_(NULL) {
     crypto_.set_tpm(&tpm_);
     crypto_.set_use_tpm(true);
@@ -57,6 +59,10 @@ class AttestationTest : public testing::Test {
         .WillByDefault(Invoke(this, &AttestationTest::WriteDB));
     ON_CALL(platform_, ReadFileToString(StartsWith(kTestPath), _))
         .WillByDefault(Invoke(this, &AttestationTest::ReadDB));
+    // Configure a TPM that is ready.
+    ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
+    ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
+    ON_CALL(tpm_, IsBeingOwned()).WillByDefault(Return(false));
   }
 
   virtual bool WriteDB(const string& path, const string& db) {
@@ -74,6 +80,7 @@ class AttestationTest : public testing::Test {
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
   NiceMock<MockKeyStore> key_store_;
+  NiceMock<MockInstallAttributes> install_attributes_;
   Attestation attestation_;
   RSA* rsa_;  // Access with rsa().
 
@@ -266,13 +273,41 @@ class AttestationTest : public testing::Test {
     *output = ConvertBlobToString(decrypted);
     return true;
   }
+
+  // Returns a copy of the database as it exists on 'disk'.
+  AttestationDatabase GetPersistentDatabase() {
+    AttestationDatabase db;
+    attestation_.DecryptDatabase(serialized_db_, &db);
+    return db;
+  }
+
+  // Returns a mutable reference to the current database instance.  If a test is
+  // verifying database changes it should use GetPersistentDatabase() so it will
+  // also verify that the changes are written to disk correctly.
+  AttestationDatabase& GetMutableDatabase() {
+    return attestation_.database_pb_;
+  }
 };
 
 TEST(AttestationTest_, NullTpm) {
-  Attestation without_tpm(NULL, NULL, new Crypto(NULL));
+  Attestation without_tpm(NULL, NULL, new Crypto(NULL),
+                          new InstallAttributes(NULL));
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify());
+  EXPECT_FALSE(without_tpm.VerifyEK());
+  EXPECT_FALSE(without_tpm.CreateEnrollRequest(Attestation::kDefaultPCA, NULL));
+  EXPECT_FALSE(without_tpm.Enroll(Attestation::kDefaultPCA, SecureBlob()));
+  EXPECT_FALSE(without_tpm.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
+                                             "", NULL));
+  EXPECT_FALSE(without_tpm.FinishCertRequest(SecureBlob(), false, "","", NULL));
+  EXPECT_FALSE(without_tpm.SignEnterpriseChallenge(false, "", "", "",
+                                                   SecureBlob(), false,
+                                                   SecureBlob(), NULL));
+  EXPECT_FALSE(without_tpm.SignSimpleChallenge(false, "", "", SecureBlob(),
+                                               NULL));
+  EXPECT_FALSE(without_tpm.GetEKInfo(NULL));
 }
 
 TEST_F(AttestationTest, PrepareForEnrollment) {
@@ -282,11 +317,13 @@ TEST_F(AttestationTest, PrepareForEnrollment) {
 
 TEST_F(AttestationTest, Enroll) {
   SecureBlob blob;
-  EXPECT_FALSE(attestation_.CreateEnrollRequest(&blob));
+  EXPECT_FALSE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                                &blob));
   attestation_.PrepareForEnrollment();
   EXPECT_FALSE(attestation_.IsEnrolled());
-  EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
-  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                               &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
   EXPECT_TRUE(attestation_.IsEnrolled());
 }
 
@@ -295,13 +332,16 @@ TEST_F(AttestationTest, CertRequest) {
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
                             Return(true)));
   SecureBlob blob;
-  EXPECT_FALSE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                              ENTERPRISE_USER_CERTIFICATE, "",
                                               "", &blob));
   attestation_.PrepareForEnrollment();
-  EXPECT_FALSE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                              ENTERPRISE_USER_CERTIFICATE, "",
                                               "", &blob));
-  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   EXPECT_FALSE(attestation_.DoesKeyExist(false, kTestUser, "test"));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
@@ -331,8 +371,9 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
           Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
-  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   // Expect storage failure here.
   EXPECT_FALSE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
@@ -340,7 +381,8 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
                                               kTestUser,
                                               "test",
                                               &blob));
-  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              true,
@@ -367,9 +409,11 @@ TEST_F(AttestationTest, SimpleChallenge) {
                             Return(true)));
   chromeos::SecureBlob blob;
   attestation_.PrepareForEnrollment();
-  EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
-  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                               &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
@@ -396,9 +440,11 @@ TEST_F(AttestationTest, EMKChallenge) {
                             Return(true)));
   chromeos::SecureBlob blob;
   attestation_.PrepareForEnrollment();
-  EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
-  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                               &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
@@ -471,8 +517,9 @@ TEST_F(AttestationTest, Payload) {
                             Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
-  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
                                              "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
@@ -498,7 +545,7 @@ TEST_F(AttestationTest, DeleteByPrefixDevice) {
   ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", "prefix"));
 
   // Test with a single matching key.
-  AttestationDatabase& db = attestation_.database_pb_;
+  AttestationDatabase& db = GetMutableDatabase();
   db.add_device_keys()->set_key_name("prefix1");
   ASSERT_TRUE(attestation_.DeleteKeysByPrefix(false, "", "prefix"));
   EXPECT_EQ(0, db.device_keys_size());
@@ -553,7 +600,7 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
   attestation_.Initialize();
   attestation_.PrepareForEnrollment();
   // Expect endorsement data to be available.
-  const AttestationDatabase& db = attestation_.database_pb_;
+  AttestationDatabase db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
               db.credentials().has_endorsement_public_key() &&
               db.credentials().has_endorsement_credential());
@@ -561,6 +608,7 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
   // Simulate second login.
   attestation_.Initialize();
   // Expect endorsement data to be no longer available.
+  db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
               !db.credentials().has_endorsement_public_key() &&
               !db.credentials().has_endorsement_credential());
@@ -575,6 +623,91 @@ TEST_F(AttestationTest, CertChainWithNoIntermediateCA) {
   EXPECT_TRUE(attestation_.GetCertificateChain(true, kTestUser, "test",
                                                &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert", "")));
+}
+
+TEST_F(AttestationTest, AlternatePCADisabled) {
+  // Prepare without alternate PCA configuration.
+  attestation_.PrepareForEnrollment();
+  // Expect no alternate PCA data to be available.
+  AttestationDatabase db = GetPersistentDatabase();
+  EXPECT_FALSE(db.has_alternate_identity_binding() ||
+               db.has_alternate_identity_key() ||
+               db.has_alternate_pcr0_quote() ||
+               db.credentials().
+                  has_alternate_encrypted_endorsement_credential());
+}
+
+TEST_F(AttestationTest, AlternatePCAEnabled) {
+  // Prepare with alternate PCA configuration.
+  EXPECT_CALL(install_attributes_, Get(_, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(GetX509PublicKey()),
+                            Return(true)));
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
+      .WillRepeatedly(Return(true));
+  attestation_.PrepareForEnrollment();
+  // Expect all alternate PCA data to be available.
+  AttestationDatabase db = GetPersistentDatabase();
+  EXPECT_TRUE(db.has_alternate_identity_binding() &&
+              db.has_alternate_identity_key() &&
+              db.has_alternate_pcr0_quote() &&
+              db.credentials().
+                 has_alternate_encrypted_endorsement_credential());
+}
+
+TEST_F(AttestationTest, AlternatePCAEnroll) {
+  EXPECT_CALL(install_attributes_, Get(_, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(GetX509PublicKey()),
+                            Return(true)));
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
+      .WillRepeatedly(Return(true));
+
+  SecureBlob blob;
+  EXPECT_FALSE(attestation_.CreateEnrollRequest(Attestation::kAlternatePCA,
+                                                &blob));
+  attestation_.PrepareForEnrollment();
+  EXPECT_FALSE(attestation_.IsEnrolled());
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                               &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_FALSE(attestation_.IsEnrolled());
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kAlternatePCA,
+                                               &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kAlternatePCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.IsEnrolled());
+}
+
+TEST_F(AttestationTest, AlternatePCACertRequest) {
+  EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
+                            Return(true)));
+  EXPECT_CALL(install_attributes_, Get(_, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(GetX509PublicKey()),
+                            Return(true)));
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
+      .WillRepeatedly(Return(true));
+
+  SecureBlob blob;
+  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
+                                              ENTERPRISE_USER_CERTIFICATE, "",
+                                              "", &blob));
+  attestation_.PrepareForEnrollment();
+  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
+                                              ENTERPRISE_USER_CERTIFICATE, "",
+                                              "", &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
+  EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
+                                              ENTERPRISE_USER_CERTIFICATE, "",
+                                              "", &blob));
+  EXPECT_TRUE(attestation_.Enroll(Attestation::kAlternatePCA, GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(Attestation::kAlternatePCA,
+                                             ENTERPRISE_USER_CERTIFICATE, "",
+                                             "", &blob));
 }
 
 }  // namespace cryptohome

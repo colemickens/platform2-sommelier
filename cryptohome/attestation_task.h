@@ -4,12 +4,11 @@
 //
 // Asynchronous attestation tasks.
 
+#include "attestation.h"
 #include "attestation.pb.h"
 #include "mount_task.h"
 
 namespace cryptohome {
-
-class Attestation;
 
 typedef MountTaskObserver AttestationTaskObserver;
 
@@ -29,12 +28,15 @@ class AttestationTask : public MountTask {
 class CreateEnrollRequestTask : public AttestationTask {
  public:
   CreateEnrollRequestTask(AttestationTaskObserver* observer,
-                          Attestation* attestation);
+                          Attestation* attestation,
+                          Attestation::PCAType pca_type);
   virtual ~CreateEnrollRequestTask();
 
   virtual void Run();
 
  private:
+  Attestation::PCAType pca_type_;
+
   DISALLOW_COPY_AND_ASSIGN(CreateEnrollRequestTask);
 };
 
@@ -43,12 +45,14 @@ class EnrollTask : public AttestationTask {
  public:
   EnrollTask(AttestationTaskObserver* observer,
              Attestation* attestation,
+             Attestation::PCAType pca_type,
              const SecureBlob& pca_response);
   virtual ~EnrollTask();
 
   virtual void Run();
 
  private:
+  Attestation::PCAType pca_type_;
   SecureBlob pca_response_;
 
   DISALLOW_COPY_AND_ASSIGN(EnrollTask);
@@ -59,6 +63,7 @@ class CreateCertRequestTask : public AttestationTask {
  public:
   CreateCertRequestTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
+                        Attestation::PCAType pca_type,
                         CertificateProfile profile,
                         const std::string& username,
                         const std::string& origin);
@@ -67,6 +72,7 @@ class CreateCertRequestTask : public AttestationTask {
   virtual void Run();
 
  private:
+  Attestation::PCAType pca_type_;
   CertificateProfile profile_;
   std::string username_;
   std::string origin_;

@@ -28,6 +28,7 @@
 #include <chromeos/utility.h>
 
 #include "bindings/client.h"
+#include "attestation.h"
 #include "attestation.pb.h"
 #include "crypto.h"
 #include "marshal.glibmarshal.h"
@@ -1236,6 +1237,7 @@ int main(int argc, char **argv) {
       chromeos::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(
           proxy.gproxy(),
+          cryptohome::Attestation::kDefaultPCA,
           &chromeos::Resetter(&data).lvalue(),
           &chromeos::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
@@ -1280,8 +1282,8 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedError error;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
-          proxy.gproxy(), data.get(), &success,
-          &chromeos::Resetter(&error).lvalue())) {
+          proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
+          &success, &chromeos::Resetter(&error).lvalue())) {
         printf("TpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
       }
@@ -1310,8 +1312,9 @@ int main(int argc, char **argv) {
     string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       chromeos::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request_by_profile(
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
           proxy.gproxy(),
+          cryptohome::Attestation::kDefaultPCA,
           cryptohome::ENTERPRISE_USER_CERTIFICATE,
           "", "",
           &chromeos::Resetter(&data).lvalue(),
@@ -1325,8 +1328,9 @@ int main(int argc, char **argv) {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
       gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request_by_profile(
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(
               proxy.gproxy(),
+              cryptohome::Attestation::kDefaultPCA,
               cryptohome::ENTERPRISE_USER_CERTIFICATE,
               "", "",
               &async_id,

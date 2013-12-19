@@ -15,6 +15,7 @@ message TPMCredentials {
   // The |endorsement_credential| encrypted with a public key associated with
   // the default Chrome OS Privacy CA.
   optional EncryptedData default_encrypted_endorsement_credential = 5;
+  optional EncryptedData alternate_encrypted_endorsement_credential = 6;
 }
 
 // Holds information relevant to a particular AIK.
@@ -180,6 +181,10 @@ message AttestationDatabase {
     optional int32 temporal_index = 3;
   }
   repeated TemporalIndexRecord temporal_index_record = 8;
+
+  optional IdentityBinding alternate_identity_binding = 9;
+  optional IdentityKey alternate_identity_key = 10;
+  optional Quote alternate_pcr0_quote = 11;
 }
 
 // Holds encrypted data and information required to decrypt it.

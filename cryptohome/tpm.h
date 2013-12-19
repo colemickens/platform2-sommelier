@@ -136,7 +136,7 @@ class Tpm {
   virtual bool IsOwned() const { return is_owned_; }
 
   // Returns whether or not the TPM is being owned
-  bool IsBeingOwned() const { return is_being_owned_; }
+  virtual bool IsBeingOwned() const { return is_being_owned_; }
 
   // Runs the TPM initialization sequence.  This may take a long time due to the
   // call to Tspi_TPM_TakeOwnership.

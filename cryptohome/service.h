@@ -147,6 +147,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 
+  virtual void set_attestation(Attestation* attestation) {
+    attestation_ = attestation;
+  }
+
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
   virtual gboolean CheckKey(gchar *user,
@@ -245,24 +249,29 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmVerifyAttestationData(gboolean* OUT_verified,
                                             GError** error);
   virtual gboolean TpmVerifyEK(gboolean* OUT_verified, GError** error);
-  virtual gboolean TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
+  virtual gboolean TpmAttestationCreateEnrollRequest(gint pca_type,
+                                                     GArray** OUT_pca_request,
                                                      GError** error);
-  virtual gboolean AsyncTpmAttestationCreateEnrollRequest(
-      gint* OUT_async_id,
-      GError** error);
-  virtual gboolean TpmAttestationEnroll(GArray* pca_response,
+  virtual gboolean AsyncTpmAttestationCreateEnrollRequest(gint pca_type,
+                                                          gint* OUT_async_id,
+                                                          GError** error);
+  virtual gboolean TpmAttestationEnroll(gint pca_type,
+                                        GArray* pca_response,
                                         gboolean* OUT_success,
                                         GError** error);
-  virtual gboolean AsyncTpmAttestationEnroll(GArray* pca_response,
+  virtual gboolean AsyncTpmAttestationEnroll(gint pca_type,
+                                             GArray* pca_response,
                                              gint* OUT_async_id,
                                              GError** error);
   virtual gboolean TpmAttestationCreateCertRequest(
+      gint pca_type,
       gint certificate_profile,
       gchar* username,
       gchar* request_origin,
       GArray** OUT_pca_request,
       GError** error);
   virtual gboolean AsyncTpmAttestationCreateCertRequest(
+      gint pca_type,
       gint certificate_profile,
       gchar* username,
       gchar* request_origin,
@@ -505,18 +514,15 @@ class Service : public chromeos::dbus::AbstractDbusService,
   typedef std::map<int,
                    scoped_refptr<MountTaskPkcs11Init> > Pkcs11TaskMap;
   Pkcs11TaskMap pkcs11_tasks_;
-
   scoped_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
-
   std::string guest_user_;
-
   bool legacy_mount_;
-
   chromeos::SecureBlob public_mount_salt_;
-
   scoped_ptr<chaps::TokenManagerClient> default_chaps_client_;
   chaps::TokenManagerClient* chaps_client_;
+  scoped_ptr<Attestation> default_attestation_;
+  Attestation* attestation_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

@@ -161,11 +161,18 @@ const char kPreservedEnrollmentStatePath[] =
 
 // A helper function which maps an integer to a valid CertificateProfile.
 CertificateProfile GetProfile(int profile_value) {
-  const int kMaxProfileEnum = 2;
-  if (profile_value < 0 || profile_value > kMaxProfileEnum)
-    profile_value = kMaxProfileEnum;
+  // The protobuf compiler generates the _IsValid function.
+  if (!CertificateProfile_IsValid(profile_value))
+    return ENTERPRISE_USER_CERTIFICATE;
   return static_cast<CertificateProfile>(profile_value);
 };
+
+// A helper function which maps an integer to a valid Attestation::PCAType.
+Attestation::PCAType GetPCAType(int value) {
+  if (value < 0 || value > Attestation::kMaxPCAType)
+    return Attestation::kDefaultPCA;
+  return static_cast<Attestation::PCAType>(value);
+}
 
 class TpmInitStatus : public CryptohomeEventBase {
  public:
@@ -256,7 +263,10 @@ Service::Service()
       legacy_mount_(true),
       public_mount_salt_(),
       default_chaps_client_(new chaps::TokenManagerClient()),
-      chaps_client_(default_chaps_client_.get()) {
+      chaps_client_(default_chaps_client_.get()),
+      default_attestation_(
+          new Attestation(tpm_, platform_, crypto_, install_attrs_)),
+      attestation_(default_attestation_.get()) {
 }
 
 Service::~Service() {
@@ -399,14 +409,19 @@ bool Service::Initialize() {
   // Clean up any unreferenced mountpoints at startup.
   CleanUpStaleMounts(false);
 
+  attestation_->Initialize();
+
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
   if (tpm_ && initialize_tpm_) {
     tpm_init_->set_tpm(tpm_);
-    tpm_init_->Init(this, crypto_);
+    tpm_init_->Init(this);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
+    chromeos::SecureBlob password;
+    if (tpm_init_->IsTpmReady() && tpm_init_->GetTpmPassword(&password))
+      attestation_->PrepareForEnrollmentAsync();
   }
 
   // Install the type-info for the service with dbus.
@@ -690,6 +705,9 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
   tpm_init_status->set_status(status);
   tpm_init_status->set_took_ownership(took_ownership);
   event_source_.AddEvent(tpm_init_status);
+
+  // Do attestation work after AddEvent because it may take long.
+  attestation_->PrepareForEnrollment();
 }
 
 gboolean Service::CheckKey(gchar *userid,
@@ -1374,41 +1392,39 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
 
 gboolean Service::TpmIsAttestationPrepared(gboolean* OUT_prepared,
                                            GError** error) {
-  *OUT_prepared = tpm_init_->IsAttestationPrepared();
+  *OUT_prepared = attestation_->IsPreparedForEnrollment();
   return TRUE;
 }
 
 gboolean Service::TpmVerifyAttestationData(gboolean* OUT_verified,
                                            GError** error) {
-  *OUT_verified = tpm_init_->VerifyAttestationData();
+  *OUT_verified = attestation_->Verify();
   return TRUE;
 }
 
 gboolean Service::TpmVerifyEK(gboolean* OUT_verified, GError** error) {
-  *OUT_verified = tpm_init_->VerifyEK();
+  *OUT_verified = attestation_->VerifyEK();
   return TRUE;
 }
 
-gboolean Service::TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
+gboolean Service::TpmAttestationCreateEnrollRequest(gint pca_type,
+                                                    GArray** OUT_pca_request,
                                                     GError** error) {
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    return TRUE;
-  }
   chromeos::SecureBlob blob;
-  if (attestation->CreateEnrollRequest(&blob))
+  if (attestation_->CreateEnrollRequest(GetPCAType(pca_type), &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
   return TRUE;
 }
 
-gboolean Service::AsyncTpmAttestationCreateEnrollRequest(gint* OUT_async_id,
+gboolean Service::AsyncTpmAttestationCreateEnrollRequest(gint pca_type,
+                                                         gint* OUT_async_id,
                                                          GError** error) {
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<CreateEnrollRequestTask> task =
-      new CreateEnrollRequestTask(observer, tpm_init_->get_attestation());
+      new CreateEnrollRequestTask(observer, attestation_,
+                                  GetPCAType(pca_type));
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
       FROM_HERE,
@@ -1416,28 +1432,24 @@ gboolean Service::AsyncTpmAttestationCreateEnrollRequest(gint* OUT_async_id,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationEnroll(GArray* pca_response,
+gboolean Service::TpmAttestationEnroll(gint pca_type,
+                                       GArray* pca_response,
                                        gboolean* OUT_success,
                                        GError** error) {
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   chromeos::SecureBlob blob(pca_response->data, pca_response->len);
-  *OUT_success = attestation->Enroll(blob);
+  *OUT_success = attestation_->Enroll(GetPCAType(pca_type), blob);
   return TRUE;
 }
 
-gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
+gboolean Service::AsyncTpmAttestationEnroll(gint pca_type,
+                                            GArray* pca_response,
                                             gint* OUT_async_id,
                                             GError** error) {
   chromeos::SecureBlob blob(pca_response->data, pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<EnrollTask> task =
-      new EnrollTask(observer, tpm_init_->get_attestation(), blob);
+      new EnrollTask(observer, attestation_, GetPCAType(pca_type), blob);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
       FROM_HERE,
@@ -1445,27 +1457,25 @@ gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationCreateCertRequest(gint certificate_profile,
+gboolean Service::TpmAttestationCreateCertRequest(gint pca_type,
+                                                  gint certificate_profile,
                                                   gchar* username,
                                                   gchar* request_origin,
                                                   GArray** OUT_pca_request,
                                                   GError** error) {
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    return TRUE;
-  }
   chromeos::SecureBlob blob;
-  if (attestation->CreateCertRequest(GetProfile(certificate_profile),
-                                     username,
-                                     request_origin,
-                                     &blob))
+  if (attestation_->CreateCertRequest(GetPCAType(pca_type),
+                                      GetProfile(certificate_profile),
+                                      username,
+                                      request_origin,
+                                      &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
   return TRUE;
 }
 
 gboolean Service::AsyncTpmAttestationCreateCertRequest(
+    gint pca_type,
     gint certificate_profile,
     gchar* username,
     gchar* request_origin,
@@ -1475,7 +1485,8 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<CreateCertRequestTask> task =
       new CreateCertRequestTask(observer,
-                                tpm_init_->get_attestation(),
+                                attestation_,
+                                GetPCAType(pca_type),
                                 GetProfile(certificate_profile),
                                 username,
                                 request_origin);
@@ -1494,19 +1505,13 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
                                                   gboolean* OUT_success,
                                                   GError** error) {
   *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   chromeos::SecureBlob response_blob(pca_response->data, pca_response->len);
   chromeos::SecureBlob cert_blob;
-  *OUT_success = attestation->FinishCertRequest(response_blob,
-                                                is_user_specific,
-                                                username,
-                                                key_name,
-                                                &cert_blob);
+  *OUT_success = attestation_->FinishCertRequest(response_blob,
+                                                 is_user_specific,
+                                                 username,
+                                                 key_name,
+                                                 &cert_blob);
   if (*OUT_success)
     g_array_append_vals(*OUT_cert, &cert_blob.front(), cert_blob.size());
   return TRUE;
@@ -1524,7 +1529,7 @@ gboolean Service::AsyncTpmAttestationFinishCertRequest(
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<FinishCertRequestTask> task =
       new FinishCertRequestTask(observer,
-                                tpm_init_->get_attestation(),
+                                attestation_,
                                 blob,
                                 is_user_specific,
                                 username,
@@ -1538,10 +1543,7 @@ gboolean Service::AsyncTpmAttestationFinishCertRequest(
 
 gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
                                            GError** error) {
-  *OUT_is_enrolled = FALSE;
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (attestation)
-    *OUT_is_enrolled = attestation->IsEnrolled();
+  *OUT_is_enrolled = attestation_->IsEnrolled();
   return TRUE;
 }
 
@@ -1550,13 +1552,9 @@ gboolean Service::TpmAttestationDoesKeyExist(gboolean is_user_specific,
                                              gchar* key_name,
                                              gboolean *OUT_exists,
                                              GError** error) {
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_exists = FALSE;
-    return TRUE;
-  }
-  *OUT_exists = attestation->DoesKeyExist(is_user_specific, username, key_name);
+  *OUT_exists = attestation_->DoesKeyExist(is_user_specific,
+                                           username,
+                                           key_name);
   return TRUE;
 }
 
@@ -1567,17 +1565,11 @@ gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
                                                gboolean* OUT_success,
                                                GError** error) {
   *OUT_certificate = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   chromeos::SecureBlob blob;
-  *OUT_success = attestation->GetCertificateChain(is_user_specific,
-                                                  username,
-                                                  key_name,
-                                                  &blob);
+  *OUT_success = attestation_->GetCertificateChain(is_user_specific,
+                                                   username,
+                                                   key_name,
+                                                   &blob);
   if (*OUT_success)
     g_array_append_vals(*OUT_certificate, &blob.front(), blob.size());
   return TRUE;
@@ -1590,17 +1582,11 @@ gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
                                              gboolean* OUT_success,
                                              GError** error) {
   *OUT_public_key = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   chromeos::SecureBlob blob;
-  *OUT_success = attestation->GetPublicKey(is_user_specific,
-                                           username,
-                                           key_name,
-                                           &blob);
+  *OUT_success = attestation_->GetPublicKey(is_user_specific,
+                                            username,
+                                            key_name,
+                                            &blob);
   if (*OUT_success)
     g_array_append_vals(*OUT_public_key, &blob.front(), blob.size());
   return TRUE;
@@ -1615,7 +1601,7 @@ gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<RegisterKeyTask> task =
       new RegisterKeyTask(observer,
-                          tpm_init_->get_attestation(),
+                          attestation_,
                           is_user_specific,
                           username,
                           key_name);
@@ -1642,7 +1628,7 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<SignChallengeTask> task =
       new SignChallengeTask(observer,
-                            tpm_init_->get_attestation(),
+                            attestation_,
                             is_user_specific,
                             username,
                             key_name,
@@ -1669,7 +1655,7 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<SignChallengeTask> task =
       new SignChallengeTask(observer,
-                            tpm_init_->get_attestation(),
+                            attestation_,
                             is_user_specific,
                             username,
                             key_name,
@@ -1688,17 +1674,11 @@ gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
                                               gboolean* OUT_success,
                                               GError** error) {
   *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   chromeos::SecureBlob blob;
-  *OUT_success = attestation->GetKeyPayload(is_user_specific,
-                                            username,
-                                            key_name,
-                                            &blob);
+  *OUT_success = attestation_->GetKeyPayload(is_user_specific,
+                                             username,
+                                             key_name,
+                                             &blob);
   if (*OUT_success)
     g_array_append_vals(*OUT_payload, &blob.front(), blob.size());
   return TRUE;
@@ -1710,17 +1690,11 @@ gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
                                               GArray* payload,
                                               gboolean* OUT_success,
                                               GError** error) {
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   chromeos::SecureBlob blob(payload->data, payload->len);
-  *OUT_success = attestation->SetKeyPayload(is_user_specific,
-                                            username,
-                                            key_name,
-                                            blob);
+  *OUT_success = attestation_->SetKeyPayload(is_user_specific,
+                                             username,
+                                             key_name,
+                                             blob);
   return TRUE;
 }
 
@@ -1729,29 +1703,17 @@ gboolean Service::TpmAttestationDeleteKeys(gboolean is_user_specific,
                                            gchar* key_prefix,
                                            gboolean* OUT_success,
                                            GError** error) {
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
-  *OUT_success = attestation->DeleteKeysByPrefix(is_user_specific,
-                                                 username,
-                                                 key_prefix);
+  *OUT_success = attestation_->DeleteKeysByPrefix(is_user_specific,
+                                                  username,
+                                                  key_prefix);
   return TRUE;
 }
 
 gboolean Service::TpmAttestationGetEK(gchar** OUT_ek_info,
                                       gboolean* OUT_success,
                                       GError** error) {
-  Attestation* attestation = tpm_init_->get_attestation();
-  if (!attestation) {
-    LOG(ERROR) << "Attestation is not available.";
-    *OUT_success = FALSE;
-    return TRUE;
-  }
   std::string ek_info;
-  *OUT_success = attestation->GetEKInfo(&ek_info);
+  *OUT_success = attestation_->GetEKInfo(&ek_info);
   *OUT_ek_info = g_strndup(ek_info.data(), ek_info.size());
   return TRUE;
 }
@@ -1854,18 +1816,6 @@ gboolean Service::InstallAttributesCount(gint* OUT_count, GError** error) {
 gboolean Service::InstallAttributesIsReady(gboolean* OUT_ready,
                                            GError** error) {
   *OUT_ready = (install_attrs_->IsReady() == true);
-  // Don't return ready if the attestation blob isn't yet prepared.
-  // http://crbug.com/189681
-  if (*OUT_ready && tpm_ && !tpm_init_->IsAttestationPrepared()) {
-    // Don't block on attestation prep if the TPM Owner password has been
-    // cleared.  Without a password attestation preparation cannot be
-    // performed.
-    SecureBlob password;
-    if (tpm_init_->GetTpmPassword(&password)) {
-      LOG(WARNING) << "InstallAttributesIsReady: blocked on attestation";
-      *OUT_ready = false;
-    }
-  }
   return TRUE;
 }
 

@@ -61,11 +61,9 @@ TpmInit::TpmInit(Platform* platform)
       init_thread_(kNullThreadHandle),
       notify_callback_(NULL),
       initialize_called_(false),
-      task_done_(false),
       initialize_took_ownership_(false),
       initialization_time_(0),
-      platform_(platform),
-      crypto_(NULL) {
+      platform_(platform) {
 }
 
 TpmInit::~TpmInit() {
@@ -88,30 +86,9 @@ Tpm* TpmInit::get_tpm() {
   return NULL;
 }
 
-Attestation* TpmInit::get_attestation() {
-  if (!attestation_.get()) {
-    Tpm* tpm = get_tpm();
-    if (tpm && IsTpmReady()) {
-      attestation_.reset(new Attestation(tpm, platform_, crypto_));
-      attestation_->Initialize();
-    }
-  }
-  return attestation_.get();
-}
-
-void TpmInit::Init(TpmInitCallback* notify_callback, Crypto* crypto) {
+void TpmInit::Init(TpmInitCallback* notify_callback) {
   notify_callback_ = notify_callback;
-  crypto_ = crypto;
   tpm_init_task_->Init(this);
-  Tpm* tpm = get_tpm();
-  // We only want to kick off attestation work if the TPM is owned but the owner
-  // password has not been cleared.
-  chromeos::SecureBlob password;
-  if (tpm && IsTpmReady() && GetTpmPassword(&password)) {
-    Attestation* attestation = get_attestation();
-    if (attestation)
-      attestation->PrepareForEnrollmentAsync();
-  }
 }
 
 bool TpmInit::GetRandomData(int length, chromeos::Blob* data) {
@@ -158,27 +135,6 @@ void TpmInit::ClearStoredTpmPassword() {
   tpm_init_task_->get_tpm()->ClearStoredOwnerPassword();
 }
 
-bool TpmInit::IsAttestationPrepared() {
-  Attestation* attestation = get_attestation();
-  if (!attestation)
-    return false;
-  return attestation->IsPreparedForEnrollment();
-}
-
-bool TpmInit::VerifyAttestationData() {
-  Attestation* attestation = get_attestation();
-  if (!attestation)
-    return false;
-  return attestation->Verify();
-}
-
-bool TpmInit::VerifyEK() {
-  Attestation* attestation = get_attestation();
-  if (!attestation)
-    return false;
-  return attestation->VerifyEK();
-}
-
 void TpmInit::ThreadMain() {
   base::TimeTicks start = base::TimeTicks::Now();
   bool initialize_result = tpm_init_task_->get_tpm()->InitializeTpm(
@@ -192,10 +148,6 @@ void TpmInit::ThreadMain() {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
   }
-  Attestation* attestation = get_attestation();
-  if (attestation)
-    attestation->PrepareForEnrollment();
-  task_done_ = true;
 }
 
 }  // namespace cryptohome

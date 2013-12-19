@@ -9,15 +9,16 @@
 #include <string>
 
 #include <base/file_path.h>
+#include <base/scoped_observer.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/secure_blob.h>
-#include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <openssl/evp.h>
 
 #include "attestation.pb.h"
 #include "crypto.h"
+#include "install_attributes.h"
 
 namespace cryptohome {
 
@@ -31,9 +32,19 @@ class Tpm;
 // that an attestation server will need to issue credentials for this system. If
 // a platform does not have a TPM, this class does nothing.  This class is
 // thread-safe.
-class Attestation : public base::PlatformThread::Delegate {
+class Attestation : public base::PlatformThread::Delegate,
+                    public InstallAttributes::Observer {
  public:
-  Attestation(Tpm* tpm, Platform* platform, Crypto* crypto);
+  enum PCAType {
+    kDefaultPCA,    // The Google-operated Privacy CA.
+    kAlternatePCA,  // An alternate Privacy CA specified by enterprise policy.
+    kMaxPCAType
+  };
+  // The caller retains ownership of all pointers.
+  Attestation(Tpm* tpm,
+              Platform* platform,
+              Crypto* crypto,
+              InstallAttributes* install_attributes);
   virtual ~Attestation();
 
   // Must be called before any other method.
@@ -68,10 +79,12 @@ class Attestation : public base::PlatformThread::Delegate {
   // method can only succeed if IsPreparedForEnrollment() returns true.
   //
   // Parameters
+  //   pca_type - Specifies to which Privacy CA the request will be sent.
   //   pca_request - The request to be sent to the Privacy CA.
   //
   // Returns true on success.
-  virtual bool CreateEnrollRequest(chromeos::SecureBlob* pca_request);
+  virtual bool CreateEnrollRequest(PCAType pca_type,
+                                   chromeos::SecureBlob* pca_request);
 
   // Finishes the enrollment process. On success, IsEnrolled() will return true.
   // The response from the Privacy CA is a serialized
@@ -80,11 +93,13 @@ class Attestation : public base::PlatformThread::Delegate {
   // be used later during a certificate request.
   //
   // Parameters
+  //   pca_type - Specifies which Privacy CA created the response.
   //   pca_response - The Privacy CA's response to an enrollment request as
   //                  returned by CreateEnrollRequest().
   //
   // Returns true on success.
-  virtual bool Enroll(const chromeos::SecureBlob& pca_response);
+  virtual bool Enroll(PCAType pca_type,
+                      const chromeos::SecureBlob& pca_response);
 
   // Creates an attestation certificate request to be sent to the Privacy CA.
   // The request is a serialized AttestationCertificateRequest protobuf. The
@@ -96,6 +111,7 @@ class Attestation : public base::PlatformThread::Delegate {
   // method can only succeed if IsEnrolled() returns true.
   //
   // Parameters
+  //   pca_type - Specifies to which Privacy CA the request will be sent.
   //   profile - Specifies the type of certificate to be requested.
   //   username - The user requesting the certificate.
   //   origin - Some certificate requests require information about the origin
@@ -103,7 +119,8 @@ class Attestation : public base::PlatformThread::Delegate {
   //   pca_request - The request to be sent to the Privacy CA.
   //
   // Returns true on success.
-  virtual bool CreateCertRequest(CertificateProfile profile,
+  virtual bool CreateCertRequest(PCAType pca_type,
+                                 CertificateProfile profile,
                                  const std::string& username,
                                  const std::string& origin,
                                  chromeos::SecureBlob* pca_request);
@@ -305,6 +322,9 @@ class Attestation : public base::PlatformThread::Delegate {
   // PlatformThread::Delegate interface.
   virtual void ThreadMain() { PrepareForEnrollment(); }
 
+  // InstallAttributes::Observer interface.
+  virtual void OnFinalized() { PrepareForEnrollmentAsync(); }
+
  private:
   typedef std::map<std::string, chromeos::SecureBlob> CertRequestMap;
   enum FirmwareType {
@@ -347,6 +367,9 @@ class Attestation : public base::PlatformThread::Delegate {
   // ASN.1 DigestInfo header for SHA-256 (see PKCS #1 v2.1 section 9.2).
   static const unsigned char kSha256DigestInfo[];
   static const int kNumTemporalValues;
+  // Install attribute names for alternate PCA attributes.
+  static const char kAlternatePCAKeyAttributeName[];
+  static const char kAlternatePCAKeyIDAttributeName[];
 
   Tpm* tpm_;
   Platform* platform_;
@@ -366,6 +389,12 @@ class Attestation : public base::PlatformThread::Delegate {
   // data instead of using kEnterprise*PublicKey.
   RSA* enterprise_test_key_;
   MetricsLibrary metrics_;
+  InstallAttributes* install_attributes_;
+  ScopedObserver<InstallAttributes, InstallAttributes::Observer>
+      install_attributes_observer_;
+  // Don't use directly, use IsTPMReady() instead.
+  bool is_tpm_ready_;
+  bool is_prepare_in_progress_;
 
   // Moves data from a std::string container to a SecureBlob container.
   chromeos::SecureBlob ConvertStringToBlob(const std::string& s);
@@ -437,7 +466,8 @@ class Attestation : public base::PlatformThread::Delegate {
                               const chromeos::SecureBlob& ek_public_key);
 
   // Encrypts the endorsement credential with the Privacy CA public key.
-  bool EncryptEndorsementCredential(const chromeos::SecureBlob& credential,
+  bool EncryptEndorsementCredential(PCAType pca_type,
+                                    const chromeos::SecureBlob& credential,
                                     EncryptedData* encrypted_credential);
 
   // Adds named device-wide key to the attestation database.
@@ -518,8 +548,10 @@ class Attestation : public base::PlatformThread::Delegate {
   // cannot be decrypted locally.
   void FinalizeEndorsementData();
 
-  FRIEND_TEST(AttestationTest, DeleteByPrefixDevice);
-  FRIEND_TEST(AttestationTest, FinalizeEndorsementData);
+  // Returns true if the TPM is ready.
+  bool IsTPMReady();
+
+  friend class AttestationTest;
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

@@ -27,6 +27,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD2(Init, bool(Platform*, bool));
   MOCK_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsOwned, bool());
+  MOCK_CONST_METHOD0(IsBeingOwned, bool());
   MOCK_METHOD1(Connect, bool(TpmRetryAction*));  // NOLINT
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD4(Encrypt, bool(const chromeos::SecureBlob&,
