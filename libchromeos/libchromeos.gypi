@@ -4,7 +4,9 @@
       'deps': [
         'libchrome-<(libbase_ver)'
       ],
-      'strict_cflags': 0,
+      # This project has code that triggers warnings when using gtest.
+      # Need to sort that out before we enable this.
+      'enable_werror': 0,
     },
     'include_dirs': [
       '../libchromeos',
