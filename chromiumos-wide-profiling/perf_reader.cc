@@ -58,6 +58,9 @@ const uint64 kPerfMagic = 0x32454c4946524550LL;
 // (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
 const uint32 kSupportedMetadataMask = 0xfffc;
 
+// By default, the build ID event has PID = -1.
+const uint32 kDefaultBuildIDEventPid = static_cast<uint32>(-1);
+
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
   return num_bytes * 8;
@@ -120,10 +123,13 @@ void CheckNoBuildIDEventPadding() {
 // If |event| is null or is not large enough, a new event will be created.
 // In this case, if |event| is non-null, it will be freed.
 // Otherwise, updates the fields of the existing event.
+// |new_misc| indicates kernel vs user space, and is only used to fill in the
+// |header.misc| field of new events.
 // In either case, returns a pointer to the event containing the updated data,
 // or NULL in the case of a failure.
 build_id_event* CreateOrUpdateBuildID(const string& build_id,
                                       const string& filename,
+                                      uint16 new_misc,
                                       build_id_event* event) {
   // When creating an event from scratch, build id and filename must be present.
   if (!event && (build_id.empty() || filename.empty()))
@@ -145,10 +151,9 @@ build_id_event* CreateOrUpdateBuildID(const string& build_id,
       free(event);
     } else {
       // Fill in the fields appropriately.
-      // Misc and pid fields are currently not important, so ignore them.
-      // However, perf expects a non-zero misc, so always set it to kernel.
       new_event->header.type = HEADER_BUILD_ID;
-      new_event->header.misc = PERF_RECORD_MISC_KERNEL;
+      new_event->header.misc = new_misc;
+      new_event->pid = kDefaultBuildIDEventPid;
     }
     event = new_event;
   }
@@ -758,6 +763,7 @@ bool PerfReader::InjectBuildIDs(
     const std::map<string, string>& filenames_to_build_ids) {
   metadata_mask_ |= (1 << HEADER_BUILD_ID);
   std::set<string> updated_filenames;
+  // Inject new build ID's for existing build ID events.
   for (size_t i = 0; i < build_id_events_.size(); ++i) {
     build_id_event* event = build_id_events_[i];
     string filename = event->filename;
@@ -767,20 +773,40 @@ bool PerfReader::InjectBuildIDs(
     string build_id = filenames_to_build_ids.at(filename);
     PerfizeBuildIDString(&build_id);
     // Changing a build id should always result in an update, never creation.
-    CHECK_EQ(event, CreateOrUpdateBuildID(build_id, "", event));
+    CHECK_EQ(event, CreateOrUpdateBuildID(build_id, "", 0, event));
     updated_filenames.insert(filename);
+  }
+
+  // For files with no existing build ID events, create new build ID events.
+  // This requires a lookup of all MMAP's to determine the |misc| field of each
+  // build ID event.
+  std::map<string, uint16> filename_to_misc;
+  for (size_t i = 0; i < events_.size(); ++i) {
+    const event_t& event = *events_[i];
+    if (event.header.type != PERF_RECORD_MMAP)
+      continue;
+    filename_to_misc[event.mmap.filename] = event.header.misc;
   }
 
   std::map<string, string>::const_iterator it;
   for (it = filenames_to_build_ids.begin();
        it != filenames_to_build_ids.end();
        ++it) {
-    if (updated_filenames.find(it->first) != updated_filenames.end())
+    const string& filename = it->first;
+    if (updated_filenames.find(filename) != updated_filenames.end())
       continue;
+
+    // Determine the misc field.
+    uint16 new_misc = PERF_RECORD_MISC_KERNEL;
+    std::map<string, uint16>::const_iterator misc_iter =
+        filename_to_misc.find(filename);
+    if (misc_iter != filename_to_misc.end())
+      new_misc = misc_iter->second;
 
     string build_id = it->second;
     PerfizeBuildIDString(&build_id);
-    build_id_event* event = CreateOrUpdateBuildID(build_id, it->first, NULL);
+    build_id_event* event =
+        CreateOrUpdateBuildID(build_id, filename, new_misc, NULL);
     CHECK(event);
     build_id_events_.push_back(event);
   }
@@ -811,7 +837,7 @@ bool PerfReader::Localize(
 
     string new_name = perfized_build_ids_to_filenames.at(build_id);
     filename_map[string(event->filename)] = new_name;
-    build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
+    build_id_event* new_event = CreateOrUpdateBuildID("", new_name, 0, event);
     CHECK(new_event);
     build_id_events_[i] = new_event;
   }
@@ -829,7 +855,7 @@ bool PerfReader::LocalizeUsingFilenames(
 
     if (filename_map.find(event->filename) != filename_map.end()) {
       const string& new_name = filename_map.at(old_name);
-      build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
+      build_id_event* new_event = CreateOrUpdateBuildID("", new_name, 0, event);
       CHECK(new_event);
       build_id_events_[i] = new_event;
     }
