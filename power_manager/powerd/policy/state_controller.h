@@ -105,9 +105,9 @@ class StateController : public PrefsObserver {
     // timer is running.
     void TriggerActionTimeout();
 
-    // Runs StateController::HandleInitialDisplayModeTimeout(). Returns false if
-    // the timer wasn't running.
-    bool TriggerInitialDisplayModeTimeout() WARN_UNUSED_RESULT;
+    // Runs StateController::HandleInitialStateTimeout(). Returns false if the
+    // timer wasn't running.
+    bool TriggerInitialStateTimeout() WARN_UNUSED_RESULT;
 
    private:
     StateController* controller_;  // weak
@@ -211,10 +211,10 @@ class StateController : public PrefsObserver {
         lid_state_ == LID_CLOSED;
   }
 
-  // Is StateController currently waiting for HandleDisplayModeChange() to be
-  // called for the first time after Init() was called?
-  bool waiting_for_initial_display_mode() const {
-    return initial_display_mode_timer_.IsRunning();
+  // Is StateController currently waiting for the display mode and policy to be
+  // received for the first time after Init() was called?
+  bool waiting_for_initial_state() const {
+    return initial_state_timer_.IsRunning();
   }
 
   // Should inactivity-triggered actions be deferred due to StateController
@@ -224,6 +224,10 @@ class StateController : public PrefsObserver {
         session_state_ == SESSION_STARTED &&
         !saw_user_activity_during_current_session_;
   }
+
+  // Stops |initial_state_timer_| if |got_initial_display_mode_| and
+  // |got_initial_policy_| are both true.
+  void MaybeStopInitialStateTimer();
 
   // Returns the last time at which audio was active. If audio is currently
   // active, returns |now|. If audio has never been active, returns a null time.
@@ -274,9 +278,9 @@ class StateController : public PrefsObserver {
   // Invoked by |action_timer_| when it's time to perform an action.
   void HandleActionTimeout();
 
-  // Invoked by |initial_display_mode_timer_| if the current display mode
-  // wasn't received in a reasonable amount of time after Init() was called.
-  void HandleInitialDisplayModeTimeout();
+  // Invoked by |initial_state_timer_| if the current display mode and policy
+  // weren't received in a reasonable amount of time after Init() was called.
+  void HandleInitialStateTimeout();
 
   Delegate* delegate_;  // not owned
 
@@ -287,11 +291,16 @@ class StateController : public PrefsObserver {
   // Has Init() been called?
   bool initialized_;
 
+  // Have initial values for |display_mode_| and |policy_| been received? The
+  // lid-closed action is deferred while waiting for the initial state.
+  bool got_initial_display_mode_;
+  bool got_initial_policy_;
+
   // Runs HandleActionTimeout().
   base::OneShotTimer<StateController> action_timer_;
 
-  // Runs HandleInitialDisplayModeTimeout().
-  base::OneShotTimer<StateController> initial_display_mode_timer_;
+  // Runs HandleInitialStateTimeout().
+  base::OneShotTimer<StateController> initial_state_timer_;
 
   // Time at which |action_timer_| has been scheduled to fire.
   base::TimeTicks action_timer_time_for_testing_;

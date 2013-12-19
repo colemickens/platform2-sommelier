@@ -21,8 +21,9 @@ namespace policy {
 
 namespace {
 
-// Time in milliseconds to wait for the display mode after Init() is called.
-const int kInitialDisplayModeTimeoutMs = 10000;
+// Time in milliseconds to wait for the display mode and policy after Init() is
+// called.
+const int kInitialStateTimeoutMs = 10000;
 
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
@@ -127,12 +128,12 @@ void StateController::TestApi::TriggerActionTimeout() {
   controller_->HandleActionTimeout();
 }
 
-bool StateController::TestApi::TriggerInitialDisplayModeTimeout() {
-  if (!controller_->initial_display_mode_timer_.IsRunning())
+bool StateController::TestApi::TriggerInitialStateTimeout() {
+  if (!controller_->initial_state_timer_.IsRunning())
     return false;
 
-  controller_->initial_display_mode_timer_.Stop();
-  controller_->HandleInitialDisplayModeTimeout();
+  controller_->initial_state_timer_.Stop();
+  controller_->HandleInitialStateTimeout();
   return true;
 }
 
@@ -143,6 +144,8 @@ StateController::StateController()
       prefs_(NULL),
       clock_(new Clock),
       initialized_(false),
+      got_initial_display_mode_(false),
+      got_initial_policy_(false),
       power_source_(POWER_AC),
       lid_state_(LID_NOT_PRESENT),
       session_state_(SESSION_STOPPED),
@@ -191,9 +194,9 @@ void StateController::Init(Delegate* delegate,
   lid_state_ = lid_state;
   session_state_ = session_state;
 
-  initial_display_mode_timer_.Start(FROM_HERE,
-      base::TimeDelta::FromMilliseconds(kInitialDisplayModeTimeoutMs), this,
-      &StateController::HandleInitialDisplayModeTimeout);
+  initial_state_timer_.Start(FROM_HERE,
+      base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs), this,
+      &StateController::HandleInitialStateTimeout);
 
   UpdateSettingsAndState();
   initialized_ = true;
@@ -247,15 +250,15 @@ void StateController::HandleUpdaterStateChange(UpdaterState state) {
 
 void StateController::HandleDisplayModeChange(DisplayMode mode) {
   DCHECK(initialized_);
-  if (mode == display_mode_ && !waiting_for_initial_display_mode())
+  if (mode == display_mode_ && got_initial_display_mode_)
     return;
 
   VLOG(1) << "Display mode changed to " << DisplayModeToString(mode);
   display_mode_ = mode;
 
-  if (waiting_for_initial_display_mode()) {
-    initial_display_mode_timer_.Stop();
-    DCHECK(!waiting_for_initial_display_mode());
+  if (!got_initial_display_mode_) {
+    got_initial_display_mode_ = true;
+    MaybeStopInitialStateTimer();
   } else {
     UpdateLastUserActivityTime();
   }
@@ -297,6 +300,10 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
   VLOG(1) << "Received updated external policy: "
           << GetPolicyDebugString(policy);
   policy_ = policy;
+  if (!got_initial_policy_) {
+    got_initial_policy_ = true;
+    MaybeStopInitialStateTimer();
+  }
   UpdateSettingsAndState();
 }
 
@@ -544,6 +551,11 @@ void StateController::MergeDelaysFromPolicy(
   }
 }
 
+void StateController::MaybeStopInitialStateTimer() {
+  if (got_initial_display_mode_ && got_initial_policy_)
+    initial_state_timer_.Stop();
+}
+
 base::TimeTicks StateController::GetLastAudioActivityTime(
     base::TimeTicks now) const {
   // Unlike user and video activity, which are reported as discrete events,
@@ -617,6 +629,13 @@ void StateController::LoadPrefs() {
 
   SanitizeDelays(&pref_ac_delays_);
   SanitizeDelays(&pref_battery_delays_);
+
+  // Don't wait around for the external policy if the controller has been
+  // instructed to ignore it.
+  if (ignore_external_policy_) {
+    got_initial_policy_ = true;
+    MaybeStopInitialStateTimer();
+  }
 }
 
 void StateController::UpdateSettingsAndState() {
@@ -819,11 +838,11 @@ void StateController::UpdateState() {
   }
 
   Action lid_closed_action_to_perform = DO_NOTHING;
-  // Hold off on the lid-closed action if the initial display mode hasn't been
-  // received. powerd starts before Chrome's gotten a chance to configure the
-  // displays, and we don't want to shut down immediately if the user rebooted
-  // with the lid closed for docked mode.
-  if (lid_state_ == LID_CLOSED && !waiting_for_initial_display_mode()) {
+  // Hold off on the lid-closed action if the initial display mode or policy
+  // hasn't been received. powerd starts before Chrome's gotten a chance to
+  // configure the displays and send the policy, and we don't want to shut down
+  // immediately if the user rebooted with the lid closed.
+  if (lid_state_ == LID_CLOSED && !waiting_for_initial_state()) {
     if (!lid_closed_action_performed_) {
       lid_closed_action_to_perform = lid_closed_action_;
       VLOG(1) << "Ready to perform lid-closed action ("
@@ -880,9 +899,10 @@ void StateController::HandleActionTimeout() {
   UpdateState();
 }
 
-void StateController::HandleInitialDisplayModeTimeout() {
-  LOG(INFO) << "Didn't receive initial notification about display mode; using "
-            << DisplayModeToString(display_mode_);
+void StateController::HandleInitialStateTimeout() {
+  LOG(INFO) << "Didn't receive initial notification about display mode or "
+            << "policy; using " << DisplayModeToString(display_mode_)
+            << " display mode";
   UpdateState();
 }
 

@@ -148,7 +148,8 @@ class StateControllerTest : public testing::Test {
         initial_lid_state_(LID_OPEN),
         initial_session_state_(SESSION_STOPPED),
         initial_display_mode_(DISPLAY_NORMAL),
-        send_initial_display_mode_(true) {
+        send_initial_display_mode_(true),
+        send_initial_policy_(true) {
   }
 
  protected:
@@ -181,6 +182,8 @@ class StateControllerTest : public testing::Test {
 
     if (send_initial_display_mode_)
       controller_.HandleDisplayModeChange(initial_display_mode_);
+    if (send_initial_policy_)
+      controller_.HandlePolicyChange(initial_policy_);
   }
 
   // Advances |now_| by |interval_|.
@@ -274,6 +277,10 @@ class StateControllerTest : public testing::Test {
   // Initial display mode to send in Init().
   DisplayMode initial_display_mode_;
   bool send_initial_display_mode_;
+
+  // Initial policy to send in Init().
+  PowerManagementPolicy initial_policy_;
+  bool send_initial_policy_;
 };
 
 // Tests the basic operation of the different delays.
@@ -1318,7 +1325,7 @@ TEST_F(StateControllerTest, SuspendIfLidClosedAtStartup) {
 
   controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_FALSE(test_api_.TriggerInitialDisplayModeTimeout());
+  EXPECT_FALSE(test_api_.TriggerInitialStateTimeout());
 }
 
 // If the lid is already closed at startup but a notification about presentation
@@ -1329,7 +1336,7 @@ TEST_F(StateControllerTest, EnterDockedModeAtStartup) {
   initial_display_mode_ = DISPLAY_PRESENTATION;
   Init();
   EXPECT_EQ(kDocked, delegate_.GetActions());
-  EXPECT_FALSE(test_api_.TriggerInitialDisplayModeTimeout());
+  EXPECT_FALSE(test_api_.TriggerInitialStateTimeout());
 }
 
 // If the lid is already closed at startup but a display-mode notification never
@@ -1341,7 +1348,37 @@ TEST_F(StateControllerTest, TimeOutIfInitialDisplayModeNotReceived) {
   Init();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  EXPECT_TRUE(test_api_.TriggerInitialDisplayModeTimeout());
+  EXPECT_TRUE(test_api_.TriggerInitialStateTimeout());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+}
+
+// The lid-closed action shouldn't be performed until the initial policy is
+// received.
+TEST_F(StateControllerTest, WaitForPolicyAtStartup) {
+  initial_lid_state_ = LID_CLOSED;
+  send_initial_policy_ = false;
+  Init();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  PowerManagementPolicy policy;
+  policy.set_lid_closed_action(PowerManagementPolicy_Action_DO_NOTHING);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  policy.set_lid_closed_action(PowerManagementPolicy_Action_SHUT_DOWN);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
+}
+
+// If the initial state timeout occurs before the initial policy is received,
+// the default lid-closed action should be performed.
+TEST_F(StateControllerTest, TimeOutIfInitialPolicyNotReceived) {
+  initial_lid_state_ = LID_CLOSED;
+  send_initial_policy_ = false;
+  Init();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  EXPECT_TRUE(test_api_.TriggerInitialStateTimeout());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
