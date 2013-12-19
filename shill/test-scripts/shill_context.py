@@ -45,19 +45,33 @@ class ServiceAutoConnectContext(object):
         if service is None:
             raise ContextError('Could not obtain a service object.')
 
+        # Always set the AutoConnect property even if the requested value
+        # is the same so that shill will retain the AutoConnect property, else
+        # shill may override it.
         service_properties = service.GetProperties()
         self._initial_autoconnect = shill_proxy.ShillProxy.dbus2primitive(
             service_properties[
                 shill_proxy.ShillProxy.SERVICE_PROPERTY_AUTOCONNECT])
-        if self._initial_autoconnect != self._autoconnect:
-            logging.info('ServiceAutoConnectContext: change autoconnect to %s',
-                         self._autoconnect)
+        logging.info('ServiceAutoConnectContext: change autoconnect to %s',
+                     self._autoconnect)
+        service.SetProperty(
+            shill_proxy.ShillProxy.SERVICE_PROPERTY_AUTOCONNECT,
+            self._autoconnect)
+
+        # Make sure the cellular service gets persisted by taking it out of
+        # the ephemeral profile.
+        if not service_properties[
+                shill_proxy.ShillProxy.SERVICE_PROPERTY_PROFILE]:
+            shill = shill_proxy.ShillProxy.get_proxy()
+            manager_properties = shill.manager.GetProperties(utf8_strings=True)
+            active_profile = manager_props[
+                    shill_proxy.ShillProxy.MANAGER_PROPERTY_ACTIVE_PROFILE]
+            logging.info('ServiceAutoConnectContext: change cellular service '
+                         'profile to %s', active_profile)
             service.SetProperty(
-                shill_proxy.ShillProxy.SERVICE_PROPERTY_AUTOCONNECT,
-                self._autoconnect)
-        else:
-            logging.info('ServiceAutoConnectContext: autoconnect remains %s',
-                         self._initial_autoconnect)
+                    shill_proxy.ShillProxy.SERVICE_PROPERTY_PROFILE,
+                    active_profile)
+
         return self
 
 
