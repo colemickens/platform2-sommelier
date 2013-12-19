@@ -3,8 +3,8 @@
 
 {
   'variables': {
-    # Set this to 1 if you'd like to enable -Werror.
-    'enable_werror%': 0,
+    # Set this to 0 if you'd like to disable -Werror.
+    'enable_werror%': 1,
 
     # Set this to 1 if you'd like to enable debugging flags.
     'debug%': 0,
