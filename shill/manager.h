@@ -263,7 +263,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   DBusManager *dbus_manager() const { return dbus_manager_.get(); }
   virtual DeviceInfo *device_info() { return &device_info_; }
+#if !defined(DISABLE_CELLULAR)
   virtual ModemInfo *modem_info() { return &modem_info_; }
+#endif  // DISABLE_CELLULAR
   PowerManager *power_manager() const { return power_manager_.get(); }
   virtual EthernetEapProvider *ethernet_eap_provider() const {
     return ethernet_eap_provider_.get();
@@ -528,7 +530,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   scoped_ptr<DBusManager> dbus_manager_;
   DeviceInfo device_info_;
+#if !defined(DISABLE_CELLULAR)
   ModemInfo modem_info_;
+#endif  // DISABLE_CELLULAR
   scoped_ptr<EthernetEapProvider> ethernet_eap_provider_;
   scoped_ptr<VPNProvider> vpn_provider_;
   scoped_ptr<WiFiProvider> wifi_provider_;

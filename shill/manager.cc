@@ -96,7 +96,9 @@ Manager::Manager(ControlInterface *control_interface,
       user_profile_list_path_(FilePath(Profile::kUserProfileListPathname)),
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
+#if !defined(DISABLE_CELLULAR)
       modem_info_(control_interface, dispatcher, metrics, this, glib),
+#endif  // DISABLE_CELLULAR
       ethernet_eap_provider_(
           new EthernetEapProvider(
               control_interface, dispatcher, metrics, this)),
@@ -211,7 +213,9 @@ void Manager::Start() {
   running_ = true;
   adaptor_->UpdateRunning();
   device_info_.Start();
+#if !defined(DISABLE_CELLULAR)
   modem_info_.Start();
+#endif  // DISABLE_CELLULAR
   for (auto provider_mapping : providers_) {
     provider_mapping.second->Start();
   }
@@ -249,7 +253,9 @@ void Manager::Stop() {
   for (auto provider_mapping : providers_) {
     provider_mapping.second->Stop();
   }
+#if !defined(DISABLE_CELLULAR)
   modem_info_.Stop();
+#endif  // DISABLE_CELLULAR
   device_info_.Stop();
   sort_services_task_.Cancel();
   power_manager_.reset();

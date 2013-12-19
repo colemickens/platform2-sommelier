@@ -388,6 +388,8 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   EXPECT_EQ(kTransmitByteCount, tx_bytes);
 }
 
+#if !defined(DISABLE_CELLULAR)
+
 TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   IPAddress address = CreateInterfaceAddress();
 
@@ -401,6 +403,8 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kCellular));
 }
+
+#endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
 

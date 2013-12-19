@@ -5,13 +5,8 @@
 #include "shill/modem_info.h"
 
 #include <base/file_path.h>
-
-#if !defined(DISABLE_CELLULAR)
-
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
-
-#endif  // DISABLE_CELLULAR
 
 #include "shill/cellular_operator_info.h"
 #include "shill/logging.h"
@@ -60,16 +55,6 @@ ModemInfo::~ModemInfo() {
   Stop();
 }
 
-#if defined(DISABLE_CELLULAR)
-
-void ModemInfo::Start() {}
-void ModemInfo::Stop() {}
-void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
-  NOTIMPLEMENTED();
-}
-
-#else
-
 void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->glib(),
@@ -117,7 +102,5 @@ void ModemInfo::RegisterModemManager(ModemManager *manager) {
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();
 }
-
-#endif  // DISABLE_CELLULAR
 
 }  // namespace shill

@@ -404,6 +404,12 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
 
   switch (technology) {
     case Technology::kCellular:
+#if defined(DISABLE_CELLULAR)
+      LOG(WARNING) << "Cellular support is not implemented. "
+                   << "Ignore cellular device " << link_name << " at index "
+                   << interface_index << ".";
+      return NULL;
+#else
       // Cellular devices are managed by ModemInfo.
       SLOG(Device, 2) << "Cellular link " << link_name
                       << " at index " << interface_index
@@ -415,6 +421,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       infos_[interface_index].mac_address.Clear();
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
+#endif  // DISABLE_CELLULAR
     case Technology::kEthernet:
       device = new Ethernet(control_interface_, dispatcher_, metrics_,
                             manager_, link_name, address, interface_index);
