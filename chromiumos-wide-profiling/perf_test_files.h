@@ -78,7 +78,11 @@ const char* kPerfDataFiles[] = {
   // one. It then records SAMPLEs events in the child. It ensures the SAMPLEs in
   // the child are attributed to the first DSO that was mmap()ed, not the second
   // one.
-  "perf.data.remmap"
+  "perf.data.remmap",
+
+  // This is sample with a frequency higher than the max frequency, so it has
+  // throttle and unthrottle events.
+  "perf.data.throttle.next",
 };
 
 const char* kPerfPipedDataFiles[] = {

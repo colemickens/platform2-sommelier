@@ -153,14 +153,11 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   case PERF_RECORD_FORK:
   case PERF_RECORD_EXIT:
   case PERF_RECORD_COMM:
-    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
-           PERF_SAMPLE_CPU;
-    break;
-  // Not currently processing these events.
   case PERF_RECORD_LOST:
   case PERF_RECORD_THROTTLE:
   case PERF_RECORD_UNTHROTTLE:
-    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_CPU;
+    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
+           PERF_SAMPLE_CPU;
     break;
   case PERF_RECORD_READ:
     break;
