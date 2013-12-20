@@ -216,9 +216,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   // If there is no command found for this sample, mark it with a NULL command
   // pointer.
   if (comm_iter != pidtid_to_comm_map_.end()) {
-    parsed_event->command = comm_iter->second;
-  } else {
-    parsed_event->command = NULL;
+    parsed_event->set_command(*comm_iter->second);
   }
 
   struct ip_event& event = (*parsed_event->raw_event)->ip;

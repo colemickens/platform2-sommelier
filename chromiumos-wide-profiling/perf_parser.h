@@ -32,6 +32,9 @@ struct DSOInfo {
 };
 
 struct ParsedEvent {
+  // TODO(sque): Turn this struct into a class to privatize member variables.
+  ParsedEvent() : command_(NULL) {}
+
   // Stores address of the event pointer in |events_|.
   // We store an event_t** instead of an event_t* to avoid having multiple
   // copies of pointers returned by calloc.
@@ -42,7 +45,18 @@ struct ParsedEvent {
   uint32 num_samples_in_mmap_region;
 
   // Command associated with this sample.
-  const string* command;
+  const string* command_;
+
+  // Accessor for command string.
+  const string command() const {
+    if (command_)
+      return *command_;
+    return string();
+  }
+
+  void set_command(const string& command) {
+    command_ = &command;
+  }
 
   // A struct that contains a DSO + offset pair.
   struct DSOAndOffset {
