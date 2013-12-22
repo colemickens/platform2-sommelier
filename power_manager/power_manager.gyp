@@ -8,6 +8,7 @@
       ],
     },
     'dependencies': [
+      '../system_api/system_api.gyp:system_api-headers',
       '../system_api/system_api.gyp:system_api-power_manager-protos',
     ],
     'link_settings': {
