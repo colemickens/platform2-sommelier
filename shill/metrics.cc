@@ -269,6 +269,14 @@ const int Metrics::kMetricVpnUserAuthenticationTypeMax =
 const char Metrics::kMetricDHCPOptionFailureDetected[] =
     "Network.Shill.%s.DHCPOptionFailureDetected";
 
+const char Metrics::kMetricExpiredLeaseLengthSeconds[] =
+    "Network.Shill.%s.ExpiredLeaseLengthSeconds";
+const int Metrics::kMetricExpiredLeaseLengthSecondsMax =
+    7 * 24 * 60 * 60;  // 7 days
+const int Metrics::kMetricExpiredLeaseLengthSecondsMin = 1;
+const int Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets =
+    Metrics::kMetricExpiredLeaseLengthSecondsMax;
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),

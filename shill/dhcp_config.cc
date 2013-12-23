@@ -28,6 +28,7 @@ using std::vector;
 namespace shill {
 
 // static
+const int DHCPConfig::kAcquisitionTimeoutSeconds = 30;
 const char DHCPConfig::kConfigurationKeyBroadcastAddress[] = "BroadcastAddress";
 const char DHCPConfig::kConfigurationKeyClasslessStaticRoutes[] =
     "ClasslessStaticRoutes";
@@ -35,6 +36,7 @@ const char DHCPConfig::kConfigurationKeyDNS[] = "DomainNameServers";
 const char DHCPConfig::kConfigurationKeyDomainName[] = "DomainName";
 const char DHCPConfig::kConfigurationKeyDomainSearch[] = "DomainSearch";
 const char DHCPConfig::kConfigurationKeyIPAddress[] = "IPAddress";
+const char DHCPConfig::kConfigurationKeyLeaseTime[] = "DHCPLeaseTime";
 const char DHCPConfig::kConfigurationKeyMTU[] = "InterfaceMTU";
 const char DHCPConfig::kConfigurationKeyRouters[] = "Routers";
 const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
@@ -48,7 +50,6 @@ const char DHCPConfig::kDHCPCDMinimalConfig[] = "/etc/dhcpcd-minimal.conf";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s.pid";
-const int DHCPConfig::kDHCPTimeoutSeconds = 30;
 const char DHCPConfig::kDHCPCDUser[] = "dhcp";
 const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
@@ -82,7 +83,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       child_watch_tag_(0),
       is_lease_active_(false),
       is_gateway_arp_active_(false),
-      lease_acquisition_timeout_seconds_(kDHCPTimeoutSeconds),
+      lease_acquisition_timeout_seconds_(kAcquisitionTimeoutSeconds),
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
@@ -122,8 +123,9 @@ bool DHCPConfig::RenewIP() {
     LOG(ERROR) << "Unable to renew IP before acquiring destination.";
     return false;
   }
+  StopExpirationTimeout();
   proxy_->Rebind(device_name());
-  StartDHCPTimeout();
+  StartAcquisitionTimeout();
   return true;
 }
 
@@ -203,12 +205,19 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
 }
 
 void DHCPConfig::UpdateProperties(const Properties &properties) {
-  StopDHCPTimeout();
+  StopAcquisitionTimeout();
   IPConfig::UpdateProperties(properties);
+  if (properties.lease_duration_seconds) {
+    StartExpirationTimeout(properties.lease_duration_seconds);
+  } else {
+    LOG(WARNING) << "Lease duration is zero; not starting an expiration timer.";
+    StopExpirationTimeout();
+  }
 }
 
 void DHCPConfig::NotifyFailure() {
-  StopDHCPTimeout();
+  StopAcquisitionTimeout();
+  StopExpirationTimeout();
   IPConfig::NotifyFailure();
 }
 
@@ -258,7 +267,7 @@ bool DHCPConfig::Start() {
   provider_->BindPID(pid_, this);
   CHECK(!child_watch_tag_);
   child_watch_tag_ = glib_->ChildWatchAdd(pid_, ChildWatchCallback, this);
-  StartDHCPTimeout();
+  StartAcquisitionTimeout();
   return true;
 }
 
@@ -445,6 +454,8 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
       properties->vendor_encapsulated_options = value.reader().get_string();
     } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
       properties->web_proxy_auto_discovery = value.reader().get_string();
+    } else if (key == kConfigurationKeyLeaseTime) {
+      properties->lease_duration_seconds = value.reader().get_uint32();
     } else {
       SLOG(DHCP, 2) << "Key ignored.";
     }
@@ -471,7 +482,8 @@ void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
 
 void DHCPConfig::CleanupClientState() {
   SLOG(DHCP, 2) << __func__ << ": " << device_name();
-  StopDHCPTimeout();
+  StopAcquisitionTimeout();
+  StopExpirationTimeout();
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
@@ -494,24 +506,52 @@ void DHCPConfig::CleanupClientState() {
   is_lease_active_ = false;
 }
 
-void DHCPConfig::StartDHCPTimeout() {
+void DHCPConfig::StartAcquisitionTimeout() {
+  CHECK(lease_expiration_callback_.IsCancelled());
   lease_acquisition_timeout_callback_.Reset(
-      Bind(&DHCPConfig::ProcessDHCPTimeout, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&DHCPConfig::ProcessAcquisitionTimeout,
+           weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       lease_acquisition_timeout_callback_.callback(),
       lease_acquisition_timeout_seconds_ * 1000);
 }
 
-void DHCPConfig::StopDHCPTimeout() {
+void DHCPConfig::StopAcquisitionTimeout() {
   lease_acquisition_timeout_callback_.Cancel();
 }
 
-void DHCPConfig::ProcessDHCPTimeout() {
+void DHCPConfig::ProcessAcquisitionTimeout() {
   LOG(ERROR) << "Timed out waiting for DHCP lease on " << device_name() << " "
              << "(after " << lease_acquisition_timeout_seconds_ << " seconds).";
   if (is_gateway_arp_active_) {
     LOG(INFO) << "Continuing to use our previous lease, due to gateway-ARP.";
   } else {
+    NotifyFailure();
+  }
+}
+
+void DHCPConfig::StartExpirationTimeout(uint32 lease_duration_seconds) {
+  CHECK(lease_acquisition_timeout_callback_.IsCancelled());
+  SLOG(DHCP, 2) << __func__ << ": " << device_name()
+                << ": " << "Lease timeout is " << lease_duration_seconds
+                << " seconds.";
+  lease_expiration_callback_.Reset(
+      Bind(&DHCPConfig::ProcessExpirationTimeout,
+           weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(
+      lease_expiration_callback_.callback(),
+      lease_duration_seconds * 1000);
+}
+
+void DHCPConfig::StopExpirationTimeout() {
+  lease_expiration_callback_.Cancel();
+}
+
+void DHCPConfig::ProcessExpirationTimeout() {
+  LOG(ERROR) << "DHCP lease expired on " << device_name()
+             << "; restarting DHCP client instance.";
+  NotifyExpiry();
+  if (!Restart()) {
     NotifyFailure();
   }
 }

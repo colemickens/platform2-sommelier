@@ -428,6 +428,13 @@ class Metrics {
   // implies an infrastructure issue.
   static const char kMetricDHCPOptionFailureDetected[];
 
+  // The length in seconds of a lease that has expired while the DHCP
+  // client was attempting to renew the lease..
+  static const char kMetricExpiredLeaseLengthSeconds[];
+  static const int kMetricExpiredLeaseLengthSecondsMax;
+  static const int kMetricExpiredLeaseLengthSecondsMin;
+  static const int kMetricExpiredLeaseLengthSecondsNumBuckets;
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 

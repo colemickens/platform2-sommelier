@@ -370,6 +370,11 @@ class Device : public base::RefCounted<Device> {
   // signals a change in static IP parameters.
   void OnIPConfigRefreshed(const IPConfigRefPtr &ipconfig);
 
+  // Callback invoked when an IPConfig restarts due to lease expiry.  This
+  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
+  // follow.
+  void OnIPConfigExpired(const IPConfigRefPtr &ipconfig);
+
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected
   // service with Service::kFailureDHCP.

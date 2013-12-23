@@ -39,7 +39,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
                    blackhole_ipv6(false),
-                   mtu(0) {}
+                   mtu(0),
+                   lease_duration_seconds(0) {}
 
     IPAddress::Family address_family;
     std::string address;
@@ -62,6 +63,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::string vendor_encapsulated_options;
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
+    // Length of time the lease was granted.
+    uint32 lease_duration_seconds;
   };
 
   enum ReleaseReason {
@@ -103,6 +106,13 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // configuration instance allowing clients to more easily manage multiple IP
   // configurations.
   void RegisterRefreshCallback(const Callback &callback);
+
+  // Registers a callback that's executed every time the the lease exipres
+  // and the IPConfig is about to perform a restart to attempt to regain it.
+  // Takes ownership of |callback|. Pass NULL  to remove a callback. The
+  // callback's argument is a pointer to this IP configuration instance
+  // allowing clients to more easily manage multiple IP configurations.
+  void RegisterExpireCallback(const Callback &callback);
 
   void set_properties(const Properties &props) { properties_ = props; }
   virtual const Properties &properties() const { return properties_; }
@@ -149,6 +159,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Notifies registered listeners that the configuration process has failed.
   virtual void NotifyFailure();
 
+  // Notifies registered listeners that the lease has expired.
+  virtual void NotifyExpiry();
+
   // |id_suffix| is appended to the storage id, intended to bind this instance
   // to its associated device.
   std::string GetStorageIdentifier(const std::string &id_suffix);
@@ -161,6 +174,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
+  FRIEND_TEST(DeviceTest, OnIPConfigExpired);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
   FRIEND_TEST(ResolverTest, Empty);
@@ -184,6 +198,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   Callback update_callback_;
   Callback failure_callback_;
   Callback refresh_callback_;
+  Callback expire_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

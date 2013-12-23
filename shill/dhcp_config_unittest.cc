@@ -450,31 +450,50 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
   EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
+  config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
   config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->properties().address.empty());
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
 }
 
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
-  static const char * const kReasons[] =  {
-    DHCPConfig::kReasonBound,
-    DHCPConfig::kReasonRebind,
-    DHCPConfig::kReasonReboot,
-    DHCPConfig::kReasonRenew
-  };
-  for (size_t r = 0; r < arraysize(kReasons); r++) {
-    DHCPConfig::Configuration conf;
-    string message = string(kReasons[r]) + " failed";
-    conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(r);
-    EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
-    EXPECT_CALL(*this, FailureCallback(_)).Times(0);
-    config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
-    config_->ProcessEventSignal(kReasons[r], conf);
-    EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << message;
-    EXPECT_EQ(base::StringPrintf("%zu.0.0.0", r), config_->properties().address)
-        << message;
-    EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  for (const auto &reason : { DHCPConfig::kReasonBound,
+                              DHCPConfig::kReasonRebind,
+                              DHCPConfig::kReasonReboot,
+                              DHCPConfig::kReasonRenew }) {
+    int address_octet = 0;
+    for (const auto lease_time_given : { false, true }) {
+      DHCPConfig::Configuration conf;
+      conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+        ++address_octet);
+      if (lease_time_given) {
+        const uint32 kLeaseTime = 1;
+        conf[DHCPConfig::kConfigurationKeyLeaseTime].writer().append_uint32(
+            kLeaseTime);
+        config_->lease_expiration_callback_.Cancel();
+      } else {
+        config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
+      }
+      config_->lease_acquisition_timeout_callback_.Reset(
+          base::Bind(&DoNothing));
+      EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+      EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+      config_->ProcessEventSignal(reason, conf);
+      string failure_message = string(reason) + " failed with lease time " +
+          (lease_time_given ? "given" : "not given");
+      EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
+      EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
+                config_->properties().address) << failure_message;
+      EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled())
+          << failure_message;
+      // With no lease time given, the expiration callback will be cancelled.
+      // With a lease time given, the expiration callback should be started.
+      EXPECT_EQ(!lease_time_given,
+                config_->lease_expiration_callback_.IsCancelled())
+          << failure_message;
+    }
   }
 }
 
@@ -597,12 +616,14 @@ TEST_F(DHCPConfigTest, RenewIP) {
   Mock::VerifyAndClearExpectations(minijail_.get());
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).Times(0);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
   config_->pid_ = 456;
   EXPECT_FALSE(config_->RenewIP());  // Expect no crash with NULL proxy.
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->RenewIP());
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
   config_->pid_ = 0;
 }
 
@@ -698,8 +719,11 @@ TEST_F(DHCPConfigTest, Stop) {
       base::StringPrintf("Stopping.+%s", __func__))));
   config_->pid_ = kPID;
   DHCPProvider::GetInstance()->BindPID(kPID, config_);
+  config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
+  config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
   config_->Stop(__func__);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
   EXPECT_FALSE(DHCPProvider::GetInstance()->GetConfig(kPID));
   EXPECT_FALSE(config_->pid_);
 }

@@ -155,6 +155,10 @@ class DeviceTest : public PropertyStoreTest {
     device_->OnIPConfigFailed(ipconfig);
   }
 
+  void OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
+    device_->OnIPConfigExpired(ipconfig);
+  }
+
   void SelectService(const ServiceRefPtr service) {
     device_->SelectService(service);
   }
@@ -427,6 +431,22 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
                                                           kDeviceName);
   SelectService(NULL);
   OnIPConfigUpdated(ipconfig.get());
+}
+
+TEST_F(DeviceTest, OnIPConfigExpired) {
+  scoped_refptr<MockIPConfig> ipconfig =
+      new MockIPConfig(control_interface(), kDeviceName);
+  const int kLeaseLength = 1234;
+  ipconfig->properties_.lease_duration_seconds = kLeaseLength;
+
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds",
+                        kLeaseLength,
+                        Metrics::kMetricExpiredLeaseLengthSecondsMin,
+                        Metrics::kMetricExpiredLeaseLengthSecondsMax,
+                        Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets));
+
+  OnIPConfigExpired(ipconfig.get());
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {

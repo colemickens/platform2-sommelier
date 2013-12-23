@@ -41,6 +41,7 @@ class IPConfigTest : public Test {
   MOCK_METHOD1(OnIPConfigUpdated, void(const IPConfigRefPtr &ipconfig));
   MOCK_METHOD1(OnIPConfigFailed, void(const IPConfigRefPtr &ipconfig));
   MOCK_METHOD1(OnIPConfigRefreshed, void(const IPConfigRefPtr &ipconfig));
+  MOCK_METHOD1(OnIPConfigExpired, void(const IPConfigRefPtr &ipconfig));
 
  protected:
   IPConfigMockAdaptor *GetAdaptor() {
@@ -53,6 +54,10 @@ class IPConfigTest : public Test {
 
   void NotifyFailure() {
     ipconfig_->NotifyFailure();
+  }
+
+  void NotifyExpiry() {
+    ipconfig_->NotifyExpiry();
   }
 
   void ExpectPropertiesEqual(const IPConfig::Properties &properties) {
@@ -141,6 +146,10 @@ TEST_F(IPConfigTest, UpdateProperties) {
   NotifyFailure();
   ExpectPropertiesEqual(properties);
 
+  // We should not reset on NotifyExpiry.
+  NotifyExpiry();
+  ExpectPropertiesEqual(properties);
+
   // We should reset if ResetProperties is called.
   ipconfig_->ResetProperties();
   ExpectPropertiesEqual(IPConfig::Properties());
@@ -153,23 +162,35 @@ TEST_F(IPConfigTest, Callbacks) {
       Bind(&IPConfigTest::OnIPConfigFailed, Unretained(this)));
   ipconfig_->RegisterRefreshCallback(
       Bind(&IPConfigTest::OnIPConfigRefreshed, Unretained(this)));
+  ipconfig_->RegisterExpireCallback(
+      Bind(&IPConfigTest::OnIPConfigExpired, Unretained(this)));
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_));
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   UpdateProperties(IPConfig::Properties());
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_));
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   NotifyFailure();
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_));
+  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   ipconfig_->Refresh(NULL);
+  Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_));
+  NotifyExpiry();
   Mock::VerifyAndClearExpectations(this);
 }
 
@@ -208,6 +229,12 @@ TEST_F(IPConfigTest, PropertyChanges) {
   EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
   EXPECT_CALL(*adaptor, EmitStringsChanged(_, _)).Times(0);
   NotifyFailure();
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Similarly, NotifyExpiry() should have no property change side effects.
+  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
+  EXPECT_CALL(*adaptor, EmitStringsChanged(_, _)).Times(0);
+  NotifyExpiry();
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));

@@ -421,6 +421,8 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
                                           weak_ptr_factory_.GetWeakPtr()));
   ipconfig_->RegisterRefreshCallback(Bind(&Device::OnIPConfigRefreshed,
                                           weak_ptr_factory_.GetWeakPtr()));
+  ipconfig_->RegisterExpireCallback(Bind(&Device::OnIPConfigExpired,
+                                         weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
                              weak_ptr_factory_.GetWeakPtr()));
   return ipconfig_->RequestIP();
@@ -574,6 +576,16 @@ void Device::OnIPConfigFailure() {
     Error error;
     selected_service_->DisconnectWithFailure(Service::kFailureDHCP, &error);
   }
+}
+
+void Device::OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
+  metrics()->SendToUMA(
+      metrics()->GetFullMetricName(
+          Metrics::kMetricExpiredLeaseLengthSeconds, technology()),
+      ipconfig->properties().lease_duration_seconds,
+      Metrics::kMetricExpiredLeaseLengthSecondsMin,
+      Metrics::kMetricExpiredLeaseLengthSecondsMax,
+      Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
 }
 
 void Device::OnConnected() {}

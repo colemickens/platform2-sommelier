@@ -156,6 +156,12 @@ void IPConfig::NotifyFailure() {
   }
 }
 
+void IPConfig::NotifyExpiry() {
+  if (!expire_callback_.is_null()) {
+    expire_callback_.Run(this);
+  }
+}
+
 void IPConfig::RegisterUpdateCallback(const Callback &callback) {
   update_callback_ = callback;
 }
@@ -166,6 +172,10 @@ void IPConfig::RegisterFailureCallback(const Callback &callback) {
 
 void IPConfig::RegisterRefreshCallback(const Callback &callback) {
   refresh_callback_ = callback;
+}
+
+void IPConfig::RegisterExpireCallback(const Callback &callback) {
+  expire_callback_ = callback;
 }
 
 void IPConfig::ResetProperties() {

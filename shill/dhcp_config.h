@@ -101,12 +101,15 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, StopDuringRequestIP);
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
+  static const int kAcquisitionTimeoutSeconds;
+
   static const char kConfigurationKeyBroadcastAddress[];
   static const char kConfigurationKeyClasslessStaticRoutes[];
   static const char kConfigurationKeyDNS[];
   static const char kConfigurationKeyDomainName[];
   static const char kConfigurationKeyDomainSearch[];
   static const char kConfigurationKeyIPAddress[];
+  static const char kConfigurationKeyLeaseTime[];
   static const char kConfigurationKeyMTU[];
   static const char kConfigurationKeyRouters[];
   static const char kConfigurationKeySubnetCIDR[];
@@ -117,7 +120,6 @@ class DHCPConfig : public IPConfig {
   static const int kDHCPCDExitWaitMilliseconds;
   static const char kDHCPCDPath[];
   static const char kDHCPCDPathFormatPID[];
-  static const int kDHCPTimeoutSeconds;
   static const char kDHCPCDUser[];
   static const char kDHCPCDMinimalConfig[];
 
@@ -165,15 +167,25 @@ class DHCPConfig : public IPConfig {
   // its GPid, exit watch callback, and state files.
   void CleanupClientState();
 
-  // Initialize a callback that will invoke ProcessDHCPTimeout if we
+  // Initialize a callback that will invoke ProcessAcquisitionTimeout if we
   // do not get a lease in a reasonable amount of time.
-  void StartDHCPTimeout();
-  // Cancel callback created by StartDHCPTimeout. One-liner included
+  void StartAcquisitionTimeout();
+  // Cancel callback created by StartAcquisitionTimeout. One-liner included
   // for symmetry.
-  void StopDHCPTimeout();
+  void StopAcquisitionTimeout();
   // Called if we do not get a DHCP lease in a reasonable amount of time.
   // Informs upper layers of the failure.
-  void ProcessDHCPTimeout();
+  void ProcessAcquisitionTimeout();
+
+  // Initialize a callback that will invoke ProcessExpirationTimeout if we
+  // do not renew a lease in a |lease_duration_seconds|.
+  void StartExpirationTimeout(uint32 lease_duration_seconds);
+  // Cancel callback created by StartExpirationTimeout. One-liner included
+  // for symmetry.
+  void StopExpirationTimeout();
+  // Called if we do not renew a DHCP lease by the time the lease expires.
+  // Informs upper layers of the expiration and restarts the DHCP client.
+  void ProcessExpirationTimeout();
 
   // Kills DHCP client process.
   void KillClient();
@@ -222,6 +234,9 @@ class DHCPConfig : public IPConfig {
   // Time to wait for a DHCP lease. Represented as field so that it
   // can be overriden in tests.
   unsigned int lease_acquisition_timeout_seconds_;
+
+  // Called if a DHCP lease expires.
+  base::CancelableClosure lease_expiration_callback_;
 
   // Root file path, used for testing.
   base::FilePath root_;
