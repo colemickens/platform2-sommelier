@@ -29,6 +29,7 @@ DEFINE_string(remote_host, "", "VPN server hostname");
 DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
 DEFINE_string(server_id, "", "ID expected from server");
 DEFINE_string(user_pin, "", "PKCS#11 User PIN");
+DEFINE_string(xauth_credentials_file, "", "File with Xauth user credentials");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
 using vpn_manager::IpsecManager;
@@ -132,9 +133,15 @@ int main(int argc, char* argv[]) {
     return vpn_manager::kServiceErrorResolveHostnameFailed;
   }
 
+  if (FLAGS_psk_file.empty() && !FLAGS_xauth_credentials_file.empty()) {
+    LOG(ERROR) << "Providing XAUTH credentials without a PSK is invalid";
+    return vpn_manager::kServiceErrorInvalidArgument;
+  }
+
   if (!ipsec.Initialize(1,
                         remote_address,
                         FLAGS_psk_file,
+                        FLAGS_xauth_credentials_file,
                         FLAGS_server_ca_file,
                         FLAGS_server_id,
                         FLAGS_client_cert_slot,

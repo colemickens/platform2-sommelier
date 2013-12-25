@@ -33,6 +33,7 @@ class IpsecManager : public ServiceManager {
   bool Initialize(int ike_version,
                   const struct sockaddr& remote_address,
                   const std::string& psk_file,
+                  const std::string& xauth_credentials_file,
                   const std::string& server_ca_file,
                   const std::string& server_id,
                   const std::string& client_cert_tpm_slot,
@@ -59,6 +60,7 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
   FRIEND_TEST(IpsecManagerTest, FormatSecretsNoSlot);
   FRIEND_TEST(IpsecManagerTest, FormatSecretsNonZeroSlot);
+  FRIEND_TEST(IpsecManagerTest, FormatSecretsXauthCredentials);
   FRIEND_TEST(IpsecManagerTest, FormatStrongswanConfigFile);
   FRIEND_TEST(IpsecManagerTest, StartStarter);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatSecrets);
@@ -72,6 +74,8 @@ class IpsecManager : public ServiceManager {
 
   bool ReadCertificateSubject(const base::FilePath& filepath,
                               std::string* output);
+  bool FormatIpsecSecret(std::string* formatted);
+  bool FormatXauthSecret(std::string* formatted);
   bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
   bool WriteConfigFile(const std::string &output_name,
@@ -130,6 +134,10 @@ class IpsecManager : public ServiceManager {
   std::string user_pin_;
   // Last partial line read from output_fd_.
   std::string partial_output_line_;
+  // File containing the XAUTH username and password.
+  std::string xauth_credentials_file_;
+  // File containing the XAUTH username gained from FormatSecrets().
+  std::string xauth_identity_;
   // Time when ipsec was started.
   base::TimeTicks start_ticks_;
   // IPsec starter daemon.

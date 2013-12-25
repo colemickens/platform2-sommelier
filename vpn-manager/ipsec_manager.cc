@@ -17,6 +17,7 @@
 #include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/string_number_conversions.h"
+#include "base/string_split.h"
 #include "base/string_util.h"
 #include "chromeos/process.h"
 #include "gflags/gflags.h"
@@ -87,6 +88,7 @@ IpsecManager::IpsecManager()
 bool IpsecManager::Initialize(int ike_version,
                               const struct sockaddr& remote_address,
                               const std::string& psk_file,
+                              const std::string& xauth_credentials_file,
                               const std::string& server_ca_file,
                               const std::string& server_id,
                               const std::string& client_cert_slot,
@@ -164,6 +166,16 @@ bool IpsecManager::Initialize(int ike_version,
     psk_file_ = psk_file;
   }
 
+  if (!xauth_credentials_file.empty()) {
+    if (!file_util::PathExists(FilePath(xauth_credentials_file))) {
+      LOG(ERROR) << "Invalid xauth credentials file: "
+                 << xauth_credentials_file;
+      RegisterError(kServiceErrorInvalidArgument);
+      return false;
+    }
+    xauth_credentials_file_ = xauth_credentials_file;
+  }
+
   if (ike_version != 1 && ike_version != 2) {
     LOG(ERROR) << "Unsupported IKE version" << ike_version;
     RegisterError(kServiceErrorInvalidArgument);
@@ -209,7 +221,7 @@ bool IpsecManager::ReadCertificateSubject(const FilePath& filepath,
   return true;
 }
 
-bool IpsecManager::FormatSecrets(std::string* formatted) {
+bool IpsecManager::FormatIpsecSecret(std::string *formatted) {
   std::string secret_mode;
   std::string secret;
   if (psk_file_.empty()) {
@@ -243,6 +255,45 @@ bool IpsecManager::FormatSecrets(std::string* formatted) {
   *formatted = StringPrintf("%s %s : %s \"%s\"\n", local_address_text.c_str(),
                             remote_address_text_.c_str(), secret_mode.c_str(),
                             secret.c_str());
+  return true;
+}
+
+bool IpsecManager::FormatXauthSecret(std::string* formatted) {
+  if (xauth_credentials_file_.empty()) {
+    xauth_identity_ = "";
+    return true;
+  }
+
+  std::string xauth_contents;
+  if (!file_util::ReadFileToString(FilePath(xauth_credentials_file_),
+                                   &xauth_contents)) {
+    LOG(ERROR) << "Unable to read XAUTH credentials from "
+               << xauth_credentials_file_;
+    return false;
+  }
+  std::vector<std::string> xauth_parts;
+  base::SplitString(xauth_contents, '\n', &xauth_parts);
+  if (xauth_parts.size() < 2) {
+    LOG(ERROR) << "Unable to parse XAUTH credentials from "
+               << xauth_credentials_file_;
+    return false;
+  }
+
+  // Save this identity for use in the ipsec starter file.
+  xauth_identity_ = xauth_parts[0];
+  std::string xauth_password = xauth_parts[1];
+  *formatted = StringPrintf(
+      "%s : XAUTH \"%s\"\n", xauth_identity_.c_str(), xauth_password.c_str());
+  return true;
+}
+
+bool IpsecManager::FormatSecrets(std::string* formatted) {
+  std::string ipsec_secret, xauth_secret;
+  if (!FormatIpsecSecret(&ipsec_secret) || !FormatXauthSecret(&xauth_secret)) {
+    return false;
+  }
+
+  *formatted = ipsec_secret + xauth_secret;
   return true;
 }
 
@@ -319,7 +370,15 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendStringSetting(&config, "esp", FLAGS_esp);
   AppendStringSetting(&config, "keyexchange",
                       ike_version_ == 1 ? "ikev1" : "ikev2");
-  if (!psk_file_.empty()) AppendStringSetting(&config, "authby", "psk");
+  if (!psk_file_.empty()) {
+    if (!xauth_identity_.empty()) {
+      AppendStringSetting(&config, "authby", "xauthpsk");
+      AppendStringSetting(&config, "xauth", "client");
+      AppendStringSetting(&config, "xauth_identity", xauth_identity_);
+    } else {
+      AppendStringSetting(&config, "authby", "psk");
+    }
+  }
   AppendBoolSetting(&config, "rekey", FLAGS_rekey);
   AppendStringSetting(&config, "left", "%defaultroute");
   if (!client_cert_slot_.empty()) {
