@@ -87,6 +87,8 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { kL2TPIPSecRequireAuthProperty, 0 },
   { kL2TPIPSecRequireChapProperty, 0 },
   { kL2TPIPSecRightProtoPortProperty, 0 },
+  { kL2tpIpsecXauthUserProperty, Property::kCredential },
+  { kL2tpIpsecXauthPasswordProperty, Property::kCredential },
 };
 
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
@@ -158,7 +160,7 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
                << Service::ConnectStateToString(state) << ", "
                << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
-  DeletePSKFile();
+  DeleteTemporaryFiles();
   external_task_.reset();
   if (device_) {
     device_->DropConnection();
@@ -175,11 +177,16 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
   }
 }
 
-void L2TPIPSecDriver::DeletePSKFile() {
-  if (!psk_file_.empty()) {
-    file_util::Delete(psk_file_, false);
-    psk_file_.clear();
+void L2TPIPSecDriver::DeleteTemporaryFile(base::FilePath *temporary_file) {
+  if (!temporary_file->empty()) {
+    file_util::Delete(*temporary_file, false);
+    temporary_file->clear();
   }
+}
+
+void L2TPIPSecDriver::DeleteTemporaryFiles() {
+  DeleteTemporaryFile(&psk_file_);
+  DeleteTemporaryFile(&xauth_credentials_file_);
 }
 
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
@@ -214,6 +221,10 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
   }
 
   if (!InitPSKOptions(options, error)) {
+    return false;
+  }
+
+  if (!InitXauthOptions(options, error)) {
     return false;
   }
 
@@ -310,6 +321,37 @@ bool L2TPIPSecDriver::InitPEMOptions(vector<string> *options) {
   return true;
 }
 
+bool L2TPIPSecDriver::InitXauthOptions(vector<string> *options, Error *error) {
+  string user = args()->LookupString(kL2tpIpsecXauthUserProperty, "");
+  string password = args()->LookupString(kL2tpIpsecXauthPasswordProperty, "");
+  if (user.empty() && password.empty()) {
+    // Xauth credentials not configured.
+    return true;
+  }
+  if (user.empty() || password.empty()) {
+      Error::PopulateAndLog(
+          error, Error::kInvalidArguments,
+          "XAUTH credentials are partially configured.");
+    return false;
+  }
+  string xauth_credentials = user + "\n" + password + "\n";
+  if (!file_util::CreateTemporaryFileInDir(
+          manager()->run_path(), &xauth_credentials_file_) ||
+      chmod(xauth_credentials_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
+      file_util::WriteFile(xauth_credentials_file_,
+                           xauth_credentials.data(),
+                           xauth_credentials.size()) !=
+          static_cast<int>(xauth_credentials.size())) {
+    Error::PopulateAndLog(
+        error, Error::kInternalError,
+        "Unable to setup XAUTH credentials file.");
+    return false;
+  }
+  options->push_back("--xauth_credentials_file");
+  options->push_back(xauth_credentials_file_.value());
+  return true;
+}
+
 bool L2TPIPSecDriver::AppendValueOption(
     const string &property, const string &option, vector<string> *options) {
   string value = args()->LookupString(property, "");
@@ -399,7 +441,7 @@ void L2TPIPSecDriver::Notify(
     return;
   }
 
-  DeletePSKFile();
+  DeleteTemporaryFiles();
 
   string interface_name = PPPDevice::GetInterfaceName(dict);
   int interface_index = device_info_->GetIndex(interface_name);

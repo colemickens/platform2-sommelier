@@ -112,12 +112,18 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->StartConnectTimeout(timeout_seconds);
   }
 
-  bool IsConnectTimeoutStarted() {
+  bool IsConnectTimeoutStarted() const {
     return driver_->IsConnectTimeoutStarted();
   }
 
-  bool IsPSKFileCleared(const FilePath &psk_file_path) {
+  bool IsPSKFileCleared(const FilePath &psk_file_path) const {
     return !file_util::PathExists(psk_file_path) && GetPSKFile().empty();
+  }
+
+  bool IsXauthCredentialsFileCleared(
+      const FilePath &xauth_credentials_file_path) const {
+    return !file_util::PathExists(xauth_credentials_file_path) &&
+        GetXauthCredentialsFile().empty();
   }
 
   // Used to assert that a flag appears in the options.
@@ -125,18 +131,22 @@ class L2TPIPSecDriverTest : public testing::Test,
                      const string &value);
 
   FilePath SetupPSKFile();
+  FilePath SetupXauthCredentialsFile();
 
-  FilePath GetPSKFile() { return driver_->psk_file_; }
+  FilePath GetPSKFile() const { return driver_->psk_file_; }
+  FilePath GetXauthCredentialsFile() const {
+      return driver_->xauth_credentials_file_;
+  }
 
   void InvokeNotify(const string &reason, const map<string, string> &dict) {
     driver_->Notify(reason, dict);
   }
 
-  FilePath FakeUpConnect() {
-    FilePath new_psk_file = SetupPSKFile();
+  void FakeUpConnect(FilePath *psk_file, FilePath *xauth_credentials_file) {
+    *psk_file = SetupPSKFile();
+    *xauth_credentials_file = SetupXauthCredentialsFile();
     SetService(service_);
     StartConnectTimeout(0);
-    return new_psk_file;
   }
 
   void ExpectDeviceConnected(const map<string, string> &ppp_config) {
@@ -213,6 +223,16 @@ FilePath L2TPIPSecDriverTest::SetupPSKFile() {
   return psk_file;
 }
 
+FilePath L2TPIPSecDriverTest::SetupXauthCredentialsFile() {
+  FilePath xauth_credentials_file;
+  EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(),
+                                                  &xauth_credentials_file));
+  EXPECT_FALSE(xauth_credentials_file.empty());
+  EXPECT_TRUE(file_util::PathExists(xauth_credentials_file));
+  driver_->xauth_credentials_file_ = xauth_credentials_file;
+  return xauth_credentials_file;
+}
+
 TEST_F(L2TPIPSecDriverTest, GetProviderType) {
   EXPECT_EQ(kProviderL2tpIpsec, GetProviderType());
 }
@@ -220,7 +240,9 @@ TEST_F(L2TPIPSecDriverTest, GetProviderType) {
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->IdleService();  // Ensure no crash.
 
-  FilePath psk_file = FakeUpConnect();
+  FilePath psk_file;
+  FilePath xauth_credentials_file;
+  FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->device_ = device_;
   driver_->external_task_.reset(
       new MockExternalTask(&control_,
@@ -232,6 +254,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_CALL(*service_, SetFailure(Service::kFailureBadPassphrase));
   driver_->FailService(Service::kFailureBadPassphrase);  // Trigger Cleanup.
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
+  EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
@@ -243,10 +266,12 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->service_);
 }
 
-TEST_F(L2TPIPSecDriverTest, DeletePSKFile) {
+TEST_F(L2TPIPSecDriverTest, DeleteTemporaryFiles) {
   FilePath psk_file = SetupPSKFile();
-  driver_->DeletePSKFile();
+  FilePath xauth_credentials_file = SetupXauthCredentialsFile();
+  driver_->DeleteTemporaryFiles();
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
+  EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
 }
 
 TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
@@ -261,16 +286,23 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kCaCertNSS[] = "{1234}";
   static const char kPSK[] = "foobar";
+  static const char kXauthUser[] = "silly";
+  static const char kXauthPassword[] = "rabbit";
 
   SetArg(kProviderHostProperty, kHost);
   SetArg(kL2tpIpsecCaCertNssProperty, kCaCertNSS);
   SetArg(kL2tpIpsecPskProperty, kPSK);
+  SetArg(kL2tpIpsecXauthUserProperty, kXauthUser);
+  SetArg(kL2tpIpsecXauthPasswordProperty, kXauthPassword);
 
   FilePath empty_cert;
   EXPECT_CALL(nss_, GetDERCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
 
   const FilePath temp_dir(temp_dir_.path());
-  EXPECT_CALL(manager_, run_path()).WillOnce(ReturnRef(temp_dir));
+  // Once each for PSK and Xauth options.
+  EXPECT_CALL(manager_, run_path())
+      .WillOnce(ReturnRef(temp_dir))
+      .WillOnce(ReturnRef(temp_dir));
 
   Error error;
   vector<string> options;
@@ -280,6 +312,9 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
   ExpectInFlags(options, "--remote_host", kHost);
   ASSERT_FALSE(driver_->psk_file_.empty());
   ExpectInFlags(options, "--psk_file", driver_->psk_file_.value());
+  ASSERT_FALSE(driver_->xauth_credentials_file_.empty());
+  ExpectInFlags(options, "--xauth_credentials_file",
+                driver_->xauth_credentials_file_.value());
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
@@ -352,6 +387,68 @@ TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {
   EXPECT_TRUE(options.empty());
   driver_->InitPEMOptions(&options);
   ExpectInFlags(options, "--server_ca_file", kPEMCertfile);
+}
+
+TEST_F(L2TPIPSecDriverTest, InitXauthOptions) {
+  vector<string> options;
+  EXPECT_CALL(manager_, run_path()).Times(0);
+  {
+    Error error;
+    EXPECT_TRUE(driver_->InitXauthOptions(&options, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  EXPECT_TRUE(options.empty());
+
+  static const char kUser[] = "foobar";
+  SetArg(kL2tpIpsecXauthUserProperty, kUser);
+  {
+    Error error;
+    EXPECT_FALSE(driver_->InitXauthOptions(&options, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
+  EXPECT_TRUE(options.empty());
+
+  static const char kPassword[] = "foobar";
+  SetArg(kL2tpIpsecXauthUserProperty, "");
+  SetArg(kL2tpIpsecXauthPasswordProperty, kPassword);
+  {
+    Error error;
+    EXPECT_FALSE(driver_->InitXauthOptions(&options, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
+  EXPECT_TRUE(options.empty());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  SetArg(kL2tpIpsecXauthUserProperty, kUser);
+  const FilePath bad_dir("/non/existent/directory");
+  const FilePath temp_dir(temp_dir_.path());
+  EXPECT_CALL(manager_, run_path())
+      .WillOnce(ReturnRef(bad_dir))
+      .WillOnce(ReturnRef(temp_dir));
+
+  {
+    Error error;
+    EXPECT_FALSE(driver_->InitXauthOptions(&options, &error));
+    EXPECT_EQ(Error::kInternalError, error.type());
+  }
+  EXPECT_TRUE(options.empty());
+
+  {
+    Error error;
+    EXPECT_TRUE(driver_->InitXauthOptions(&options, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  ASSERT_FALSE(driver_->xauth_credentials_file_.empty());
+  ExpectInFlags(options, "--xauth_credentials_file",
+                driver_->xauth_credentials_file_.value());
+  string contents;
+  EXPECT_TRUE(
+      file_util::ReadFileToString(driver_->xauth_credentials_file_, &contents));
+  string expected_contents(string(kUser) + "\n" + kPassword + "\n");
+  EXPECT_EQ(expected_contents, contents);
+  struct stat buf;
+  ASSERT_EQ(0, stat(driver_->xauth_credentials_file_.value().c_str(), &buf));
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, buf.st_mode);
 }
 
 TEST_F(L2TPIPSecDriverTest, AppendValueOption) {
@@ -569,7 +666,9 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
   MockPPPDeviceFactory *mock_ppp_device_factory =
       MockPPPDeviceFactory::GetInstance();
-  FilePath psk_file = FakeUpConnect();
+  FilePath psk_file;
+  FilePath xauth_credentials_file;
+  FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->ppp_device_factory_ = mock_ppp_device_factory;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
@@ -590,6 +689,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   ExpectMetricsReported();
   InvokeNotify(kPPPReasonConnect, config);
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
+  EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
@@ -598,7 +698,9 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
   map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
   MockPPPDeviceFactory *mock_ppp_device_factory =
       MockPPPDeviceFactory::GetInstance();
-  FilePath psk_file = FakeUpConnect();
+  FilePath psk_file;
+  FilePath xauth_credentials_file;
+  FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->ppp_device_factory_ = mock_ppp_device_factory;
   SetDevice(device_);
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
@@ -609,6 +711,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
   ExpectMetricsReported();
   InvokeNotify(kPPPReasonConnect, config);
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
+  EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 

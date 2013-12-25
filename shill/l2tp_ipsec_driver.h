@@ -56,15 +56,16 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, AppendValueOption);
   FRIEND_TEST(L2TPIPSecDriverTest, Cleanup);
   FRIEND_TEST(L2TPIPSecDriverTest, Connect);
-  FRIEND_TEST(L2TPIPSecDriverTest, DeletePSKFile);
+  FRIEND_TEST(L2TPIPSecDriverTest, DeleteTemporaryFiles);
   FRIEND_TEST(L2TPIPSecDriverTest, Disconnect);
   FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
   FRIEND_TEST(L2TPIPSecDriverTest, InitEnvironment);
   FRIEND_TEST(L2TPIPSecDriverTest, InitNSSOptions);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitPEMOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
+  FRIEND_TEST(L2TPIPSecDriverTest, InitPEMOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
+  FRIEND_TEST(L2TPIPSecDriverTest, InitXauthOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, Notify);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyWithExistingDevice);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
@@ -82,6 +83,7 @@ class L2TPIPSecDriver : public VPNDriver,
   bool InitPSKOptions(std::vector<std::string> *options, Error *error);
   void InitNSSOptions(std::vector<std::string> *options);
   bool InitPEMOptions(std::vector<std::string> *options);
+  bool InitXauthOptions(std::vector<std::string> *options, Error *error);
 
   // Resets the VPN state and deallocates all resources. If there's a service
   // associated through Connect, sets its state to Service::kStateIdle and
@@ -99,7 +101,8 @@ class L2TPIPSecDriver : public VPNDriver,
   // the failure reason to |failure|; disassociates from the service.
   void Cleanup(Service::ConnectState state, Service::ConnectFailure failure);
 
-  void DeletePSKFile();
+  void DeleteTemporaryFile(base::FilePath *temporary_file);
+  void DeleteTemporaryFiles();
 
   // Returns true if an opton was appended.
   bool AppendValueOption(const std::string &property,
@@ -140,6 +143,7 @@ class L2TPIPSecDriver : public VPNDriver,
   VPNServiceRefPtr service_;
   scoped_ptr<ExternalTask> external_task_;
   base::FilePath psk_file_;
+  base::FilePath xauth_credentials_file_;
   scoped_ptr<CertificateFile> certificate_file_;
   PPPDeviceRefPtr device_;
   base::WeakPtrFactory<L2TPIPSecDriver> weak_ptr_factory_;
