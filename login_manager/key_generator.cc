@@ -63,34 +63,17 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
              << " using nssdb under " << user_path.value();
 
   generating_ = true;
-  guint watcher = g_child_watch_add_full(
-      G_PRIORITY_HIGH_IDLE,
-      pid,
-      KeyGenerator::HandleKeygenExit,
-      this,
-      NULL);
-  manager_->AdoptKeyGeneratorJob(keygen_job_.Pass(), pid, watcher);
+  manager_->AdoptKeyGeneratorJob(keygen_job_.Pass(), pid);
   return true;
 }
 
-// static
-void KeyGenerator::HandleKeygenExit(GPid pid,
-                                    gint status,
-                                    gpointer data) {
-  KeyGenerator* generator = static_cast<KeyGenerator*>(data);
-  generator->manager_->AbandonKeyGeneratorJob();
-
-  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-    FilePath key_file(generator->temporary_key_filename_);
-    generator->manager_->ProcessNewOwnerKey(generator->key_owner_username_,
-                                            key_file);
-  } else {
-    if (WIFSIGNALED(status))
-      LOG(ERROR) << "keygen exited on signal " << WTERMSIG(status);
-    else
-      LOG(ERROR) << "keygen exited with exit code " << WEXITSTATUS(status);
+void KeyGenerator::HandleExit(bool success) {
+  manager_->AbandonKeyGeneratorJob();
+  if (success) {
+    FilePath key_file(temporary_key_filename_);
+    manager_->ProcessNewOwnerKey(key_owner_username_, key_file);
   }
-  generator->Reset();
+  Reset();
 }
 
 void KeyGenerator::Reset() {

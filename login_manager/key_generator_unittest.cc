@@ -91,9 +91,7 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
       .Times(1);
 
   ASSERT_TRUE(keygen.Start(fake_ownername, kFakeUid));
-  KeyGenerator::HandleKeygenExit(kDummyPid,
-                                 PackStatus(0),
-                                 &keygen);
+  keygen.HandleExit(true);
 }
 
 TEST_F(KeyGeneratorTest, GenerateKey) {

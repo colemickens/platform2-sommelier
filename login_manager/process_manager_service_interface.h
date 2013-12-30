@@ -33,9 +33,6 @@ class ProcessManagerServiceInterface {
   // crash dumping machinery.
   virtual void AbortBrowser(int signal, const std::string& message) = 0;
 
-  // Check if |pid| is the currently-managed browser process.
-  virtual bool IsBrowser(pid_t pid) = 0;
-
   // Kill the browser. Provide |args| to be used when it's restarted.
   virtual void RestartBrowserWithArgs(const std::vector<std::string>& args,
                                       bool args_are_extra) = 0;
@@ -55,8 +52,7 @@ class ProcessManagerServiceInterface {
 
   // Start tracking a new, potentially running key generation job.
   virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
-                                    pid_t pid,
-                                    guint watcher) = 0;
+                                    pid_t pid) = 0;
 
   // Stop tracking key generation job.
   virtual void AbandonKeyGeneratorJob() = 0;
@@ -64,6 +60,17 @@ class ProcessManagerServiceInterface {
   // Process a newly-generated owner key for |username|, stored at |key_file|.
   virtual void ProcessNewOwnerKey(const std::string& username,
                                   const base::FilePath& key_file) = 0;
+
+  // Check if |pid| is the currently-managed key generator process.
+  virtual bool IsGenerator(pid_t pid) = 0;
+
+  // Check if |pid| is the currently-managed browser process.
+  virtual bool IsBrowser(pid_t pid) = 0;
+
+  // Check if |pid| is any currently-managed process.
+  virtual bool IsManagedProcess(pid_t pid) = 0;
+
+
 };
 }  // namespace login_manager
 

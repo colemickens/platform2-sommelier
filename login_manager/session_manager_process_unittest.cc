@@ -203,10 +203,8 @@ class SessionManagerProcessTest : public ::testing::Test {
 
     // Expect and mimic successful cleanup of children.
     EXPECT_CALL(utils_, kill(_, _, _))
-        .Times(AtMost(1))
         .WillRepeatedly(WithArgs<0,2>(Invoke(::kill)));
     EXPECT_CALL(utils_, ChildIsGone(_, _))
-        .Times(AtMost(1))
         .WillRepeatedly(Return(true));
 
     MockUtils();
@@ -276,8 +274,7 @@ TEST_F(SessionManagerProcessTest, CleanupSeveralChildren) {
   MockChildJob* generator = new MockChildJob;
   EXPECT_CALL(*generator, IsDesiredUidSet()).WillRepeatedly(Return(false));
   manager_->AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface>(generator),
-                                 generator_pid,
-                                 -1);
+                                 generator_pid);
 
   ExpectSuccessfulPidKill(kDummyPid);
   ExpectSuccessfulPidKill(generator_pid);

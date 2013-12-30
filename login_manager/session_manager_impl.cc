@@ -537,8 +537,10 @@ gboolean SessionManagerImpl::RestartJob(gint pid,
   g_strfreev(argv);
 
   // To set "logged-in" state for BWSI mode.
-  StartSession(const_cast<gchar*>(kGuestUserName), NULL, OUT_done, error);
-  manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
+  if (StartSession(const_cast<gchar*>(kGuestUserName), NULL, OUT_done, error))
+    manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
+  else
+    LOG(ERROR) << "This will be bad news. " << (*error)->message;
   return *OUT_done;
 }
 

@@ -85,15 +85,11 @@ class ChildJob : public ChildJobInterface {
  public:
   struct Spec {
    public:
-    Spec() : job(NULL), pid(-1), watcher(0) {}
-    explicit Spec(scoped_ptr<ChildJobInterface> j)
-        : job(j.Pass()),
-          pid(-1),
-          watcher(0) {
+    Spec() : job(NULL), pid(-1) {}
+    explicit Spec(scoped_ptr<ChildJobInterface> j) : job(j.Pass()), pid(-1) {
     }
     scoped_ptr<ChildJobInterface> job;
     pid_t pid;
-    guint watcher;
     base::FilePath term_file;
   };
 

@@ -71,51 +71,67 @@ namespace login_manager {
 int g_shutdown_pipe_write_fd = -1;
 int g_shutdown_pipe_read_fd = -1;
 
-// static
-// Common code between SIG{HUP, INT, TERM}Handler.
-void SessionManagerService::GracefulShutdownHandler(int signal) {
-  // Reinstall the default handler.  We had one shot at graceful shutdown.
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-  action.sa_handler = SIG_DFL;
-  RAW_CHECK(sigaction(signal, &action, NULL) == 0);
+int g_child_pipe_write_fd = -1;
+int g_child_pipe_read_fd = -1;
 
+namespace {
+// I need a do-nothing action for SIGALRM, or using alarm() will kill me.
+void DoNothing(int signal) {}
+
+// Write |data| to |fd|, retrying on EINTR.
+void RetryingWrite(int fd, const char* data, size_t data_length) {
+  size_t written = 0;
+  do {
+    int rv = HANDLE_EINTR(write(fd, data + written, data_length - written));
+    RAW_CHECK(rv >= 0);
+    written += rv;
+  } while (written < data_length);
+}
+
+// Common code between SIG{HUP,INT,TERM}Handler.
+void GracefulShutdownHandler(int signal) {
   RAW_CHECK(g_shutdown_pipe_write_fd != -1);
   RAW_CHECK(g_shutdown_pipe_read_fd != -1);
 
-  size_t bytes_written = 0;
-  do {
-    int rv = HANDLE_EINTR(
-        write(g_shutdown_pipe_write_fd,
-              reinterpret_cast<const char*>(&signal) + bytes_written,
-              sizeof(signal) - bytes_written));
-    RAW_CHECK(rv >= 0);
-    bytes_written += rv;
-  } while (bytes_written < sizeof(signal));
-
+  RetryingWrite(g_shutdown_pipe_write_fd,
+                reinterpret_cast<const char*>(&signal),
+                sizeof(signal));
   RAW_LOG(INFO,
           "Successfully wrote to shutdown pipe, resetting signal handler.");
 }
 
-// static
-void SessionManagerService::SIGHUPHandler(int signal) {
+void SIGHUPHandler(int signal) {
   RAW_CHECK(signal == SIGHUP);
   RAW_LOG(INFO, "Handling SIGHUP.");
   GracefulShutdownHandler(signal);
 }
-// static
-void SessionManagerService::SIGINTHandler(int signal) {
+
+void SIGINTHandler(int signal) {
   RAW_CHECK(signal == SIGINT);
   RAW_LOG(INFO, "Handling SIGINT.");
   GracefulShutdownHandler(signal);
 }
 
-// static
-void SessionManagerService::SIGTERMHandler(int signal) {
+void SIGTERMHandler(int signal) {
   RAW_CHECK(signal == SIGTERM);
   RAW_LOG(INFO, "Handling SIGTERM.");
   GracefulShutdownHandler(signal);
 }
+
+void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
+  RAW_CHECK(signal == SIGCHLD);
+  RAW_LOG(INFO, "Handling SIGCHLD.");
+
+  RAW_CHECK(g_child_pipe_write_fd != -1);
+  RAW_CHECK(g_child_pipe_read_fd != -1);
+
+  RetryingWrite(g_child_pipe_write_fd,
+                reinterpret_cast<const char*>(info),
+                sizeof(siginfo_t));
+  RAW_LOG(INFO, "Successfully wrote to child pipe.");
+}
+
+}  // anonymous namespace
 
 const char SessionManagerService::kFirstExecAfterBootFlag[] =
     "--first-exec-after-boot";
@@ -141,12 +157,18 @@ const FilePath::CharType kDeviceLocalAccountStateDir[] =
 }  // namespace
 
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
+  siginfo_t info;
+  info.si_pid = pid;
+  if (WIFEXITED(status)) {
+    info.si_code = CLD_EXITED;
+    info.si_status = WEXITSTATUS(status);
+  } else {
+    info.si_status = WTERMSIG(status);
+  }
   session_manager_service_->loop_proxy_->PostTask(
       FROM_HERE,
-      base::Bind(&HandleBrowserExit,
-                 pid,
-                 status,
-                 reinterpret_cast<void*>(session_manager_service_)));
+      base::Bind(&SessionManagerService::HandleChildExit,
+                 session_manager_service_, info));
 }
 
 SessionManagerService::SessionManagerService(
@@ -178,7 +200,12 @@ SessionManagerService::SessionManagerService(
   g_shutdown_pipe_read_fd = pipefd[0];
   g_shutdown_pipe_write_fd = pipefd[1];
 
-  SetupHandlers();
+  PLOG_IF(FATAL, pipe2(pipefd,
+                       O_CLOEXEC | O_NONBLOCK) < 0) << "Failed to create pipe";
+  g_child_pipe_read_fd = pipefd[0];
+  g_child_pipe_write_fd = pipefd[1];
+
+  SetUpHandlers();
 }
 
 SessionManagerService::~SessionManagerService() {
@@ -363,6 +390,12 @@ bool SessionManagerService::Run() {
                       this,
                       NULL);
 
+  g_io_add_watch_full(g_io_channel_unix_new(g_child_pipe_read_fd),
+                      G_PRIORITY_HIGH_IDLE,
+                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
+                      HandleChildrenExiting,
+                      this,
+                      NULL);
   // Initializes policy subsystems which, among other things, finds and
   // validates the stored policy signing key if one is present.
   // A corrupted policy key means that the device needs to have its data wiped.
@@ -392,10 +425,6 @@ bool SessionManagerService::ShouldRunBrowser() {
   return !file_checker_.get() || !file_checker_->exists();
 }
 
-bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
-  return child_job->ShouldStop();
-}
-
 bool SessionManagerService::Shutdown() {
   Finalize();
   loop_proxy_->PostTask(FROM_HERE, quit_closure_);
@@ -423,26 +452,16 @@ void SessionManagerService::RunBrowser() {
     one_time_args.push_back(kFirstExecAfterBootFlag);
   browser_.job->SetOneTimeArguments(one_time_args);
   LOG(INFO) << "Running child " << browser_.job->GetName() << "...";
-  browser_.pid = RunChild(browser_.job.get());
-  browser_.job->ClearOneTimeArguments();
-  liveness_checker_->Start();
-}
-
-int SessionManagerService::RunChild(ChildJobInterface* child_job) {
-  child_job->RecordTime();
-  pid_t pid = system_->fork();
-  if (pid == 0) {
+  browser_.job->RecordTime();
+  browser_.pid = system_->fork();
+  if (browser_.pid == 0) {
     RevertHandlers();
-    child_job->Run();
+    browser_.job->Run();
     exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
   }
 
-  browser_.watcher = g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
-                                            pid,
-                                            HandleBrowserExit,
-                                            this,
-                                            NULL);
-  return pid;
+  browser_.job->ClearOneTimeArguments();
+  liveness_checker_->Start();
 }
 
 void SessionManagerService::AbortBrowser(int signal,
@@ -479,7 +498,8 @@ void SessionManagerService::SetFlagsForUser(
 }
 
 void SessionManagerService::RunKeyGenerator(const std::string& username) {
-  key_gen_->Start(username, set_uid_ ? uid_ : 0);
+  if (!key_gen_->Start(username, set_uid_ ? uid_ : 0))
+    LOG(ERROR) << "Can't fork to run key generator.";
 }
 
 void SessionManagerService::KillChild(const ChildJobInterface* child_job,
@@ -494,18 +514,13 @@ void SessionManagerService::KillChild(const ChildJobInterface* child_job,
 
 void SessionManagerService::AdoptKeyGeneratorJob(
     scoped_ptr<ChildJobInterface> job,
-    pid_t pid,
-    guint watcher) {
+    pid_t pid) {
+  DLOG(INFO) << "Adopting key generator job with pid " << pid;
   generator_.job.swap(job);
   generator_.pid = pid;
-  generator_.watcher = watcher;
 }
 
 void SessionManagerService::AbandonKeyGeneratorJob() {
-  if (generator_.pid > 0) {
-    g_source_remove(generator_.watcher);
-    generator_.watcher = 0;
-  }
   generator_.job.reset(NULL);
   generator_.pid = -1;
 }
@@ -516,8 +531,16 @@ void SessionManagerService::ProcessNewOwnerKey(const std::string& username,
   impl_->ImportValidateAndStoreGeneratedKey(username, key_file);
 }
 
+bool SessionManagerService::IsGenerator(pid_t pid) {
+  return generator_.pid > 0 && pid == generator_.pid;
+}
+
 bool SessionManagerService::IsBrowser(pid_t pid) {
-  return pid == browser_.pid;
+  return browser_.pid > 0 && pid == browser_.pid;
+}
+
+bool SessionManagerService::IsManagedProcess(pid_t pid) {
+  return IsBrowser(pid) || IsGenerator(pid);
 }
 
 void SessionManagerService::AllowGracefulExit() {
@@ -530,58 +553,80 @@ void SessionManagerService::AllowGracefulExit() {
   }
 }
 
+void SessionManagerService::HandleBrowserExit() {
+  // If I could wait for descendants here, I would.  Instead, I kill them.
+  kill(-browser_.pid, SIGKILL);
+  browser_.pid = -1;
+
+  // Do nothing if already shutting down.
+  if (shutting_down_)
+    return;
+
+  liveness_checker_->Stop();
+
+  if (impl_->ScreenIsLocked()) {
+    LOG(ERROR) << "Screen locked, shutting down";
+    SetExitAndShutdown(CRASH_WHILE_SCREEN_LOCKED);
+    return;
+  }
+
+  ChildJobInterface* child_job = browser_.job.get();
+  DCHECK(child_job);
+  if (child_job->ShouldStop()) {
+    LOG(WARNING) << "Child stopped, shutting down";
+    SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
+  } else if (ShouldRunBrowser()) {
+    // TODO(cmasone): deal with fork failing in RunBrowser()
+    RunBrowser();
+  } else {
+    LOG(INFO) << "Should NOT run " << child_job->GetName() << " again.";
+    AllowGracefulExit();
+  }
+}
+
+void SessionManagerService::HandleChildExit(const siginfo_t& info) {
+  CHECK(system_->ChildIsGone(info.si_pid, base::TimeDelta::FromSeconds(5)));
+  if (!IsManagedProcess(info.si_pid))
+    return;
+
+  std::string job_name;
+  if (IsBrowser(info.si_pid))
+    job_name = browser_.job->GetName();
+  else if (IsGenerator(info.si_pid))
+    job_name = generator_.job->GetName();
+
+  LOG(INFO) << "Handling " << job_name << "(" << info.si_pid << ") exit.";
+  if (info.si_code == CLD_EXITED) {
+    LOG_IF(ERROR, info.si_status != 0) << "  Exited with exit code "
+                                       << info.si_status;
+    CHECK(info.si_status != ChildJobInterface::kCantSetUid);
+    CHECK(info.si_status != ChildJobInterface::kCantExec);
+  } else {
+    LOG(ERROR) << "  Exited with signal " << info.si_status;
+  }
+
+  if (IsBrowser(info.si_pid))
+    HandleBrowserExit();
+  else if (IsGenerator(info.si_pid))
+    key_gen_->HandleExit(info.si_status == 0);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // glib event handlers
 
-void SessionManagerService::HandleBrowserExit(GPid pid,
-                                              gint status,
-                                              gpointer data) {
-  // If I could wait for descendants here, I would.  Instead, I kill them.
-  kill(-pid, SIGKILL);
-
-  DLOG(INFO) << "Handling child process exit: " << pid;
-  if (WIFSIGNALED(status)) {
-    DLOG(INFO) << "  Exited with signal " << WTERMSIG(status);
-  } else if (WIFEXITED(status)) {
-    DLOG(INFO) << "  Exited with exit code " << WEXITSTATUS(status);
-    CHECK(WEXITSTATUS(status) != ChildJobInterface::kCantSetUid);
-    CHECK(WEXITSTATUS(status) != ChildJobInterface::kCantExec);
-  } else {
-    DLOG(INFO) << "  Exited...somehow, without an exit code or a signal??";
-  }
-
-  // If the child _ever_ exits uncleanly, we want to start it up again.
+// static
+gboolean SessionManagerService::HandleChildrenExiting(GIOChannel* source,
+                                                      GIOCondition condition,
+                                                      gpointer data) {
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-
-  // Do nothing if already shutting down.
-  if (manager->shutting_down_)
-    return;
-
-  CHECK(manager->IsBrowser(pid)) << "Browser pid was " << manager->browser_.pid
-                                 << " while handling exit of " << pid;
-  ChildJobInterface* child_job = manager->browser_.job.get();
-  DCHECK(child_job);
-
-  LOG(ERROR) << StringPrintf("Process %s(%d) exited.",
-                             child_job->GetName().c_str(), pid);
-  if (manager->impl_->ScreenIsLocked()) {
-    LOG(ERROR) << "Screen locked, shutting down";
-    manager->SetExitAndShutdown(CRASH_WHILE_SCREEN_LOCKED);
-    return;
+  siginfo_t info;
+  while (file_util::ReadFromFD(g_io_channel_unix_get_fd(source),
+                               reinterpret_cast<char*>(&info),
+                               sizeof(info))) {
+    DCHECK(info.si_signo == SIGCHLD) << "Wrong signal!";
+    manager->HandleChildExit(info);
   }
-
-  manager->liveness_checker_->Stop();
-  if (manager->ShouldStopChild(child_job)) {
-    LOG(WARNING) << "Child stopped, shutting down";
-    manager->SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
-  } else if (manager->ShouldRunBrowser()) {
-    // TODO(cmasone): deal with fork failing in RunBrowser()
-    manager->RunBrowser();
-  } else {
-    LOG(INFO) << StringPrintf(
-        "Should NOT run %s again...", child_job->GetName().data());
-    manager->AllowGracefulExit();
-  }
+  return TRUE;  // So that the event source that called this remains installed.
 }
 
 gboolean SessionManagerService::HandleKill(GIOChannel* source,
@@ -589,7 +634,8 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
                                            gpointer data) {
   // We only get called if there's data on the pipe.  If there's data, we're
   // supposed to exit.  So, don't even bother to read it.
-  LOG(INFO) << "SessionManagerService - data on pipe, so exiting";
+  LOG(INFO) << "HUP, INT, or TERM received; exiting.";
+
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
   manager->Shutdown();
   return FALSE;  // So that the event source that called this gets removed.
@@ -597,7 +643,6 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
-  DeregisterChildWatchers();
   liveness_checker_->Stop();
   impl_->AnnounceSessionStoppingIfNeeded();
   impl_->Finalize();
@@ -658,7 +703,7 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-void SessionManagerService::SetupHandlers() {
+void SessionManagerService::SetUpHandlers() {
   // I have to ignore SIGUSR1, because Xorg sends it to this process when it's
   // got no clients and is ready for new ones.  If we don't ignore it, we die.
   struct sigaction action;
@@ -666,21 +711,35 @@ void SessionManagerService::SetupHandlers() {
   action.sa_handler = SIG_IGN;
   CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
 
-  action.sa_handler = SessionManagerService::do_nothing;
+  action.sa_handler = DoNothing;
   CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+
+  // For all termination handlers, we want the default re-installed after
+  // we get a shot at handling the signal.
+  action.sa_flags = SA_RESETHAND;
 
   // We need to handle SIGTERM, because that is how many POSIX-based distros ask
   // processes to quit gracefully at shutdown time.
   action.sa_handler = SIGTERMHandler;
   CHECK(sigaction(SIGTERM, &action, NULL) == 0);
-  // Also handle SIGINT - when the user terminates the browser via Ctrl+C.
-  // If the browser process is being debugged, GDB will catch the SIGINT first.
+  // Also handle SIGINT, if session_manager is being run in the foreground.
   action.sa_handler = SIGINTHandler;
   CHECK(sigaction(SIGINT, &action, NULL) == 0);
   // And SIGHUP, for when the terminal disappears. On shutdown, many Linux
   // distros send SIGHUP, SIGTERM, and then SIGKILL.
   action.sa_handler = SIGHUPHandler;
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
+
+  // Manually set an action for SIGCHLD, so that we can convert
+  // receiving a signal on child exit to file descriptor
+  // activity. This way we can handle this kind of event in a
+  // MessageLoop.  The flags are set such that the action receives a
+  // siginfo struct with handy exit status info, but only when the
+  // child actually exits -- as opposed to also when it gets STOP or CONT.
+  memset(&action, 0, sizeof(action));
+  action.sa_flags = (SA_SIGINFO | SA_NOCLDSTOP);
+  action.sa_sigaction = SIGCHLDHandler;
+  CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
 }
 
 void SessionManagerService::RevertHandlers() {
@@ -692,6 +751,7 @@ void SessionManagerService::RevertHandlers() {
   CHECK(sigaction(SIGTERM, &action, NULL) == 0);
   CHECK(sigaction(SIGINT, &action, NULL) == 0);
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
+  CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
 }
 
 void SessionManagerService::WaitAndAbortChild(const ChildJob::Spec& spec,
@@ -719,18 +779,6 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
     WaitAndAbortChild(browser_, timeout);
   if (generator_.pid > 0)
     WaitAndAbortChild(generator_, timeout);
-}
-
-void SessionManagerService::DeregisterChildWatchers() {
-  // Remove child exit handlers.
-  if (browser_.pid > 0) {
-    g_source_remove(browser_.watcher);
-    browser_.watcher = 0;
-  }
-  if (generator_.pid > 0) {
-    g_source_remove(generator_.watcher);
-    generator_.watcher = 0;
-  }
 }
 
 // static

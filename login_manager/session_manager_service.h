@@ -181,7 +181,6 @@ class SessionManagerService
   virtual void ScheduleShutdown() OVERRIDE;
   virtual void RunBrowser() OVERRIDE;
   virtual void AbortBrowser(int signal, const std::string& message) OVERRIDE;
-  virtual bool IsBrowser(pid_t pid) OVERRIDE;
   virtual void RestartBrowserWithArgs(
       const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;
   virtual void SetBrowserSessionForUser(const std::string& username,
@@ -190,11 +189,13 @@ class SessionManagerService
                                const std::vector<std::string>& flags) OVERRIDE;
   virtual void RunKeyGenerator(const std::string& username) OVERRIDE;
   virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
-                                    pid_t pid,
-                                    guint watcher) OVERRIDE;
+                                    pid_t pid) OVERRIDE;
   virtual void AbandonKeyGeneratorJob() OVERRIDE;
   virtual void ProcessNewOwnerKey(const std::string& username,
                                   const base::FilePath& key_file) OVERRIDE;
+  virtual bool IsBrowser(pid_t pid) OVERRIDE;
+  virtual bool IsGenerator(pid_t pid) OVERRIDE;
+  virtual bool IsManagedProcess(pid_t pid) OVERRIDE;
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
@@ -225,30 +226,30 @@ class SessionManagerService
   virtual GMainLoop* main_loop() { return main_loop_; }
 
  private:
-  typedef std::vector<std::pair<pid_t, uid_t> > PidUidPairList;
-
-  static void do_nothing(int sig) {}
-
-  // Common code between SIG{HUP, INT, TERM}Handler.
-  static void GracefulShutdownHandler(int signal);
-  static void SIGHUPHandler(int signal);
-  static void SIGINTHandler(int signal);
-  static void SIGTERMHandler(int signal);
-
   // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
                                          DBusMessage* message,
                                          void* data);
 
   // |data| is a SessionManagerService*.
-  static void HandleBrowserExit(GPid pid, gint status, gpointer data);
+  static gboolean HandleChildrenExiting(GIOChannel* source,
+                                        GIOCondition condition,
+                                        gpointer data);
 
-  // |data| is a SessionManagerService*.  This is a wrapper around
-  // Shutdown() so that we can register it as the callback for
-  // when |source| has data to read.
+  // |data| is a SessionManagerService*.
   static gboolean HandleKill(GIOChannel* source,
                              GIOCondition condition,
                              gpointer data);
+
+  // Determines which child exited, and handles appropriately.
+  void HandleChildExit(const siginfo_t& info);
+
+  // Re-runs the browser, unless one of the following is true:
+  //  The screen is supposed to be locked,
+  //  UI shutdown is in progress,
+  //  The child indicates that it should not run anymore, or
+  //  ShouldRunBrowser() indicates the browser should not run anymore.
+  void HandleBrowserExit();
 
   // Tears down object set up during Initialize().
   void Finalize();
@@ -257,8 +258,8 @@ class SessionManagerService
   // main event loop.
   void SetExitAndShutdown(ExitCode code);
 
-  // Setup any necessary signal handlers.
-  void SetupHandlers();
+  // Set up any necessary signal handlers.
+  void SetUpHandlers();
 
   // Set all changed signal handlers back to the default behavior.
   void RevertHandlers();
@@ -269,17 +270,7 @@ class SessionManagerService
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(base::TimeDelta timeout);
 
-  // De-register all child-exit handlers.
-  void DeregisterChildWatchers();
-
   bool ShouldRunBrowser();
-  // Returns true if |child_job| believes it should be stopped.
-  // If the child believes it should be stopped (as opposed to not run anymore)
-  // we actually exit the Service as well.
-  bool ShouldStopChild(ChildJobInterface* child_job);
-
-  // Run() particular ChildJobInterface, specified by |child_job|.
-  int RunChild(ChildJobInterface* child_job);
 
   // Kill one of the children using provided signal.
   void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);

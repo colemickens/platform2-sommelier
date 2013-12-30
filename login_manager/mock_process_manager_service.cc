@@ -16,8 +16,7 @@ MockProcessManagerService::~MockProcessManagerService() {}
 
 void MockProcessManagerService::AdoptKeyGeneratorJob(
     scoped_ptr<ChildJobInterface> job,
-    pid_t pid,
-    guint watcher) {
+    pid_t pid) {
   if (generator_pid_ != pid) {
     ADD_FAILURE() << "Incorrect pid offered for adoption: "
                   << "Expected " << generator_pid_ << " got " << pid;

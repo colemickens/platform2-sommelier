@@ -34,13 +34,12 @@ class KeyGenerator {
 
   void InjectMockKeygenJob(MockChildJob* keygen);  // Takes ownership.
 
+  void HandleExit(bool success);
+
  private:
   FRIEND_TEST(KeyGeneratorTest, KeygenEndToEndTest);
   static const char kKeygenExecutable[];
   static const char kTemporaryKeyFilename[];
-
-  // |data| is a KeyGenerator*.
-  static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
   // Clear per-generation state.
   void Reset();
