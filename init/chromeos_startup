@@ -47,10 +47,8 @@ bootstat pre-startup
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
 
-FACTORY_MODE=
-if [ -f /root/.factory_test -o -f /root/.factory_installer ]; then
-  FACTORY_MODE=factory
-fi
+# Factory related functions
+. /usr/share/cros/factory_utils.sh
 
 mkdir -p /dev/shm /dev/pts
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
@@ -141,6 +139,13 @@ fi
 # Sanity check the date (crosbug.com/13200)
 if [ $(date +%Y) -lt 1970 ]; then
   date 010200001970.00
+fi
+
+# Now that stateful partition is mounted, we can check if we are in factory
+# mode.
+FACTORY_MODE=
+if is_factory_mode; then
+  FACTORY_MODE=factory
 fi
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've
