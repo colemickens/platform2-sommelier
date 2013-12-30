@@ -14,3 +14,9 @@ is_factory_mode() {
   (crossystem "debug_build?1" && [ -f "$FACTORY_TAG_PATH" ]) ||
       [ -f /root/.factory_installer ]
 }
+
+inhibit_if_factory_mode() {
+  if is_factory_mode && [ $disable_inhibit -eq 0 ]; then
+    initctl stop --no-wait $1
+  fi
+}
