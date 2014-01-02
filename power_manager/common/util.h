@@ -14,28 +14,11 @@
 namespace power_manager {
 namespace util {
 
-bool OOBECompleted();
-
 // Runs |command| asynchronously.
 void Launch(const std::string& command);
 
 // Runs |command| synchronously.  The process's exit code is returned.
 int Run(const std::string& command);
-
-// Runs powerd_setuid_helper.  |action| is passed via --action.  If
-// |additional_args| is non-empty, it will be appended to the command.
-// If |wait_for_completion| is true, this function will block until the helper
-// finishes and return the helper's exit code; otherwise it will return 0
-// immediately.
-int RunSetuidHelper(const std::string& action,
-                    const std::string& additional_args,
-                    bool wait_for_completion);
-
-// Read an unsigned int from a file.  Return true on success
-// Due to crbug.com/128596 this function does not handle negative values
-// in the file well.  They are read in as signed values and then cast
-// to unsigned ints.  So -10 => 4294967286
-bool GetUintFromFile(const char* filename, unsigned int* value);
 
 // Clamps |percent| in the range [0.0, 100.0].
 double ClampPercent(double percent);

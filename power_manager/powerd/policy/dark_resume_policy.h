@@ -47,7 +47,7 @@ class DarkResumePolicy {
   base::TimeDelta GetSuspendDuration();
 
   // Checks if the system is in the dark resume state.
-  bool IsDarkResume();
+  bool CurrentlyInDarkResume();
 
   // Cleans up its internal state after a user initiated resume happens.
   void HandleResume();

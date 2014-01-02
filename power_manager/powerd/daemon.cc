@@ -53,6 +53,12 @@ const char kSessionStarted[] = "started";
 // Path containing the number of wakeup events.
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
+// Program used to run code as root.
+const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
+
+// File that's created once the out-of-box experience has been completed.
+const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
+
 // Maximum amount of time to wait for responses to D-Bus method calls to the
 // session manager.
 const int kSessionManagerDBusTimeoutMs = 3000;
@@ -178,6 +184,25 @@ dbus::ErrorResponse* CreateInvalidArgsError(dbus::MethodCall* method_call,
 
 }
 
+// Runs powerd_setuid_helper. |action| is passed via --action.  If
+// |additional_args| is non-empty, it will be appended to the command. If
+// |wait_for_completion| is true, this function will block until the helper
+// finishes and return the helper's exit code; otherwise it will return 0
+// immediately.
+int RunSetuidHelper(const std::string& action,
+                    const std::string& additional_args,
+                    bool wait_for_completion) {
+  std::string command = kSetuidHelperPath + std::string(" --action=" + action);
+  if (!additional_args.empty())
+    command += " " + additional_args;
+  if (wait_for_completion) {
+    return util::Run(command.c_str());
+  } else {
+    util::Launch(command.c_str());
+    return 0;
+  }
+}
+
 }  // namespace
 
 // Performs actions requested by |state_controller_|.  The reason that
@@ -197,7 +222,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual bool IsOobeCompleted() OVERRIDE {
-    return util::OOBECompleted();
+    return file_util::PathExists(base::FilePath(kOobeCompletedPath));
   }
 
   virtual bool IsHdmiAudioActive() OVERRIDE {
@@ -336,7 +361,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     }
 
     // These exit codes are defined in scripts/powerd_suspend.
-    switch (util::RunSetuidHelper("suspend", args, true)) {
+    switch (RunSetuidHelper("suspend", args, true)) {
       case 0:
         return SUSPEND_SUCCESSFUL;
       case 1:
@@ -600,11 +625,11 @@ void Daemon::PrepareForSuspend() {
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
   if (log_suspend_with_mosys_eventlog_)
-    util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
 
   // Do not let suspend change the console terminal.
   if (lock_vt_before_suspend_)
-    util::RunSetuidHelper("lock_vt", "", true);
+    RunSetuidHelper("lock_vt", "", true);
 
   // Touch a file that crash-reporter can inspect later to determine
   // whether the system was suspended while an unclean shutdown occurred.
@@ -634,7 +659,7 @@ void Daemon::HandleResume(bool suspend_was_successful,
 
   // Allow virtual terminal switching again.
   if (lock_vt_before_suspend_)
-    util::RunSetuidHelper("unlock_vt", "", true);
+    RunSetuidHelper("unlock_vt", "", true);
 
   if (created_suspended_state_file_) {
     if (!file_util::Delete(base::FilePath(kSuspendedStatePath), false))
@@ -649,10 +674,8 @@ void Daemon::HandleResume(bool suspend_was_successful,
 
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
-  if (log_suspend_with_mosys_eventlog_) {
-    util::RunSetuidHelper(
-        "mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
-  }
+  if (log_suspend_with_mosys_eventlog_)
+    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
 }
 
 void Daemon::HandleLidClosed() {
@@ -1214,12 +1237,11 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   switch (mode) {
     case SHUTDOWN_MODE_POWER_OFF:
       LOG(INFO) << "Shutting down, reason: " << reason_str;
-      util::RunSetuidHelper(
-          "shut_down", "--shutdown_reason=" + reason_str, false);
+      RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str, false);
       break;
     case SHUTDOWN_MODE_REBOOT:
       LOG(INFO) << "Restarting";
-      util::RunSetuidHelper("reboot", "", false);
+      RunSetuidHelper("reboot", "", false);
       break;
   }
 }

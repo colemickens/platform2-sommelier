@@ -103,11 +103,16 @@ base::TimeDelta DarkResumePolicy::GetSuspendDuration() {
   return upper->second;
 }
 
-bool DarkResumePolicy::IsDarkResume() {
-  unsigned int dark_resume = 0;
-
-  return util::GetUintFromFile(kDarkResumeStatePath, &dark_resume) &&
-         dark_resume != 0;
+bool DarkResumePolicy::CurrentlyInDarkResume() {
+  std::string buf;
+  if (!file_util::ReadFileToString(
+          base::FilePath(kDarkResumeStatePath), &buf)) {
+    PLOG(ERROR) << "Unable to read " << kDarkResumeStatePath;
+    return false;
+  }
+  TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+  uint64 value = 0;
+  return base::StringToUint64(buf, &value) && value;
 }
 
 void DarkResumePolicy::HandleResume() {

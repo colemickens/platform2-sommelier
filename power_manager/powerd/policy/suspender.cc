@@ -233,7 +233,7 @@ void Suspender::Suspend() {
     result = delegate_->Suspend(
         wakeup_count_, wakeup_count_valid_ && !dark_resume, suspend_duration);
     success = result == Delegate::SUSPEND_SUCCESSFUL;
-    dark_resume = dark_resume_policy_->IsDarkResume();
+    dark_resume = dark_resume_policy_->CurrentlyInDarkResume();
 
     // Failure handling for dark resume. We don't want to process events during
     // a dark resume, even if we fail to suspend. To solve this, instead of
