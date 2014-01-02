@@ -1,0 +1,33 @@
+# Generated with make-safe-inputrc on Tue Oct 12 15:23:49 PDT 2010
+
+"\C-xe": abort # call-last-kbd-macro
+"\C-i": abort # complete
+"\e\e": abort # complete
+"\e!": abort # complete-command
+"\e/": abort # complete-filename
+"\e@": abort # complete-hostname
+"\e{": abort # complete-into-braces
+"\e~": abort # complete-username
+"\e$": abort # complete-variable
+"\C-x\C-v": abort # display-shell-version
+"\C-x\C-e": abort # edit-and-execute-command
+"\C-x)": abort # end-kbd-macro
+"\eg": abort # glob-complete-word
+"\C-x*": abort # glob-expand-word
+"\C-xg": abort # glob-list-expansions
+"\e#": abort # insert-comment
+"\e*": abort # insert-completions
+"\C-x!": abort # possible-command-completions
+"\e=": abort # possible-completions
+"\e?": abort # possible-completions
+"\C-x/": abort # possible-filename-completions
+"\C-x@": abort # possible-hostname-completions
+"\C-x~": abort # possible-username-completions
+"\C-x$": abort # possible-variable-completions
+"\C-x\C-r": abort # re-read-init-file
+"\e\C-e": abort # shell-expand-line
+"\C-x(": abort # start-kbd-macro
+"\e&": abort # tilde-expand
+
+set expand-tilde off
+set disable-completion on
