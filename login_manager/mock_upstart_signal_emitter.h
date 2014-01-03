@@ -15,7 +15,7 @@ class MockUpstartSignalEmitter : public UpstartSignalEmitter {
   MockUpstartSignalEmitter() {}
   virtual ~MockUpstartSignalEmitter() {}
   virtual bool EmitSignal(const std::string& signal_name,
-                          const std::string& args_str,
+                          const std::vector<std::string>& args_keyvals,
                           GError** error) {
     return true;
   }

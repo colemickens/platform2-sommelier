@@ -4,31 +4,47 @@
 
 #include "login_manager/upstart_signal_emitter.h"
 
-#include <cstdlib>
+#include <string>
+#include <vector>
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
-#include <chromeos/dbus/error_constants.h>
-
-using std::string;
+#include <chromeos/dbus/dbus.h>
 
 namespace login_manager {
 
-bool UpstartSignalEmitter::EmitSignal(const string& signal_name,
-                                      const string& args_str,
-                                      GError** error) {
+const char kDestination[] = "com.ubuntu.Upstart";
+const char kPath[] = "/com/ubuntu/Upstart";
+const char kInterface[] = "com.ubuntu.Upstart0_6";
+const char kMethodName[] = "EmitEvent";
+
+bool UpstartSignalEmitter::EmitSignal(
+    const std::string& signal_name,
+    const std::vector<std::string>& args_keyvals,
+    GError** error) {
   DLOG(INFO) << "Emitting " << signal_name << " Upstart signal";
-  string command = base::StringPrintf("/sbin/initctl emit %s %s",
-                                      signal_name.c_str(), args_str.c_str());
-  bool success = (system(command.c_str()) == 0);
-  if (!success && error != NULL) {
-    g_set_error(error,
-                CHROMEOS_LOGIN_ERROR,
-                CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
-                "Login error: %s",
-                base::StringPrintf("Can't emit %s",
-                                   signal_name.c_str()).c_str());
+
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kDestination, kPath, kInterface);
+  if (!proxy) {
+    LOG(ERROR) << "No proxy; can't call " << kInterface << "." << kMethodName;
+    return false;
   }
+  char** env = g_new(char*, args_keyvals.size() + 1);  // NULL-terminated.
+  for (size_t i = 0; i < args_keyvals.size(); ++i) {
+    env[i] = g_strdup(args_keyvals[i].c_str());
+  }
+  env[args_keyvals.size()] = NULL;
+  bool success = ::dbus_g_proxy_call(proxy.gproxy(), kMethodName, error,
+                                     G_TYPE_STRING, signal_name.c_str(),
+                                     G_TYPE_STRV, env,
+                                     G_TYPE_BOOLEAN, true,
+                                     G_TYPE_INVALID,
+                                     G_TYPE_INVALID);
+  if (*error) {
+    LOG(ERROR) << kInterface << "." << kPath << " failed: "
+               << (*error)->message;
+  }
+  g_strfreev(env);  // Free the elements as well.
   return success;
 }
 

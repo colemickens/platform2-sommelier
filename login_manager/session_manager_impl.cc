@@ -223,15 +223,18 @@ gboolean SessionManagerImpl::EmitLoginPromptReady(gboolean* OUT_emitted,
   // TODO(derat): Stop emitting this signal once no one's listening for it.
   // Jobs that want to run after we're done booting should wait for
   // login-prompt-visible or boot-complete.
-  *OUT_emitted =
-      upstart_signal_emitter_->EmitSignal("login-prompt-ready", "", error);
+  *OUT_emitted = upstart_signal_emitter_->EmitSignal("login-prompt-ready",
+                                                     std::vector<std::string>(),
+                                                     error);
   return *OUT_emitted;
 }
 
 gboolean SessionManagerImpl::EmitLoginPromptVisible(GError** error) {
   login_metrics_->RecordStats("login-prompt-visible");
   system_->EmitSignal(login_manager::kLoginPromptVisibleSignal);
-  return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
+  return upstart_signal_emitter_->EmitSignal("login-prompt-visible",
+                                             std::vector<std::string>(),
+                                             error);
 }
 
 gboolean SessionManagerImpl::EnableChromeTesting(gboolean force_relaunch,
@@ -328,7 +331,7 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
   *OUT_done =
       upstart_signal_emitter_->EmitSignal(
           "start-user-session",
-          StringPrintf("CHROMEOS_USER=%s", email_string.c_str()),
+          std::vector<std::string>(1, "CHROMEOS_USER=" + email_string),
           error);
 
   if (*OUT_done) {

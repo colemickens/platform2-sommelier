@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_UPSTART_SIGNAL_EMITTER_H_
 
 #include <string>
+#include <vector>
 
 #include <glib.h>
 
@@ -17,13 +18,15 @@ class UpstartSignalEmitter {
   UpstartSignalEmitter() {}
   virtual ~UpstartSignalEmitter() {}
 
-  // Emits an upstart signal.  |args_str| will be appended to the "initctl emit"
-  // command; it can be used to add arguments to the signal.
+  // Emits an upstart signal.  |args_keyvals| will be provided as
+  // environment variables to any upstart jobs kicked off as a result
+  // of the signal. Each element of |args_keyvals| is a string of the format
+  // "key=value".
   //
   // If the emission fails and |error| is non-NULL, records an error message in
   // it.  Returns true if the emission is successful and false otherwise.
   virtual bool EmitSignal(const std::string& signal_name,
-                          const std::string& args_str,
+                          const std::vector<std::string>& args_keyvals,
                           GError** error);
 };
 
