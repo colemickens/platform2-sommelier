@@ -26,7 +26,6 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "login_manager/child_job.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/file_checker.h"
@@ -52,7 +51,8 @@ namespace gobject {
 struct SessionManager;
 }  // namespace gobject
 
-class ChildJobInterface;
+class BrowserJobInterface;
+class GeneratorJobInterface;
 class NssUtil;
 class PolicyService;
 class SystemUtils;
@@ -75,7 +75,7 @@ class SessionManagerService
     CHILD_EXITING_TOO_FAST = 2
   };
 
-  SessionManagerService(scoped_ptr<ChildJobInterface> child_job,
+  SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
                         int kill_timeout,
                         bool enable_browser_abort_on_hang,
                         base::TimeDelta hang_detection_interval,
@@ -86,11 +86,6 @@ class SessionManagerService
   // any other methods on this class.
   class TestApi {
    public:
-    // Allows a test program to set the pid of the watched browser process.
-    void set_browser_pid(pid_t pid) {
-      session_manager_service_->browser_.pid = pid;
-    }
-
     void set_systemutils(SystemUtils* utils) {
       session_manager_service_->system_ = utils;
     }
@@ -188,7 +183,7 @@ class SessionManagerService
   virtual void SetFlagsForUser(const std::string& username,
                                const std::vector<std::string>& flags) OVERRIDE;
   virtual void RunKeyGenerator(const std::string& username) OVERRIDE;
-  virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+  virtual void AdoptKeyGeneratorJob(scoped_ptr<GeneratorJobInterface> job,
                                     pid_t pid) OVERRIDE;
   virtual void AbandonKeyGeneratorJob() OVERRIDE;
   virtual void ProcessNewOwnerKey(const std::string& username,
@@ -208,11 +203,6 @@ class SessionManagerService
   static std::vector<std::string> GetArgList(
       const std::vector<std::string>& args);
 
-
-  // Flag passed to Chrome the first time Chrome is started after the
-  // system boots. Not passed when Chrome is restarted after signout.
-  static const char kFirstExecAfterBootFlag[];
-
   // Directory in which per-boot metrics flag files will be stored.
   static const char kFlagFileDir[];
 
@@ -221,6 +211,9 @@ class SessionManagerService
 
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
+
+  // Set all changed signal handlers back to the default behavior.
+  static void RevertHandlers();
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
@@ -261,9 +254,6 @@ class SessionManagerService
   // Set up any necessary signal handlers.
   void SetUpHandlers();
 
-  // Set all changed signal handlers back to the default behavior.
-  void RevertHandlers();
-
   // Returns appropriate child-killing timeout, depending on flag file state.
   base::TimeDelta GetKillTimeout();
 
@@ -272,18 +262,15 @@ class SessionManagerService
 
   bool ShouldRunBrowser();
 
-  // Kill one of the children using provided signal.
-  void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
-
   // Waits |timeout| for job defined by |spec| to go away, then
   // aborts it if it's not gone.
-  void WaitAndAbortChild(const ChildJob::Spec& spec, base::TimeDelta timeout);
+  void WaitAndAbortChild(ChildJobInterface* job, base::TimeDelta timeout);
 
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
 
-  ChildJob::Spec browser_;
-  ChildJob::Spec generator_;
+  scoped_ptr<BrowserJobInterface> browser_;
+  scoped_ptr<GeneratorJobInterface> generator_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 

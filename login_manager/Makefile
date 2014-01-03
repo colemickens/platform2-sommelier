@@ -47,7 +47,8 @@ KEYGEN_OBJS = keygen.o keygen_worker.o nss_util.o policy_key.o \
 	scoped_dbus_pending_call.o system_utils_impl.o
 SESSION_BIN = session_manager
 SESSION_OBJS = $(PROTO_OBJS) \
-  $(filter-out keygen%.o mock_%.o %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
+  $(filter-out keygen%.o mock_%.o fake_%.o \
+	%_testrunner.o %_unittest.o,$(CXX_OBJECTS))
 TEST_BIN = session_manager_unittest
 TEST_OBJS = $(PROTO_OBJS) $(filter-out %main.o keygen.o,$(CXX_OBJECTS))
 

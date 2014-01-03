@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/child_job.h"
+#include "login_manager/browser_job.h"
 
 #include <unistd.h>
 
@@ -19,17 +19,20 @@
 #include <gtest/gtest.h>
 
 #include "login_manager/mock_system_utils.h"
+#include "login_manager/mock_metrics.h"
 
 namespace login_manager {
 
+using ::testing::AnyNumber;
 using ::testing::Return;
+using ::testing::StrEq;
 using ::testing::_;
 
-class ChildJobTest : public ::testing::Test {
+class BrowserJobTest : public ::testing::Test {
  public:
-  ChildJobTest() {}
+  BrowserJobTest() {}
 
-  virtual ~ChildJobTest() {}
+  virtual ~BrowserJobTest() {}
 
   virtual void SetUp() OVERRIDE;
 
@@ -46,6 +49,15 @@ class ChildJobTest : public ::testing::Test {
     EXPECT_NE(user_flag, argv.end()) << "argv should contain " << name << value;
   }
 
+  void ExpectArgsNotToContainFlag(const std::vector<std::string>& argv,
+                                  const char name[],
+                                  const char value[]) {
+    std::vector<std::string>::const_iterator user_flag =
+        std::find(argv.begin(), argv.end(), StringPrintf("%s%s", name, value));
+    EXPECT_EQ(user_flag, argv.end()) << "argv shouldn't contain "
+                                     << name << value;
+  }
+
   void ExpectArgsToContainAll(const std::vector<std::string>& argv,
                               const std::vector<std::string>& contained) {
     std::set<std::string> argv_set(argv.begin(), argv.end());
@@ -58,50 +70,41 @@ class ChildJobTest : public ::testing::Test {
 
   std::vector<std::string> argv_;
   MockSystemUtils utils_;
-  scoped_ptr<ChildJob> job_;
+  scoped_ptr<BrowserJob> job_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ChildJobTest);
+  DISALLOW_COPY_AND_ASSIGN(BrowserJobTest);
 };
 
 
 // Default argument list for a job to use in mostly all test cases.
-const char* ChildJobTest::kArgv[] = {
+const char* BrowserJobTest::kArgv[] = {
     "zero",
     "one",
     "two"
 };
 
 // Normal username to test session for.
-const char ChildJobTest::kUser[] = "test@gmail.com";
-const char ChildJobTest::kHash[] = "fake_hash";
+const char BrowserJobTest::kUser[] = "test@gmail.com";
+const char BrowserJobTest::kHash[] = "fake_hash";
 
-void ChildJobTest::SetUp() {
+void BrowserJobTest::SetUp() {
   argv_ = std::vector<std::string>(kArgv,
-                                   kArgv + arraysize(ChildJobTest::kArgv));
-  job_.reset(new ChildJob(argv_, false, &utils_));
+                                   kArgv + arraysize(BrowserJobTest::kArgv));
+  job_.reset(new BrowserJob(argv_, false, 1, &utils_));
 }
 
-TEST_F(ChildJobTest, InitializationTest) {
-
+TEST_F(BrowserJobTest, InitializationTest) {
   EXPECT_FALSE(job_->removed_login_manager_flag_);
-  EXPECT_FALSE(job_->IsDesiredUidSet());
   std::vector<std::string> job_args = job_->ExportArgv();
   ASSERT_EQ(argv_.size(), job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
 }
 
-TEST_F(ChildJobTest, DesiredUidSetTest) {
-  EXPECT_FALSE(job_->IsDesiredUidSet());
-  job_->SetDesiredUid(1);
-  EXPECT_EQ(1, job_->GetDesiredUid());
-  EXPECT_TRUE(job_->IsDesiredUidSet());
-}
-
-TEST_F(ChildJobTest, ShouldStopTest) {
+TEST_F(BrowserJobTest, ShouldStopTest) {
   EXPECT_CALL(utils_, time(NULL))
-      .WillRepeatedly(Return(ChildJob::kRestartWindowSeconds));
-  for (uint i = 0; i < ChildJob::kRestartTries - 1; ++i)
+      .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
+  for (uint i = 0; i < BrowserJob::kRestartTries - 1; ++i)
     job_->RecordTime();
   // We haven't yet saturated the list of start times, so...
   EXPECT_FALSE(job_->ShouldStop());
@@ -112,22 +115,68 @@ TEST_F(ChildJobTest, ShouldStopTest) {
   EXPECT_TRUE(job_->ShouldStop());
 }
 
-TEST_F(ChildJobTest, ShouldNotStopTest) {
+TEST_F(BrowserJobTest, ShouldNotStopTest) {
   EXPECT_CALL(utils_, time(NULL))
-      .WillOnce(Return(ChildJob::kRestartWindowSeconds))
-      .WillOnce(Return(3 * ChildJob::kRestartWindowSeconds));
+      .WillOnce(Return(BrowserJob::kRestartWindowSeconds))
+      .WillOnce(Return(3 * BrowserJob::kRestartWindowSeconds));
   job_->RecordTime();
   EXPECT_FALSE(job_->ShouldStop());
 }
 
-TEST_F(ChildJobTest, StartStopSessionTest) {
+// On the job's first run, it should have a one-time-flag.  That
+// should get cleared and not used again.
+TEST_F(BrowserJobTest, OneTimeBootFlags) {
+  EXPECT_CALL(utils_, fork()).WillRepeatedly(Return(1));
+  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+
+  MockMetrics metrics;
+  EXPECT_CALL(metrics, HasRecordedChromeExec())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(metrics, RecordStats(StrEq(("chrome-exec")))).Times(2);
+  job_->set_login_metrics(&metrics);
+
+  ASSERT_TRUE(job_->RunInBackground());
+  ExpectArgsToContainFlag(job_->ExportArgv(),
+                          BrowserJob::kFirstExecAfterBootFlag, "");
+
+  ASSERT_TRUE(job_->RunInBackground());
+  ExpectArgsNotToContainFlag(job_->ExportArgv(),
+                             BrowserJob::kFirstExecAfterBootFlag, "");
+}
+
+TEST_F(BrowserJobTest, RunBrowserTermMessage) {
+  pid_t kDummyPid = 4;
+  int signal = SIGKILL;
+  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  EXPECT_CALL(utils_, kill(kDummyPid, _, signal)).Times(1);
+  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+
+  MockMetrics metrics;
+  EXPECT_CALL(metrics, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics, RecordStats(_)).Times(AnyNumber());
+  job_->set_login_metrics(&metrics);
+
+  std::string term_message("killdya");
+  ASSERT_TRUE(job_->RunInBackground());
+  job_->Kill(signal, term_message);
+
+  // Check for termination message.
+  std::string sent_message;
+  base::FilePath term_file(utils_.GetUniqueFilename());
+  ASSERT_FALSE(term_file.empty());
+  ASSERT_TRUE(utils_.ReadFileToString(term_file, &sent_message));
+  EXPECT_EQ(term_message, sent_message);
+}
+
+TEST_F(BrowserJobTest, StartStopSessionTest) {
   job_->StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job_->ExportArgv();
   ASSERT_LT(argv_.size(), job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, "user");
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginProfileFlag, "user");
 
   // Should remove login user flag.
   job_->StopSession();
@@ -136,23 +185,23 @@ TEST_F(ChildJobTest, StartStopSessionTest) {
   ExpectArgsToContainAll(job_args, argv_);
 }
 
-TEST_F(ChildJobTest, StartStopMultiSessionTest) {
-  ChildJob job(argv_, true, &utils_);
+TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
+  BrowserJob job(argv_, true, 1, &utils_);
   job.StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job.ExportArgv();
   ASSERT_EQ(argv_.size() + 2, job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, kHash);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginProfileFlag, kHash);
 
   // Start another session, expect the args to be unchanged.
   job.StartSession(kUser, kHash);
   job_args = job.ExportArgv();
   ASSERT_EQ(argv_.size() + 2, job_args.size());
   ExpectArgsToContainAll(job_args, argv_);
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, kHash);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginProfileFlag, kHash);
 
 
   // Should remove login user and login profile flags.
@@ -162,7 +211,7 @@ TEST_F(ChildJobTest, StartStopMultiSessionTest) {
   ExpectArgsToContainAll(job_args, argv_);
 }
 
-TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
+TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   const char* kArgvWithLoginFlag[] = {
       "zero",
       "one",
@@ -171,7 +220,7 @@ TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
   };
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
-  ChildJob job(argv, false, &utils_);
+  BrowserJob job(argv, false, 1, &utils_);
 
   job.StartSession(kUser, kHash);
 
@@ -179,7 +228,7 @@ TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
   ASSERT_EQ(argv.size() + 1, job_args.size());
   ExpectArgsToContainAll(job_args,
                          std::vector<std::string>(argv.begin(), argv.end()-1));
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
 
   // Should remove login user/hash flags and append --login-manager flag back.
   job.StopSession();
@@ -188,7 +237,7 @@ TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
   ExpectArgsToContainAll(job_args, argv);
 }
 
-TEST_F(ChildJobTest, SetArguments) {
+TEST_F(BrowserJobTest, SetArguments) {
   const char* kNewArgs[] = {
     "--ichi",
     "--ni dfs",
@@ -206,10 +255,10 @@ TEST_F(ChildJobTest, SetArguments) {
 
   job_->StartSession(kUser, kHash);
   job_args = job_->ExportArgv();
-  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
 }
 
-TEST_F(ChildJobTest, SetExtraArguments) {
+TEST_F(BrowserJobTest, SetExtraArguments) {
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
   std::vector<std::string> extra_args(kExtraArgs,
                                       kExtraArgs + arraysize(kExtraArgs));
@@ -220,21 +269,9 @@ TEST_F(ChildJobTest, SetExtraArguments) {
   ExpectArgsToContainAll(job_args, extra_args);
 }
 
-TEST_F(ChildJobTest, SetExtraOneTimeArguments) {
-  std::vector<std::string> arguments;
-  arguments.push_back("--ichi");
-  arguments.push_back("--ni");
-  job_->SetOneTimeArguments(arguments);
-
-  std::vector<std::string> job_args = job_->ExportArgv();
-  ExpectArgsToContainAll(job_args, argv_);
-  for (size_t i = 0; i < arguments.size(); ++i)
-    ExpectArgsToContainFlag(job_args, arguments[i].c_str(), "");
-}
-
-TEST_F(ChildJobTest, CreateArgv) {
+TEST_F(BrowserJobTest, CreateArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
-  ChildJob job(argv, false, &utils_);
+  BrowserJob job(argv, false, -1, &utils_);
 
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
   std::vector<std::string> extra_args(kExtraArgs,

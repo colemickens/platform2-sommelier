@@ -10,7 +10,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <crypto/rsa_private_key.h>
 
-#include "login_manager/child_job.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/system_utils_impl.h"
 

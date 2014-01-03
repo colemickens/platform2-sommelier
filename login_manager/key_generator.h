@@ -15,8 +15,8 @@
 
 namespace login_manager {
 
-class ChildJobInterface;
-class MockChildJob;
+class GeneratorJobInterface;
+class FakeGeneratorJob;
 class ProcessManagerServiceInterface;
 class SystemUtils;
 
@@ -32,7 +32,7 @@ class KeyGenerator {
   // generated public key are stored internally until Reset() is called.
   virtual bool Start(const std::string& username, uid_t uid);
 
-  void InjectMockKeygenJob(MockChildJob* keygen);  // Takes ownership.
+  void InjectMockKeygenJob(scoped_ptr<FakeGeneratorJob> keygen);
 
   void HandleExit(bool success);
 
@@ -44,13 +44,10 @@ class KeyGenerator {
   // Clear per-generation state.
   void Reset();
 
-  // Forks a process for |job| and returns the PID.
-  int RunJob(ChildJobInterface* job);
-
   SystemUtils *utils_;
   ProcessManagerServiceInterface* manager_;
 
-  scoped_ptr<ChildJobInterface> keygen_job_;
+  scoped_ptr<GeneratorJobInterface> keygen_job_;
   bool generating_;
   std::string key_owner_username_;
   std::string temporary_key_filename_;

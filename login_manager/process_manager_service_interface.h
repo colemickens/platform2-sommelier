@@ -14,7 +14,7 @@
 
 namespace login_manager {
 
-class ChildJobInterface;
+class GeneratorJobInterface;
 
 class ProcessManagerServiceInterface {
  public:
@@ -51,7 +51,7 @@ class ProcessManagerServiceInterface {
   virtual void RunKeyGenerator(const std::string& username) = 0;
 
   // Start tracking a new, potentially running key generation job.
-  virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+  virtual void AdoptKeyGeneratorJob(scoped_ptr<GeneratorJobInterface> job,
                                     pid_t pid) = 0;
 
   // Stop tracking key generation job.

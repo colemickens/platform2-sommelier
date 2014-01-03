@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_MOCK_CHILD_PROCESS_H_
-#define LOGIN_MANAGER_MOCK_CHILD_PROCESS_H_
+#ifndef LOGIN_MANAGER_FAKE_CHILD_PROCESS_H_
+#define LOGIN_MANAGER_FAKE_CHILD_PROCESS_H_
 
 #include <sys/types.h>
 
@@ -11,13 +11,13 @@
 
 namespace login_manager {
 
-class MockChildProcess {
+class FakeChildProcess {
  public:
-  // Mocks a child process with a pid and an exit status.
+  // Fakes a child process with a pid and an exit status.
   // |status| should be constructed using macros defined in
   // <bits/waitstatus.h>.
-  MockChildProcess(pid_t pid, int status, SessionManagerService::TestApi api);
-  ~MockChildProcess();
+  FakeChildProcess(pid_t pid, int status, SessionManagerService::TestApi api);
+  ~FakeChildProcess();
 
   pid_t pid() { return pid_; }
 
@@ -30,9 +30,9 @@ class MockChildProcess {
   int exit_status_;
   SessionManagerService::TestApi test_api_;
 
-  DISALLOW_COPY_AND_ASSIGN(MockChildProcess);
+  DISALLOW_COPY_AND_ASSIGN(FakeChildProcess);
 };
 
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_MOCK_CHILD_PROCESS_H_
+#endif  // LOGIN_MANAGER_FAKE_CHILD_PROCESS_H_

@@ -11,12 +11,10 @@ namespace login_manager {
 
 RegenMitigator::RegenMitigator(KeyGenerator* generator,
                                bool set_uid,
-                               uid_t uid,
-                               SessionManagerService* manager)
+                               uid_t uid)
     : generator_(generator),
       set_uid_(set_uid),
       uid_(uid),
-      manager_(manager),
       mitigating_(false) {
   DCHECK(generator_);
 }

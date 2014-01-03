@@ -17,9 +17,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/child_job.h"
-#include "login_manager/mock_child_job.h"
-#include "login_manager/mock_child_process.h"
+#include "login_manager/browser_job.h"
+#include "login_manager/fake_browser_job.h"
+#include "login_manager/fake_child_process.h"
+#include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
@@ -80,27 +81,13 @@ class SessionManagerProcessTest : public ::testing::Test {
     manager_ = NULL;
   }
 
-  void SetUserFlags() {
-    // Prepare some flags to be appended.
-    std::vector<std::string> args;
-    args.push_back("--test");
-
-    manager_->SetFlagsForUser(kFakeEmail, args);
-  }
-
  protected:
   // kFakeEmail is NOT const so that it can be passed to methods that
   // implement dbus calls, which (of necessity) take bare gchar*.
   static char kFakeEmail[];
   static const char kCheckedFile[];
   static const pid_t kDummyPid;
-  static const char kUptimeFile[];
-  static const char kDiskFile[];
   static const int kExit;
-
-  enum RestartPolicy {
-    ALWAYS, NEVER
-  };
 
   void MockUtils() {
     manager_->test_api().set_systemutils(&utils_);
@@ -125,66 +112,9 @@ class SessionManagerProcessTest : public ::testing::Test {
     EXPECT_CALL(*liveness_checker_, Stop()).Times(AtLeast(1));
   }
 
-  void ExpectOneTimeArgsBoilerplate(MockChildJob* job) {
-    EXPECT_CALL(*job, ClearOneTimeArguments()).Times(AtLeast(1));
-    EXPECT_CALL(*metrics_, HasRecordedChromeExec())
-        .WillRepeatedly(Return(true));
-    base::FilePath term_message_file = utils_.GetUniqueFilename();
-    EXPECT_CALL(*job,
-                SetOneTimeArguments(
-                    Contains(HasSubstr(term_message_file.value()))))
-        .Times(AtLeast(1));
-
-    EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
-        .Times(AnyNumber());
-  }
-
-  void ExpectChildJobBoilerplate(MockChildJob* job) {
-    ExpectOneTimeArgsBoilerplate(job);
-    EXPECT_CALL(*job, RecordTime()).Times(1);
-    ExpectLivenessChecking();
-  }
-
-  void ExpectPidKill(pid_t pid, bool success) {
-    EXPECT_CALL(utils_, kill(pid, getuid(), SIGTERM)).WillOnce(Return(0));
-    EXPECT_CALL(utils_, ChildIsGone(pid, _)).WillOnce(Return(success));
-  }
-
-  void ExpectSuccessfulPidKill(pid_t pid) {
-    ExpectPidKill(pid, true);
-  }
-
-  void ExpectFailedPidKill(pid_t pid) {
-    ExpectPidKill(pid, false);
-  }
-
-  // Configures |file_checker_| to allow child restarting according to
-  // |child_runs|.
-  void SetFileCheckerPolicy(RestartPolicy child_runs) {
-    switch (child_runs) {
-    case ALWAYS:
-      EXPECT_CALL(*file_checker_, exists())
-          .WillRepeatedly(Return(false))
-          .RetiresOnSaturation();
-      break;
-    case NEVER:
-      EXPECT_CALL(*file_checker_, exists())
-          .WillOnce(Return(true))
-          .RetiresOnSaturation();
-      break;
-    default:
-      NOTREACHED();
-    }
-  }
-
-  void InitManager(MockChildJob* job) {
-    EXPECT_CALL(*job, GetName())
-        .WillRepeatedly(Return(std::string("job")));
-    EXPECT_CALL(*job, IsDesiredUidSet())
-        .WillRepeatedly(Return(false));
-
+  void InitManager(FakeBrowserJob* job) {
     ASSERT_TRUE(MessageLoop::current() == NULL);
-    manager_ = new SessionManagerService(scoped_ptr<ChildJobInterface>(job),
+    manager_ = new SessionManagerService(scoped_ptr<BrowserJobInterface>(job),
                                          3,
                                          false,
                                          base::TimeDelta(),
@@ -197,7 +127,6 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void SimpleRunManager() {
-    manager_->test_api().set_exit_on_child_done(true);
     ExpectSuccessfulInitialization();
     ExpectShutdown();
 
@@ -211,19 +140,18 @@ class SessionManagerProcessTest : public ::testing::Test {
     manager_->Run();
   }
 
-  // Creates one job and a manager for it, running it |child_runs| times.
-  // Returns the job for further mocking.
-  MockChildJob* CreateMockJobWithRestartPolicy(RestartPolicy child_runs) {
-    MockChildJob* job = new MockChildJob();
+  FakeBrowserJob* CreateMockJobAndInitManager(bool schedule_exit) {
+    FakeBrowserJob* job = new FakeBrowserJob("FakeBrowserJob", schedule_exit);
     InitManager(job);
-    SetFileCheckerPolicy(child_runs);
-    return job;
-  }
 
-  // Creates one job and a manager for it, running it |child_runs| times.
-  void InitManagerWithRestartPolicy(RestartPolicy child_runs) {
-    InitManager(new MockChildJob());
-    SetFileCheckerPolicy(child_runs);
+    job->set_fake_child_process(
+        scoped_ptr<FakeChildProcess>(
+            new FakeChildProcess(kDummyPid, 0, manager_->test_api())));
+
+    EXPECT_CALL(*file_checker_, exists())
+        .WillRepeatedly(Return(false))
+        .RetiresOnSaturation();
+    return job;
   }
 
   int PackStatus(int status) { return __W_EXITCODE(status, 0); }
@@ -252,132 +180,99 @@ class SessionManagerProcessTest : public ::testing::Test {
 char SessionManagerProcessTest::kFakeEmail[] = "cmasone@whaaat.org";
 const char SessionManagerProcessTest::kCheckedFile[] = "/tmp/checked_file";
 const pid_t SessionManagerProcessTest::kDummyPid = 4;
-const char SessionManagerProcessTest::kUptimeFile[] = "/tmp/uptime-chrome-exec";
-const char SessionManagerProcessTest::kDiskFile[] = "/tmp/disk-chrome-exec";
 const int SessionManagerProcessTest::kExit = 1;
 
 TEST_F(SessionManagerProcessTest, CleanupChildren) {
-  InitManager(new MockChildJob);
-  manager_->test_api().set_browser_pid(kDummyPid);
-
-  ExpectSuccessfulPidKill(kDummyPid);
-  MockUtils();
-
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
+  EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
+  job->RunInBackground();
   manager_->test_api().CleanupChildren(3);
 }
 
 TEST_F(SessionManagerProcessTest, CleanupSeveralChildren) {
-  InitManager(new MockChildJob);
-  manager_->test_api().set_browser_pid(kDummyPid);
+  FakeBrowserJob* browser_job = CreateMockJobAndInitManager(false);
+  browser_job->RunInBackground();
 
   pid_t generator_pid = kDummyPid + 1;
-  MockChildJob* generator = new MockChildJob;
-  EXPECT_CALL(*generator, IsDesiredUidSet()).WillRepeatedly(Return(false));
-  manager_->AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface>(generator),
-                                 generator_pid);
+  scoped_ptr<FakeGeneratorJob> generator(new FakeGeneratorJob(generator_pid,
+                                                              "Generator"));
+  EXPECT_CALL(*browser_job, Kill(SIGTERM, _)).Times(1);
+  EXPECT_CALL(*generator.get(), Kill(SIGTERM, _)).Times(1);
 
-  ExpectSuccessfulPidKill(kDummyPid);
-  ExpectSuccessfulPidKill(generator_pid);
-  MockUtils();
+  manager_->AdoptKeyGeneratorJob(
+      scoped_ptr<GeneratorJobInterface>(generator.Pass()), generator_pid);
 
   manager_->test_api().CleanupChildren(3);
 }
 
 TEST_F(SessionManagerProcessTest, SlowKillCleanupChildren) {
-  InitManager(new MockChildJob);
-  manager_->test_api().set_browser_pid(kDummyPid);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
+  job->RunInBackground();
+  EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
+  EXPECT_CALL(*job, KillEverything(SIGABRT, _)).Times(1);
 
-  ExpectFailedPidKill(kDummyPid);
-  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGABRT)).WillOnce(Return(0));
+  EXPECT_CALL(utils_, ChildIsGone(job->CurrentPid(), _))
+      .WillOnce(Return(false));
   MockUtils();
 
   manager_->test_api().CleanupChildren(3);
 }
 
-TEST_F(SessionManagerProcessTest, RunBrowserTermMessage) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-
-  // Expect the job to be run.
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
-  ExpectOneTimeArgsBoilerplate(job);
-  EXPECT_CALL(*job, RecordTime()).Times(1);
-  EXPECT_CALL(*liveness_checker_, Start()).Times(1);
-
-  MockUtils();
-
-  std::string term_message("killdya");
-  manager_->RunBrowser();
-
-  // Expect the job to be killed.
-  EXPECT_CALL(utils_, kill(-kDummyPid, _, SIGABRT)).WillOnce(Return(0));
-  manager_->AbortBrowser(SIGABRT, term_message);
-
-  // Check for termination message.
-  std::string sent_message;
-  base::FilePath term_file(utils_.GetUniqueFilename());
-  ASSERT_FALSE(term_file.empty());
-  ASSERT_TRUE(utils_.ReadFileToString(term_file, &sent_message));
-  EXPECT_EQ(term_message, sent_message);
-}
-
 TEST_F(SessionManagerProcessTest, SessionStartedCleanup) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
 
-  // Expect the job to be run.
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
-  ExpectChildJobBoilerplate(job);
+  // Expect the job to be faux-run.
+  ExpectLivenessChecking();
 
   ExpectSuccessfulInitialization();
   ExpectShutdown();
 
   // Expect the job to be killed, and die promptly.
-  base::TimeDelta timeout = base::TimeDelta::FromSeconds(3);
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
-      .WillOnce(Return(0));
-  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, _))
       .WillOnce(Return(true));
 
   MockUtils();
 
   base::MessageLoopProxy::current()->PostTask(
       FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown),
+      base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
                  manager_.get()));
   manager_->Run();
 }
 
 TEST_F(SessionManagerProcessTest, SessionStartedSlowKillCleanup) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
 
-  // Expect the job to be run.
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
-  ExpectChildJobBoilerplate(job);
+  // Expect the job to be faux-run.
+  ExpectLivenessChecking();
 
   ExpectSuccessfulInitialization();
   ExpectShutdown();
 
   base::TimeDelta timeout = base::TimeDelta::FromSeconds(3);
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
-      .WillOnce(Return(0));
+  EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
   EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGABRT))
-      .WillOnce(Return(0));
+  EXPECT_CALL(*job, KillEverything(SIGABRT, _)).Times(1);
 
   MockUtils();
 
   base::MessageLoopProxy::current()->PostTask(
       FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown),
+      base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
                  manager_.get()));
   manager_->Run();
 }
 
 TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
-  MockChildJob* job = new MockChildJob();
-  ExpectChildJobBoilerplate(job);
+  FakeBrowserJob* job = new FakeBrowserJob("BadExit");
+  ExpectLivenessChecking();
   InitManager(job);
+  // So that the manager will exit, even though it'd normally run forever.
+  manager_->test_api().set_exit_on_child_done(true);
 
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(false));
   EXPECT_CALL(*file_checker_, exists())
       .WillOnce(Return(false))
@@ -385,181 +280,107 @@ TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
 
-  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .Times(AnyNumber())
-      .WillRepeatedly(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                            Return(proc.pid())));
+  job->set_fake_child_process(
+      scoped_ptr<FakeChildProcess>(
+          new FakeChildProcess(kDummyPid,
+                               PackStatus(kExit),
+                               manager_->test_api())));
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectChildJobBoilerplate(job);
+  FakeBrowserJob* job = new FakeBrowserJob("BadExit");
+  ExpectLivenessChecking();
+  InitManager(job);
 
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
 
-  MockChildProcess proc(kDummyPid, PackSignal(SIGILL), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .Times(AnyNumber())
-      .WillRepeatedly(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                            Return(proc.pid())));
+  job->set_fake_child_process(
+      scoped_ptr<FakeChildProcess>(
+          new FakeChildProcess(kDummyPid,
+                               PackSignal(SIGILL),
+                               manager_->test_api())));
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, BadExitChild) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(true);
   ExpectLivenessChecking();
-  ExpectOneTimeArgsBoilerplate(job);
 
-  EXPECT_CALL(*job, RecordTime()).Times(2);
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
 
-  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())))
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
+  job->set_fake_child_process(
+      scoped_ptr<FakeChildProcess>(
+          new FakeChildProcess(kDummyPid,
+                               PackStatus(kExit),
+                               manager_->test_api())));
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, CleanExitChild) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectChildJobBoilerplate(job);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(true);
+  ExpectLivenessChecking();
 
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
 
-  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, LockedExit) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectChildJobBoilerplate(job);
-  // Let the manager cause the clean exit.
-  manager_->test_api().set_exit_on_child_done(false);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(true);
+  ExpectLivenessChecking();
 
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop())
       .Times(0);
 
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillOnce(Return(true));
-
-  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
-  SimpleRunManager();
-}
-
-TEST_F(SessionManagerProcessTest, FirstExecAfterBootFlagUsedOnce) {
-  // job should run, die, and get run again.  On its first run, it should
-  // have a one-time-flag.  That should get cleared and not used again.
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-
-  EXPECT_CALL(*metrics_, HasRecordedChromeExec())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
-      .Times(2);
-  EXPECT_CALL(*job, SetOneTimeArguments(
-      Contains(SessionManagerService::kFirstExecAfterBootFlag)))
-      .Times(1);
-  EXPECT_CALL(*job, SetOneTimeArguments(
-      Not(Contains(SessionManagerService::kFirstExecAfterBootFlag))))
-      .Times(1);
-  EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
-
-  ExpectLivenessChecking();
-  EXPECT_CALL(*job, RecordTime()).Times(2);
-  EXPECT_CALL(*job, ShouldStop())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
-      .WillRepeatedly(Return(false));
-
-  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())))
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, LivenessCheckingStartStop) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectOneTimeArgsBoilerplate(job);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(true);
   {
     Sequence start_stop;
     EXPECT_CALL(*liveness_checker_, Start()).Times(2);
     EXPECT_CALL(*liveness_checker_, Stop()).Times(AtLeast(2));
   }
-  EXPECT_CALL(*job, RecordTime()).Times(2);
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
 
-  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())))
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, MustStopChild) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectChildJobBoilerplate(job);
+  FakeBrowserJob* job = CreateMockJobAndInitManager(true);
+  ExpectLivenessChecking();
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
-  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
-  SimpleRunManager();
-}
-
-TEST_F(SessionManagerProcessTest, StatsRecorded) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectChildJobBoilerplate(job);
-  // Override looser expectation from ExpectChildJobBoilerplate().
-  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
-      .Times(1);
-
-  EXPECT_CALL(*job, ShouldStop())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
-      .WillRepeatedly(Return(false));
-
-  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
-
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
-  CreateMockJobWithRestartPolicy(ALWAYS);
+  CreateMockJobAndInitManager(true);
 
   // Expected to occur during manager_->Run().
   EXPECT_CALL(*metrics_, HasRecordedChromeExec())
@@ -569,7 +390,6 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   EXPECT_CALL(*session_manager_impl_, Initialize())
     .WillOnce(Return(false));
   EXPECT_CALL(*liveness_checker_, Stop()).Times(AnyNumber());
-  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
 
   // Expect Powerwash to be triggered.
   EXPECT_CALL(*session_manager_impl_, StartDeviceWipe(_, _))
@@ -578,38 +398,6 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   MockUtils();
 
   ASSERT_FALSE(manager_->Run());
-}
-
-TEST_F(SessionManagerProcessTest, InSessionFlagsSpecified) {
-  // job should run, die, and get run again.  On its first run, it should
-  // be run with no flags and the second time with one extra flag.
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-
-  EXPECT_CALL(*metrics_, HasRecordedChromeExec())
-      .Times(2).WillRepeatedly(Return(true));
-  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
-      .Times(2);
-  EXPECT_CALL(*job, SetOneTimeArguments(_)).Times(2);
-  EXPECT_CALL(*job, ClearOneTimeArguments()).Times(2);
-  EXPECT_CALL(*job, SetExtraArguments(_)).Times(1);
-
-  ExpectLivenessChecking();
-  EXPECT_CALL(*job, RecordTime()).Times(2);
-  EXPECT_CALL(*job, ShouldStop())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
-      .WillRepeatedly(Return(false));
-
-  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(InvokeWithoutArgs(
-                          this, &SessionManagerProcessTest::SetUserFlags),
-                      Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())))
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
-  SimpleRunManager();
 }
 
 }  // namespace login_manager

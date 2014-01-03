@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 
 namespace login_manager {
-class ChildJobInterface;
+class GeneratorJobInterface;
 
 class MockProcessManagerService : public ProcessManagerServiceInterface {
  public:
@@ -34,7 +34,7 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
   // Call ExpectAdoptAbandonKeyGenerator(pid_t) to make this mock expect:
   //   1) Adoption of the provided pid, and
   //   2) Abandonment.
-  void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+  void AdoptKeyGeneratorJob(scoped_ptr<GeneratorJobInterface> job,
                             pid_t pid) OVERRIDE;
 
   MOCK_METHOD0(AbandonKeyGeneratorJob, void());

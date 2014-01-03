@@ -7,7 +7,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 
-#include "login_manager/child_job.h"
+#include "login_manager/generator_job.h"
 
 namespace login_manager {
 
@@ -15,7 +15,7 @@ MockProcessManagerService::MockProcessManagerService() : generator_pid_(0) {}
 MockProcessManagerService::~MockProcessManagerService() {}
 
 void MockProcessManagerService::AdoptKeyGeneratorJob(
-    scoped_ptr<ChildJobInterface> job,
+    scoped_ptr<GeneratorJobInterface> job,
     pid_t pid) {
   if (generator_pid_ != pid) {
     ADD_FAILURE() << "Incorrect pid offered for adoption: "

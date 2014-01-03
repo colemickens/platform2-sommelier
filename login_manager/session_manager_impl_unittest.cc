@@ -30,12 +30,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/child_job.h"
+#include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
-#include "login_manager/mock_child_job.h"
-#include "login_manager/mock_child_process.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"

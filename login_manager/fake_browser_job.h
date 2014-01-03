@@ -1,0 +1,53 @@
+// Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef LOGIN_MANAGER_FAKE_BROWSER_JOB_H_
+#define LOGIN_MANAGER_FAKE_BROWSER_JOB_H_
+
+#include "login_manager/browser_job.h"
+
+#include <sys/types.h>
+
+#include <base/memory/scoped_ptr.h>
+#include <gmock/gmock.h>
+#include <string>
+#include <vector>
+
+namespace login_manager {
+class FakeChildProcess;
+
+class FakeBrowserJob : public BrowserJobInterface {
+ public:
+  explicit FakeBrowserJob(const std::string& name);
+  FakeBrowserJob(const std::string& name, bool schedule_exit);
+  virtual ~FakeBrowserJob();
+
+  void set_fake_child_process(scoped_ptr<FakeChildProcess> fake);
+
+  // Overridden from BrowserJobInterface
+  MOCK_CONST_METHOD0(ShouldStop, bool());
+  MOCK_METHOD2(KillEverything, void(int, const std::string&));
+  MOCK_METHOD2(Kill, void(int, const std::string&));
+  MOCK_METHOD2(StartSession, void(const std::string&, const std::string&));
+  MOCK_METHOD0(StopSession, void());
+  MOCK_METHOD1(SetArguments, void(const std::vector<std::string>&));
+  MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
+  MOCK_METHOD1(SetOneTimeArguments, void(const std::vector<std::string>&));
+  MOCK_METHOD0(ClearOneTimeArguments, void());
+
+  virtual bool RunInBackground() OVERRIDE;
+  virtual const std::string GetName() const OVERRIDE;
+  virtual pid_t CurrentPid() const OVERRIDE;
+  virtual void ClearPid() OVERRIDE;
+
+ private:
+  scoped_ptr<FakeChildProcess> fake_process_;
+  const std::string name_;
+  bool running_;
+  const bool schedule_exit_;
+  DISALLOW_COPY_AND_ASSIGN(FakeBrowserJob);
+};
+}  // namespace login_manager
+
+#endif  // LOGIN_MANAGER_FAKE_BROWSER_JOB_H_

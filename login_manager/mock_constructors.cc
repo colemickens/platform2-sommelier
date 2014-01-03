@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include <base/message_loop_proxy.h>
 #include <base/time.h>
 
-#include "login_manager/mock_child_job.h"
+#include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
@@ -33,8 +35,11 @@
 // mock I define, I will simply collect the constructors all here.
 
 namespace login_manager {
-MockChildJob::MockChildJob() {}
-MockChildJob::~MockChildJob() {}
+FakeGeneratorJob::FakeGeneratorJob(pid_t pid, const std::string& name)
+    : pid_(pid),
+      name_(name) {
+}
+FakeGeneratorJob::~FakeGeneratorJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()
     : DevicePolicyService(FilePath(""), FilePath(""),

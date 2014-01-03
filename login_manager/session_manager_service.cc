@@ -44,10 +44,11 @@
 #include <chromeos/switches/chrome_switches.h>
 #include <chromeos/utility.h>
 
-#include "login_manager/child_job.h"
+#include "login_manager/browser_job.h"
 #include "login_manager/dbus_glib_shim.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
+#include "login_manager/generator_job.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -133,9 +134,6 @@ void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
 
 }  // anonymous namespace
 
-const char SessionManagerService::kFirstExecAfterBootFlag[] =
-    "--first-exec-after-boot";
-
 const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
@@ -172,7 +170,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 }
 
 SessionManagerService::SessionManagerService(
-    scoped_ptr<ChildJobInterface> child_job,
+    scoped_ptr<BrowserJobInterface> child_job,
     int kill_timeout,
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
@@ -281,6 +279,8 @@ bool SessionManagerService::Initialize() {
     return false;
   }
   login_metrics_.reset(new LoginMetrics(flag_file_dir));
+  reinterpret_cast<BrowserJob*>(browser_.get())->set_login_metrics(
+      login_metrics_.get());
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below, and also use as delegate for device_policy_.
@@ -300,7 +300,7 @@ bool SessionManagerService::Initialize() {
 
   owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath(), nss_.get()));
   scoped_ptr<OwnerKeyLossMitigator> mitigator(
-      new RegenMitigator(key_gen_.get(), set_uid_, uid_, this));
+      new RegenMitigator(key_gen_.get(), set_uid_, uid_));
   device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
                                                owner_key_.get(),
                                                mitigator.Pass(),
@@ -408,7 +408,7 @@ bool SessionManagerService::Run() {
 
   // Set any flags that were specified system-wide.
   if (device_policy_)
-    browser_.job->SetExtraArguments(device_policy_->GetStartUpFlags());
+    browser_->SetExtraArguments(device_policy_->GetStartUpFlags());
 
   if (ShouldRunBrowser())  // Allows devs to start/stop browser manually.
     RunBrowser();
@@ -437,38 +437,13 @@ void SessionManagerService::ScheduleShutdown() {
 }
 
 void SessionManagerService::RunBrowser() {
-  bool first_boot = !login_metrics_->HasRecordedChromeExec();
-
-  login_metrics_->RecordStats("chrome-exec");
-  std::vector<std::string> one_time_args;
-  system_->RemoveFile(browser_.term_file);
-  if (system_->CreateReadOnlyFileInTempDir(&browser_.term_file)) {
-    one_time_args.push_back(
-        base::StringPrintf("--%s=%s",
-                           chromeos::switches::kTerminationMessageFile,
-                           browser_.term_file.value().c_str()));
-  }
-  if (first_boot)
-    one_time_args.push_back(kFirstExecAfterBootFlag);
-  browser_.job->SetOneTimeArguments(one_time_args);
-  LOG(INFO) << "Running child " << browser_.job->GetName() << "...";
-  browser_.job->RecordTime();
-  browser_.pid = system_->fork();
-  if (browser_.pid == 0) {
-    RevertHandlers();
-    browser_.job->Run();
-    exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
-  }
-
-  browser_.job->ClearOneTimeArguments();
+  browser_->RunInBackground();
   liveness_checker_->Start();
 }
 
 void SessionManagerService::AbortBrowser(int signal,
                                          const std::string& message) {
-  LOG(INFO) << "Sending termination message: " << message;
-  system_->AtomicFileWrite(browser_.term_file, message.c_str(), message.size());
-  KillChild(browser_.job.get(), -browser_.pid, signal);
+  browser_->KillEverything(signal, message);
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
@@ -477,24 +452,24 @@ void SessionManagerService::RestartBrowserWithArgs(
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  KillChild(browser_.job.get(), -browser_.pid, SIGKILL);
+  browser_->KillEverything(SIGKILL, "");
   if (args_are_extra)
-    browser_.job->SetExtraArguments(args);
+    browser_->SetExtraArguments(args);
   else
-    browser_.job->SetArguments(args);
+    browser_->SetArguments(args);
   // The browser will be restarted in HandleBrowserExit().
 }
 
 void SessionManagerService::SetBrowserSessionForUser(
     const std::string& username,
     const std::string& userhash) {
-  browser_.job->StartSession(username, userhash);
+  browser_->StartSession(username, userhash);
 }
 
 void SessionManagerService::SetFlagsForUser(
     const std::string& username,
     const std::vector<std::string>& flags) {
-  browser_.job->SetExtraArguments(flags);
+  browser_->SetExtraArguments(flags);
 }
 
 void SessionManagerService::RunKeyGenerator(const std::string& username) {
@@ -502,27 +477,15 @@ void SessionManagerService::RunKeyGenerator(const std::string& username) {
     LOG(ERROR) << "Can't fork to run key generator.";
 }
 
-void SessionManagerService::KillChild(const ChildJobInterface* child_job,
-                                      int pid_spec,
-                                      int signal) {
-  uid_t to_kill_as = getuid();
-  if (child_job->IsDesiredUidSet())
-    to_kill_as = child_job->GetDesiredUid();
-  system_->kill(pid_spec, to_kill_as, signal);
-  // Process will be reaped on the way into HandleBrowserExit.
-}
-
 void SessionManagerService::AdoptKeyGeneratorJob(
-    scoped_ptr<ChildJobInterface> job,
+    scoped_ptr<GeneratorJobInterface> job,
     pid_t pid) {
   DLOG(INFO) << "Adopting key generator job with pid " << pid;
-  generator_.job.swap(job);
-  generator_.pid = pid;
+  generator_.swap(job);
 }
 
 void SessionManagerService::AbandonKeyGeneratorJob() {
-  generator_.job.reset(NULL);
-  generator_.pid = -1;
+  generator_.reset(NULL);
 }
 
 void SessionManagerService::ProcessNewOwnerKey(const std::string& username,
@@ -532,11 +495,15 @@ void SessionManagerService::ProcessNewOwnerKey(const std::string& username,
 }
 
 bool SessionManagerService::IsGenerator(pid_t pid) {
-  return generator_.pid > 0 && pid == generator_.pid;
+  return (generator_ &&
+          generator_->CurrentPid() > 0 &&
+          pid == generator_->CurrentPid());
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {
-  return browser_.pid > 0 && pid == browser_.pid;
+  return (browser_ &&
+          browser_->CurrentPid() > 0 &&
+          pid == browser_->CurrentPid());
 }
 
 bool SessionManagerService::IsManagedProcess(pid_t pid) {
@@ -544,19 +511,18 @@ bool SessionManagerService::IsManagedProcess(pid_t pid) {
 }
 
 void SessionManagerService::AllowGracefulExit() {
-  if (exit_on_child_done_) {
-    shutting_down_ = true;
-    LOG(INFO) << "SessionManagerService set to exit on child done";
-    loop_proxy_->PostTask(
-        FROM_HERE,
-        base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
-  }
+  LOG_IF(FATAL, !exit_on_child_done_) << "Should not gracefully exit";
+  LOG(INFO) << "SessionManagerService set to exit on child done";
+  loop_proxy_->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
+                 this));
 }
 
 void SessionManagerService::HandleBrowserExit() {
   // If I could wait for descendants here, I would.  Instead, I kill them.
-  kill(-browser_.pid, SIGKILL);
-  browser_.pid = -1;
+  browser_->KillEverything(SIGKILL, "Session termination");
+  browser_->ClearPid();
 
   // Do nothing if already shutting down.
   if (shutting_down_)
@@ -570,16 +536,15 @@ void SessionManagerService::HandleBrowserExit() {
     return;
   }
 
-  ChildJobInterface* child_job = browser_.job.get();
-  DCHECK(child_job);
-  if (child_job->ShouldStop()) {
+  DCHECK(browser_.get());
+  if (browser_->ShouldStop()) {
     LOG(WARNING) << "Child stopped, shutting down";
     SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
   } else if (ShouldRunBrowser()) {
     // TODO(cmasone): deal with fork failing in RunBrowser()
     RunBrowser();
   } else {
-    LOG(INFO) << "Should NOT run " << child_job->GetName() << " again.";
+    LOG(INFO) << "Should NOT run " << browser_->GetName() << " again.";
     AllowGracefulExit();
   }
 }
@@ -591,9 +556,9 @@ void SessionManagerService::HandleChildExit(const siginfo_t& info) {
 
   std::string job_name;
   if (IsBrowser(info.si_pid))
-    job_name = browser_.job->GetName();
+    job_name = browser_->GetName();
   else if (IsGenerator(info.si_pid))
-    job_name = generator_.job->GetName();
+    job_name = generator_->GetName();
 
   LOG(INFO) << "Handling " << job_name << "(" << info.si_pid << ") exit.";
   if (info.si_code == CLD_EXITED) {
@@ -637,7 +602,7 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
   LOG(INFO) << "HUP, INT, or TERM received; exiting.";
 
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  manager->Shutdown();
+  manager->ScheduleShutdown();
   return FALSE;  // So that the event source that called this gets removed.
 }
 
@@ -649,6 +614,7 @@ void SessionManagerService::Finalize() {
 }
 
 void SessionManagerService::SetExitAndShutdown(ExitCode code) {
+  shutting_down_ = true;
   exit_code_ = code;
   Shutdown();
 }
@@ -754,31 +720,31 @@ void SessionManagerService::RevertHandlers() {
   CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
 }
 
-void SessionManagerService::WaitAndAbortChild(const ChildJob::Spec& spec,
+void SessionManagerService::WaitAndAbortChild(ChildJobInterface* job,
                                               base::TimeDelta timeout) {
-  if (!system_->ChildIsGone(spec.pid, timeout)) {
-    LOG(WARNING) << "Aborting child process " << spec.pid << " "
+  pid_t job_pid = job->CurrentPid();
+  if (!system_->ChildIsGone(job_pid, timeout)) {
+    LOG(WARNING) << "Aborting child process " << job_pid << " "
                  << timeout.InSeconds() << " seconds after sending TERM signal";
     std::string message = base::StringPrintf(
         "Browser took more than %" PRId64 " seconds to exit after TERM.",
         timeout.InSeconds());
-    system_->AtomicFileWrite(spec.term_file, message.c_str(), message.size());
-    KillChild(spec.job.get(), -spec.pid, SIGABRT);
+    job->KillEverything(SIGABRT, message);
   } else {
-    DLOG(INFO) << "Cleaned up child " << spec.pid;
+    DLOG(INFO) << "Cleaned up child " << job_pid;
   }
 }
 
 void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
-  if (browser_.pid > 0)
-    KillChild(browser_.job.get(), browser_.pid, SIGTERM);
-  if (generator_.pid > 0)
-    KillChild(generator_.job.get(), generator_.pid, SIGTERM);
+  if (browser_ && browser_->CurrentPid() > 0)
+    browser_->Kill(SIGTERM, "");
+  if (generator_ && generator_->CurrentPid() > 0)
+    generator_->Kill(SIGTERM, "");
 
-  if (browser_.pid > 0)
-    WaitAndAbortChild(browser_, timeout);
-  if (generator_.pid > 0)
-    WaitAndAbortChild(generator_, timeout);
+  if (browser_ && browser_->CurrentPid() > 0)
+    WaitAndAbortChild(browser_.get(), timeout);
+  if (generator_ && generator_->CurrentPid() > 0)
+    WaitAndAbortChild(generator_.get(), timeout);
 }
 
 // static

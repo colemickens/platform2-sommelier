@@ -23,7 +23,7 @@
 #include <chromeos/glib/object.h>
 #include <chromeos/syslog_logging.h>
 
-#include "login_manager/child_job.h"
+#include "login_manager/browser_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_service.h"
@@ -88,11 +88,10 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 
 }  // namespace switches
 
-using login_manager::ChildJob;
-using login_manager::ChildJobInterface;
+using login_manager::BrowserJob;
+using login_manager::BrowserJobInterface;
 using login_manager::FileChecker;
 using login_manager::KeyGenerator;
-using login_manager::RegenMitigator;
 using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
 
@@ -108,14 +107,12 @@ int main(int argc, char* argv[]) {
   }
 
   // Parse UID if it's present, -1 means no UID should be set.
-  bool uid_set = false;
-  uid_t uid = 0;
+  uid_t uid = getuid();
   if (cl->HasSwitch(switches::kUid)) {
     string uid_flag = cl->GetSwitchValueASCII(switches::kUid);
     int uid_value = 0;
-    if (base::StringToInt(uid_flag, &uid_value)) {
+    if (base::StringToInt(uid_flag, &uid_value) && uid_value >= 0) {
       uid = static_cast<uid_t>(uid_value);
-      uid_set = true;
     } else {
       DLOG(WARNING) << "Failed to parse uid, defaulting to none.";
     }
@@ -155,11 +152,8 @@ int main(int argc, char* argv[]) {
   // We only support a single job with args, so grab all loose args
   vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
 
-  scoped_ptr<ChildJobInterface> browser_job(new ChildJob(arg_list,
-                                                         support_multi_profile,
-                                                         &system));
-  if (uid_set)
-    browser_job->SetDesiredUid(uid);
+  scoped_ptr<BrowserJobInterface> browser_job(
+      new BrowserJob(arg_list, support_multi_profile, uid, &system));
 
   ::g_type_init();
   scoped_refptr<SessionManagerService> manager =
@@ -176,8 +170,7 @@ int main(int argc, char* argv[]) {
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
   manager->set_file_checker(new FileChecker(FilePath(magic_chrome_file)));
 
-  if (uid_set)
-    manager->set_uid(uid);
+  manager->set_uid(uid);
 
   LOG_IF(FATAL, !manager->Initialize()) << "Failed";
   LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()))

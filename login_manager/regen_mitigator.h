@@ -16,7 +16,6 @@ namespace login_manager {
 
 class KeyGenerator;
 class PolicyKey;
-class SessionManagerService;
 
 // This class mitigates owner key loss by triggering the generation of a new
 // owner key and the re-signing of exisiting owner device policy.
@@ -24,8 +23,7 @@ class RegenMitigator : public OwnerKeyLossMitigator {
  public:
   RegenMitigator(KeyGenerator* generator,
                  bool set_uid,
-                 uid_t uid,
-                 SessionManagerService* manager);
+                 uid_t uid);
   virtual ~RegenMitigator();
 
   // Deal with loss of the owner's private key.
@@ -38,7 +36,6 @@ class RegenMitigator : public OwnerKeyLossMitigator {
   KeyGenerator* generator_;
   bool set_uid_;
   uid_t uid_;
-  SessionManagerService* manager_;
   bool mitigating_;
   DISALLOW_COPY_AND_ASSIGN(RegenMitigator);
 };

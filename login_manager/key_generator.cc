@@ -5,14 +5,14 @@
 #include "login_manager/key_generator.h"
 
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <chromeos/cryptohome.h>
 
-#include "login_manager/child_job.h"
+#include "login_manager/fake_generator_job.h"
+#include "login_manager/generator_job.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/system_utils.h"
 
@@ -51,12 +51,11 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
     keygen_argv.push_back(kKeygenExecutable);
     keygen_argv.push_back(temporary_key_filename_);
     keygen_argv.push_back(user_path.value());
-    keygen_job_.reset(new ChildJob(keygen_argv, false, utils_));
+    keygen_job_.reset(new GeneratorJob(keygen_argv, uid, utils_));
   }
 
-  if (uid != 0)
-    keygen_job_->SetDesiredUid(uid);
-  pid_t pid = RunJob(keygen_job_.get());
+  keygen_job_->RunInBackground();
+  pid_t pid = keygen_job_->CurrentPid();
   if (pid < 0)
     return false;
   DLOG(INFO) << "Generating key at " << temporary_key_filename_
@@ -82,17 +81,8 @@ void KeyGenerator::Reset() {
   generating_ = false;
 }
 
-int KeyGenerator::RunJob(ChildJobInterface* job) {
-  pid_t pid = utils_->fork();
-  if (pid == 0) {
-    job->Run();
-    exit(1);  // Run() is not supposed to return.
-  }
-  return pid;
-}
-
-void KeyGenerator::InjectMockKeygenJob(MockChildJob* keygen) {
-  keygen_job_.reset(reinterpret_cast<ChildJobInterface*>(keygen));
+void KeyGenerator::InjectMockKeygenJob(scoped_ptr<FakeGeneratorJob> keygen) {
+  keygen_job_ = scoped_ptr<GeneratorJobInterface>(keygen.Pass());
 }
 
 }  // namespace login_manager

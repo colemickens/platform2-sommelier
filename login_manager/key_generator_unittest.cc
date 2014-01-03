@@ -17,11 +17,10 @@
 #include <chromeos/cryptohome.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/child_job.h"
+#include "login_manager/fake_child_process.h"
+#include "login_manager/fake_generator_job.h"
 #include "login_manager/keygen_worker.h"
 #include "login_manager/matchers.h"
-#include "login_manager/mock_child_job.h"
-#include "login_manager/mock_child_process.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
@@ -76,13 +75,9 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
   pid_t kDummyPid = 4;
   std::string fake_ownername("user");
 
-  scoped_ptr<MockChildJob> k_job(new MockChildJob);
-  EXPECT_CALL(*k_job.get(), SetDesiredUid(kFakeUid)).Times(1);
-  EXPECT_CALL(*k_job.get(), IsDesiredUidSet()).WillRepeatedly(Return(true));
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
-
+  scoped_ptr<FakeGeneratorJob> k_job(new FakeGeneratorJob(kDummyPid, "gen"));
   KeyGenerator keygen(&utils_, &manager);
-  keygen.InjectMockKeygenJob(k_job.release());
+  keygen.InjectMockKeygenJob(k_job.Pass());
 
   manager.ExpectAdoptAndAbandon(kDummyPid);
   EXPECT_CALL(manager,

@@ -15,12 +15,10 @@
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"
-#include "login_manager/child_job.h"
-#include "login_manager/mock_child_job.h"
+#include "login_manager/fake_browser_job.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_system_utils.h"
-#include "login_manager/session_manager_service.h"
 
 using ::testing::Return;
 using ::testing::StrEq;
@@ -29,25 +27,11 @@ namespace login_manager {
 
 class RegenMitigatorTest : public ::testing::Test {
  public:
-  RegenMitigatorTest() : manager_(NULL) {}
+  RegenMitigatorTest() {}
   virtual ~RegenMitigatorTest() {}
-
-  virtual void SetUp() {
-    scoped_ptr<ChildJobInterface> job(new MockChildJob());
-    manager_ = new SessionManagerService(job.Pass(),
-                                         3,
-                                         false,
-                                         base::TimeDelta(),
-                                         &utils_);
-  }
-
-  virtual void TearDown() {
-    manager_ = NULL;
-  }
 
  protected:
   MockSystemUtils utils_;
-  scoped_refptr<SessionManagerService> manager_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RegenMitigatorTest);
@@ -58,7 +42,7 @@ TEST_F(RegenMitigatorTest, Mitigate) {
   std::string fake_ownername("user");
   EXPECT_CALL(gen, Start(StrEq(fake_ownername), getuid()))
       .WillOnce(Return(true));
-  RegenMitigator mitigator(&gen, true, getuid(), manager_.get());
+  RegenMitigator mitigator(&gen, true, getuid());
   EXPECT_TRUE(mitigator.Mitigate(fake_ownername));
 }
 
