@@ -24,6 +24,9 @@ class ProcessManagerServiceInterface {
   // Enqueue a QuitClosure.
   virtual void ScheduleShutdown() = 0;
 
+  // Return true if the browser should be run, false if not.
+  virtual bool ShouldRunBrowser() = 0;
+
   // Fork, then call browser_.job->Run() in the child and set a
   // babysitter in the parent's glib default context that calls
   // HandleBrowserExit when the child is done.

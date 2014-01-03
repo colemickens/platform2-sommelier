@@ -76,6 +76,7 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
   std::string fake_ownername("user");
 
   scoped_ptr<FakeGeneratorJob> k_job(new FakeGeneratorJob(kDummyPid, "gen"));
+  EXPECT_CALL(*k_job.get(), RunInBackground()).WillOnce(Return(true));
   KeyGenerator keygen(&utils_, &manager);
   keygen.InjectMockKeygenJob(k_job.Pass());
 

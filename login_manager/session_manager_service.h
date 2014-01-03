@@ -8,7 +8,6 @@
 #include <dbus/dbus.h>
 #include <errno.h>
 #include <glib.h>
-#include <gtest/gtest.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -57,13 +56,15 @@ class NssUtil;
 class PolicyService;
 class SystemUtils;
 
-// Provides a wrapper for exporting SessionManagerInterface to
-// D-Bus and entering the glib run loop.
+// Provides methods for running the browser, watching its progress, and
+// restarting it if need be.
+//
+// Once the browser is run, it will be restarted perpetually, UNLESS
+// |magic_chrome_file| exists, or this process receives a termination signal.
+// Also provides a wrapper that exports SessionManagerImpl methods via
+// D-Bus.
 //
 // ::g_type_init() must be called before this class is used.
-//
-// All signatures used in the methods of the ownership API are
-// SHA1 with RSA encryption.
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public chromeos::dbus::AbstractDbusService,
@@ -72,10 +73,12 @@ class SessionManagerService
   enum ExitCode {
     SUCCESS = 0,
     CRASH_WHILE_SCREEN_LOCKED = 1,
-    CHILD_EXITING_TOO_FAST = 2
+    CHILD_EXITING_TOO_FAST = 2,
+    MUST_WIPE_DEVICE = 3,
   };
 
   SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
+                        const base::Closure& quit_closure,
                         int kill_timeout,
                         bool enable_browser_abort_on_hang,
                         base::TimeDelta hang_detection_interval,
@@ -88,9 +91,6 @@ class SessionManagerService
    public:
     void set_systemutils(SystemUtils* utils) {
       session_manager_service_->system_ = utils;
-    }
-    void set_keygen(KeyGenerator* gen) {
-      session_manager_service_->key_gen_.reset(gen);
     }
     void set_login_metrics(LoginMetrics* metrics) {
       session_manager_service_->login_metrics_.reset(metrics);
@@ -115,6 +115,9 @@ class SessionManagerService
     // Cause handling of faked-out exit of a child process.
     void ScheduleChildExit(pid_t pid, int status);
 
+    // Trigger and handle SessionManagerImpl initialization.
+    bool InitializeImpl() { return session_manager_service_->InitializeImpl(); }
+
    private:
     friend class SessionManagerService;
     explicit TestApi(SessionManagerService* session_manager_service)
@@ -127,9 +130,34 @@ class SessionManagerService
 
   ////////////////////////////////////////////////////////////////////////////
   // Implementing chromeos::dbus::AbstractDbusService
+  virtual const char* service_name() const {
+    return kSessionManagerServiceName;
+  }
+  virtual const char* service_path() const {
+    return kSessionManagerServicePath;
+  }
+  virtual const char* service_interface() const {
+    return kSessionManagerInterface;
+  }
+  virtual GObject* service_object() const {
+    return G_OBJECT(session_manager_);
+  }
+
   virtual bool Initialize() OVERRIDE;
   virtual bool Register(const chromeos::dbus::BusConnection &conn) OVERRIDE;
   virtual bool Reset() OVERRIDE;
+
+  // DEPRECATED
+  // TODO(cmasone): Remove as part of http://crbug.com/330880
+  virtual bool Run() OVERRIDE;
+
+  // DEPRECATED
+  // TODO(cmasone): Remove as part of http://crbug.com/330880
+  virtual bool Shutdown() OVERRIDE;
+
+  // Tears down object set up during Initialize(), cleans up child processes,
+  // and announces that the user session has stopped over DBus.
+  void Finalize();
 
   // Takes ownership of |file_checker|.
   void set_file_checker(FileChecker* file_checker) {
@@ -144,36 +172,9 @@ class SessionManagerService
 
   ExitCode exit_code() { return exit_code_; }
 
-  // Runs the command specified on the command line as |desired_uid_| and
-  // watches it, restarting it whenever it exits abnormally -- UNLESS
-  // |magic_chrome_file| exists.
-  //
-  // So, this function will run until one of the following occurs:
-  // 1) the specified command exits normally
-  // 2) |magic_chrome_file| exists AND the specified command exits for any
-  //     reason
-  // 3) We can't fork/exec/setuid to |desired_uid_|
-  virtual bool Run() OVERRIDE;
-
-  virtual const char* service_name() const {
-    return kSessionManagerServiceName;
-  }
-  virtual const char* service_path() const {
-    return kSessionManagerServicePath;
-  }
-  virtual const char* service_interface() const {
-    return kSessionManagerInterface;
-  }
-  virtual GObject* service_object() const {
-    return G_OBJECT(session_manager_);
-  }
-
-  // Emits "SessionStateChanged:stopped" D-Bus signal if applicable
-  // before invoking the inherited method.
-  virtual bool Shutdown() OVERRIDE;
-
   // Implementing ProcessManagerServiceInterface
   virtual void ScheduleShutdown() OVERRIDE;
+  virtual bool ShouldRunBrowser() OVERRIDE;
   virtual void RunBrowser() OVERRIDE;
   virtual void AbortBrowser(int signal, const std::string& message) OVERRIDE;
   virtual void RestartBrowserWithArgs(
@@ -192,9 +193,6 @@ class SessionManagerService
   virtual bool IsGenerator(pid_t pid) OVERRIDE;
   virtual bool IsManagedProcess(pid_t pid) OVERRIDE;
 
-  // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
-  void AllowGracefulExit();
-
   // Ensures |args| is in the correct format, stripping "--" if needed.
   // No initial "--" is needed, but is allowed.
   // ("a", "b", "c") => ("a", "b", "c")
@@ -202,6 +200,9 @@ class SessionManagerService
   // Converts args from wide to plain strings.
   static std::vector<std::string> GetArgList(
       const std::vector<std::string>& args);
+
+  // Set all changed signal handlers back to the default behavior.
+  static void RevertHandlers();
 
   // Directory in which per-boot metrics flag files will be stored.
   static const char kFlagFileDir[];
@@ -211,9 +212,6 @@ class SessionManagerService
 
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
-
-  // Set all changed signal handlers back to the default behavior.
-  static void RevertHandlers();
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
@@ -234,9 +232,6 @@ class SessionManagerService
                              GIOCondition condition,
                              gpointer data);
 
-  // Determines which child exited, and handles appropriately.
-  void HandleChildExit(const siginfo_t& info);
-
   // Re-runs the browser, unless one of the following is true:
   //  The screen is supposed to be locked,
   //  UI shutdown is in progress,
@@ -244,12 +239,8 @@ class SessionManagerService
   //  ShouldRunBrowser() indicates the browser should not run anymore.
   void HandleBrowserExit();
 
-  // Tears down object set up during Initialize().
-  void Finalize();
-
-  // Sets the proccess' exit code immediately and posts a QuitClosure to the
-  // main event loop.
-  void SetExitAndShutdown(ExitCode code);
+  // Determines which child exited, and handles appropriately.
+  void HandleChildExit(const siginfo_t& info);
 
   // Set up any necessary signal handlers.
   void SetUpHandlers();
@@ -257,10 +248,21 @@ class SessionManagerService
   // Returns appropriate child-killing timeout, depending on flag file state.
   base::TimeDelta GetKillTimeout();
 
+  // Initializes policy subsystems which, among other things, finds and
+  // validates the stored policy signing key if one is present.
+  // A corrupted policy key means that the device needs to have its data wiped.
+  // We trigger a reboot and then wipe (most of) the stateful partition.
+  bool InitializeImpl();
+
+  // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
+  void AllowGracefulExit();
+
+  // Sets the proccess' exit code immediately and posts a QuitClosure to the
+  // main event loop.
+  void SetExitAndScheduleShutdown(ExitCode code);
+
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(base::TimeDelta timeout);
-
-  bool ShouldRunBrowser();
 
   // Waits |timeout| for job defined by |spec| to go away, then
   // aborts it if it's not gone.
@@ -277,7 +279,6 @@ class SessionManagerService
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;
   // All task posting should be done via the MessageLoopProxy in loop_proxy_.
-  scoped_ptr<MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   base::Closure quit_closure_;
 

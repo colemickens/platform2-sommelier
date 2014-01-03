@@ -12,10 +12,14 @@
 
 #include <base/at_exit.h>
 #include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/message_loop.h>
+#include <base/run_loop.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/time.h>
@@ -63,7 +67,7 @@ static const int kKillTimeoutDefault = 3;
 static const char kEnableHangDetection[] = "enable-hang-detection";
 static const uint kHangDetectionIntervalDefaultSeconds = 60;
 
-// Name of the flag indicating the session_manager should 
+// Name of the flag indicating the session_manager should
 // always pass legacy value for --login-profile switch.
 static const char kLegacyLoginProfile[] = "use-legacy-login-profile";
 
@@ -152,13 +156,18 @@ int main(int argc, char* argv[]) {
   // We only support a single job with args, so grab all loose args
   vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
 
+  // This job encapsulates the command specified on the command line, and the
+  // UID that the caller would like to run it as.
   scoped_ptr<BrowserJobInterface> browser_job(
       new BrowserJob(arg_list, support_multi_profile, uid, &system));
 
   ::g_type_init();
+  MessageLoopForUI message_loop;
+  base::RunLoop run_loop;
   scoped_refptr<SessionManagerService> manager =
       new SessionManagerService(
           browser_job.Pass(),
+          run_loop.QuitClosure(),
           kill_timeout,
           cl->HasSwitch(switches::kEnableHangDetection),
           base::TimeDelta::FromSeconds(hang_detection_interval),
@@ -172,10 +181,18 @@ int main(int argc, char* argv[]) {
 
   manager->set_uid(uid);
 
-  LOG_IF(FATAL, !manager->Initialize()) << "Failed";
-  LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()))
-    << "Failed";
-  LOG_IF(FATAL, !manager->Run()) << "Failed";
+  LOG_IF(FATAL, !manager->Initialize());
+  LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()));
+
+  // Allows devs to start/stop browser manually.
+  if (manager->ShouldRunBrowser()) {
+    message_loop.PostTask(
+        FROM_HERE,
+        base::Bind(&SessionManagerService::RunBrowser, manager));
+  }
+  run_loop.Run();  // Will return when run_loop's QuitClosure is posted and run.
+
+  manager->Finalize();
 
   LOG_IF(WARNING, manager->exit_code() != SessionManagerService::SUCCESS)
       << "session_manager exiting with code " << manager->exit_code();

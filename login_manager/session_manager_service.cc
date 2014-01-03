@@ -171,6 +171,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 
 SessionManagerService::SessionManagerService(
     scoped_ptr<BrowserJobInterface> child_job,
+    const base::Closure& quit_closure,
     int kill_timeout,
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
@@ -180,8 +181,8 @@ SessionManagerService::SessionManagerService(
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       session_manager_(NULL),
       main_loop_(NULL),
-      dont_use_directly_(NULL),
       loop_proxy_(NULL),
+      quit_closure_(quit_closure),
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(new KeyGenerator(utils, this)),
@@ -319,6 +320,27 @@ bool SessionManagerService::Initialize() {
                              device_local_account_policy.Pass());
   impl_.reset(impl);
 
+  if (!InitializeImpl())
+    return false;
+
+  // Set any flags that were specified system-wide.
+  if (device_policy_)
+    browser_->SetExtraArguments(device_policy_->GetStartUpFlags());
+
+  g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
+                      G_PRIORITY_HIGH_IDLE,
+                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
+                      HandleKill,
+                      this,
+                      NULL);
+
+  g_io_add_watch_full(g_io_channel_unix_new(g_child_pipe_read_fd),
+                      G_PRIORITY_HIGH_IDLE,
+                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
+                      HandleChildrenExiting,
+                      this,
+                      NULL);
+
   // Wire impl to dbus-glib glue.
   if (session_manager_)
     g_object_unref(session_manager_);
@@ -365,75 +387,34 @@ bool SessionManagerService::Reset() {
     LOG(ERROR) << "Failed to create main loop";
     return false;
   }
-  dont_use_directly_.reset(NULL);
-  dont_use_directly_.reset(new MessageLoop(MessageLoop::TYPE_UI));
-  loop_proxy_ = dont_use_directly_->message_loop_proxy();
+  loop_proxy_ = MessageLoop::current()->message_loop_proxy();
   return true;
-}
-
-base::TimeDelta SessionManagerService::GetKillTimeout() {
-  if (file_util::PathExists(FilePath(kCollectChromeFile)))
-    return base::TimeDelta::FromSeconds(kKillTimeoutCollectChrome);
-  else
-    return kill_timeout_;
 }
 
 bool SessionManagerService::Run() {
-  if (!main_loop_) {
-    LOG(ERROR) << "You must have a main loop to call Run.";
-    return false;
-  }
-  g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
-                      G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                      HandleKill,
-                      this,
-                      NULL);
+  NOTREACHED();
+  return false;
+}
 
-  g_io_add_watch_full(g_io_channel_unix_new(g_child_pipe_read_fd),
-                      G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                      HandleChildrenExiting,
-                      this,
-                      NULL);
-  // Initializes policy subsystems which, among other things, finds and
-  // validates the stored policy signing key if one is present.
-  // A corrupted policy key means that the device needs to have its data wiped.
-  // We trigger a reboot and then wipe (most of) the stateful partition.
-  if (!impl_->Initialize()) {
-    impl_->StartDeviceWipe(NULL, NULL);
-    Finalize();
-    return false;
-  }
+bool SessionManagerService::Shutdown() {
+  NOTREACHED();
+  return false;
+}
 
-  // Set any flags that were specified system-wide.
-  if (device_policy_)
-    browser_->SetExtraArguments(device_policy_->GetStartUpFlags());
-
-  if (ShouldRunBrowser())  // Allows devs to start/stop browser manually.
-    RunBrowser();
-
-  base::RunLoop run_loop;
-  quit_closure_ = run_loop.QuitClosure();
-  run_loop.Run();  // Will return when quit_closure_ is posted and run.
+void SessionManagerService::Finalize() {
+  LOG(INFO) << "SessionManagerService exiting";
+  liveness_checker_->Stop();
   CleanupChildren(GetKillTimeout());
+  impl_->Finalize();
   impl_->AnnounceSessionStopped();
-  return true;
+}
+
+void SessionManagerService::ScheduleShutdown() {
+  SetExitAndScheduleShutdown(SUCCESS);
 }
 
 bool SessionManagerService::ShouldRunBrowser() {
   return !file_checker_.get() || !file_checker_->exists();
-}
-
-bool SessionManagerService::Shutdown() {
-  Finalize();
-  loop_proxy_->PostTask(FROM_HERE, quit_closure_);
-  LOG(INFO) << "SessionManagerService quitting run loop";
-  return true;
-}
-
-void SessionManagerService::ScheduleShutdown() {
-  SetExitAndShutdown(SUCCESS);
 }
 
 void SessionManagerService::RunBrowser() {
@@ -510,15 +491,6 @@ bool SessionManagerService::IsManagedProcess(pid_t pid) {
   return IsBrowser(pid) || IsGenerator(pid);
 }
 
-void SessionManagerService::AllowGracefulExit() {
-  LOG_IF(FATAL, !exit_on_child_done_) << "Should not gracefully exit";
-  LOG(INFO) << "SessionManagerService set to exit on child done";
-  loop_proxy_->PostTask(
-      FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
-                 this));
-}
-
 void SessionManagerService::HandleBrowserExit() {
   // If I could wait for descendants here, I would.  Instead, I kill them.
   browser_->KillEverything(SIGKILL, "Session termination");
@@ -532,14 +504,14 @@ void SessionManagerService::HandleBrowserExit() {
 
   if (impl_->ScreenIsLocked()) {
     LOG(ERROR) << "Screen locked, shutting down";
-    SetExitAndShutdown(CRASH_WHILE_SCREEN_LOCKED);
+    SetExitAndScheduleShutdown(CRASH_WHILE_SCREEN_LOCKED);
     return;
   }
 
   DCHECK(browser_.get());
   if (browser_->ShouldStop()) {
     LOG(WARNING) << "Child stopped, shutting down";
-    SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
+    SetExitAndScheduleShutdown(CHILD_EXITING_TOO_FAST);
   } else if (ShouldRunBrowser()) {
     // TODO(cmasone): deal with fork failing in RunBrowser()
     RunBrowser();
@@ -552,6 +524,9 @@ void SessionManagerService::HandleBrowserExit() {
 void SessionManagerService::HandleChildExit(const siginfo_t& info) {
   CHECK(system_->ChildIsGone(info.si_pid, base::TimeDelta::FromSeconds(5)));
   if (!IsManagedProcess(info.si_pid))
+    return;
+
+  if (shutting_down_)
     return;
 
   std::string job_name;
@@ -604,19 +579,6 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
   manager->ScheduleShutdown();
   return FALSE;  // So that the event source that called this gets removed.
-}
-
-void SessionManagerService::Finalize() {
-  LOG(INFO) << "SessionManagerService exiting";
-  liveness_checker_->Stop();
-  impl_->AnnounceSessionStoppingIfNeeded();
-  impl_->Finalize();
-}
-
-void SessionManagerService::SetExitAndShutdown(ExitCode code) {
-  shutting_down_ = true;
-  exit_code_ = code;
-  Shutdown();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -720,6 +682,53 @@ void SessionManagerService::RevertHandlers() {
   CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
 }
 
+base::TimeDelta SessionManagerService::GetKillTimeout() {
+  if (file_util::PathExists(FilePath(kCollectChromeFile)))
+    return base::TimeDelta::FromSeconds(kKillTimeoutCollectChrome);
+  else
+    return kill_timeout_;
+}
+
+bool SessionManagerService::InitializeImpl() {
+  if (!impl_->Initialize()) {
+    LOG(ERROR) << "Policy key is likely corrupt. Initiating device wipe.";
+    impl_->StartDeviceWipe(NULL, NULL);
+    impl_->Finalize();
+    exit_code_ = MUST_WIPE_DEVICE;
+    return false;
+  }
+  return true;
+}
+
+void SessionManagerService::AllowGracefulExit() {
+  LOG_IF(FATAL, !exit_on_child_done_) << "Should not gracefully exit";
+  LOG(INFO) << "SessionManagerService set to exit on child done";
+  loop_proxy_->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
+                 this));
+}
+
+void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
+  shutting_down_ = true;
+  exit_code_ = code;
+  impl_->AnnounceSessionStoppingIfNeeded();
+  loop_proxy_->PostTask(FROM_HERE, quit_closure_);
+  LOG(INFO) << "SessionManagerService quitting run loop";
+}
+
+void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
+  if (browser_ && browser_->CurrentPid() > 0)
+    browser_->Kill(SIGTERM, "");
+  if (generator_ && generator_->CurrentPid() > 0)
+    generator_->Kill(SIGTERM, "");
+
+  if (browser_ && browser_->CurrentPid() > 0)
+    WaitAndAbortChild(browser_.get(), timeout);
+  if (generator_ && generator_->CurrentPid() > 0)
+    WaitAndAbortChild(generator_.get(), timeout);
+}
+
 void SessionManagerService::WaitAndAbortChild(ChildJobInterface* job,
                                               base::TimeDelta timeout) {
   pid_t job_pid = job->CurrentPid();
@@ -733,18 +742,6 @@ void SessionManagerService::WaitAndAbortChild(ChildJobInterface* job,
   } else {
     DLOG(INFO) << "Cleaned up child " << job_pid;
   }
-}
-
-void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
-  if (browser_ && browser_->CurrentPid() > 0)
-    browser_->Kill(SIGTERM, "");
-  if (generator_ && generator_->CurrentPid() > 0)
-    generator_->Kill(SIGTERM, "");
-
-  if (browser_ && browser_->CurrentPid() > 0)
-    WaitAndAbortChild(browser_.get(), timeout);
-  if (generator_ && generator_->CurrentPid() > 0)
-    WaitAndAbortChild(generator_.get(), timeout);
 }
 
 // static

@@ -34,6 +34,10 @@ class UserPolicyServiceFactory;
 // Friend test classes.
 class SessionManagerImplStaticTest;
 
+// Implements the DBus SessionManagerInterface.
+//
+// All signatures used in the methods of the ownership API are
+// SHA1 with RSA encryption.
 class SessionManagerImpl : public SessionManagerInterface,
                            public login_manager::PolicyService::Delegate {
  public:
