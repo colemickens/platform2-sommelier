@@ -77,6 +77,9 @@ struct ParsedEvent {
     uint64 offset() const {
       return offset_;
     }
+
+    DSOAndOffset() : dso_info_(NULL),
+                     offset_(0) {}
   } dso_and_offset;
 
   // DSO+offset info for callchain.

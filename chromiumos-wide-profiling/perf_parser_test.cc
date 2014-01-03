@@ -54,6 +54,14 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
 
 }  // namespace
 
+TEST(PerfParserTest, TestDSOAndOffsetConstructor) {
+  // DSOAndOffset contains a pointer to a dso info struct. Make sure this is
+  // initialized in a way such that DSOAndOffset::dso_name() executes without
+  // segfault and returns an empty string.
+  ParsedEvent::DSOAndOffset dso_and_offset;
+  EXPECT_TRUE(dso_and_offset.dso_name().empty());
+}
+
 TEST(PerfParserTest, Test1Cycle) {
   ScopedTempDir output_dir;
   ASSERT_FALSE(output_dir.path().empty());
