@@ -8,8 +8,8 @@
 #include "base/bind.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted.h"
-#include "base/message_loop.h"
-#include "base/time.h"
+#include "base/message_loop/message_loop.h"
+#include "base/time/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
@@ -91,7 +91,7 @@ void SuspendDelaySignaled(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
 
   LOG(INFO) << "Got notification about suspend with ID " << suspend_id;
   LOG(INFO) << "Sleeping " << FLAGS_delay_ms << " ms before responding";
-  MessageLoop::current()->PostDelayedTask(FROM_HERE,
+  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
       base::Bind(&SendSuspendReady, powerd_proxy, delay_id, suspend_id),
       base::TimeDelta::FromMilliseconds(FLAGS_delay_ms));
 }
@@ -106,7 +106,7 @@ void DBusSignalConnected(const std::string& interface,
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
-  MessageLoopForIO message_loop;
+  base::MessageLoopForIO message_loop;
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;

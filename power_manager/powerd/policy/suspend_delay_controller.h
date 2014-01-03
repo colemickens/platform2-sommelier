@@ -12,8 +12,8 @@
 
 #include "base/basictypes.h"
 #include "base/observer_list.h"
-#include "base/time.h"
-#include "base/timer.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 
 namespace power_manager {
 

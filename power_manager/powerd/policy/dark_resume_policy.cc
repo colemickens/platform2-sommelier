@@ -6,13 +6,13 @@
 
 #include <algorithm>
 
-#include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/files/file_path.h"
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
-#include "base/time.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
+#include "base/time/time.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -105,8 +105,7 @@ base::TimeDelta DarkResumePolicy::GetSuspendDuration() {
 
 bool DarkResumePolicy::CurrentlyInDarkResume() {
   std::string buf;
-  if (!file_util::ReadFileToString(
-          base::FilePath(kDarkResumeStatePath), &buf)) {
+  if (!base::ReadFileToString(base::FilePath(kDarkResumeStatePath), &buf)) {
     PLOG(ERROR) << "Unable to read " << kDarkResumeStatePath;
     return false;
   }
@@ -210,7 +209,7 @@ void DarkResumePolicy::GetFiles(std::vector<base::FilePath>* files,
 
   for (std::vector<std::string>::iterator iter = lines.begin();
        iter != lines.end(); ++iter) {
-    FilePath path = FilePath(*iter);
+    base::FilePath path = base::FilePath(*iter);
     path = path.AppendASCII(kPowerDir);
     path = path.AppendASCII(base_file.c_str());
     files->push_back(path);
@@ -220,9 +219,9 @@ void DarkResumePolicy::GetFiles(std::vector<base::FilePath>* files,
 void DarkResumePolicy::SetStates(const std::vector<base::FilePath>& files,
                                  const std::string& state) {
   for (std::vector<base::FilePath>::const_iterator iter = files.begin();
-       iter != files.end();
-       ++iter)
+       iter != files.end(); ++iter) {
     file_util::WriteFile(*iter, state.c_str(), state.length());
+  }
 }
 
 

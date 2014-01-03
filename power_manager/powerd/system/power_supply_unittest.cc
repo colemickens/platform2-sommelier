@@ -13,7 +13,7 @@
 #include "base/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/string_number_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
@@ -162,8 +162,8 @@ class PowerSupplyTest : public ::testing::Test {
   }
 
   void WriteDefaultValues(PowerSource source, ReportType report_type) {
-    file_util::CreateDirectory(path_.Append("ac"));
-    file_util::CreateDirectory(path_.Append("battery"));
+    base::CreateDirectory(path_.Append("ac"));
+    base::CreateDirectory(path_.Append("battery"));
     map<string, string> values;
     values["ac/online"] = source == POWER_AC ? kOnline : kOffline;
     values["ac/type"] = kACType;
@@ -199,7 +199,7 @@ class PowerSupplyTest : public ::testing::Test {
 
   FakePrefs prefs_;
   scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
-  FilePath path_;
+  base::FilePath path_;
   UdevStub udev_;
   scoped_ptr<PowerSupply> power_supply_;
   scoped_ptr<PowerSupply::TestApi> test_api_;
@@ -222,7 +222,7 @@ TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
 
 // Test line power without battery.
 TEST_F(PowerSupplyTest, TestNoBattery) {
-  file_util::CreateDirectory(path_.Append("ac"));
+  base::CreateDirectory(path_.Append("ac"));
   map<string, string> values;
   values["ac/online"] = kOnline;
   values["ac/type"] = kACType;

@@ -2,7 +2,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'libchrome-<(libbase_ver)',
+        'libchrome-242728',
         'libudev',
         'protobuf-lite',
       ],

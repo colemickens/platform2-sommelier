@@ -14,7 +14,7 @@
 
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 

@@ -11,8 +11,8 @@
 #include <string>
 
 #include "base/logging.h"
-#include "base/string_util.h"
-#include "base/stringprintf.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"

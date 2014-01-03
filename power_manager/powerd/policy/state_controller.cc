@@ -9,8 +9,8 @@
 #include "base/bind.h"
 #include "base/callback.h"
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
-#include "base/stringprintf.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -385,7 +385,7 @@ std::string StateController::ActionToString(Action action) {
     case DO_NOTHING:
       return "no-op";
     default:
-      return StringPrintf("unknown (%d)", action);
+      return base::StringPrintf("unknown (%d)", action);
   }
 }
 

@@ -11,10 +11,10 @@
 
 #include "base/basictypes.h"
 #include "base/callback.h"
-#include "base/file_path.h"
+#include "base/files/file_path.h"
 #include "base/memory/linked_ptr.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/message_loop.h"
+#include "base/message_loop/message_loop.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_interface.h"
@@ -30,7 +30,7 @@ class InputObserver;
 class UdevInterface;
 
 class Input : public InputInterface,
-              public MessageLoopForIO::Watcher,
+              public base::MessageLoopForIO::Watcher,
               public UdevObserver {
  public:
   // udev subsystem to watch for input device-related events.
@@ -66,7 +66,7 @@ class Input : public InputInterface,
   virtual bool SetWakeInputsState(bool enable) OVERRIDE;
   virtual void SetTouchDevicesState(bool enable) OVERRIDE;
 
-  // MessageLoopForIO::Watcher implementation:
+  // base::MessageLoopForIO::Watcher implementation:
   virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
   virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
 

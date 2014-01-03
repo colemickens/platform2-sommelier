@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_STUB_H_
 
-#include "base/time.h"
+#include "base/time/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 

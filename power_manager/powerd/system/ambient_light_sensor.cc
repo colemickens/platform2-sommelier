@@ -14,9 +14,11 @@
 #include "base/bind.h"
 #include "base/logging.h"
 #include "base/file_util.h"
-#include "base/string_number_conversions.h"
-#include "base/stringprintf.h"
-#include "base/string_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager {
@@ -109,8 +111,8 @@ bool AmbientLightSensor::InitAlsFile() {
 
   // Search the iio/devices directory for a subdirectory (eg "device0" or
   // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
-  file_util::FileEnumerator dir_enumerator(
-      device_list_path_, false, file_util::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator dir_enumerator(
+      device_list_path_, false, base::FileEnumerator::DIRECTORIES);
   const char* input_names[] = {
       "in_illuminance0_input",
       "in_illuminance0_raw",
@@ -122,7 +124,7 @@ bool AmbientLightSensor::InitAlsFile() {
        check_path = dir_enumerator.Next()) {
     for (unsigned int i = 0; i < arraysize(input_names); i++) {
       base::FilePath als_path = check_path.Append(input_names[i]);
-      if (!file_util::PathExists(als_path))
+      if (!base::PathExists(als_path))
         continue;
       if (als_file_.Init(als_path.value())) {
         LOG(INFO) << "Using lux file " << als_path.value();

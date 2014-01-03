@@ -10,8 +10,10 @@
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/file_util.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/util.h"
 
@@ -103,7 +105,7 @@ void Prefs::GetPrefStrings(const std::string& name,
     // soon, use it instead of reading from disk.
     if (iter == pref_paths_.begin() && prefs_to_write_.count(name))
       buf = prefs_to_write_[name];
-    else if (!file_util::ReadFileToString(path, &buf))
+    else if (!base::ReadFileToString(path, &buf))
       continue;
 
     TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
@@ -206,8 +208,7 @@ void Prefs::WritePrefs() {
 
 void Prefs::UpdateFileWatchers(const base::FilePath& dir) {
   // Look for files that have been created or unlinked.
-  file_util::FileEnumerator enumerator(
-      dir, false, file_util::FileEnumerator::FILES);
+  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES);
   std::set<std::string> current_prefs;
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {

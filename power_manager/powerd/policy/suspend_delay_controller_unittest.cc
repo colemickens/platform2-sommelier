@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "base/basictypes.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
 #include "chromeos/dbus/service_constants.h"

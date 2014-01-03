@@ -6,8 +6,8 @@
 
 #include "base/bind.h"
 #include "base/logging.h"
-#include "base/message_loop.h"
-#include "base/string_number_conversions.h"
+#include "base/message_loop/message_loop.h"
+#include "base/strings/string_number_conversions.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"

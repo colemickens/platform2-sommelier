@@ -11,10 +11,12 @@
 
 #include "base/bind.h"
 #include "base/file_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
-#include "base/stringprintf.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
@@ -50,19 +52,19 @@ void PeripheralBatteryWatcher::Init(DBusSenderInterface* dbus_sender) {
 void PeripheralBatteryWatcher::GetBatteryList(
     std::vector<base::FilePath>* battery_list) {
   battery_list->clear();
-  file_util::FileEnumerator dir_enumerator(
-      peripheral_battery_path_, false, file_util::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator dir_enumerator(
+      peripheral_battery_path_, false, base::FileEnumerator::DIRECTORIES);
 
   // Peripheral battery has a sysfs entry with name "scope" containing value
   // "Device".
   for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
     base::FilePath scope_path = check_path.Append("scope");
-    if (!file_util::PathExists(scope_path))
+    if (!base::PathExists(scope_path))
       continue;
 
     std::string buf;
-    file_util::ReadFileToString(scope_path, &buf);
+    base::ReadFileToString(scope_path, &buf);
     TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
     if (buf != "Device")
       continue;
@@ -82,15 +84,15 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
 
     // sysfs entry "capacity" has the current battery level.
     base::FilePath capacity_path = path.Append("capacity");
-    if (!file_util::PathExists(capacity_path))
+    if (!base::PathExists(capacity_path))
       continue;
 
     base::FilePath model_name_path = path.Append("model_name");
-    if (!file_util::PathExists(model_name_path))
+    if (!base::PathExists(model_name_path))
       continue;
 
     std::string model_name;
-    file_util::ReadFileToString(model_name_path, &model_name);
+    base::ReadFileToString(model_name_path, &model_name);
     TrimWhitespaceASCII(model_name, TRIM_TRAILING, &model_name);
 
     AsyncFileReader* reader = new AsyncFileReader;

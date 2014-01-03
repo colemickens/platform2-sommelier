@@ -9,8 +9,10 @@
 
 #include "base/logging.h"
 #include "base/file_util.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/util.h"
 
@@ -43,8 +45,8 @@ InternalBacklight::~InternalBacklight() {}
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const base::FilePath::StringType& pattern) {
   base::FilePath dir_path;
-  file_util::FileEnumerator dir_enumerator(
-      base_path, false, file_util::FileEnumerator::DIRECTORIES, pattern);
+  base::FileEnumerator dir_enumerator(
+      base_path, false, base::FileEnumerator::DIRECTORIES, pattern);
 
   // Find the backlight interface with greatest granularity (highest max).
   for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
@@ -68,7 +70,7 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     // Technically all screen backlights should implement actual_brightness,
     // but we'll handle ones that don't.  This allows us to work with keyboard
     // backlights too.
-    if (!file_util::PathExists(actual_brightness_path_))
+    if (!base::PathExists(actual_brightness_path_))
       actual_brightness_path_ = brightness_path_;
   }
 
@@ -161,7 +163,7 @@ int64 InternalBacklight::CheckBacklightFiles(const base::FilePath& dir_path) {
                         &max_brightness_path,
                         &resume_brightness_path);
 
-  if (!file_util::PathExists(max_brightness_path)) {
+  if (!base::PathExists(max_brightness_path)) {
     LOG(WARNING) << "Can't find " << max_brightness_path.value();
     return 0;
   } else if (access(brightness_path.value().c_str(), R_OK | W_OK)) {
@@ -181,7 +183,7 @@ bool InternalBacklight::ReadBrightnessLevelFromFile(const base::FilePath& path,
   DCHECK(level);
 
   std::string level_str;
-  if (!file_util::ReadFileToString(path, &level_str)) {
+  if (!base::ReadFileToString(path, &level_str)) {
     LOG(ERROR) << "Unable to read brightness from " << path.value();
     return false;
   }

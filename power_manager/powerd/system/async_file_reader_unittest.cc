@@ -99,7 +99,7 @@ class AsyncFileReaderTest : public ::testing::Test {
   // Returns the contents of |path_|.
   std::string ReadFile() {
     std::string data;
-    CHECK(file_util::ReadFileToString(path_, &data));
+    CHECK(base::ReadFileToString(path_, &data));
     return data;
   }
 

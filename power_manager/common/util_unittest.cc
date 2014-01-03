@@ -20,8 +20,6 @@ std::string RunTimeDeltaToString(int hours, int minutes, int seconds) {
 
 }  // namespace
 
-class UtilTest : public ::testing::Test {};
-
 TEST(UtilTest, TimeDeltaToString) {
   EXPECT_EQ("3h23m13s", RunTimeDeltaToString(3, 23, 13));
   EXPECT_EQ("47m45s", RunTimeDeltaToString(0, 47, 45));

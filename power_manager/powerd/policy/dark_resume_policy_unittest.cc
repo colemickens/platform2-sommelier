@@ -15,7 +15,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/string_number_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -53,8 +53,8 @@ class DarkResumePolicyTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     ASSERT_TRUE(temp_dir_generator_->IsValid());
     path_ = temp_dir_generator_->path();
-    file_util::CreateDirectory(path_.Append("ac"));
-    file_util::CreateDirectory(path_.Append("battery"));
+    base::CreateDirectory(path_.Append("ac"));
+    base::CreateDirectory(path_.Append("battery"));
     power_supply_.reset(new system::PowerSupply);
     dark_resume_policy_.reset(new DarkResumePolicy);
   }
@@ -87,8 +87,7 @@ class DarkResumePolicyTest : public ::testing::Test {
          iter != values.end();
          ++iter) {
       file_util::WriteFile(path_.Append(iter->first),
-                           iter->second.c_str(),
-                           iter->second.length());
+                           iter->second.c_str(), iter->second.length());
     }
 
     ASSERT_TRUE(power_supply_->RefreshImmediately());

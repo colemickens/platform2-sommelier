@@ -11,10 +11,13 @@
 #include <string>
 
 #include "base/basictypes.h"
-#include "base/file_path.h"
+#include "base/file_util.h"
+#include "base/files/file_path.h"
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/stringprintf.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/power_constants.h"
 
 namespace power_manager {
@@ -57,15 +60,15 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
 
   const int64 hours = total_seconds / 3600;
   if (hours)
-    output += StringPrintf("%" PRId64 "h", hours);
+    output += base::StringPrintf("%" PRId64 "h", hours);
 
   const int64 minutes = (total_seconds % 3600) / 60;
   if (minutes)
-    output += StringPrintf("%" PRId64 "m", minutes);
+    output += base::StringPrintf("%" PRId64 "m", minutes);
 
   const int64 seconds = total_seconds % 60;
   if (seconds || !total_seconds)
-    output += StringPrintf("%" PRId64 "s", seconds);
+    output += base::StringPrintf("%" PRId64 "s", seconds);
 
   return output;
 }

@@ -8,11 +8,11 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
-#include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/string_number_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
@@ -73,7 +73,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   virtual void SetUp() OVERRIDE {
     CHECK(temp_dir_.CreateUniqueTempDir());
     base::FilePath device_dir = temp_dir_.path().Append("hid-1-battery");
-    CHECK(file_util::CreateDirectory(device_dir));
+    CHECK(base::CreateDirectory(device_dir));
     scope_file_ = device_dir.Append("scope");
     WriteFile(scope_file_, "Device");
     model_name_file_ = device_dir.Append("model_name");
@@ -84,11 +84,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 
  protected:
   void WriteFile(const base::FilePath& path, const string& str) {
-    int bytes_written =
-        file_util::WriteFile(path, str.data(), str.size());
-    CHECK(bytes_written == static_cast<int>(str.size()))
-        << "Wrote " << bytes_written << " byte(s) instead of "
-        << str.size() << " to " << path.value();
+    ASSERT_EQ(str.size(), file_util::WriteFile(path, str.data(), str.size()));
   }
 
   // Temporary directory mimicking a /sys directory containing a set of sensor

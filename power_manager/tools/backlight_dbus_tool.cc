@@ -7,7 +7,7 @@
 
 #include "base/at_exit.h"
 #include "base/logging.h"
-#include "base/message_loop.h"
+#include "base/message_loop/message_loop.h"
 #include "chromeos/dbus/service_constants.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
   base::AtExitManager at_exit_manager;
-  MessageLoopForIO message_loop;
+  base::MessageLoopForIO message_loop;
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;

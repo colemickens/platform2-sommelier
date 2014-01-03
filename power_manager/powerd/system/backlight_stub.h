@@ -7,7 +7,7 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {

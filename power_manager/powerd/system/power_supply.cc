@@ -8,10 +8,12 @@
 
 #include "base/bind.h"
 #include "base/file_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
 #include "base/logging.h"
-#include "base/message_loop.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
+#include "base/message_loop/message_loop.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -60,7 +62,7 @@ const char kOldFirmwareModelName[] = "0x00";
 bool ReadAndTrimString(const base::FilePath& directory,
                        const std::string& filename,
                        std::string* out) {
-  if (!file_util::ReadFileToString(directory.Append(filename), out))
+  if (!base::ReadFileToString(directory.Append(filename), out))
     return false;
 
   TrimWhitespaceASCII(*out, TRIM_TRAILING, out);
@@ -231,7 +233,7 @@ bool PowerSupply::RefreshImmediately() {
   if (success) {
     notify_observers_task_.Reset(
         base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
-    MessageLoop::current()->PostTask(
+    base::MessageLoop::current()->PostTask(
         FROM_HERE, notify_observers_task_.callback());
   }
   return success;
@@ -283,7 +285,7 @@ bool PowerSupply::UpdatePowerStatus() {
   status.battery_path = battery_path_.value();
 
   std::string battery_status_string;
-  if (file_util::PathExists(battery_path_)) {
+  if (base::PathExists(battery_path_)) {
     int64 present_value = 0;
     ReadInt64(battery_path_, "present", &present_value);
     status.battery_is_present = present_value != 0;
@@ -293,7 +295,7 @@ bool PowerSupply::UpdatePowerStatus() {
     status.battery_is_present = false;
   }
 
-  if (file_util::PathExists(line_power_path_)) {
+  if (base::PathExists(line_power_path_)) {
     int64 online_value = 0;
     ReadInt64(line_power_path_, "online", &online_value);
     status.line_power_on = online_value != 0;
@@ -340,7 +342,7 @@ bool PowerSupply::UpdatePowerStatus() {
 
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
   // defined in <linux/power_supply.h>.
-  if (file_util::PathExists(battery_path_.Append("manufacturer")))
+  if (base::PathExists(battery_path_.Append("manufacturer")))
     ReadAndTrimString(battery_path_, "manufacturer", &status.battery_vendor);
   else
     ReadAndTrimString(battery_path_, "vendor", &status.battery_vendor);
@@ -356,9 +358,9 @@ bool PowerSupply::UpdatePowerStatus() {
   // not be the same as the instantaneous voltage |battery_voltage|, as voltage
   // levels vary over the time the battery is charged or discharged.
   double nominal_voltage = 0.0;
-  if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
+  if (base::PathExists(battery_path_.Append("voltage_min_design")))
     nominal_voltage = ReadScaledDouble(battery_path_, "voltage_min_design");
-  else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))
+  else if (base::PathExists(battery_path_.Append("voltage_max_design")))
     nominal_voltage = ReadScaledDouble(battery_path_, "voltage_max_design");
 
   // Nominal voltage is not required to obtain charge level.  If it is missing,
@@ -386,12 +388,12 @@ bool PowerSupply::UpdatePowerStatus() {
   double battery_charge_full_design = 0;
   double battery_charge = 0;
 
-  if (file_util::PathExists(battery_path_.Append("charge_full"))) {
+  if (base::PathExists(battery_path_.Append("charge_full"))) {
     battery_charge_full = ReadScaledDouble(battery_path_, "charge_full");
     battery_charge_full_design =
         ReadScaledDouble(battery_path_, "charge_full_design");
     battery_charge = ReadScaledDouble(battery_path_, "charge_now");
-  } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
+  } else if (base::PathExists(battery_path_.Append("energy_full"))) {
     // Valid |battery_voltage| is required to determine the charge so return
     // early if it is not present. In this case, we know nothing about
     // battery state or remaining percentage, so set proper status.
@@ -423,7 +425,7 @@ bool PowerSupply::UpdatePowerStatus() {
   // others, so it can't be used to determine whether the battery is
   // charging or discharging.
   double battery_current = 0;
-  if (file_util::PathExists(battery_path_.Append("power_now"))) {
+  if (base::PathExists(battery_path_.Append("power_now"))) {
     battery_current = fabs(ReadScaledDouble(battery_path_, "power_now")) /
         battery_voltage;
   } else {
@@ -481,13 +483,12 @@ bool PowerSupply::UpdatePowerStatus() {
 void PowerSupply::GetPowerSupplyPaths() {
   // First check if both line power and battery paths have been found and still
   // exist.  If so, there is no need to do anything else.
-  if (file_util::PathExists(battery_path_) &&
-      file_util::PathExists(line_power_path_))
+  if (base::PathExists(battery_path_) && base::PathExists(line_power_path_))
     return;
   // Use a FileEnumerator to browse through all files/subdirectories in the
   // power supply sysfs directory.
-  file_util::FileEnumerator file_enum(power_supply_path_, false,
-      file_util::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator file_enum(
+      power_supply_path_, false, base::FileEnumerator::DIRECTORIES);
   // Read type info from all power sources, and try to identify battery and line
   // power sources.  Their paths are to be stored locally.
   for (base::FilePath path = file_enum.Next();
@@ -495,10 +496,10 @@ void PowerSupply::GetPowerSupplyPaths() {
        path = file_enum.Next()) {
     // External devices have "scope" attributes containing the value "Device".
     // Skip them.
-    FilePath scope_path = path.Append("scope");
-    if (file_util::PathExists(scope_path)) {
+    base::FilePath scope_path = path.Append("scope");
+    if (base::PathExists(scope_path)) {
       std::string buf;
-      file_util::ReadFileToString(scope_path, &buf);
+      base::ReadFileToString(scope_path, &buf);
       TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
       if (buf == "Device") {
         VLOG(1) << "Skipping Power supply " << path.value()
@@ -507,7 +508,7 @@ void PowerSupply::GetPowerSupplyPaths() {
       }
     }
     std::string buf;
-    if (file_util::ReadFileToString(path.Append("type"), &buf)) {
+    if (base::ReadFileToString(path.Append("type"), &buf)) {
       TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
       // Only look for battery / line power paths if they haven't been found
       // already.  This makes the assumption that they don't change (but battery

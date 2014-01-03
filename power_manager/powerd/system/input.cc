@@ -11,14 +11,15 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
-#include "base/string_number_conversions.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
-#include "base/stringprintf.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -97,11 +98,11 @@ class Input::EventFileDescriptor {
  public:
   // Takes ownership of |fd| and closes it on destruction. |watcher| is notified
   // when |fd| becomes readable.
-  EventFileDescriptor(int fd, MessageLoopForIO::Watcher* watcher)
+  EventFileDescriptor(int fd, base::MessageLoopForIO::Watcher* watcher)
       : fd_(fd),
-        fd_watcher_(new MessageLoopForIO::FileDescriptorWatcher) {
-    if (!MessageLoopForIO::current()->WatchFileDescriptor(
-            fd, true, MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
+        fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher) {
+    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+            fd, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
             watcher)) {
       LOG(ERROR) << "Unable to watch FD " << fd;
     }
@@ -120,7 +121,7 @@ class Input::EventFileDescriptor {
   int fd_;
 
   // Controller used to watch |fd_|.
-  scoped_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
+  scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(EventFileDescriptor);
 };
@@ -216,20 +217,18 @@ LidState Input::QueryLidState() {
 }
 
 bool Input::IsUSBInputDeviceConnected() const {
-  file_util::FileEnumerator enumerator(
+  base::FileEnumerator enumerator(
       sysfs_input_path_for_testing_.empty() ?
           base::FilePath(kSysClassInputPath) :
           sysfs_input_path_for_testing_,
       false,
-      static_cast<file_util::FileEnumerator::FileType>(
-          file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS),
+      static_cast<::base::FileEnumerator::FileType>(
+          base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS),
       kInputMatchPattern);
-  for (base::FilePath path = enumerator.Next();
-       !path.empty();
+  for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {
     base::FilePath symlink_path;
-    if (!file_util::ReadSymbolicLink(path, &symlink_path))
+    if (!base::ReadSymbolicLink(path, &symlink_path))
       continue;
     const std::string& path_string = symlink_path.value();
     // Skip bluetooth devices, which may be identified as USB devices.
@@ -253,21 +252,21 @@ bool Input::IsUSBInputDeviceConnected() const {
 }
 
 bool Input::IsDisplayConnected() const {
-  file_util::FileEnumerator enumerator(
+  base::FileEnumerator enumerator(
       sysfs_drm_path_for_testing_.empty() ?
           base::FilePath(kSysClassDrmPath) :
           sysfs_drm_path_for_testing_,
       false,
-      static_cast<file_util::FileEnumerator::FileType>(
-          file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::DIRECTORIES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS),
+      static_cast<base::FileEnumerator::FileType>(
+          base::FileEnumerator::FILES |
+          base::FileEnumerator::DIRECTORIES |
+          base::FileEnumerator::SHOW_SYM_LINKS),
       kDrmDeviceMatchPattern);
   for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
        device_path = enumerator.Next()) {
     base::FilePath status_path = device_path.Append(kDrmStatusFile);
     std::string status;
-    if (file_util::ReadFileToString(status_path, &status)) {
+    if (base::ReadFileToString(status_path, &status)) {
       // Trim whitespace to deal with trailing newlines.
       TrimWhitespaceASCII(status, TRIM_TRAILING, &status);
       if (status == kDrmStatusConnected)
@@ -296,9 +295,9 @@ void Input::SetTouchDevicesState(bool enable) {
     return;
 
   if (enable)
-    util::Launch(StringPrintf("%s --enable", kTouchControlPath));
+    util::Launch(base::StringPrintf("%s --enable", kTouchControlPath));
   else
-    util::Run(StringPrintf("%s --disable", kTouchControlPath));
+    util::Run(base::StringPrintf("%s --disable", kTouchControlPath));
 }
 
 void Input::OnFileCanReadWithoutBlocking(int fd) {
@@ -498,7 +497,7 @@ bool Input::AddWakeInput(const std::string& name) {
   }
 
   std::string input_name;
-  if (!file_util::ReadFileToString(device_name_path, &input_name)) {
+  if (!base::ReadFileToString(device_name_path, &input_name)) {
     LOG(WARNING) << "Failed to read input name from "
                  << device_name_path.value();
     return false;

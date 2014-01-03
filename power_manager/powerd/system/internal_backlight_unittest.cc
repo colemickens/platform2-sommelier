@@ -6,10 +6,12 @@
 #include <gtest/gtest.h>
 
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 
@@ -19,13 +21,11 @@ namespace system {
 class InternalBacklightTest : public ::testing::Test {
  public:
   InternalBacklightTest() {}
+  virtual ~InternalBacklightTest() {}
 
   virtual void SetUp() {
-    CHECK(file_util::CreateNewTempDirectory("backlight_unittest", &test_path_));
-  }
-
-  virtual void TearDown() {
-    file_util::Delete(test_path_, true);
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    test_path_ = temp_dir_.path();
   }
 
   // Create files to make the given directory look like it is a sysfs backlight
@@ -34,23 +34,26 @@ class InternalBacklightTest : public ::testing::Test {
                             int64 brightness,
                             int64 max_brightness,
                             int64 actual_brightness) {
-    CHECK(file_util::CreateDirectory(path));
+    CHECK(base::CreateDirectory(path));
 
-    FILE* brightness_file = file_util::OpenFile(
-        path.Append(InternalBacklight::kBrightnessFilename), "w");
-    fprintf(brightness_file, "%" PRId64 "\n", brightness);
-    file_util::CloseFile(brightness_file);
+    std::string str = base::StringPrintf("%" PRId64 "\n", brightness);
+    ASSERT_EQ(str.size(),
+              file_util::WriteFile(
+                  path.Append(InternalBacklight::kBrightnessFilename),
+                  str.data(), str.size()));
 
-    FILE* max_brightness_file = file_util::OpenFile(
-        path.Append(InternalBacklight::kMaxBrightnessFilename), "w");
-    fprintf(max_brightness_file, "%" PRId64 "\n", max_brightness);
-    file_util::CloseFile(max_brightness_file);
+    str = base::StringPrintf("%" PRId64 "\n", max_brightness);
+    ASSERT_EQ(str.size(),
+              file_util::WriteFile(
+                  path.Append(InternalBacklight::kMaxBrightnessFilename),
+                  str.data(), str.size()));
 
     if (actual_brightness >= 0) {
-      FILE* actual_brightness_file = file_util::OpenFile(
-          path.Append(InternalBacklight::kActualBrightnessFilename), "w");
-      fprintf(actual_brightness_file, "%" PRId64 "\n", actual_brightness);
-      file_util::CloseFile(actual_brightness_file);
+      str = base::StringPrintf("%" PRId64 "\n", actual_brightness);
+      ASSERT_EQ(str.size(),
+                file_util::WriteFile(
+                    path.Append(InternalBacklight::kActualBrightnessFilename),
+                    str.data(), str.size()));
     }
   }
 
@@ -60,7 +63,7 @@ class InternalBacklightTest : public ::testing::Test {
     std::string data;
     base::FilePath file =
         directory.Append(InternalBacklight::kBrightnessFilename);
-    if (!file_util::ReadFileToString(file, &data)) {
+    if (!base::ReadFileToString(file, &data)) {
       LOG(ERROR) << "Unable to read data from " << file.value();
       return -1;
     }
@@ -74,6 +77,7 @@ class InternalBacklightTest : public ::testing::Test {
   }
 
  protected:
+  base::ScopedTempDir temp_dir_;
   base::FilePath test_path_;
 };
 

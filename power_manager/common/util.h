@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "base/file_path.h"
-#include "base/time.h"
+#include "base/files/file_path.h"
+#include "base/time/time.h"
 
 namespace power_manager {
 namespace util {

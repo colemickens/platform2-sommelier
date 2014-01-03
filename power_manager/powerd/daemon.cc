@@ -11,9 +11,9 @@
 #include "base/file_util.h"
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
-#include "base/stringprintf.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/dbus_sender.h"
@@ -102,9 +102,9 @@ std::string GetPowerStatusBatteryDebugString(
           PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER)
         kernel_type += "-orig-spring";
 
-      output = StringPrintf("On %s (%s", type, kernel_type.c_str());
+      output = base::StringPrintf("On %s (%s", type, kernel_type.c_str());
       if (status.line_power_current || status.line_power_voltage) {
-        output += StringPrintf(", %.3fA at %.1fV",
+        output += base::StringPrintf(", %.3fA at %.1fV",
             status.line_power_current, status.line_power_voltage);
       }
       output += ") with battery at ";
@@ -117,10 +117,10 @@ std::string GetPowerStatusBatteryDebugString(
 
   long rounded_actual = lround(status.battery_percentage);
   long rounded_display = lround(status.display_battery_percentage);
-  output += StringPrintf("%ld%%", rounded_actual);
+  output += base::StringPrintf("%ld%%", rounded_actual);
   if (rounded_actual != rounded_display)
-    output += StringPrintf(" (displayed as %ld%%)", rounded_display);
-  output += StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
+    output += base::StringPrintf(" (displayed as %ld%%)", rounded_display);
+  output += base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
       status.battery_charge_full, status.battery_current);
 
   switch (status.battery_state) {
@@ -143,7 +143,7 @@ std::string GetPowerStatusBatteryDebugString(
           output += " (calculating)";
         } else if (status.battery_time_to_shutdown !=
                    status.battery_time_to_empty) {
-          output += StringPrintf(" (%s until shutdown)",
+          output += base::StringPrintf(" (%s until shutdown)",
               util::TimeDeltaToString(status.battery_time_to_shutdown).c_str());
         }
       }
@@ -159,29 +159,31 @@ std::string GetPowerStatusBatteryDebugString(
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<dbus::Response*(dbus::MethodCall*)> handler,
+    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  dbus::Response* response = handler.Run(method_call);
+  scoped_ptr<dbus::Response> response = handler.Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
-  response_sender.Run(response);
+  response_sender.Run(response.Pass());
 }
 
 // Creates a new "not supported" reply to |method_call|.
-dbus::ErrorResponse* CreateNotSupportedError(dbus::MethodCall* method_call,
-                                             std::string message) {
-  return dbus::ErrorResponse::FromMethodCall(
-      method_call, DBUS_ERROR_NOT_SUPPORTED, message);
-
+scoped_ptr<dbus::Response> CreateNotSupportedError(
+    dbus::MethodCall* method_call,
+    std::string message) {
+  return scoped_ptr<dbus::Response>(
+      dbus::ErrorResponse::FromMethodCall(
+          method_call, DBUS_ERROR_NOT_SUPPORTED, message));
 }
 
 // Creates a new "invalid args" reply to |method_call|.
-dbus::ErrorResponse* CreateInvalidArgsError(dbus::MethodCall* method_call,
-                                            std::string message) {
-  return dbus::ErrorResponse::FromMethodCall(
-      method_call, DBUS_ERROR_INVALID_ARGS, message);
-
+scoped_ptr<dbus::Response> CreateInvalidArgsError(
+    dbus::MethodCall* method_call,
+    std::string message) {
+  return scoped_ptr<dbus::Response>(
+      dbus::ErrorResponse::FromMethodCall(
+          method_call, DBUS_ERROR_INVALID_ARGS, message));
 }
 
 // Runs powerd_setuid_helper. |action| is passed via --action.  If
@@ -222,7 +224,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual bool IsOobeCompleted() OVERRIDE {
-    return file_util::PathExists(base::FilePath(kOobeCompletedPath));
+    return base::PathExists(base::FilePath(kOobeCompletedPath));
   }
 
   virtual bool IsHdmiAudioActive() OVERRIDE {
@@ -321,7 +323,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     DCHECK(wakeup_count);
     base::FilePath path(kWakeupCountPath);
     std::string buf;
-    if (file_util::ReadFileToString(path, &buf)) {
+    if (base::ReadFileToString(path, &buf)) {
       TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
       if (base::StringToUint64(buf, wakeup_count))
         return true;
@@ -352,12 +354,13 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
                                 base::TimeDelta duration) OVERRIDE {
     std::string args;
     if (wakeup_count_valid) {
-      args += StringPrintf(" --suspend_wakeup_count_valid"
-                           " --suspend_wakeup_count %" PRIu64, wakeup_count);
+      args += base::StringPrintf(" --suspend_wakeup_count_valid"
+                                 " --suspend_wakeup_count %" PRIu64,
+                                 wakeup_count);
     }
     if (duration != base::TimeDelta()) {
-      args += StringPrintf(" --suspend_duration %" PRId64,
-                           duration.InSeconds());
+      args += base::StringPrintf(" --suspend_duration %" PRId64,
+                                 duration.InSeconds());
     }
 
     // These exit codes are defined in scripts/powerd_suspend.
@@ -637,7 +640,7 @@ void Daemon::PrepareForSuspend() {
   // yet and avoid unlinking it after resume.
   created_suspended_state_file_ = false;
   const base::FilePath kStatePath(kSuspendedStatePath);
-  if (!file_util::PathExists(kStatePath)) {
+  if (!base::PathExists(kStatePath)) {
     if (file_util::WriteFile(kStatePath, NULL, 0) == 0)
       created_suspended_state_file_ = true;
     else
@@ -662,7 +665,7 @@ void Daemon::HandleResume(bool suspend_was_successful,
     RunSetuidHelper("unlock_vt", "", true);
 
   if (created_suspended_state_file_) {
-    if (!file_util::Delete(base::FilePath(kSuspendedStatePath), false))
+    if (!base::DeleteFile(base::FilePath(kSuspendedStatePath), false))
       LOG(ERROR) << "Failed to delete " << kSuspendedStatePath;
   }
 
@@ -736,10 +739,11 @@ void Daemon::OnPowerStatusUpdate() {
 
   if (status.battery_is_present && status.battery_below_shutdown_threshold) {
     LOG(INFO) << "Shutting down due to low battery ("
-              << StringPrintf("%0.2f", status.battery_percentage) << "%, "
+              << base::StringPrintf("%0.2f", status.battery_percentage) << "%, "
               << util::TimeDeltaToString(status.battery_time_to_empty)
               << " until empty, "
-              << StringPrintf("%0.3f", status.observed_battery_charge_rate)
+              << base::StringPrintf(
+                     "%0.3f", status.observed_battery_charge_rate)
               << "A observed charge rate)";
     ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_LOW_BATTERY);
   }
@@ -851,7 +855,8 @@ void Daemon::InitDBus() {
 
   // Note that this needs to happen *after* the above methods are exported
   // (http://crbug.com/331431).
-  CHECK(bus_->RequestOwnershipAndBlock(kPowerManagerServiceName))
+  CHECK(bus_->RequestOwnershipAndBlock(kPowerManagerServiceName,
+                                       dbus::Bus::REQUIRE_PRIMARY))
       << "Unable to take ownership of " << kPowerManagerServiceName;
 
   // Listen for NameOwnerChanged signals from the bus itself. Register for all
@@ -970,21 +975,21 @@ void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
   audio_client_->UpdateNumActiveStreams();
 }
 
-dbus::Response* Daemon::HandleRequestShutdownMethod(
+scoped_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestShutdownMethod << " message";
   ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleRequestRestartMethod(
+scoped_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestRestartMethod << " message";
   ShutDown(SHUTDOWN_MODE_REBOOT, SHUTDOWN_REASON_USER_REQUEST);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleRequestSuspendMethod(
+scoped_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
     dbus::MethodCall* method_call) {
   // Read an optional uint64 argument specifying the wakeup count that is
   // expected.
@@ -994,13 +999,13 @@ dbus::Response* Daemon::HandleRequestSuspendMethod(
       &external_wakeup_count);
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
             << (got_external_wakeup_count ?
-                StringPrintf(" with external wakeup count %" PRIu64,
-                             external_wakeup_count).c_str() : "");
+                base::StringPrintf(" with external wakeup count %" PRIu64,
+                                   external_wakeup_count).c_str() : "");
   Suspend(got_external_wakeup_count, external_wakeup_count);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleDecreaseScreenBrightnessMethod(
+scoped_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
@@ -1018,10 +1023,10 @@ dbus::Response* Daemon::HandleDecreaseScreenBrightnessMethod(
         percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleIncreaseScreenBrightnessMethod(
+scoped_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
@@ -1034,10 +1039,10 @@ dbus::Response* Daemon::HandleIncreaseScreenBrightnessMethod(
         percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleSetScreenBrightnessMethod(
+scoped_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
@@ -1063,48 +1068,50 @@ dbus::Response* Daemon::HandleSetScreenBrightnessMethod(
       LOG(ERROR) << "Invalid transition style (" << dbus_style << ")";
   }
   display_backlight_controller_->SetUserBrightnessPercent(percent, style);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleGetScreenBrightnessMethod(
+scoped_ptr<dbus::Response> Daemon::HandleGetScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
 
   double percent = 0.0;
   if (!display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-        "Couldn't fetch brightness");
+    return scoped_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Couldn't fetch brightness"));
   }
-  dbus::Response* response = dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response);
+  scoped_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
   writer.AppendDouble(percent);
-  return response;
+  return response.Pass();
 }
 
-dbus::Response* Daemon::HandleDecreaseKeyboardBrightnessMethod(
+scoped_ptr<dbus::Response> Daemon::HandleDecreaseKeyboardBrightnessMethod(
     dbus::MethodCall* method_call) {
   AdjustKeyboardBrightness(-1);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleIncreaseKeyboardBrightnessMethod(
+scoped_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
     dbus::MethodCall* method_call) {
   AdjustKeyboardBrightness(1);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleGetPowerSupplyPropertiesMethod(
+scoped_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
     dbus::MethodCall* method_call) {
   PowerSupplyProperties protobuf;
   CopyPowerStatusToProtocolBuffer(power_supply_->power_status(), &protobuf);
-  dbus::Response* response = dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response);
+  scoped_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(protobuf);
-  return response;
+  return response.Pass();
 }
 
-dbus::Response* Daemon::HandleVideoActivityMethod(
+scoped_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
   bool is_fullscreen = false;
   dbus::MessageReader reader(method_call);
@@ -1114,10 +1121,10 @@ dbus::Response* Daemon::HandleVideoActivityMethod(
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleVideoActivity(is_fullscreen);
   state_controller_->HandleVideoActivity();
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleUserActivityMethod(
+scoped_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
     dbus::MethodCall* method_call) {
   int type_int = USER_ACTIVITY_OTHER;
   dbus::MessageReader reader(method_call);
@@ -1131,10 +1138,10 @@ dbus::Response* Daemon::HandleUserActivityMethod(
     display_backlight_controller_->HandleUserActivity(type);
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleUserActivity(type);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleSetIsProjectingMethod(
+scoped_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
     dbus::MethodCall* method_call) {
   bool is_projecting = false;
   dbus::MessageReader reader(method_call);
@@ -1147,10 +1154,11 @@ dbus::Response* Daemon::HandleSetIsProjectingMethod(
   state_controller_->HandleDisplayModeChange(mode);
   if (display_backlight_controller_)
     display_backlight_controller_->HandleDisplayModeChange(mode);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandleSetPolicyMethod(dbus::MethodCall* method_call) {
+scoped_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
+    dbus::MethodCall* method_call) {
   PowerManagementPolicy policy;
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&policy)) {
@@ -1161,10 +1169,10 @@ dbus::Response* Daemon::HandleSetPolicyMethod(dbus::MethodCall* method_call) {
   state_controller_->HandlePolicyChange(policy);
   if (display_backlight_controller_)
     display_backlight_controller_->HandlePolicyChange(policy);
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
-dbus::Response* Daemon::HandlePowerButtonAcknowledgment(
+scoped_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
     dbus::MethodCall* method_call) {
   int64 timestamp_internal = 0;
   dbus::MessageReader reader(method_call);
@@ -1175,7 +1183,7 @@ dbus::Response* Daemon::HandlePowerButtonAcknowledgment(
   }
   input_controller_->HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(timestamp_internal));
-  return NULL;
+  return scoped_ptr<dbus::Response>();
 }
 
 bool Daemon::QuerySessionState(std::string* state) {

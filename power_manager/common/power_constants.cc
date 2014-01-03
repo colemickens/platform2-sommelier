@@ -4,7 +4,7 @@
 
 #include "power_manager/common/power_constants.h"
 
-#include "base/stringprintf.h"
+#include "base/strings/stringprintf.h"
 
 namespace power_manager {
 
@@ -92,7 +92,7 @@ std::string PowerSourceToString(PowerSource source) {
     case POWER_BATTERY:
       return "battery";
     default:
-      return StringPrintf("unknown (%d)", source);
+      return base::StringPrintf("unknown (%d)", source);
   }
 }
 
@@ -105,7 +105,7 @@ std::string LidStateToString(LidState state) {
     case LID_NOT_PRESENT:
       return "not present";
     default:
-      return StringPrintf("unknown (%d)", state);
+      return base::StringPrintf("unknown (%d)", state);
   }
 }
 
@@ -116,7 +116,7 @@ std::string SessionStateToString(SessionState state) {
     case SESSION_STARTED:
       return "started";
     default:
-      return StringPrintf("unknown (%d)", state);
+      return base::StringPrintf("unknown (%d)", state);
   }
 }
 
@@ -129,7 +129,7 @@ std::string UpdaterStateToString(UpdaterState state) {
     case UPDATER_UPDATED:
       return "updated";
     default:
-      return StringPrintf("unknown (%d)", state);
+      return base::StringPrintf("unknown (%d)", state);
   }
 }
 
@@ -140,7 +140,7 @@ std::string DisplayModeToString(DisplayMode mode) {
     case DISPLAY_PRESENTATION:
       return "presentation";
     default:
-      return StringPrintf("unknown (%d)", mode);
+      return base::StringPrintf("unknown (%d)", mode);
   }
 }
 
@@ -153,7 +153,7 @@ std::string ButtonStateToString(ButtonState state) {
     case BUTTON_REPEAT:
       return "repeat";
     default:
-      return StringPrintf("unknown (%d)", state);
+      return base::StringPrintf("unknown (%d)", state);
   }
 }
 

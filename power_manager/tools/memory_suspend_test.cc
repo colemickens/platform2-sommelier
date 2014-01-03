@@ -18,7 +18,7 @@
 #include "base/basictypes.h"
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/stringprintf.h"
+#include "base/strings/stringprintf.h"
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
 
@@ -40,8 +40,9 @@ void PrintAddrMap(void *vaddr) {
 }
 
 int Suspend(void) {
-  return system(StringPrintf("powerd_dbus_suspend --delay=0 --wakeup_count=%"
-                             PRIu64, FLAGS_wakeup_count).c_str());
+  return system(base::StringPrintf(
+      "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64,
+      FLAGS_wakeup_count).c_str());
 }
 
 uint32* Allocate(size_t size) {

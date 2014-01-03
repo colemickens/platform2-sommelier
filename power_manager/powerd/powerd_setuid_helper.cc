@@ -19,7 +19,7 @@
 #include <gflags/gflags.h>
 
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
+#include "base/strings/string_number_conversions.h"
 
 DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
               "\"mosys_eventlog\", \"reboot\", \"shut_down\", \"suspend\", "

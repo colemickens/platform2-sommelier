@@ -39,8 +39,8 @@ bool Udev::Init() {
   udev_monitor_enable_receiving(udev_monitor_);
 
   int fd = udev_monitor_get_fd(udev_monitor_);
-  if (!MessageLoopForIO::current()->WatchFileDescriptor(
-          fd, true, MessageLoopForIO::WATCH_READ, &watcher_, this)) {
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+          fd, true, base::MessageLoopForIO::WATCH_READ, &watcher_, this)) {
     LOG(ERROR) << "Unable to watch FD " << fd;
     return false;
   }

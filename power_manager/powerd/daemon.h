@@ -10,10 +10,10 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
-#include "base/file_path.h"
+#include "base/files/file_path.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "dbus/bus.h"
 #include "dbus/exported_object.h"
 #include "dbus/message.h"
@@ -53,8 +53,9 @@ class Udev;
 
 class Daemon;
 
-// Pointer to a member function for handling D-Bus method calls.
-typedef dbus::Response* (Daemon::*DBusMethodCallMemberFunction)(
+// Pointer to a member function for handling D-Bus method calls. If an empty
+// scoped_ptr is returned, an empty (but successful) response will be sent.
+typedef scoped_ptr<dbus::Response> (Daemon::*DBusMethodCallMemberFunction)(
     dbus::MethodCall*);
 
 // Main class within the powerd daemon that ties all other classes together.
@@ -174,28 +175,35 @@ class Daemon : public policy::BacklightControllerObserver,
   void HandleCrasNodesChangedSignal(dbus::Signal* signal);
   void HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal);
   void HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal);
-  dbus::Response* HandleRequestShutdownMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandleRequestRestartMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandleRequestSuspendMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandleDecreaseScreenBrightnessMethod(
+  scoped_ptr<dbus::Response> HandleRequestShutdownMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleIncreaseScreenBrightnessMethod(
+  scoped_ptr<dbus::Response> HandleRequestRestartMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleGetScreenBrightnessMethod(
+  scoped_ptr<dbus::Response> HandleRequestSuspendMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleSetScreenBrightnessMethod(
+  scoped_ptr<dbus::Response> HandleDecreaseScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleDecreaseKeyboardBrightnessMethod(
+  scoped_ptr<dbus::Response> HandleIncreaseScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleIncreaseKeyboardBrightnessMethod(
+  scoped_ptr<dbus::Response> HandleGetScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleGetPowerSupplyPropertiesMethod(
+  scoped_ptr<dbus::Response> HandleSetScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  dbus::Response* HandleVideoActivityMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandleUserActivityMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandleSetIsProjectingMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandleSetPolicyMethod(dbus::MethodCall* method_call);
-  dbus::Response* HandlePowerButtonAcknowledgment(
+  scoped_ptr<dbus::Response> HandleDecreaseKeyboardBrightnessMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleIncreaseKeyboardBrightnessMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleGetPowerSupplyPropertiesMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleVideoActivityMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleUserActivityMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleSetIsProjectingMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleSetPolicyMethod(
+      dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
       dbus::MethodCall* method_call);
 
   // Gets the current session state from the session manager, returning true on

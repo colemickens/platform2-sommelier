@@ -13,7 +13,7 @@
 
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/timer.h"
+#include "base/timer/timer.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"

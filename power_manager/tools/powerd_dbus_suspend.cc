@@ -14,8 +14,8 @@
 #include "base/at_exit.h"
 #include "base/bind.h"
 #include "base/logging.h"
-#include "base/message_loop.h"
-#include "base/time.h"
+#include "base/message_loop/message_loop.h"
+#include "base/time/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
@@ -31,7 +31,7 @@ namespace {
 
 // Exits when notice that the system has resumed is received.
 void OnPowerStateChanged(dbus::Signal* signal) {
-  MessageLoop::current()->QuitNow();
+  base::MessageLoop::current()->QuitNow();
 }
 
 // Handles the result of an attempt to connect to a D-Bus signal.
@@ -52,7 +52,7 @@ void OnTimeout() {
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
-  MessageLoopForIO message_loop;
+  base::MessageLoopForIO message_loop;
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
 
   // Schedule a task to fire after the timeout.
   if (FLAGS_timeout) {
-    MessageLoop::current()->PostDelayedTask(FROM_HERE,
+    base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
         base::Bind(&OnTimeout), base::TimeDelta::FromSeconds(FLAGS_timeout));
   }
 

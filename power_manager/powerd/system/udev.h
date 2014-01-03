@@ -10,7 +10,7 @@
 
 #include "base/basictypes.h"
 #include "base/memory/linked_ptr.h"
-#include "base/message_loop.h"
+#include "base/message_loop/message_loop.h"
 #include "base/observer_list.h"
 
 struct udev;
@@ -35,7 +35,7 @@ class UdevInterface {
 };
 
 // Actual implementation of UdevInterface.
-class Udev : public UdevInterface, public MessageLoopForIO::Watcher {
+class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
  public:
   Udev();
   virtual ~Udev();
@@ -49,7 +49,7 @@ class Udev : public UdevInterface, public MessageLoopForIO::Watcher {
   virtual void RemoveObserver(const std::string& subsystem,
                               UdevObserver* observer) OVERRIDE;
 
-  // MessageLoopForIO::Watcher implementation:
+  // base::MessageLoopForIO::Watcher implementation:
   virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
   virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
 
@@ -63,7 +63,7 @@ class Udev : public UdevInterface, public MessageLoopForIO::Watcher {
   ObserverMap subsystem_observers_;
 
   // Controller for watching |udev_monitor_|'s FD for readability.
-  MessageLoopForIO::FileDescriptorWatcher watcher_;
+  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(Udev);
 };

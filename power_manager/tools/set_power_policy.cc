@@ -11,7 +11,7 @@
 
 #include "base/at_exit.h"
 #include "base/logging.h"
-#include "base/message_loop.h"
+#include "base/message_loop/message_loop.h"
 #include "chromeos/dbus/service_constants.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
       "When called without any arguments, uses default settings.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
-  MessageLoopForIO message_loop;
+  base::MessageLoopForIO message_loop;
 
   power_manager::PowerManagementPolicy policy;
 

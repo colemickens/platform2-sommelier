@@ -12,8 +12,8 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
-#include "base/time.h"
-#include "base/timer.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/power_supply.h"

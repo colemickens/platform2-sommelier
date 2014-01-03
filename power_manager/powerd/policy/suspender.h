@@ -7,8 +7,8 @@
 
 #include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/time.h"
-#include "base/timer.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "dbus/exported_object.h"
 #include "dbus/message.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"

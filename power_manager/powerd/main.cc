@@ -8,12 +8,12 @@
 
 #include "base/at_exit.h"
 #include "base/command_line.h"
-#include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/files/file_path.h"
 #include "base/logging.h"
-#include "base/message_loop.h"
-#include "base/string_util.h"
-#include "base/stringprintf.h"
+#include "base/message_loop/message_loop.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/daemon.h"
@@ -43,9 +43,9 @@ void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,
                        const base::FilePath& previous_log_symlink,
                        const base::FilePath& log_file) {
   CHECK_EQ(latest_log_symlink.DirName().value(), log_file.DirName().value());
-  file_util::Delete(previous_log_symlink, false);
-  file_util::Move(latest_log_symlink, previous_log_symlink);
-  if (!file_util::CreateSymbolicLink(log_file.BaseName(), latest_log_symlink)) {
+  base::DeleteFile(previous_log_symlink, false);
+  base::Move(latest_log_symlink, previous_log_symlink);
+  if (!base::CreateSymbolicLink(log_file.BaseName(), latest_log_symlink)) {
     LOG(ERROR) << "Unable to create symbolic link from "
                << latest_log_symlink.value() << " to " << log_file.value();
   }
@@ -71,19 +71,20 @@ int main(int argc, char* argv[]) {
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
 
   const base::FilePath log_file = base::FilePath(FLAGS_log_dir).Append(
-      StringPrintf("powerd.%s", GetTimeAsString(::time(NULL)).c_str()));
+      base::StringPrintf("powerd.%s", GetTimeAsString(::time(NULL)).c_str()));
   UpdateLogSymlinks(base::FilePath(FLAGS_log_dir).Append("powerd.LATEST"),
                     base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"),
                     log_file);
-  logging::InitLogging(log_file.value().c_str(),
-                       logging::LOG_ONLY_TO_FILE,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+
+  logging::LoggingSettings logging_settings;
+  logging_settings.logging_dest = logging::LOG_TO_FILE;
+  logging_settings.log_file = log_file.value().c_str();
+  logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
+  logging::InitLogging(logging_settings);
   LOG(INFO) << "vcsid " << VCSID;
 
   base::AtExitManager at_exit_manager;
-  MessageLoopForIO message_loop;
+  base::MessageLoopForIO message_loop;
 
   // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
   power_manager::Daemon daemon((base::FilePath(FLAGS_prefs_dir)),

@@ -8,7 +8,7 @@
 #include "base/compiler_specific.h"
 #include "base/format_macros.h"
 #include "base/logging.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"

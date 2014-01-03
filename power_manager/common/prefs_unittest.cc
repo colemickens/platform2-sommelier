@@ -8,7 +8,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/string_number_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/test_main_loop_runner.h"
@@ -100,8 +100,8 @@ TEST_F(PrefsTest, TestOneDirectory) {
   ASSERT_TRUE(prefs_.Init(std::vector<base::FilePath>(1, paths_[0])));
 
   // Make sure the pref files don't already exist.
-  EXPECT_FALSE(file_util::PathExists(paths_[0].Append(kIntTestFileName)));
-  EXPECT_FALSE(file_util::PathExists(paths_[0].Append(kDoubleTestFileName)));
+  EXPECT_FALSE(base::PathExists(paths_[0].Append(kIntTestFileName)));
+  EXPECT_FALSE(base::PathExists(paths_[0].Append(kDoubleTestFileName)));
 
   // Write int and double values to pref files.
   prefs_.SetInt64(kIntTestFileName, kIntTestValue);
@@ -110,12 +110,12 @@ TEST_F(PrefsTest, TestOneDirectory) {
   // Make sure the files were only created in the first directory.
   for (int i = 0; i < kNumPrefDirectories; ++i) {
     if (i == 0) {
-      EXPECT_TRUE(file_util::PathExists(paths_[i].Append(kIntTestFileName)));
-      EXPECT_TRUE(file_util::PathExists(paths_[i].Append(kDoubleTestFileName)));
+      EXPECT_TRUE(base::PathExists(paths_[i].Append(kIntTestFileName)));
+      EXPECT_TRUE(base::PathExists(paths_[i].Append(kDoubleTestFileName)));
       continue;
     }
-    EXPECT_FALSE(file_util::PathExists(paths_[i].Append(kIntTestFileName)));
-    EXPECT_FALSE(file_util::PathExists(paths_[i].Append(kDoubleTestFileName)));
+    EXPECT_FALSE(base::PathExists(paths_[i].Append(kIntTestFileName)));
+    EXPECT_FALSE(base::PathExists(paths_[i].Append(kDoubleTestFileName)));
   }
 
   // Now read them back and make sure they have the right values.
@@ -133,21 +133,21 @@ TEST_F(PrefsTest, TestThreeDirectories) {
 
   // Make sure the files don't already exist.
   for (int i = 0; i < kNumPrefDirectories; ++i) {
-    EXPECT_FALSE(file_util::PathExists(paths_[i].Append(kIntTestFileName)));
-    EXPECT_FALSE(file_util::PathExists(paths_[i].Append(kDoubleTestFileName)));
+    EXPECT_FALSE(base::PathExists(paths_[i].Append(kIntTestFileName)));
+    EXPECT_FALSE(base::PathExists(paths_[i].Append(kDoubleTestFileName)));
   }
 
   // Write int and double values to pref files and make sure those files were
   // created in the first directory and not in the other two.
   prefs_.SetInt64(kIntTestFileName, kIntTestValue);
-  EXPECT_TRUE(file_util::PathExists(paths_[0].Append(kIntTestFileName)));
-  EXPECT_FALSE(file_util::PathExists(paths_[1].Append(kIntTestFileName)));
-  EXPECT_FALSE(file_util::PathExists(paths_[2].Append(kIntTestFileName)));
+  EXPECT_TRUE(base::PathExists(paths_[0].Append(kIntTestFileName)));
+  EXPECT_FALSE(base::PathExists(paths_[1].Append(kIntTestFileName)));
+  EXPECT_FALSE(base::PathExists(paths_[2].Append(kIntTestFileName)));
 
   prefs_.SetDouble(kDoubleTestFileName, kDoubleTestValue);
-  EXPECT_TRUE(file_util::PathExists(paths_[0].Append(kDoubleTestFileName)));
-  EXPECT_FALSE(file_util::PathExists(paths_[1].Append(kDoubleTestFileName)));
-  EXPECT_FALSE(file_util::PathExists(paths_[2].Append(kDoubleTestFileName)));
+  EXPECT_TRUE(base::PathExists(paths_[0].Append(kDoubleTestFileName)));
+  EXPECT_FALSE(base::PathExists(paths_[1].Append(kDoubleTestFileName)));
+  EXPECT_FALSE(base::PathExists(paths_[2].Append(kDoubleTestFileName)));
 
   // Now read them back and make sure they have the right values.
   int64 int_value = -1;
@@ -180,8 +180,8 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
     for (i = 0; i < kNumPrefDirectories; ++i) {
       const base::FilePath& path = paths_[i];
       // Make sure the files didn't exist already.
-      EXPECT_FALSE(file_util::PathExists(path.Append(kIntTestFileName)));
-      EXPECT_FALSE(file_util::PathExists(path.Append(kDoubleTestFileName)));
+      EXPECT_FALSE(base::PathExists(path.Append(kIntTestFileName)));
+      EXPECT_FALSE(base::PathExists(path.Append(kDoubleTestFileName)));
 
       // Determine if this directory path's bit is set in the current cycle
       // number.
@@ -193,16 +193,14 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
       std::string int_string = base::Int64ToString(kIntTestValue + i);
       EXPECT_EQ(int_string.size(),
                 file_util::WriteFile(path.Append(kIntTestFileName),
-                                     int_string.data(),
-                                     int_string.size()));
-      EXPECT_TRUE(file_util::PathExists(path.Append(kIntTestFileName)));
+                    int_string.data(), int_string.size()));
+      EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
 
       std::string double_string = base::DoubleToString(kDoubleTestValue + i);
       EXPECT_EQ(double_string.size(),
                 file_util::WriteFile(path.Append(kDoubleTestFileName),
-                                     double_string.data(),
-                                     double_string.size()));
-      EXPECT_TRUE(file_util::PathExists(path.Append(kDoubleTestFileName)));
+                    double_string.data(), double_string.size()));
+      EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
     }
 
     // Read the pref files.
@@ -241,8 +239,8 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
   for (int i = 0; i < kNumPrefDirectories; ++i) {
     const base::FilePath& path = paths_[i];
     // Make sure the files didn't exist already.
-    EXPECT_FALSE(file_util::PathExists(path.Append(kIntTestFileName)));
-    EXPECT_FALSE(file_util::PathExists(path.Append(kDoubleTestFileName)));
+    EXPECT_FALSE(base::PathExists(path.Append(kIntTestFileName)));
+    EXPECT_FALSE(base::PathExists(path.Append(kDoubleTestFileName)));
 
     // Earlier directories contain garbage.
     // The last one contains valid values.
@@ -257,14 +255,12 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
     }
     EXPECT_EQ(int_string.size(),
               file_util::WriteFile(path.Append(kIntTestFileName),
-                                   int_string.data(),
-                                   int_string.size()));
-    EXPECT_TRUE(file_util::PathExists(path.Append(kIntTestFileName)));
+                  int_string.data(), int_string.size()));
+    EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
     EXPECT_EQ(double_string.size(),
               file_util::WriteFile(path.Append(kDoubleTestFileName),
-                                   double_string.data(),
-                                   double_string.size()));
-    EXPECT_TRUE(file_util::PathExists(path.Append(kDoubleTestFileName)));
+                  double_string.data(), double_string.size()));
+    EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
   }
 
   // Read the pref files and make sure the right value was read.
@@ -294,7 +290,7 @@ TEST_F(PrefsTest, WatchPrefs) {
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 
   // Remove the file.
-  EXPECT_TRUE(file_util::Delete(kFilePath, false));
+  EXPECT_TRUE(base::DeleteFile(kFilePath, false));
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 }
 
@@ -312,7 +308,7 @@ TEST_F(PrefsTest, DeferredWrites) {
   // Check that the value was written to disk immediately.
   const base::FilePath kPath = paths_[0].Append(kName);
   std::string file_contents;
-  EXPECT_TRUE(file_util::ReadFileToString(kPath, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(kPath, &file_contents));
   EXPECT_EQ("1", file_contents);
   EXPECT_TRUE(prefs_.GetInt64(kName, &int64_value));
   EXPECT_EQ(1, int64_value);
@@ -321,7 +317,7 @@ TEST_F(PrefsTest, DeferredWrites) {
   // file should still contain 1, but GetInt64() should return the new value.
   prefs_.SetInt64(kName, 2);
   file_contents.clear();
-  EXPECT_TRUE(file_util::ReadFileToString(kPath, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(kPath, &file_contents));
   EXPECT_EQ("1", file_contents);
   EXPECT_TRUE(prefs_.GetInt64(kName, &int64_value));
   EXPECT_EQ(2, int64_value);
@@ -329,7 +325,7 @@ TEST_F(PrefsTest, DeferredWrites) {
   // The new value should be written to disk after the timeout fires.
   EXPECT_TRUE(test_api_.TriggerWriteTimeout());
   file_contents.clear();
-  EXPECT_TRUE(file_util::ReadFileToString(kPath, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(kPath, &file_contents));
   EXPECT_EQ("2", file_contents);
 
   // The timeout should no longer be scheduled.
@@ -340,7 +336,7 @@ TEST_F(PrefsTest, DeferredWrites) {
   prefs_.SetInt64(kName, 4);
   EXPECT_TRUE(test_api_.TriggerWriteTimeout());
   file_contents.clear();
-  EXPECT_TRUE(file_util::ReadFileToString(kPath, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(kPath, &file_contents));
   EXPECT_EQ("4", file_contents);
   EXPECT_TRUE(prefs_.GetInt64(kName, &int64_value));
   EXPECT_EQ(4, int64_value);

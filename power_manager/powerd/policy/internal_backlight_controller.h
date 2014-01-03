@@ -9,7 +9,7 @@
 #include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"

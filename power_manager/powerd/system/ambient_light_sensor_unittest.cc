@@ -6,11 +6,11 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
-#include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/string_number_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
@@ -62,7 +62,7 @@ class AmbientLightSensorTest : public ::testing::Test {
   virtual void SetUp() OVERRIDE {
     CHECK(temp_dir_.CreateUniqueTempDir());
     base::FilePath device_dir = temp_dir_.path().Append("device0");
-    CHECK(file_util::CreateDirectory(device_dir));
+    CHECK(base::CreateDirectory(device_dir));
     data_file_ = device_dir.Append("illuminance0_input");
     sensor_.reset(new AmbientLightSensor);
     sensor_->set_device_list_path_for_testing(temp_dir_.path());

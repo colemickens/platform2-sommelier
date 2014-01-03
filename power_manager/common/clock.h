@@ -6,7 +6,7 @@
 #define POWER_MANAGER_COMMON_CLOCK_H_
 
 #include "base/basictypes.h"
-#include "base/time.h"
+#include "base/time/time.h"
 
 namespace power_manager {
 

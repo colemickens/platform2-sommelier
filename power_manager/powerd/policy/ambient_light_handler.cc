@@ -6,9 +6,9 @@
 
 #include <limits>
 
-#include "base/string_number_conversions.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 

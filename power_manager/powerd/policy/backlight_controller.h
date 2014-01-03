@@ -6,7 +6,7 @@
 #define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
-#include "base/time.h"
+#include "base/time/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/backlight_interface.h"

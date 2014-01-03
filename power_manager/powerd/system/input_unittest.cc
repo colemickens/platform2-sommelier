@@ -33,8 +33,8 @@ class InputTest : public testing::Test {
   // to it in |drm_dir_|. Returns the path to the directory.
   base::FilePath CreateDrmDevice(const std::string& device_name) {
     base::FilePath device_path = device_dir_.path().Append(device_name);
-    CHECK(file_util::CreateDirectory(device_path));
-    CHECK(file_util::CreateSymbolicLink(
+    CHECK(base::CreateDirectory(device_path));
+    CHECK(base::CreateSymbolicLink(
               device_path, drm_dir_.path().Append(device_name)));
     return device_path;
   }
@@ -56,25 +56,25 @@ TEST_F(InputTest, DetectUSBDevices) {
   EXPECT_FALSE(input_.IsUSBInputDeviceConnected());
 
   // Create a bunch of non-usb paths.
-  ASSERT_TRUE(file_util::CreateSymbolicLink(
+  ASSERT_TRUE(base::CreateSymbolicLink(
                   input_dir_.path().Append("../../foo0/dev:1/00:00"),
                   input_dir_.path().Append("input0")));
-  ASSERT_TRUE(file_util::CreateSymbolicLink(
+  ASSERT_TRUE(base::CreateSymbolicLink(
                   input_dir_.path().Append("../../bar4/dev:2/00:00"),
                   input_dir_.path().Append("input1")));
-  ASSERT_TRUE(file_util::CreateSymbolicLink(
+  ASSERT_TRUE(base::CreateSymbolicLink(
                   input_dir_.path().Append("../../goo3/dev:3/00:00"),
                   input_dir_.path().Append("input2")));
   EXPECT_FALSE(input_.IsUSBInputDeviceConnected());
 
   // Create a "fake usb" path that contains "usb" as part of another word
-  ASSERT_TRUE(file_util::CreateSymbolicLink(
+  ASSERT_TRUE(base::CreateSymbolicLink(
                   input_dir_.path().Append("../../busbreaker/00:00"),
                   input_dir_.path().Append("input3")));
   EXPECT_FALSE(input_.IsUSBInputDeviceConnected());
 
   // Create a true usb path.
-  ASSERT_TRUE(file_util::CreateSymbolicLink(
+  ASSERT_TRUE(base::CreateSymbolicLink(
                   input_dir_.path().Append("../../usb3/dev:3/00:00"),
                   input_dir_.path().Append("input4")));
   EXPECT_TRUE(input_.IsUSBInputDeviceConnected());
@@ -83,7 +83,7 @@ TEST_F(InputTest, DetectUSBDevices) {
   ASSERT_TRUE(input_dir_.Delete());
   ASSERT_TRUE(input_dir_.CreateUniqueTempDir());
   input_.set_sysfs_input_path_for_testing(input_dir_.path());
-  ASSERT_TRUE(file_util::CreateSymbolicLink(
+  ASSERT_TRUE(base::CreateSymbolicLink(
                   input_dir_.path().Append("../../usb/dev:5/00:00"),
                   input_dir_.path().Append("input10")));
   EXPECT_TRUE(input_.IsUSBInputDeviceConnected());
@@ -93,7 +93,7 @@ TEST_F(InputTest, DetectUSBDevices) {
   ASSERT_TRUE(input_dir_.Delete());
   ASSERT_TRUE(input_dir_.CreateUniqueTempDir());
   input_.set_sysfs_input_path_for_testing(input_dir_.path());
-  ASSERT_TRUE(file_util::CreateDirectory(input_dir_.path().Append("usb12")));
+  ASSERT_TRUE(base::CreateDirectory(input_dir_.path().Append("usb12")));
   EXPECT_FALSE(input_.IsUSBInputDeviceConnected());
 }
 

@@ -93,18 +93,20 @@ void Suspender::RegisterSuspendDelay(
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse " << kRegisterSuspendDelayMethod
                << " request";
-    response_sender.Run(dbus::ErrorResponse::FromMethodCall(method_call,
-        DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer"));
+    response_sender.Run(scoped_ptr<dbus::Response>(
+        dbus::ErrorResponse::FromMethodCall(method_call,
+            DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
     return;
   }
   RegisterSuspendDelayReply reply_proto;
   suspend_delay_controller_->RegisterSuspendDelay(
       request, method_call->GetSender(), &reply_proto);
 
-  dbus::Response* response = dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response);
+  scoped_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(reply_proto);
-  response_sender.Run(response);
+  response_sender.Run(response.Pass());
 }
 
 void Suspender::UnregisterSuspendDelay(
@@ -115,8 +117,9 @@ void Suspender::UnregisterSuspendDelay(
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse " << kUnregisterSuspendDelayMethod
                << " request";
-    response_sender.Run(dbus::ErrorResponse::FromMethodCall(method_call,
-        DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer"));
+    response_sender.Run(scoped_ptr<dbus::Response>(
+        dbus::ErrorResponse::FromMethodCall(method_call,
+            DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
     return;
   }
   suspend_delay_controller_->UnregisterSuspendDelay(
@@ -132,8 +135,9 @@ void Suspender::HandleSuspendReadiness(
   if (!reader.PopArrayOfBytesAsProto(&info)) {
     LOG(ERROR) << "Unable to parse " << kHandleSuspendReadinessMethod
                << " request";
-    response_sender.Run(dbus::ErrorResponse::FromMethodCall(method_call,
-        DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer"));
+    response_sender.Run(scoped_ptr<dbus::Response>(
+        dbus::ErrorResponse::FromMethodCall(method_call,
+            DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
     return;
   }
   suspend_delay_controller_->HandleSuspendReadiness(

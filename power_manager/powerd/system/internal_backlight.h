@@ -6,9 +6,9 @@
 #define POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_
 
 #include "base/basictypes.h"
-#include "base/file_path.h"
-#include "base/time.h"
-#include "base/timer.h"
+#include "base/files/file_path.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 

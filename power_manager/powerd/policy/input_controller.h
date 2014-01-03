@@ -8,10 +8,10 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
-#include "base/file_path.h"
+#include "base/files/file_path.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/time.h"
-#include "base/timer.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_observer.h"
 
