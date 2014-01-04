@@ -91,15 +91,6 @@ extern const char kPowerStatusPath[];
 // Broadcast signals.
 extern const char kPowerStateChanged[];
 
-// Reasons for shutting down.
-extern const char kShutdownReasonUnknown[];
-extern const char kShutdownReasonUserRequest[];
-extern const char kShutdownReasonLidClosed[];
-extern const char kShutdownReasonIdle[];
-extern const char kShutdownReasonLowBattery[];
-extern const char kShutdownReasonSuspendFailed[];
-extern const char kShutdownReasonDarkResume[];
-
 // Small value used when comparing floating-point percentages.
 extern const double kEpsilon;
 
@@ -129,10 +120,8 @@ enum SessionState {
 enum UpdaterState {
   // No update is currently being applied.
   UPDATER_IDLE,
-
   // An update is being downloaded, verified, or applied.
   UPDATER_UPDATING,
-
   // An update has been successfully applied and will be used after a reboot.
   UPDATER_UPDATED,
 };

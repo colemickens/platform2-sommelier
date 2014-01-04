@@ -255,10 +255,8 @@ class Daemon::StateControllerDelegate
   }
 
   virtual void ShutDown() OVERRIDE {
-    // TODO(derat): Maybe pass the shutdown reason (idle vs. lid-closed)
-    // and pass it here.  This isn't necessary at the moment, since nothing
-    // special is done for any reason besides |kShutdownReasonLowBattery|.
-    daemon_->ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUnknown);
+    daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF,
+                      SHUTDOWN_REASON_STATE_TRANSITION);
   }
 
   virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
@@ -361,11 +359,11 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   }
 
   virtual void ShutDownForFailedSuspend() OVERRIDE {
-    daemon_->ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonSuspendFailed);
+    daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_SUSPEND_FAILED);
   }
 
   virtual void ShutDownForDarkResume() OVERRIDE {
-    daemon_->ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonDarkResume);
+    daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_DARK_RESUME);
   }
 
  private:
@@ -518,6 +516,24 @@ void Daemon::Init() {
   peripheral_battery_watcher_->Init(dbus_sender_.get());
 }
 
+// static
+std::string Daemon::ShutdownReasonToString(ShutdownReason reason) {
+  switch (reason) {
+    case SHUTDOWN_REASON_USER_REQUEST:
+      return "user-request";
+    case SHUTDOWN_REASON_STATE_TRANSITION:
+      return "state-transition";
+    case SHUTDOWN_REASON_LOW_BATTERY:
+      return "low-battery";
+    case SHUTDOWN_REASON_SUSPEND_FAILED:
+      return "suspend-failed";
+    case SHUTDOWN_REASON_DARK_RESUME:
+      return "dark-resume";
+  }
+  NOTREACHED() << "Unhandled shutdown reason " << reason;
+  return "unknown";
+}
+
 bool Daemon::BoolPrefIsTrue(const std::string& name) const {
   bool value = false;
   return prefs_->GetBool(name, &value) && value;
@@ -664,7 +680,7 @@ void Daemon::ShutDownForPowerButtonWithNoDisplay() {
   LOG(INFO) << "Shutting down due to power button press while no display is "
             << "connected";
   metrics_reporter_->HandlePowerButtonEvent(BUTTON_DOWN);
-  ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
+  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
 }
 
 void Daemon::HandleMissingPowerButtonAcknowledgment() {
@@ -702,7 +718,7 @@ void Daemon::OnPowerStatusUpdate() {
               << " until empty, "
               << StringPrintf("%0.3f", status.observed_battery_charge_rate)
               << "A observed charge rate)";
-    ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonLowBattery);
+    ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_LOW_BATTERY);
   }
 
   PowerSupplyProperties protobuf;
@@ -931,14 +947,14 @@ void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
 dbus::Response* Daemon::HandleRequestShutdownMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestShutdownMethod << " message";
-  ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
+  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
   return NULL;
 }
 
 dbus::Response* Daemon::HandleRequestRestartMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestRestartMethod << " message";
-  ShutDown(SHUTDOWN_REBOOT, kShutdownReasonUserRequest);
+  ShutDown(SHUTDOWN_MODE_REBOOT, SHUTDOWN_REASON_USER_REQUEST);
   return NULL;
 }
 
@@ -1173,7 +1189,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     keyboard_backlight_controller_->HandleSessionStateChange(state);
 }
 
-void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
+void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   if (shutting_down_) {
     LOG(WARNING) << "Shutdown already initiated";
     return;
@@ -1184,19 +1200,21 @@ void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
 
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.
-  if (reason != kShutdownReasonLowBattery) {
+  if (reason != SHUTDOWN_REASON_LOW_BATTERY) {
     if (display_backlight_controller_)
       display_backlight_controller_->SetShuttingDown(true);
     if (keyboard_backlight_controller_)
       keyboard_backlight_controller_->SetShuttingDown(true);
   }
 
+  const std::string reason_str = ShutdownReasonToString(reason);
   switch (mode) {
-    case SHUTDOWN_POWER_OFF:
-      LOG(INFO) << "Shutting down, reason: " << reason;
-      util::RunSetuidHelper("shut_down", "--shutdown_reason=" + reason, false);
+    case SHUTDOWN_MODE_POWER_OFF:
+      LOG(INFO) << "Shutting down, reason: " << reason_str;
+      util::RunSetuidHelper(
+          "shut_down", "--shutdown_reason=" + reason_str, false);
       break;
-    case SHUTDOWN_REBOOT:
+    case SHUTDOWN_MODE_REBOOT:
       LOG(INFO) << "Restarting";
       util::RunSetuidHelper("reboot", "", false);
       break;

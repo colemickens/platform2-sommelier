@@ -111,12 +111,32 @@ class Daemon : public policy::BacklightControllerObserver,
   class StateControllerDelegate;
   class SuspenderDelegate;
 
-  // Passed to ShutDown() to specify whether the system should power-off or
+  // Passed to ShutDown() to specify whether the system should power off or
   // reboot.
   enum ShutdownMode {
-    SHUTDOWN_POWER_OFF,
-    SHUTDOWN_REBOOT,
+    SHUTDOWN_MODE_POWER_OFF,
+    SHUTDOWN_MODE_REBOOT,
   };
+
+  // Passed to ShutDown() to describe the reason the system is shutting down.
+  enum ShutdownReason {
+    // Explicit user request (e.g. holding power button).
+    SHUTDOWN_REASON_USER_REQUEST,
+    // Request from StateController (e.g. lid was closed or user was inactive).
+    SHUTDOWN_REASON_STATE_TRANSITION,
+    // Battery level dropped below shutdown threshold.
+    SHUTDOWN_REASON_LOW_BATTERY,
+    // Multiple suspend attempts failed.
+    SHUTDOWN_REASON_SUSPEND_FAILED,
+    // Battery level was below threshold during dark resume from suspend.
+    SHUTDOWN_REASON_DARK_RESUME,
+  };
+
+  // Returns a string describing |reason|. The string is passed as a
+  // SHUTDOWN_REASON argument to an initctl command to switch to runlevel 0
+  // (i.e. don't change these strings without checking that other upstart jobs
+  // aren't depending on them).
+  static std::string ShutdownReasonToString(ShutdownReason reason);
 
   // Convenience method that returns true if |name| exists and is true.
   bool BoolPrefIsTrue(const std::string& name) const;
@@ -185,9 +205,8 @@ class Daemon : public policy::BacklightControllerObserver,
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
 
-  // Shuts the system down immediately. |reason| describes the why the
-  // system is shutting down; see power_constants.cc for valid values.
-  void ShutDown(ShutdownMode mode, const std::string& reason);
+  // Shuts the system down immediately.
+  void ShutDown(ShutdownMode mode, ShutdownReason reason);
 
   // Starts the suspend process. If |use_external_wakeup_count| is true,
   // passes |external_wakeup_count| to
