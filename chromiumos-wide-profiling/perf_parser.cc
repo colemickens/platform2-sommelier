@@ -296,9 +296,11 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
     CHECK_EQ(event.header.misc, PERF_RECORD_MISC_USER);
     break;
   default:
+    // If the first entry is not a context marker, consider the rest of the
+    // callchain data invalid and return.
     LOG(ERROR) << "Invalid callchain context: "
                << std::hex << callchain_context;
-    break;
+    return false;
   }
   // The second callchain entry is the same as the sample address.
   CHECK_EQ((void*)callchain->ips[kCallchainBaseAddressIndex],
