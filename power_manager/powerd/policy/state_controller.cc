@@ -182,8 +182,7 @@ StateController::~StateController() {
 void StateController::Init(Delegate* delegate,
                            PrefsInterface* prefs,
                            PowerSource power_source,
-                           LidState lid_state,
-                           SessionState session_state) {
+                           LidState lid_state) {
   delegate_ = delegate;
   prefs_ = prefs;
   prefs_->AddObserver(this);
@@ -192,7 +191,6 @@ void StateController::Init(Delegate* delegate,
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
   lid_state_ = lid_state;
-  session_state_ = session_state;
 
   initial_state_timer_.Start(FROM_HERE,
       base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs), this,

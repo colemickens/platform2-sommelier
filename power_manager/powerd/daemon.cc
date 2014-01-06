@@ -59,9 +59,10 @@ const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 // File that's created once the out-of-box experience has been completed.
 const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 
-// Maximum amount of time to wait for responses to D-Bus method calls to the
-// session manager.
+// Maximum amount of time to wait for responses to D-Bus method calls to other
+// processes.
 const int kSessionManagerDBusTimeoutMs = 3000;
+const int kUpdateEngineDBusTimeoutMs = 3000;
 
 // Copies fields from |status| into |proto|.
 void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
@@ -415,6 +416,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       chrome_dbus_proxy_(NULL),
       session_manager_dbus_proxy_(NULL),
       cras_dbus_proxy_(NULL),
+      update_engine_dbus_proxy_(NULL),
       state_controller_delegate_(new StateControllerDelegate(this)),
       dbus_sender_(new DBusSender),
       display_power_setter_(new system::DisplayPowerSetter),
@@ -515,10 +517,6 @@ void Daemon::Init() {
                           keyboard_backlight_controller_.get(),
                           power_supply_->power_status());
 
-  std::string session_state;
-  if (QuerySessionState(&session_state))
-    OnSessionStateChange(session_state);
-
   OnPowerStatusUpdate();
 
   dark_resume_policy_->Init(power_supply_.get(), prefs_.get());
@@ -528,19 +526,13 @@ void Daemon::Init() {
   CHECK(input_->Init(prefs_.get(), udev_.get()));
   input_controller_->Init(input_.get(), this, dbus_sender_.get(), prefs_.get());
 
-  // Initialize |state_controller_| before |audio_client_| to ensure that the
-  // former is ready to receive the initial notification if audio is already
-  // playing.
   const PowerSource power_source =
       power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
-                          power_source, input_->QueryLidState(),
-                          session_state_);
+                          power_source, input_->QueryLidState());
   state_controller_initialized_ = true;
 
   audio_client_->Init(cras_dbus_proxy_);
-  audio_client_->LoadInitialState();
-
   peripheral_battery_watcher_->Init(dbus_sender_.get());
 }
 
@@ -762,11 +754,16 @@ void Daemon::InitDBus() {
   chrome_dbus_proxy_ = bus_->GetObjectProxy(
       chromeos::kLibCrosServiceName,
       dbus::ObjectPath(chromeos::kLibCrosServicePath));
+  chrome_dbus_proxy_->WaitForServiceToBeAvailable(
+      base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
+                 base::Unretained(this)));
 
-  // Session manager signals.
   session_manager_dbus_proxy_ = bus_->GetObjectProxy(
       login_manager::kSessionManagerServiceName,
       dbus::ObjectPath(login_manager::kSessionManagerServicePath));
+  session_manager_dbus_proxy_->WaitForServiceToBeAvailable(
+      base::Bind(&Daemon::HandleSessionManagerAvailableOrRestarted,
+                 base::Unretained(this)));
   session_manager_dbus_proxy_->ConnectToSignal(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
@@ -774,10 +771,12 @@ void Daemon::InitDBus() {
                  base::Unretained(this)),
       base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
 
-  // CRAS signals.
   cras_dbus_proxy_ = bus_->GetObjectProxy(
       cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
+  cras_dbus_proxy_->WaitForServiceToBeAvailable(
+      base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
+                 base::Unretained(this)));
   cras_dbus_proxy_->ConnectToSignal(
       cras::kCrasControlInterface,
       cras::kNodesChanged,
@@ -796,18 +795,19 @@ void Daemon::InitDBus() {
                  base::Unretained(this)),
       base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
 
-  // Update engine signals.
-  dbus::ObjectProxy* update_engine_proxy = bus_->GetObjectProxy(
+  update_engine_dbus_proxy_ = bus_->GetObjectProxy(
       update_engine::kUpdateEngineServiceName,
       dbus::ObjectPath(update_engine::kUpdateEngineServicePath));
-  update_engine_proxy->ConnectToSignal(
+  update_engine_dbus_proxy_->WaitForServiceToBeAvailable(
+      base::Bind(&Daemon::HandleUpdateEngineAvailableOrRestarted,
+                 base::Unretained(this)));
+  update_engine_dbus_proxy_->ConnectToSignal(
       update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdate,
       base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
                  base::Unretained(this)),
       base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
 
-  // Exported methods.
   powerd_dbus_object_ = bus_->GetExportedObject(
       dbus::ObjectPath(kPowerManagerServicePath));
   ExportDBusMethod(kRequestShutdownMethod,
@@ -862,13 +862,8 @@ void Daemon::InitDBus() {
   // Listen for NameOwnerChanged signals from the bus itself. Register for all
   // of these signals instead of calling individual proxies'
   // SetNameOwnerChangedCallback() methods so that Suspender can get notified
-  // when clients with suspend delays disconnect.
-  //
-  // Note that this signal is currently connected after all other proxies have
-  // been created to ensure that it won't prevent those proxies from seeing
-  // NameOwnerChanged signals. See http://crbug.com/327172.
-  //
-  // TODO(derat): Add a better way to observe name ownership changes.
+  // when clients with suspend delays for which Daemon doesn't have proxies
+  // disconnect.
   const char kBusServiceName[] = "org.freedesktop.DBus";
   const char kBusServicePath[] = "/org/freedesktop/DBus";
   const char kBusInterface[] = "org.freedesktop.DBus";
@@ -880,6 +875,75 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
 
   dbus_sender_->Init(powerd_dbus_object_, kPowerManagerInterface);
+}
+
+void Daemon::HandleChromeAvailableOrRestarted(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for Chrome to become available";
+    return;
+  }
+  if (display_backlight_controller_)
+    display_backlight_controller_->HandleChromeStart();
+}
+
+void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for session manager to become available";
+    return;
+  }
+
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerRetrieveSessionState);
+  scoped_ptr<dbus::Response> response(
+      session_manager_dbus_proxy_->CallMethodAndBlock(
+          &method_call, kSessionManagerDBusTimeoutMs));
+  if (!response)
+    return;
+
+  std::string state;
+  dbus::MessageReader reader(response.get());
+  if (!reader.PopString(&state)) {
+    LOG(ERROR) << "Unable to read "
+               << login_manager::kSessionManagerRetrieveSessionState << " args";
+    return;
+  }
+  OnSessionStateChange(state);
+}
+
+void Daemon::HandleCrasAvailableOrRestarted(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for CRAS to become available";
+    return;
+  }
+  audio_client_->LoadInitialState();
+}
+
+void Daemon::HandleUpdateEngineAvailableOrRestarted(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for update engine to become available";
+    return;
+  }
+
+  dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
+                               update_engine::kGetStatus);
+  scoped_ptr<dbus::Response> response(
+      update_engine_dbus_proxy_->CallMethodAndBlock(
+          &method_call, kUpdateEngineDBusTimeoutMs));
+  if (!response)
+    return;
+
+  dbus::MessageReader reader(response.get());
+  int64 last_checked_time = 0;
+  double progress = 0.0;
+  std::string operation;
+  if (!reader.PopInt64(&last_checked_time) ||
+      !reader.PopDouble(&progress) ||
+      !reader.PopString(&operation)) {
+    LOG(ERROR) << "Unable to read " << update_engine::kGetStatus << " args";
+    return;
+  }
+  OnUpdateOperation(operation);
 }
 
 void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
@@ -894,16 +958,13 @@ void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
 
   if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    std::string session_state;
-    if (QuerySessionState(&session_state))
-      OnSessionStateChange(session_state);
+    HandleSessionManagerAvailableOrRestarted(true);
   } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    audio_client_->LoadInitialState();
+    HandleCrasAvailableOrRestarted(true);
   } else if (name == chromeos::kLibCrosServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    if (display_backlight_controller_)
-      display_backlight_controller_->HandleChromeStart();
+    HandleChromeAvailableOrRestarted(true);
   }
   suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
@@ -940,27 +1001,13 @@ void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
   int64 last_checked_time = 0;
   double progress = 0.0;
   std::string operation;
-  std::string new_version;
-  int64 new_size = 0;
   if (!reader.PopInt64(&last_checked_time) ||
       !reader.PopDouble(&progress) ||
-      !reader.PopString(&operation) ||
-      !reader.PopString(&new_version) ||
-      !reader.PopInt64(&new_size)) {
-    LOG(ERROR) << "Unable to read args from " << update_engine::kStatusUpdate
-               << " signal";
+      !reader.PopString(&operation)) {
+    LOG(ERROR) << "Unable to read " << update_engine::kStatusUpdate << " args";
     return;
   }
-
-  UpdaterState state = UPDATER_IDLE;
-  if (operation == update_engine::kUpdateStatusDownloading ||
-      operation == update_engine::kUpdateStatusVerifying ||
-      operation == update_engine::kUpdateStatusFinalizing) {
-    state = UPDATER_UPDATING;
-  } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
-    state = UPDATER_UPDATED;
-  }
-  state_controller_->HandleUpdaterStateChange(state);
+  OnUpdateOperation(operation);
 }
 
 void Daemon::HandleCrasNodesChangedSignal(dbus::Signal* signal) {
@@ -1186,28 +1233,7 @@ scoped_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
   return scoped_ptr<dbus::Response>();
 }
 
-bool Daemon::QuerySessionState(std::string* state) {
-  DCHECK(state);
-  dbus::MethodCall method_call(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerRetrieveSessionState);
-  scoped_ptr<dbus::Response> response(
-      session_manager_dbus_proxy_->CallMethodAndBlock(
-          &method_call, kSessionManagerDBusTimeoutMs));
-  if (!response)
-    return false;
-
-  dbus::MessageReader reader(response.get());
-  if (!reader.PopString(state)) {
-    LOG(ERROR) << "Unable to read "
-               << login_manager::kSessionManagerRetrieveSessionState << " args";
-    return false;
-  }
-  return true;
-}
-
 void Daemon::OnSessionStateChange(const std::string& state_str) {
-  DLOG(INFO) << "Session " << state_str;
   SessionState state = (state_str == kSessionStarted) ?
       SESSION_STARTED : SESSION_STOPPED;
   if (state == session_state_)
@@ -1221,6 +1247,18 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     display_backlight_controller_->HandleSessionStateChange(state);
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleSessionStateChange(state);
+}
+
+void Daemon::OnUpdateOperation(const std::string& operation) {
+  UpdaterState state = UPDATER_IDLE;
+  if (operation == update_engine::kUpdateStatusDownloading ||
+      operation == update_engine::kUpdateStatusVerifying ||
+      operation == update_engine::kUpdateStatusFinalizing) {
+    state = UPDATER_UPDATING;
+  } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
+    state = UPDATER_UPDATED;
+  }
+  state_controller_->HandleUpdaterStateChange(state);
 }
 
 void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {

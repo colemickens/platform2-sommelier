@@ -638,15 +638,6 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
   EXPECT_LT(backlight_.current_level(), initial_level);
 }
 
-TEST_F(InternalBacklightControllerTest, TurnDisplaysOnAtInit) {
-  // Init() should ask Chrome to turn all displays on.
-  ASSERT_EQ(0, display_power_setter_.num_power_calls());
-  Init(POWER_AC);
-  EXPECT_EQ(1, display_power_setter_.num_power_calls());
-  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
-  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
-}
-
 TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
   // Don't report any ambient light readings. As before, the controller
   // should avoid changing the backlight from its initial brightness.
@@ -783,14 +774,26 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   controller_->RemoveObserver(&observer);
 }
 
-TEST_F(InternalBacklightControllerTest, ResendOnChromeStart) {
+TEST_F(InternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
+  // Init() shouldn't ask Chrome to turn all displays on (maybe Chrome hasn't
+  // started yet).
   Init(POWER_AC);
+  EXPECT_EQ(0, display_power_setter_.num_power_calls());
+
+  // After Chrome starts, the controller should turn the displays on.
+  display_power_setter_.reset_num_power_calls();
+  controller_->HandleChromeStart();
+  EXPECT_EQ(1, display_power_setter_.num_power_calls());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+
+  // Enter docked mode.
   controller_->SetDocked(true);
   ASSERT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
 
-  // When Chrome restarts, the controller should notify it again about the
-  // current power state.
+  // If Chrome restarts, the controller should notify it about the current power
+  // state.
   display_power_setter_.reset_num_power_calls();
   controller_->HandleChromeStart();
   EXPECT_EQ(1, display_power_setter_.num_power_calls());

@@ -27,11 +27,6 @@ ExternalBacklightController::~ExternalBacklightController() {}
 void ExternalBacklightController::Init(
     system::DisplayPowerSetterInterface* display_power_setter) {
   display_power_setter_ = display_power_setter;
-  // If we get restarted while Chrome is running, make sure that it doesn't get
-  // wedged in a dimmed or off state.
-  display_power_setter_->SetDisplaySoftwareDimming(false);
-  display_power_setter_->SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON,
-                                         base::TimeDelta());
 }
 
 void ExternalBacklightController::AddObserver(

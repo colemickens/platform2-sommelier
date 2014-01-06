@@ -146,7 +146,6 @@ class StateControllerTest : public testing::Test {
         default_allow_docked_mode_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
-        initial_session_state_(SESSION_STOPPED),
         initial_display_mode_(DISPLAY_NORMAL),
         send_initial_display_mode_(true),
         send_initial_policy_(true) {
@@ -178,7 +177,7 @@ class StateControllerTest : public testing::Test {
 
     test_api_.clock()->set_current_time_for_testing(now_);
     controller_.Init(&delegate_, &prefs_, initial_power_source_,
-                     initial_lid_state_, initial_session_state_);
+                     initial_lid_state_);
 
     if (send_initial_display_mode_)
       controller_.HandleDisplayModeChange(initial_display_mode_);
@@ -272,7 +271,6 @@ class StateControllerTest : public testing::Test {
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
   LidState initial_lid_state_;
-  SessionState initial_session_state_;
 
   // Initial display mode to send in Init().
   DisplayMode initial_display_mode_;
@@ -416,8 +414,8 @@ TEST_F(StateControllerTest, LidCloseSuspendsByDefault) {
 
 // Tests that timeouts are reset when the user logs in or out.
 TEST_F(StateControllerTest, SessionStateChangeResetsTimeouts) {
-  initial_session_state_ = SESSION_STARTED;
   Init();
+  controller_.HandleSessionStateChange(SESSION_STARTED);
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
@@ -815,9 +813,9 @@ TEST_F(StateControllerTest, DontSuspendBeforeOobeCompleted) {
 
 // Tests that the disable-idle-suspend pref is honored and overrides policies.
 TEST_F(StateControllerTest, DisableIdleSuspend) {
-  initial_session_state_ = SESSION_STARTED;
   default_disable_idle_suspend_ = 1;
   Init();
+  controller_.HandleSessionStateChange(SESSION_STARTED);
 
   // With the disable-idle-suspend pref set, the system shouldn't suspend
   // when it's idle.
@@ -1212,8 +1210,8 @@ TEST_F(StateControllerTest, DisallowDockedMode) {
 // Tests that PowerManagementPolicy's
 // |user_activity_screen_dim_delay_factor| field is honored.
 TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
-  initial_session_state_ = SESSION_STARTED;
   Init();
+  controller_.HandleSessionStateChange(SESSION_STARTED);
 
   // Send a policy where delays are doubled if user activity is observed
   // while the screen is dimmed or soon after it's turned off.
@@ -1448,8 +1446,8 @@ TEST_F(StateControllerTest, AudioDelay) {
 // Tests that when |wait_for_initial_user_activity| policy field is set,
 // inactivity-triggered actions are deferred until user activity is reported.
 TEST_F(StateControllerTest, WaitForInitialUserActivity) {
-  initial_session_state_ = SESSION_STARTED;
   Init();
+  controller_.HandleSessionStateChange(SESSION_STARTED);
 
   const base::TimeDelta kWarningDelay = base::TimeDelta::FromSeconds(585);
   const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);

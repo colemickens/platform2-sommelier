@@ -156,6 +156,12 @@ class Daemon : public policy::BacklightControllerObserver,
   // Connects to the D-Bus system bus and exports methods.
   void InitDBus();
 
+  // Handles various D-Bus services becoming available or restarting.
+  void HandleChromeAvailableOrRestarted(bool available);
+  void HandleSessionManagerAvailableOrRestarted(bool available);
+  void HandleCrasAvailableOrRestarted(bool available);
+  void HandleUpdateEngineAvailableOrRestarted(bool available);
+
   // Handles changes to D-Bus name ownership.
   void HandleDBusNameOwnerChanged(dbus::Signal* signal);
 
@@ -206,12 +212,11 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
       dbus::MethodCall* method_call);
 
-  // Gets the current session state from the session manager, returning true on
-  // success.
-  bool QuerySessionState(std::string* state);
-
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
+
+  // Handles the "operation" field from an update engine status message.
+  void OnUpdateOperation(const std::string& operation);
 
   // Shuts the system down immediately.
   void ShutDown(ShutdownMode mode, ShutdownReason reason);
@@ -235,6 +240,7 @@ class Daemon : public policy::BacklightControllerObserver,
   dbus::ObjectProxy* chrome_dbus_proxy_;  // weak; owned by |bus_|
   dbus::ObjectProxy* session_manager_dbus_proxy_;  // weak; owned by |bus_|
   dbus::ObjectProxy* cras_dbus_proxy_;  // weak; owned by |bus_|
+  dbus::ObjectProxy* update_engine_dbus_proxy_;  // weak; owned by |bus_|
 
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
   scoped_ptr<DBusSender> dbus_sender_;

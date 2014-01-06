@@ -109,8 +109,7 @@ InternalBacklightController::InternalBacklightController()
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
       current_level_(0),
-      // Use all-off here to ensure that Init()'s all-on request is sent.
-      display_power_state_(chromeos::DISPLAY_POWER_ALL_OFF) {
+      display_power_state_(chromeos::DISPLAY_POWER_ALL_ON) {
 }
 
 InternalBacklightController::~InternalBacklightController() {}
@@ -185,11 +184,6 @@ void InternalBacklightController::Init(
 
   dimmed_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kDimmedBrightnessFraction * max_level_)));
-
-  // Ensure that the screen isn't stuck in an off state if powerd got restarted
-  // for some reason. If the system was previously in docked mode, this may
-  // briefly bring it out of it, but it will re-enter soon afterward.
-  SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
 
   init_time_ = clock_->GetCurrentTime();
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "

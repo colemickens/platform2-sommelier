@@ -131,8 +131,7 @@ class StateController : public PrefsObserver {
   void Init(Delegate* delegate,
             PrefsInterface* prefs,
             PowerSource power_source,
-            LidState lid_state,
-            SessionState session_state);
+            LidState lid_state);
 
   // Handles various changes to external state.
   void HandlePowerSourceChange(PowerSource source);
