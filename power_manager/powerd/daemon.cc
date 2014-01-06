@@ -731,8 +731,6 @@ void Daemon::InitDBus() {
   options.bus_type = dbus::Bus::SYSTEM;
   bus_ = new dbus::Bus(options);
   CHECK(bus_->Connect());
-  CHECK(bus_->RequestOwnershipAndBlock(kPowerManagerServiceName))
-      << "Unable to take ownership of " << kPowerManagerServiceName;
 
   chrome_dbus_proxy_ = bus_->GetObjectProxy(
       chromeos::kLibCrosServiceName,
@@ -827,6 +825,11 @@ void Daemon::InitDBus() {
       kPowerManagerInterface, kHandleSuspendReadinessMethod,
       base::Bind(&policy::Suspender::HandleSuspendReadiness,
                  base::Unretained(suspender_.get()))));
+
+  // Note that this needs to happen *after* the above methods are exported
+  // (http://crbug.com/331431).
+  CHECK(bus_->RequestOwnershipAndBlock(kPowerManagerServiceName))
+      << "Unable to take ownership of " << kPowerManagerServiceName;
 
   // Listen for NameOwnerChanged signals from the bus itself. Register for all
   // of these signals instead of calling individual proxies'
