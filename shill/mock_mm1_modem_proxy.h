@@ -25,9 +25,6 @@ class MockModemProxy : public ModemProxyInterface {
                             Error *error,
                             const ResultCallback &callback,
                             int timeout));
-  MOCK_METHOD3(ListBearers, void(Error *error,
-                                 const DBusPathsCallback &callback,
-                                 int timeout));
   MOCK_METHOD4(CreateBearer, void(const DBusPropertiesMap &properties,
                                   Error *error,
                                   const DBusPathCallback &callback,

@@ -19,7 +19,6 @@
 #include "shill/cellular.h"
 #include "shill/cellular_capability.h"
 #include "shill/cellular_operator_info.h"
-#include "shill/mm1_bearer_proxy_interface.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/mm1_modem_proxy_interface.h"
 #include "shill/mm1_modem_simple_proxy_interface.h"
@@ -206,10 +205,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsRegistered);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              ListBearersOnModemStateChangedToConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, NormalizeMdn);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockRetriesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockTypeChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -234,7 +230,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               TerminationActionRemovedByStopModem);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateBearerPath);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -320,8 +316,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // |home_provider_info_|.
   void InitAPNList();
 
-  // Updates |bearer_path_| to match the currently active bearer.
-  void UpdateBearerPath();
+  // Updates |active_bearer_path_| to match the currently active bearer.
+  void UpdateActiveBearerPath();
 
   Stringmap ParseScanResult(const ScanResult &result);
 
@@ -361,6 +357,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnAccessTechnologiesChanged(uint32 access_technologies);
   void OnSupportedModesChanged(const std::vector<ModemModes> &supported_modes);
   void OnCurrentModesChanged(const ModemModes &current_modes);
+  void OnBearersChanged(const RpcIdentifiers &bearers);
   void OnLockRetriesChanged(const LockRetryData &lock_retries);
   void OnLockTypeChanged(MMModemLock unlock_required);
   void OnSimLockStatusChanged();
@@ -402,8 +399,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnConnectReply(const ResultCallback &callback,
                       const DBus::Path &bearer,
                       const Error &error);
-  void OnListBearersReply(const std::vector<DBus::Path> &paths,
-                          const Error &error);
 
   // Timeout callback for the network scan initiated when Cellular connectivity
   // gets enabled.
@@ -465,7 +460,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_;
   std::string sim_path_;
-  DBus::Path bearer_path_;
+  DBus::Path active_bearer_path_;
+  RpcIdentifiers bearer_paths_;
   bool reset_done_;
 
   // If the modem is not in a state to be enabled when StartModem is called,

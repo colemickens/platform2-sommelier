@@ -29,9 +29,6 @@ class ModemProxy : public ModemProxyInterface {
                       Error *error,
                       const ResultCallback &callback,
                       int timeout);
-  virtual void ListBearers(Error *error,
-                           const DBusPathsCallback &callback,
-                           int timeout);
   virtual void CreateBearer(const DBusPropertiesMap &properties,
                             Error *error,
                             const DBusPathCallback &callback,
@@ -94,9 +91,6 @@ class ModemProxy : public ModemProxyInterface {
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::ModemProxy
     virtual void EnableCallback(const ::DBus::Error &dberror, void *data);
-    virtual void ListBearersCallback(
-        const std::vector<::DBus::Path> &bearers,
-        const ::DBus::Error &dberror, void *data);
     virtual void CreateBearerCallback(const ::DBus::Path &bearer,
                                       const ::DBus::Error &dberror, void *data);
     virtual void DeleteBearerCallback(const ::DBus::Error &dberror, void *data);

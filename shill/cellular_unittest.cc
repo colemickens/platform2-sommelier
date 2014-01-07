@@ -348,7 +348,7 @@ class CellularTest : public testing::Test {
         .WillOnce(Invoke(this, &CellularTest::InvokeDisconnectMM1));
     GetCapabilityUniversal()->modem_simple_proxy_.reset(
         mm1_simple_proxy_.release());
-    GetCapabilityUniversal()->bearer_path_ = "/fake/path";
+    GetCapabilityUniversal()->active_bearer_path_ = "/fake/path";
   }
 
   void VerifyDisconnect() {

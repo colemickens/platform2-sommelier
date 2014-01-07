@@ -31,9 +31,6 @@ class ModemProxyInterface {
                       Error *error,
                       const ResultCallback &callback,
                       int timeout) = 0;
-  virtual void ListBearers(Error *error,
-                           const DBusPathsCallback &callback,
-                           int timeout) = 0;
   virtual void CreateBearer(const DBusPropertiesMap &properties,
                             Error *error,
                             const DBusPathCallback &callback,

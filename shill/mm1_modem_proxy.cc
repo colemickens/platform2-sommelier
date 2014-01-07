@@ -42,20 +42,6 @@ void ModemProxy::Enable(bool enable,
   }
 }
 
-void ModemProxy::ListBearers(Error *error,
-                             const DBusPathsCallback &callback,
-                             int timeout) {
-  scoped_ptr<DBusPathsCallback> cb(new DBusPathsCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.ListBearers(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
-}
-
 void ModemProxy::CreateBearer(
     const DBusPropertiesMap &properties,
     Error *error,
@@ -223,18 +209,6 @@ void ModemProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
-}
-
-void ModemProxy::Proxy::ListBearersCallback(
-    const std::vector< ::DBus::Path> &bearers,
-    const ::DBus::Error &dberror,
-    void *data) {
-  SLOG(DBus, 2) << __func__;
-  scoped_ptr<DBusPathsCallback> callback(
-      reinterpret_cast<DBusPathsCallback *>(data));
-  Error error;
-  CellularError::FromMM1DBusError(dberror, &error);
-  callback->Run(bearers, error);
 }
 
 void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,

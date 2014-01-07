@@ -397,11 +397,12 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
     SLOG(Cellular, 1) << "Processed deferred registration loss before "
                       << "disconnect request.";
   }
-  if (bearer_path_.empty()) {
+  if (active_bearer_path_.empty()) {
     LOG(WARNING) << "In " << __func__ << "(): "
                  << "Ignoring attempt to disconnect without bearer";
   } else if (modem_simple_proxy_.get()) {
-    modem_simple_proxy_->Disconnect(bearer_path_,
+    SLOG(Cellular, 2) << "Disconnect bearer " << active_bearer_path_;
+    modem_simple_proxy_->Disconnect(active_bearer_path_,
                                     error,
                                     callback,
                                     kTimeoutDisconnect);
@@ -795,7 +796,8 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
       service->SetLastGoodApn(apn_try_list_.front());
       apn_try_list_.clear();
     }
-    bearer_path_ = path;
+    active_bearer_path_ = path;
+    SLOG(Cellular, 2) << "Connected bearer " << active_bearer_path_;
   }
 
   if (!callback.is_null())
@@ -1062,38 +1064,14 @@ void CellularCapabilityUniversal::UpdateServingOperator() {
   }
 }
 
-void CellularCapabilityUniversal::UpdateBearerPath() {
-  SLOG(Cellular, 2) << __func__;
-  DBusPathsCallback cb = Bind(&CellularCapabilityUniversal::OnListBearersReply,
-                              weak_ptr_factory_.GetWeakPtr());
-  Error error;
-  if (!modem_proxy_) {
-    // This can be a perfectly legitimate state to be in, as this
-    // function can be called before StartModem. In particular, this
-    // happens when a Cellular object is contructed in
-    // Modem::CreateDeviceFromModemProperties.
-    LOG(INFO) << "Skipping ListBearers due to uninitialized modem_proxy_.";
-    return;
-  }
-  modem_proxy_->ListBearers(&error, cb, kTimeoutDefault);
-}
-
-void CellularCapabilityUniversal::OnListBearersReply(
-    const std::vector<DBus::Path> &paths,
-    const Error &error) {
-  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
-  if (error.IsFailure()) {
-    SLOG(Cellular, 2) << "ListBearers failed with error: " << error;
-    return;
-  }
+void CellularCapabilityUniversal::UpdateActiveBearerPath() {
   // Look for the first active bearer and use its path as the connected
   // one. Right now, we don't allow more than one active bearer.
   DBus::Path new_bearer_path;
   uint32 ipconfig_method(MM_BEARER_IP_METHOD_UNKNOWN);
   string network_device;
-  for (size_t i = 0; i < paths.size(); ++i) {
-    const DBus::Path &path = paths[i];
 
+  for (const auto &path : bearer_paths_) {
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(path,
                                                    cellular()->dbus_owner()));
@@ -1148,11 +1126,13 @@ void CellularCapabilityUniversal::OnListBearersReply(
     }
     new_bearer_path = path;
   }
-  bearer_path_ = new_bearer_path;
+  active_bearer_path_ = new_bearer_path;
   if (new_bearer_path.empty()) {
     SLOG(Cellular, 2) << "No active bearer found.";
     return;
   }
+
+  // TODO(benchan): Move the following code outside this method.
   if (ipconfig_method == MM_BEARER_IP_METHOD_PPP) {
     cellular()->StartPPP(network_device);
   }
@@ -1534,6 +1514,16 @@ string CellularCapabilityUniversal::GetTypeString() const {
 void CellularCapabilityUniversal::OnModemPropertiesChanged(
     const DBusPropertiesMap &properties,
     const vector<string> &/* invalidated_properties */) {
+
+  // Update the bearers property before the modem state property as
+  // OnModemStateChanged may call UpdateActiveBearerPath, which reads the
+  // bearers property.
+  RpcIdentifiers bearers;
+  if (DBusProperties::GetRpcIdentifiers(properties, MM_MODEM_PROPERTY_BEARERS,
+                                        &bearers)) {
+    OnBearersChanged(bearers);
+  }
+
   // This solves a bootstrapping problem: If the modem is not yet
   // enabled, there are no proxy objects associated with the capability
   // object, so modem signals like StateChanged aren't seen. By monitoring
@@ -1773,8 +1763,14 @@ void CellularCapabilityUniversal::OnModemStateChanged(
     deferred_enable_modem_callback_.Run();
     deferred_enable_modem_callback_.Reset();
   } else if (state == Cellular::kModemStateConnected) {
+    // This assumes that ModemManager updates the Bearers list and the Bearer
+    // properties before changing Modem state to Connected.
+    //
+    // TODO(benchan): Instead of explicitly querying the properties of bearers
+    // to determine the active bearer, refactor the bearer related code into a
+    // proper bearer class that observes DBus properties changes.
     SLOG(Cellular, 2) << "Updating bearer path to reflect the active bearer.";
-    UpdateBearerPath();
+    UpdateActiveBearerPath();
   }
 }
 
@@ -1804,6 +1800,11 @@ void CellularCapabilityUniversal::OnSupportedModesChanged(
 void CellularCapabilityUniversal::OnCurrentModesChanged(
     const ModemModes &current_modes) {
   current_modes_ = current_modes;
+}
+
+void CellularCapabilityUniversal::OnBearersChanged(
+    const RpcIdentifiers &bearers) {
+  bearer_paths_ = bearers;
 }
 
 void CellularCapabilityUniversal::OnLockRetriesChanged(

@@ -222,7 +222,7 @@ class CellularCapability {
   friend class CellularCapabilityUniversalCDMATest;
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, TearDown);
 
