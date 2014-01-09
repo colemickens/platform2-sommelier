@@ -385,6 +385,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class DeviceInfoTest;
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
+  friend class ModemInfoTest;
+  friend class ModemManagerTest;
   friend class ServiceTest;
   friend class VPNServiceTest;
   friend class WiFiObjectTest;

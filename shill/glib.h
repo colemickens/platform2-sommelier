@@ -27,16 +27,6 @@ class GLib {
   virtual bool B64Decode(const std::string &input, std::string *output);
   virtual bool B64Encode(const std::string &input, std::string *output);
 
-  // g_bus_unwatch_name
-  virtual void BusUnwatchName(guint watcher_id);
-  // g_bus_watch_name
-  virtual guint BusWatchName(GBusType bus_type,
-                             const gchar *name,
-                             GBusNameWatcherFlags flags,
-                             GBusNameAppearedCallback name_appeared_handler,
-                             GBusNameVanishedCallback name_vanished_handler,
-                             gpointer user_data,
-                             GDestroyNotify user_data_free_func);
   // g_child_watch_add
   virtual guint ChildWatchAdd(GPid pid,
                               GChildWatchFunc function,

@@ -24,6 +24,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class DBusNameWatcher;
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
 class Modem1;
@@ -46,6 +47,10 @@ class ModemManager {
   // Stops watching for the DBus modem manager service and destroys any
   // associated modems.
   void Stop();
+
+  // DBusNameWatcher callbacks.
+  void OnAppear(const std::string &name, const std::string &owner);
+  void OnVanish(const std::string &name);
 
   void OnDeviceInfoAvailable(const std::string &link_name);
 
@@ -81,28 +86,17 @@ class ModemManager {
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManagerClassicTest, Connect);
   FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);
-  FRIEND_TEST(ModemManagerCoreTest, Connect);
-  FRIEND_TEST(ModemManagerCoreTest, Disconnect);
-  FRIEND_TEST(ModemManagerCoreTest, ModemExists);
+  FRIEND_TEST(ModemManagerCoreTest, ConnectDisconnect);
   FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
-  FRIEND_TEST(ModemManagerCoreTest, Start);
-  FRIEND_TEST(ModemManagerCoreTest, Stop);
-
-  // DBus service watcher callbacks.
-  static void OnAppear(GDBusConnection *connection,
-                       const gchar *name,
-                       const gchar *name_owner,
-                       gpointer user_data);
-  static void OnVanish(GDBusConnection *connection,
-                       const gchar *name,
-                       gpointer user_data);
+  FRIEND_TEST(ModemManagerCoreTest, StartStopWithModemManagerServiceAbsent);
+  FRIEND_TEST(ModemManagerCoreTest, StartStopWithModemManagerServicePresent);
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
 
   const std::string service_;
   const std::string path_;
-  guint watcher_id_;
+  scoped_ptr<DBusNameWatcher> name_watcher_;
 
   std::string owner_;  // DBus service owner.
 

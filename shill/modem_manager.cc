@@ -8,8 +8,10 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular_operator_info.h"
+#include "shill/dbus_manager.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/modem.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/proxy_factory.h"
@@ -26,7 +28,6 @@ ModemManager::ModemManager(const string &service,
     : proxy_factory_(ProxyFactory::GetInstance()),
       service_(service),
       path_(path),
-      watcher_id_(0),
       modem_info_(modem_info) {}
 
 ModemManager::~ModemManager() {
@@ -35,23 +36,16 @@ ModemManager::~ModemManager() {
 
 void ModemManager::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service_;
-  CHECK_EQ(0U, watcher_id_);
-  // TODO(petkov): Implement DBus name watching through dbus-c++.
-  watcher_id_ = modem_info_->glib()->BusWatchName(G_BUS_TYPE_SYSTEM,
-                                                  service_.c_str(),
-                                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
-                                                  OnAppear,
-                                                  OnVanish,
-                                                  this,
-                                                  NULL);
+  CHECK(!name_watcher_);
+  name_watcher_.reset(modem_info_->manager()->dbus_manager()->CreateNameWatcher(
+      service_,
+      base::Bind(&ModemManager::OnAppear, base::Unretained(this)),
+      base::Bind(&ModemManager::OnVanish, base::Unretained(this))));
 }
 
 void ModemManager::Stop() {
   LOG(INFO) << "Stop watching modem manager service: " << service_;
-  if (watcher_id_) {
-    modem_info_->glib()->BusUnwatchName(watcher_id_);
-    watcher_id_ = 0;
-  }
+  name_watcher_.reset();
   Disconnect();
 }
 
@@ -66,21 +60,14 @@ void ModemManager::Disconnect() {
   owner_.clear();
 }
 
-void ModemManager::OnAppear(GDBusConnection */*connection*/,
-                            const gchar *name,
-                            const gchar *name_owner,
-                            gpointer user_data) {
-  LOG(INFO) << "Modem manager " << name << " appeared. Owner: " << name_owner;
-  ModemManager *manager = reinterpret_cast<ModemManager *>(user_data);
-  manager->Connect(name_owner);
+void ModemManager::OnAppear(const string &name, const string &owner) {
+  LOG(INFO) << "Modem manager " << name << " appeared. Owner: " << owner;
+  Connect(owner);
 }
 
-void ModemManager::OnVanish(GDBusConnection */*connection*/,
-                            const gchar *name,
-                            gpointer user_data) {
+void ModemManager::OnVanish(const string &name) {
   LOG(INFO) << "Modem manager " << name << " vanished.";
-  ModemManager *manager = reinterpret_cast<ModemManager *>(user_data);
-  manager->Disconnect();
+  Disconnect();
 }
 
 bool ModemManager::ModemExists(const std::string &path) const {

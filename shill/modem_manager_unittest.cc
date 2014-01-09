@@ -7,7 +7,10 @@
 #include <ModemManager/ModemManager.h>
 
 #include "shill/manager.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_objectmanager_proxy.h"
+#include "shill/mock_dbus_service_proxy.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_modem.h"
 #include "shill/mock_modem_info.h"
 #include "shill/mock_modem_manager_proxy.h"
@@ -22,34 +25,26 @@ using testing::_;
 using testing::Invoke;
 using testing::Pointee;
 using testing::Return;
+using testing::SaveArg;
 using testing::StrEq;
 using testing::Test;
 
 namespace shill {
 
-// A testing subclass of ModemManager.
-class ModemManagerCore : public ModemManager {
- public:
-  ModemManagerCore(const string &service,
-                   const string &path,
-                   ModemInfo * modem_info)
-      : ModemManager(service,
-                     path,
-                     modem_info) {}
-
-  virtual ~ModemManagerCore() {}
-
-  MOCK_METHOD1(Connect, void(const string &owner));
-  MOCK_METHOD0(Disconnect, void());
-};
-
 class ModemManagerTest : public Test {
  public:
   ModemManagerTest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL) {}
+      : manager_(&control_, &dispatcher_, NULL, NULL),
+        modem_info_(&control_, &dispatcher_, NULL, &manager_, NULL),
+        dbus_service_proxy_(NULL) {}
 
   virtual void SetUp() {
     modem_.reset(new StrictModem(kOwner, kService, kModemPath, &modem_info_));
+    manager_.dbus_manager_.reset(new DBusManager());
+    dbus_service_proxy_ = new MockDBusServiceProxy();
+    // Ownership  of |dbus_service_proxy_| is transferred to
+    // |manager_.dbus_manager_|.
+    manager_.dbus_manager_->proxy_.reset(dbus_service_proxy_);
   }
 
  protected:
@@ -61,7 +56,10 @@ class ModemManagerTest : public Test {
   shared_ptr<StrictModem> modem_;
 
   EventDispatcher dispatcher_;
+  MockControl control_;
+  MockManager manager_;
   MockModemInfo modem_info_;
+  MockDBusServiceProxy *dbus_service_proxy_;
 };
 
 const char ModemManagerTest::kService[] = "org.chromium.ModemManager";
@@ -75,55 +73,52 @@ class ModemManagerCoreTest : public ModemManagerTest {
       : ModemManagerTest(),
         modem_manager_(kService, kPath, &modem_info_) {}
 
-  virtual void TearDown() {
-    modem_manager_.watcher_id_ = 0;
-  }
-
  protected:
-  ModemManagerCore modem_manager_;
+  ModemManager modem_manager_;
 };
 
-TEST_F(ModemManagerCoreTest, Start) {
-  const int kWatcher = 123;
-  EXPECT_CALL(*modem_info_.mock_glib(),
-              BusWatchName(G_BUS_TYPE_SYSTEM,
-                           StrEq(kService),
-                           G_BUS_NAME_WATCHER_FLAGS_NONE,
-                           ModemManager::OnAppear,
-                           ModemManager::OnVanish,
-                           &modem_manager_,
-                           NULL))
-      .WillOnce(Return(kWatcher));
-  EXPECT_EQ(0, modem_manager_.watcher_id_);
+TEST_F(ModemManagerCoreTest, StartStopWithModemManagerServiceAbsent) {
+  StringCallback get_name_owner_callback;
+  EXPECT_CALL(*dbus_service_proxy_, GetNameOwner(kService, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
   modem_manager_.Start();
-  EXPECT_EQ(kWatcher, modem_manager_.watcher_id_);
+  get_name_owner_callback.Run("", Error());
+  EXPECT_EQ("", modem_manager_.owner_);
+
+  modem_manager_.Stop();
+  EXPECT_EQ("", modem_manager_.owner_);
 }
 
-TEST_F(ModemManagerCoreTest, Stop) {
-  const int kWatcher = 345;
-  modem_manager_.watcher_id_ = kWatcher;
-  modem_manager_.owner_ = kOwner;
-  EXPECT_CALL(*modem_info_.mock_glib(), BusUnwatchName(kWatcher)).Times(1);
-  EXPECT_CALL(modem_manager_, Disconnect());
+TEST_F(ModemManagerCoreTest, StartStopWithModemManagerServicePresent) {
+  StringCallback get_name_owner_callback;
+  EXPECT_CALL(*dbus_service_proxy_, GetNameOwner(kService, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
+  modem_manager_.Start();
+  get_name_owner_callback.Run(kOwner, Error());
+  EXPECT_EQ(kOwner, modem_manager_.owner_);
+
   modem_manager_.Stop();
+  EXPECT_EQ("", modem_manager_.owner_);
 }
 
 TEST_F(ModemManagerCoreTest, OnAppearVanish) {
+  EXPECT_CALL(*dbus_service_proxy_, GetNameOwner(kService, _, _, _));
+  modem_manager_.Start();
   EXPECT_EQ("", modem_manager_.owner_);
-  EXPECT_CALL(modem_manager_, Connect(kOwner));
-  EXPECT_CALL(modem_manager_, Disconnect());
-  ModemManager::OnAppear(NULL, kService, kOwner, &modem_manager_);
-  ModemManager::OnVanish(NULL, kService, &modem_manager_);
-}
 
-TEST_F(ModemManagerCoreTest, Connect) {
-  EXPECT_EQ("", modem_manager_.owner_);
-  modem_manager_.ModemManager::Connect(kOwner);
+  manager_.dbus_manager()->OnNameOwnerChanged(kService, "", kOwner);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
+
+  manager_.dbus_manager()->OnNameOwnerChanged(kService, kOwner, "");
+  EXPECT_EQ("", modem_manager_.owner_);
 }
 
-TEST_F(ModemManagerCoreTest, Disconnect) {
-  modem_manager_.owner_ = kOwner;
+TEST_F(ModemManagerCoreTest, ConnectDisconnect) {
+  EXPECT_EQ("", modem_manager_.owner_);
+  modem_manager_.Connect(kOwner);
+  EXPECT_EQ(kOwner, modem_manager_.owner_);
+  EXPECT_EQ(0, modem_manager_.modems_.size());
+
   modem_manager_.RecordAddedModem(modem_);
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
@@ -132,12 +127,27 @@ TEST_F(ModemManagerCoreTest, Disconnect) {
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 
-TEST_F(ModemManagerCoreTest, ModemExists) {
-  modem_manager_.owner_ = kOwner;
-
+TEST_F(ModemManagerCoreTest, AddRemoveModem) {
+  modem_manager_.Connect(kOwner);
   EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
+
+  // Remove non-existent modem path.
+  modem_manager_.RemoveModem(kModemPath);
+  EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
+
   modem_manager_.RecordAddedModem(modem_);
   EXPECT_TRUE(modem_manager_.ModemExists(kModemPath));
+
+  // Add an already added modem.
+  modem_manager_.RecordAddedModem(modem_);
+  EXPECT_TRUE(modem_manager_.ModemExists(kModemPath));
+
+  modem_manager_.RemoveModem(kModemPath);
+  EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
+
+  // Remove an already removed modem path.
+  modem_manager_.RemoveModem(kModemPath);
+  EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
 }
 
 class ModemManagerClassicMockInit : public ModemManagerClassic {

@@ -53,10 +53,13 @@ class DBusManager : public base::SupportsWeakPtr<DBusManager> {
 
  private:
   friend class DBusManagerTest;
+  friend class ModemInfoTest;
+  friend class ModemManagerTest;
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
   FRIEND_TEST(DBusManagerTest, NameWatchers);
   FRIEND_TEST(WiMaxProviderTest, StartStop);
+  FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
 
   void OnNameOwnerChanged(const std::string &name,
                           const std::string &old_owner,

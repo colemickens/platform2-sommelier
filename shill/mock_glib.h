@@ -21,15 +21,6 @@ class MockGLib : public GLib {
   MOCK_METHOD2(Base64Encode, gchar *(const guchar *data, gsize len));
   MOCK_METHOD2(B64Decode, bool(const std::string &input, std::string *output));
   MOCK_METHOD2(B64Encode, bool(const std::string &input, std::string *output));
-  MOCK_METHOD1(BusUnwatchName, void(guint watcher_id));
-  MOCK_METHOD7(BusWatchName,
-               guint(GBusType bus_type,
-                     const gchar *name,
-                     GBusNameWatcherFlags flags,
-                     GBusNameAppearedCallback name_appeared_handler,
-                     GBusNameVanishedCallback name_vanished_handler,
-                     gpointer user_data,
-                     GDestroyNotify user_data_free_func));
   MOCK_METHOD3(ChildWatchAdd, guint(GPid pid,
                                     GChildWatchFunc function,
                                     gpointer data));
