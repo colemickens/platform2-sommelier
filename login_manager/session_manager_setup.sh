@@ -66,7 +66,7 @@ export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
 export LOGNAME=${USER}
 export SHELL=/bin/sh
-export HOME=${DATA_DIR}/user
+export HOME=/dev/null
 export DISPLAY=:0.0
 export XAUTHORITY=${DATA_DIR}/.Xauthority
 
@@ -131,10 +131,10 @@ export DBUS_FATAL_WARNINGS=0
 # and the directory is created there as well.
 export CHROME_LOG_FILE="${CHROME_LOG_DIR}/${CHROME_LOG_PREFIX}"
 
-# Log directory for this session.  Note that ${HOME} might not be
+# Log directory for this session.  Note that ${DATA_DIR}/user might not be
 # mounted until later (when the cryptohome is mounted), so we don't
 # mkdir CHROMEOS_SESSION_LOG_DIR immediately.
-export CHROMEOS_SESSION_LOG_DIR="${HOME}/log"
+export CHROMEOS_SESSION_LOG_DIR="${DATA_DIR}/user/log"
 
 # Forces Chrome mini dumps that are sent to the crash server to also be written
 # locally.  Chrome by default will create these mini dump files in
@@ -151,7 +151,7 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_minidumps ] ; then
 fi
 
 mkdir -p ${DATA_DIR} && chown ${USER}:${USER} ${DATA_DIR}
-mkdir -p ${HOME} && chown ${USER}:${USER} ${HOME}
+mkdir -p ${DATA_DIR}/user && chown ${USER}:${USER} ${DATA_DIR}/user
 
 # Old builds will have a ${LOGIN_PROFILE_DIR} that's owned by root; newer ones
 # won't have this directory at all.
