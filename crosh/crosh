@@ -20,6 +20,14 @@ trap '' HUP
 # that are run by crosh (like `ping`).
 trap : INT
 
+# If it exists, use $DATA_DIR to define the $HOME location, as a first step
+# to entirely removing the use of $HOME. (Though HOME should be used as
+# fall-back when DATA_DIR is unset.)
+# TODO(keescook): remove $HOME entirely crbug.com/333031
+if [ "${DATA_DIR+set}" = "set" ]; then
+  export HOME="${DATA_DIR}/user"
+fi
+
 IS_BASH=0
 try_bash() {
   # If dash was explicitly requested, then nothing to do.
