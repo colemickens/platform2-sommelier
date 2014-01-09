@@ -5,7 +5,6 @@
 #include "device_policy_impl.h"
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <openssl/evp.h>
@@ -16,6 +15,14 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 
+#if BASE_VER >= 242728
+using base::PathExists;
+using base::ReadFileToString;
+#else
+using file_util::PathExists;
+using file_util::ReadFileToString;
+#endif
+
 namespace policy {
 
 namespace {
@@ -25,11 +32,10 @@ const char kPublicKeyPath[] = "/var/lib/whitelist/owner.key";
 // Reads the public key used to sign the policy from |key_file| and stores it
 // in |public_key|. Returns true on success.
 bool ReadPublicKeyFromFile(const FilePath& key_file, std::string* public_key) {
-  if (!file_util::PathExists(key_file))
+  if (!PathExists(key_file))
     return false;
   public_key->clear();
-  if (!file_util::ReadFileToString(key_file, public_key) ||
-      public_key->empty()) {
+  if (!ReadFileToString(key_file, public_key) || public_key->empty()) {
     LOG(ERROR) << "Could not read public key off disk";
     return false;
   }
@@ -109,7 +115,7 @@ bool DevicePolicyImpl::LoadPolicy() {
   }
 
   std::string polstr;
-  if (!file_util::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
+  if (!ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
     LOG(ERROR) << "Could not read policy off disk";
     return false;
   }
@@ -451,8 +457,7 @@ bool DevicePolicyImpl::GetCleanUpStrategy(std::string* clean_up_strategy) const 
 
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
-  if (!file_util::PathExists(policy_path_) ||
-      !file_util::PathExists(keyfile_path_)) {
+  if (!PathExists(policy_path_) || !PathExists(keyfile_path_)) {
     return false;
   }
 

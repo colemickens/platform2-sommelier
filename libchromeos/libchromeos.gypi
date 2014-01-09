@@ -8,6 +8,9 @@
       # Need to sort that out before we enable this.
       'enable_werror': 0,
     },
+    'defines': [
+      'BASE_VER=<(libbase_ver)',
+    ],
     'include_dirs': [
       '../libchromeos',
     ],
@@ -51,14 +54,10 @@
           ],
         },
       },
-      'defines': [
-        'BASE_VER=<(libbase_ver)',
-      ],
       'sources': [
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
         'chromeos/dbus/error_constants.cc',
-        'chromeos/platform.cc',
         'chromeos/process_information.cc',
         'chromeos/process.cc',
         'chromeos/secure_blob.cc',

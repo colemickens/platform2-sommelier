@@ -2,13 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/string_number_conversions.h>
 #include <chromeos/test_helpers.h>
 #include <chromeos/utility.h>
 
 #include <limits>
 #include <dbus/dbus.h>
 #include <gtest/gtest.h>
+
+#if BASE_VER >= 242728
+#include <base/strings/string_number_conversions.h>
+#else
+#include <base/string_number_conversions.h>
+#endif
+
+#if BASE_VER >= 242728
+using base::DictionaryValue;
+using base::ListValue;
+using base::Value;
+#endif
 
 static void MessageToValues(DBus::Message& m, std::vector<Value*>* result,
                             bool* success) {

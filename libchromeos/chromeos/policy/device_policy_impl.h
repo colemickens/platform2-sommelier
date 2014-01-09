@@ -9,13 +9,21 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#if BASE_VER >= 242728
+#include <base/files/file_path.h>
+#else
 #include <base/file_path.h>
+#endif
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "device_policy.h"
 
 #pragma GCC visibility push(default)
+
+#if BASE_VER >= 242728
+using base::FilePath;
+#endif
 
 namespace policy {
 

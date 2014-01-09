@@ -12,17 +12,29 @@
 
 #include <map>
 
-// TODO(cmasone): Come back and clear this out (http://crosbug.com/38805).
-#if BASE_VER > 125070
-#include <base/posix/eintr_wrapper.h>
-#else
-#include <base/eintr_wrapper.h>
-#endif
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+
+#if BASE_VER >= 242728
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/time/time.h>
+#else
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/time.h>
+#endif
+
+#if BASE_VER >= 242728
+using base::DirectoryExists;
+using base::FilePath;
+using base::ReadFileToString;
+using base::StringPrintf;
+#else
+using file_util::DirectoryExists;
+using file_util::ReadFileToString;
+#endif
 
 namespace chromeos {
 
@@ -35,7 +47,7 @@ Process::~Process() {
 }
 
 bool Process::ProcessExists(pid_t pid) {
-  return file_util::DirectoryExists(FilePath(StringPrintf("/proc/%d", pid)));
+  return DirectoryExists(FilePath(StringPrintf("/proc/%d", pid)));
 }
 
 ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1),
@@ -133,7 +145,11 @@ bool ProcessImpl::PopulatePipeMap() {
 }
 
 bool ProcessImpl::Start() {
+#if BASE_VER >= 242728
+  scoped_ptr<char*[]> argv(new char*[arguments_.size() + 1]);
+#else
   scoped_array<char*> argv(new char*[arguments_.size() + 1]);
+#endif
 
   for (size_t i = 0; i < arguments_.size(); ++i)
     argv[i] = const_cast<char*>(arguments_[i].c_str());
@@ -304,7 +320,7 @@ void ProcessImpl::Reset(pid_t new_pid) {
 
 bool ProcessImpl::ResetPidByFile(const std::string& pid_file) {
   std::string contents;
-  if (!file_util::ReadFileToString(FilePath(pid_file), &contents)) {
+  if (!ReadFileToString(FilePath(pid_file), &contents)) {
     LOG(ERROR) << "Could not read pid file" << pid_file;
     return false;
   }

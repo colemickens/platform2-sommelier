@@ -2,14 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/file_path.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#if BASE_VER >= 242728
+#include <base/files/file_path.h>
+#else
+#include <base/file_path.h>
+#endif
+
 #include <chromeos/policy/device_policy_impl.h>
 #include <chromeos/policy/libpolicy.h>
+
+#if BASE_VER >= 242728
+using base::FilePath;
+#endif
 
 namespace policy {
 

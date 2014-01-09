@@ -88,11 +88,19 @@ int GetLogFlags() {
   return flags;
 }
 void InitLog(int init_flags) {
+#if BASE_VER >= 242728
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  settings.dcheck_state =
+      logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS;
+  logging::InitLogging(settings);
+#else
   logging::InitLogging("/dev/null",
                        logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+#endif
   logging::SetLogMessageHandler(HandleMessage);
   SetLogFlags(init_flags);
 }

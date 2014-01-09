@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if BASE_VER >= 242728
+#include <base/strings/string_number_conversions.h>
+#else
 #include <base/string_number_conversions.h>
+#endif
 #include <chromeos/utility.h>
 
 #include <cstring>
@@ -13,6 +17,11 @@
 #include <base/logging.h>
 #include <dbus/dbus.h>
 #include <fcntl.h>
+
+#if BASE_VER >= 242728
+using base::DictionaryValue;
+using base::ListValue;
+#endif
 
 namespace {
 

@@ -14,11 +14,21 @@
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 
+#if BASE_VER >= 242728
+#include <base/files/file_path.h>
+#endif
+
+#if BASE_VER >= 242728
+using base::FilePath;
+using base::ReadFileToString;
+#else
+using file_util::ReadFileToString;
+#endif
+
 inline void ExpectFileEquals(const char* golden,
                              const char* file_path) {
   std::string contents;
-  EXPECT_TRUE(file_util::ReadFileToString(FilePath(file_path),
-                                          &contents));
+  EXPECT_TRUE(ReadFileToString(FilePath(file_path), &contents));
   EXPECT_EQ(golden, contents);
 }
 

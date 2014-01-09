@@ -13,8 +13,17 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#if BASE_VER >= 242728
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#else
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#endif
+
+#if BASE_VER >= 242728
+using base::StringPrintf;
+#endif
 
 namespace chromeos {
 // Manages a process.  Can create the process, attach to an existing

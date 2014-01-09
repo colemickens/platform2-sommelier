@@ -5,8 +5,16 @@
 #ifndef CHROMEOS_CRYPTOHOME_H_
 #define CHROMEOS_CRYPTOHOME_H_
 
+#if BASE_VER >= 242728
+#include <base/files/file_path.h>
+#else
 #include <base/file_path.h>
+#endif
 #include <string>
+
+#if BASE_VER >= 242728
+using base::FilePath;
+#endif
 
 namespace chromeos {
 namespace cryptohome {

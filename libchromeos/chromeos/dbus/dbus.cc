@@ -9,7 +9,15 @@
 #include <dbus/dbus.h>
 
 #include "base/logging.h"
+#if BASE_VER >= 242728
+#include "base/strings/stringprintf.h"
+#else
 #include "base/stringprintf.h"
+#endif
+
+#if BASE_VER >= 242728
+using base::StringPrintf;
+#endif
 
 namespace chromeos {
 namespace dbus {

@@ -12,8 +12,22 @@
 #include <vector>
 
 #include <base/file_util.h>
+
+#if BASE_VER >= 242728
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
+#else
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
+#endif
+
+#if BASE_VER >= 242728
+using base::ReadFile;
+using base::GetFileSize;
+#else
+using file_util::ReadFile;
+using file_util::GetFileSize;
+#endif
 
 namespace chromeos {
 namespace cryptohome {
@@ -30,7 +44,7 @@ static bool EnsureSystemSaltIsLoaded() {
     return true;
   FilePath salt_path(g_system_salt_path);
   int64 file_size;
-  if (!file_util::GetFileSize(salt_path, &file_size)) {
+  if (!GetFileSize(salt_path, &file_size)) {
     PLOG(ERROR) << "Could not get size of system salt: " <<  g_system_salt_path;
     return false;
   }
@@ -40,9 +54,7 @@ static bool EnsureSystemSaltIsLoaded() {
   }
   std::vector<char> buf;
   buf.resize(file_size);
-  unsigned int data_read = file_util::ReadFile(salt_path,
-                                               &buf.front(),
-                                               file_size);
+  unsigned int data_read = ReadFile(salt_path, &buf.front(), file_size);
   if (data_read != file_size) {
     PLOG(ERROR) << "Could not read entire file: " << data_read << " != "
                 << file_size;

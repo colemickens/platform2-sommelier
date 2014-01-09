@@ -44,6 +44,10 @@
 #define CHROMEOS_CASE_RETURN_LABEL(label) \
     case label: return #label
 
+#if BASE_VER >= 242728
+using base::Value;
+#endif
+
 namespace chromeos {
 
 typedef std::vector<unsigned char> Blob;
