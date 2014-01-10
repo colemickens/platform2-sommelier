@@ -115,35 +115,64 @@ bool StatefulRecovery::CopyPartitionContents() {
   return false;
 }
 
-bool StatefulRecovery::Recover() {
-  bool write_protected;
+bool StatefulRecovery::RecoverV1() {
+  // Version 1 requires write protect be disabled.
+  if (platform_->FirmwareWriteProtected()) {
+    LOG(ERROR) << "Refusing v1 recovery request: firmware is write protected.";
+    return false;
+  }
 
+  if (!CopyPartitionContents())
+    return false;
+  if (!CopyPartitionInfo())
+    return false;
+
+  return true;
+}
+
+bool StatefulRecovery::RecoverV2() {
+  bool wrote_data = false;
+  bool is_authenticated_owner = false;
+
+  // If possible, copy user contents.
+  if (CopyUserContents()) {
+    wrote_data = true;
+    // If user authenticated, check if they are the owner.
+    if (service_->IsOwner(user_)) {
+      is_authenticated_owner = true;
+    }
+  }
+
+  // Version 2 requires either write protect disabled or system owner.
+  if (!platform_->FirmwareWriteProtected() || is_authenticated_owner) {
+    if (!CopyPartitionContents() || !CopyPartitionInfo()) {
+      // Even if we wrote out user data, claim failure here if the
+      // encrypted-stateful partition couldn't be extracted.
+      return false;
+    }
+    wrote_data = true;
+  }
+
+  return wrote_data;
+}
+
+bool StatefulRecovery::Recover() {
   if (!requested_)
     return false;
+
   if (!platform_->CreateDirectory(kRecoverDestination)) {
     LOG(ERROR) << "Failed to mkdir " << kRecoverDestination;
     return false;
   }
 
-  if (version_ == "2" && !CopyUserContents())
-    return false;
-
-  write_protected = platform_->FirmwareWriteProtected();
-
-  // Version 1 requires write protect being disabled.
-  if (version_ == "1" && write_protected) {
-    LOG(ERROR) << "Refusing recovery request; firmware is write protected.";
+  if (version_ == "2")
+    return RecoverV2();
+  else if (version_ == "1")
+    return RecoverV1();
+  else {
+    LOG(ERROR) << "Unknown recovery version: " << version_;
     return false;
   }
-
-  // Version 2 requires either write protect disabled or system owner.
-  if (!write_protected || service_->IsOwner(user_)) {
-    if (!CopyPartitionContents())
-      return false;
-    if (!CopyPartitionInfo())
-      return false;
-  }
-  return true;
 }
 
 void StatefulRecovery::PerformReboot() {

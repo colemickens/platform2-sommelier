@@ -51,6 +51,10 @@ class StatefulRecovery {
   // Copies the mounted user directory to recovery directory.
   bool CopyUserContents();
 
+  // Versions of the recovery handler.
+  bool RecoverV1();
+  bool RecoverV2();
+
   bool requested_;
   Platform *platform_;
   Service *service_;
