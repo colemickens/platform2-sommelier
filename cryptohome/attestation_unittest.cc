@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/stl_util.h>
 #include <base/string_util.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -90,7 +91,8 @@ class AttestationTest : public testing::Test {
   }
 
   string ConvertBlobToString(const chromeos::Blob& blob) {
-    return string(reinterpret_cast<const char*>(&blob.front()), blob.size());
+    return string(reinterpret_cast<const char*>(vector_as_array(&blob)),
+                  blob.size());
   }
 
   SecureBlob GetEnrollBlob() {

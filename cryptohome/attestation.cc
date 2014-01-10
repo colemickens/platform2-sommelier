@@ -879,7 +879,8 @@ SecureBlob Attestation::ConvertStringToBlob(const string& s) {
 }
 
 string Attestation::ConvertBlobToString(const chromeos::Blob& blob) {
-  return string(reinterpret_cast<const char*>(&blob.front()), blob.size());
+  return string(reinterpret_cast<const char*>(vector_as_array(&blob)),
+                blob.size());
 }
 
 SecureBlob Attestation::SecureCat(const SecureBlob& blob1,

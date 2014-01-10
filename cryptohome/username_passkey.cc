@@ -7,6 +7,7 @@
 #include <openssl/sha.h>
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
@@ -45,7 +46,7 @@ string UsernamePasskey::GetObfuscatedUsername(
   unsigned char md_value[SHA_DIGEST_LENGTH];
 
   SHA1_Init(&ctx);
-  SHA1_Update(&ctx, &system_salt[0], system_salt.size());
+  SHA1_Update(&ctx, vector_as_array(&system_salt), system_salt.size());
   SHA1_Update(&ctx, username_.c_str(), username_.length());
   SHA1_Final(md_value, &ctx);
 

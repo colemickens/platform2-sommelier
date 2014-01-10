@@ -119,8 +119,8 @@ chromeos::SecureBlob CryptoLib::HmacSha512(const chromeos::SecureBlob& key,
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
   HMAC(EVP_sha512(),
-       const_cast<unsigned char*>(&key.front()), key.size(),
-       &data.front(), data.size(),
+       vector_as_array(&key), key.size(),
+       vector_as_array(&data), data.size(),
        mac, NULL);
   return chromeos::SecureBlob(mac, kSha512OutputSize);
 }
@@ -246,14 +246,26 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
   if (padding == kPaddingNone) {
     EVP_CIPHER_CTX_set_padding(&decryption_context, 0);
   }
+
+  // Make sure we're not pointing into an empty buffer or past the end.
+  const unsigned char *encrypted_buf = NULL;
+  if (start < encrypted.size())
+    encrypted_buf = &encrypted[start];
+
   if (!EVP_DecryptUpdate(&decryption_context, &local_plain_text[0],
-                         &decrypt_size, &encrypted[start], count)) {
+                         &decrypt_size, encrypted_buf, count)) {
     LOG(ERROR) << "DecryptUpdate failed";
     EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
-  if (!EVP_DecryptFinal_ex(&decryption_context, &local_plain_text[decrypt_size],
-                           &final_size)) {
+
+  // In the case of local_plain_text being full, we must avoid trying to
+  // point past the end of the buffer when calling EVP_DecryptFinal_ex().
+  unsigned char *final_buf = NULL;
+  if (static_cast<unsigned int>(decrypt_size) < local_plain_text.size())
+    final_buf = &local_plain_text[decrypt_size];
+
+  if (!EVP_DecryptFinal_ex(&decryption_context, final_buf, &final_size)) {
     unsigned long err = ERR_get_error(); // NOLINT openssl types
     ERR_load_ERR_strings();
     ERR_load_crypto_strings();
@@ -421,8 +433,14 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
   // First, encrypt the plain_text data
   unsigned int current_size = 0;
   int encrypt_size = 0;
+
+  // Make sure we're not pointing into an empty buffer or past the end.
+  const unsigned char *plain_buf = NULL;
+  if (start < plain_text.size())
+    plain_buf = &plain_text[start];
+
   if (!EVP_EncryptUpdate(&encryption_context, &cipher_text[current_size],
-                         &encrypt_size, &plain_text[start], count)) {
+                         &encrypt_size, plain_buf, count)) {
     LOG(ERROR) << "EncryptUpdate failed";
     EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
@@ -449,9 +467,14 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
     encrypt_size = 0;
   }
 
+  // In the case of cipher_text being full, we must avoid trying to
+  // point past the end of the buffer when calling EVP_EncryptFinal_ex().
+  unsigned char *final_buf = NULL;
+  if (static_cast<unsigned int>(current_size) < cipher_text.size())
+    final_buf = &cipher_text[current_size];
+
   // Finally, finish the encryption
-  if (!EVP_EncryptFinal_ex(&encryption_context, &cipher_text[current_size],
-                           &encrypt_size)) {
+  if (!EVP_EncryptFinal_ex(&encryption_context, final_buf, &encrypt_size)) {
     LOG(ERROR) << "EncryptFinal failed";
     EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
@@ -506,7 +529,8 @@ string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
   memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
 
   SecureBlob hmac = HmacSha512(hmac_key, result);
-  return string(reinterpret_cast<const char*>(&hmac.front()), hmac.size());
+  return string(reinterpret_cast<const char*>(vector_as_array(&hmac)),
+                hmac.size());
 }
 
 }  // namespace cryptohome
