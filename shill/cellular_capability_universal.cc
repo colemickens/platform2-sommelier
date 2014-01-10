@@ -49,9 +49,6 @@ const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
 const int64
 CellularCapabilityUniversal::kActivationRegistrationTimeoutMilliseconds =
     20000;
-const int64
-CellularCapabilityUniversal::kDefaultScanningOrSearchingTimeoutMilliseconds =
-    60000;
 const int64 CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
@@ -143,12 +140,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
       home_provider_info_(NULL),
       resetting_(false),
-      scanning_(false),
-      scanning_or_searching_(false),
       subscription_state_(kSubscriptionStateUnknown),
       reset_done_(false),
-      scanning_or_searching_timeout_milliseconds_(
-          kDefaultScanningOrSearchingTimeoutMilliseconds),
       activation_registration_timeout_milliseconds_(
           kActivationRegistrationTimeoutMilliseconds),
       registration_dropped_update_timeout_milliseconds_(
@@ -157,7 +150,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
   PropertyStore *store = cellular->mutable_store();
 
   store->RegisterConstString(kIccidProperty, &sim_identifier_);
-  store->RegisterConstBool(kScanningProperty, &scanning_or_searching_);
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
@@ -691,7 +683,6 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
 void CellularCapabilityUniversal::OnServiceCreated() {
   UpdateStorageIdentifier();
   UpdateServiceActivationState();
-  UpdateScanningProperty();
   UpdateServingOperator();
   UpdateOLP();
 
@@ -912,52 +903,6 @@ void CellularCapabilityUniversal::SetHomeProvider() {
                     << (roaming_required ? ", roaming required" : "");
   InitAPNList();
   UpdateServiceName();
-}
-
-void CellularCapabilityUniversal::UpdateScanningProperty() {
-  // Set the Scanning property to true if there is a ongoing network scan
-  // (i.e. |scanning_| is true) or the modem is enabled but not yet registered
-  // to a network.
-  //
-  // TODO(benchan): As the Device DBus interface currently does not have a
-  // State property to indicate whether the device is being enabled, set the
-  // Scanning property to true when the modem is being enabled such that
-  // the network UI can start showing the initializing/scanning animation as
-  // soon as the modem is being enabled.
-  Cellular::ModemState modem_state = cellular()->modem_state();
-  bool is_activated_service_waiting_for_registration =
-      ((modem_state == Cellular::kModemStateEnabled ||
-        modem_state == Cellular::kModemStateSearching) &&
-       !IsServiceActivationRequired());
-  bool new_scanning_or_searching =
-      modem_state == Cellular::kModemStateEnabling ||
-      is_activated_service_waiting_for_registration ||
-      scanning_;
-  if (new_scanning_or_searching != scanning_or_searching_) {
-    scanning_or_searching_ = new_scanning_or_searching;
-    cellular()->adaptor()->EmitBoolChanged(kScanningProperty,
-                                           new_scanning_or_searching);
-
-    if (!scanning_or_searching_) {
-      SLOG(Cellular, 2) << "Initial network scan ended. Canceling timeout.";
-      scanning_or_searching_timeout_callback_.Cancel();
-    } else if (scanning_or_searching_timeout_callback_.IsCancelled()) {
-      SLOG(Cellular, 2) << "Initial network scan started. Starting timeout.";
-      scanning_or_searching_timeout_callback_.Reset(
-          Bind(&CellularCapabilityUniversal::OnScanningOrSearchingTimeout,
-               weak_ptr_factory_.GetWeakPtr()));
-      cellular()->dispatcher()->PostDelayedTask(
-          scanning_or_searching_timeout_callback_.callback(),
-          scanning_or_searching_timeout_milliseconds_);
-    }
-  }
-}
-
-void CellularCapabilityUniversal::OnScanningOrSearchingTimeout() {
-  SLOG(Cellular, 2) << "Initial network scan timed out. Changing "
-                    << "kScanningProperty to |false|.";
-  scanning_or_searching_ = false;
-  cellular()->adaptor()->EmitBoolChanged(kScanningProperty, false);
 }
 
 void CellularCapabilityUniversal::UpdateOLP() {
@@ -1347,51 +1292,22 @@ void CellularCapabilityUniversal::OnResetReply(const ResultCallback &callback,
     callback.Run(error);
 }
 
-void CellularCapabilityUniversal::Scan(Error *error,
-                                       const ResultCallback &callback) {
-  SLOG(Cellular, 2) << __func__;
-  CHECK(error);
-  if (scanning_) {
-    Error::PopulateAndLog(error, Error::kInProgress, "Already scanning");
-    return;
-  }
+void CellularCapabilityUniversal::Scan(
+    Error *error,
+    const ResultStringmapsCallback &callback) {
   DBusPropertyMapsCallback cb = Bind(&CellularCapabilityUniversal::OnScanReply,
                                      weak_ptr_factory_.GetWeakPtr(), callback);
   modem_3gpp_proxy_->Scan(error, cb, kTimeoutScan);
-  if (!error->IsFailure()) {
-    scanning_ = true;
-    UpdateScanningProperty();
-  }
 }
 
-void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
-                                              const ScanResults &results,
-                                              const Error &error) {
-  SLOG(Cellular, 2) << __func__;
-
-  // Error handling is weak.  The current expectation is that on any
-  // error, found_networks should be cleared and a property change
-  // notification sent out.
-  //
-  // TODO(jglasgow): fix error handling
+void CellularCapabilityUniversal::OnScanReply(
+    const ResultStringmapsCallback &callback,
+    const ScanResults &results,
+    const Error &error) {
   Stringmaps found_networks;
-  scanning_ = false;
-  UpdateScanningProperty();
-  if (!error.IsFailure()) {
-    for (ScanResults::const_iterator it = results.begin();
-         it != results.end(); ++it) {
-      found_networks.push_back(ParseScanResult(*it));
-    }
-  }
-  cellular()->set_found_networks(found_networks);
-
-  // TODO(gmorain): This check for is_null() is a work-around because
-  // Cellular::Scan() passes a null callback.  Instead: 1. Have Cellular::Scan()
-  // pass in a callback. 2. Have Cellular "own" the found_networks property
-  // 3. Have Cellular EmitStingMapsChanged() 4. Share the code between GSM and
-  // Universal.
-  if (!callback.is_null())
-    callback.Run(error);
+  for (const auto &result : results)
+    found_networks.push_back(ParseScanResult(result));
+  callback.Run(found_networks, error);
 }
 
 Stringmap CellularCapabilityUniversal::ParseScanResult(
@@ -1754,7 +1670,6 @@ void CellularCapabilityUniversal::OnModemStateChanged(
   SLOG(Cellular, 3) << __func__ << ": " << Cellular::GetModemStateString(state);
 
   cellular()->OnModemStateChanged(state);
-  UpdateScanningProperty();
   // TODO(armansito): Move the deferred enable logic to Cellular
   // (See crbug.com/279499).
   if (!deferred_enable_modem_callback_.is_null() &&

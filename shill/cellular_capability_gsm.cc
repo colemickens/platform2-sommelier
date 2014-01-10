@@ -59,11 +59,8 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_info_(NULL),
       get_imsi_retries_(0),
-      get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds),
-      scanning_(false) {
+      get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
-  PropertyStore *store = cellular->mutable_store();
-  store->RegisterConstBool(kScanningProperty, &scanning_);
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty, &CellularCapabilityGSM::SimLockStatusToProperty);
   this->cellular()->set_scanning_supported(true);
@@ -663,45 +660,21 @@ void CellularCapabilityGSM::ChangePIN(
   card_proxy_->ChangePIN(old_pin, new_pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::Scan(Error *error, const ResultCallback &callback) {
-  SLOG(Cellular, 2) << __func__;
-  CHECK(error);
-  if (scanning_) {
-    Error::PopulateAndLog(error, Error::kInProgress, "Already scanning");
-    return;
-  }
+void CellularCapabilityGSM::Scan(Error *error,
+                                 const ResultStringmapsCallback &callback) {
   ScanResultsCallback cb = Bind(&CellularCapabilityGSM::OnScanReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
   network_proxy_->Scan(error, cb, kTimeoutScan);
-  if (!error->IsFailure()) {
-    scanning_ = true;
-    cellular()->adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
-  }
 }
 
-void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
-                                        const GSMScanResults &results,
-                                        const Error &error) {
-  SLOG(Cellular, 2) << __func__;
-
-  // Error handling is weak.  The current expectation is that on any
-  // error, found_networks should be cleared and a property change
-  // notification sent out.
-  //
-  // TODO(jglasgow): fix error handling
+void CellularCapabilityGSM::OnScanReply(
+    const ResultStringmapsCallback &callback,
+    const GSMScanResults &results,
+    const Error &error) {
   Stringmaps found_networks;
-  scanning_ = false;
-  cellular()->adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
-  if (!error.IsFailure()) {
-    for (GSMScanResults::const_iterator it = results.begin();
-         it != results.end(); ++it) {
-      found_networks.push_back(ParseScanResult(*it));
-    }
-  }
-  cellular()->set_found_networks(found_networks);
-
-  if (!callback.is_null())
-    callback.Run(error);
+  for (const auto &result : results)
+    found_networks.push_back(ParseScanResult(result));
+  callback.Run(found_networks, error);
 }
 
 Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {

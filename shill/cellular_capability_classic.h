@@ -89,7 +89,7 @@ class CellularCapabilityClassic : public CellularCapability {
   virtual void SetCarrier(const std::string &carrier,
                           Error *error, const ResultCallback &callback);
 
-  virtual void Scan(Error *error, const ResultCallback &callback);
+  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
 
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,

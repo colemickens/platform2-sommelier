@@ -218,6 +218,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   void OnDisconnectFailed();
   std::string GetTechnologyFamily(Error *error);
   void OnModemStateChanged(ModemState new_state);
+  void OnScanReply(const Stringmaps &found_networks, const Error &error);
 
   // accessor to read the allow roaming property
   bool allow_roaming_property() const { return allow_roaming_; }
@@ -253,6 +254,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   const std::string &min() const { return min_; }
   const std::string &manufacturer() const { return manufacturer_; }
   const std::string &model_id() const { return model_id_; }
+  bool scanning() const { return scanning_; }
 
   const std::string &selected_network() const { return selected_network_; }
   const Stringmaps &found_networks() const { return found_networks_; }
@@ -274,8 +276,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   void set_min(const std::string &min);
   void set_manufacturer(const std::string &manufacturer);
   void set_model_id(const std::string &model_id);
+  void set_scanning(bool scanning);
 
   void set_selected_network(const std::string &selected_network);
+  void clear_found_networks();
   void set_found_networks(const Stringmaps &found_networks);
   void set_provider_requires_roaming(bool provider_requires_roaming);
   void set_sim_present(bool sim_present);
@@ -364,6 +368,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
+  FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
+  FRIEND_TEST(CellularTest, ScanImmediateFailure);
+  FRIEND_TEST(CellularTest, ScanSuccess);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);
@@ -378,10 +385,16 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StartPPP);
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
   FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
+  FRIEND_TEST(CellularTest, UpdateScanning);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
 
   // Names of properties in storage
   static const char kAllowRoaming[];
+
+  // the |kScanningProperty| exposed by Cellular device is sticky false. Every
+  // time it is set to true, it must be reset to false after a time equal to
+  // this constant.
+  static const int64 kDefaultScanningTimeoutMilliseconds;
 
   void SetState(State state);
 
@@ -439,6 +452,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   void OnPPPConnected(const std::map<std::string, std::string> &params);
   void OnPPPDisconnected();
 
+  void UpdateScanning();
+
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 
   State state_;
@@ -465,6 +480,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   std::string meid_;
   std::string min_;
   std::string model_id_;
+  bool scanning_;
 
   // GSM only properties.
   // They are always exposed but are non empty only for GSM technology modems.
@@ -485,12 +501,22 @@ class Cellular : public Device, public RPCTaskDelegate {
   // User preference to allow or disallow roaming
   bool allow_roaming_;
 
+  // Track whether a user initiated scan is in prgoress (initiated via ::Scan)
+  bool proposed_scan_in_progress_;
+
   // Flag indicating that a disconnect has been explicitly requested.
   bool explicit_disconnect_;
 
   scoped_ptr<ExternalTask> ppp_task_;
   PPPDeviceRefPtr ppp_device_;
   bool is_ppp_authenticating_;
+
+  // Sometimes modems may be stuck in the SEARCHING state during the lack of
+  // presence of a network. During this indefinite duration of time, keeping
+  // the Device.Scanning property as |true| causes a bad user experience.
+  // This callback sets it to |false| after a timeout period has passed.
+  base::CancelableClosure scanning_timeout_callback_;
+  int64 scanning_timeout_milliseconds_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

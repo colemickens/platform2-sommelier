@@ -52,6 +52,7 @@ namespace shill {
 
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
+const int64 Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -117,6 +118,7 @@ Cellular::Cellular(ModemInfo *modem_info,
       dbus_service_(service),
       dbus_path_(path),
       scanning_supported_(false),
+      scanning_(false),
       provider_requires_roaming_(false),
       scan_interval_(0),
       sim_present_(false),
@@ -124,18 +126,17 @@ Cellular::Cellular(ModemInfo *modem_info,
       proxy_factory_(proxy_factory),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       allow_roaming_(false),
+      proposed_scan_in_progress_(false),
       explicit_disconnect_(false),
-      is_ppp_authenticating_(false) {
+      is_ppp_authenticating_(false),
+      scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
-  // For now, only a single capability is supported.
   InitCapability(type);
-
   SLOG(Cellular, 2) << "Cellular device " << this->link_name()
                     << " initialized.";
 }
 
-Cellular::~Cellular() {
-}
+Cellular::~Cellular() {}
 
 bool Cellular::Load(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
@@ -498,9 +499,39 @@ void Cellular::OnAfterResume() {
 
 void Cellular::Scan(ScanType /*scan_type*/, Error *error,
                     const string &/*reason*/) {
+  SLOG(Cellular, 2) << __func__;
+  CHECK(error);
+  if (proposed_scan_in_progress_) {
+    Error::PopulateAndLog(error, Error::kInProgress, "Already scanning");
+    return;
+  }
+
   // |scan_type| is ignored because Cellular only does a full scan.
-  // TODO(ers): for now report immediate success or failure.
-  capability_->Scan(error, ResultCallback());
+  ResultStringmapsCallback cb = Bind(&Cellular::OnScanReply,
+                                     weak_ptr_factory_.GetWeakPtr());
+  capability_->Scan(error, cb);
+  // An immediate failure in |cabapility_->Scan(...)| is indicated through the
+  // |error| argument.
+  if (error->IsFailure())
+    return;
+
+  proposed_scan_in_progress_ = true;
+  UpdateScanning();
+}
+
+void Cellular::OnScanReply(const Stringmaps &found_networks,
+                           const Error &error) {
+  proposed_scan_in_progress_ = false;
+  UpdateScanning();
+
+  // TODO(jglasgow): fix error handling.
+  // At present, there is no way of notifying user of this asynchronous error.
+  if (error.IsFailure()) {
+    clear_found_networks();
+    return;
+  }
+
+  set_found_networks(found_networks);
 }
 
 void Cellular::HandleNewRegistrationState() {
@@ -562,6 +593,9 @@ void Cellular::CreateService() {
   service_ = new CellularService(modem_info_, this);
   capability_->OnServiceCreated();
   manager()->RegisterService(service_);
+  // We might have missed a property update because the service wasn't created
+  // ealier.
+  UpdateScanning();
 }
 
 void Cellular::DestroyService() {
@@ -808,6 +842,10 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
              old_state == kModemStateConnecting)
       OnConnected();
   }
+
+  // Update the kScanningProperty property after we've handled the current state
+  // update completely.
+  UpdateScanning();
 }
 
 bool Cellular::IsActivating() const {
@@ -1032,6 +1070,31 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
   OnPPPDisconnected();
 }
 
+void Cellular::UpdateScanning() {
+  if (proposed_scan_in_progress_) {
+    set_scanning(true);
+    return;
+  }
+
+  if (modem_state_ == kModemStateEnabling) {
+    set_scanning(true);
+    return;
+  }
+
+  if (service_ && service_->activation_state() != kActivationStateActivated) {
+    set_scanning(false);
+    return;
+  }
+
+  if (modem_state_ == kModemStateEnabled ||
+      modem_state_ == kModemStateSearching) {
+    set_scanning(true);
+    return;
+  }
+
+  set_scanning(false);
+}
+
 void Cellular::RegisterProperties() {
   PropertyStore *store = this->mutable_store();
 
@@ -1058,6 +1121,7 @@ void Cellular::RegisterProperties() {
   store->RegisterConstString(kMinProperty, &min_);
   store->RegisterConstString(kManufacturerProperty, &manufacturer_);
   store->RegisterConstString(kModelIDProperty, &model_id_);
+  store->RegisterConstBool(kScanningProperty, &scanning_);
 
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
   store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
@@ -1187,6 +1251,33 @@ void Cellular::set_model_id(const std::string &model_id) {
   adaptor()->EmitStringChanged(kModelIDProperty, model_id_);
 }
 
+void Cellular::set_scanning(bool scanning) {
+  if (scanning_ == scanning)
+    return;
+
+  scanning_ = scanning;
+  adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
+
+  // kScanningProperty is a sticky-false property.
+  // Every time it is set to |true|, it will remain |true| up to a maximum of
+  // |kScanningTimeout| time, after which it will be reset to |false|.
+  if (!scanning_ && !scanning_timeout_callback_.IsCancelled()) {
+     SLOG(Cellular, 2) << "Scanning set to false. "
+                       << "Cancelling outstanding timeout.";
+     scanning_timeout_callback_.Cancel();
+  } else {
+    CHECK(scanning_timeout_callback_.IsCancelled());
+    SLOG(Cellular, 2) << "Scanning set to true. "
+                      << "Starting timeout to reset to false.";
+    scanning_timeout_callback_.Reset(Bind(&Cellular::set_scanning,
+                                          weak_ptr_factory_.GetWeakPtr(),
+                                          false));
+    dispatcher()->PostDelayedTask(
+        scanning_timeout_callback_.callback(),
+        scanning_timeout_milliseconds_);
+  }
+}
+
 void Cellular::set_selected_network(const std::string &selected_network) {
   if (selected_network_ == selected_network)
     return;
@@ -1199,6 +1290,14 @@ void Cellular::set_found_networks(const Stringmaps &found_networks) {
   // There is no canonical form of a Stringmaps value.
   // So don't check for redundant updates.
   found_networks_ = found_networks;
+  adaptor()->EmitStringmapsChanged(kFoundNetworksProperty, found_networks_);
+}
+
+void Cellular::clear_found_networks() {
+  if (found_networks_.empty())
+    return;
+
+  found_networks_.clear();
   adaptor()->EmitStringmapsChanged(kFoundNetworksProperty, found_networks_);
 }
 

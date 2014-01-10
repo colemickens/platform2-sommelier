@@ -311,6 +311,12 @@ class CellularTest : public testing::Test {
     if (!callback.is_null())
       callback.Run(Error());
   }
+  void InvokeScanFailed(Error *error, Unused, Unused) {
+    error->Populate(Error::kOperationFailed);
+  }
+  void InvokeScanInitiated(Error *error, Unused, Unused) {
+    error->Populate(Error::kOperationInitiated);
+  }
   void InvokeSetPowerState(const uint32_t &power_state,
                            Error *error,
                            const ResultCallback &callback,
@@ -424,6 +430,8 @@ class CellularTest : public testing::Test {
   static const char kIMSI[];
   static const char kMSISDN[];
   static const char kTestMobileProviderDBPath[];
+  static const Stringmaps kTestNetworksGSM;
+  static const Stringmaps kTestNetworksCellular;
   static const int kStrength;
 
   class TestProxyFactory : public ProxyFactory {
@@ -571,6 +579,16 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
+const Stringmaps CellularTest::kTestNetworksGSM =
+    {{{CellularCapabilityGSM::kNetworkPropertyStatus, "1"},
+      {CellularCapabilityGSM::kNetworkPropertyID, "0000"},
+      {CellularCapabilityGSM::kNetworkPropertyLongName, "some_long_name"},
+      {CellularCapabilityGSM::kNetworkPropertyShortName, "short"}}};
+const Stringmaps CellularTest::kTestNetworksCellular =
+    {{{kStatusProperty, "available"},
+      {kNetworkIdProperty, "0000"},
+      {kLongNameProperty, "some_long_name"},
+      {kShortNameProperty, "short"}}};
 const int CellularTest::kStrength = 90;
 
 TEST_F(CellularTest, GetStateString) {
@@ -1590,6 +1608,75 @@ TEST_F(CellularTest, CustomSetterNoopChange) {
   EXPECT_FALSE(device_->allow_roaming_);
   EXPECT_FALSE(device_->SetAllowRoaming(false, &error));
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(CellularTest, ScanImmediateFailure) {
+  Error error;
+
+  device_->set_found_networks(kTestNetworksCellular);
+  EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeScanFailed));
+  EXPECT_FALSE(device_->scanning_);
+  // |InitProxies| must be called before calling any functions on the
+  // Capability*, to set up the modem proxies.
+  // Warning: The test loses all references to the proxies when |InitProxies| is
+  // called.
+  GetCapabilityGSM()->InitProxies();
+  device_->Scan(Device::kFullScan, &error, "");
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_FALSE(device_->scanning_);
+  EXPECT_EQ(kTestNetworksCellular, device_->found_networks());
+}
+
+TEST_F(CellularTest, ScanAsynchronousFailure) {
+  Error error;
+  ScanResultsCallback results_callback;
+
+  device_->set_found_networks(kTestNetworksCellular);
+  EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
+      .WillOnce(DoAll(Invoke(this, &CellularTest::InvokeScanInitiated),
+                      SaveArg<1>(&results_callback)));
+  EXPECT_FALSE(device_->scanning_);
+  // |InitProxies| must be called before calling any functions on the
+  // Capability*, to set up the modem proxies.
+  // Warning: The test loses all references to the proxies when |InitProxies| is
+  // called.
+  GetCapabilityGSM()->InitProxies();
+  device_->Scan(Device::kFullScan, &error, "");
+  EXPECT_TRUE(error.IsOngoing());
+  EXPECT_TRUE(device_->scanning_);
+
+  // Asynchronously fail the scan.
+  error.Populate(Error::kOperationFailed);
+  results_callback.Run(kTestNetworksGSM, error);
+  EXPECT_FALSE(device_->scanning_);
+  EXPECT_TRUE(device_->found_networks().empty());
+}
+
+TEST_F(CellularTest, ScanSuccess) {
+  Error error;
+  ScanResultsCallback results_callback;
+
+  device_->clear_found_networks();
+  EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
+      .WillOnce(DoAll(Invoke(this, &CellularTest::InvokeScanInitiated),
+                      SaveArg<1>(&results_callback)));
+  EXPECT_FALSE(device_->scanning_);
+  // |InitProxies| must be called before calling any functions on the
+  // Capability*, to set up the modem proxies.
+  // Warning: The test loses all references to the proxies when |InitProxies| is
+  // called.
+  GetCapabilityGSM()->InitProxies();
+  device_->Scan(Device::kFullScan, &error, "");
+  EXPECT_TRUE(error.IsOngoing());
+  EXPECT_TRUE(device_->scanning_);
+
+  // Successfully complete the scan.
+  const GSMScanResults gsm_results{};
+  error.Populate(Error::kSuccess);
+  results_callback.Run(kTestNetworksGSM, error);
+  EXPECT_FALSE(device_->scanning_);
+  EXPECT_EQ(kTestNetworksCellular, device_->found_networks());
 }
 
 }  // namespace shill

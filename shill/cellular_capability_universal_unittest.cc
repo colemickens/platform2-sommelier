@@ -186,20 +186,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                            int timeout) {
     callback.Run(Error());
   }
-  void InvokeScan(Error *error, const DBusPropertyMapsCallback &callback,
-                  int timeout) {
-    callback.Run(CellularCapabilityUniversal::ScanResults(), Error());
-  }
-  void ScanError(Error *error, const DBusPropertyMapsCallback &callback,
-                 int timeout) {
-    error->Populate(Error::kOperationFailed);
-  }
-
-  bool InvokeScanningOrSearchingTimeout() {
-    capability_->OnScanningOrSearchingTimeout();
-    return true;
-  }
-
   void Set3gppProxy() {
     capability_->modem_3gpp_proxy_.reset(modem_3gpp_proxy_.release());
   }
@@ -332,7 +318,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
   MockCellularService *service_;  // owned by cellular_
-  DBusPropertyMapsCallback scan_callback_;  // saved for testing scan operations
   DBusPathCallback connect_callback_;  // saved for testing connect operations
 };
 
@@ -1256,103 +1241,6 @@ TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   EXPECT_FALSE(capability_->resetting_);
 }
 
-// Validates that OnScanReply does not crash with a null callback.
-TEST_F(CellularCapabilityUniversalMainTest, ScanWithNullCallback) {
-  Error error;
-  EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
-      .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeScan));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
-  Set3gppProxy();
-  capability_->Scan(&error, ResultCallback());
-  EXPECT_TRUE(error.IsSuccess());
-}
-
-// Validates that the scanning property is updated
-TEST_F(CellularCapabilityUniversalMainTest, Scan) {
-  Error error;
-
-  EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
-      .WillRepeatedly(SaveArg<1>(&scan_callback_));
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
-  Set3gppProxy();
-  capability_->Scan(&error, ResultCallback());
-  EXPECT_TRUE(capability_->scanning_);
-  Mock::VerifyAndClearExpectations(device_adaptor_);
-
-  // Simulate the completion of the scan with 2 networks in the results.
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(2)));
-  vector<DBusPropertiesMap> results;
-  const char kScanID0[] = "testID0";
-  const char kScanID1[] = "testID1";
-  results.push_back(DBusPropertiesMap());
-  results[0][CellularCapabilityUniversal::kOperatorLongProperty].
-      writer().append_string(kScanID0);
-  results.push_back(DBusPropertiesMap());
-  results[1][CellularCapabilityUniversal::kOperatorLongProperty].
-      writer().append_string(kScanID1);
-  scan_callback_.Run(results, error);
-  EXPECT_FALSE(capability_->scanning_);
-  Mock::VerifyAndClearExpectations(device_adaptor_);
-
-  // Simulate the completion of the scan with no networks in the results.
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
-  capability_->Scan(&error, ResultCallback());
-  EXPECT_TRUE(capability_->scanning_);
-  Mock::VerifyAndClearExpectations(device_adaptor_);
-
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
-  scan_callback_.Run(vector<DBusPropertiesMap>(), Error());
-  EXPECT_FALSE(capability_->scanning_);
-}
-
-// Validates expected property updates when scan fails
-TEST_F(CellularCapabilityUniversalMainTest, ScanFailure) {
-  Error error;
-
-  // Test immediate error
-  {
-    InSequence seq;
-    EXPECT_CALL(*modem_3gpp_proxy_,
-                Scan(_, _, CellularCapability::kTimeoutScan))
-        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::ScanError));
-    EXPECT_CALL(*modem_3gpp_proxy_,
-                Scan(_, _, CellularCapability::kTimeoutScan))
-        .WillOnce(SaveArg<1>(&scan_callback_));
-  }
-  Set3gppProxy();
-  capability_->Scan(&error, ResultCallback());
-  EXPECT_FALSE(capability_->scanning_);
-  EXPECT_TRUE(error.IsFailure());
-
-  // Initiate a scan
-  error.Populate(Error::kSuccess);
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
-  capability_->Scan(&error, ResultCallback());
-  EXPECT_TRUE(capability_->scanning_);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // Validate that error is returned if Scan is called while already scanning.
-  capability_->Scan(&error, ResultCallback());
-  EXPECT_TRUE(capability_->scanning_);
-  EXPECT_TRUE(error.IsFailure());
-  Mock::VerifyAndClearExpectations(device_adaptor_);
-
-  // Validate that signals are emitted even if an error is reported.
-  Stringmaps found_networks = { Stringmap() };
-  cellular_->set_found_networks(found_networks);
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs(0)));
-  vector<DBusPropertiesMap> results;
-  scan_callback_.Run(results, Error(Error::kOperationFailed));
-  EXPECT_FALSE(capability_->scanning_);
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath) {
   // Common resources.
   const size_t kPathCount = 3;
@@ -1625,122 +1513,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_TRUE(cellular_->provider_requires_roaming());
-}
-
-TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
-  // Save pointers to proxies before they are lost by the call to InitProxies
-  // mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
-  //EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
-  capability_->InitProxies();
-
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-
-  capability_->scanning_ = true;
-  capability_->UpdateScanningProperty();
-  EXPECT_TRUE(capability_->scanning_or_searching_);
-
-  capability_->scanning_ = false;
-  capability_->cellular()->modem_state_ = Cellular::kModemStateInitializing;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateLocked;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateDisabled;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateEnabling;
-  capability_->UpdateScanningProperty();
-  EXPECT_TRUE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateEnabled;
-  capability_->UpdateScanningProperty();
-  EXPECT_TRUE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateSearching;
-  capability_->UpdateScanningProperty();
-  EXPECT_TRUE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateRegistered;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateConnecting;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  capability_->cellular()->modem_state_ = Cellular::kModemStateDisconnecting;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-
-  // Modem with an unactivated service in the 'enabled' or 'searching' state
-  capability_->cellular()->modem_state_ = Cellular::kModemStateEnabled;
-  cellular_->set_mdn("0000000000");
-  CellularService::OLP olp;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
-      .WillRepeatedly(Return(&olp));
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-
-  capability_->cellular()->modem_state_ = Cellular::kModemStateSearching;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-}
-
-TEST_F(CellularCapabilityUniversalTimerTest, UpdateScanningPropertyTimeout) {
-  capability_->InitProxies();
-
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  EXPECT_TRUE(
-      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  EXPECT_TRUE(
-      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
-
-  EXPECT_CALL(mock_dispatcher_,
-              PostDelayedTask(
-                  _,
-                  CellularCapabilityUniversal::
-                      kDefaultScanningOrSearchingTimeoutMilliseconds));
-
-  capability_->scanning_ = true;
-  capability_->UpdateScanningProperty();
-  EXPECT_FALSE(
-      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
-  EXPECT_TRUE(capability_->scanning_or_searching_);
-  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
-
-  EXPECT_CALL(mock_dispatcher_,
-              PostDelayedTask(
-                  _,
-                  CellularCapabilityUniversal::
-                      kDefaultScanningOrSearchingTimeoutMilliseconds))
-      .Times(0);
-
-  capability_->scanning_ = false;
-  capability_->UpdateScanningProperty();
-  EXPECT_TRUE(
-      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
-  EXPECT_FALSE(capability_->scanning_or_searching_);
-  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
-
-  EXPECT_CALL(mock_dispatcher_,
-              PostDelayedTask(
-                  _,
-                  CellularCapabilityUniversal::
-                      kDefaultScanningOrSearchingTimeoutMilliseconds))
-      .WillOnce(InvokeWithoutArgs(
-          this,
-          &CellularCapabilityUniversalTest::InvokeScanningOrSearchingTimeout));
-
-  capability_->scanning_ = true;
-  capability_->UpdateScanningProperty();
-  // The callback has been scheduled
-  EXPECT_FALSE(
-      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
-  // Our mock invocation worked
-  EXPECT_FALSE(capability_->scanning_or_searching_);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {

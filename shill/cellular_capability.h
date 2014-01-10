@@ -171,7 +171,7 @@ class CellularCapability {
   // logic into Cellular or CellularCapability.
   //
   // TODO(jglasgow): Implement real error handling.
-  virtual void Scan(Error *error, const ResultCallback &callback);
+  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
 
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;

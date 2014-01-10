@@ -309,7 +309,8 @@ TEST_F(CellularCapabilityTest, FinishEnable) {
 TEST_F(CellularCapabilityTest, UnsupportedOperation) {
   Error error;
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(0);
-  capability_->CellularCapability::Scan(&error,
+  capability_->CellularCapability::Reset(
+      &error,
       Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Error::kNotSupported, error.type());

@@ -97,7 +97,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                          Error *error, const ResultCallback &callback);
   virtual void Reset(Error *error, const ResultCallback &callback);
 
-  virtual void Scan(Error *error, const ResultCallback &callback);
+  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
@@ -167,7 +167,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kGenericServiceNamePrefix[];
 
   static const int64 kActivationRegistrationTimeoutMilliseconds;
-  static const int64 kDefaultScanningOrSearchingTimeoutMilliseconds;
   static const int64 kEnterPinTimeoutMilliseconds;
   static const int64 kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
@@ -245,10 +244,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateOperatorInfoViaOperatorId);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
   FRIEND_TEST(CellularCapabilityUniversalTimerTest, CompleteActivation);
-  FRIEND_TEST(CellularCapabilityUniversalTimerTest,
-              UpdateScanningPropertyTimeout);
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
@@ -296,8 +292,6 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Updates the name property that is exposed by the service to Chrome.
   void UpdateServiceName();
-
-  void UpdateScanningProperty();
 
   // Methods used in acquiring information related to the carrier;
 
@@ -393,16 +387,12 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnRegisterReply(const ResultCallback &callback,
                        const Error &error);
   void OnResetReply(const ResultCallback &callback, const Error &error);
-  void OnScanReply(const ResultCallback &callback,
+  void OnScanReply(const ResultStringmapsCallback &callback,
                    const ScanResults &results,
                    const Error &error);
   void OnConnectReply(const ResultCallback &callback,
                       const DBus::Path &bearer,
                       const Error &error);
-
-  // Timeout callback for the network scan initiated when Cellular connectivity
-  // gets enabled.
-  void OnScanningOrSearchingTimeout();
 
   // Timeout callback that is called if the modem takes too long to register to
   // a network after online payment is complete. Resets the modem.
@@ -455,8 +445,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Properties.
   std::deque<Stringmap> apn_try_list_;
   bool resetting_;
-  bool scanning_;
-  bool scanning_or_searching_;
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_;
   std::string sim_path_;
@@ -467,13 +455,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // If the modem is not in a state to be enabled when StartModem is called,
   // enabling is deferred using this callback.
   base::Closure deferred_enable_modem_callback_;
-
-  // Sometimes modems may be stuck in the SEARCHING state during the lack of
-  // presence of a network. During this indefinite duration of time, keeping
-  // the Device.Scanning property as |true| causes a bad user experience.
-  // This callback sets it to |false| after a timeout period has passed.
-  base::CancelableClosure scanning_or_searching_timeout_callback_;
-  int64 scanning_or_searching_timeout_milliseconds_;
 
   base::CancelableClosure activation_wait_for_registration_callback_;
   int64 activation_registration_timeout_milliseconds_;

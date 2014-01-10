@@ -508,9 +508,11 @@ void CellularCapabilityUniversalCDMA::ChangePIN(
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityUniversalCDMA::Scan(Error *error,
-                                           const ResultCallback &callback) {
+void CellularCapabilityUniversalCDMA::Scan(
+    Error *error,
+    const ResultStringmapsCallback &callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversalCDMA::OnSimPathChanged(

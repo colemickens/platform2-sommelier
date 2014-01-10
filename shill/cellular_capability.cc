@@ -34,8 +34,7 @@ CellularCapability::CellularCapability(Cellular *cellular,
                                        ModemInfo *modem_info)
     : cellular_(cellular),
       proxy_factory_(proxy_factory),
-      modem_info_(modem_info){
-}
+      modem_info_(modem_info) {}
 
 CellularCapability::~CellularCapability() {}
 
@@ -89,7 +88,7 @@ void CellularCapability::ChangePIN(const string &/*old_pin*/,
 }
 
 void CellularCapability::Scan(Error *error,
-                              const ResultCallback &callback) {
+                              const ResultStringmapsCallback &callback) {
   OnUnsupportedOperation(__func__, error);
 }
 

@@ -70,7 +70,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
-  virtual void Scan(Error *error, const ResultCallback &callback);
+  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual std::string GetTypeString() const {
@@ -112,7 +112,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResult);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
-  FRIEND_TEST(CellularCapabilityGSMTest, Scan);
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityGSMTest, SetHomeProvider);
@@ -122,6 +121,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
+  FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
+  FRIEND_TEST(CellularTest, ScanImmediateFailure);
+  FRIEND_TEST(CellularTest, ScanSuccess);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
 
@@ -210,7 +212,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   void OnGetMSISDNReply(const ResultCallback &callback,
                         const std::string &msisdn,
                         const Error &error);
-  void OnScanReply(const ResultCallback &callback,
+  void OnScanReply(const ResultStringmapsCallback &callback,
                    const GSMScanResults &results,
                    const Error &error);
   void OnConnectReply(const ResultCallback &callback, const Error &error);
@@ -235,7 +237,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   // Properties.
   std::deque<Stringmap> apn_try_list_;
-  bool scanning_;
   SimLockStatus sim_lock_status_;
 
   static unsigned int friendly_service_name_id_;

@@ -161,14 +161,6 @@ class CellularCapabilityGSMTest : public testing::Test {
                        const ResultCallback &callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeScanReply() {
-    GSMScanResults results;
-    results.push_back(GSMScanResult());
-    results[0][CellularCapabilityGSM::kNetworkPropertyID] = kScanID0;
-    results.push_back(GSMScanResult());
-    results[1][CellularCapabilityGSM::kNetworkPropertyID] = kScanID1;
-    scan_callback_.Run(results, Error());
-  }
   void InvokeGetModemStatus(Error *error,
                             const DBusPropertyMapCallback &callback,
                             int timeout) {
@@ -198,8 +190,6 @@ class CellularCapabilityGSMTest : public testing::Test {
   static const char kIMEI[];
   static const char kIMSI[];
   static const char kMSISDN[];
-  static const char kScanID0[];
-  static const char kScanID1[];
   static const int kStrength;
 
   class TestProxyFactory : public ProxyFactory {
@@ -313,7 +303,6 @@ class CellularCapabilityGSMTest : public testing::Test {
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
-  ScanResultsCallback scan_callback_;  // saved for testing scan operations
 };
 
 const char CellularCapabilityGSMTest::kAddress[] = "1122334455";
@@ -326,8 +315,6 @@ const char CellularCapabilityGSMTest::kPUK[] = "8765";
 const char CellularCapabilityGSMTest::kIMEI[] = "987654321098765";
 const char CellularCapabilityGSMTest::kIMSI[] = "310150123456789";
 const char CellularCapabilityGSMTest::kMSISDN[] = "12345678901";
-const char CellularCapabilityGSMTest::kScanID0[] = "123";
-const char CellularCapabilityGSMTest::kScanID1[] = "456";
 const int CellularCapabilityGSMTest::kStrength = 80;
 
 TEST_F(CellularCapabilityGSMTest, PropertyStore) {
@@ -541,44 +528,6 @@ TEST_F(CellularCapabilityGSMTest, ChangePIN) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
-namespace {
-
-MATCHER(SizeIs2, "") {
-  return arg.size() == 2;
-}
-
-}  // namespace
-
-TEST_F(CellularCapabilityGSMTest, Scan) {
-  Error error;
-  Stringmaps found_networks;
-
-  EXPECT_CALL(*network_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
-      .WillOnce(SaveArg<1>(&scan_callback_));
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  found_networks = cellular_->found_networks();
-  found_networks.resize(3);
-  cellular_->set_found_networks(found_networks);
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(kFoundNetworksProperty, SizeIs2()));
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, true));
-  EXPECT_FALSE(capability_->scanning_);
-
-  SetNetworkProxy();
-  capability_->Scan(&error, Bind(&CellularCapabilityGSMTest::TestCallback,
-                                 Unretained(this)));
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(capability_->scanning_);
-
-  // Simulate the completion of the scan...
-  EXPECT_CALL(*device_adaptor_, EmitBoolChanged(kScanningProperty, false));
-  InvokeScanReply();
-  EXPECT_FALSE(capability_->scanning_);
-  found_networks = cellular_->found_networks();
-  EXPECT_EQ(2, cellular_->found_networks().size());
-  EXPECT_EQ(kScanID0, found_networks[0][kNetworkIdProperty]);
-  EXPECT_EQ(kScanID1, found_networks[1][kNetworkIdProperty]);
-}
 
 TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
   static const char kID[] = "123";

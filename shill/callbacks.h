@@ -9,6 +9,7 @@
 
 #include <base/callback.h>
 
+#include "shill/accessor_interface.h"
 #include "shill/dbus_properties.h"
 
 namespace shill {
@@ -33,6 +34,8 @@ typedef base::Callback<void(
 typedef base::Callback<void(const std::string &, const Error &)> StringCallback;
 typedef base::Callback<void(
     uint32, uint32, const DBusPropertiesMap &)> ActivationStateSignalCallback;
+typedef base::Callback<void(const Stringmaps &,
+                            const Error &)> ResultStringmapsCallback;
 
 }  // namespace shill
 #endif  // SHILL_CALLBACKS_

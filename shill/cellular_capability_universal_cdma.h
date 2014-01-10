@@ -61,7 +61,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
-  virtual void Scan(Error *error, const ResultCallback &callback);
+  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
   virtual void OnSimPathChanged(const std::string &sim_path);
 
  protected:
