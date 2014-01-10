@@ -468,7 +468,7 @@ void SessionManagerService::AbortBrowser(int signal,
                                          const std::string& message) {
   LOG(INFO) << "Sending termination message: " << message;
   system_->AtomicFileWrite(browser_.term_file, message.c_str(), message.size());
-  KillChild(browser_.job.get(), browser_.pid, signal);
+  KillChild(browser_.job.get(), -browser_.pid, signal);
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
@@ -477,7 +477,7 @@ void SessionManagerService::RestartBrowserWithArgs(
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  KillChild(browser_.job.get(), browser_.pid, SIGKILL);
+  KillChild(browser_.job.get(), -browser_.pid, SIGKILL);
   if (args_are_extra)
     browser_.job->SetExtraArguments(args);
   else
@@ -503,12 +503,12 @@ void SessionManagerService::RunKeyGenerator(const std::string& username) {
 }
 
 void SessionManagerService::KillChild(const ChildJobInterface* child_job,
-                                      int child_pid,
+                                      int pid_spec,
                                       int signal) {
   uid_t to_kill_as = getuid();
   if (child_job->IsDesiredUidSet())
     to_kill_as = child_job->GetDesiredUid();
-  system_->kill(-child_pid, to_kill_as, signal);
+  system_->kill(pid_spec, to_kill_as, signal);
   // Process will be reaped on the way into HandleBrowserExit.
 }
 
@@ -763,7 +763,7 @@ void SessionManagerService::WaitAndAbortChild(const ChildJob::Spec& spec,
         "Browser took more than %" PRId64 " seconds to exit after TERM.",
         timeout.InSeconds());
     system_->AtomicFileWrite(spec.term_file, message.c_str(), message.size());
-    KillChild(spec.job.get(), spec.pid, SIGABRT);
+    KillChild(spec.job.get(), -spec.pid, SIGABRT);
   } else {
     DLOG(INFO) << "Cleaned up child " << spec.pid;
   }
