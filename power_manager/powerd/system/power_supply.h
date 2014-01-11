@@ -67,8 +67,8 @@ struct PowerStatus {
   // Amount of energy, measured in Wh, in the battery.
   double battery_energy;
 
-  // Amount of energy being drained from the battery, measured in W. If
-  // positive, the source is being discharged; if negative it's being charged.
+  // Amount of energy being drained from the battery, measured in W. It is a
+  // positive value irrespective of the battery charging or discharging.
   double battery_energy_rate;
 
   // Current battery levels.

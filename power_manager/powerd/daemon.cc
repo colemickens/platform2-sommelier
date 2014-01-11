@@ -79,6 +79,12 @@ void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
   proto->set_battery_time_to_full_sec(
       status.battery_time_to_full.InSeconds());
   proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
+      status.battery_state == PowerSupplyProperties_BatteryState_CHARGING) {
+    proto->set_battery_discharge_rate(-status.battery_energy_rate);
+  } else {
+    proto->set_battery_discharge_rate(status.battery_energy_rate);
+  }
 }
 
 // Returns a string describing the battery status from |status|.
