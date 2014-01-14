@@ -132,7 +132,6 @@ Device::Device(ControlInterface *control_interface,
   // kPRLVersionProperty: Registered in Cellular
   // kSIMLockStatusProperty: Registered in Cellular
   // kFoundNetworksProperty: Registered in Cellular
-  // kDBusConnectionProperty: Registered in Cellular
   // kDBusObjectProperty: Register in Cellular
 
   store_.RegisterConstString(kInterfaceProperty, &link_name_);

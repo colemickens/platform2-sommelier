@@ -1037,8 +1037,6 @@ void Cellular::RegisterProperties() {
 
   // These properties do not have setters, and events are not generated when
   // they are changed.
-  // TODO(jglasgow): kDBusConnectionProperty is deprecated. crbug.com/323754
-  store->RegisterConstString(kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(kDBusServiceProperty, &dbus_service_);
   store->RegisterConstString(kDBusObjectProperty, &dbus_path_);
 
