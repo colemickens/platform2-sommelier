@@ -1,0 +1,66 @@
+#! /bin/sh
+
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# unit test for storage_info
+
+. scripts/storage_info --test
+
+TEST_COUNT=7
+
+# stout - old fw  crbug.com/328587#c11
+MODEL_1="SanDisk_SSD_U100_16GB"
+VERSION_1="10.52.01"
+RESULT_1="MATCH"
+
+# stout - new fw  crbug.com/328587#c13
+MODEL_2="SanDisk_SSD_U100_16GB"
+VERSION_2="CS.56.00"
+RESULT_2="NOT_MATCH"
+
+# stout - new fw 2  crbug.com/328587#c34
+MODEL_3="SanDisk_SSD_i100_32GB"
+VERSION_3="10.54.01"
+RESULT_3="NOT_MATCH"
+
+# link - old fw  crbug.com/328587#c37
+MODEL_4="SanDisk_SSD_i100_32GB"
+VERSION_4="CS.51.00"
+RESULT_4="MATCH"
+
+# link - new fw
+MODEL_5="SanDisk_SSD_i100_32GB"
+VERSION_5="11.56.00"
+RESULT_5="NOT_MATCH"
+
+# crbug.com/328587#c39
+MODEL_6="SanDisk_SSD_U100_32GB"
+VERSION_6="10.01.04"
+RESULT_6="MATCH"
+
+# falco
+MODEL_7="LITEONIT_LSS-32L6G-HP"
+VERSION_7="DS51704"
+RESULT_7="NOT_MATCH"
+
+get_is_ssd_blacklist_result() {
+  if is_ssd_blacklist $1 $2; then
+    echo "MATCH"
+  else
+    echo "NOT_MATCH"
+  fi
+}
+
+
+for i in $(seq 1 $TEST_COUNT); do
+  # use eval for variable indirection
+  eval MODEL=\$MODEL_$i
+  eval VERSION=\$VERSION_$i
+  eval RESULT=\$RESULT_$i
+  if [ ! "$(get_is_ssd_blacklist_result $MODEL $VERSION)" = "$RESULT" ]; then
+    echo "Test Fail: result for $MODEL $VERSION is not $RESULT"
+    exit 1
+  fi
+done
