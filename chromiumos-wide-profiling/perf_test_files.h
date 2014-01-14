@@ -5,6 +5,10 @@
 #ifndef PERF_TEST_FILES_
 #define PERF_TEST_FILES_
 
+// TODO(sque): Re-enable callgraph and branch stack support when longer-term
+// changes to quipper are done.
+//#define TEST_CALLGRAPH_AND_BRANCH_STACK
+
 namespace perf_test_files {
 
 // The following perf data contains the following event types, as passed to
@@ -37,17 +41,21 @@ const char* kPerfDataFiles[] = {
   //   while true; do restart powerd; sleep .2; done
   "perf.data.forkexit",
 
+#ifdef TEST_CALLGRAPH_AND_BRANCH_STACK
   // Obtained with "perf record -a -g -- sleep 2"
   "perf.data.callgraph",
   // Obtained with "perf record -a -b -- sleep 2"
   "perf.data.branch",
   // Obtained with "perf record -a -g -b -- sleep 2"
   "perf.data.callgraph_and_branch",
+#endif
 
+#ifdef TEST_CALLGRAPH_AND_BRANCH_STACK
   // Obtained with "perf record -a -R -- sleep 2"
   "perf.data.raw",
   // Obtained with "perf record -a -R -g -b -- sleep 2"
   "perf.data.raw_callgraph_branch",
+#endif
 
   // Data from other architectures.
   "perf.data.i686",     // 32-bit x86
@@ -62,9 +70,11 @@ const char* kPerfDataFiles[] = {
   "perf.data.busy.1.next",
   "perf.data.busy.5.next",
   "perf.data.forkexit.next",
+#ifdef TEST_CALLGRAPH_AND_BRANCH_STACK
   "perf.data.callgraph.next",
   "perf.data.branch.next",
   "perf.data.callgraph_and_branch.next",
+#endif
 
   // Obtained from a system that uses NUMA topology.
   "perf.data.numatopology",
