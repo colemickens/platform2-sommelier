@@ -141,8 +141,10 @@ bool PerfParser::ProcessEvents() {
         VLOG(1) << "IP: " << std::hex << event.ip.ip;
         ++stats_.num_sample_events;
 
-        if (MapSampleEvent(&parsed_event))
-          ++stats_.num_sample_events_mapped;
+        if (!MapSampleEvent(&parsed_event)) {
+          return false;
+        }
+        ++stats_.num_sample_events_mapped;
         break;
       case PERF_RECORD_MMAP: {
         VLOG(1) << "MMAP: " << event.mmap.filename;
