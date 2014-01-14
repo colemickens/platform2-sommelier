@@ -5,9 +5,9 @@
 #ifndef PERF_TEST_FILES_
 #define PERF_TEST_FILES_
 
-// TODO(sque): Re-enable callgraph and branch stack support when longer-term
+// TODO(sque): Re-enable callgraph testing when longer-term
 // changes to quipper are done.
-//#define TEST_CALLGRAPH_AND_BRANCH_STACK
+//#define TEST_CALLGRAPH
 
 namespace perf_test_files {
 
@@ -41,18 +41,20 @@ const char* kPerfDataFiles[] = {
   //   while true; do restart powerd; sleep .2; done
   "perf.data.forkexit",
 
-#ifdef TEST_CALLGRAPH_AND_BRANCH_STACK
+#ifdef TEST_CALLGRAPH
   // Obtained with "perf record -a -g -- sleep 2"
   "perf.data.callgraph",
+#endif
   // Obtained with "perf record -a -b -- sleep 2"
   "perf.data.branch",
+#ifdef TEST_CALLGRAPH
   // Obtained with "perf record -a -g -b -- sleep 2"
   "perf.data.callgraph_and_branch",
 #endif
 
-#ifdef TEST_CALLGRAPH_AND_BRANCH_STACK
   // Obtained with "perf record -a -R -- sleep 2"
   "perf.data.raw",
+#ifdef TEST_CALLGRAPH
   // Obtained with "perf record -a -R -g -b -- sleep 2"
   "perf.data.raw_callgraph_branch",
 #endif
@@ -70,9 +72,11 @@ const char* kPerfDataFiles[] = {
   "perf.data.busy.1.next",
   "perf.data.busy.5.next",
   "perf.data.forkexit.next",
-#ifdef TEST_CALLGRAPH_AND_BRANCH_STACK
+#ifdef TEST_CALLGRAPH
   "perf.data.callgraph.next",
+#endif
   "perf.data.branch.next",
+#ifdef TEST_CALLGRAPH
   "perf.data.callgraph_and_branch.next",
 #endif
 

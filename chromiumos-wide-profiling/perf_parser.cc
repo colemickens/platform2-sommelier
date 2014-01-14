@@ -43,6 +43,10 @@ enum CallchainContext {
   kFirstRelevantCallchainIndex,
 };
 
+bool IsNullBranchStackEntry(const struct branch_entry& entry) {
+  return (!entry.from && !entry.to);
+}
+
 }  // namespace
 
 PerfParser::PerfParser() : do_remap_(false),
@@ -239,31 +243,9 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     mapping_failed = true;
   }
 
-  // Map branch stack addresses.
-  struct branch_stack* branch_stack = sample_info.branch_stack;
-  if (branch_stack) {
-    parsed_event->branch_stack.resize(branch_stack->nr);
-    for (unsigned int i = 0; i < branch_stack->nr; ++i) {
-      struct branch_entry& entry = branch_stack->entries[i];
-      ParsedEvent::BranchEntry& parsed_entry = parsed_event->branch_stack[i];
-      if (!MapIPAndPidAndGetNameAndOffset(entry.from,
-                                          event.pid,
-                                          event.header.misc,
-                                          reinterpret_cast<uint64*>(
-                                              &entry.from),
-                                          &parsed_entry.from)) {
-        mapping_failed = true;
-      }
-      if (!MapIPAndPidAndGetNameAndOffset(entry.to,
-                                          event.pid,
-                                          event.header.misc,
-                                          reinterpret_cast<uint64*>(&entry.to),
-                                          &parsed_entry.to)) {
-        mapping_failed = true;
-      }
-      parsed_entry.predicted = entry.flags.predicted;
-      CHECK_NE(entry.flags.predicted, entry.flags.mispred);
-    }
+  if (sample_info.branch_stack &&
+      !MapBranchStack(event, sample_info.branch_stack, parsed_event)) {
+    mapping_failed = true;
   }
 
   // Write the remapped data back to the raw event regardless of whether it was
@@ -348,6 +330,69 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
   parsed_event->callchain.resize(num_entries_mapped);
 
   return !mapping_failed;
+}
+
+bool PerfParser::MapBranchStack(const struct ip_event& event,
+                                struct branch_stack* branch_stack,
+                                ParsedEvent* parsed_event) {
+  if (!branch_stack) {
+    LOG(ERROR) << "Invalid branch stack data.";
+    return false;
+  }
+
+  // First, trim the branch stack to remove trailing null entries.
+  size_t trimmed_size = 0;
+  for (size_t i = 0; i < branch_stack->nr; ++i) {
+    // Count the number of non-null entries before the first null entry.
+    if (IsNullBranchStackEntry(branch_stack->entries[i])) {
+      break;
+    }
+    ++trimmed_size;
+  }
+
+  // If a null entry was found, make sure all subsequent null entries are NULL
+  // as well.
+  for (size_t i = trimmed_size; i < branch_stack->nr; ++i) {
+    const struct branch_entry& entry = branch_stack->entries[i];
+    if (!IsNullBranchStackEntry(entry)) {
+      LOG(ERROR) << "Non-null branch stack entry found after null entry: "
+                 << reinterpret_cast<void*>(entry.from) << " -> "
+                 << reinterpret_cast<void*>(entry.to);
+      return false;
+    }
+  }
+
+  // Map branch stack addresses.
+  parsed_event->branch_stack.resize(trimmed_size);
+  for (unsigned int i = 0; i < trimmed_size; ++i) {
+    struct branch_entry& entry = branch_stack->entries[i];
+    ParsedEvent::BranchEntry& parsed_entry = parsed_event->branch_stack[i];
+    if (!MapIPAndPidAndGetNameAndOffset(entry.from,
+                                        event.pid,
+                                        event.header.misc,
+                                        reinterpret_cast<uint64*>(
+                                            &entry.from),
+                                        &parsed_entry.from)) {
+      return false;
+    }
+    if (!MapIPAndPidAndGetNameAndOffset(entry.to,
+                                        event.pid,
+                                        event.header.misc,
+                                        reinterpret_cast<uint64*>(&entry.to),
+                                        &parsed_entry.to)) {
+      return false;
+    }
+    parsed_entry.predicted = entry.flags.predicted;
+    // Either predicted or mispredicted, not both. But don't use a CHECK here,
+    // just exit gracefully because it's a minor issue.
+    if (entry.flags.predicted == entry.flags.mispred) {
+      LOG(ERROR) << "Branch stack entry predicted and mispred flags "
+                 << "both have value " << entry.flags.mispred;
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool PerfParser::MapIPAndPidAndGetNameAndOffset(

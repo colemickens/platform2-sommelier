@@ -197,6 +197,12 @@ class PerfParser : public PerfReader {
                     struct ip_callchain* callchain,
                     ParsedEvent* parsed_event);
 
+  // Trims the branch stack for null entries and calls
+  // MapIPAndPidAndGetNameAndOffset() on each entry.
+  bool MapBranchStack(const struct ip_event& event,
+                      struct branch_stack* branch_stack,
+                      ParsedEvent* parsed_event);
+
   // This maps a sample event and returns the mapped address, DSO name, and
   // offset within the DSO.  This is a private function because the API might
   // change in the future, and we don't want derived classes to be stuck with an
