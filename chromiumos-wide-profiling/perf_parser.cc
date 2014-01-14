@@ -303,8 +303,14 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
     return false;
   }
   // The second callchain entry is the same as the sample address.
-  CHECK_EQ((void*)callchain->ips[kCallchainBaseAddressIndex],
-           (void*)original_event_addr);
+  if (callchain->ips[kCallchainBaseAddressIndex] !=
+      original_event_addr) {
+    LOG(ERROR) << "Second callchain entry: "
+               << callchain->ips[kCallchainBaseAddressIndex]
+               << " doesn't match sample address: "
+               << original_event_addr;
+    return false;
+  }
   // The sample address has already been mapped so no need to map this one.
   callchain->ips[kCallchainBaseAddressIndex] = event.ip;
 
