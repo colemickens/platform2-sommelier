@@ -73,7 +73,8 @@ std::vector<uint8_t> FileEntry::ToDBusFormat() const {
   int size = protobuf.ByteSize();
   std::vector<uint8_t> serialized_proto;
   serialized_proto.resize(size);
-  CHECK(protobuf.SerializeToArray(&serialized_proto[0], size));
+  CHECK_GT(size, 0);
+  CHECK(protobuf.SerializeToArray(&serialized_proto.front(), size));
   return serialized_proto;
 }
 
@@ -87,6 +88,10 @@ std::vector<uint8_t> FileEntry::EmptyFileEntriesToDBusFormat() {
 std::vector<uint8_t> FileEntry::FileEntriesToDBusFormat(
     std::vector<FileEntry>& entries) {
   MtpFileEntries protobuf;
+  std::vector<uint8_t> serialized_proto;
+
+  if (entries.empty())
+    return serialized_proto;
 
   for (size_t i = 0; i < entries.size(); ++i) {
     MtpFileEntry entry_protobuf = entries[i].ToProtobuf();
@@ -94,9 +99,9 @@ std::vector<uint8_t> FileEntry::FileEntriesToDBusFormat(
     *added_entry = entry_protobuf;
   }
   int size = protobuf.ByteSize();
-  std::vector<uint8_t> serialized_proto;
   serialized_proto.resize(size);
-  CHECK(protobuf.SerializeToArray(&serialized_proto[0], size));
+  CHECK_GT(size, 0);
+  CHECK(protobuf.SerializeToArray(&serialized_proto.front(), size));
   return serialized_proto;
 }
 

@@ -70,7 +70,8 @@ std::vector<uint8_t> StorageInfo::ToDBusFormat() const {
   int size = protobuf.ByteSize();
   std::vector<uint8_t> serialized_proto;
   serialized_proto.resize(size);
-  CHECK(protobuf.SerializeToArray(&serialized_proto[0], size));
+  CHECK_GT(size, 0);
+  CHECK(protobuf.SerializeToArray(&serialized_proto.front(), size));
   return serialized_proto;
 }
 
