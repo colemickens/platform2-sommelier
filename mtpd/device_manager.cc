@@ -181,7 +181,8 @@ int DeviceManager::GetDeviceEventDescriptor() const {
 
 void DeviceManager::ProcessDeviceEvents() {
   udev_device* dev = udev_monitor_receive_device(udev_monitor_);
-  CHECK(dev);
+  if (!dev)
+    return;
   HandleDeviceNotification(dev);
   udev_device_unref(dev);
 }
