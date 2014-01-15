@@ -14,32 +14,10 @@
 ENV{MIST_SUPPORTED_DEVICE}=="1", GOTO="mist_end"
 
 ACTION!="add|change", GOTO="mist_end"
-SUBSYSTEM!="usb", GOTO="mist_end"
-ENV{DEVTYPE}!="usb_device", GOTO="mist_end"
 
-# Supported USB devices before switching into a modem
-ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1446", GOTO="mist_switch_device"
-ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="14fe", GOTO="mist_switch_device"
-ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1505", GOTO="mist_switch_device"
-ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1526", GOTO="mist_switch_device"
-ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1f01", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0013", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0040", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0101", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0154", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1007", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1009", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1171", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1175", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1179", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1201", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1523", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="2000", GOTO="mist_switch_device"
-ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fff5", GOTO="mist_switch_device"
-ATTRS{idVendor}=="1c9e", ATTRS{idProduct}=="f000", GOTO="mist_switch_device"
-ATTRS{idVendor}=="2020", ATTRS{idProduct}=="0002", GOTO="mist_switch_device"
-
+#-------------------------------------------------------------------------------
 # Supported USB devices after switching into a modem
+SUBSYSTEM!="usb|tty", GOTO="mist_end"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1001", GOTO="mist_mark_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1406", GOTO="mist_mark_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="140b", GOTO="mist_mark_device"
@@ -78,8 +56,34 @@ ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="ffff", GOTO="mist_mark_device"
 ATTRS{idVendor}=="1c9e", ATTRS{idProduct}=="9605", GOTO="mist_mark_device"
 ATTRS{idVendor}=="2020", ATTRS{idProduct}=="4010", GOTO="mist_mark_device"
 
+#-------------------------------------------------------------------------------
+# Supported USB devices before switching into a modem
+SUBSYSTEM!="usb", GOTO="mist_end"
+ENV{DEVTYPE}!="usb_device", GOTO="mist_end"
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1446", GOTO="mist_switch_device"
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="14fe", GOTO="mist_switch_device"
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1505", GOTO="mist_switch_device"
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1526", GOTO="mist_switch_device"
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1f01", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0013", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0040", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0101", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0154", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1007", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1009", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1171", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1175", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1179", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1201", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1523", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="2000", GOTO="mist_switch_device"
+ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fff5", GOTO="mist_switch_device"
+ATTRS{idVendor}=="1c9e", ATTRS{idProduct}=="f000", GOTO="mist_switch_device"
+ATTRS{idVendor}=="2020", ATTRS{idProduct}=="0002", GOTO="mist_switch_device"
+
 GOTO="mist_end"
 
+#-------------------------------------------------------------------------------
 # Invoke mist to switch a supported USB device into a modem. mist needs to run
 # as a daemon in order to monitor udev events to determine when the device is
 # switched into a modem.
@@ -87,9 +91,13 @@ LABEL="mist_switch_device"
 RUN+="/usr/bin/mist --daemon switch %S%p"
 # Fall through to "mist_mark_device"
 
-# Set MIST_SUPPORTED_DEVICE to 1 to tell cros-disks to hide this device from
-# being auto-mounted.
+#-------------------------------------------------------------------------------
+# If this device is a 'usb_device' device, set MIST_SUPPORTED_DEVICE to 1 to
+# tell cros-disks to hide it from being auto-mounted. If this device is a 'tty'
+# device, set MIST_SUPPORTED_DEVICE to 1 to tell 52-mm-modem-permissions.rules
+# to set the right permissions on it.
 LABEL="mist_mark_device"
-ENV{MIST_SUPPORTED_DEVICE}="1"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ENV{MIST_SUPPORTED_DEVICE}="1"
+SUBSYSTEM=="tty", ENV{MIST_SUPPORTED_DEVICE}="1"
 
 LABEL="mist_end"
