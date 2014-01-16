@@ -324,7 +324,8 @@ void WiFi::Start(Error *error,
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
-  supplicant_name_watcher_.reset();
+  // Unlike other devices, we leave the DBus name watcher in place here, because
+  // WiFi callbacks expect notifications even if the device is disabled.
   DropConnection();
   StopScanTimer();
   for (EndpointMap::iterator it = endpoint_by_rpcid_.begin();
