@@ -153,7 +153,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
-  store->RegisterConstString(kSIMOperatorIdProperty, &operator_id_);
 }
 
 KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
