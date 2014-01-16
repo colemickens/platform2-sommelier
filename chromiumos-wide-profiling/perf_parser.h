@@ -15,6 +15,14 @@
 
 namespace quipper {
 
+namespace {
+
+// By default, all samples must be properly mapped in order for sample mapping
+// to be considered successful.
+const float kDefaultSampleThreshold = 100.;
+
+}  // namespace
+
 class AddressMapper;
 
 // A struct containing all relevant info for a mapped DSO, independent of any
@@ -118,15 +126,22 @@ class PerfParser : public PerfReader {
   ~PerfParser();
 
   struct Options {
+    // For synthetic address mapping.
     bool do_remap;
+    // Set this flag to discard non-sample events that don't have any associated
+    // sample events. e.g. MMAP regions with no samples in them.
     bool discard_unused_events;
+    // When mapping perf sample events, at least this percentage of them must be
+    // successfully mapped in order for ProcessEvents() to return true.
+    float sample_mapping_percentage_threshold;
 
     Options() : do_remap(false),
-                discard_unused_events(false) {}
+                discard_unused_events(false),
+                sample_mapping_percentage_threshold(kDefaultSampleThreshold) {}
   };
 
   // Pass in a struct containing various options.
-  void SetOptions(const Options& options);
+  void set_options(const Options& options);
 
   // Gets parsed event/sample info from raw event data.
   bool ParseRawEvents();
@@ -171,8 +186,8 @@ class PerfParser : public PerfReader {
   std::vector<ParsedEvent> parsed_events_;
   std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
 
-  // For synthetic address mapping.
-  bool do_remap_;
+  Options options_;   // Store all option flags as one struct.
+
   std::map<uint32, AddressMapper*> process_mappers_;
 
   // Maps pid/tid to commands.
@@ -180,10 +195,6 @@ class PerfParser : public PerfReader {
 
   // A set to store the actual command strings.
   std::set<string> commands_;
-
-  // Set this flag to discard non-sample events that don't have any associated
-  // sample events. e.g. MMAP regions with no samples in them.
-  bool discard_unused_events_;
 
   PerfEventStats stats_;
 

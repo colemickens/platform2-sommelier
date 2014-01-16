@@ -49,16 +49,14 @@ bool IsNullBranchStackEntry(const struct branch_entry& entry) {
 
 }  // namespace
 
-PerfParser::PerfParser() : do_remap_(false),
-                           discard_unused_events_(false) {}
+PerfParser::PerfParser() {}
 
 PerfParser::~PerfParser() {
   ResetAddressMappers();
 }
 
-void PerfParser::SetOptions(const PerfParser::Options& options) {
-  do_remap_ = options.do_remap;
-  discard_unused_events_ = options.discard_unused_events;
+void PerfParser::set_options(const PerfParser::Options& options) {
+  options_ = options;
 }
 
 bool PerfParser::ParseRawEvents() {
@@ -71,7 +69,7 @@ bool PerfParser::ParseRawEvents() {
   SortParsedEvents();
   ProcessEvents();
 
-  if (!discard_unused_events_)
+  if (!options_.discard_unused_events)
     return true;
 
   // Some MMAP events' mapped regions will not have any samples.  These MMAP
@@ -129,6 +127,8 @@ void PerfParser::SortParsedEvents() {
 bool PerfParser::ProcessEvents() {
   memset(&stats_, 0, sizeof(stats_));
 
+  stats_.did_remap = false;   // Explicitly clear the remap flag.
+
   // Pid 0 is called the swapper process. Even though perf does not record a
   // COMM event for pid 0, we act like we did receive a COMM event for it. Perf
   // does this itself, example:
@@ -145,10 +145,9 @@ bool PerfParser::ProcessEvents() {
         VLOG(1) << "IP: " << std::hex << event.ip.ip;
         ++stats_.num_sample_events;
 
-        if (!MapSampleEvent(&parsed_event)) {
-          return false;
+        if (MapSampleEvent(&parsed_event)) {
+          ++stats_.num_sample_events_mapped;
         }
-        ++stats_.num_sample_events_mapped;
         break;
       case PERF_RECORD_MMAP: {
         VLOG(1) << "MMAP: " << event.mmap.filename;
@@ -205,7 +204,18 @@ bool PerfParser::ProcessEvents() {
             << ", " << stats_.num_sample_events << " SAMPLE events"
             << ", " << stats_.num_sample_events_mapped
             << " of these were mapped";
-  stats_.did_remap = do_remap_;
+
+  float sample_mapping_percentage =
+      static_cast<float>(stats_.num_sample_events_mapped) /
+      stats_.num_sample_events * 100.;
+  float threshold = options_.sample_mapping_percentage_threshold;
+  if (sample_mapping_percentage < threshold) {
+    LOG(ERROR) << "Mapped " << static_cast<int>(sample_mapping_percentage)
+               << "% of samples, expected at least "
+               << static_cast<int>(threshold) << "%";
+    return false;
+  }
+  stats_.did_remap = options_.do_remap;
   return true;
 }
 
@@ -452,7 +462,7 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
 
       ++parsed_event->num_samples_in_mmap_region;
     }
-    if (do_remap_)
+    if (options_.do_remap)
       *new_ip = mapped_addr;
   }
   return mapped;
@@ -520,7 +530,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
 
   uint64 mapped_addr;
   CHECK(mapper->GetMappedAddress(start, &mapped_addr));
-  if (do_remap_) {
+  if (options_.do_remap) {
     event->start = mapped_addr;
     event->len = len;
     event->pgoff = pgoff;

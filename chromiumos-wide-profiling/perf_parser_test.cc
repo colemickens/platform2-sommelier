@@ -40,7 +40,7 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
                                PerfParser* parser) {
   PerfParser::Options options;
   options.do_remap = true;
-  parser->SetOptions(options);
+  parser->set_options(options);
   ASSERT_TRUE(parser->ReadFile(input_perf_data));
   parser->ParseRawEvents();
 

@@ -37,7 +37,7 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
   // Discard unused perf events to reduce the protobuf size.
   options.discard_unused_events = true;
 
-  perf_serializer.SetOptions(options);
+  perf_serializer.set_options(options);
 
   return (perf_serializer.ReadFromVector(raw_perf_data) &&
           perf_serializer.Serialize(perf_data));

@@ -46,11 +46,11 @@ void SerializeAndDeserialize(const string& input,
   options.do_remap = do_remap;
   options.discard_unused_events = discard_unused_events;
   PerfSerializer serializer;
-  serializer.SetOptions(options);
+  serializer.set_options(options);
   EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
 
   PerfSerializer deserializer;
-  deserializer.SetOptions(options);
+  deserializer.set_options(options);
   EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
 
   // Check perf event stats.
