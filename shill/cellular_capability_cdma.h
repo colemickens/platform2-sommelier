@@ -106,7 +106,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   uint32 activation_state_;
   uint32 registration_state_evdo_;
   uint32 registration_state_1x_;
-  uint16 prl_version_;
   CellularService::OLP olp_;
   std::string usage_url_;
 

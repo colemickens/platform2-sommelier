@@ -66,13 +66,11 @@ CellularCapabilityClassic::CellularCapabilityClassic(
     ModemInfo *modem_info)
     : CellularCapability(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this) {
-  PropertyStore *store = cellular->mutable_store();
   // This class is currently instantiated only for Gobi modems so setup the
   // supported carriers list appropriately and expose it over RPC.
-  supported_carriers_.push_back(kCarrierGenericUMTS);
-  supported_carriers_.push_back(kCarrierSprint);
-  supported_carriers_.push_back(kCarrierVerizon);
-  store->RegisterConstStrings(kSupportedCarriersProperty, &supported_carriers_);
+  cellular->set_supported_carriers({kCarrierGenericUMTS,
+                                    kCarrierSprint,
+                                    kCarrierVerizon});
 }
 
 CellularCapabilityClassic::~CellularCapabilityClassic() {}

@@ -31,6 +31,7 @@ class DeviceAdaptorInterface {
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
   virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
+  virtual void EmitUint16Changed(const std::string &name, uint16 value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
@@ -38,6 +39,8 @@ class DeviceAdaptorInterface {
                                     const Stringmap &value) = 0;
   virtual void EmitStringmapsChanged(const std::string &name,
                                      const Stringmaps &value) = 0;
+  virtual void EmitStringsChanged(const std::string &name,
+                                  const Strings &value) = 0;
   virtual void EmitKeyValueStoreChanged(const std::string &name,
                                         const KeyValueStore &value) = 0;
 };

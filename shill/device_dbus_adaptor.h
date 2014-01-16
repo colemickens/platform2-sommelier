@@ -36,6 +36,7 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual const std::string &GetRpcConnectionIdentifier();
   virtual void EmitBoolChanged(const std::string& name, bool value);
   virtual void EmitUintChanged(const std::string& name, uint32 value);
+  virtual void EmitUint16Changed(const std::string& name, uint16 value);
   virtual void EmitIntChanged(const std::string& name, int value);
   virtual void EmitStringChanged(const std::string& name,
                                  const std::string& value);
@@ -43,6 +44,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
                                     const Stringmap &value);
   virtual void EmitStringmapsChanged(const std::string &name,
                                      const Stringmaps &value);
+  virtual void EmitStringsChanged(const std::string &name,
+                                  const Strings &value);
   virtual void EmitKeyValueStoreChanged(const std::string &name,
                                         const KeyValueStore &value);
 

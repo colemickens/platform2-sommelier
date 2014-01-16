@@ -49,6 +49,11 @@ void DeviceDBusAdaptor::EmitUintChanged(const std::string& name, uint32 value) {
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
+void DeviceDBusAdaptor::EmitUint16Changed(const string &name, uint16 value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::Uint16ToVariant(value));
+}
+
 void DeviceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
@@ -70,6 +75,12 @@ void DeviceDBusAdaptor::EmitStringmapsChanged(const std::string &name,
                                               const Stringmaps &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringmapsToVariant(value));
+}
+
+void DeviceDBusAdaptor::EmitStringsChanged(const std::string &name,
+                                              const Strings &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const std::string &name,

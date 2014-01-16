@@ -665,7 +665,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   EXPECT_EQ(kSimPath, capability_->sim_path_);
 
   cellular_->set_imsi("");
-  capability_->sim_identifier_ = "";
+  cellular_->set_sim_identifier("");
   capability_->operator_id_ = "";
   capability_->spn_ = "";
 
@@ -675,7 +675,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   EXPECT_EQ("", cellular_->imsi());
-  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
@@ -692,7 +692,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   EXPECT_EQ(kImsi, cellular_->imsi());
-  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
@@ -708,7 +708,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   EXPECT_EQ("", cellular_->imsi());
-  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
@@ -724,7 +724,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   EXPECT_EQ("", cellular_->imsi());
-  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 }
@@ -1096,7 +1096,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
-  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
@@ -1105,7 +1105,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
-  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
@@ -1115,7 +1115,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
-  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
@@ -1126,7 +1126,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
-  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
@@ -1141,7 +1141,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_TRUE(capability_->sim_proxy_ != NULL);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
-  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
@@ -1150,7 +1150,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("/", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
-  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 }
@@ -1202,7 +1202,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
                                        new_properties,
                                        vector<string>());
   EXPECT_EQ(kNewImsi, cellular_->imsi());
-  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
@@ -1616,7 +1616,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
   cellular_->set_imsi("2");
   cellular_->set_mdn("10123456789");
   cellular_->set_min("5");
-  capability_->sim_identifier_ = "6";
+  cellular_->set_sim_identifier("6");
   capability_->operator_id_ = "123456";
 
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
@@ -1659,7 +1659,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
   const char kIccid[] = "1234567";
 
   cellular_->set_mdn("");
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
 
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(0);
@@ -1676,7 +1676,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
   EXPECT_TRUE(
       capability_->activation_wait_for_registration_callback_.IsCancelled());
 
-  capability_->sim_identifier_ = kIccid;
+  cellular_->set_sim_identifier(kIccid);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               SetActivationState(PendingActivationStore::kIdentifierICCID,
                                  kIccid,
@@ -1708,7 +1708,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   const char kIccid[] = "1234567";
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
   cellular_->set_mdn("0000000000");
   CellularService::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
@@ -1732,7 +1732,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
 
   service_->SetAutoConnect(false);
   cellular_->set_mdn("0000000000");
-  capability_->sim_identifier_ = kIccid;
+  cellular_->set_sim_identifier(kIccid);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID,
                                  kIccid))
@@ -1762,7 +1762,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   cellular_->set_mdn("1231231122");
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
   service_->SetAutoConnect(false);
   EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
       .Times(1);
@@ -1774,7 +1774,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateProvisioned;
   cellular_->set_mdn("0000000000");
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
   service_->SetAutoConnect(false);
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
@@ -1794,13 +1794,13 @@ TEST_F(CellularCapabilityUniversalMainTest, ActivationWaitForRegisterTimeout) {
     .Times(0);
 
   // No ICCID, no MDN
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
   cellular_->set_mdn("");
   capability_->reset_done_ = false;
   capability_->OnActivationWaitForRegisterTimeout();
 
   // State is not activated.
-  capability_->sim_identifier_ = kIccid;
+  cellular_->set_sim_identifier(kIccid);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
     .WillOnce(Return(PendingActivationStore::kStateActivated))
@@ -1845,7 +1845,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   cellular_->set_mdn("0000000");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(0);
@@ -1856,7 +1856,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   cellular_->set_mdn("1234567");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
-  capability_->sim_identifier_.clear();
+  cellular_->set_sim_identifier("");
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(0);
@@ -1864,7 +1864,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // ICCID known.
-  capability_->sim_identifier_ = kIccid;
+  cellular_->set_sim_identifier(kIccid);
 
   // After the modem has reset.
   capability_->reset_done_ = true;
@@ -2085,7 +2085,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 
   const char kIccid[] = "1234567890";
-  capability_->sim_identifier_ = kIccid;
+  cellular_->set_sim_identifier(kIccid);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID,
                                  kIccid))

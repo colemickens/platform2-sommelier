@@ -261,6 +261,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   bool provider_requires_roaming() const { return provider_requires_roaming_; }
   bool sim_present() const { return sim_present_; }
   const Stringmaps &apn_list() const { return apn_list_; }
+  const std::string &sim_identifier() const { return sim_identifier_; }
+
+  const Strings &supported_carriers() const { return supported_carriers_; }
+  uint16 prl_version() const { return prl_version_; }
 
   // setters
   void set_home_provider(const Operator &oper);
@@ -284,7 +288,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   void set_provider_requires_roaming(bool provider_requires_roaming);
   void set_sim_present(bool sim_present);
   void set_apn_list(const Stringmaps &apn_list);
+  void set_sim_identifier(const std::string &sim_identifier);
 
+  void set_supported_carriers(const Strings &supported_carriers);
+  void set_prl_version(uint16 prl_version);
 
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
@@ -490,7 +497,14 @@ class Cellular : public Device, public RPCTaskDelegate {
   uint16 scan_interval_;
   bool sim_present_;
   Stringmaps apn_list_;
+  std::string sim_identifier_;
 
+  // CDMA only properties.
+  uint16 prl_version_;
+
+  // This property is specific to Gobi modems.
+  Strings supported_carriers_;
+  // End of DBus properties.
 
   ModemInfo *modem_info_;
   ProxyFactory *proxy_factory_;

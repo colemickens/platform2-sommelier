@@ -289,7 +289,7 @@ Properties	string Address [readonly]
 
 			(Cellular only) For GSM / LTE modems, the Integrated
 			Circuit Card Identifer of the SIM card installed in
-			the device.
+			the device. Blank otherwise.
 
 		string Cellular.IMSI [readonly]
 

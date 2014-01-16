@@ -122,6 +122,7 @@ Cellular::Cellular(ModemInfo *modem_info,
       provider_requires_roaming_(false),
       scan_interval_(0),
       sim_present_(false),
+      prl_version_(0),
       modem_info_(modem_info),
       proxy_factory_(proxy_factory),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
@@ -1138,6 +1139,10 @@ void Cellular::RegisterProperties() {
                            &provider_requires_roaming_);
   store->RegisterConstBool(kSIMPresentProperty, &sim_present_);
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
+  store->RegisterConstString(kIccidProperty, &sim_identifier_);
+
+  store->RegisterConstStrings(kSupportedCarriersProperty, &supported_carriers_);
+  store->RegisterConstUint16(kPRLVersionProperty, &prl_version_);
 
   // TODO(pprabhu): Decide whether these need their own custom setters.
   HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
@@ -1339,6 +1344,30 @@ void Cellular::set_apn_list(const Stringmaps &apn_list) {
     SLOG(Cellular, 2) << "Could not emit signal for property |"
                       << kCellularApnListProperty
                       << "| change. DBus adaptor is NULL!";
+}
+
+void Cellular::set_sim_identifier(const string &sim_identifier) {
+  if (sim_identifier_ == sim_identifier)
+    return;
+
+  sim_identifier_ = sim_identifier;
+  adaptor()->EmitStringChanged(kIccidProperty, sim_identifier_);
+}
+
+void Cellular::set_supported_carriers(const Strings &supported_carriers) {
+  // There is no canonical form of a Strings value.
+  // So don't check for redundant updates.
+  supported_carriers_ = supported_carriers;
+  adaptor()->EmitStringsChanged(kSupportedCarriersProperty,
+                                supported_carriers_);
+}
+
+void Cellular::set_prl_version(uint16 prl_version) {
+  if (prl_version_ == prl_version)
+    return;
+
+  prl_version_ = prl_version;
+  adaptor()->EmitUint16Changed(kPRLVersionProperty, prl_version_);
 }
 
 }  // namespace shill

@@ -147,9 +147,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       registration_dropped_update_timeout_milliseconds_(
           kRegistrationDroppedUpdateTimeoutMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
-  PropertyStore *store = cellular->mutable_store();
-
-  store->RegisterConstString(kIccidProperty, &sim_identifier_);
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
@@ -412,10 +409,11 @@ void CellularCapabilityUniversal::Activate(const string &carrier,
 
 void CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout() {
   SLOG(Cellular, 2) << __func__;
-  if (sim_identifier_.empty() ||
+  const string &sim_identifier = cellular()->sim_identifier();
+  if (sim_identifier.empty() ||
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
-          sim_identifier_) == PendingActivationStore::kStateActivated) {
+          sim_identifier) == PendingActivationStore::kStateActivated) {
     SLOG(Cellular, 2) << "Modem is already scheduled to be reset.";
     return;
   }
@@ -433,7 +431,7 @@ void CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout() {
                     << "to update MDN.";
   modem_info()->pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierICCID,
-      sim_identifier_,
+      sim_identifier,
       PendingActivationStore::kStatePendingTimeout);
   ResetAfterActivation();
 }
@@ -442,10 +440,11 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
   SLOG(Cellular, 2) << __func__;
 
   // Persist the ICCID as "Pending Activation".
-  // We're assuming that when this function gets called, |sim_identifier_| will
-  // be non-empty. We still check here that is non-empty, though something is
-  // wrong if it is empty.
-  if (sim_identifier_.empty()) {
+  // We're assuming that when this function gets called,
+  // |cellular()->sim_identifier()| will be non-empty. We still check here that
+  // is non-empty, though something is wrong if it is empty.
+  const string &sim_identifier = cellular()->sim_identifier();
+  if (sim_identifier.empty()) {
     SLOG(Cellular, 2) << "SIM identifier not available. Nothing to do.";
     return;
   }
@@ -464,7 +463,7 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
   }
   modem_info()->pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierICCID,
-      sim_identifier_,
+      sim_identifier,
       PendingActivationStore::kStatePending);
 
   activation_wait_for_registration_callback_.Reset(
@@ -504,6 +503,7 @@ void CellularCapabilityUniversal::OnResetAfterActivationReply(
 void CellularCapabilityUniversal::UpdatePendingActivationState() {
   SLOG(Cellular, 2) << __func__;
 
+  const string &sim_identifier = cellular()->sim_identifier();
   bool registered =
       registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
 
@@ -516,10 +516,10 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
      (subscription_state_ == kSubscriptionStateOutOfData)) ||
     ((subscription_state_ == kSubscriptionStateUnknown) && IsMdnValid());
 
-  if (activated && !sim_identifier_.empty())
+  if (activated && !sim_identifier.empty())
       modem_info()->pending_activation_store()->RemoveEntry(
           PendingActivationStore::kIdentifierICCID,
-          sim_identifier_);
+          sim_identifier);
 
   CellularServiceRefPtr service = cellular()->service();
 
@@ -541,13 +541,13 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
 
   // If the ICCID is not available, the following logic can be delayed until it
   // becomes available.
-  if (sim_identifier_.empty())
+  if (sim_identifier.empty())
     return;
 
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
-          sim_identifier_);
+          sim_identifier);
   switch (state) {
     case PendingActivationStore::kStatePending:
       // Always mark the service as activating here, as the ICCID could have
@@ -557,7 +557,7 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
         SLOG(Cellular, 2) << "Post-payment activation reset complete.";
         modem_info()->pending_activation_store()->SetActivationState(
             PendingActivationStore::kIdentifierICCID,
-            sim_identifier_,
+            sim_identifier,
             PendingActivationStore::kStateActivated);
       } else if (registered) {
         SLOG(Cellular, 2) << "Resetting modem for activation.";
@@ -580,7 +580,7 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
         SLOG(Cellular, 2) << "Registered to network, marking as activated.";
         modem_info()->pending_activation_store()->SetActivationState(
             PendingActivationStore::kIdentifierICCID,
-            sim_identifier_,
+            sim_identifier,
             PendingActivationStore::kStateActivated);
         service->SetActivationState(kActivationStateActivated);
       }
@@ -648,15 +648,17 @@ void CellularCapabilityUniversal::UpdateStorageIdentifier() {
 void CellularCapabilityUniversal::UpdateServiceActivationState() {
   if (!cellular()->service().get())
     return;
+
+  const string &sim_identifier = cellular()->sim_identifier();
   bool activation_required = IsServiceActivationRequired();
   string activation_state;
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
-          sim_identifier_);
+          sim_identifier);
   if ((subscription_state_ == kSubscriptionStateUnknown ||
        subscription_state_ == kSubscriptionStateUnprovisioned) &&
-      !sim_identifier_.empty() &&
+      !sim_identifier.empty() &&
       (state == PendingActivationStore::kStatePending ||
        state == PendingActivationStore::kStatePendingTimeout))
     activation_state = kActivationStateActivating;
@@ -926,7 +928,8 @@ void CellularCapabilityUniversal::UpdateOLP() {
   CellularService::OLP olp;
   olp.CopyFrom(*result);
   string post_data = olp.GetPostData();
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}", sim_identifier_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}",
+                               cellular()->sim_identifier());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", cellular()->imei());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", cellular()->imsi());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
@@ -1125,6 +1128,7 @@ void CellularCapabilityUniversal::InitAPNList() {
 }
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
+  const string &sim_identifier = cellular()->sim_identifier();
   // subscription_state_ is the definitive answer. If that does not work,
   // fallback on MDN based logic.
   if (subscription_state_ == kSubscriptionStateProvisioned ||
@@ -1133,10 +1137,10 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
 
   // We are in the process of activating, ignore all other clues from the
   // network and use our own knowledge about the activation state.
-  if (!sim_identifier_.empty() &&
+  if (!sim_identifier.empty() &&
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
-          sim_identifier_) != PendingActivationStore::kStateUnknown)
+          sim_identifier) != PendingActivationStore::kStateUnknown)
     return false;
 
   // Network notification that the service needs to be activated.
@@ -1980,7 +1984,7 @@ void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
 }
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
-  sim_identifier_ = id;
+  cellular()->set_sim_identifier(id);
   UpdatePendingActivationState();
 }
 

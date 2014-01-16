@@ -36,11 +36,8 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
       activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      prl_version_(0) {
+      registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
   SLOG(Cellular, 2) << "Cellular capability constructed: CDMA";
-  PropertyStore *store = cellular->mutable_store();
-  store->RegisterConstUint16(kPRLVersionProperty, &prl_version_);
 }
 
 void CellularCapabilityCDMA::InitProxies() {
@@ -108,9 +105,12 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
     oper.SetCountry("us");
     cellular()->set_home_provider(oper);
   }
+
+  uint16 prl_version;
   DBusProperties::GetUint32(
       properties, "activation_state", &activation_state_);
-  DBusProperties::GetUint16(properties, "prl_version", &prl_version_);
+  if (DBusProperties::GetUint16(properties, "prl_version", &prl_version))
+    cellular()->set_prl_version(prl_version);
   // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
   // match flimflam. In the future, get these from an alternative source (e.g.,
   // database, carrier-specific properties, etc.).
