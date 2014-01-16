@@ -154,6 +154,9 @@ class Platform2Test(object):
 
     env['LD_LIBRARY_PATH'] = ':'.join(ld_paths)
 
+    # Passthrough TERM so that we get colors in test output where supported.
+    env['TERM'] = os.environ.get("TERM")
+
     if self.run_as_root or self.framework == 'qemu':
       cmd.append('sudo')
       for var, val in env.items():
