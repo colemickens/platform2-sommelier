@@ -14,6 +14,7 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
@@ -46,6 +47,10 @@ const char kManufacturerID[] = "Chromium OS";
 const CK_ULONG kMaxPinLen = 127;
 const CK_ULONG kMinPinLen = 6;
 const char kSlotDescription[] = "TPM Slot";
+const FilePath::CharType kSystemTokenPath[] =
+    FILE_PATH_LITERAL("/var/lib/chaps");
+const char kSystemTokenAuthData[] = "000000";
+const char kSystemTokenLabel[] = "System TPM Token";
 const char kTokenLabel[] = "User-Specific TPM Token";
 const char kTokenModel[] = "";
 const char kTokenSerialNumber[] = "Not Available";
@@ -289,15 +294,29 @@ bool SlotManagerImpl::Init() {
     LOG(WARNING) << "TPM failed to generate random data.";
   }
 
-  // Add default isolate
+  // Add default isolate.
   AddIsolate(IsolateCredentialManager::GetDefaultIsolateCredential());
 
-  // Default semantics are to always start with two slots.  One 'system' slot
+  // By default we'll start with two slots.  This allows for one 'system' slot
   // which always has a token available, and one 'user' slot which will have no
   // token until a login event is received.
-  // TODO(dkrahn): Make this 2 once we're ready to enable the system token.
-  // crosbug.com/27759.
-  AddSlots(1);
+  AddSlots(2);
+
+  if (file_util::DirectoryExists(FilePath(kSystemTokenPath))) {
+    // Setup the system token.
+    int system_slot_id = 0;
+    if (!LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
+                   FilePath(kSystemTokenPath),
+                   SecureBlob(kSystemTokenAuthData),
+                   kSystemTokenLabel,
+                   &system_slot_id)) {
+      LOG(ERROR) << "Failed to load the system token.";
+      return false;
+    }
+  } else {
+    LOG(WARNING) << "System token not loaded because " << kSystemTokenPath
+                 << " does not exist.";
+  }
   return true;
 }
 
