@@ -66,7 +66,8 @@ export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
 export LOGNAME=${USER}
 export SHELL=/bin/sh
-export HOME=/dev/null
+# TODO(keescook): remove Chrome's use of $HOME.
+export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
 export XAUTHORITY=${DATA_DIR}/.Xauthority
 
