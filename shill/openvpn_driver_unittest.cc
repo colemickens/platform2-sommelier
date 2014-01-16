@@ -584,10 +584,13 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
   static const char kID[] = "TestPKCS11ID";
+  static const char kKU0[] = "00";
+  static const char kKU1[] = "01";
   FilePath empty_cert;
   SetArg(kProviderHostProperty, kHost);
   SetArg(kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
   SetArg(kOpenVPNClientCertIdProperty, kID);
+  SetArg(kOpenVPNRemoteCertKUProperty, string(kKU0) + " " + string(kKU1));
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
@@ -614,6 +617,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
   ExpectInFlags(options, "syslog");
   ExpectNotInFlags(options, "auth-user-pass");
+  ExpectInFlags(options, vector<string> { "remote-cert-ku", kKU0, kKU1 });
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
@@ -959,6 +963,32 @@ TEST_F(OpenVPNDriverTest, AppendValueOption) {
   vector<string> expected_value { kOption, kValue };
   EXPECT_EQ(expected_value, options[0]);
   vector<string> expected_value2 { kOption2, kValue2 };
+  EXPECT_EQ(expected_value2, options[1]);
+}
+
+TEST_F(OpenVPNDriverTest, AppendDelimitedValueOption) {
+  vector<vector<string>> options;
+  EXPECT_FALSE(
+      driver_->AppendDelimitedValueOption(
+          "OpenVPN.UnknownProperty", kOption, ' ', &options));
+  EXPECT_TRUE(options.empty());
+
+  SetArg(kProperty, "");
+  EXPECT_FALSE(
+      driver_->AppendDelimitedValueOption(kProperty, kOption, ' ', &options));
+  EXPECT_TRUE(options.empty());
+
+  string kConcatenatedValues(string(kValue) + " " + string(kValue2));
+  SetArg(kProperty, kConcatenatedValues);
+  SetArg(kProperty2, kConcatenatedValues);
+  EXPECT_TRUE(driver_->AppendDelimitedValueOption(
+      kProperty, kOption, ':', &options));
+  EXPECT_TRUE(driver_->AppendDelimitedValueOption(
+      kProperty2, kOption2, ' ', &options));
+  EXPECT_EQ(2, options.size());
+  vector<string> expected_value { kOption, kConcatenatedValues };
+  EXPECT_EQ(expected_value, options[0]);
+  vector<string> expected_value2 { kOption2, kValue, kValue2 };
   EXPECT_EQ(expected_value2, options[1]);
 }
 

@@ -90,6 +90,15 @@ class OpenVPNDriver : public VPNDriver,
                          const std::string &option,
                          std::vector<std::vector<std::string>> *options);
 
+  // If |property| exists, split its value up using |delimiter|.  Each element
+  // will be a separate argument to |option|. Returns true if the option was
+  // appended to |options|.
+  bool AppendDelimitedValueOption(
+      const std::string &property,
+      const std::string &option,
+      char delimiter,
+      std::vector<std::vector<std::string>> *options);
+
   // Returns true if a flag was appended.
   bool AppendFlag(const std::string &property,
                   const std::string &option,

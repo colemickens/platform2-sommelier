@@ -670,9 +670,9 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
   // This is an undocumented command line argument that works like a .cfg file
   // entry. TODO(sleffler): Maybe roll this into the "tls-auth" option?
   AppendValueOption(kOpenVPNKeyDirectionProperty, "key-direction", options);
-  // TODO(sleffler): Support more than one eku parameter.
   AppendValueOption(kOpenVPNRemoteCertEKUProperty, "remote-cert-eku", options);
-  AppendValueOption(kOpenVPNRemoteCertKUProperty, "remote-cert-ku", options);
+  AppendDelimitedValueOption(kOpenVPNRemoteCertKUProperty,
+                             "remote-cert-ku", ' ', options);
 
   if (!InitManagementChannelOptions(options, error)) {
     return;
@@ -885,6 +885,22 @@ bool OpenVPNDriver::AppendValueOption(
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
     AppendOption(option, value, options);
+    return true;
+  }
+  return false;
+}
+
+bool OpenVPNDriver::AppendDelimitedValueOption(
+    const string &property,
+    const string &option,
+    char delimiter,
+    vector<vector<string>> *options) {
+  string value = args()->LookupString(property, "");
+  if (!value.empty()) {
+    vector<string> parts;
+    SplitString(value, delimiter, &parts);
+    parts.insert(parts.begin(), option);
+    options->push_back(parts);
     return true;
   }
   return false;
