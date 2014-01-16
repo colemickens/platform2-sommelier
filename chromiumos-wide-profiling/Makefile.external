@@ -17,7 +17,10 @@ LDLIBS += -lpthread -lgcov $(PC_LIBS)
 
 MAIN_SOURCES = quipper.cc perf_converter.cc
 PROGRAMS = $(MAIN_SOURCES:.cc=)
-TEST_SOURCES = conversion_utils_test.cc
+TEST_SOURCES = address_mapper_test.cc conversion_utils_test.cc \
+	       perf_parser_test.cc perf_reader_test.cc \
+	       perf_recorder_test.cc perf_serializer_test.cc \
+	       utils_test.cc
 GENERATED_SOURCES = perf_data.pb.cc
 GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
@@ -26,6 +29,8 @@ COMMON_SOURCES = utils.cc perf_reader.cc perf_parser.cc perf_serializer.cc \
 		 conversion_utils.cc \
 		 $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
+TEST_COMMON_SOURCES = test_utils.cc test_utils_defs.cc
+TEST_COMMON_OBJECTS = $(TEST_COMMON_SOURCES:.cc=.o)
 
 TESTS = $(TEST_SOURCES:.cc=)
 
@@ -54,7 +59,7 @@ $(PROGRAMS): %: %.o $(COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 $(TESTS): LDLIBS += -lgtest
-$(TESTS): %: %.o $(COMMON_OBJECTS)
+$(TESTS): %: %.o $(COMMON_OBJECTS) $(TEST_COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 # With large perf.data files, the tests will spew a lot of logging.  The
