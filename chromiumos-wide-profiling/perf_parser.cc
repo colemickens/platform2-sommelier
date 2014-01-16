@@ -263,11 +263,16 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
                               uint64 original_event_addr,
                               struct ip_callchain* callchain,
                               ParsedEvent* parsed_event) {
-  CHECK(callchain);
+  if (!callchain) {
+    LOG(ERROR) << "NULL call stack data.";
+    return false;
+  }
+
   bool mapping_failed = false;
 
-  // There should be at least two entries in the callchain.  See below.
-  CHECK_GE(callchain->nr, kFirstRelevantCallchainIndex);
+  // If the callchain's length is 0, there is no work to do.
+  if (callchain->nr == 0)
+    return true;
 
   // The first callchain entry should indicate that this is a kernel vs user
   // sample.
@@ -286,6 +291,11 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
                << std::hex << callchain_context;
     return false;
   }
+
+  // Return if we only have the context and nothing else.
+  if (callchain->nr == kCallchainBaseAddressIndex)
+    return true;
+
   // The second callchain entry is the same as the sample address.
   if (callchain->ips[kCallchainBaseAddressIndex] !=
       original_event_addr) {
@@ -336,7 +346,7 @@ bool PerfParser::MapBranchStack(const struct ip_event& event,
                                 struct branch_stack* branch_stack,
                                 ParsedEvent* parsed_event) {
   if (!branch_stack) {
-    LOG(ERROR) << "Invalid branch stack data.";
+    LOG(ERROR) << "NULL branch stack data.";
     return false;
   }
 

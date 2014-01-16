@@ -8,6 +8,8 @@
 #include <sstream>
 #include <string>
 
+#include <google/protobuf/text_format.h>
+
 #include "base/logging.h"
 #include "base/stringprintf.h"
 
@@ -18,6 +20,9 @@
 #include "quipper_string.h"
 #include "quipper_test.h"
 #include "test_utils.h"
+#include "utils.h"
+
+using google::protobuf::TextFormat;
 
 namespace {
 
@@ -280,6 +285,26 @@ TEST(PerfSerializeTest, TestMmapMd5s) {
     // Md5sum prefixes.  No need to check the output.
     EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
                                                output_perf_data));
+  }
+}
+
+TEST(PerfSerializerTest, TestProtoFiles) {
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataProtoFiles);
+       ++i) {
+    string perf_data_proto_file =
+        GetTestInputFilePath(perf_test_files::kPerfDataProtoFiles[i]);
+    LOG(INFO) << "Testing " << perf_data_proto_file;
+    PerfDataProto perf_data_proto;
+    std::vector<char> data;
+    ASSERT_TRUE(FileToBuffer(perf_data_proto_file, &data));
+    string text(data.begin(), data.end());
+
+    ASSERT_TRUE(TextFormat::ParseFromString(text, &perf_data_proto));
+    LOG(INFO) << perf_data_proto.file_attrs_size();
+
+    PerfSerializer perf_serializer;
+    EXPECT_TRUE(perf_serializer.Deserialize(perf_data_proto));
   }
 }
 

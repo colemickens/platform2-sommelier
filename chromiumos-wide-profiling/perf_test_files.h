@@ -115,6 +115,10 @@ const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.extradata",
 };
 
+const char* kPerfDataProtoFiles[] = {
+  "perf.callgraph.pb_text",
+};
+
 }  // namespace perf_test_files
 
 #endif  // PERF_TEST_FILES_
