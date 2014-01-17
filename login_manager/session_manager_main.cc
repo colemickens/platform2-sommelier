@@ -97,7 +97,6 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 using login_manager::BrowserJob;
 using login_manager::BrowserJobInterface;
 using login_manager::FileChecker;
-using login_manager::KeyGenerator;
 using login_manager::LoginMetrics;
 using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
@@ -199,13 +198,12 @@ int main(int argc, char* argv[]) {
       new SessionManagerService(
           browser_job.Pass(),
           run_loop.QuitClosure(),
+          uid,
           kill_timeout,
           cl->HasSwitch(switches::kEnableHangDetection),
           base::TimeDelta::FromSeconds(hang_detection_interval),
           &metrics,
           &system);
-
-  manager->set_uid(uid);
 
   LOG_IF(FATAL, !manager->Initialize());
   LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()));

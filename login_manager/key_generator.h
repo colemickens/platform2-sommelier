@@ -5,46 +5,61 @@
 #ifndef LOGIN_MANAGER_KEY_GENERATOR_H_
 #define LOGIN_MANAGER_KEY_GENERATOR_H_
 
-#include <glib.h>
+#include <signal.h>
+#include <sys/types.h>
 
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <gtest/gtest.h>
+#include <base/time.h>
 
 #include "login_manager/generator_job.h"
+#include "login_manager/job_manager.h"
 
 namespace login_manager {
 
-class ProcessManagerServiceInterface;
 class SystemUtils;
 
-class KeyGenerator {
+class KeyGenerator : public JobManagerInterface {
  public:
-  KeyGenerator(SystemUtils* utils, ProcessManagerServiceInterface* manager);
+  class Delegate {
+   public:
+    virtual ~Delegate();
+    virtual void OnKeyGenerated(const std::string& username,
+                                const base::FilePath& temp_key_file) = 0;
+  };
+
+  KeyGenerator(uid_t uid, SystemUtils* utils);
   virtual ~KeyGenerator();
+
+  void set_delegate(Delegate* delegate) { delegate_ = delegate; }
 
   // Start the generation of a new Owner keypair for |username| as |uid|.
   // Upon success, hands off ownership of the key generation job to |manager_|
   // and returns true.
   // The username of the key owner and temporary storage location of the
   // generated public key are stored internally until Reset() is called.
-  virtual bool Start(const std::string& username, uid_t uid);
+  virtual bool Start(const std::string& username);
+
+  // Implementation of JobManagerInterface.
+  virtual bool IsManagedJob(pid_t pid) OVERRIDE;
+  virtual void HandleExit(const siginfo_t& status) OVERRIDE;
+  virtual void RequestJobExit() OVERRIDE;
+  virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE;
 
   void InjectJobFactory(scoped_ptr<GeneratorJobFactoryInterface> factory);
 
-  void HandleExit(bool success);
-
  private:
-  FRIEND_TEST(KeyGeneratorTest, KeygenEndToEndTest);
   static const char kTemporaryKeyFilename[];
 
   // Clear per-generation state.
   void Reset();
 
+  uid_t uid_;
   SystemUtils *utils_;
-  ProcessManagerServiceInterface* manager_;
+  Delegate* delegate_;
 
   scoped_ptr<GeneratorJobFactoryInterface> factory_;
   scoped_ptr<GeneratorJobInterface> keygen_job_;

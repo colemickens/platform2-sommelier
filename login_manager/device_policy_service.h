@@ -44,7 +44,7 @@ class DevicePolicyService : public PolicyService {
   static DevicePolicyService* Create(
       LoginMetrics* metrics,
       PolicyKey* owner_key,
-      scoped_ptr<OwnerKeyLossMitigator> mitigator,
+      OwnerKeyLossMitigator* mitigator,
       NssUtil* nss,
       const scoped_refptr<base::MessageLoopProxy>& main_loop);
 
@@ -115,7 +115,7 @@ class DevicePolicyService : public PolicyService {
                       PolicyKey* owner_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       LoginMetrics* metrics,
-                      scoped_ptr<OwnerKeyLossMitigator> mitigator,
+                      OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss);
 
   // Given the private half of the owner keypair, this call whitelists
@@ -146,7 +146,7 @@ class DevicePolicyService : public PolicyService {
   const FilePath serial_recovery_flag_file_;
   const FilePath policy_file_;
   LoginMetrics* metrics_;
-  scoped_ptr<OwnerKeyLossMitigator> mitigator_;
+  OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
 
   // Cached copy of the decoded device settings. Decoding happens on first

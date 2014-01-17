@@ -11,7 +11,9 @@
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
@@ -24,11 +26,13 @@
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/device_policy_service.h"
+#include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/process_manager_service_interface.h"
+#include "login_manager/regen_mitigator.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -71,6 +75,10 @@ const char kLegalCharacters[] =
 
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
+
+// Device-local account state directory.
+const FilePath::CharType kDeviceLocalAccountStateDir[] =
+    FILE_PATH_LITERAL("/var/lib/device_local_accounts");
 
 }  // namespace
 
@@ -142,6 +150,7 @@ struct SessionManagerImpl::UserSession {
 
 SessionManagerImpl::SessionManagerImpl(
     scoped_ptr<UpstartSignalEmitter> emitter,
+    KeyGenerator* key_gen,
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
     NssUtil* nss,
@@ -150,10 +159,13 @@ SessionManagerImpl::SessionManagerImpl(
       session_stopping_(false),
       screen_locked_(false),
       upstart_signal_emitter_(emitter.Pass()),
+      key_gen_(key_gen),
       manager_(manager),
       login_metrics_(metrics),
       nss_(nss),
-      system_(utils) {
+      system_(utils),
+      owner_key_(nss->GetOwnerKeyFilePath(), nss),
+      mitigator_(key_gen) {
   // TODO(ellyjones): http://crosbug.com/6615
   // The intent was to use this cookie to authenticate RPC requests from the
   // browser process kicked off by the session_manager.  This didn't actually
@@ -201,6 +213,27 @@ void SessionManagerImpl::AnnounceSessionStopped() {
 }
 
 bool SessionManagerImpl::Initialize() {
+  scoped_refptr<base::MessageLoopProxy> loop_proxy =
+      MessageLoop::current()->message_loop_proxy();
+
+  key_gen_->set_delegate(this);
+
+  device_policy_.reset(DevicePolicyService::Create(login_metrics_,
+                                                   &owner_key_,
+                                                   &mitigator_,
+                                                   nss_,
+                                                   loop_proxy));
+  device_policy_->set_delegate(this);
+
+  user_policy_factory_.reset(new UserPolicyServiceFactory(getuid(),
+                                                          loop_proxy,
+                                                          nss_,
+                                                          system_));
+  device_local_account_policy_.reset(
+      new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
+                                          &owner_key_,
+                                          loop_proxy));
+
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(
         device_policy_->GetSettings());
@@ -349,7 +382,7 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
         !device_policy_->Mitigating() &&
         is_first_real_user) {
       // This is the first sign-in on this unmanaged device.  Take ownership.
-      manager_->RunKeyGenerator(email_string);
+      key_gen_->Start(email_string);
     }
 
     // Record that a login has successfully completed on this boot.
@@ -605,9 +638,15 @@ void SessionManagerImpl::OnKeyPersisted(bool success) {
   system_->EmitStatusSignal(login_manager::kOwnerKeySetSignal, success);
 }
 
+void SessionManagerImpl::OnKeyGenerated(const std::string& username,
+                                        const base::FilePath& temp_key_file) {
+  ImportValidateAndStoreGeneratedKey(username, temp_key_file);
+}
+
 void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
     const std::string& username,
     const FilePath& temp_key_file) {
+  DLOG(INFO) << "Processing generated key at " << temp_key_file.value();
   std::string key;
   file_util::ReadFileToString(temp_key_file, &key);
   PLOG_IF(WARNING, !file_util::Delete(temp_key_file, false))

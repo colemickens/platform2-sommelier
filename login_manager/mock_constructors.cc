@@ -38,15 +38,13 @@ namespace login_manager {
 MockDevicePolicyService::MockDevicePolicyService()
     : DevicePolicyService(FilePath(""), FilePath(""),
                           scoped_ptr<PolicyStore>(),
-                          NULL, NULL, NULL,
-                          scoped_ptr<OwnerKeyLossMitigator>(),
-                          NULL) {}
+                          NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker() : FileChecker(FilePath()) {}
 MockFileChecker::~MockFileChecker() {}
 
-MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL, NULL) {}
+MockKeyGenerator::MockKeyGenerator() : KeyGenerator(-1, NULL) {}
 MockKeyGenerator::~MockKeyGenerator() {}
 
 MockLivenessChecker::MockLivenessChecker() {}
@@ -73,6 +71,9 @@ MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 
 MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}
+
+MockProcessManagerService::MockProcessManagerService() {}
+MockProcessManagerService::~MockProcessManagerService() {}
 
 MockSessionManager::MockSessionManager() {}
 MockSessionManager::~MockSessionManager() {}

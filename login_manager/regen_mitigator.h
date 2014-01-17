@@ -21,9 +21,7 @@ class PolicyKey;
 // owner key and the re-signing of exisiting owner device policy.
 class RegenMitigator : public OwnerKeyLossMitigator {
  public:
-  RegenMitigator(KeyGenerator* generator,
-                 bool set_uid,
-                 uid_t uid);
+  explicit RegenMitigator(KeyGenerator* generator);
   virtual ~RegenMitigator();
 
   // Deal with loss of the owner's private key.
@@ -34,8 +32,6 @@ class RegenMitigator : public OwnerKeyLossMitigator {
 
  private:
   KeyGenerator* generator_;
-  bool set_uid_;
-  uid_t uid_;
   bool mitigating_;
   DISALLOW_COPY_AND_ASSIGN(RegenMitigator);
 };

@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <grp.h>
-#include <inttypes.h>
 #include <secder.h>
 #include <signal.h>
 #include <stdio.h>
@@ -48,7 +47,6 @@
 #include "login_manager/dbus_glib_shim.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
-#include "login_manager/generator_job.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -144,14 +142,6 @@ const int SessionManagerService::kKillTimeoutCollectChrome = 60;
 const char SessionManagerService::kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
-namespace {
-
-// Device-local account state directory.
-const FilePath::CharType kDeviceLocalAccountStateDir[] =
-    FILE_PATH_LITERAL("/var/lib/device_local_accounts");
-
-}  // namespace
-
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   siginfo_t info;
   info.si_pid = pid;
@@ -170,6 +160,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 SessionManagerService::SessionManagerService(
     scoped_ptr<BrowserJobInterface> child_job,
     const base::Closure& quit_closure,
+    uid_t uid,
     int kill_timeout,
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
@@ -180,16 +171,15 @@ SessionManagerService::SessionManagerService(
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       session_manager_(NULL),
       main_loop_(NULL),
-      loop_proxy_(NULL),
+      loop_proxy_(MessageLoop::current()->message_loop_proxy()),
       quit_closure_(quit_closure),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
-      key_gen_(new KeyGenerator(utils, this)),
+      key_gen_(uid, utils),
       liveness_checker_(NULL),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
-      set_uid_(false),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
@@ -274,13 +264,13 @@ bool SessionManagerService::Initialize() {
     return false;
 
   // Initially store in derived-type pointer, so that we can initialize
-  // appropriately below, and also use as delegate for device_policy.
+  // appropriately below but also grab startup flags.
   SessionManagerImpl* impl =
       new SessionManagerImpl(
           scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
-          this, login_metrics_, nss_.get(), system_);
+          &key_gen_, this, login_metrics_, nss_.get(), system_);
+  impl_.reset(impl);
 
-  // The below require loop_proxy_, created in Reset(), to be set already.
   liveness_checker_.reset(
       new LivenessCheckerImpl(this,
                               system_,
@@ -288,35 +278,11 @@ bool SessionManagerService::Initialize() {
                               enable_browser_abort_on_hang_,
                               liveness_checking_interval_));
 
-
-  owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath(), nss_.get()));
-  scoped_ptr<OwnerKeyLossMitigator> mitigator(
-      new RegenMitigator(key_gen_.get(), set_uid_, uid_));
-  scoped_ptr<DevicePolicyService> device_policy(
-      DevicePolicyService::Create(login_metrics_,
-                                  owner_key_.get(),
-                                  mitigator.Pass(),
-                                  nss_.get(),
-                                  loop_proxy_));
-  device_policy->set_delegate(impl);
-
-  scoped_ptr<UserPolicyServiceFactory> user_policy_factory(
-      new UserPolicyServiceFactory(getuid(), loop_proxy_, nss_.get(), system_));
-  scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
-      new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
-                                          owner_key_.get(),
-                                          loop_proxy_));
-  impl->InjectPolicyServices(device_policy.Pass(),
-                             user_policy_factory.Pass(),
-                             device_local_account_policy.Pass());
-  impl_.reset(impl);
-
   if (!InitializeImpl())
     return false;
 
   // Set any flags that were specified system-wide.
-  if (device_policy)
-    browser_->SetExtraArguments(device_policy->GetStartUpFlags());
+  browser_->SetExtraArguments(impl->GetStartUpFlags());
 
   g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
                       G_PRIORITY_HIGH_IDLE,
@@ -378,7 +344,6 @@ bool SessionManagerService::Reset() {
     LOG(ERROR) << "Failed to create main loop";
     return false;
   }
-  loop_proxy_ = MessageLoop::current()->message_loop_proxy();
   return true;
 }
 
@@ -440,45 +405,19 @@ void SessionManagerService::SetFlagsForUser(
   browser_->SetExtraArguments(flags);
 }
 
-void SessionManagerService::RunKeyGenerator(const std::string& username) {
-  if (!key_gen_->Start(username, set_uid_ ? uid_ : 0))
-    LOG(ERROR) << "Can't fork to run key generator.";
-}
-
-void SessionManagerService::AdoptKeyGeneratorJob(
-    scoped_ptr<GeneratorJobInterface> job,
-    pid_t pid) {
-  DLOG(INFO) << "Adopting key generator job with pid " << pid;
-  generator_.swap(job);
-}
-
-void SessionManagerService::AbandonKeyGeneratorJob() {
-  generator_.reset(NULL);
-}
-
-void SessionManagerService::ProcessNewOwnerKey(const std::string& username,
-                                               const FilePath& key_file) {
-  DLOG(INFO) << "Processing generated key at " << key_file.value();
-  impl_->ImportValidateAndStoreGeneratedKey(username, key_file);
-}
-
-bool SessionManagerService::IsGenerator(pid_t pid) {
-  return (generator_ &&
-          generator_->CurrentPid() > 0 &&
-          pid == generator_->CurrentPid());
-}
-
 bool SessionManagerService::IsBrowser(pid_t pid) {
   return (browser_ &&
           browser_->CurrentPid() > 0 &&
           pid == browser_->CurrentPid());
 }
 
-bool SessionManagerService::IsManagedProcess(pid_t pid) {
-  return IsBrowser(pid) || IsGenerator(pid);
+bool SessionManagerService::IsManagedJob(pid_t pid) {
+  return IsBrowser(pid);
 }
 
-void SessionManagerService::HandleBrowserExit() {
+void SessionManagerService::HandleExit(const siginfo_t& ignored) {
+  LOG(INFO) << "Exiting process is " << browser_->GetName() << ".";
+
   // If I could wait for descendants here, I would.  Instead, I kill them.
   browser_->KillEverything(SIGKILL, "Session termination");
   browser_->ClearPid();
@@ -508,21 +447,25 @@ void SessionManagerService::HandleBrowserExit() {
   }
 }
 
+void SessionManagerService::RequestJobExit() {
+  if (browser_ && browser_->CurrentPid() > 0)
+    browser_->Kill(SIGTERM, "");
+}
+
+void SessionManagerService::EnsureJobExit(base::TimeDelta timeout) {
+  if (browser_ && browser_->CurrentPid() > 0)
+    browser_->WaitAndAbort(timeout);
+}
+
 void SessionManagerService::HandleChildExit(const siginfo_t& info) {
   CHECK(system_->ChildIsGone(info.si_pid, base::TimeDelta::FromSeconds(5)));
-  if (!IsManagedProcess(info.si_pid))
+  if (!IsManagedJob(info.si_pid) && !key_gen_.IsManagedJob(info.si_pid))
     return;
 
   if (shutting_down_)
     return;
 
-  std::string job_name;
-  if (IsBrowser(info.si_pid))
-    job_name = browser_->GetName();
-  else if (IsGenerator(info.si_pid))
-    job_name = generator_->GetName();
-
-  LOG(INFO) << "Handling " << job_name << "(" << info.si_pid << ") exit.";
+  LOG(INFO) << "Handling " << info.si_pid << " exit.";
   if (info.si_code == CLD_EXITED) {
     LOG_IF(ERROR, info.si_status != 0) << "  Exited with exit code "
                                        << info.si_status;
@@ -532,10 +475,10 @@ void SessionManagerService::HandleChildExit(const siginfo_t& info) {
     LOG(ERROR) << "  Exited with signal " << info.si_status;
   }
 
-  if (IsBrowser(info.si_pid))
-    HandleBrowserExit();
-  else if (IsGenerator(info.si_pid))
-    key_gen_->HandleExit(info.si_status == 0);
+  if (IsManagedJob(info.si_pid))
+    HandleExit(info);
+  else if (key_gen_.IsManagedJob(info.si_pid))
+    key_gen_.HandleExit(info);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -568,10 +511,6 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
   return FALSE;  // So that the event source that called this gets removed.
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Utility Methods
-
-// static
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
@@ -708,18 +647,12 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 }
 
 void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
-  if (browser_ && browser_->CurrentPid() > 0)
-    browser_->Kill(SIGTERM, "");
-  if (generator_ && generator_->CurrentPid() > 0)
-    generator_->Kill(SIGTERM, "");
-
-  if (browser_ && browser_->CurrentPid() > 0)
-    browser_->WaitAndAbort(timeout);
-  if (generator_ && generator_->CurrentPid() > 0)
-    generator_->WaitAndAbort(timeout);
+  RequestJobExit();
+  key_gen_.RequestJobExit();
+  EnsureJobExit(timeout);
+  key_gen_.EnsureJobExit(timeout);
 }
 
-// static
 std::vector<std::string> SessionManagerService::GetArgList(
     const std::vector<std::string>& args) {
   std::vector<std::string>::const_iterator start_arg = args.begin();

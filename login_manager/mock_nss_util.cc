@@ -31,13 +31,6 @@ MockNssUtil::MockNssUtil()
 }
 MockNssUtil::~MockNssUtil() {}
 
-crypto::ScopedPK11Slot MockNssUtil::OpenUserDB(
-    const base::FilePath& user_homedir) {
-  if (return_bad_db_)
-    return crypto::ScopedPK11Slot();
-  return crypto::ScopedPK11Slot(GetPrivateNSSKeySlot());
-}
-
 // static
 crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
   crypto::RSAPrivateKey* ret = crypto::RSAPrivateKey::CreateSensitive(256);
@@ -45,8 +38,29 @@ crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
   return ret;
 }
 
+crypto::ScopedPK11Slot MockNssUtil::OpenUserDB(
+    const base::FilePath& user_homedir) {
+  if (return_bad_db_)
+    return crypto::ScopedPK11Slot();
+  return crypto::ScopedPK11Slot(GetPrivateNSSKeySlot());
+}
+
+base::FilePath MockNssUtil::GetOwnerKeyFilePath() {
+  if (!EnsureTempDir())
+    return base::FilePath();
+  return temp_dir_.path().AppendASCII("dummy");
+}
+
 PK11SlotInfo* MockNssUtil::GetSlot() {
   return slot_.get();
+}
+
+bool MockNssUtil::EnsureTempDir() {
+  if (!temp_dir_.IsValid() && !temp_dir_.CreateUniqueTempDir()) {
+    PLOG(ERROR) << "Could not create temp dir";
+    return false;
+  }
+  return true;
 }
 
 CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {

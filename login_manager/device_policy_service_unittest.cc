@@ -111,7 +111,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   void InitService(NssUtil* nss) {
     store_ = new StrictMock<MockPolicyStore>;
     metrics_.reset(new MockMetrics);
-    mitigator_ = new StrictMock<MockMitigator>;
+    mitigator_.reset(new StrictMock<MockMitigator>);
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
     service_.reset(new DevicePolicyService(
@@ -121,7 +121,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         &key_,
         message_loop,
         metrics_.get(),
-        scoped_ptr<OwnerKeyLossMitigator>(mitigator_),
+        mitigator_.get(),
         nss));
 
     // Allow the key to be read any time.
@@ -180,7 +180,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void ExpectMitigating(bool mitigating) {
-    EXPECT_CALL(*mitigator_, Mitigating())
+    EXPECT_CALL(*mitigator_.get(), Mitigating())
         .WillRepeatedly(Return(mitigating));
   }
 
@@ -313,7 +313,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_;
   scoped_ptr<MockMetrics> metrics_;
-  StrictMock<MockMitigator>* mitigator_;
+  scoped_ptr<StrictMock<MockMitigator> > mitigator_;
   MockPolicyServiceCompletion completion_;
 
   scoped_ptr<DevicePolicyService> service_;
@@ -329,7 +329,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   ExpectGetPolicy(s, policy_proto_);
   ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .Times(0);
   ExpectKeyPopulated(true);
 
@@ -355,7 +355,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
   ExpectGetPolicy(s, policy_proto_);
   ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .Times(0);
   ExpectKeyPopulated(true);
 
@@ -383,7 +383,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
   ExpectGetPolicy(s, policy_proto_);
   ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .Times(0);
   ExpectKeyPopulated(true);
 
@@ -404,7 +404,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .Times(0);
   ExpectKeyPopulated(true);
 
@@ -424,7 +424,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .Times(0);
   ExpectKeyPopulated(true);
 
@@ -445,7 +445,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
@@ -467,7 +467,7 @@ TEST_F(DevicePolicyServiceTest,
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
@@ -489,7 +489,7 @@ TEST_F(DevicePolicyServiceTest,
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_)).Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(false);
 
   PolicyService::Error error;
@@ -508,7 +508,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .InSequence(s)
       .WillOnce(Return(false));
   ExpectKeyPopulated(true);
@@ -541,7 +541,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
           .WillOnce(Return(false));
 
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_, Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
       .Times(0);
   ExpectKeyPopulated(true);
 

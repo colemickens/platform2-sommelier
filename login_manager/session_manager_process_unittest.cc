@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <base/file_path.h>
 #include <base/file_util.h>
@@ -24,7 +26,6 @@
 #include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
-#include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_session_manager.h"
@@ -121,6 +122,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   void InitManager(FakeBrowserJob* job) {
     manager_ = new SessionManagerService(scoped_ptr<BrowserJobInterface>(job),
                                          run_loop_.QuitClosure(),
+                                         getuid(),
                                          3,
                                          false,
                                          base::TimeDelta(),
@@ -184,26 +186,8 @@ const int SessionManagerProcessTest::kExit = 1;
 TEST_F(SessionManagerProcessTest, CleanupBrowser) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
   EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
+  EXPECT_CALL(*job, WaitAndAbort(_)).Times(1);
   job->RunInBackground();
-  manager_->test_api().CleanupChildren(3);
-}
-
-// All child processes get correctly terminated.
-TEST_F(SessionManagerProcessTest, CleanupAllChildren) {
-  FakeBrowserJob* browser_job = CreateMockJobAndInitManager(false);
-  browser_job->RunInBackground();
-
-  pid_t generator_pid = kDummyPid + 1;
-  scoped_ptr<FakeGeneratorJob> generator(new FakeGeneratorJob(generator_pid,
-                                                              "Generator",
-                                                              "empty key",
-                                                              "empty path"));
-  EXPECT_CALL(*browser_job, Kill(SIGTERM, _)).Times(1);
-  EXPECT_CALL(*generator.get(), Kill(SIGTERM, _)).Times(1);
-
-  manager_->AdoptKeyGeneratorJob(
-      scoped_ptr<GeneratorJobInterface>(generator.Pass()), generator_pid);
-
   manager_->test_api().CleanupChildren(3);
 }
 
@@ -233,26 +217,19 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
   manager_->Finalize();
 }
 
-// Presence of the magic flag file stops browser re-spawn, even if the browser
-// exited badly.
-TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
+// If the browser exits and asks to stop, the session manager
+// should not restart it.
+TEST_F(SessionManagerProcessTest, ChildExitFlagFileStop) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(true);
+  manager_->test_api().set_exit_on_child_done(true);  // or it'll run forever.
   ExpectLivenessChecking();
 
-  // So that the manager will exit, even though it'd normally run forever.
-  manager_->test_api().set_exit_on_child_done(true);
-
   EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*job, ShouldStop()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(false));
   job->set_should_run(false);
 
-  job->set_fake_child_process(
-      scoped_ptr<FakeChildProcess>(
-          new FakeChildProcess(kDummyPid,
-                               PackStatus(kExit),
-                               manager_->test_api())));
+  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked()).WillOnce(Return(false));
+
   SimpleRunManager();
 }
 

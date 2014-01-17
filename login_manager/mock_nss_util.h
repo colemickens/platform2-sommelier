@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <base/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
 #include <crypto/scoped_nss_types.h>
@@ -36,7 +37,6 @@ class MockNssUtil : public NssUtil {
                crypto::RSAPrivateKey*(const std::vector<uint8>&,
                                       PK11SlotInfo*));
   MOCK_METHOD1(GenerateKeyPairForUser, crypto::RSAPrivateKey*(PK11SlotInfo*));
-  MOCK_METHOD0(GetOwnerKeyFilePath, base::FilePath());
   MOCK_METHOD0(GetNssdbSubpath, base::FilePath());
   MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8>&));
   MOCK_METHOD8(Verify, bool(const uint8* algorithm, int algorithm_len,
@@ -46,16 +46,21 @@ class MockNssUtil : public NssUtil {
   MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
                           std::vector<uint8>* OUT_signature,
                           crypto::RSAPrivateKey* key));
+  virtual base::FilePath GetOwnerKeyFilePath() OVERRIDE;
 
   PK11SlotInfo* GetSlot();
 
   // After this is called, OpenUserDB() will return empty ScopedPK11Slots.
   void MakeBadDB() { return_bad_db_ = true; }
 
+  // Ensures that temp_dir_ is created and accessible.
+  bool EnsureTempDir();
+
  protected:
   bool return_bad_db_;
   crypto::ScopedPK11Slot slot_;
   crypto::ScopedTestNSSDB test_nssdb_;
+  base::ScopedTempDir temp_dir_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNssUtil);

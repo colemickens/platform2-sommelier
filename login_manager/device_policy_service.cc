@@ -44,7 +44,7 @@ DevicePolicyService::~DevicePolicyService() {
 DevicePolicyService* DevicePolicyService::Create(
     LoginMetrics* metrics,
     PolicyKey* owner_key,
-    scoped_ptr<OwnerKeyLossMitigator> mitigator,
+    OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
   return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
@@ -54,7 +54,7 @@ DevicePolicyService* DevicePolicyService::Create(
                                  owner_key,
                                  main_loop,
                                  metrics,
-                                 mitigator.Pass(),
+                                 mitigator,
                                  nss);
 }
 
@@ -127,13 +127,13 @@ DevicePolicyService::DevicePolicyService(
     PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     LoginMetrics* metrics,
-    scoped_ptr<OwnerKeyLossMitigator> mitigator,
+    OwnerKeyLossMitigator* mitigator,
     NssUtil* nss)
     : PolicyService(policy_store.Pass(), policy_key, main_loop),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
       metrics_(metrics),
-      mitigator_(mitigator.Pass()),
+      mitigator_(mitigator),
       nss_(nss) {
 }
 

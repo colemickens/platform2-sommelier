@@ -19,7 +19,7 @@ class MockKeyGenerator : public KeyGenerator {
  public:
   MockKeyGenerator();
   virtual ~MockKeyGenerator();
-  MOCK_METHOD2(Start, bool(const std::string&, uid_t));
+  MOCK_METHOD1(Start, bool(const std::string&));
 };
 }  // namespace login_manager
 

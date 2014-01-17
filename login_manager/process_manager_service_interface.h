@@ -47,29 +47,8 @@ class ProcessManagerServiceInterface {
   virtual void SetFlagsForUser(const std::string& username,
                                const std::vector<std::string>& flags) = 0;
 
-  // Kick off, and manage, the policy key generation process.
-  virtual void RunKeyGenerator(const std::string& username) = 0;
-
-  // Start tracking a new, potentially running key generation job.
-  virtual void AdoptKeyGeneratorJob(scoped_ptr<GeneratorJobInterface> job,
-                                    pid_t pid) = 0;
-
-  // Stop tracking key generation job.
-  virtual void AbandonKeyGeneratorJob() = 0;
-
-  // Process a newly-generated owner key for |username|, stored at |key_file|.
-  virtual void ProcessNewOwnerKey(const std::string& username,
-                                  const base::FilePath& key_file) = 0;
-
-  // Check if |pid| is the currently-managed key generator process.
-  virtual bool IsGenerator(pid_t pid) = 0;
-
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;
-
-  // Check if |pid| is any currently-managed process.
-  virtual bool IsManagedProcess(pid_t pid) = 0;
-
 
 };
 }  // namespace login_manager

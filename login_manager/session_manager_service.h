@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <signal.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <string>
@@ -19,24 +20,19 @@
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/synchronization/waitable_event.h>
 #include <base/time.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "login_manager/device_local_account_policy_service.h"
-#include "login_manager/device_policy_service.h"
+#include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/login_metrics.h"
-#include "login_manager/owner_key_loss_mitigator.h"
-#include "login_manager/policy_key.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/upstart_signal_emitter.h"
-#include "login_manager/user_policy_service_factory.h"
 
 class MessageLoop;
 
@@ -67,7 +63,8 @@ class SystemUtils;
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public chromeos::dbus::AbstractDbusService,
-      public login_manager::ProcessManagerServiceInterface {
+      public JobManagerInterface,
+      public ProcessManagerServiceInterface {
  public:
   enum ExitCode {
     SUCCESS = 0,
@@ -124,6 +121,7 @@ class SessionManagerService
 
   SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
                         const base::Closure& quit_closure,
+                        uid_t uid,
                         int kill_timeout,
                         bool enable_browser_abort_on_hang,
                         base::TimeDelta hang_detection_interval,
@@ -165,12 +163,6 @@ class SessionManagerService
   // and announces that the user session has stopped over DBus.
   void Finalize();
 
-  // Can't be "unset".
-  void set_uid(uid_t uid) {
-    uid_ = uid;
-    set_uid_ = true;
-  }
-
   ExitCode exit_code() { return exit_code_; }
 
   // Implementing ProcessManagerServiceInterface
@@ -183,15 +175,21 @@ class SessionManagerService
                                         const std::string& userhash) OVERRIDE;
   virtual void SetFlagsForUser(const std::string& username,
                                const std::vector<std::string>& flags) OVERRIDE;
-  virtual void RunKeyGenerator(const std::string& username) OVERRIDE;
-  virtual void AdoptKeyGeneratorJob(scoped_ptr<GeneratorJobInterface> job,
-                                    pid_t pid) OVERRIDE;
-  virtual void AbandonKeyGeneratorJob() OVERRIDE;
-  virtual void ProcessNewOwnerKey(const std::string& username,
-                                  const base::FilePath& key_file) OVERRIDE;
   virtual bool IsBrowser(pid_t pid) OVERRIDE;
-  virtual bool IsGenerator(pid_t pid) OVERRIDE;
-  virtual bool IsManagedProcess(pid_t pid) OVERRIDE;
+
+  // Implementation of JobManagerInterface.
+  // Actually just an alias for IsBrowser
+  virtual bool IsManagedJob(pid_t pid) OVERRIDE;
+  // Re-runs the browser, unless one of the following is true:
+  //  The screen is supposed to be locked,
+  //  UI shutdown is in progress,
+  //  The child indicates that it should not run anymore, or
+  //  ShouldRunBrowser() indicates the browser should not run anymore.
+  virtual void HandleExit(const siginfo_t& info) OVERRIDE;
+  // Request that browser_ exit.
+  virtual void RequestJobExit() OVERRIDE;
+  // Ensure that browser_ is gone.
+  virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE;
 
   // Ensures |args| is in the correct format, stripping "--" if needed.
   // No initial "--" is needed, but is allowed.
@@ -212,11 +210,6 @@ class SessionManagerService
   static const char kCollectChromeFile[];
 
   // |data| is a SessionManagerService*.
-  static DBusHandlerResult FilterMessage(DBusConnection* conn,
-                                         DBusMessage* message,
-                                         void* data);
-
-  // |data| is a SessionManagerService*.
   static gboolean HandleChildrenExiting(GIOChannel* source,
                                         GIOCondition condition,
                                         gpointer data);
@@ -226,11 +219,10 @@ class SessionManagerService
                              GIOCondition condition,
                              gpointer data);
 
-  // Re-runs the browser, unless one of the following is true:
-  //  The screen is supposed to be locked,
-  //  UI shutdown is in progress,
-  //  The child indicates that it should not run anymore.
-  void HandleBrowserExit();
+  // |data| is a SessionManagerService*.
+  static DBusHandlerResult FilterMessage(DBusConnection* conn,
+                                         DBusMessage* message,
+                                         void* data);
 
   // Determines which child exited, and handles appropriately.
   void HandleChildExit(const siginfo_t& info);
@@ -258,7 +250,6 @@ class SessionManagerService
   void CleanupChildren(base::TimeDelta timeout);
 
   scoped_ptr<BrowserJobInterface> browser_;
-  scoped_ptr<GeneratorJobInterface> generator_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 
@@ -268,21 +259,17 @@ class SessionManagerService
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   base::Closure quit_closure_;
 
-  scoped_ptr<SessionManagerInterface> impl_;
-
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.
 
   scoped_ptr<NssUtil> nss_;
-  scoped_ptr<KeyGenerator> key_gen_;
+  KeyGenerator key_gen_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
 
-  uid_t uid_;
-  bool set_uid_;
-
-  scoped_ptr<PolicyKey> owner_key_;
+  // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
+  scoped_ptr<SessionManagerInterface> impl_;
 
   bool shutting_down_;
   bool shutdown_already_;

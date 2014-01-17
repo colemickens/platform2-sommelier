@@ -4,17 +4,12 @@
 
 #include "login_manager/regen_mitigator.h"
 
-#include "login_manager/policy_key.h"
 #include "login_manager/session_manager_service.h"
 
 namespace login_manager {
 
-RegenMitigator::RegenMitigator(KeyGenerator* generator,
-                               bool set_uid,
-                               uid_t uid)
+RegenMitigator::RegenMitigator(KeyGenerator* generator)
     : generator_(generator),
-      set_uid_(set_uid),
-      uid_(uid),
       mitigating_(false) {
   DCHECK(generator_);
 }
@@ -22,7 +17,7 @@ RegenMitigator::RegenMitigator(KeyGenerator* generator,
 RegenMitigator::~RegenMitigator() {}
 
 bool RegenMitigator::Mitigate(const std::string& ownername) {
-  return mitigating_ = generator_->Start(ownername, set_uid_ ? uid_ : 0);
+  return mitigating_ = generator_->Start(ownername);
 }
 
 bool RegenMitigator::Mitigating() {

@@ -13,7 +13,6 @@
 
 #include "login_manager/fake_generator_job.h"
 #include "login_manager/generator_job.h"
-#include "login_manager/process_manager_service_interface.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
@@ -25,17 +24,19 @@ using std::vector;
 // static
 const char KeyGenerator::kTemporaryKeyFilename[] = "key.pub";
 
-KeyGenerator::KeyGenerator(SystemUtils *utils,
-                           ProcessManagerServiceInterface* manager)
-    : utils_(utils),
-      manager_(manager),
+KeyGenerator::Delegate::~Delegate() {}
+
+KeyGenerator::KeyGenerator(uid_t uid, SystemUtils *utils)
+    : uid_(uid),
+      utils_(utils),
+      delegate_(NULL),
       factory_(new GeneratorJob::Factory),
       generating_(false) {
 }
 
 KeyGenerator::~KeyGenerator() {}
 
-bool KeyGenerator::Start(const string& username, uid_t uid) {
+bool KeyGenerator::Start(const string& username) {
   DCHECK(!generating_) << "Must call Reset() between calls to Start()!";
   FilePath user_path(chromeos::cryptohome::home::GetUserPath(username));
   FilePath temporary_key_path(user_path.AppendASCII(kTemporaryKeyFilename));
@@ -45,10 +46,10 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
   }
   key_owner_username_ = username;
   temporary_key_filename_ = temporary_key_path.value();
-
   keygen_job_ = factory_->Create(temporary_key_filename_, user_path,
-                                 uid, utils_);
-  keygen_job_->RunInBackground();
+                                 uid_, utils_);
+  if (!keygen_job_->RunInBackground())
+    return false;
   pid_t pid = keygen_job_->CurrentPid();
   if (pid < 0)
     return false;
@@ -56,28 +57,45 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
              << " using nssdb under " << user_path.value();
 
   generating_ = true;
-  manager_->AdoptKeyGeneratorJob(keygen_job_.Pass(), pid);
   return true;
 }
 
-void KeyGenerator::HandleExit(bool success) {
-  manager_->AbandonKeyGeneratorJob();
-  if (success) {
+bool KeyGenerator::IsManagedJob(pid_t pid) {
+  return (keygen_job_ &&
+          keygen_job_->CurrentPid() > 0 &&
+          keygen_job_->CurrentPid() == pid);
+}
+
+void KeyGenerator::HandleExit(const siginfo_t& info) {
+  CHECK(delegate_) << "Must set a delegate before exit can be handled.";
+  if (info.si_status == 0) {
     FilePath key_file(temporary_key_filename_);
-    manager_->ProcessNewOwnerKey(key_owner_username_, key_file);
+    delegate_->OnKeyGenerated(key_owner_username_, key_file);
+  } else {
+    DLOG(WARNING) << "Key generation failed with " << info.si_status;
   }
   Reset();
+}
+
+void KeyGenerator::RequestJobExit() {
+  if (keygen_job_ && keygen_job_->CurrentPid() > 0)
+    keygen_job_->Kill(SIGTERM, "");
+}
+
+void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
+  if (keygen_job_ && keygen_job_->CurrentPid() > 0)
+    keygen_job_->WaitAndAbort(timeout);
+}
+
+void KeyGenerator::InjectJobFactory(
+    scoped_ptr<GeneratorJobFactoryInterface> factory) {
+  factory_ = factory.Pass();
 }
 
 void KeyGenerator::Reset() {
   key_owner_username_.clear();
   temporary_key_filename_.clear();
   generating_ = false;
-}
-
-void KeyGenerator::InjectJobFactory(
-    scoped_ptr<GeneratorJobFactoryInterface> factory) {
-  factory_ = factory.Pass();
 }
 
 }  // namespace login_manager

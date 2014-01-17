@@ -5,6 +5,9 @@
 #include "login_manager/key_generator.h"
 
 #include <signal.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <base/basictypes.h>
@@ -18,11 +21,11 @@
 #include <gtest/gtest.h>
 
 #include "login_manager/fake_child_process.h"
+#include "login_manager/fake_generated_key_handler.h"
 #include "login_manager/fake_generator_job.h"
 #include "login_manager/keygen_worker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_nss_util.h"
-#include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/system_utils_impl.h"
@@ -67,26 +70,25 @@ class KeyGeneratorTest : public ::testing::Test {
 };
 
 TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
-  MockProcessManagerService manager;
+  FakeGeneratedKeyHandler handler;
 
-  uid_t kFakeUid = 7;
   pid_t kDummyPid = 4;
   std::string fake_ownername("user");
   std::string fake_key_contents("stuff");
+  siginfo_t fake_info;
+  memset(&fake_info, 0, sizeof(siginfo_t));
 
-  KeyGenerator keygen(&utils_, &manager);
+  KeyGenerator keygen(getuid(), &utils_);
+  keygen.set_delegate(&handler);
   keygen.InjectJobFactory(
       scoped_ptr<GeneratorJobFactoryInterface>(
           new FakeGeneratorJob::Factory(kDummyPid, "gen", fake_key_contents)));
 
-  manager.ExpectAdoptAndAbandon(kDummyPid);
-  EXPECT_CALL(manager,
-              ProcessNewOwnerKey(StrEq(fake_ownername),
-                                 PathStartsWith(tmpdir_.path())))
-      .Times(1);
+  ASSERT_TRUE(keygen.Start(fake_ownername));
+  keygen.HandleExit(fake_info);
 
-  ASSERT_TRUE(keygen.Start(fake_ownername, kFakeUid));
-  keygen.HandleExit(true);
+  EXPECT_EQ(fake_ownername, handler.key_username());
+  EXPECT_GT(handler.key_contents().size(), 0);
 }
 
 TEST_F(KeyGeneratorTest, GenerateKey) {
@@ -97,7 +99,7 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
   EXPECT_CALL(nss, GenerateKeyPairForUser(_)).Times(1);
 
   const FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
-  ASSERT_EQ(keygen::GenerateKey(key_file_path ,tmpdir_.path(), &nss), 0);
+  ASSERT_EQ(keygen::GenerateKey(key_file_path, tmpdir_.path(), &nss), 0);
   ASSERT_TRUE(file_util::PathExists(key_file_path));
 
   SystemUtilsImpl utils;

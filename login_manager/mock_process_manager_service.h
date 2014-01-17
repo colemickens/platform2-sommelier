@@ -26,30 +26,10 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
                                             bool));
   MOCK_METHOD2(SetBrowserSessionForUser, void(const std::string&,
                                               const std::string&));
-  MOCK_METHOD1(RunKeyGenerator, void(const std::string&));
   MOCK_METHOD2(SetFlagsForUser, void(const std::string& username,
                                      const std::vector<std::string>& flags));
-
-  // gmock can't handle methods that take scoped_ptrs, so we have to build
-  // something manually.
-  // Call ExpectAdoptAbandonKeyGenerator(pid_t) to make this mock expect:
-  //   1) Adoption of the provided pid, and
-  //   2) Abandonment.
-  void AdoptKeyGeneratorJob(scoped_ptr<GeneratorJobInterface> job,
-                            pid_t pid) OVERRIDE;
-
-  MOCK_METHOD0(AbandonKeyGeneratorJob, void());
-  MOCK_METHOD2(ProcessNewOwnerKey, void(const std::string&,
-                                        const base::FilePath&));
-
-  MOCK_METHOD1(IsGenerator, bool(pid_t));
   MOCK_METHOD1(IsBrowser, bool(pid_t));
   MOCK_METHOD1(IsManagedProcess, bool(pid_t));
-
-  void ExpectAdoptAndAbandon(pid_t expected_generator_pid);
-
- private:
-  pid_t generator_pid_;
 };
 }  // namespace login_manager
 

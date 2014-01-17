@@ -47,6 +47,10 @@ class LivenessCheckerImpl : public LivenessChecker {
   // then reschedules itself after interval.
   void CheckAndSendLivenessPing(base::TimeDelta interval);
 
+  void set_manager(ProcessManagerServiceInterface* manager) {
+    manager_ = manager;
+  }
+
  private:
   ProcessManagerServiceInterface* manager_;
   SystemUtils* system_;

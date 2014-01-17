@@ -76,6 +76,7 @@ class SessionManagerImplTest : public ::testing::Test {
       : upstart_(new MockUpstartSignalEmitter),
         device_policy_service_(new MockDevicePolicyService),
         impl_(scoped_ptr<UpstartSignalEmitter>(upstart_),
+              &key_gen_,
               &manager_,
               &metrics_,
               &nss_,
@@ -193,6 +194,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockDevicePolicyService* device_policy_service_;
   map<string, MockPolicyService*> user_policy_services_;
 
+  MockKeyGenerator key_gen_;
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
@@ -251,9 +253,9 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
     if (!mitigating && !owning_in_progress)
-      EXPECT_CALL(manager_, RunKeyGenerator(StrEq(email_string))).Times(1);
+      EXPECT_CALL(key_gen_, Start(StrEq(email_string))).Times(1);
     else
-      EXPECT_CALL(manager_, RunKeyGenerator(_)).Times(0);
+      EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
     EXPECT_CALL(utils_,
                 EmitSignalWithStringArgs(

@@ -18,14 +18,17 @@
 #include <glib-object.h>
 
 #include "login_manager/device_policy_service.h"
+#include "login_manager/key_generator.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
+#include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_interface.h"
 
 namespace login_manager {
 class DeviceLocalAccountPolicyService;
+class KeyGenerator;
 class LoginMetrics;
 class NssUtil;
-class PolicyKey;
 class ProcessManagerServiceInterface;
 class SystemUtils;
 class UpstartSignalEmitter;
@@ -39,9 +42,25 @@ class SessionManagerImplStaticTest;
 // All signatures used in the methods of the ownership API are
 // SHA1 with RSA encryption.
 class SessionManagerImpl : public SessionManagerInterface,
-                           public login_manager::PolicyService::Delegate {
+                           public KeyGenerator::Delegate,
+                           public PolicyService::Delegate {
  public:
+  // Magic user name strings.
+  static const char kDemoUser[];
+
+  // Payloads for SessionStateChanged DBus signal.
+  static const char kStarted[];
+  static const char kStopping[];
+  static const char kStopped[];
+
+  // Path to flag file indicating that a user has logged in since last boot.
+  static const char kLoggedInFlag[];
+
+  // Path to magic file that will trigger device wiping on next boot.
+  static const char kResetFile[];
+
   SessionManagerImpl(scoped_ptr<UpstartSignalEmitter> emitter,
+                     KeyGenerator* key_gen,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
                      NssUtil* nss,
@@ -53,6 +72,10 @@ class SessionManagerImpl : public SessionManagerInterface,
       scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
       scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy);
 
+  std::vector<std::string> GetStartUpFlags() {
+    return device_policy_->GetStartUpFlags();
+  }
+
   // SessionManagerInterface implementation.
   void AnnounceSessionStoppingIfNeeded() OVERRIDE;
   void AnnounceSessionStopped() OVERRIDE;
@@ -62,8 +85,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Should set up policy stuff; if false DIE.
   bool Initialize() OVERRIDE;
   void Finalize() OVERRIDE;
-
-  void ValidateAndStoreOwnerKey(const std::string& key);
 
   gboolean EmitLoginPromptReady(gboolean* OUT_emitted,
                                 GError** error) OVERRIDE;
@@ -125,23 +146,13 @@ class SessionManagerImpl : public SessionManagerInterface,
                            const gchar** flags,
                            GError** error) OVERRIDE;
 
-  // login_manager::PolicyService::Delegate implementation:
+  // PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success) OVERRIDE;
   virtual void OnKeyPersisted(bool success) OVERRIDE;
 
-  // Magic user name strings.
-  static const char kDemoUser[];
-
-  // Payloads for SessionStateChanged DBus signal.
-  static const char kStarted[];
-  static const char kStopping[];
-  static const char kStopped[];
-
-  // Path to flag file indicating that a user has logged in since last boot.
-  static const char kLoggedInFlag[];
-
-  // Path to magic file that will trigger device wiping on next boot.
-  static const char kResetFile[];
+  // KeyGenerator::Delegate implementation:
+  virtual void OnKeyGenerated(const std::string& username,
+                              const base::FilePath& temp_key_file) OVERRIDE;
 
  private:
   // Holds the state related to one of the signed in users.
@@ -195,6 +206,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
+  KeyGenerator* key_gen_;  // Owned by the caller.
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   LoginMetrics* login_metrics_;  // Owned by the caller.
   NssUtil* nss_;  // Owned by the caller.
@@ -203,6 +215,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
+  PolicyKey owner_key_;
+  RegenMitigator mitigator_;
 
   // Map of the currently signed-in users to their state.
   UserSessionMap user_sessions_;
