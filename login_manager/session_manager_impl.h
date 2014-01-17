@@ -49,7 +49,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   virtual ~SessionManagerImpl();
 
   void InjectPolicyServices(
-      const scoped_refptr<DevicePolicyService>& device_policy,
+      scoped_ptr<DevicePolicyService> device_policy,
       scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
       scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy);
 
@@ -184,7 +184,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                                  bool is_incognito,
                                  GError** error);
 
-  scoped_refptr<PolicyService> GetPolicyService(gchar* user_email);
+  PolicyService* GetPolicyService(gchar* user_email);
 
   bool session_started_;
   bool session_stopping_;
@@ -200,7 +200,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   NssUtil* nss_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.
 
-  scoped_refptr<DevicePolicyService> device_policy_;
+  scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
 

@@ -284,7 +284,7 @@ bool SessionManagerService::Initialize() {
       login_metrics_.get());
 
   // Initially store in derived-type pointer, so that we can initialize
-  // appropriately below, and also use as delegate for device_policy_.
+  // appropriately below, and also use as delegate for device_policy.
   SessionManagerImpl* impl =
       new SessionManagerImpl(
           scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
@@ -302,12 +302,13 @@ bool SessionManagerService::Initialize() {
   owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath(), nss_.get()));
   scoped_ptr<OwnerKeyLossMitigator> mitigator(
       new RegenMitigator(key_gen_.get(), set_uid_, uid_));
-  device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
-                                               owner_key_.get(),
-                                               mitigator.Pass(),
-                                               nss_.get(),
-                                               loop_proxy_);
-  device_policy_->set_delegate(impl);
+  scoped_ptr<DevicePolicyService> device_policy(
+      DevicePolicyService::Create(login_metrics_.get(),
+                                  owner_key_.get(),
+                                  mitigator.Pass(),
+                                  nss_.get(),
+                                  loop_proxy_));
+  device_policy->set_delegate(impl);
 
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory(
       new UserPolicyServiceFactory(getuid(), loop_proxy_, nss_.get(), system_));
@@ -315,7 +316,7 @@ bool SessionManagerService::Initialize() {
       new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
                                           owner_key_.get(),
                                           loop_proxy_));
-  impl->InjectPolicyServices(device_policy_,
+  impl->InjectPolicyServices(device_policy.Pass(),
                              user_policy_factory.Pass(),
                              device_local_account_policy.Pass());
   impl_.reset(impl);
@@ -324,8 +325,8 @@ bool SessionManagerService::Initialize() {
     return false;
 
   // Set any flags that were specified system-wide.
-  if (device_policy_)
-    browser_->SetExtraArguments(device_policy_->GetStartUpFlags());
+  if (device_policy)
+    browser_->SetExtraArguments(device_policy->GetStartUpFlags());
 
   g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
                       G_PRIORITY_HIGH_IDLE,

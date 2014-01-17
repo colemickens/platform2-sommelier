@@ -12,6 +12,7 @@
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -32,7 +33,7 @@ class PolicyStore;
 // Manages policy storage and retrieval from an underlying PolicyStore, thereby
 // enforcing policy signatures against a given policy key. Also handles key
 // rotations in case a new policy payload comes with an updated policy key.
-class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
+class PolicyService {
  public:
   // Flags determining what do to with new keys in Store().
   enum KeyInstallFlags {
@@ -153,6 +154,8 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   PolicyKey* policy_key_;
   scoped_refptr<base::MessageLoopProxy> main_loop_;
   Delegate* delegate_;
+
+  base::WeakPtrFactory<PolicyService> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyService);
 };

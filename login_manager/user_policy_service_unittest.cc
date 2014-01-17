@@ -50,11 +50,11 @@ class UserPolicyServiceTest : public ::testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_ = new UserPolicyService(scoped_ptr<PolicyStore>(store_),
-                                     scoped_ptr<PolicyKey>(key_),
-                                     key_copy_file_,
-                                     message_loop,
-                                     &system_utils_);
+    service_.reset(new UserPolicyService(scoped_ptr<PolicyStore>(store_),
+                                         scoped_ptr<PolicyKey>(key_),
+                                         key_copy_file_,
+                                         message_loop,
+                                         &system_utils_));
   }
 
   void InitPolicy(em::PolicyData::AssociationState state,
@@ -104,7 +104,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyStore>* store_;
   MockPolicyServiceCompletion completion_;
 
-  scoped_refptr<UserPolicyService> service_;
+  scoped_ptr<UserPolicyService> service_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UserPolicyServiceTest);

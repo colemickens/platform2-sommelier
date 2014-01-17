@@ -124,12 +124,12 @@ struct SessionManagerImpl::UserSession {
               const std::string& userhash,
               bool is_incognito,
               crypto::ScopedPK11Slot slot,
-              const scoped_refptr<PolicyService>& policy_service)
+              scoped_ptr<PolicyService> policy_service)
       : username(username),
         userhash(userhash),
         is_incognito(is_incognito),
         slot(slot.Pass()),
-        policy_service(policy_service) {
+        policy_service(policy_service.Pass()) {
   }
   ~UserSession() {}
 
@@ -137,7 +137,7 @@ struct SessionManagerImpl::UserSession {
   const std::string userhash;
   const bool is_incognito;
   crypto::ScopedPK11Slot slot;
-  const scoped_refptr<PolicyService> policy_service;
+  scoped_ptr<PolicyService> policy_service;
 };
 
 SessionManagerImpl::SessionManagerImpl(
@@ -167,13 +167,14 @@ SessionManagerImpl::SessionManagerImpl(
 
 SessionManagerImpl::~SessionManagerImpl() {
   STLDeleteValues(&user_sessions_);
+  device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
 }
 
 void SessionManagerImpl::InjectPolicyServices(
-    const scoped_refptr<DevicePolicyService>& device_policy,
+    scoped_ptr<DevicePolicyService> device_policy,
     scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy) {
-  device_policy_ = device_policy;
+  device_policy_ = device_policy.Pass();
   user_policy_factory_ = user_policy_factory.Pass();
   device_local_account_policy_ = device_local_account_policy.Pass();
 }
@@ -398,7 +399,7 @@ gboolean SessionManagerImpl::StorePolicyForUser(
     gchar* user_email,
     GArray* policy_blob,
     DBusGMethodInvocation* context) {
-  scoped_refptr<PolicyService> policy_service = GetPolicyService(user_email);
+  PolicyService* policy_service = GetPolicyService(user_email);
   if (!policy_service) {
     const char msg[] = "Cannot store user policy before session is started.";
     LOG(ERROR) << msg;
@@ -418,7 +419,7 @@ gboolean SessionManagerImpl::StorePolicyForUser(
 gboolean SessionManagerImpl::RetrievePolicyForUser(gchar* user_email,
                                                    GArray** OUT_policy_blob,
                                                    GError** error) {
-  scoped_refptr<PolicyService> policy_service = GetPolicyService(user_email);
+  PolicyService* policy_service = GetPolicyService(user_email);
   if (!policy_service) {
     const char msg[] = "Cannot retrieve user policy before session is started.";
     LOG(ERROR) << msg;
@@ -702,8 +703,8 @@ SessionManagerImpl::UserSession*
 SessionManagerImpl::CreateUserSession(const std::string& username,
                                       bool is_incognito,
                                       GError** error) {
-  scoped_refptr<PolicyService> user_policy =
-      user_policy_factory_->Create(username);
+  scoped_ptr<PolicyService> user_policy(
+      user_policy_factory_->Create(username));
   if (!user_policy) {
     const char msg[] = "User policy failed to initialize.";
     LOG(ERROR) << msg;
@@ -723,14 +724,14 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
                                              SanitizeUserName(username),
                                              is_incognito,
                                              slot.Pass(),
-                                             user_policy);
+                                             user_policy.Pass());
 }
 
-scoped_refptr<PolicyService> SessionManagerImpl::GetPolicyService(
+PolicyService* SessionManagerImpl::GetPolicyService(
     gchar* user_email) {
   const std::string username(StringToLowerASCII(GCharToString(user_email)));
   UserSessionMap::const_iterator it = user_sessions_.find(username);
-  return it == user_sessions_.end() ? NULL : it->second->policy_service;
+  return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
 }
 
 }  // namespace login_manage

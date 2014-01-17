@@ -114,7 +114,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     mitigator_ = new StrictMock<MockMitigator>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_ = new DevicePolicyService(
+    service_.reset(new DevicePolicyService(
         serial_recovery_flag_file_,
         policy_file_,
         scoped_ptr<PolicyStore>(store_),
@@ -122,7 +122,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         message_loop,
         metrics_.get(),
         scoped_ptr<OwnerKeyLossMitigator>(mitigator_),
-        nss);
+        nss));
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der())
@@ -316,7 +316,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockMitigator>* mitigator_;
   MockPolicyServiceCompletion completion_;
 
-  scoped_refptr<DevicePolicyService> service_;
+  scoped_ptr<DevicePolicyService> service_;
 };
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {

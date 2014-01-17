@@ -95,9 +95,10 @@ class SessionManagerImplTest : public ::testing::Test {
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
         new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL, NULL));
-    impl_.InjectPolicyServices(device_policy_service_,
-                               scoped_ptr<UserPolicyServiceFactory>(factory),
-                               device_local_account_policy.Pass());
+    impl_.InjectPolicyServices(
+        scoped_ptr<DevicePolicyService>(device_policy_service_),
+        scoped_ptr<UserPolicyServiceFactory>(factory),
+        device_local_account_policy.Pass());
   }
 
   virtual void TearDown() OVERRIDE {
@@ -160,17 +161,17 @@ class SessionManagerImplTest : public ::testing::Test {
 
   PolicyService* CreateUserPolicyService(const string& username) {
     user_policy_services_[username] = new MockPolicyService();
-    return user_policy_services_[username].get();
+    return user_policy_services_[username];
   }
 
   void VerifyAndClearExpectations() {
     Mock::VerifyAndClearExpectations(upstart_);
     Mock::VerifyAndClearExpectations(device_policy_service_);
-    for (map<string, scoped_refptr<MockPolicyService> >::iterator it =
+    for (map<string, MockPolicyService*>::iterator it =
              user_policy_services_.begin();
          it != user_policy_services_.end();
          ++it) {
-      Mock::VerifyAndClearExpectations(it->second.get());
+      Mock::VerifyAndClearExpectations(it->second);
     }
     Mock::VerifyAndClearExpectations(&manager_);
     Mock::VerifyAndClearExpectations(&metrics_);
@@ -190,7 +191,7 @@ class SessionManagerImplTest : public ::testing::Test {
   // on them after we hand them off.
   MockUpstartSignalEmitter* upstart_;
   MockDevicePolicyService* device_policy_service_;
-  map<string, scoped_refptr<MockPolicyService> > user_policy_services_;
+  map<string, MockPolicyService*> user_policy_services_;
 
   MockProcessManagerService manager_;
   MockMetrics metrics_;
@@ -544,7 +545,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(username);
   const string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_CALL(*user_policy_services_[username].get(),
+  EXPECT_CALL(*user_policy_services_[username],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
@@ -560,12 +561,12 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   gchar user1[] = "user1@somewhere.com";
   ExpectAndRunStartSession(user1);
-  ASSERT_TRUE(user_policy_services_[user1].get());
+  ASSERT_TRUE(user_policy_services_[user1]);
 
   // Store policy for the signed-in user.
   const std::string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_CALL(*user_policy_services_[user1].get(),
+  EXPECT_CALL(*user_policy_services_[user1],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
@@ -573,7 +574,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
                     PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
   EXPECT_EQ(TRUE, impl_.StorePolicyForUser(user1, policy_blob, NULL));
-  Mock::VerifyAndClearExpectations(user_policy_services_[user1].get());
+  Mock::VerifyAndClearExpectations(user_policy_services_[user1]);
 
   // Storing policy for another username fails before his session starts.
   gchar user2[] = "user2@somewhere.com";
@@ -581,10 +582,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
-  ASSERT_TRUE(user_policy_services_[user2].get());
+  ASSERT_TRUE(user_policy_services_[user2]);
 
   // Storing policy for that user now succeeds.
-  EXPECT_CALL(*user_policy_services_[user2].get(),
+  EXPECT_CALL(*user_policy_services_[user2],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
@@ -592,7 +593,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
                     PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
   EXPECT_EQ(TRUE, impl_.StorePolicyForUser(user2, policy_blob, NULL));
-  Mock::VerifyAndClearExpectations(user_policy_services_[user2].get());
+  Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
 
   // Cleanup.
   g_array_free(policy_blob, TRUE);
@@ -613,7 +614,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(username);
   const string fake_policy("fake policy");
   const vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
-  EXPECT_CALL(*user_policy_services_[username].get(), Retrieve(_))
+  EXPECT_CALL(*user_policy_services_[username], Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
   GArray* out_blob = NULL;
@@ -630,12 +631,12 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   gchar user1[] = "user1@somewhere.com";
   ExpectAndRunStartSession(user1);
-  ASSERT_TRUE(user_policy_services_[user1].get());
+  ASSERT_TRUE(user_policy_services_[user1]);
 
   // Retrieve policy for the signed-in user.
   const std::string fake_policy("fake policy");
   const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
-  EXPECT_CALL(*user_policy_services_[user1].get(), Retrieve(_))
+  EXPECT_CALL(*user_policy_services_[user1], Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
   GArray* out_blob = NULL;
@@ -643,7 +644,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(user1,
                                               &out_blob,
                                               &Resetter(&error).lvalue()));
-  Mock::VerifyAndClearExpectations(user_policy_services_[user1].get());
+  Mock::VerifyAndClearExpectations(user_policy_services_[user1]);
   EXPECT_EQ(fake_policy.size(), out_blob->len);
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
@@ -659,10 +660,10 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
-  ASSERT_TRUE(user_policy_services_[user2].get());
+  ASSERT_TRUE(user_policy_services_[user2]);
 
   // Retrieving policy for that user now succeeds.
-  EXPECT_CALL(*user_policy_services_[user2].get(), Retrieve(_))
+  EXPECT_CALL(*user_policy_services_[user2], Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
   out_blob = NULL;
@@ -670,7 +671,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(user2,
                                               &out_blob,
                                               &Resetter(&error).lvalue()));
-  Mock::VerifyAndClearExpectations(user_policy_services_[user2].get());
+  Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
   EXPECT_EQ(fake_policy.size(), out_blob->len);
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));

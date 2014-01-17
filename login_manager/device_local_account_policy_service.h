@@ -96,7 +96,7 @@ class DeviceLocalAccountPolicyService {
   // The keys present in this map are kept in sync with device policy. Entries
   // that are not present are invalid, entries that contain a NULL pointer
   // indicate the respective policy blob hasn't been pulled from disk yet.
-  std::map<std::string, scoped_refptr<PolicyService> > policy_map_;
+  std::map<std::string, PolicyService*> policy_map_;
 
   FRIEND_TEST(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs);
 

@@ -10,6 +10,7 @@
 #include <base/callback.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <base/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
@@ -53,10 +54,12 @@ PolicyService::PolicyService(
     : policy_store_(policy_store.Pass()),
       policy_key_(policy_key),
       main_loop_(main_loop),
-      delegate_(NULL) {
+      delegate_(NULL) ,
+      ALLOW_THIS_IN_INITIALIZER_LIST(weak_ptr_factory_(this)) {
 }
 
 PolicyService::~PolicyService() {
+  weak_ptr_factory_.InvalidateWeakPtrs();  // Must remain at top of destructor.
 }
 
 bool PolicyService::Store(const uint8* policy_blob,
@@ -95,20 +98,24 @@ bool PolicyService::PersistPolicySync() {
 void PolicyService::PersistKey() {
   main_loop_->PostTask(
       FROM_HERE,
-      base::Bind(&PolicyService::PersistKeyOnLoop, this));
+      base::Bind(&PolicyService::PersistKeyOnLoop,
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PolicyService::PersistPolicy() {
   main_loop_->PostTask(
       FROM_HERE,
-      base::Bind(&PolicyService::PersistPolicyOnLoop, this,
+      base::Bind(&PolicyService::PersistPolicyOnLoop,
+                 weak_ptr_factory_.GetWeakPtr(),
                  static_cast<Completion*>(NULL)));
 }
 
 void PolicyService::PersistPolicyWithCompletion(Completion* completion) {
   main_loop_->PostTask(
       FROM_HERE,
-      base::Bind(&PolicyService::PersistPolicyOnLoop, this, completion));
+      base::Bind(&PolicyService::PersistPolicyOnLoop,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,

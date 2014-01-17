@@ -49,9 +49,9 @@ class PolicyServiceTest : public testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_ = new PolicyService(scoped_ptr<PolicyStore>(store_),
-                                 &key_,
-                                 message_loop);
+    service_.reset(new PolicyService(scoped_ptr<PolicyStore>(store_),
+                                     &key_,
+                                     message_loop));
     service_->set_delegate(&delegate_);
   }
 
@@ -149,7 +149,7 @@ class PolicyServiceTest : public testing::Test {
   MockPolicyServiceDelegate delegate_;
   MockPolicyServiceCompletion completion_;
 
-  scoped_refptr<PolicyService> service_;
+  scoped_ptr<PolicyService> service_;
 };
 
 const int PolicyServiceTest::kAllKeyFlags = PolicyService::KEY_ROTATE |

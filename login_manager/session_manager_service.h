@@ -282,6 +282,8 @@ class SessionManagerService
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   base::Closure quit_closure_;
 
+  scoped_ptr<SessionManagerInterface> impl_;
+
   SystemUtils* system_;  // Owned by the caller.
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<KeyGenerator> key_gen_;
@@ -294,11 +296,7 @@ class SessionManagerService
   bool set_uid_;
 
   scoped_ptr<PolicyKey> owner_key_;
-
   scoped_ptr<FileChecker> file_checker_;
-
-  scoped_ptr<SessionManagerInterface> impl_;
-  scoped_refptr<DevicePolicyService> device_policy_;
 
   bool shutting_down_;
   bool shutdown_already_;

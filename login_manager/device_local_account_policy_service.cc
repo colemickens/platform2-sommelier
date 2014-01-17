@@ -37,7 +37,7 @@ DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
 }
 
 DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {
-  policy_map_.clear();
+  STLDeleteValues(&policy_map_);
 }
 
 bool DeviceLocalAccountPolicyService::Store(const std::string& account_id,
@@ -71,7 +71,7 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   // Update the policy map.
   typedef google::protobuf::RepeatedPtrField<em::DeviceLocalAccountInfoProto>
       DeviceLocalAccountList;
-  std::map<std::string, scoped_refptr<PolicyService> > new_policy_map;
+  std::map<std::string, PolicyService*> new_policy_map;
   const DeviceLocalAccountList& list(
       device_settings.device_local_accounts().account());
   for (DeviceLocalAccountList::const_iterator account(list.begin());
@@ -87,6 +87,7 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
       new_policy_map[account_key] = policy_map_[account_key];
   }
   policy_map_.swap(new_policy_map);
+  STLDeleteValues(&new_policy_map);
 
   MigrateUppercaseDirs();
 
@@ -126,13 +127,12 @@ bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
 PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
     const std::string& account_id) {
   const std::string key = GetAccountKey(account_id);
-  std::map<std::string, scoped_refptr<PolicyService> >::iterator entry =
-      policy_map_.find(key);
+  std::map<std::string, PolicyService*>::iterator entry = policy_map_.find(key);
   if (entry == policy_map_.end())
     return NULL;
 
   // Lazily create and initialize the policy service instance.
-  if (!entry->second.get()) {
+  if (!entry->second) {
     const FilePath policy_path =
         device_local_account_dir_
             .AppendASCII(key)
@@ -153,7 +153,7 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
         new PolicyService(store.Pass(), owner_key_, main_loop_);
   }
 
-  return entry->second.get();
+  return entry->second;
 }
 
 std::string DeviceLocalAccountPolicyService::GetAccountKey(
