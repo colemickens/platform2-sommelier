@@ -82,6 +82,8 @@ void InputController::HandlePowerButtonAcknowledgment(
           << timestamp.ToInternalValue() << "; expected "
           << expected_power_button_acknowledgment_timestamp_.ToInternalValue();
   if (timestamp == expected_power_button_acknowledgment_timestamp_) {
+    delegate_->ReportPowerButtonAcknowledgmentDelay(clock_->GetCurrentTime() -
+        expected_power_button_acknowledgment_timestamp_);
     expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
     power_button_acknowledgment_timer_.Stop();
   }
@@ -152,6 +154,9 @@ void InputController::CheckActiveVT() {
 }
 
 void InputController::HandlePowerButtonAcknowledgmentTimeout() {
+  delegate_->ReportPowerButtonAcknowledgmentDelay(
+      base::TimeDelta::FromMilliseconds(
+          kPowerButtonAcknowledgmentTimeoutMs));
   delegate_->HandleMissingPowerButtonAcknowledgment();
   expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
 }

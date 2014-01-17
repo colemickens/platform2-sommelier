@@ -141,14 +141,14 @@ class MetricsReporterTest : public Test {
     ExpectMetric(kMetricBatteryDischargeRateName, sample,
                  kMetricBatteryDischargeRateMin,
                  kMetricBatteryDischargeRateMax,
-                 kMetricBatteryDischargeRateBuckets);
+                 kMetricDefaultBuckets);
   }
 
   void ExpectNumOfSessionsPerChargeMetric(int sample) {
     ExpectMetric(kMetricNumOfSessionsPerChargeName, sample,
                  kMetricNumOfSessionsPerChargeMin,
                  kMetricNumOfSessionsPerChargeMax,
-                 kMetricNumOfSessionsPerChargeBuckets);
+                 kMetricDefaultBuckets);
   }
 
   FakePrefs prefs_;
@@ -310,21 +310,21 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
                  kAlsAdjustments[i],
                  kMetricNumberOfAlsAdjustmentsPerSessionMin,
                  kMetricNumberOfAlsAdjustmentsPerSessionMax,
-                 kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+                 kMetricDefaultBuckets);
     ExpectMetric(
         MetricsReporter::AppendPowerSourceToEnumName(
             kMetricUserBrightnessAdjustmentsPerSessionName, POWER_BATTERY),
         kUserAdjustments[i],
         kMetricUserBrightnessAdjustmentsPerSessionMin,
         kMetricUserBrightnessAdjustmentsPerSessionMax,
-        kMetricUserBrightnessAdjustmentsPerSessionBuckets);
+        kMetricDefaultBuckets);
 
     AdvanceTime(base::TimeDelta::FromSeconds(kSessionSecs[i]));
     ExpectMetric(kMetricLengthOfSessionName,
                  std::min(kSessionSecs[i], kMetricLengthOfSessionMax),
                  kMetricLengthOfSessionMin,
                  kMetricLengthOfSessionMax,
-                 kMetricLengthOfSessionBuckets);
+                 kMetricDefaultBuckets);
 
     metrics_reporter_.HandleSessionStateChange(SESSION_STOPPED);
     Mock::VerifyAndClearExpectations(&metrics_lib_);
@@ -441,7 +441,7 @@ TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
                kDuration.InMilliseconds(),
                kMetricPowerButtonDownTimeMin,
                kMetricPowerButtonDownTimeMax,
-               kMetricPowerButtonDownTimeBuckets);
+               kMetricDefaultBuckets);
   metrics_reporter_.HandlePowerButtonEvent(BUTTON_UP);
 }
 
@@ -527,7 +527,7 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   ExpectMetric(kMetricBatteryDischargeRateWhileSuspendedName, rate_mw,
                kMetricBatteryDischargeRateWhileSuspendedMin,
                kMetricBatteryDischargeRateWhileSuspendedMax,
-               kMetricBatteryDischargeRateWhileSuspendedBuckets);
+               kMetricDefaultBuckets);
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
 }
 

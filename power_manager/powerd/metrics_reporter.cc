@@ -117,7 +117,7 @@ void MetricsReporter::HandleSessionStateChange(SessionState state) {
                  session_length_sec,
                  kMetricLengthOfSessionMin,
                  kMetricLengthOfSessionMax,
-                 kMetricLengthOfSessionBuckets);
+                 kMetricDefaultBuckets);
 
       if (display_backlight_controller_) {
         SendMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
@@ -125,13 +125,13 @@ void MetricsReporter::HandleSessionStateChange(SessionState state) {
                        GetNumAmbientLightSensorAdjustments(),
                    kMetricNumberOfAlsAdjustmentsPerSessionMin,
                    kMetricNumberOfAlsAdjustmentsPerSessionMax,
-                   kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+                   kMetricDefaultBuckets);
         SendMetricWithPowerSource(
             kMetricUserBrightnessAdjustmentsPerSessionName,
             display_backlight_controller_->GetNumUserAdjustments(),
             kMetricUserBrightnessAdjustmentsPerSessionMin,
             kMetricUserBrightnessAdjustmentsPerSessionMax,
-            kMetricUserBrightnessAdjustmentsPerSessionBuckets);
+            kMetricDefaultBuckets);
       }
       break;
     }
@@ -205,7 +205,7 @@ void MetricsReporter::GenerateUserActivityMetrics() {
   last_idle_event_timestamp_ = base::TimeTicks();
 
   SendMetricWithPowerSource(kMetricIdleName, total_delta.InMilliseconds(),
-      kMetricIdleMin, kMetricIdleMax, kMetricIdleBuckets);
+      kMetricIdleMin, kMetricIdleMax, kMetricDefaultBuckets);
 
   if (!screen_dim_timestamp_.is_null()) {
     base::TimeDelta dim_event_delta = current_time - screen_dim_timestamp_;
@@ -213,7 +213,7 @@ void MetricsReporter::GenerateUserActivityMetrics() {
                               dim_event_delta.InMilliseconds(),
                               kMetricIdleAfterDimMin,
                               kMetricIdleAfterDimMax,
-                              kMetricIdleAfterDimBuckets);
+                              kMetricDefaultBuckets);
     screen_dim_timestamp_ = base::TimeTicks();
   }
   if (!screen_off_timestamp_.is_null()) {
@@ -223,7 +223,7 @@ void MetricsReporter::GenerateUserActivityMetrics() {
                               screen_off_event_delta.InMilliseconds(),
                               kMetricIdleAfterScreenOffMin,
                               kMetricIdleAfterScreenOffMax,
-                              kMetricIdleAfterScreenOffBuckets);
+                              kMetricDefaultBuckets);
     screen_off_timestamp_ = base::TimeTicks();
   }
 }
@@ -268,7 +268,16 @@ void MetricsReporter::HandlePowerButtonEvent(ButtonState state) {
              delta.InMilliseconds(),
              kMetricPowerButtonDownTimeMin,
              kMetricPowerButtonDownTimeMax,
-             kMetricPowerButtonDownTimeBuckets);
+             kMetricDefaultBuckets);
+}
+
+void MetricsReporter::SendPowerButtonAcknowledgmentDelayMetric(
+    base::TimeDelta delay) {
+  SendMetric(kMetricPowerButtonAcknowledgmentDelayName,
+             delay.InMilliseconds(),
+             kMetricPowerButtonAcknowledgmentDelayMin,
+             kMetricPowerButtonAcknowledgmentDelayMax,
+             kMetricDefaultBuckets);
 }
 
 bool MetricsReporter::SendMetric(const std::string& name,
@@ -354,7 +363,7 @@ void MetricsReporter::GenerateBatteryDischargeRateMetric() {
   if (SendMetric(kMetricBatteryDischargeRateName, rate,
                  kMetricBatteryDischargeRateMin,
                  kMetricBatteryDischargeRateMax,
-                 kMetricBatteryDischargeRateBuckets))
+                 kMetricDefaultBuckets))
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
 }
 
@@ -389,7 +398,7 @@ void MetricsReporter::GenerateBatteryDischargeRateWhileSuspendedMetric() {
              static_cast<int>(round(discharge_rate_watts * 1000)),
              kMetricBatteryDischargeRateWhileSuspendedMin,
              kMetricBatteryDischargeRateWhileSuspendedMax,
-             kMetricBatteryDischargeRateWhileSuspendedBuckets);
+             kMetricDefaultBuckets);
 }
 
 void MetricsReporter::IncrementNumOfSessionsPerChargeMetric() {
@@ -412,7 +421,7 @@ void MetricsReporter::GenerateNumOfSessionsPerChargeMetric() {
              sample,
              kMetricNumOfSessionsPerChargeMin,
              kMetricNumOfSessionsPerChargeMax,
-             kMetricNumOfSessionsPerChargeBuckets);
+             kMetricDefaultBuckets);
 }
 
 }  // namespace power_manager

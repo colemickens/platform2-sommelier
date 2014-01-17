@@ -101,6 +101,8 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void DeferInactivityTimeoutForVT2() OVERRIDE;
   virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE;
   virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE;
+  virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
+      OVERRIDE;
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioStateChange(bool active) OVERRIDE;

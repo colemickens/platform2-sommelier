@@ -712,6 +712,10 @@ void Daemon::HandleMissingPowerButtonAcknowledgment() {
   util::Launch("sync");
 }
 
+void Daemon::ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) {
+  metrics_reporter_->SendPowerButtonAcknowledgmentDelayMetric(delay);
+}
+
 void Daemon::OnAudioStateChange(bool active) {
   // |state_controller_| needs to be ready at this point -- since notifications
   // only arrive when the audio state changes, skipping any is unsafe.

@@ -70,6 +70,10 @@ class MetricsReporter {
   // Handles the power button being pressed or released.
   void HandlePowerButtonEvent(ButtonState state);
 
+  // Sends a metric reporting the amount of time that Chrome took to acknowledge
+  // a power button event.
+  void SendPowerButtonAcknowledgmentDelayMetric(base::TimeDelta delay);
+
  private:
   friend class MetricsReporterTest;
   FRIEND_TEST(MetricsReporterTest, BacklightLevel);

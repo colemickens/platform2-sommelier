@@ -57,6 +57,11 @@ class InputController : public system::InputObserver {
     // Handles Chrome failing to acknowledge a power button press quickly
     // enough.
     virtual void HandleMissingPowerButtonAcknowledgment() = 0;
+
+    // Sends a metric reporting how long Chrome took to acknowledge a power
+    // button press.
+    virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
+        = 0;
   };
 
   // Amount of time to wait for Chrome to acknowledge power button presses, in

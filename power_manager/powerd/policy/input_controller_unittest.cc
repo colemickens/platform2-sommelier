@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "base/format_macros.h"
+#include "base/strings/stringprintf.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
@@ -27,6 +29,11 @@ const char kPowerButtonUp[] = "power_up";
 const char kDeferInactivity[] = "defer_inactivity";
 const char kShutDown[] = "shut_down";
 const char kMissingPowerButtonAcknowledgment[] = "missing_power_button_ack";
+
+std::string GetAcknowledgmentDelayAction(base::TimeDelta delay) {
+  return base::StringPrintf("power_button_ack_delay(%" PRId64 ")",
+                            delay.InMilliseconds());
+}
 
 class TestInputControllerDelegate : public InputController::Delegate,
                                     public ActionRecorder {
@@ -52,6 +59,10 @@ class TestInputControllerDelegate : public InputController::Delegate,
   }
   virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE {
     AppendAction(kMissingPowerButtonAcknowledgment);
+  }
+  virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
+      OVERRIDE {
+    AppendAction(GetAcknowledgmentDelayAction(delay));
   }
 
  private:
@@ -188,13 +199,18 @@ TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
 TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
   Init();
 
-  // Press the power button, acknowledge the event immediately, and check that
-  // no further actions are performed and that the timeout is stopped.
+  const base::TimeDelta kShortDelay = base::TimeDelta::FromMilliseconds(100);
+  const base::TimeDelta kTimeout = base::TimeDelta::FromMilliseconds(
+      InputController::kPowerButtonAcknowledgmentTimeoutMs);
+
+  // Press the power button, acknowledge the event nearly immediately, and check
+  // that no further actions are performed and that the timeout is stopped.
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
+  AdvanceTime(kShortDelay);
   controller_.HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp()));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_EQ(GetAcknowledgmentDelayAction(kShortDelay), delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
@@ -214,7 +230,9 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   ASSERT_TRUE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
-  EXPECT_EQ(kMissingPowerButtonAcknowledgment, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
+                        kMissingPowerButtonAcknowledgment, NULL),
+            delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
@@ -229,7 +247,9 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp() - 100));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
-  EXPECT_EQ(kMissingPowerButtonAcknowledgment, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
+                        kMissingPowerButtonAcknowledgment, NULL),
+            delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
