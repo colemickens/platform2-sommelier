@@ -62,8 +62,9 @@ fi
 # For a factory wipe (and only factory) preserve seed for CRX cache.
 if [ "$FACTORY_WIPE" = "factory" ]; then
   IMPORT_FILES="$(cd ${STATE_PATH};
-                  echo unencrypted/import_extensions/*.crx)"
-  if [ "$IMPORT_FILES" != "unencrypted/import_extensions/*.crx" ]; then
+                  echo unencrypted/import_extensions/extensions/*.crx)"
+  if [ "$IMPORT_FILES" != \
+       "unencrypted/import_extensions/extensions/*.crx" ]; then
     PRESERVED_FILES="${PRESERVED_FILES} ${IMPORT_FILES}"
   fi
 fi
