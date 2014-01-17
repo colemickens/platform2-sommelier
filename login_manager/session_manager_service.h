@@ -255,7 +255,7 @@ class SessionManagerService
   bool InitializeImpl();
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
-  void AllowGracefulExit();
+  void AllowGracefulExitOrRunForever();
 
   // Sets the proccess' exit code immediately and posts a QuitClosure to the
   // main event loop.

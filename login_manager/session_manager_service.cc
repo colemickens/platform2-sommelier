@@ -517,7 +517,7 @@ void SessionManagerService::HandleBrowserExit() {
     RunBrowser();
   } else {
     LOG(INFO) << "Should NOT run " << browser_->GetName() << " again.";
-    AllowGracefulExit();
+    AllowGracefulExitOrRunForever();
   }
 }
 
@@ -700,13 +700,16 @@ bool SessionManagerService::InitializeImpl() {
   return true;
 }
 
-void SessionManagerService::AllowGracefulExit() {
-  LOG_IF(FATAL, !exit_on_child_done_) << "Should not gracefully exit";
-  LOG(INFO) << "SessionManagerService set to exit on child done";
-  loop_proxy_->PostTask(
-      FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
-                 this));
+void SessionManagerService::AllowGracefulExitOrRunForever() {
+  if (exit_on_child_done_) {
+    LOG(INFO) << "SessionManagerService set to exit on child done";
+    loop_proxy_->PostTask(
+        FROM_HERE,
+        base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
+                   this));
+  } else {
+    DLOG(INFO) << "Ok, running forever...";
+  }
 }
 
 void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
