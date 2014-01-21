@@ -629,8 +629,17 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
             display_power_setter_.state());
   EXPECT_EQ(0, backlight_.current_level());
 
-  // After exiting docked mode, the displays should be turned back on and the
-  // backlight should be at the dimmed level.
+  // The external display should still be turned off for inactivity.
+  controller_->SetOffForInactivity(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->SetOffForInactivity(false);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+  EXPECT_EQ(0, backlight_.current_level());
+
+  // After exiting docked mode, the internal display should be turned back on
+  // and the backlight should be at the dimmed level.
   controller_->SetDocked(false);
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());

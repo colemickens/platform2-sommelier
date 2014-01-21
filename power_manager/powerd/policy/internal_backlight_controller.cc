@@ -522,14 +522,14 @@ void InternalBacklightController::UpdateState() {
     resume_percent = GetUndimmedBrightnessPercent();
     // Chrome puts displays into the correct power state before suspend.
     set_display_power = false;
-  } else if (docked_) {
-    brightness_percent = 0.0;
-    display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
   } else if (off_for_inactivity_) {
     brightness_percent = 0.0;
     brightness_transition = TRANSITION_FAST;
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
     display_transition = TRANSITION_FAST;
+  } else if (docked_) {
+    brightness_percent = 0.0;
+    display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
   } else {
     brightness_percent = std::min(GetUndimmedBrightnessPercent(),
         dimmed_for_inactivity_ ? dimmed_brightness_percent_ : 100.0);
