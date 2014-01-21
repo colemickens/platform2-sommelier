@@ -83,8 +83,10 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
                account->has_deprecated_public_session_id()) {
       account_key = GetAccountKey(account->deprecated_public_session_id());
     }
-    if (!account_key.empty())
+    if (!account_key.empty()) {
       new_policy_map[account_key] = policy_map_[account_key];
+      policy_map_[account_key] = NULL;
+    }
   }
   policy_map_.swap(new_policy_map);
   STLDeleteValues(&new_policy_map);
