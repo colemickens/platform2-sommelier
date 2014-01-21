@@ -21,7 +21,7 @@
 namespace cryptohome {
 
 // static
-const CK_SLOT_ID Pkcs11Init::kDefaultTpmSlotId = 0;
+const CK_SLOT_ID Pkcs11Init::kDefaultTpmSlotId = 1;
 const CK_ULONG Pkcs11Init::kMaxLabelLen = 32;
 const CK_CHAR Pkcs11Init::kDefaultUserPin[] = "111111";
 const CK_CHAR Pkcs11Init::kDefaultLabel[] = "User-Specific TPM Token";
