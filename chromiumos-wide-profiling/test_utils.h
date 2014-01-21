@@ -11,6 +11,7 @@
 
 #include "base/basictypes.h"
 
+#include "perf_parser.h"
 #include "quipper_string.h"
 
 namespace quipper {
@@ -90,6 +91,9 @@ bool GetPerfBuildIDMap(const string& filename,
 
 // Returns true if the perf buildid-lists are the same.
 bool ComparePerfBuildIDLists(const string& file1, const string& file2);
+
+// Returns options suitable for correctness tests.
+PerfParser::Options GetTestOptions();
 
 }  // namespace quipper
 

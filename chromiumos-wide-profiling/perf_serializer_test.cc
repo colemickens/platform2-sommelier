@@ -8,8 +8,6 @@
 #include <sstream>
 #include <string>
 
-#include <google/protobuf/text_format.h>
-
 #include "base/logging.h"
 #include "base/stringprintf.h"
 
@@ -21,8 +19,6 @@
 #include "quipper_test.h"
 #include "test_utils.h"
 #include "utils.h"
-
-using google::protobuf::TextFormat;
 
 namespace {
 
@@ -45,6 +41,7 @@ void SerializeAndDeserialize(const string& input,
   PerfSerializer::Options options;
   options.do_remap = do_remap;
   options.discard_unused_events = discard_unused_events;
+  options.sample_mapping_percentage_threshold = 100.0f;
   PerfSerializer serializer;
   serializer.set_options(options);
   EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));

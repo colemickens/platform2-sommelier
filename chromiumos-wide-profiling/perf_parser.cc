@@ -55,6 +55,10 @@ PerfParser::~PerfParser() {
   ResetAddressMappers();
 }
 
+PerfParser::PerfParser(const PerfParser::Options& options) {
+  options_ = options;
+}
+
 void PerfParser::set_options(const PerfParser::Options& options) {
   options_ = options;
 }

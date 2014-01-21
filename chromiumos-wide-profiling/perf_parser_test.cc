@@ -74,7 +74,7 @@ TEST(PerfParserTest, Test1Cycle) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
-    PerfParser parser;
+    PerfParser parser(GetTestOptions());
     ASSERT_TRUE(parser.ReadFile(input_perf_data));
     parser.ParseRawEvents();
 
@@ -108,7 +108,7 @@ TEST(PerfParserTest, TestNormalProcessing) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
-    PerfParser parser;
+    PerfParser parser(GetTestOptions());
     ReadFileAndCheckInternals(input_perf_data, &parser);
 
     string output_perf_data = output_path + test_file + ".parse.remap.out";
@@ -117,7 +117,7 @@ TEST(PerfParserTest, TestNormalProcessing) {
     // Remapped addresses should not match the original addresses.
     EXPECT_FALSE(ComparePerfReports(input_perf_data, output_perf_data));
 
-    PerfParser remap_parser;
+    PerfParser remap_parser(GetTestOptions());
     ReadFileAndCheckInternals(output_perf_data, &remap_parser);
     string output_perf_data2 = output_path + test_file + ".parse.remap2.out";
     ASSERT_TRUE(remap_parser.WriteFile(output_perf_data2));
@@ -136,7 +136,7 @@ TEST(PerfParserTest, TestPipedProcessing) {
         GetTestInputFilePath(perf_test_files::kPerfPipedDataFiles[i]);
     LOG(INFO) << "Testing " << input_perf_data;
 
-    PerfParser parser;
+    PerfParser parser(GetTestOptions());
     ReadFileAndCheckInternals(input_perf_data, &parser);
   }
 }

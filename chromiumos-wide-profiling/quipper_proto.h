@@ -5,11 +5,14 @@
 #ifndef QUIPPER_PROTO_H_
 #define QUIPPER_PROTO_H_
 
+#include <google/protobuf/text_format.h>
+
 #include "perf_data.pb.h"
 
 namespace quipper {
 
 using ::google::protobuf::RepeatedPtrField;
+using ::google::protobuf::TextFormat;
 
 }  // namespace quipper
 

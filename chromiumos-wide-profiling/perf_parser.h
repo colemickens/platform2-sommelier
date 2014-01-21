@@ -17,9 +17,9 @@ namespace quipper {
 
 namespace {
 
-// By default, all samples must be properly mapped in order for sample mapping
+// By default, most samples must be properly mapped in order for sample mapping
 // to be considered successful.
-const float kDefaultSampleThreshold = 100.;
+const float kDefaultSampleThreshold = 95.0f;
 
 }  // namespace
 
@@ -139,6 +139,9 @@ class PerfParser : public PerfReader {
                 discard_unused_events(false),
                 sample_mapping_percentage_threshold(kDefaultSampleThreshold) {}
   };
+
+  // Constructor that takes in options at PerfParser creation time.
+  PerfParser(const Options& options);
 
   // Pass in a struct containing various options.
   void set_options(const Options& options);

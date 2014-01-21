@@ -718,4 +718,10 @@ bool ComparePerfBuildIDLists(const string& file1, const string& file2) {
   return outputs[file1] == outputs[file2];
 }
 
+PerfParser::Options GetTestOptions() {
+  PerfParser::Options options;
+  options.sample_mapping_percentage_threshold = 100.0f;
+  return options;
+}
+
 }  // namespace quipper
