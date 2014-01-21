@@ -323,10 +323,8 @@ if use_flag_is_set egl; then
 fi
 
 PPAPI_OOP_FLAG=
-UPLOAD_FLAG=
 if use_flag_is_set exynos; then
   PPAPI_OOP_FLAG="--ppapi-out-of-process"
-  UPLOAD_FLAG="--enable-share-group-async-texture-upload"
   # On boards with ARM NEON support, force libvpx to use the NEON-optimized
   # code paths. Remove once http://crbug.com/161834 is fixed.
   # This is needed because libvpx cannot check cpuinfo within the sandbox.
@@ -441,6 +439,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --enable-fixed-position-compositing \
             --enable-logging \
             --enable-partial-swap \
+            --enable-impl-side-painting \
             --max-tiles-for-interest-area=512 \
             --enterprise-enrollment-initial-modulus=8 \
             --enterprise-enrollment-modulus-limit=12 \
@@ -467,6 +466,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${PPAPI_FLASH_FLAGS} \
             ${PPAPI_OOP_FLAG} \
             ${VMODULE_FLAG} \
-            ${UPLOAD_FLAG} \
             ${GPU_FLAGS} \
             ${VIDEO_FLAGS}
