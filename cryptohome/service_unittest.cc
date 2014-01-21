@@ -490,6 +490,8 @@ TEST(Standalone, StoreEnrollmentState) {
       encrypted_data)).WillOnce(Return(true));
   EXPECT_TRUE(service.StoreEnrollmentState(test_array.get(), &success, &error));
   EXPECT_TRUE(success);
+
+  EXPECT_TRUE(service.homedirs()->enterprise_owned());
 }
 
 TEST(Standalone, LoadEnrollmentState) {

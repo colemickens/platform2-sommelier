@@ -1984,6 +1984,7 @@ void Service::DetectEnterpriseOwnership() {
     for (MountMap::const_iterator it = mounts_.begin();
          it != mounts_.end(); ++it)
       it->second->set_enterprise_owned(true);
+    homedirs_->set_enterprise_owned(true);
   }
 }
 
