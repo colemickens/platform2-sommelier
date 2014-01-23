@@ -19,14 +19,14 @@
                 '<(DEPTH)/mist/mist.gyp:*',
               ],
             }],
-            ['USE_debugd == 1', {
-              'dependencies': [
-                '<(DEPTH)/debugd/debugd.gyp:*',
-              ],
-            }],
             ['USE_cros_disks == 1', {
               'dependencies': [
                 '<(DEPTH)/cros-disks/cros-disks.gyp:*',
+              ],
+            }],
+            ['USE_debugd == 1', {
+              'dependencies': [
+                '<(DEPTH)/debugd/debugd.gyp:*',
               ],
             }],
             ['USE_gdmwimax == 1', {
