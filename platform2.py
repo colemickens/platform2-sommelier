@@ -147,7 +147,7 @@ class Platform2(object):
 
     return flag in self.use_flags
 
-  def configure(self):
+  def configure(self, args):
     """Runs the configure step of the Platform2 build.
 
     Creates the build root if it doesn't already exists. Generates flags to
@@ -191,7 +191,7 @@ class Platform2(object):
       raise AssertionError('Error running: %s'
                            % ' '.join(map(repr, gyp_args)))
 
-  def compile(self):
+  def compile(self, args):
     """Runs the compile step of the Platform2 build.
 
     Removes any existing component markers that may exist (so we don't run
@@ -204,7 +204,9 @@ class Platform2(object):
     env = os.environ.copy()
     env['PATH'] += ':/mnt/host/depot_tools'
 
-    ninja_args = ['ninja', '-C', self.get_products_path(), 'all']
+    if not args:
+      args = ['all']
+    ninja_args = ['ninja', '-C', self.get_products_path()] + args
 
     if self.verbose:
       ninja_args.append('-v')
@@ -215,14 +217,14 @@ class Platform2(object):
       raise AssertionError('Error running: %s'
                            % ' '.join(map(repr, ninja_args)))
 
-  def deviterate(self):
+  def deviterate(self, args):
     """Runs the configure and compile steps of the Platform2 build.
 
     This is the default action, to allow easy iterative testing of changes
     as a developer."""
 
-    self.configure()
-    self.compile()
+    self.configure([])
+    self.compile(args)
 
 
 class _ParseStringSetAction(argparse.Action):
@@ -250,6 +252,7 @@ def main(argv):
                       action=_ParseStringSetAction, help='USE flags to enable')
   parser.add_argument('--verbose', action='store_true', default=None,
                       help='enable verbose log output')
+  parser.add_argument('args', nargs='*')
 
   options = parser.parse_args(argv)
 
@@ -263,7 +266,7 @@ def main(argv):
   p2 = Platform2(options.use_flags, options.board, options.host,
                  options.libdir, options.incremental, options.verbose,
                  options.enable_tests)
-  getattr(p2, options.action)()
+  getattr(p2, options.action)(options.args)
 
 
 if __name__ == '__main__':
