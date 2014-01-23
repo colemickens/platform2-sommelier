@@ -206,6 +206,13 @@ message AttestationResetRequest {
 
   // The one time token to make sure the reset process can be triggered only once.
   optional bytes token = 2;
+
+  // The EK cert, in X.509 form, encrypted using the server's public key with
+  // the following parameters:
+  //   Key encryption: RSA-OAEP with no custom parameters.
+  //   Data encryption: 256-bit key, AES-CBC with PKCS5 padding.
+  //   MAC: HMAC-SHA-512 using the AES key.
+  optional EncryptedData encrypted_endorsement_credential = 3;
 }
 
 // The response from the attestation server for the reset request.
