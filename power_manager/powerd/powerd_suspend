@@ -15,21 +15,27 @@ DEFINE_integer suspend_duration -1 \
     "indicates that the system should wake up after this many seconds" d
 
 # Exit codes returned by this script and reported via the
-# Power.SuspendStatus histogram:
+# Power.SuspendResult histogram:
 
 # The system successfully suspended and resumed.
-readonly STATUS_SUCCESSFUL=0
+readonly RESULT_SUCCESS=0
 
-# A suspend failure occurred in the kernel after writing to /sys/power/state.
-readonly STATUS_FAILED=1
+# A suspend failure occurred in the kernel after writing to /sys/power/state
+# (i.e. the write to /sys/power/state failed with a non-EBUSY reason).
+readonly RESULT_FAILURE=1
 
-# The suspend attempt was canceled as the result of a wakeup event
-# occurring either before the write to /sys/power/wakeup_count or before
-# the write to /sys/power/state.
-readonly STATUS_CANCELED=2
+# The suspend attempt was canceled as the result of a wakeup event occurring
+# between powerd's read from /sys/power/wakeup_count and this script's write to
+# it (i.e. the write to wakeup_count failed).
+readonly RESULT_CANCELED_EARLY=2
 
-# Histogram-only value used to report the total number of suspend attempts.
-readonly STATUS_ATTEMPTED=3
+# The suspend attempt was canceled as the result of a wakeup event occurring
+# between the write to /sys/power/wakeup_count and the write to
+# /sys/power/state (i.e. the write to /sys/power/state failed with EBUSY).
+readonly RESULT_CANCELED_LATE=3
+
+# Histogram-only max value.
+readonly RESULT_MAX=4
 
 # Directory where this script and send_metrics_on_resume (running as root)
 # write temporary state files.
@@ -124,20 +130,18 @@ do_lumpy_gobi_modem_revive() {
 saw_wakeup_event() {
     if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
        echo "${FLAGS_wakeup_count}" > "/sys/power/wakeup_count"; then
-        cancel=0
         return 1
     else
         log_msg "Aborting suspend, wake event received"
         log_wakeup_count
-        cancel=1
         return 0
     fi
 }
 
 
-# Sends suspend status (one of the above SUSPEND_* values) to UMA.
-send_uma_status() {
-    metrics_client -e Power.SuspendStatus $1 4 &
+# Sends suspend result (one of the above RESULT_* values) to UMA.
+send_uma_result() {
+    metrics_client -e Power.SuspendResult $1 $RESULT_MAX &
 }
 
 setup_dark_resume() {
@@ -163,7 +167,9 @@ log_msg "Going to suspend-to-RAM state: args=$@"
 FLAGS "$@" || exit 1
 eval set -- "$FLAGS_ARGV"
 
-send_uma_status $STATUS_ATTEMPTED
+# The metrics library requires a max value of 2 rather than 1
+# (http://crbug.com/338015).
+metrics_client -e Power.SuspendAttempt 0 2 &
 
 # Log the time before going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch $SUSPEND_TO_RAM_TIME_FILE \
@@ -193,7 +199,7 @@ enable_debug
 log_msg "Explicit sync"
 sync
 
-suspend_rc=$STATUS_FAILED
+result=$RESULT_FAILURE
 
 if saw_wakeup_event; then
     # Note: The client/cros/power_suspend.py module in autotest depends on
@@ -204,7 +210,7 @@ if saw_wakeup_event; then
     # isn't run if the suspend attempt is unsuccessful.
     rm -f $SUSPEND_TO_RAM_TIME_FILE
 
-    suspend_rc=$STATUS_CANCELED
+    result=$RESULT_CANCELED_EARLY
 else
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
@@ -226,7 +232,36 @@ else
     # anything in response to write errors.
     error=$( (echo -n mem | cat > /sys/power/state) 2>&1)
     if [ $? = 0 ]; then
-        suspend_rc=$STATUS_SUCCESSFUL
+        # On resume:
+        result=$RESULT_SUCCESS
+
+        if [ -f "${TIMESTAMP_FILE}" ]; then
+            # Record the hwclock time at resume for the power_Resume test.
+            TIME=$(/sbin/hwclock --utc --debug)
+            echo ${TIME} > "${TIMESTAMP_FILE}"
+            log_msg "Recorded hwclock time for test"
+        fi
+
+        if [ -e "/sys/firmware/log" ]; then
+            # Grep /sys/firmware/log for WAK
+            wakeup_source=$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)
+            if [ -z "${wakeup_source}" ]; then
+                wakeup_source="unknown"
+            fi
+            log_msg "wake source: ${wakeup_source}"
+        fi
+
+        # Send UMA metrics.
+        send_metrics_on_resume &
+
+        # Revive the modem if it was present prior to suspending but is absent
+        # now.
+        if [ $lumpy_with_gobi_modem -eq 1 ]; then
+            if ! has_gobi_modem ; then
+                log_msg "Reviving lumpy gobi modem"
+                do_lumpy_gobi_modem_revive
+            fi
+        fi
     else
         log_msg "Error writing to /sys/power/state: ${error}"
         log_msg_from_file /sys/kernel/debug/suspend_stats
@@ -235,44 +270,14 @@ else
         # occurred since the earlier write to /sys/power/wakeup_count.
         if echo "${error}" | grep -q 'Device or resource busy'; then
             log_wakeup_count
-            suspend_rc=$STATUS_CANCELED
+            result=$RESULT_CANCELED_LATE
         else
-            suspend_rc=$STATUS_FAILED
+            result=$RESULT_FAILURE
         fi
     fi
 fi
 
-send_uma_status $suspend_rc
-
-if [ $cancel -eq 0 ]; then
-    # On resume:
-    if [ -f "${TIMESTAMP_FILE}" ]; then
-        # Record the hwclock time at resume. It is read by power_Resume test.
-        TIME=$(/sbin/hwclock --utc --debug)
-        echo ${TIME} > "${TIMESTAMP_FILE}"
-        log_msg "Recorded hwclock time for test"
-    fi
-
-    if [ -e "/sys/firmware/log" ]; then
-        # Grep /sys/firmware/log for WAK
-        wakeup_source=$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)
-        if [ -z "${wakeup_source}" ]; then
-            wakeup_source="unknown"
-        fi
-        log_msg "wake source: ${wakeup_source}"
-    fi
-
-    # Send UMA metrics.
-    send_metrics_on_resume &
-
-    # Revive the modem if it was present prior to suspending but is absent now.
-    if [ $lumpy_with_gobi_modem -eq 1 ]; then
-        if ! has_gobi_modem ; then
-            log_msg "Reviving lumpy gobi modem"
-            do_lumpy_gobi_modem_revive
-        fi
-    fi
-fi
+send_uma_result $result
 
 initctl emit system-resumed &
 
@@ -281,4 +286,4 @@ initctl emit system-resumed &
 
 log_msg "Resume finished"
 
-return $suspend_rc
+return $result

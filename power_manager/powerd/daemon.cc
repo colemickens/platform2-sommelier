@@ -376,7 +376,9 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
         return SUSPEND_SUCCESSFUL;
       case 1:
         return SUSPEND_FAILED;
-      case 2:
+      case 2:  // Canceled before write to wakeup_count.
+        return SUSPEND_CANCELED;
+      case 3:  // Canceled after write to wakeup_count.
         return SUSPEND_CANCELED;
       default:
         LOG(ERROR) << "Treating unexpected exit code as suspend failure";
