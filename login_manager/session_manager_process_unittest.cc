@@ -206,7 +206,9 @@ TEST_F(SessionManagerProcessTest, CleanupAllChildren) {
 
   pid_t generator_pid = kDummyPid + 1;
   scoped_ptr<FakeGeneratorJob> generator(new FakeGeneratorJob(generator_pid,
-                                                              "Generator"));
+                                                              "Generator",
+                                                              "empty key",
+                                                              "empty path"));
   EXPECT_CALL(*browser_job, Kill(SIGTERM, _)).Times(1);
   EXPECT_CALL(*generator.get(), Kill(SIGTERM, _)).Times(1);
 

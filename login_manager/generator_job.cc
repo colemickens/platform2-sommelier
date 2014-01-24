@@ -21,22 +21,44 @@
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
+namespace {
+const char kKeygenExecutable[] = "/sbin/keygen";
+}  // namespace
 
-GeneratorJob::GeneratorJob(const std::vector<std::string>& arguments,
+GeneratorJobFactoryInterface::~GeneratorJobFactoryInterface() {}
+
+GeneratorJob::Factory::Factory() {}
+GeneratorJob::Factory::~Factory() {}
+
+scoped_ptr<GeneratorJobInterface> GeneratorJob::Factory::Create(
+    const std::string& filename,
+    const base::FilePath& user_path,
+    uid_t desired_uid,
+    SystemUtils* utils) {
+  return scoped_ptr<GeneratorJobInterface>(new GeneratorJob(filename,
+                                                            user_path,
+                                                            desired_uid,
+                                                            utils));
+}
+
+GeneratorJob::GeneratorJob(const std::string& filename,
+                           const base::FilePath& user_path,
                            uid_t desired_uid,
                            SystemUtils* utils)
-      : arguments_(arguments),
-        system_(utils),
-        subprocess_(desired_uid, system_) {
+    : filename_(filename),
+      user_path_(user_path.value()),
+      system_(utils),
+      subprocess_(desired_uid, system_) {
 }
 
 GeneratorJob::~GeneratorJob() {}
 
 bool GeneratorJob::RunInBackground() {
-  char const** argv = new char const*[arguments_.size() + 1];
-  size_t index = CopyArgsToArgv(arguments_, argv);
-  // Need to append NULL at the end.
-  argv[index] = NULL;
+  char const* argv[4];
+  argv[0] = kKeygenExecutable;
+  argv[1] = filename_.c_str();
+  argv[2] = user_path_.c_str();
+  argv[3] = NULL;
 
   return subprocess_.ForkAndExec(argv);
 }
@@ -54,19 +76,8 @@ void GeneratorJob::Kill(int signal, const std::string& message) {
 }
 
 const std::string GeneratorJob::GetName() const {
-  FilePath exec_file(arguments_[0]);
+  FilePath exec_file(kKeygenExecutable);
   return exec_file.BaseName().value();
-}
-
-size_t GeneratorJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
-                                    char const** argv) const {
-  for (size_t i = 0; i < arguments.size(); ++i) {
-    size_t needed_space = arguments[i].length() + 1;
-    char* space = new char[needed_space];
-    strncpy(space, arguments[i].c_str(), needed_space);
-    argv[i] = space;
-  }
-  return arguments.size();
 }
 
 }  // namespace login_manager

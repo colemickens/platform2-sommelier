@@ -13,10 +13,10 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/generator_job.h"
+
 namespace login_manager {
 
-class GeneratorJobInterface;
-class FakeGeneratorJob;
 class ProcessManagerServiceInterface;
 class SystemUtils;
 
@@ -32,13 +32,12 @@ class KeyGenerator {
   // generated public key are stored internally until Reset() is called.
   virtual bool Start(const std::string& username, uid_t uid);
 
-  void InjectMockKeygenJob(scoped_ptr<FakeGeneratorJob> keygen);
+  void InjectJobFactory(scoped_ptr<GeneratorJobFactoryInterface> factory);
 
   void HandleExit(bool success);
 
  private:
   FRIEND_TEST(KeyGeneratorTest, KeygenEndToEndTest);
-  static const char kKeygenExecutable[];
   static const char kTemporaryKeyFilename[];
 
   // Clear per-generation state.
@@ -47,6 +46,7 @@ class KeyGenerator {
   SystemUtils *utils_;
   ProcessManagerServiceInterface* manager_;
 
+  scoped_ptr<GeneratorJobFactoryInterface> factory_;
   scoped_ptr<GeneratorJobInterface> keygen_job_;
   bool generating_;
   std::string key_owner_username_;

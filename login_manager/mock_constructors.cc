@@ -35,12 +35,6 @@
 // mock I define, I will simply collect the constructors all here.
 
 namespace login_manager {
-FakeGeneratorJob::FakeGeneratorJob(pid_t pid, const std::string& name)
-    : pid_(pid),
-      name_(name) {
-}
-FakeGeneratorJob::~FakeGeneratorJob() {}
-
 MockDevicePolicyService::MockDevicePolicyService()
     : DevicePolicyService(FilePath(""), FilePath(""),
                           scoped_ptr<PolicyStore>(),

@@ -12,6 +12,7 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
+#include <base/memory/scoped_ptr.h>
 
 namespace login_manager {
 
@@ -30,11 +31,31 @@ class GeneratorJobInterface : public ChildJobInterface {
   virtual pid_t CurrentPid() const OVERRIDE = 0;
 };
 
+class GeneratorJobFactoryInterface {
+ public:
+  virtual ~GeneratorJobFactoryInterface();
+  virtual scoped_ptr<GeneratorJobInterface> Create(
+      const std::string& filename,
+      const base::FilePath& user_path,
+      uid_t desired_uid,
+      SystemUtils* utils) = 0;
+};
+
 class GeneratorJob : public GeneratorJobInterface {
  public:
-  GeneratorJob(const std::vector<std::string>& arguments,
-               uid_t desired_uid,
-               SystemUtils* utils);
+  class Factory : public GeneratorJobFactoryInterface {
+   public:
+    Factory();
+    virtual ~Factory();
+    virtual scoped_ptr<GeneratorJobInterface> Create(
+        const std::string& filename,
+        const base::FilePath& user_path,
+        uid_t desired_uid,
+        SystemUtils* utils) OVERRIDE;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(Factory);
+  };
+
   virtual ~GeneratorJob();
 
   // Overridden from GeneratorJobInterface
@@ -45,12 +66,15 @@ class GeneratorJob : public GeneratorJobInterface {
   virtual pid_t CurrentPid() const OVERRIDE { return subprocess_.pid(); }
 
  private:
-  // Helper for CreateArgV() that copies a vector of arguments into argv.
-  size_t CopyArgsToArgv(const std::vector<std::string>& arguments,
-                        char const** argv) const;
+  GeneratorJob(const std::string& filename,
+               const base::FilePath& user_path,
+               uid_t desired_uid,
+               SystemUtils* utils);
 
-  // Arguments to pass to exec.
-  std::vector<std::string> arguments_;
+  // Fully-specified name for generated key file.
+  const std::string filename_;
+  // Fully-specified path for the user's home.
+  const std::string user_path_;
 
   // Wrapper for system library calls. Externally owned.
   SystemUtils* system_;

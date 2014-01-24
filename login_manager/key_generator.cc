@@ -23,14 +23,13 @@ using std::string;
 using std::vector;
 
 // static
-const char KeyGenerator::kKeygenExecutable[] = "/sbin/keygen";
-// static
 const char KeyGenerator::kTemporaryKeyFilename[] = "key.pub";
 
 KeyGenerator::KeyGenerator(SystemUtils *utils,
                            ProcessManagerServiceInterface* manager)
     : utils_(utils),
       manager_(manager),
+      factory_(new GeneratorJob::Factory),
       generating_(false) {
 }
 
@@ -46,14 +45,9 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
   }
   key_owner_username_ = username;
   temporary_key_filename_ = temporary_key_path.value();
-  if (!keygen_job_.get()) {
-    vector<string> keygen_argv;
-    keygen_argv.push_back(kKeygenExecutable);
-    keygen_argv.push_back(temporary_key_filename_);
-    keygen_argv.push_back(user_path.value());
-    keygen_job_.reset(new GeneratorJob(keygen_argv, uid, utils_));
-  }
 
+  keygen_job_ = factory_->Create(temporary_key_filename_, user_path,
+                                 uid, utils_);
   keygen_job_->RunInBackground();
   pid_t pid = keygen_job_->CurrentPid();
   if (pid < 0)
@@ -81,8 +75,9 @@ void KeyGenerator::Reset() {
   generating_ = false;
 }
 
-void KeyGenerator::InjectMockKeygenJob(scoped_ptr<FakeGeneratorJob> keygen) {
-  keygen_job_ = scoped_ptr<GeneratorJobInterface>(keygen.Pass());
+void KeyGenerator::InjectJobFactory(
+    scoped_ptr<GeneratorJobFactoryInterface> factory) {
+  factory_ = factory.Pass();
 }
 
 }  // namespace login_manager

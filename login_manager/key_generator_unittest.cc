@@ -57,8 +57,6 @@ class KeyGeneratorTest : public ::testing::Test {
   }
 
  protected:
-  int PackStatus(int status) { return __W_EXITCODE(status, 0); }
-
   MockSystemUtils utils_;
   base::ScopedTempDir tmpdir_;
   const base::FilePath original_user_prefix_;
@@ -74,11 +72,12 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
   uid_t kFakeUid = 7;
   pid_t kDummyPid = 4;
   std::string fake_ownername("user");
+  std::string fake_key_contents("stuff");
 
-  scoped_ptr<FakeGeneratorJob> k_job(new FakeGeneratorJob(kDummyPid, "gen"));
-  EXPECT_CALL(*k_job.get(), RunInBackground()).WillOnce(Return(true));
   KeyGenerator keygen(&utils_, &manager);
-  keygen.InjectMockKeygenJob(k_job.Pass());
+  keygen.InjectJobFactory(
+      scoped_ptr<GeneratorJobFactoryInterface>(
+          new FakeGeneratorJob::Factory(kDummyPid, "gen", fake_key_contents)));
 
   manager.ExpectAdoptAndAbandon(kDummyPid);
   EXPECT_CALL(manager,
