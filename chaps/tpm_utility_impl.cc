@@ -131,6 +131,7 @@ class TSSHash {
 
 TPMUtilityImpl::TPMUtilityImpl(const string& srk_auth_data)
     : is_initialized_(false),
+      is_srk_ready_(false),
       default_policy_(0),
       srk_(0),
       srk_auth_data_(srk_auth_data),
@@ -179,14 +180,31 @@ bool TPMUtilityImpl::Init() {
     LOG(ERROR) << "Tspi_Context_GetDefaultPolicy - " << ResultToString(result);
     return false;
   }
+  VLOG(1) << "TPMUtilityImpl::Init success";
+  is_initialized_ = true;
+  return true;
+}
+
+bool TPMUtilityImpl::InitSRK() {
+  if (!is_initialized_)
+    return false;
+  if (is_srk_ready_)
+    return true;
+  VLOG(1) << "TPMUtilityImpl::InitSRK enter";
   // Load the SRK and assign it a usage policy with authorization data.
+  TSS_RESULT result = TSS_SUCCESS;
   TSS_UUID uuid = TSS_UUID_SRK;
   result = Tspi_Context_LoadKeyByUUID(tsp_context_,
                                       TSS_PS_TYPE_SYSTEM,
                                       uuid,
                                       &srk_);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_Context_LoadKeyByUUID - " << ResultToString(result);
+    if (result == (TSS_LAYER_TCS | TSS_E_PS_KEY_NOTFOUND)) {
+      LOG(WARNING) << "SRK does not exist - this is normal when the TPM is not "
+                   << "yet owned.";
+    } else {
+      LOG(ERROR) << "Tspi_Context_LoadKeyByUUID - " << ResultToString(result);
+    }
     return false;
   }
   ScopedTssPolicy srk_policy(tsp_context_);
@@ -217,8 +235,8 @@ bool TPMUtilityImpl::Init() {
     LOG(ERROR) << "Tspi_Policy_AssignToObject - " << ResultToString(result);
     return false;
   }
-  VLOG(1) << "TPMUtilityImpl::Init success";
-  is_initialized_ = true;
+  VLOG(1) << "TPMUtilityImpl::InitSRK success";
+  is_srk_ready_ = true;
   return true;
 }
 
@@ -228,8 +246,6 @@ bool TPMUtilityImpl::Authenticate(int slot_id,
                                   const string& encrypted_master_key,
                                   SecureBlob* master_key) {
   VLOG(1) << "TPMUtilityImpl::Authenticate enter";
-  if (!Init())
-    return false;
   int key_handle = 0;
   if (!LoadKey(slot_id, auth_key_blob, auth_data, &key_handle))
     return false;
@@ -248,8 +264,6 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
                                     const string& old_auth_key_blob,
                                     string* new_auth_key_blob) {
   VLOG(1) << "TPMUtilityImpl::ChangeAuthData enter";
-  if (!Init())
-    return false;
   int key_handle = 0;
   if (!LoadKey(slot_id, old_auth_key_blob, old_auth_data, &key_handle))
     return false;
@@ -292,9 +306,9 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
 
 bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
   VLOG(1) << "TPMUtilityImpl::GenerateRandom enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSS_RESULT result = TSS_SUCCESS;
   TSS_HTPM tpm;
   BYTE *random_bytes = NULL;
@@ -316,9 +330,9 @@ bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
 
 bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
   VLOG(1) << "TPMUtilityImpl::StirRandom enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSS_RESULT result = TSS_SUCCESS;
   TSS_HTPM tpm;
   result = Tspi_Context_GetTpmObject(tsp_context_, &tpm);
@@ -344,9 +358,9 @@ bool TPMUtilityImpl::GenerateKey(int slot,
                                  string* key_blob,
                                  int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::GenerateKey enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSS_RESULT result = TSS_SUCCESS;
   ScopedTssKey key(tsp_context_);
   result = Tspi_Context_CreateObject(tsp_context_,
@@ -394,9 +408,9 @@ bool TPMUtilityImpl::GetPublicKey(int key_handle,
                                   string* public_exponent,
                                   string* modulus) {
   VLOG(1) << "TPMUtilityImpl::GetPublicKey enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   if (!GetKeyAttributeData(GetTssHandle(key_handle),
                            TSS_TSPATTRIB_RSAKEY_INFO,
                            TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
@@ -419,9 +433,9 @@ bool TPMUtilityImpl::WrapKey(int slot,
                              string* key_blob,
                              int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::WrapKey enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   if (!GetSRKPublicKey())
     return false;
   ScopedTssKey key(tsp_context_);
@@ -503,9 +517,9 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
                                        const SecureBlob& auth_data,
                                        int parent_key_handle,
                                        int* key_handle) {
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   if (IsAlreadyLoaded(slot, key_blob, key_handle))
     return true;
   VLOG(1) << "TPMUtilityImpl::LoadKeyWithParent enter";
@@ -520,9 +534,9 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
 
 void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
   VLOG(1) << "TPMUtilityImpl::UnloadKeysForSlot enter";
-  if (!Init())
-    return;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return;
   set<int>* handles = &slot_handles_[slot].handles_;
   set<int>::iterator it;
   for (it = handles->begin(); it != handles->end(); ++it) {
@@ -538,9 +552,9 @@ bool TPMUtilityImpl::Bind(int key_handle,
                           const string& input,
                           string* output) {
   VLOG(1) << "TPMUtilityImpl::Bind enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSSEncryptedData encrypted(tsp_context_);
   if (!encrypted.Create())
     return false;
@@ -562,9 +576,9 @@ bool TPMUtilityImpl::Unbind(int key_handle,
                             const string& input,
                             string* output) {
   VLOG(1) << "TPMUtilityImpl::Unbind enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSSEncryptedData encrypted(tsp_context_);
   if (!encrypted.Create())
     return false;
@@ -598,9 +612,9 @@ bool TPMUtilityImpl::Sign(int key_handle,
                           const string& input,
                           string* signature) {
   VLOG(1) << "TPMUtilityImpl::Sign enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSSHash hash(tsp_context_);
   if (!hash.Create(input))
     return false;
@@ -631,9 +645,9 @@ bool TPMUtilityImpl::Verify(int key_handle,
                             const string& input,
                             const string& signature) {
   VLOG(1) << "TPMUtilityImpl::Verify enter";
-  if (!Init())
-    return false;
   AutoLock lock(lock_);
+  if (!InitSRK())
+    return false;
   TSSHash hash(tsp_context_);
   if (!hash.Create(input))
     return false;
@@ -648,6 +662,12 @@ bool TPMUtilityImpl::Verify(int key_handle,
   }
   VLOG(1) << "TPMUtilityImpl::Verify success";
   return true;
+}
+
+bool TPMUtilityImpl::IsSRKReady() {
+  VLOG(1) << "TPMUtilityImpl::IsSRKReady";
+  AutoLock lock(lock_);
+  return InitSRK();
 }
 
 int TPMUtilityImpl::CreateHandle(int slot,

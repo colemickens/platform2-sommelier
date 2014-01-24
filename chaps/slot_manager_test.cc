@@ -110,6 +110,7 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
       .WillRepeatedly(
           DoAll(SetArgumentPointee<2>(string("encrypted_master_key")),
                 Return(true)));
+  EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
 }
 
 // Creates and returns a mock Session instance.
@@ -212,6 +213,7 @@ TEST_F(TestSlotManager_DeathTest, NoToken) {
 TEST_F(TestSlotManager, DefaultSlotSetup) {
   EXPECT_EQ(2, slot_manager_->GetSlotCount());
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
+  EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
 }
 
 #if GTEST_IS_THREADSAFE
@@ -248,10 +250,6 @@ TEST_F(TestSlotManager, QueryInfo) {
   slot_manager_->GetSlotInfo(ic_, 0, &slot_info);
   // Check if all bytes have been set by the call.
   EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
-  // TODO(dkrahn): Enable once slot 1 exists (crosbug.com/27759).
-  // memset(&slot_info, 0xEE, sizeof(slot_info));
-  // slot_manager_->GetSlotInfo(1, &slot_info);
-  // EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
   CK_TOKEN_INFO token_info;
   memset(&token_info, 0xEE, sizeof(token_info));
   slot_manager_->GetTokenInfo(ic_, 0, &token_info);
@@ -288,8 +286,6 @@ TEST_F(TestSlotManager, TestSessions) {
 
 TEST_F(TestSlotManager, TestLoadTokenEvents) {
   InsertToken();
-  // TODO(dkrahn): Enable once slot 1 exists (crosbug.com/27759).
-  // EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
   int slot_id;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_,
                                        FilePath("some_path"),
@@ -312,11 +308,11 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
   slot_manager_->ChangeTokenAuthData(FilePath("some_path"),
-                                       MakeBlob(kAuthData),
-                                       MakeBlob(kNewAuthData));
+                                     MakeBlob(kAuthData),
+                                     MakeBlob(kNewAuthData));
   slot_manager_->ChangeTokenAuthData(FilePath("yet_another_path"),
-                                       MakeBlob(kAuthData),
-                                       MakeBlob(kNewAuthData));
+                                     MakeBlob(kAuthData),
+                                     MakeBlob(kNewAuthData));
   // Logout with an unknown path.
   slot_manager_->UnloadToken(ic_, FilePath("still_yet_another_path"));
   slot_manager_->UnloadToken(ic_, FilePath("some_path"));
@@ -331,29 +327,23 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   slot_manager_->UnloadToken(ic_, FilePath("another_path"));
 }
 
-#if 0  // TODO(rmcilroy): Reenable this test when thread creation bug is fixed
 TEST_F(TestSlotManager, ManyLoadToken) {
   InsertToken();
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 100; ++i) {
     string path = base::StringPrintf("test%d", i);
-    slot_manager_->LoadToken(ic_, FilePath(path), MakeBlob(kAuthData));
+    int slot_id = 0;
+    slot_manager_->LoadToken(ic_, FilePath(path), MakeBlob(kAuthData),
+                             kTokenLabel, &slot_id);
     slot_manager_->ChangeTokenAuthData(FilePath(path), MakeBlob(kAuthData),
-                                         MakeBlob(kNewAuthData));
+                                       MakeBlob(kNewAuthData));
     slot_manager_->ChangeTokenAuthData(FilePath(path + "_"),
-                                         MakeBlob(kAuthData),
-                                         MakeBlob(kNewAuthData));
+                                       MakeBlob(kAuthData),
+                                       MakeBlob(kNewAuthData));
   }
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 100; ++i) {
     string path = base::StringPrintf("test%d", i);
     slot_manager_->UnloadToken(ic_, FilePath(path));
   }
-}
-#endif
-
-TEST_F(TestSlotManager, TestTPMFailure) {
-  EXPECT_CALL(tpm_, Init()).WillRepeatedly(Return(false));
-  InsertToken();
-  EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
 }
 
 TEST_F(TestSlotManager, TestDefaultIsolate) {
@@ -483,6 +473,29 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
   EXPECT_FALSE(slot_manager_->CloseSession(new_isolate_0, slot_1_session));
   EXPECT_DEATH_IF_SUPPORTED(
       slot_manager_->CloseAllSessions(new_isolate_0, 1), "Check failed");
+}
+
+TEST_F(TestSlotManager, SRKNotReady) {
+  EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(false));
+  SetUp();
+  EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
+  EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
+  int slot_id = 0;
+  EXPECT_FALSE(slot_manager_->LoadToken(ic_, FilePath("test_token"),
+                                        MakeBlob(kAuthData), kTokenLabel,
+                                        &slot_id));
+  EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
+  EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
+}
+
+TEST_F(TestSlotManager, DelayedSRKInit) {
+  EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(false));
+  SetUp();
+  EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(true));
+  int slot_id = 0;
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath("test_token"),
+                                       MakeBlob(kAuthData), kTokenLabel,
+                                       &slot_id));
 }
 #endif
 

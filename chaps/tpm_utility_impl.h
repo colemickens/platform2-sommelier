@@ -73,6 +73,7 @@ class TPMUtilityImpl : public TPMUtility {
   virtual bool Verify(int key_handle,
                       const std::string& input,
                       const std::string& signature);
+  virtual bool IsSRKReady();
   // Stringifies TSS error codes.
   static std::string ResultToString(TSS_RESULT result);
  private:
@@ -112,8 +113,10 @@ class TPMUtilityImpl : public TPMUtility {
                        const chromeos::SecureBlob& auth_data,
                        TSS_HKEY* key);
   bool ReloadKey(int key_handle);
+  bool InitSRK();
 
   bool is_initialized_;
+  bool is_srk_ready_;
   trousers::ScopedTssContext tsp_context_;
   TSS_HPOLICY default_policy_;
   TSS_HKEY srk_;

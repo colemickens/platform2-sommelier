@@ -56,7 +56,12 @@ class AsyncInitThread : public PlatformThread::Delegate {
     started_event_.Signal();
     LOG(INFO) << "Starting asynchronous initialization.";
     if (!tpm_->Init())
-      LOG(WARNING) << "TPM initialization failed.";
+      // Just warn and continue in this case.  The effect will be a functional
+      // daemon which handles dbus requests but any attempt to load a token will
+      // fail.  To a PKCS #11 client this will look like a library with a few
+      // empty slots.
+      LOG(WARNING) << "TPM initialization failed (this is expected if no TPM is"
+                   << " available).  PKCS #11 tokens will not be available.";
     if (!slot_manager_->Init())
       LOG(FATAL) << "Slot initialization failed.";
     if (!service_->Init())

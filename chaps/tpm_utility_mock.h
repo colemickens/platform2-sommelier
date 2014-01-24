@@ -58,6 +58,7 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD3(Unbind, bool(int, const std::string&, std::string*));
   MOCK_METHOD3(Sign, bool(int, const std::string&, std::string*));
   MOCK_METHOD3(Verify, bool(int, const std::string&, const std::string&));
+  MOCK_METHOD0(IsSRKReady, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TPMUtilityMock);

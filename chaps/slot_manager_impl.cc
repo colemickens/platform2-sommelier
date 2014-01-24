@@ -268,7 +268,8 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
     : factory_(factory),
       last_handle_(0),
       tpm_utility_(tpm_utility),
-      auto_load_system_token_(auto_load_system_token) {
+      auto_load_system_token_(auto_load_system_token),
+      is_initialized_(false) {
   CHECK(factory_);
   CHECK(tpm_utility_);
 }
@@ -289,13 +290,6 @@ bool SlotManagerImpl::Init() {
     mechanism_info_[kDefaultMechanismInfo[i].type] =
         kDefaultMechanismInfo[i].info;
   }
-  // Mix in some random bytes from the TPM to the openssl prng.
-  string random;
-  if (tpm_utility_->GenerateRandom(128, &random)) {
-    RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
-  } else {
-    LOG(WARNING) << "TPM failed to generate random data.";
-  }
 
   // Add default isolate.
   AddIsolate(IsolateCredentialManager::GetDefaultIsolateCredential());
@@ -305,15 +299,37 @@ bool SlotManagerImpl::Init() {
   // token until a login event is received.
   AddSlots(2);
 
+  // If the SRK is ready we expect the rest of the init work to succeed.
+  if (tpm_utility_->IsSRKReady() && !InitStage2())
+    return false;
+
+  return true;
+}
+
+bool SlotManagerImpl::InitStage2() {
+  if (is_initialized_)
+    return true;
+  if (!tpm_utility_->IsSRKReady())
+    return false;
+
+  // Mix in some random bytes from the TPM to the openssl prng.
+  string random;
+  if (!tpm_utility_->GenerateRandom(128, &random)) {
+    LOG(ERROR) << "TPM failed to generate random data.";
+    return false;
+  }
+  RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
+
   if (auto_load_system_token_) {
     if (file_util::DirectoryExists(FilePath(kSystemTokenPath))) {
       // Setup the system token.
       int system_slot_id = 0;
-      if (!LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                     FilePath(kSystemTokenPath),
-                     SecureBlob(kSystemTokenAuthData),
-                     kSystemTokenLabel,
-                     &system_slot_id)) {
+      if (!LoadTokenInternal(
+               IsolateCredentialManager::GetDefaultIsolateCredential(),
+               FilePath(kSystemTokenPath),
+               SecureBlob(kSystemTokenAuthData),
+               kSystemTokenLabel,
+               &system_slot_id)) {
         LOG(ERROR) << "Failed to load the system token.";
         return false;
       }
@@ -322,6 +338,7 @@ bool SlotManagerImpl::Init() {
                    << " does not exist.";
     }
   }
+  is_initialized_ = true;
   return true;
 }
 
@@ -503,8 +520,17 @@ bool SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
                                 const SecureBlob& auth_data,
                                 const string& label,
                                 int* slot_id) {
-  CHECK(slot_id);
+  if (!InitStage2())
+    return false;
+  return LoadTokenInternal(isolate_credential, path, auth_data, label, slot_id);
+}
 
+bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
+                                        const FilePath& path,
+                                        const SecureBlob& auth_data,
+                                        const string& label,
+                                        int* slot_id) {
+  CHECK(slot_id);
   VLOG(1) << "SlotManagerImpl::LoadToken enter";
   if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
     LOG(ERROR) << "Invalid isolate credential for LoadToken.";
@@ -519,11 +545,6 @@ bool SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
     LOG(WARNING) << "Load token event received for existing token.";
     *slot_id = path_slot_map_[path];
     return true;
-  }
-  // If there's something wrong with the TPM, don't attempt to load a token.
-  if (!tpm_utility_->Init()) {
-    LOG(ERROR) << "Failed to initialize TPM, load token event aborting.";
-    return false;
   }
   // Setup the object pool.
   *slot_id = FindEmptySlot();
@@ -612,6 +633,10 @@ void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
 void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
                                           const SecureBlob& old_auth_data,
                                           const SecureBlob& new_auth_data) {
+  if (!InitStage2()) {
+    LOG(ERROR) << "Initialization failed; ignoring change auth event.";
+    return;
+  }
   // This event can be handled whether or not we are already managing the token
   // but if we're not, we won't start until a Load Token event comes in.
   ObjectPool* object_pool = NULL;

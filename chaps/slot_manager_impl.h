@@ -93,7 +93,6 @@ class SlotManagerImpl : public SlotManager,
   virtual int CreateHandle();
 
  private:
-
   // Holds all information associated with a particular isolate.
   struct Isolate {
     chromeos::SecureBlob credential;
@@ -153,6 +152,18 @@ class SlotManagerImpl : public SlotManager,
   // Get the path of the token loaded in the given slot.
   bool PathFromSlotId(int slot_id, FilePath* path) const;
 
+  // Performs initialization tasks that depend on the TPM SRK.  If the TPM is
+  // not owned this cannot succeed.  These tasks include seeding the software
+  // prng and loading the system token.
+  bool InitStage2();
+
+  // LoadToken for internal callers.
+  bool LoadTokenInternal(const chromeos::SecureBlob& isolate_credential,
+                         const FilePath& path,
+                         const chromeos::SecureBlob& auth_data,
+                         const std::string& label,
+                         int* slot_id);
+
   ChapsFactory* factory_;
   int last_handle_;
   MechanismMap mechanism_info_;
@@ -167,6 +178,7 @@ class SlotManagerImpl : public SlotManager,
   TPMUtility* tpm_utility_;
   base::Lock handle_generator_lock_;
   bool auto_load_system_token_;
+  bool is_initialized_;
 
   DISALLOW_COPY_AND_ASSIGN(SlotManagerImpl);
 };

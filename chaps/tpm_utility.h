@@ -17,6 +17,7 @@ namespace chaps {
 class TPMUtility {
  public:
   virtual ~TPMUtility() {}
+
   // Performs initialization tasks including the loading of the storage root key
   // (SRK). This may be called multiple times.
   // Returns true on success.
@@ -182,6 +183,10 @@ class TPMUtility {
   virtual bool Verify(int key_handle,
                       const std::string& input,
                       const std::string& signature) = 0;
+
+  // Returns true iff the Storage Root Key is initialized and ready.  The SRK is
+  // expected to not be ready until ownership of the TPM has been taken.
+  virtual bool IsSRKReady() = 0;
 };
 
 }  // namespace
