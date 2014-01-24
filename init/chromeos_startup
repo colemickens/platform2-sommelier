@@ -23,7 +23,9 @@ remember_mount()
 mount_or_fail()
 {
   local mount_point
-  if mount "$@" ; then
+  # -c: Never canonicalize: it is a hazard to resolve symlinks.
+  # -n: Do not write to mtab: we don't use it.
+  if mount -c -n "$@" ; then
     # Last parameter contains the mount point
     shift $(( $# - 1 ))
     # Push it on the undo stack if we fail later
@@ -330,7 +332,7 @@ done
 
 # Mount /home.  This mount inherits nodev,noexec,nosuid from
 # /mnt/stateful_partition above.
-mount_or_fail -n --bind /mnt/stateful_partition/home /home
+mount_or_fail --bind /mnt/stateful_partition/home /home
 
 remember_mount /var
 remember_mount /home/chronos
@@ -350,9 +352,9 @@ chown chronos:chronos /home/chronos /var/log/metrics
 chgrp syslog /var/log
 chmod 1775 /var/log
 
-mount_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
+mount_or_fail -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
 touch /var/run/.ramfs  # TODO: Is this needed?
-mount_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
+mount_or_fail -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
@@ -366,7 +368,7 @@ if [ $CROS_DEBUG -eq 1 ]; then
     mkdir -p -m 0755 /mnt/stateful_partition/dev_image
   fi
   # Mount and then remount to enable exec/suid.
-  mount_or_fail -n --bind /mnt/stateful_partition/dev_image /usr/local
+  mount_or_fail --bind /mnt/stateful_partition/dev_image /usr/local
   mount -n -o remount,exec,suid /usr/local
 
   # Set up /var elements needed by gmerge.
