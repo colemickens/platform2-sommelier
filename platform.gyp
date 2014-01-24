@@ -1,3 +1,5 @@
+# File format documentation:
+# https://code.google.com/p/gyp/wiki/InputFormatReference
 {
   'targets': [
     {
@@ -17,6 +19,11 @@
               'dependencies': [
                 '<(DEPTH)/cromo/cromo.gyp:*',
                 '<(DEPTH)/mist/mist.gyp:*',
+              ],
+            }],
+            ['USE_crash_reporting == 1', {
+              'dependencies': [
+                '<(DEPTH)/crash-reporter/crash-reporter.gyp:*',
               ],
             }],
             ['USE_cros_disks == 1', {
