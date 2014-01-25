@@ -36,6 +36,10 @@ class SystemUtils {
   SystemUtils() {}
   virtual ~SystemUtils() {}
 
+  // Write |data| to |fd|, retrying on EINTR.
+  // Static because it needs to be used inside signal handlers.
+  static void RetryingWrite(int fd, const char* data, size_t data_length);
+
   // Sends |signal| to |pid|, with uid and euid set to |owner|.
   // NOTE: Your saved UID is kept unchanged.  If you expect to drop and regain
   // root privs, MAKE SURE YOUR suid == 0.

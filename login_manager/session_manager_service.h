@@ -16,7 +16,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/callback_forward.h>
+#include <base/callback.h>
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -25,13 +25,14 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
-#include "login_manager/login_metrics.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_interface.h"
+#include "login_manager/termination_handler.h"
 #include "login_manager/upstart_signal_emitter.h"
 
 class MessageLoop;
@@ -46,9 +47,8 @@ struct SessionManager;
 }  // namespace gobject
 
 class BrowserJobInterface;
-class GeneratorJobInterface;
+class LoginMetrics;
 class NssUtil;
-class PolicyService;
 class SystemUtils;
 
 // Provides methods for running the browser, watching its progress, and
@@ -215,17 +215,9 @@ class SessionManagerService
                                         gpointer data);
 
   // |data| is a SessionManagerService*.
-  static gboolean HandleKill(GIOChannel* source,
-                             GIOCondition condition,
-                             gpointer data);
-
-  // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
                                          DBusMessage* message,
                                          void* data);
-
-  // Determines which child exited, and handles appropriately.
-  void HandleChildExit(const siginfo_t& info);
 
   // Set up any necessary signal handlers.
   void SetUpHandlers();
@@ -271,6 +263,8 @@ class SessionManagerService
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
   scoped_ptr<SessionManagerInterface> impl_;
 
+  ChildExitHandler child_exit_handler_;
+  TerminationHandler term_handler_;
   bool shutting_down_;
   bool shutdown_already_;
   ExitCode exit_code_;

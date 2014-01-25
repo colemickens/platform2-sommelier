@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <stdio.h>
+#include <sys/errno.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -20,6 +22,7 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -41,6 +44,16 @@ struct SessionManager;
 
 const char SystemUtilsImpl::kSignalSuccess[] = "success";
 const char SystemUtilsImpl::kSignalFailure[] = "failure";
+
+// Write |data| to |fd|, retrying on EINTR.
+void SystemUtils::RetryingWrite(int fd, const char* data, size_t data_length) {
+  size_t written = 0;
+  do {
+    int rv = HANDLE_EINTR(write(fd, data + written, data_length - written));
+    RAW_CHECK(rv >= 0);
+    written += rv;
+  } while (written < data_length);
+}
 
 SystemUtilsImpl::SystemUtilsImpl() {}
 SystemUtilsImpl::~SystemUtilsImpl() {}

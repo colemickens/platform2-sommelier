@@ -44,17 +44,15 @@
 #include <chromeos/utility.h>
 
 #include "login_manager/browser_job.h"
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/dbus_glib_shim.h"
-#include "login_manager/device_local_account_policy_service.h"
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/policy_store.h"
-#include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/termination_handler.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -67,68 +65,9 @@ namespace gobject {  // NOLINT
 namespace em = enterprise_management;
 namespace login_manager {
 
-int g_shutdown_pipe_write_fd = -1;
-int g_shutdown_pipe_read_fd = -1;
-
-int g_child_pipe_write_fd = -1;
-int g_child_pipe_read_fd = -1;
-
 namespace {
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
-
-// Write |data| to |fd|, retrying on EINTR.
-void RetryingWrite(int fd, const char* data, size_t data_length) {
-  size_t written = 0;
-  do {
-    int rv = HANDLE_EINTR(write(fd, data + written, data_length - written));
-    RAW_CHECK(rv >= 0);
-    written += rv;
-  } while (written < data_length);
-}
-
-// Common code between SIG{HUP,INT,TERM}Handler.
-void GracefulShutdownHandler(int signal) {
-  RAW_CHECK(g_shutdown_pipe_write_fd != -1);
-  RAW_CHECK(g_shutdown_pipe_read_fd != -1);
-
-  RetryingWrite(g_shutdown_pipe_write_fd,
-                reinterpret_cast<const char*>(&signal),
-                sizeof(signal));
-  RAW_LOG(INFO,
-          "Successfully wrote to shutdown pipe, resetting signal handler.");
-}
-
-void SIGHUPHandler(int signal) {
-  RAW_CHECK(signal == SIGHUP);
-  RAW_LOG(INFO, "Handling SIGHUP.");
-  GracefulShutdownHandler(signal);
-}
-
-void SIGINTHandler(int signal) {
-  RAW_CHECK(signal == SIGINT);
-  RAW_LOG(INFO, "Handling SIGINT.");
-  GracefulShutdownHandler(signal);
-}
-
-void SIGTERMHandler(int signal) {
-  RAW_CHECK(signal == SIGTERM);
-  RAW_LOG(INFO, "Handling SIGTERM.");
-  GracefulShutdownHandler(signal);
-}
-
-void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
-  RAW_CHECK(signal == SIGCHLD);
-  RAW_LOG(INFO, "Handling SIGCHLD.");
-
-  RAW_CHECK(g_child_pipe_write_fd != -1);
-  RAW_CHECK(g_child_pipe_read_fd != -1);
-
-  RetryingWrite(g_child_pipe_write_fd,
-                reinterpret_cast<const char*>(info),
-                sizeof(siginfo_t));
-  RAW_LOG(INFO, "Successfully wrote to child pipe.");
-}
 
 }  // anonymous namespace
 
@@ -153,7 +92,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   }
   session_manager_service_->loop_proxy_->PostTask(
       FROM_HERE,
-      base::Bind(&SessionManagerService::HandleChildExit,
+      base::Bind(&SessionManagerService::HandleExit,
                  session_manager_service_, info));
 }
 
@@ -180,19 +119,11 @@ SessionManagerService::SessionManagerService(
       liveness_checker_(NULL),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
+      child_exit_handler_(utils),
+      ALLOW_THIS_IN_INITIALIZER_LIST(term_handler_(this)),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
-  int pipefd[2];
-  PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
-  g_shutdown_pipe_read_fd = pipefd[0];
-  g_shutdown_pipe_write_fd = pipefd[1];
-
-  PLOG_IF(FATAL, pipe2(pipefd,
-                       O_CLOEXEC | O_NONBLOCK) < 0) << "Failed to create pipe";
-  g_child_pipe_read_fd = pipefd[0];
-  g_child_pipe_write_fd = pipefd[1];
-
   SetUpHandlers();
 }
 
@@ -284,20 +215,6 @@ bool SessionManagerService::Initialize() {
   // Set any flags that were specified system-wide.
   browser_->SetExtraArguments(impl->GetStartUpFlags());
 
-  g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
-                      G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                      HandleKill,
-                      this,
-                      NULL);
-
-  g_io_add_watch_full(g_io_channel_unix_new(g_child_pipe_read_fd),
-                      G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                      HandleChildrenExiting,
-                      this,
-                      NULL);
-
   // Wire impl to dbus-glib glue.
   if (session_manager_)
     g_object_unref(session_manager_);
@@ -371,6 +288,7 @@ void SessionManagerService::ScheduleShutdown() {
 
 void SessionManagerService::RunBrowser() {
   browser_->RunInBackground();
+  DLOG(INFO) << "Browser is " << browser_->CurrentPid();
   liveness_checker_->Start();
 }
 
@@ -385,7 +303,7 @@ void SessionManagerService::RestartBrowserWithArgs(
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  browser_->KillEverything(SIGKILL, "");
+  browser_->KillEverything(SIGKILL, "Restarting browser on-demand.");
   if (args_are_extra)
     browser_->SetExtraArguments(args);
   else
@@ -457,60 +375,6 @@ void SessionManagerService::EnsureJobExit(base::TimeDelta timeout) {
     browser_->WaitAndAbort(timeout);
 }
 
-void SessionManagerService::HandleChildExit(const siginfo_t& info) {
-  CHECK(system_->ChildIsGone(info.si_pid, base::TimeDelta::FromSeconds(5)));
-  if (!IsManagedJob(info.si_pid) && !key_gen_.IsManagedJob(info.si_pid))
-    return;
-
-  if (shutting_down_)
-    return;
-
-  LOG(INFO) << "Handling " << info.si_pid << " exit.";
-  if (info.si_code == CLD_EXITED) {
-    LOG_IF(ERROR, info.si_status != 0) << "  Exited with exit code "
-                                       << info.si_status;
-    CHECK(info.si_status != ChildJobInterface::kCantSetUid);
-    CHECK(info.si_status != ChildJobInterface::kCantExec);
-  } else {
-    LOG(ERROR) << "  Exited with signal " << info.si_status;
-  }
-
-  if (IsManagedJob(info.si_pid))
-    HandleExit(info);
-  else if (key_gen_.IsManagedJob(info.si_pid))
-    key_gen_.HandleExit(info);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// glib event handlers
-
-// static
-gboolean SessionManagerService::HandleChildrenExiting(GIOChannel* source,
-                                                      GIOCondition condition,
-                                                      gpointer data) {
-  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  siginfo_t info;
-  while (file_util::ReadFromFD(g_io_channel_unix_get_fd(source),
-                               reinterpret_cast<char*>(&info),
-                               sizeof(info))) {
-    DCHECK(info.si_signo == SIGCHLD) << "Wrong signal!";
-    manager->HandleChildExit(info);
-  }
-  return TRUE;  // So that the event source that called this remains installed.
-}
-
-gboolean SessionManagerService::HandleKill(GIOChannel* source,
-                                           GIOCondition condition,
-                                           gpointer data) {
-  // We only get called if there's data on the pipe.  If there's data, we're
-  // supposed to exit.  So, don't even bother to read it.
-  LOG(INFO) << "HUP, INT, or TERM received; exiting.";
-
-  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  manager->ScheduleShutdown();
-  return FALSE;  // So that the event source that called this gets removed.
-}
-
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
@@ -568,32 +432,11 @@ void SessionManagerService::SetUpHandlers() {
   action.sa_handler = DoNothing;
   CHECK(sigaction(SIGALRM, &action, NULL) == 0);
 
-  // For all termination handlers, we want the default re-installed after
-  // we get a shot at handling the signal.
-  action.sa_flags = SA_RESETHAND;
-
-  // We need to handle SIGTERM, because that is how many POSIX-based distros ask
-  // processes to quit gracefully at shutdown time.
-  action.sa_handler = SIGTERMHandler;
-  CHECK(sigaction(SIGTERM, &action, NULL) == 0);
-  // Also handle SIGINT, if session_manager is being run in the foreground.
-  action.sa_handler = SIGINTHandler;
-  CHECK(sigaction(SIGINT, &action, NULL) == 0);
-  // And SIGHUP, for when the terminal disappears. On shutdown, many Linux
-  // distros send SIGHUP, SIGTERM, and then SIGKILL.
-  action.sa_handler = SIGHUPHandler;
-  CHECK(sigaction(SIGHUP, &action, NULL) == 0);
-
-  // Manually set an action for SIGCHLD, so that we can convert
-  // receiving a signal on child exit to file descriptor
-  // activity. This way we can handle this kind of event in a
-  // MessageLoop.  The flags are set such that the action receives a
-  // siginfo struct with handy exit status info, but only when the
-  // child actually exits -- as opposed to also when it gets STOP or CONT.
-  memset(&action, 0, sizeof(action));
-  action.sa_flags = (SA_SIGINFO | SA_NOCLDSTOP);
-  action.sa_sigaction = SIGCHLDHandler;
-  CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
+  std::vector<JobManagerInterface*> job_managers;
+  job_managers.push_back(this);
+  job_managers.push_back(&key_gen_);
+  child_exit_handler_.Init(job_managers);
+  term_handler_.Init();
 }
 
 void SessionManagerService::RevertHandlers() {
@@ -602,10 +445,8 @@ void SessionManagerService::RevertHandlers() {
   action.sa_handler = SIG_DFL;
   CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
   CHECK(sigaction(SIGALRM, &action, NULL) == 0);
-  CHECK(sigaction(SIGTERM, &action, NULL) == 0);
-  CHECK(sigaction(SIGINT, &action, NULL) == 0);
-  CHECK(sigaction(SIGHUP, &action, NULL) == 0);
-  CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
+  ChildExitHandler::RevertHandlers();
+  TerminationHandler::RevertHandlers();
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {
