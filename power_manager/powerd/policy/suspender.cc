@@ -48,7 +48,7 @@ Suspender::Suspender()
       wakeup_count_valid_(false),
       got_external_wakeup_count_(false),
       max_retries_(0),
-      num_retries_(0),
+      num_attempts_(0),
       shutting_down_(false) {
 }
 
@@ -192,6 +192,7 @@ void Suspender::StartSuspendAttempt() {
     wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
 
   suspend_id_++;
+  num_attempts_++;
   waiting_for_readiness_ = true;
   delegate_->PrepareForSuspendAnnouncement();
   suspend_delay_controller_->PrepareForSuspend(suspend_id_);
@@ -242,18 +243,13 @@ void Suspender::Suspend() {
     // Failure handling for dark resume. We don't want to process events during
     // a dark resume, even if we fail to suspend. To solve this, instead of
     // scheduling a retry later, delay here and retry without returning from
-    // this function. num_retries_ is not reset until there is a successful user
-    // requested resume.
+    // this function.
     if (!success && dark_resume) {
-      if (num_retries_ >= max_retries_) {
-        LOG(ERROR) << "Retried suspend from dark resume" << num_retries_
-                   << " times; shutting down";
-        delegate_->ShutDownForFailedSuspend();
-      }
-      num_retries_++;
-      LOG(WARNING) << "Retry #" << num_retries_
-                   << " for suspend from dark resume";
+      if (ShutDownIfRetryLimitReached())
+        return;
+      LOG(WARNING) << "Retry #" << num_attempts_ << " from dark resume";
       sleep(retry_delay_.InSeconds());
+      num_attempts_++;
     }
   } while (dark_resume);
 
@@ -271,7 +267,6 @@ void Suspender::Suspend() {
       LOG(WARNING) << "Giving up after canceled suspend attempt with external "
                    << "wakeup count";
     }
-    num_retries_ = 0;
     SendSuspendStateChangedSignal(
         SuspendState_Type_RESUME, clock_->GetCurrentWallTime());
   } else {
@@ -282,18 +277,27 @@ void Suspender::Suspend() {
   }
 
   dark_resume_policy_->HandleResume();
-  delegate_->HandleResume(success, num_retries_, max_retries_);
+  delegate_->HandleSuspendAttemptCompletion(success, num_attempts_);
+  if (done)
+    num_attempts_ = 0;
+}
+
+bool Suspender::ShutDownIfRetryLimitReached() {
+  if (num_attempts_ > max_retries_) {
+    LOG(ERROR) << "Unsuccessfully attempted to suspend " << num_attempts_
+               << " times; shutting down";
+    delegate_->ShutDownForFailedSuspend();
+    return true;
+  }
+  return false;
 }
 
 void Suspender::RetrySuspend() {
-  if (num_retries_ >= max_retries_) {
-    LOG(ERROR) << "Retried suspend " << num_retries_ << " times; shutting down";
-    delegate_->ShutDownForFailedSuspend();
-  } else {
-    num_retries_++;
-    LOG(WARNING) << "Retry #" << num_retries_;
-    StartSuspendAttempt();
-  }
+  if (ShutDownIfRetryLimitReached())
+    return;
+
+  LOG(WARNING) << "Retry #" << num_attempts_;
+  StartSuspendAttempt();
 }
 
 void Suspender::CancelSuspend() {
@@ -305,6 +309,11 @@ void Suspender::CancelSuspend() {
   } else if (retry_suspend_timer_.IsRunning()) {
     LOG(INFO) << "Canceling suspend between retries";
     retry_suspend_timer_.Stop();
+  }
+
+  if (num_attempts_) {
+    delegate_->HandleCanceledSuspendRequest(num_attempts_);
+    num_attempts_ = 0;
   }
 }
 

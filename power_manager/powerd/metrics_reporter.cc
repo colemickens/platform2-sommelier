@@ -173,26 +173,30 @@ void MetricsReporter::HandlePowerStatusUpdate(
                  BATTERY_INFO_MAX);
 }
 
+void MetricsReporter::HandleShutdown(ShutdownReason reason) {
+  SendEnumMetric(kMetricShutdownReasonName, static_cast<int>(reason),
+                 kMetricShutdownReasonMax);
+}
+
 void MetricsReporter::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentWallTime();
 }
 
-void MetricsReporter::HandleResume() {
+void MetricsReporter::HandleResume(int num_suspend_attempts) {
+  SendMetric(kMetricSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
+             kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+             kMetricSuspendAttemptsBuckets);
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
 }
 
-void MetricsReporter::GenerateRetrySuspendMetric(int num_retries,
-                                                 int max_retries) {
-  if (num_retries == 0)
-    return;
-
-  SendMetric(kMetricRetrySuspendCountName, num_retries,
-             kMetricRetrySuspendCountMin, max_retries,
-             kMetricRetrySuspendCountBuckets);
+void MetricsReporter::HandleCanceledSuspendRequest(int num_suspend_attempts) {
+  SendMetric(kMetricSuspendAttemptsBeforeCancelName, num_suspend_attempts,
+             kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+             kMetricSuspendAttemptsBuckets);
 }
 
 void MetricsReporter::GenerateUserActivityMetrics() {

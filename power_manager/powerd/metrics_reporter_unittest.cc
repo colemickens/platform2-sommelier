@@ -467,7 +467,10 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
   metrics_reporter_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  metrics_reporter_.HandleResume();
+  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
+               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+               kMetricSuspendAttemptsBuckets);
+  metrics_reporter_.HandleResume(1);
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
@@ -480,7 +483,10 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
   metrics_reporter_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  metrics_reporter_.HandleResume();
+  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 2,
+               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+               kMetricSuspendAttemptsBuckets);
+  metrics_reporter_.HandleResume(2);
   power_status_.line_power_on = true;
   power_status_.battery_energy = kEnergyAfterResume;
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
@@ -494,7 +500,10 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
   metrics_reporter_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  metrics_reporter_.HandleResume();
+  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
+               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+               kMetricSuspendAttemptsBuckets);
+  metrics_reporter_.HandleResume(1);
   power_status_.battery_energy = kEnergyBeforeSuspend + 5.0;
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
@@ -507,7 +516,10 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   metrics_reporter_.PrepareForSuspend();
   AdvanceTime(base::TimeDelta::FromSeconds(
       kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
-  metrics_reporter_.HandleResume();
+  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
+               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+               kMetricSuspendAttemptsBuckets);
+  metrics_reporter_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
@@ -519,7 +531,10 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
   metrics_reporter_.HandlePowerStatusUpdate(power_status_);
   metrics_reporter_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  metrics_reporter_.HandleResume();
+  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
+               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
+               kMetricSuspendAttemptsBuckets);
+  metrics_reporter_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   const int rate_mw = static_cast<int>(round(
       1000 * (kEnergyBeforeSuspend - kEnergyAfterResume) /

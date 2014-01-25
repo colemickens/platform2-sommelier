@@ -36,16 +36,15 @@ class SuspendDelayController;
 // - SuspendDelayController announces the new suspend request to processes that
 //   have previously registered suspend delays via RegisterSuspendDelay().
 // - OnReadyForSuspend() is called to announce that all processes have announced
-//   readiness via HandleSuspendReadiness().  It calls Suspend(), which runs the
+//   readiness via HandleSuspendReadiness(). It calls Suspend(), which emits a
+//   PowerStateChanged D-Bus signal with a "mem" argument and runs the
 //   powerd_suspend script to perform the actual suspend/resume cycle.
-// - powerd_suspend emits a PowerStateChanged D-Bus signal with a "mem" argument
-//   before asking the kernel to suspend and a second signal with an "on"
-//   argument after the system resumes.
-// - If powerd_suspend reports failure, a timeout is created to retry the
-//   suspend attempt.
+// - After powerd_suspend returns, a PowerStateChanged signal with an "on"
+//   argument is emitted. If powerd_suspend reported failure, a timeout is
+//   created to retry the suspend attempt.
 //
 // At any point before Suspend() has been called, user activity can cancel
-// the current suspend attempt.  A synthetic PowerStateChanged "on" signal
+// the current suspend attempt. A synthetic PowerStateChanged "on" signal
 // is emitted so that other processes can undo any setup that they did in
 // response to suspend delays.
 class Suspender : public SuspendDelayObserver {
@@ -60,10 +59,14 @@ class Suspender : public SuspendDelayObserver {
   //   for other processes to report readiness for suspend, then
   //   HandleCanceledSuspendAnnouncementIsCalled().
   // - Otherwise, PrepareForSuspend() is called.
-  // - Suspend() is then called within a do while loop that exits when there is
-  //   a user requested suspend or enough failures.
+  // - Suspend() is then called within a do-while loop (looping only for dark
+  //   resumes).
   // - After the system resumes from suspend (or if the suspend attempt
-  //   failed), HandleResume() is called.
+  //   failed), HandleSuspendAttemptCompletion() is called.
+  // - If the suspend attempt failed, then the cycle will repeat, starting at
+  //   PrepareForSuspendAnnouncement().
+  // - If the suspend request is canceled due to user activity,
+  //   HandleCanceledSuspendRequest() will be called.
   class Delegate {
    public:
     // Outcomes for a suspend attempt.
@@ -92,16 +95,16 @@ class Suspender : public SuspendDelayObserver {
     virtual void PrepareForSuspendAnnouncement() = 0;
 
     // Called if the suspend request is aborted before Suspend() and
-    // HandleResume() are called.  This method should undo any work done by
-    // PrepareForSuspendAnnouncement().
+    // HandleSuspendAttemptCompletion() are called.  This method should undo any
+    // work done by PrepareForSuspendAnnouncement().
     virtual void HandleCanceledSuspendAnnouncement() = 0;
 
     // Handles putting the system into the correct state before suspending such
     // as suspending the backlight, audio, and sending out the PowerStateChanged
-    // signal. This is separate from Suspend(...) since for the purpose of a
+    // "mem" signal. This is separate from Suspend() since for the purpose of a
     // dark resume (which can call suspend again), we don't want to touch the
     // state of the backlight or audio. We also don't want to send out another
-    // PowerStateChanged signal since those are not sent out during a dark
+    // PowerStateChanged "mem" signal since those are not sent out during a dark
     // resume.
     virtual void PrepareForSuspend() = 0;
 
@@ -109,23 +112,32 @@ class Suspender : public SuspendDelayObserver {
     // If |wakeup_count_valid| is true, passes |wakeup_count| to the script
     // so it can avoid suspending if additional wakeup events occur.  After
     // the suspend/resume cycle is complete (and even if the system failed
-    // to suspend), HandleResume() will be called.
+    // to suspend), HandleSuspendAttemptCompletion() will be called.
     virtual SuspendResult Suspend(uint64 wakeup_count,
                                   bool wakeup_count_valid,
                                   base::TimeDelta duration) = 0;
 
-    // Handles the system resuming (or recovering from a failed suspend
-    // attempt).  This method should undo any work done by both
-    // PrepareForSuspendAnnouncement() and PrepareForSuspend().
-    virtual void HandleResume(bool suspend_was_successful,
-                              int num_suspend_retries,
-                              int max_suspend_retries) = 0;
+    // Handles the system resuming or recovering from a failed suspend
+    // attempt. |num_suspend_attempts| contains the number of suspend attempts
+    // that have been made so far (i.e. the initial attempt plus any retries).
+    // This method should undo any work done by both
+    // PrepareForSuspendAnnouncement() and PrepareForSuspend() (i.e. it should
+    // set a PowerStateChanged "on" signal).
+    virtual void HandleSuspendAttemptCompletion(bool suspend_was_successful,
+                                                int num_suspend_attempts) = 0;
+
+    // Called when a suspend request (that is, a series of suspend attempts
+    // being performed in response to an initial call to RequestSuspend(),
+    // rather than an individual suspend attempt) has been canceled.
+    // |num_suspend_attempts| contains the number of individual attempts that
+    // had been made.
+    virtual void HandleCanceledSuspendRequest(int num_suspend_attempts) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
     virtual void ShutDownForFailedSuspend() = 0;
 
     // Shuts the system down in response to the DarkResumePolicy determining the
-    // system should shutdown.
+    // system should shut down.
     virtual void ShutDownForDarkResume() = 0;
   };
 
@@ -209,6 +221,10 @@ class Suspender : public SuspendDelayObserver {
   // outstanding delays).
   void Suspend();
 
+  // Shuts the system down and returns true if |num_attempts_| exceeds
+  // |max_retries_|.
+  bool ShutDownIfRetryLimitReached();
+
   // Retries a suspend attempt.
   void RetrySuspend();
 
@@ -231,10 +247,10 @@ class Suspender : public SuspendDelayObserver {
   // RequestSuspend() and set to false by OnReadyForSuspend().
   bool waiting_for_readiness_;
 
-  // Unique ID associated with the current suspend request.
+  // Unique ID associated with the current suspend attempt.
   int suspend_id_;
 
-  // Number of wakeup events received at start of current suspend operation.
+  // Number of wakeup events received at start of the current suspend attempt.
   uint64 wakeup_count_;
   bool wakeup_count_valid_;
 
@@ -248,12 +264,12 @@ class Suspender : public SuspendDelayObserver {
   // Time to wait before retrying a failed suspend attempt.
   base::TimeDelta retry_delay_;
 
-  // Maximum number of times to retry a failed suspend attempt before giving up
-  // and shutting down the system.
+  // Maximum number of times to retry after a failed suspend attempt before
+  // giving up and shutting down the system.
   int64 max_retries_;
 
-  // Number of failed retries since RequestSuspend() was called.
-  int num_retries_;
+  // Number of suspend attempts made since the initial RequestSuspend() call.
+  int num_attempts_;
 
   // Runs RetrySuspend().
   base::OneShotTimer<Suspender> retry_suspend_timer_;

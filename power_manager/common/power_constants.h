@@ -137,6 +137,21 @@ enum ButtonState {
   BUTTON_REPEAT,
 };
 
+// Reasons for the system being shut down.
+// Note: These are reported in a histogram and must not be renumbered.
+enum ShutdownReason {
+  // Explicit user request (e.g. holding power button).
+  SHUTDOWN_REASON_USER_REQUEST     = 0,
+  // Request from StateController (e.g. lid was closed or user was inactive).
+  SHUTDOWN_REASON_STATE_TRANSITION = 1,
+  // Battery level dropped below shutdown threshold.
+  SHUTDOWN_REASON_LOW_BATTERY      = 2,
+  // Multiple suspend attempts failed.
+  SHUTDOWN_REASON_SUSPEND_FAILED   = 3,
+  // Battery level was below threshold during dark resume from suspend.
+  SHUTDOWN_REASON_DARK_RESUME      = 4,
+};
+
 // Returns human-readable descriptions of enum values.
 std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);
@@ -144,6 +159,7 @@ std::string SessionStateToString(SessionState state);
 std::string UpdaterStateToString(UpdaterState state);
 std::string DisplayModeToString(DisplayMode mode);
 std::string ButtonStateToString(ButtonState state);
+std::string ShutdownReasonToString(ShutdownReason reason);
 
 }  // namespace power_manager
 

@@ -343,11 +343,17 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   }
 
   virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    daemon_->PrepareForSuspendAnnouncement();
+    // When going to suspend, notify the backlight controller so it can turn
+    // the backlight off and tell the kernel to resume the current level
+    // after resuming.  This must occur before Chrome is told that the system
+    // is going to suspend (Chrome turns the display back on while leaving
+    // the backlight off).
+    daemon_->SetBacklightsSuspended(true);
   }
 
   virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
-    daemon_->HandleCanceledSuspendAnnouncement();
+    // Undo the earlier call.
+    daemon_->SetBacklightsSuspended(false);
     SendPowerStateChangedSignal("on");
   }
 
@@ -386,13 +392,17 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     }
   }
 
-  virtual void HandleResume(bool suspend_was_successful,
-                            int num_suspend_retries,
-                            int max_suspend_retries) OVERRIDE {
+  virtual void HandleSuspendAttemptCompletion(
+      bool suspend_was_successful,
+      int num_suspend_attempts) OVERRIDE {
     SendPowerStateChangedSignal("on");
-    daemon_->HandleResume(suspend_was_successful,
-                          num_suspend_retries,
-                          max_suspend_retries);
+    daemon_->HandleSuspendAttemptCompletion(suspend_was_successful,
+                                            num_suspend_attempts);
+  }
+
+  virtual void HandleCanceledSuspendRequest(int num_suspend_attempts) {
+    daemon_->metrics_reporter_->HandleCanceledSuspendRequest(
+        num_suspend_attempts);
   }
 
   virtual void ShutDownForFailedSuspend() OVERRIDE {
@@ -545,24 +555,6 @@ void Daemon::Init() {
   peripheral_battery_watcher_->Init(dbus_sender_.get());
 }
 
-// static
-std::string Daemon::ShutdownReasonToString(ShutdownReason reason) {
-  switch (reason) {
-    case SHUTDOWN_REASON_USER_REQUEST:
-      return "user-request";
-    case SHUTDOWN_REASON_STATE_TRANSITION:
-      return "state-transition";
-    case SHUTDOWN_REASON_LOW_BATTERY:
-      return "low-battery";
-    case SHUTDOWN_REASON_SUSPEND_FAILED:
-      return "suspend-failed";
-    case SHUTDOWN_REASON_DARK_RESUME:
-      return "dark-resume";
-  }
-  NOTREACHED() << "Unhandled shutdown reason " << reason;
-  return "unknown";
-}
-
 bool Daemon::BoolPrefIsTrue(const std::string& name) const {
   bool value = false;
   return prefs_->GetBool(name, &value) && value;
@@ -609,20 +601,6 @@ void Daemon::OnBrightnessChanged(
   }
 }
 
-void Daemon::PrepareForSuspendAnnouncement() {
-  // When going to suspend, notify the backlight controller so it can turn
-  // the backlight off and tell the kernel to resume the current level
-  // after resuming.  This must occur before Chrome is told that the system
-  // is going to suspend (Chrome turns the display back on while leaving
-  // the backlight off).
-  SetBacklightsSuspended(true);
-}
-
-void Daemon::HandleCanceledSuspendAnnouncement() {
-  // Undo the earlier BACKLIGHT_SUSPENDED call.
-  SetBacklightsSuspended(false);
-}
-
 void Daemon::PrepareForSuspend() {
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
@@ -653,9 +631,8 @@ void Daemon::PrepareForSuspend() {
   metrics_reporter_->PrepareForSuspend();
 }
 
-void Daemon::HandleResume(bool suspend_was_successful,
-                          int num_suspend_retries,
-                          int max_suspend_retries) {
+void Daemon::HandleSuspendAttemptCompletion(bool suspend_was_successful,
+                                            int num_suspend_attempts) {
   SetBacklightsSuspended(false);
   audio_client_->RestoreMutedState();
   power_supply_->SetSuspended(false);
@@ -670,11 +647,8 @@ void Daemon::HandleResume(bool suspend_was_successful,
       LOG(ERROR) << "Failed to delete " << kSuspendedStatePath;
   }
 
-  if (suspend_was_successful) {
-    metrics_reporter_->GenerateRetrySuspendMetric(
-        num_suspend_retries, max_suspend_retries);
-    metrics_reporter_->HandleResume();
-  }
+  if (suspend_was_successful)
+    metrics_reporter_->HandleResume(num_suspend_attempts);
 
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
@@ -1283,6 +1257,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
 
   shutting_down_ = true;
   suspender_->HandleShutdown();
+  metrics_reporter_->HandleShutdown(reason);
 
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.

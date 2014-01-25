@@ -77,22 +77,13 @@ class Daemon : public policy::BacklightControllerObserver,
       policy::BacklightController::BrightnessChangeCause cause,
       policy::BacklightController* source) OVERRIDE;
 
-  // Called by |suspender_| before other processes are informed that the
-  // system will be suspending soon.
-  void PrepareForSuspendAnnouncement();
-
-  // Called by |suspender_| if a suspend request is aborted before
-  // PrepareForSuspend() has been called.
-  void HandleCanceledSuspendAnnouncement();
-
   // Called by |suspender_| just before a suspend attempt begins.
   void PrepareForSuspend();
 
   // Called by |suspender_| after the completion of a suspend/resume cycle
   // (which did not necessarily succeed).
-  void HandleResume(bool suspend_was_successful,
-                    int num_suspend_retries,
-                    int max_suspend_retries);
+  void HandleSuspendAttemptCompletion(bool suspend_was_successful,
+                                      int num_suspend_attempts);
 
   // Overridden from policy::InputController::Delegate:
   virtual void HandleLidClosed() OVERRIDE;
@@ -120,26 +111,6 @@ class Daemon : public policy::BacklightControllerObserver,
     SHUTDOWN_MODE_POWER_OFF,
     SHUTDOWN_MODE_REBOOT,
   };
-
-  // Passed to ShutDown() to describe the reason the system is shutting down.
-  enum ShutdownReason {
-    // Explicit user request (e.g. holding power button).
-    SHUTDOWN_REASON_USER_REQUEST,
-    // Request from StateController (e.g. lid was closed or user was inactive).
-    SHUTDOWN_REASON_STATE_TRANSITION,
-    // Battery level dropped below shutdown threshold.
-    SHUTDOWN_REASON_LOW_BATTERY,
-    // Multiple suspend attempts failed.
-    SHUTDOWN_REASON_SUSPEND_FAILED,
-    // Battery level was below threshold during dark resume from suspend.
-    SHUTDOWN_REASON_DARK_RESUME,
-  };
-
-  // Returns a string describing |reason|. The string is passed as a
-  // SHUTDOWN_REASON argument to an initctl command to switch to runlevel 0
-  // (i.e. don't change these strings without checking that other upstart jobs
-  // aren't depending on them).
-  static std::string ShutdownReasonToString(ShutdownReason reason);
 
   // Convenience method that returns true if |name| exists and is true.
   bool BoolPrefIsTrue(const std::string& name) const;

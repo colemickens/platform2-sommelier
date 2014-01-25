@@ -54,12 +54,20 @@ class MetricsReporter {
   void HandleScreenOffChange(bool off, base::TimeTicks last_user_activity_time);
   void HandleSessionStateChange(SessionState state);
   void HandlePowerStatusUpdate(const system::PowerStatus& status);
-  void PrepareForSuspend();
-  void HandleResume();
+  void HandleShutdown(ShutdownReason reason);
 
-  // Sends a metric describing a suspend attempt that didn't succeed on its
-  // first attempt.  Doesn't send anything if |num_retries| is 0.
-  void GenerateRetrySuspendMetric(int num_retries, int max_retries);
+  // Called just before a suspend attempt is performed.
+  void PrepareForSuspend();
+
+  // Called after the system has successfully suspended and resumed.
+  // |num_suspend_attempts| contains the number of attempts up to and including
+  // the one in which the system successfully suspended.
+  void HandleResume(int num_suspend_attempts);
+
+  // Called after a request to suspend the system (that is, a series of one or
+  // more suspend attempts performed in response to e.g. the lid being closed)
+  // is canceled.
+  void HandleCanceledSuspendRequest(int num_suspend_attempts);
 
   // Generates UMA metrics on when leaving the idle state.
   void GenerateUserActivityMetrics();

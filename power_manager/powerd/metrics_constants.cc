@@ -12,9 +12,17 @@ const char kMetricBatterySuffix[] = "OnBattery";
 const int kMetricMaxPercent = 101;
 const int kMetricDefaultBuckets = 50;
 
-const char kMetricRetrySuspendCountName[] = "Power.RetrySuspendCount";
-const int kMetricRetrySuspendCountMin = 1;
-const int kMetricRetrySuspendCountBuckets = 10;
+const char kMetricSuspendAttemptsBeforeSuccessName[] =
+    "Power.SuspendAttemptsBeforeSuccess";
+const char kMetricSuspendAttemptsBeforeCancelName[] =
+    "Power.SuspendAttemptsBeforeCancel";
+const int kMetricSuspendAttemptsMin = 1;
+const int kMetricSuspendAttemptsMax = 20;
+const int kMetricSuspendAttemptsBuckets =
+    kMetricSuspendAttemptsMax - kMetricSuspendAttemptsMin + 1;
+
+const char kMetricShutdownReasonName[] = "Power.ShutdownReason";
+const int kMetricShutdownReasonMax = 10;
 
 const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
 const char kMetricKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";

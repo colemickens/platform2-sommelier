@@ -21,9 +21,14 @@ extern const int kMetricMaxPercent;
 // Default number of buckets to use for numeric histogram metrics.
 extern const int kMetricDefaultBuckets;
 
-extern const char kMetricRetrySuspendCountName[];
-extern const int kMetricRetrySuspendCountMin;
-extern const int kMetricRetrySuspendCountBuckets;
+extern const char kMetricSuspendAttemptsBeforeSuccessName[];
+extern const char kMetricSuspendAttemptsBeforeCancelName[];
+extern const int kMetricSuspendAttemptsMin;
+extern const int kMetricSuspendAttemptsMax;
+extern const int kMetricSuspendAttemptsBuckets;
+
+extern const char kMetricShutdownReasonName[];
+extern const int kMetricShutdownReasonMax;
 
 extern const char kMetricBacklightLevelName[];
 extern const char kMetricKeyboardBacklightLevelName[];

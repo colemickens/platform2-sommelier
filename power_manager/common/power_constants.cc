@@ -4,6 +4,7 @@
 
 #include "power_manager/common/power_constants.h"
 
+#include "base/logging.h"
 #include "base/strings/stringprintf.h"
 
 namespace power_manager {
@@ -155,6 +156,26 @@ std::string ButtonStateToString(ButtonState state) {
     default:
       return base::StringPrintf("unknown (%d)", state);
   }
+}
+
+std::string ShutdownReasonToString(ShutdownReason reason) {
+  // These are passed as SHUTDOWN_REASON arguments to an initctl command to
+  // switch to runlevel 0 (i.e. don't change these strings without checking that
+  // other upstart jobs aren't depending on them).
+  switch (reason) {
+    case SHUTDOWN_REASON_USER_REQUEST:
+      return "user-request";
+    case SHUTDOWN_REASON_STATE_TRANSITION:
+      return "state-transition";
+    case SHUTDOWN_REASON_LOW_BATTERY:
+      return "low-battery";
+    case SHUTDOWN_REASON_SUSPEND_FAILED:
+      return "suspend-failed";
+    case SHUTDOWN_REASON_DARK_RESUME:
+      return "dark-resume";
+  }
+  NOTREACHED() << "Unhandled shutdown reason " << reason;
+  return "unknown";
 }
 
 }  // namespace power_manager
