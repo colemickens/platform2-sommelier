@@ -78,6 +78,7 @@ class BrowserJob : public BrowserJobInterface {
              bool support_multi_profile,
              uid_t desired_uid,
              FileChecker* checker,
+             LoginMetrics* metrics,
              SystemUtils* utils);
   virtual ~BrowserJob();
 
@@ -97,10 +98,6 @@ class BrowserJob : public BrowserJobInterface {
   virtual void SetExtraArguments(
       const std::vector<std::string>& arguments) OVERRIDE;
   virtual void ClearPid() OVERRIDE;
-
-  virtual void set_login_metrics(LoginMetrics* metrics) {
-    login_metrics_ = metrics;
-  }
 
   // Stores the current time as the time when the job was started.
   void RecordTime();
@@ -141,11 +138,11 @@ class BrowserJob : public BrowserJobInterface {
   // the browser job. Externally owned.
   FileChecker* file_checker_;
 
-  // Wrapper for system library calls. Externally owned.
-  SystemUtils* system_;
-
   // Wrapper for reading/writing metrics. Externally owned.
   LoginMetrics* login_metrics_;
+
+  // Wrapper for system library calls. Externally owned.
+  SystemUtils* system_;
 
   // FIFO of job-start timestamps. Used to determine if we've restarted too many
   // times too quickly.

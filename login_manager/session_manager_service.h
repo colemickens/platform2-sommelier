@@ -76,13 +76,11 @@ class SessionManagerService
     MUST_WIPE_DEVICE = 3,
   };
 
-  SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
-                        const base::Closure& quit_closure,
-                        int kill_timeout,
-                        bool enable_browser_abort_on_hang,
-                        base::TimeDelta hang_detection_interval,
-                        SystemUtils* system);
-  virtual ~SessionManagerService();
+  // Path to flag file indicating that a user has logged in since last boot.
+  static const char kLoggedInFlag[];
+
+  // Path to magic file that will trigger device wiping on next boot.
+  static const char kResetFile[];
 
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
@@ -92,7 +90,7 @@ class SessionManagerService
       session_manager_service_->system_ = utils;
     }
     void set_login_metrics(LoginMetrics* metrics) {
-      session_manager_service_->login_metrics_.reset(metrics);
+      session_manager_service_->login_metrics_ = metrics;
     }
     void set_liveness_checker(LivenessChecker* checker) {
       session_manager_service_->liveness_checker_.reset(checker);
@@ -123,6 +121,15 @@ class SessionManagerService
         : session_manager_service_(session_manager_service) {}
     SessionManagerService* session_manager_service_;
   };
+
+  SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
+                        const base::Closure& quit_closure,
+                        int kill_timeout,
+                        bool enable_browser_abort_on_hang,
+                        base::TimeDelta hang_detection_interval,
+                        LoginMetrics* metrics,
+                        SystemUtils* system);
+  virtual ~SessionManagerService();
 
   // TestApi exposes internal routines for testing purposes.
   TestApi test_api() { return TestApi(this); }
@@ -197,19 +204,13 @@ class SessionManagerService
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();
 
-  // Directory in which per-boot metrics flag files will be stored.
-  static const char kFlagFileDir[];
-
-  // Path to flag file indicating that a user has logged in since last boot.
-  static const char kLoggedInFlag[];
-
-  // Path to magic file that will trigger device wiping on next boot.
-  static const char kResetFile[];
-
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
 
  private:
+  static const int kKillTimeoutCollectChrome;
+  static const char kCollectChromeFile[];
+
   // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
                                          DBusMessage* message,
@@ -256,9 +257,6 @@ class SessionManagerService
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(base::TimeDelta timeout);
 
-  static const int kKillTimeoutCollectChrome;
-  static const char kCollectChromeFile[];
-
   scoped_ptr<BrowserJobInterface> browser_;
   scoped_ptr<GeneratorJobInterface> generator_;
   bool exit_on_child_done_;
@@ -272,10 +270,11 @@ class SessionManagerService
 
   scoped_ptr<SessionManagerInterface> impl_;
 
+  LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.
+
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<KeyGenerator> key_gen_;
-  scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;

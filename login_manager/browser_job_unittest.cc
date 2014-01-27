@@ -71,6 +71,7 @@ class BrowserJobTest : public ::testing::Test {
 
   std::vector<std::string> argv_;
   MockFileChecker checker_;
+  MockMetrics metrics_;
   MockSystemUtils utils_;
   scoped_ptr<BrowserJob> job_;
 
@@ -93,7 +94,7 @@ const char BrowserJobTest::kHash[] = "fake_hash";
 void BrowserJobTest::SetUp() {
   argv_ = std::vector<std::string>(kArgv,
                                    kArgv + arraysize(BrowserJobTest::kArgv));
-  job_.reset(new BrowserJob(argv_, false, 1, &checker_, &utils_));
+  job_.reset(new BrowserJob(argv_, false, 1, &checker_, &metrics_, &utils_));
 }
 
 TEST_F(BrowserJobTest, InitializationTest) {
@@ -110,10 +111,8 @@ TEST_F(BrowserJobTest, WaitAndAbort) {
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ChildIsGone(kDummyPid, _)).WillOnce(Return(false));
 
-  MockMetrics metrics;
-  EXPECT_CALL(metrics, HasRecordedChromeExec()).WillRepeatedly(Return(false));
-  EXPECT_CALL(metrics, RecordStats(_)).Times(AnyNumber());
-  job_->set_login_metrics(&metrics);
+  EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   ASSERT_TRUE(job_->RunInBackground());
   job_->WaitAndAbort(base::TimeDelta::FromSeconds(3));
@@ -129,10 +128,8 @@ TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ChildIsGone(kDummyPid, _)).WillOnce(Return(true));
 
-  MockMetrics metrics;
-  EXPECT_CALL(metrics, HasRecordedChromeExec()).WillRepeatedly(Return(false));
-  EXPECT_CALL(metrics, RecordStats(_)).Times(AnyNumber());
-  job_->set_login_metrics(&metrics);
+  EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   ASSERT_TRUE(job_->RunInBackground());
   job_->WaitAndAbort(base::TimeDelta::FromSeconds(3));
@@ -176,7 +173,7 @@ TEST_F(BrowserJobTest, ShouldRunTest) {
 }
 
 TEST_F(BrowserJobTest, NullFileCheckerTest) {
-  BrowserJob job(argv_, true, 1, NULL, &utils_);
+  BrowserJob job(argv_, true, 1, NULL, &metrics_, &utils_);
   EXPECT_TRUE(job.ShouldRunBrowser());
 }
 
@@ -186,12 +183,10 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
   EXPECT_CALL(utils_, fork()).WillRepeatedly(Return(1));
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
 
-  MockMetrics metrics;
-  EXPECT_CALL(metrics, HasRecordedChromeExec())
+  EXPECT_CALL(metrics_, HasRecordedChromeExec())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  EXPECT_CALL(metrics, RecordStats(StrEq(("chrome-exec")))).Times(2);
-  job_->set_login_metrics(&metrics);
+  EXPECT_CALL(metrics_, RecordStats(StrEq(("chrome-exec")))).Times(2);
 
   ASSERT_TRUE(job_->RunInBackground());
   ExpectArgsToContainFlag(job_->ExportArgv(),
@@ -209,10 +204,8 @@ TEST_F(BrowserJobTest, RunBrowserTermMessage) {
   EXPECT_CALL(utils_, kill(kDummyPid, _, signal)).Times(1);
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
 
-  MockMetrics metrics;
-  EXPECT_CALL(metrics, HasRecordedChromeExec()).WillRepeatedly(Return(false));
-  EXPECT_CALL(metrics, RecordStats(_)).Times(AnyNumber());
-  job_->set_login_metrics(&metrics);
+  EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   std::string term_message("killdya");
   ASSERT_TRUE(job_->RunInBackground());
@@ -243,7 +236,7 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 }
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
-  BrowserJob job(argv_, true, 1, &checker_, &utils_);
+  BrowserJob job(argv_, true, 1, &checker_, &metrics_, &utils_);
   job.StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job.ExportArgv();
@@ -277,7 +270,7 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   };
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
-  BrowserJob job(argv, false, 1, &checker_, &utils_);
+  BrowserJob job(argv, false, 1, &checker_, &metrics_, &utils_);
 
   job.StartSession(kUser, kHash);
 
@@ -328,7 +321,7 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
 
 TEST_F(BrowserJobTest, CreateArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
-  BrowserJob job(argv, false, -1, &checker_, &utils_);
+  BrowserJob job(argv, false, -1, &checker_, &metrics_, &utils_);
 
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
   std::vector<std::string> extra_args(kExtraArgs,

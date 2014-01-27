@@ -58,7 +58,6 @@ class SessionManagerProcessTest : public ::testing::Test {
   SessionManagerProcessTest()
       : manager_(NULL),
         liveness_checker_(new MockLivenessChecker),
-        metrics_(new MockMetrics),
         session_manager_impl_(new MockSessionManager),
         must_destroy_mocks_(true) {
   }
@@ -66,7 +65,6 @@ class SessionManagerProcessTest : public ::testing::Test {
   virtual ~SessionManagerProcessTest() {
     if (must_destroy_mocks_) {
       delete liveness_checker_;
-      delete metrics_;
       delete session_manager_impl_;
     }
   }
@@ -126,10 +124,10 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          3,
                                          false,
                                          base::TimeDelta(),
+                                         &metrics_,
                                          &real_utils_);
     manager_->Reset();
     manager_->test_api().set_liveness_checker(liveness_checker_);
-    manager_->test_api().set_login_metrics(metrics_);
     manager_->test_api().set_session_manager(session_manager_impl_);
   }
 
@@ -159,13 +157,13 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   scoped_refptr<SessionManagerService> manager_;
   SystemUtilsImpl real_utils_;
+  MockMetrics metrics_;
   MockSystemUtils utils_;
 
   // These are bare pointers, not scoped_ptrs, because we need to give them
   // to a SessionManagerService instance, but also be able to set expectations
   // on them after we hand them off.
   MockLivenessChecker* liveness_checker_;
-  MockMetrics* metrics_;
   MockSessionManager* session_manager_impl_;
 
  private:

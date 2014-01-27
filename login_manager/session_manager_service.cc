@@ -134,8 +134,6 @@ void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
 
 }  // anonymous namespace
 
-const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
-
 // TODO(mkrebs): Remove CollectChrome timeout and file when
 // crosbug.com/5872 is fixed.
 // When crash-reporter based crash reporting of Chrome is enabled
@@ -175,6 +173,7 @@ SessionManagerService::SessionManagerService(
     int kill_timeout,
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
+    LoginMetrics* metrics,
     SystemUtils* utils)
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
@@ -183,10 +182,10 @@ SessionManagerService::SessionManagerService(
       main_loop_(NULL),
       loop_proxy_(NULL),
       quit_closure_(quit_closure),
+      login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(new KeyGenerator(utils, this)),
-      login_metrics_(NULL),
       liveness_checker_(NULL),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
@@ -274,21 +273,12 @@ bool SessionManagerService::Initialize() {
   if (!Reset())
     return false;
 
-  FilePath flag_file_dir(kFlagFileDir);
-  if (!file_util::CreateDirectory(flag_file_dir)) {
-    PLOG(ERROR) << "Cannot create flag file directory at " << kFlagFileDir;
-    return false;
-  }
-  login_metrics_.reset(new LoginMetrics(flag_file_dir));
-  reinterpret_cast<BrowserJob*>(browser_.get())->set_login_metrics(
-      login_metrics_.get());
-
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below, and also use as delegate for device_policy.
   SessionManagerImpl* impl =
       new SessionManagerImpl(
           scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
-          this, login_metrics_.get(), nss_.get(), system_);
+          this, login_metrics_, nss_.get(), system_);
 
   // The below require loop_proxy_, created in Reset(), to be set already.
   liveness_checker_.reset(
@@ -303,7 +293,7 @@ bool SessionManagerService::Initialize() {
   scoped_ptr<OwnerKeyLossMitigator> mitigator(
       new RegenMitigator(key_gen_.get(), set_uid_, uid_));
   scoped_ptr<DevicePolicyService> device_policy(
-      DevicePolicyService::Create(login_metrics_.get(),
+      DevicePolicyService::Create(login_metrics_,
                                   owner_key_.get(),
                                   mitigator.Pass(),
                                   nss_.get(),

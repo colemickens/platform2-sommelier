@@ -16,6 +16,7 @@
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
@@ -29,6 +30,7 @@
 
 #include "login_manager/browser_job.h"
 #include "login_manager/file_checker.h"
+#include "login_manager/login_metrics.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils_impl.h"
@@ -96,8 +98,12 @@ using login_manager::BrowserJob;
 using login_manager::BrowserJobInterface;
 using login_manager::FileChecker;
 using login_manager::KeyGenerator;
+using login_manager::LoginMetrics;
 using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
+
+// Directory in which per-boot metrics flag files will be stored.
+const char kFlagFileDir[] = "/var/run/session_manager";
 
 int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
@@ -155,17 +161,24 @@ int main(int argc, char* argv[]) {
   // We only support a single job with args, so grab all loose args
   vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
 
-  ::g_type_init();
-  MessageLoopForUI message_loop;
-  base::RunLoop run_loop;
-
+  // Shim that wraps system calls, file system ops, etc.
   SystemUtilsImpl system;
 
+  // Checks magic file that causes the session_manager to stop managing the
+  // browser process. Devs and tests can use this to keep the session_manager
+  // running while stopping and starting the browser manaually.
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-  FileChecker file_checker((FilePath(magic_chrome_file)));
+  FileChecker checker((FilePath(magic_chrome_file)));  // So vexing!
+
+  // Used to report various metrics around user type (guest vs non), dev-mode,
+  // and policy/key file status.
+  FilePath flag_file_dir(kFlagFileDir);
+  if (!file_util::CreateDirectory(flag_file_dir))
+    PLOG(FATAL) << "Cannot create flag file directory at " << kFlagFileDir;
+  LoginMetrics metrics(flag_file_dir);
 
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
@@ -173,9 +186,14 @@ int main(int argc, char* argv[]) {
       new BrowserJob(arg_list,
                      support_multi_profile,
                      uid,
-                     &file_checker,
+                     &checker,
+                     &metrics,
                      &system));
   bool should_run_browser = browser_job->ShouldRunBrowser();
+
+  ::g_type_init();
+  MessageLoopForUI message_loop;
+  base::RunLoop run_loop;
 
   scoped_refptr<SessionManagerService> manager =
       new SessionManagerService(
@@ -184,6 +202,7 @@ int main(int argc, char* argv[]) {
           kill_timeout,
           cl->HasSwitch(switches::kEnableHangDetection),
           base::TimeDelta::FromSeconds(hang_detection_interval),
+          &metrics,
           &system);
 
   manager->set_uid(uid);
