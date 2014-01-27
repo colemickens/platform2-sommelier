@@ -264,10 +264,6 @@ class SessionManagerService
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(base::TimeDelta timeout);
 
-  // Waits |timeout| for job defined by |spec| to go away, then
-  // aborts it if it's not gone.
-  void WaitAndAbortChild(ChildJobInterface* job, base::TimeDelta timeout);
-
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
 

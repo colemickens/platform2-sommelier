@@ -7,7 +7,6 @@
 
 #include "login_manager/child_job.h"
 
-#include <glib.h>
 #include <gtest/gtest.h>
 #include <time.h>
 #include <unistd.h>
@@ -17,6 +16,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/time.h>
 #include <base/file_path.h>
 
 namespace login_manager {
@@ -33,6 +33,7 @@ class BrowserJobInterface : public ChildJobInterface {
   virtual void KillEverything(int signal,
                               const std::string& message) OVERRIDE = 0;
   virtual void Kill(int signal, const std::string& message) OVERRIDE = 0;
+  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE = 0;
   virtual const std::string GetName() const OVERRIDE = 0;
   virtual pid_t CurrentPid() const OVERRIDE = 0;
 
@@ -79,6 +80,7 @@ class BrowserJob : public BrowserJobInterface {
   virtual bool RunInBackground() OVERRIDE;
   virtual void KillEverything(int signal, const std::string& message) OVERRIDE;
   virtual void Kill(int signal, const std::string& message) OVERRIDE;
+  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE;
   virtual pid_t CurrentPid() const OVERRIDE { return subprocess_.pid(); }
   virtual bool ShouldStop() const OVERRIDE;
   virtual void StartSession(const std::string& email,

@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include <base/memory/scoped_ptr.h>
+#include <base/time.h>
 #include <gmock/gmock.h>
 #include <string>
 #include <vector>
@@ -29,6 +30,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_METHOD2(KillEverything, void(int, const std::string&));
   MOCK_METHOD2(Kill, void(int, const std::string&));
+  MOCK_METHOD1(WaitAndAbort, void(base::TimeDelta));
   MOCK_METHOD2(StartSession, void(const std::string&, const std::string&));
   MOCK_METHOD0(StopSession, void());
   MOCK_METHOD1(SetArguments, void(const std::vector<std::string>&));

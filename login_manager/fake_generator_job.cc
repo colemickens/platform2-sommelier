@@ -4,13 +4,17 @@
 
 #include "login_manager/fake_generator_job.h"
 
+#include <sys/types.h>
+
 #include <string>
 
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/time.h>
 
 #include "login_manager/generator_job.h"
+#include "login_manager/key_generator.h"
 
 namespace login_manager {
 
@@ -46,9 +50,18 @@ FakeGeneratorJob::FakeGeneratorJob(pid_t pid,
 FakeGeneratorJob::~FakeGeneratorJob() {}
 
 bool FakeGeneratorJob::RunInBackground() {
-  return file_util::WriteFile(FilePath(filename_),
-                              key_contents_.c_str(),
-                              key_contents_.size());
+  base::FilePath full_path(filename_);
+  if (!file_util::CreateDirectory(full_path.DirName())) {
+    PLOG(ERROR) << "Could not create directory " << full_path.DirName().value();
+    return false;
+  }
+  size_t bytes_written = file_util::WriteFile(full_path,
+                                              key_contents_.c_str(),
+                                              key_contents_.size());
+  if (bytes_written == key_contents_.size())
+    return true;
+  PLOG(ERROR) << "Could not write " << filename_;
+  return false;
 }
 
 }  // namespace login_manager

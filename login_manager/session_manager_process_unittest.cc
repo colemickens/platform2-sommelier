@@ -218,21 +218,6 @@ TEST_F(SessionManagerProcessTest, CleanupAllChildren) {
   manager_->test_api().CleanupChildren(3);
 }
 
-// Browser processes get correctly terminated, even if they don't
-// respond correctly to SIGTERM.
-TEST_F(SessionManagerProcessTest, CleanupBrowser_SlowKill) {
-  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
-  job->RunInBackground();
-  EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
-  EXPECT_CALL(*job, KillEverything(SIGABRT, _)).Times(1);
-
-  EXPECT_CALL(utils_, ChildIsGone(job->CurrentPid(), _))
-      .WillOnce(Return(false));
-  MockUtils();
-
-  manager_->test_api().CleanupChildren(3);
-}
-
 // Gracefully shut down while the browser is running.
 TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
@@ -241,11 +226,9 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
   ExpectShutdown();
   ExpectFinalization();
 
-  // Expect the job to be killed, and die promptly.
+  // Expect the job to be killed.
   EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
-  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, _))
-      .WillOnce(Return(true));
-  MockUtils();
+  EXPECT_CALL(*job, WaitAndAbort(_)).Times(1);
 
   base::MessageLoopProxy::current()->PostTask(
       FROM_HERE,
@@ -256,34 +239,6 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
       FROM_HERE,
       base::Bind(&SessionManagerService::ScheduleShutdown,
                  manager_.get()));
-
-  ForceRunLoop();
-  manager_->Finalize();
-}
-
-// Gracefully shut down while the browser is running, even if the browser
-// does not respond to SIGTERM promptly.
-TEST_F(SessionManagerProcessTest, BrowserRunningShutdown_SlowKill) {
-  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
-
-  ExpectLivenessChecking();
-  ExpectShutdown();
-  ExpectFinalization();
-
-  base::TimeDelta timeout = base::TimeDelta::FromSeconds(3);
-  EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
-  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
-      .WillOnce(Return(false));
-  EXPECT_CALL(*job, KillEverything(SIGABRT, _)).Times(1);
-
-  MockUtils();
-
-  base::MessageLoopProxy::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&SessionManagerService::RunBrowser, manager_.get()));
-  base::MessageLoopProxy::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&SessionManagerService::ScheduleShutdown, manager_.get()));
 
   ForceRunLoop();
   manager_->Finalize();

@@ -7,11 +7,14 @@
 
 #include "login_manager/generator_job.h"
 
+#include <signal.h>
 #include <sys/types.h>
 
-#include <base/memory/scoped_ptr.h>
-#include <gmock/gmock.h>
 #include <string>
+
+#include <base/memory/scoped_ptr.h>
+#include <base/time.h>
+#include <gmock/gmock.h>
 
 namespace login_manager {
 class FakeGeneratorJob : public GeneratorJobInterface {
@@ -40,12 +43,12 @@ class FakeGeneratorJob : public GeneratorJobInterface {
                    const std::string& filename);
   virtual ~FakeGeneratorJob();
 
-  bool RunInBackground() OVERRIDE;
+  virtual bool RunInBackground() OVERRIDE;
   MOCK_METHOD2(KillEverything, void(int, const std::string&));
   MOCK_METHOD2(Kill, void(int, const std::string&));
+  MOCK_METHOD1(WaitAndAbort, void(base::TimeDelta));
 
   const std::string GetName() const OVERRIDE { return name_; }
-
   pid_t CurrentPid() const OVERRIDE { return pid_; }
 
  private:

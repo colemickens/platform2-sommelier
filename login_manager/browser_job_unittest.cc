@@ -101,6 +101,46 @@ TEST_F(BrowserJobTest, InitializationTest) {
   ExpectArgsToContainAll(job_args, argv_);
 }
 
+TEST_F(BrowserJobTest, WaitAndAbort) {
+  pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  EXPECT_CALL(utils_, kill(-kDummyPid, _, SIGABRT)).Times(1);
+  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, _)).WillOnce(Return(false));
+
+  MockMetrics metrics;
+  EXPECT_CALL(metrics, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics, RecordStats(_)).Times(AnyNumber());
+  job_->set_login_metrics(&metrics);
+
+  ASSERT_TRUE(job_->RunInBackground());
+  job_->WaitAndAbort(base::TimeDelta::FromSeconds(3));
+
+  // Check for termination message.
+  base::FilePath term_file(utils_.GetUniqueFilename());
+  ASSERT_FALSE(term_file.empty());
+}
+
+TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
+  pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, _)).WillOnce(Return(true));
+
+  MockMetrics metrics;
+  EXPECT_CALL(metrics, HasRecordedChromeExec()).WillRepeatedly(Return(false));
+  EXPECT_CALL(metrics, RecordStats(_)).Times(AnyNumber());
+  job_->set_login_metrics(&metrics);
+
+  ASSERT_TRUE(job_->RunInBackground());
+  job_->WaitAndAbort(base::TimeDelta::FromSeconds(3));
+
+  // Check for no termination message.
+  std::string sent_message;
+  base::FilePath term_file(utils_.GetUniqueFilename());
+  ASSERT_FALSE(utils_.ReadFileToString(term_file, &sent_message));
+}
+
 TEST_F(BrowserJobTest, ShouldStopTest) {
   EXPECT_CALL(utils_, time(NULL))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));

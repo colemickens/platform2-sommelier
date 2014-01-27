@@ -728,24 +728,9 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
     generator_->Kill(SIGTERM, "");
 
   if (browser_ && browser_->CurrentPid() > 0)
-    WaitAndAbortChild(browser_.get(), timeout);
+    browser_->WaitAndAbort(timeout);
   if (generator_ && generator_->CurrentPid() > 0)
-    WaitAndAbortChild(generator_.get(), timeout);
-}
-
-void SessionManagerService::WaitAndAbortChild(ChildJobInterface* job,
-                                              base::TimeDelta timeout) {
-  pid_t job_pid = job->CurrentPid();
-  if (!system_->ChildIsGone(job_pid, timeout)) {
-    LOG(WARNING) << "Aborting child process " << job_pid << " "
-                 << timeout.InSeconds() << " seconds after sending TERM signal";
-    std::string message = base::StringPrintf(
-        "Browser took more than %" PRId64 " seconds to exit after TERM.",
-        timeout.InSeconds());
-    job->KillEverything(SIGABRT, message);
-  } else {
-    DLOG(INFO) << "Cleaned up child " << job_pid;
-  }
+    generator_->WaitAndAbort(timeout);
 }
 
 // static

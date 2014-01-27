@@ -27,6 +27,7 @@ class GeneratorJobInterface : public ChildJobInterface {
   virtual void KillEverything(int signal,
                               const std::string& message) OVERRIDE = 0;
   virtual void Kill(int signal, const std::string& message) OVERRIDE = 0;
+  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE = 0;
   virtual const std::string GetName() const OVERRIDE = 0;
   virtual pid_t CurrentPid() const OVERRIDE = 0;
 };
@@ -62,6 +63,7 @@ class GeneratorJob : public GeneratorJobInterface {
   virtual bool RunInBackground() OVERRIDE;
   virtual void KillEverything(int signal, const std::string& message) OVERRIDE;
   virtual void Kill(int signal, const std::string& message) OVERRIDE;
+  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE;
   virtual const std::string GetName() const OVERRIDE;
   virtual pid_t CurrentPid() const OVERRIDE { return subprocess_.pid(); }
 

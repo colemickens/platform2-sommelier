@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/time.h>
 
 namespace login_manager {
 
@@ -27,13 +28,13 @@ class ChildJobInterface {
     Subprocess(uid_t desired_uid, SystemUtils* system);
     virtual ~Subprocess();
 
+    // fork() and exec(argv). Returns false if fork() fails, true otherwise.
+    bool ForkAndExec(char const** argv);
     // Sends signal to pid_. No-op if there is no subprocess running.
     void Kill(int signal);
     // Sends signal to pid_'s entire process group.
     // No-op if there is no subprocess running.
     void KillEverything(int signal);
-    // fork() and exec(argv). Returns false if fork() fails, true otherwise.
-    bool ForkAndExec(char const** argv);
 
     pid_t pid() const { return pid_; }
     void clear_pid() { pid_ = -1; }
@@ -73,6 +74,10 @@ class ChildJobInterface {
   // signal, sending message (if set) to the instance to tell it
   // why it must die.
   virtual void Kill(int signal, const std::string& message) = 0;
+
+  // Waits |timeout| for current instance of this job to go away, then
+  // aborts the entire process group if it's not gone.
+  virtual void WaitAndAbort(base::TimeDelta timeout) = 0;
 
   // Returns the name of the job.
   virtual const std::string GetName() const = 0;
