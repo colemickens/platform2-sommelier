@@ -68,6 +68,9 @@
       'defines': [
         'PLUGINDIR="<(libdir)/cromo/plugins"',
       ],
+      'cflags': [
+        '-fvisibility=default',
+      ],
       'ldflags': [
         '-Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=<(platform_root)/cromo/cromo.ver',
       ],
