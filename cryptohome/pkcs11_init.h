@@ -44,12 +44,12 @@ class Pkcs11Init {
                                       CK_SLOT_ID_PTR slot);
 
   // Check if the user's PKCS #11 token is valid.
-  virtual bool IsUserTokenBroken();
+  virtual bool IsUserTokenOK();
 
-  static const CK_SLOT_ID kDefaultTpmSlotId;
   static const CK_ULONG kMaxLabelLen;
-  static const CK_CHAR kDefaultUserPin[];
-  static const CK_CHAR kDefaultLabel[];
+  static const CK_CHAR kDefaultPin[];
+  static const CK_CHAR kDefaultSystemLabel[];
+  static const CK_CHAR kDefaultUserLabel[];
 
  private:
   // Returns true if a token in the given |slot_id| passes basic sanity checks.

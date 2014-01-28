@@ -1167,7 +1167,7 @@ int main(int argc, char **argv) {
       }
     } else {
       cryptohome::Pkcs11Init init;
-      if (init.IsUserTokenBroken()) {
+      if (!init.IsUserTokenOK()) {
         printf("User token looks broken!\n");
         return 1;
       }

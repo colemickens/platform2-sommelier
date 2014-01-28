@@ -21,10 +21,10 @@
 namespace cryptohome {
 
 // static
-const CK_SLOT_ID Pkcs11Init::kDefaultTpmSlotId = 0;
 const CK_ULONG Pkcs11Init::kMaxLabelLen = 32;
-const CK_CHAR Pkcs11Init::kDefaultUserPin[] = "111111";
-const CK_CHAR Pkcs11Init::kDefaultLabel[] = "User-Specific TPM Token";
+const CK_CHAR Pkcs11Init::kDefaultPin[] = "111111";
+const CK_CHAR Pkcs11Init::kDefaultSystemLabel[] = "System TPM Token";
+const CK_CHAR Pkcs11Init::kDefaultUserLabel[] = "User-Specific TPM Token";
 
 extern const char* kTpmOwnedFile;
 
@@ -37,20 +37,21 @@ Pkcs11Init::~Pkcs11Init() {
 
 void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
                                  gchar **OUT_user_pin) {
-  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultLabel));
-  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
+  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultSystemLabel));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultPin));
 }
 
 void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
                                         gchar **OUT_label,
                                         gchar **OUT_user_pin) {
-  // All tokens get the same label.  There will be only one per profile so there
-  // is no need for users to differentiate.
-  GetTpmTokenInfo(OUT_label, OUT_user_pin);
+  // All user tokens get the same label.  There will be only one per profile so
+  // there is no need for users to differentiate.
+  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserLabel));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultPin));
 }
 
 std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
-  return std::string(reinterpret_cast<const char*>(kDefaultLabel));
+  return std::string(reinterpret_cast<const char*>(kDefaultUserLabel));
 }
 
 bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
@@ -88,18 +89,40 @@ bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
   return false;
 }
 
-bool Pkcs11Init::IsUserTokenBroken() {
+bool Pkcs11Init::IsUserTokenOK() {
   if (!platform_->FileExists(kTpmOwnedFile)) {
     LOG(WARNING) << "TPM is not owned, token can not be valid.";
-    return true;
+    return false;
   }
 
-  if (!CheckTokenInSlot(kDefaultTpmSlotId, kDefaultLabel)) {
-    LOG(WARNING) << "Token failed basic sanity checks. Can not be valid.";
-    return true;
+  CK_RV rv;
+  rv = C_Initialize(NULL);
+  if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
+    LOG(WARNING) << __func__ << ": C_Initialize failed.";
+    return false;
+  }
+  CK_ULONG num_slots = 0;
+  rv = C_GetSlotList(CK_TRUE, NULL, &num_slots);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
+    return false;
+  }
+  scoped_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
+  rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << __func__ << ": C_GetSlotList failed.";
+    return false;
   }
 
-  LOG(INFO) << "PKCS#11 token looks ok.";
+  // Check if at least one sane user token exists.
+  for (CK_ULONG i = 0; i < num_slots; ++i) {
+    if (CheckTokenInSlot(slot_list[i], kDefaultUserLabel)) {
+      LOG(INFO) << "User PKCS #11 token looks ok.";
+      return true;
+    }
+  }
+
+  LOG(WARNING) << "Cannot find sane user token.";
   return false;
 }
 
