@@ -697,6 +697,7 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
 }
 
 void Daemon::DeferInactivityTimeoutForVT2() {
+  LOG(INFO) << "Reporting synthetic user activity since VT2 is active";
   state_controller_->HandleUserActivity();
 }
 
