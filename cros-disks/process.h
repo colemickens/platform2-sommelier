@@ -56,8 +56,8 @@ class Process {
 
   // Process arguments.
   std::vector<std::string> arguments_;
-  scoped_array<char*> arguments_array_;
-  scoped_array<char> arguments_buffer_;
+  scoped_ptr<char*[]> arguments_array_;
+  scoped_ptr<char[]> arguments_buffer_;
 
   // Process ID (default to kInvalidProcessId when the process has not started).
   pid_t pid_;
