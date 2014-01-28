@@ -134,7 +134,7 @@ bool Attributes::ParseInternal(const string& serialized,
     LOG(ERROR) << "Failed to parse proto-buffer.";
     return false;
   }
-  scoped_array<CK_ATTRIBUTE> attribute_array(
+  scoped_ptr<CK_ATTRIBUTE[]> attribute_array(
       new CK_ATTRIBUTE[attribute_list.attribute_size()]);
   CHECK(attribute_array.get());
   for (int i = 0; i < attribute_list.attribute_size(); ++i) {

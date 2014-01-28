@@ -99,7 +99,7 @@ uint32_t ChapsServiceRedirect::GetSlotList(const SecureBlob& isolate_credential,
   // First, call with NULL to retrieve the slot count.
   CK_RV result = functions_->C_GetSlotList(token_present, NULL, &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  scoped_array<CK_SLOT_ID> slot_array(new CK_SLOT_ID[count]);
+  scoped_ptr<CK_SLOT_ID[]> slot_array(new CK_SLOT_ID[count]);
   CHECK(slot_array.get()) << "GetSlotList out of memory.";
   // Now, query the actual list.
   result = functions_->C_GetSlotList(token_present, slot_array.get(), &count);
@@ -216,7 +216,7 @@ uint32_t ChapsServiceRedirect::GetMechanismList(
   // First, call with NULL to retrieve the mechanism count.
   CK_RV result = functions_->C_GetMechanismList(slot_id, NULL, &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  scoped_array<CK_MECHANISM_TYPE> mech_array(new CK_MECHANISM_TYPE[count]);
+  scoped_ptr<CK_MECHANISM_TYPE[]> mech_array(new CK_MECHANISM_TYPE[count]);
   LOG_CK_RV_AND_RETURN_IF(!mech_array.get(), CKR_HOST_MEMORY);
   // Now, query the actual list.
   result = functions_->C_GetMechanismList(slot_id, mech_array.get(), &count);
@@ -360,7 +360,7 @@ uint32_t ChapsServiceRedirect::GetOperationState(
   // First, call with NULL to retrieve the state size.
   CK_RV result = functions_->C_GetOperationState(session_id, NULL, &size);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  scoped_array<CK_BYTE> buffer(new CK_BYTE[size]);
+  scoped_ptr<CK_BYTE[]> buffer(new CK_BYTE[size]);
   LOG_CK_RV_AND_RETURN_IF(!buffer.get(), CKR_HOST_MEMORY);
   // Now, get the actual state data.
   result = functions_->C_GetOperationState(session_id, buffer.get(), &size);
@@ -532,7 +532,7 @@ uint32_t ChapsServiceRedirect::FindObjects(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  scoped_array<CK_OBJECT_HANDLE> object_handles(
+  scoped_ptr<CK_OBJECT_HANDLE[]> object_handles(
       new CK_OBJECT_HANDLE[max_object_count]);
   CHECK(object_handles.get());
   CK_ULONG object_count = 0;
@@ -585,7 +585,7 @@ uint32_t ChapsServiceRedirect::Encrypt(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -615,7 +615,7 @@ uint32_t ChapsServiceRedirect::EncryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -642,7 +642,7 @@ uint32_t ChapsServiceRedirect::EncryptFinal(
       vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -688,7 +688,7 @@ uint32_t ChapsServiceRedirect::Decrypt(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -719,7 +719,7 @@ uint32_t ChapsServiceRedirect::DecryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -746,7 +746,7 @@ uint32_t ChapsServiceRedirect::DecryptFinal(
       vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -788,7 +788,7 @@ uint32_t ChapsServiceRedirect::Digest(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -837,7 +837,7 @@ uint32_t ChapsServiceRedirect::DigestFinal(const SecureBlob& isolate_credential,
                                            vector<uint8_t>* digest) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -880,7 +880,7 @@ uint32_t ChapsServiceRedirect::Sign(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -919,7 +919,7 @@ uint32_t ChapsServiceRedirect::SignFinal(const SecureBlob& isolate_credential,
                                          vector<uint8_t>* signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -964,7 +964,7 @@ uint32_t ChapsServiceRedirect::SignRecover(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1075,7 +1075,7 @@ uint32_t ChapsServiceRedirect::VerifyRecover(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1105,7 +1105,7 @@ uint32_t ChapsServiceRedirect::DigestEncryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1135,7 +1135,7 @@ uint32_t ChapsServiceRedirect::DecryptDigestUpdate(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1165,7 +1165,7 @@ uint32_t ChapsServiceRedirect::SignEncryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1195,7 +1195,7 @@ uint32_t ChapsServiceRedirect::DecryptVerifyUpdate(
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1292,7 +1292,7 @@ uint32_t ChapsServiceRedirect::WrapKey(
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
   mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
   mechanism.ulParameterLen = mechanism_parameter.size();
-  scoped_array<CK_BYTE> out_bytes(NULL);
+  scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
     CHECK(out_bytes.get());
@@ -1390,7 +1390,7 @@ uint32_t ChapsServiceRedirect::GenerateRandom(
       vector<uint8_t>* random_data) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[num_bytes]);
+  scoped_ptr<CK_BYTE[]> out_bytes(new CK_BYTE[num_bytes]);
   CHECK(out_bytes.get());
   uint32_t result = functions_->C_GenerateRandom(session_id,
                                                  out_bytes.get(),
