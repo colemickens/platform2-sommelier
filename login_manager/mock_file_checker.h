@@ -7,13 +7,12 @@
 
 #include "login_manager/file_checker.h"
 
-#include <base/file_path.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {
 class MockFileChecker : public FileChecker {
  public:
-  explicit MockFileChecker(std::string filename);
+  MockFileChecker();
   ~MockFileChecker();
   MOCK_METHOD0(exists, bool());
 };

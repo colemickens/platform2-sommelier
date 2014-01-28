@@ -16,6 +16,7 @@
 
 #include "chromeos/dbus/service_constants.h"
 #include "login_manager/fake_browser_job.h"
+#include "login_manager/fake_child_process.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_system_utils.h"

@@ -25,6 +25,7 @@
 #include <base/string_util.h>
 #include <chromeos/switches/chrome_switches.h>
 
+#include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/system_utils.h"
 
@@ -46,8 +47,10 @@ const time_t BrowserJob::kRestartWindowSeconds = 60;
 BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        bool support_multi_profile,
                        uid_t desired_uid,
+                       FileChecker* checker,
                        SystemUtils* utils)
       : arguments_(arguments),
+        file_checker_(checker),
         system_(utils),
         login_metrics_(NULL),
         start_times_(std::deque<time_t>(kRestartTries, 0)),
@@ -67,6 +70,10 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
 }
 
 BrowserJob::~BrowserJob() {}
+
+bool BrowserJob::ShouldRunBrowser() {
+  return !file_checker_ || !file_checker_->exists();
+}
 
 bool BrowserJob::ShouldStop() const {
   return (system_->time(NULL) - start_times_.front() < kRestartWindowSeconds);

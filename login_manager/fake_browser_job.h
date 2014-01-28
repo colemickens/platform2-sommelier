@@ -24,9 +24,13 @@ class FakeBrowserJob : public BrowserJobInterface {
   FakeBrowserJob(const std::string& name, bool schedule_exit);
   virtual ~FakeBrowserJob();
 
-  void set_fake_child_process(scoped_ptr<FakeChildProcess> fake);
+  void set_fake_child_process(scoped_ptr<FakeChildProcess> fake) {
+    fake_process_ = fake.Pass();
+  }
+  void set_should_run(bool should) { should_run_ = should; }
 
   // Overridden from BrowserJobInterface
+  virtual bool ShouldRunBrowser() OVERRIDE;
   MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_METHOD2(KillEverything, void(int, const std::string&));
   MOCK_METHOD2(Kill, void(int, const std::string&));
@@ -48,6 +52,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   const std::string name_;
   bool running_;
   const bool schedule_exit_;
+  bool should_run_;
   DISALLOW_COPY_AND_ASSIGN(FakeBrowserJob);
 };
 }  // namespace login_manager

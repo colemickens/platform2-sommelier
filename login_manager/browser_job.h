@@ -21,6 +21,7 @@
 
 namespace login_manager {
 
+class FileChecker;
 class LoginMetrics;
 class SystemUtils;
 
@@ -36,6 +37,9 @@ class BrowserJobInterface : public ChildJobInterface {
   virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE = 0;
   virtual const std::string GetName() const OVERRIDE = 0;
   virtual pid_t CurrentPid() const OVERRIDE = 0;
+
+  // Return true if the browser should be run, false if not.
+  virtual bool ShouldRunBrowser() = 0;
 
   // If ShouldStop() returns true, this means that the parent should tear
   // everything down.
@@ -73,6 +77,7 @@ class BrowserJob : public BrowserJobInterface {
   BrowserJob(const std::vector<std::string>& arguments,
              bool support_multi_profile,
              uid_t desired_uid,
+             FileChecker* checker,
              SystemUtils* utils);
   virtual ~BrowserJob();
 
@@ -82,6 +87,7 @@ class BrowserJob : public BrowserJobInterface {
   virtual void Kill(int signal, const std::string& message) OVERRIDE;
   virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE;
   virtual pid_t CurrentPid() const OVERRIDE { return subprocess_.pid(); }
+  virtual bool ShouldRunBrowser() OVERRIDE;
   virtual bool ShouldStop() const OVERRIDE;
   virtual void StartSession(const std::string& email,
                             const std::string& userhash) OVERRIDE;
@@ -130,6 +136,10 @@ class BrowserJob : public BrowserJobInterface {
 
   // Extra one time arguments.
   std::vector<std::string> extra_one_time_arguments_;
+
+  // Wrapper for checking the flag file used to tell us to stop managing
+  // the browser job. Externally owned.
+  FileChecker* file_checker_;
 
   // Wrapper for system library calls. Externally owned.
   SystemUtils* system_;

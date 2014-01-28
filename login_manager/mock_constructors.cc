@@ -43,8 +43,7 @@ MockDevicePolicyService::MockDevicePolicyService()
                           NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
-MockFileChecker::MockFileChecker(std::string filename)
-    : FileChecker(FilePath(filename)) {}
+MockFileChecker::MockFileChecker() : FileChecker(FilePath()) {}
 MockFileChecker::~MockFileChecker() {}
 
 MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL, NULL) {}

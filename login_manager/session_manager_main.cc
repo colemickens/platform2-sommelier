@@ -152,18 +152,31 @@ int main(int argc, char* argv[]) {
   // session_manager side, Chrome will use --multi-profiles flag to enable it.
   bool support_multi_profile = !cl->HasSwitch(switches::kLegacyLoginProfile);
 
-  SystemUtilsImpl system;
   // We only support a single job with args, so grab all loose args
   vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
-
-  // This job encapsulates the command specified on the command line, and the
-  // UID that the caller would like to run it as.
-  scoped_ptr<BrowserJobInterface> browser_job(
-      new BrowserJob(arg_list, support_multi_profile, uid, &system));
 
   ::g_type_init();
   MessageLoopForUI message_loop;
   base::RunLoop run_loop;
+
+  SystemUtilsImpl system;
+
+  string magic_chrome_file =
+      cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
+  if (magic_chrome_file.empty())
+    magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
+  FileChecker file_checker((FilePath(magic_chrome_file)));
+
+  // This job encapsulates the command specified on the command line, and the
+  // UID that the caller would like to run it as.
+  scoped_ptr<BrowserJobInterface> browser_job(
+      new BrowserJob(arg_list,
+                     support_multi_profile,
+                     uid,
+                     &file_checker,
+                     &system));
+  bool should_run_browser = browser_job->ShouldRunBrowser();
+
   scoped_refptr<SessionManagerService> manager =
       new SessionManagerService(
           browser_job.Pass(),
@@ -173,19 +186,13 @@ int main(int argc, char* argv[]) {
           base::TimeDelta::FromSeconds(hang_detection_interval),
           &system);
 
-  string magic_chrome_file =
-      cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
-  if (magic_chrome_file.empty())
-    magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-  manager->set_file_checker(new FileChecker(FilePath(magic_chrome_file)));
-
   manager->set_uid(uid);
 
   LOG_IF(FATAL, !manager->Initialize());
   LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()));
 
   // Allows devs to start/stop browser manually.
-  if (manager->ShouldRunBrowser()) {
+  if (should_run_browser) {
     message_loop.PostTask(
         FROM_HERE,
         base::Bind(&SessionManagerService::RunBrowser, manager));

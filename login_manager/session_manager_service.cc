@@ -414,10 +414,6 @@ void SessionManagerService::ScheduleShutdown() {
   SetExitAndScheduleShutdown(SUCCESS);
 }
 
-bool SessionManagerService::ShouldRunBrowser() {
-  return !file_checker_.get() || !file_checker_->exists();
-}
-
 void SessionManagerService::RunBrowser() {
   browser_->RunInBackground();
   liveness_checker_->Start();
@@ -513,7 +509,7 @@ void SessionManagerService::HandleBrowserExit() {
   if (browser_->ShouldStop()) {
     LOG(WARNING) << "Child stopped, shutting down";
     SetExitAndScheduleShutdown(CHILD_EXITING_TOO_FAST);
-  } else if (ShouldRunBrowser()) {
+  } else if (browser_->ShouldRunBrowser()) {
     // TODO(cmasone): deal with fork failing in RunBrowser()
     RunBrowser();
   } else {

@@ -57,7 +57,6 @@ class SessionManagerProcessTest : public ::testing::Test {
  public:
   SessionManagerProcessTest()
       : manager_(NULL),
-        file_checker_(new MockFileChecker(kCheckedFile)),
         liveness_checker_(new MockLivenessChecker),
         metrics_(new MockMetrics),
         session_manager_impl_(new MockSessionManager),
@@ -66,7 +65,6 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   virtual ~SessionManagerProcessTest() {
     if (must_destroy_mocks_) {
-      delete file_checker_;
       delete liveness_checker_;
       delete metrics_;
       delete session_manager_impl_;
@@ -86,7 +84,6 @@ class SessionManagerProcessTest : public ::testing::Test {
   // kFakeEmail is NOT const so that it can be passed to methods that
   // implement dbus calls, which (of necessity) take bare gchar*.
   static char kFakeEmail[];
-  static const char kCheckedFile[];
   static const pid_t kDummyPid;
   static const int kExit;
 
@@ -131,7 +128,6 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          base::TimeDelta(),
                                          &real_utils_);
     manager_->Reset();
-    manager_->set_file_checker(file_checker_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_login_metrics(metrics_);
     manager_->test_api().set_session_manager(session_manager_impl_);
@@ -155,9 +151,6 @@ class SessionManagerProcessTest : public ::testing::Test {
         scoped_ptr<FakeChildProcess>(
             new FakeChildProcess(kDummyPid, 0, manager_->test_api())));
 
-    EXPECT_CALL(*file_checker_, exists())
-        .WillRepeatedly(Return(false))
-        .RetiresOnSaturation();
     return job;
   }
 
@@ -171,7 +164,6 @@ class SessionManagerProcessTest : public ::testing::Test {
   // These are bare pointers, not scoped_ptrs, because we need to give them
   // to a SessionManagerService instance, but also be able to set expectations
   // on them after we hand them off.
-  MockFileChecker* file_checker_;
   MockLivenessChecker* liveness_checker_;
   MockMetrics* metrics_;
   MockSessionManager* session_manager_impl_;
@@ -187,7 +179,6 @@ class SessionManagerProcessTest : public ::testing::Test {
 
 // static
 char SessionManagerProcessTest::kFakeEmail[] = "cmasone@whaaat.org";
-const char SessionManagerProcessTest::kCheckedFile[] = "/tmp/checked_file";
 const pid_t SessionManagerProcessTest::kDummyPid = 4;
 const int SessionManagerProcessTest::kExit = 1;
 
@@ -257,8 +248,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
   EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*job, ShouldStop()).WillRepeatedly(Return(false));
-
-  EXPECT_CALL(*file_checker_, exists()).WillOnce(Return(true));
+  job->set_should_run(false);
 
   job->set_fake_child_process(
       scoped_ptr<FakeChildProcess>(

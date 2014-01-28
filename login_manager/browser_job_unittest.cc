@@ -18,8 +18,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/mock_system_utils.h"
+#include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_system_utils.h"
 
 namespace login_manager {
 
@@ -69,6 +70,7 @@ class BrowserJobTest : public ::testing::Test {
   }
 
   std::vector<std::string> argv_;
+  MockFileChecker checker_;
   MockSystemUtils utils_;
   scoped_ptr<BrowserJob> job_;
 
@@ -91,7 +93,7 @@ const char BrowserJobTest::kHash[] = "fake_hash";
 void BrowserJobTest::SetUp() {
   argv_ = std::vector<std::string>(kArgv,
                                    kArgv + arraysize(BrowserJobTest::kArgv));
-  job_.reset(new BrowserJob(argv_, false, 1, &utils_));
+  job_.reset(new BrowserJob(argv_, false, 1, &checker_, &utils_));
 }
 
 TEST_F(BrowserJobTest, InitializationTest) {
@@ -163,6 +165,21 @@ TEST_F(BrowserJobTest, ShouldNotStopTest) {
   EXPECT_FALSE(job_->ShouldStop());
 }
 
+TEST_F(BrowserJobTest, ShouldNotRunTest) {
+  EXPECT_CALL(checker_, exists()).WillRepeatedly(Return(true));
+  EXPECT_FALSE(job_->ShouldRunBrowser());
+}
+
+TEST_F(BrowserJobTest, ShouldRunTest) {
+  EXPECT_CALL(checker_, exists()).WillRepeatedly(Return(false));
+  EXPECT_TRUE(job_->ShouldRunBrowser());
+}
+
+TEST_F(BrowserJobTest, NullFileCheckerTest) {
+  BrowserJob job(argv_, true, 1, NULL, &utils_);
+  EXPECT_TRUE(job.ShouldRunBrowser());
+}
+
 // On the job's first run, it should have a one-time-flag.  That
 // should get cleared and not used again.
 TEST_F(BrowserJobTest, OneTimeBootFlags) {
@@ -226,7 +243,7 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 }
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
-  BrowserJob job(argv_, true, 1, &utils_);
+  BrowserJob job(argv_, true, 1, &checker_, &utils_);
   job.StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job.ExportArgv();
@@ -260,7 +277,7 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   };
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
-  BrowserJob job(argv, false, 1, &utils_);
+  BrowserJob job(argv, false, 1, &checker_, &utils_);
 
   job.StartSession(kUser, kHash);
 
@@ -311,7 +328,7 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
 
 TEST_F(BrowserJobTest, CreateArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
-  BrowserJob job(argv, false, -1, &utils_);
+  BrowserJob job(argv, false, -1, &checker_, &utils_);
 
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
   std::vector<std::string> extra_args(kExtraArgs,

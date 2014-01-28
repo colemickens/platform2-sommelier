@@ -27,7 +27,6 @@
 
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"
-#include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/login_metrics.h"
@@ -159,11 +158,6 @@ class SessionManagerService
   // and announces that the user session has stopped over DBus.
   void Finalize();
 
-  // Takes ownership of |file_checker|.
-  void set_file_checker(FileChecker* file_checker) {
-    file_checker_.reset(file_checker);
-  }
-
   // Can't be "unset".
   void set_uid(uid_t uid) {
     uid_ = uid;
@@ -174,7 +168,6 @@ class SessionManagerService
 
   // Implementing ProcessManagerServiceInterface
   virtual void ScheduleShutdown() OVERRIDE;
-  virtual bool ShouldRunBrowser() OVERRIDE;
   virtual void RunBrowser() OVERRIDE;
   virtual void AbortBrowser(int signal, const std::string& message) OVERRIDE;
   virtual void RestartBrowserWithArgs(
@@ -235,8 +228,7 @@ class SessionManagerService
   // Re-runs the browser, unless one of the following is true:
   //  The screen is supposed to be locked,
   //  UI shutdown is in progress,
-  //  The child indicates that it should not run anymore, or
-  //  ShouldRunBrowser() indicates the browser should not run anymore.
+  //  The child indicates that it should not run anymore.
   void HandleBrowserExit();
 
   // Determines which child exited, and handles appropriately.
@@ -292,7 +284,6 @@ class SessionManagerService
   bool set_uid_;
 
   scoped_ptr<PolicyKey> owner_key_;
-  scoped_ptr<FileChecker> file_checker_;
 
   bool shutting_down_;
   bool shutdown_already_;

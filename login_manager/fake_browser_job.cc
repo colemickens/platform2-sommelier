@@ -11,19 +11,21 @@ namespace login_manager {
 FakeBrowserJob::FakeBrowserJob(const std::string& name)
     : name_(name),
       running_(false),
-      schedule_exit_(true) {
+      schedule_exit_(true),
+      should_run_(true) {
 }
 
 FakeBrowserJob::FakeBrowserJob(const std::string& name, bool schedule_exit)
     : name_(name),
       running_(false),
-      schedule_exit_(schedule_exit) {
+      schedule_exit_(schedule_exit),
+      should_run_(true) {
 }
 
 FakeBrowserJob::~FakeBrowserJob() {}
 
-void FakeBrowserJob::set_fake_child_process(scoped_ptr<FakeChildProcess> fake) {
-  fake_process_ = fake.Pass();
+bool FakeBrowserJob::ShouldRunBrowser() {
+  return should_run_;
 }
 
 bool FakeBrowserJob::RunInBackground() {
