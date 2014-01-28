@@ -18,4 +18,53 @@ message SerializedVaultKeyset {
   optional int32 password_rounds = 6;
   repeated string deprecated_tracked_subdirectories = 7;
   optional int64 last_activity_timestamp = 8;
+
+  // Metadata that should be defined in one file
+  // per principal (not per key).
+  // TODO(wad) ^^^
+  // optional string human_readable_name;
+  // required bytes identifier; // Unique to the origin
+  // required string origin;
+  // optional string idp_uri; // authoritative uri for the key
+  // message OptionalMetadata {
+  //   required string name = 1;
+  //   required bytes value = 2;
+  // }
+  // repeated OptionalMetadata metadata;
+
+  optional string label = 9;  // unique-per-account
+  enum Type {
+    PASSWORD_CROS_LEGACY = 0;
+    // Password plain which is signed by a RSA-SHA256 key
+    PASSWORD_PLAIN = 1;
+  }
+  optional Type type = 10 [default=PASSWORD_CROS_LEGACY];
+  optional uint64 revision = 11 [default=0];
+
+  // Software-enforced privileges.
+  enum Privileges {
+    // Can mount
+    MOUNT = 1;
+    // Can add other keys
+    ADD = 2;
+    // Can remove other keys
+    REMOVE = 4;
+    // Destroys all other keys and replaces the old key.
+    MIGRATE = 8;
+    DEFAULT = 15; // (MOUNT|ADD|REMOVE|MIGRATE)
+    // Allows a key to be updated in place if authorized (e.g., by a signature).
+    AUTHORIZED_UPDATE = 16;
+  }
+  optional Privileges privs = 12 [default=DEFAULT];
+  enum AuthorizationType {
+    // Changes must be authorized by a HMAC-SHA256
+    // with a sub-key of the privilege_key, which is wrapped by the
+    // wrapped_keyset, used to authenticate the encrypted payload of
+    // (revision||new_passphrase), encrypted using a sub-key of
+    // the unwrapped privilege_key.
+    // The subkeys are computed as one-half of a SHA512 of the priv_key.
+    AES256_HMAC_SHA256 = 0;
+  }
+  optional AuthorizationType authorization_type = 13;
+  optional bytes wrapped_authorization_key = 14;
 }
