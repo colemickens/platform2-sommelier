@@ -67,7 +67,7 @@ bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
     LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
     return false;
   }
-  scoped_array<CK_SLOT_ID> slot_list(new CK_SLOT_ID[num_slots]);
+  scoped_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
   rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
   if (rv != CKR_OK) {
     LOG(WARNING) << __func__ << ": C_GetSlotList failed.";

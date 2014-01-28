@@ -1988,7 +1988,7 @@ bool Tpm::WriteNvram(uint32_t index, const SecureBlob& blob) {
     return false;
   }
 
-  scoped_array<BYTE> nv_data(new BYTE[blob.size()]);
+  scoped_ptr<BYTE[]> nv_data(new BYTE[blob.size()]);
   memcpy(nv_data.get(), blob.const_data(), blob.size());
   result = Tspi_NV_WriteValue(nv_handle, 0, blob.size(), nv_data.get());
   if (TPM_ERROR(result)) {
