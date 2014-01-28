@@ -19,7 +19,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_cellular.h"
-#include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_modem.h"
 #include "shill/mock_modem_info.h"
@@ -58,8 +57,6 @@ class ModemTest : public Test {
       : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
-        proxy_(new MockDBusPropertiesProxy()),
-        proxy_factory_(this),
         modem_(
             new StrictModem(
                 kOwner,
@@ -74,25 +71,9 @@ class ModemTest : public Test {
   }
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(ModemTest *test) : test_(test) {}
-
-    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
-      return test_->proxy_.release();
-    }
-
-   private:
-    ModemTest *test_;
-  };
-
   EventDispatcher dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
-  scoped_ptr<MockDBusPropertiesProxy> proxy_;
-  TestProxyFactory proxy_factory_;
   scoped_ptr<StrictModem> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;

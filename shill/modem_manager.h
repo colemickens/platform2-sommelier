@@ -167,6 +167,7 @@ class ModemManager1 : public ModemManager {
       const Error &error);
 
  private:
+  friend class ModemManager1Test;
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
 

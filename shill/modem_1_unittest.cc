@@ -5,8 +5,6 @@
 #include "shill/modem.h"
 
 #include <base/files/scoped_temp_dir.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular_capability.h"
@@ -17,9 +15,10 @@
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_modem_info.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/mock_rtnl_handler.h"
-#include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/testing.h"
 
 using base::FilePath;
 using std::string;
@@ -50,7 +49,6 @@ class Modem1Test : public Test {
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
         proxy_(new MockDBusPropertiesProxy()),
-        proxy_factory_(this),
         modem_(
             new Modem1(
                 kOwner,
@@ -66,25 +64,11 @@ class Modem1Test : public Test {
   }
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(Modem1Test *test) : test_(test) {}
-
-    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
-      return test_->proxy_.release();
-    }
-
-   private:
-    Modem1Test *test_;
-  };
-
   EventDispatcher dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
   scoped_ptr<MockDBusPropertiesProxy> proxy_;
-  TestProxyFactory proxy_factory_;
+  MockProxyFactory proxy_factory_;
   scoped_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
@@ -138,6 +122,8 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
       registration_state_variant;
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
+  EXPECT_CALL(proxy_factory_, CreateDBusPropertiesProxy(kPath, kOwner))
+      .WillOnce(ReturnAndReleasePointee(&proxy_));
   modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());
   EXPECT_TRUE(modem_->device()->capability_->IsRegistered());

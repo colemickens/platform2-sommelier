@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <base/stl_util.h>
-#include <gtest/gtest.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/manager.h"
@@ -14,9 +13,10 @@
 #include "shill/mock_modem.h"
 #include "shill/mock_modem_info.h"
 #include "shill/mock_modem_manager_proxy.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/modem.h"
 #include "shill/modem_manager.h"
-#include "shill/proxy_factory.h"
+#include "shill/testing.h"
 
 using std::string;
 using std::tr1::shared_ptr;
@@ -59,6 +59,7 @@ class ModemManagerTest : public Test {
   MockControl control_;
   MockManager manager_;
   MockModemInfo modem_info_;
+  MockProxyFactory proxy_factory_;
   MockDBusServiceProxy *dbus_service_proxy_;
 };
 
@@ -164,29 +165,10 @@ class ModemManagerClassicTest : public ModemManagerTest {
  public:
   ModemManagerClassicTest()
       : ModemManagerTest(),
-        modem_manager_(kService,
-                       kPath,
-                       &modem_info_),
-        proxy_(new MockModemManagerProxy()),
-        proxy_factory_(this) {
-  }
+        modem_manager_(kService, kPath, &modem_info_),
+        proxy_(new MockModemManagerProxy()) {}
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(ModemManagerClassicTest *test) : test_(test) {}
-
-    virtual ModemManagerProxyInterface *CreateModemManagerProxy(
-        ModemManagerClassic */*manager*/,
-        const string &/*path*/,
-        const string &/*service*/) {
-      return test_->proxy_.release();
-    }
-
-   private:
-    ModemManagerClassicTest *test_;
-  };
-
   virtual void SetUp() {
     modem_manager_.proxy_factory_ = &proxy_factory_;
   }
@@ -197,12 +179,13 @@ class ModemManagerClassicTest : public ModemManagerTest {
 
   ModemManagerClassicMockInit modem_manager_;
   scoped_ptr<MockModemManagerProxy> proxy_;
-  TestProxyFactory proxy_factory_;
 };
 
 TEST_F(ModemManagerClassicTest, Connect) {
   EXPECT_EQ("", modem_manager_.owner_);
 
+  EXPECT_CALL(proxy_factory_, CreateModemManagerProxy(_, kPath, kOwner))
+      .WillOnce(ReturnAndReleasePointee(&proxy_));
   EXPECT_CALL(*proxy_, EnumerateDevices())
       .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
 
@@ -233,24 +216,9 @@ class ModemManager1Test : public ModemManagerTest {
   ModemManager1Test()
       : ModemManagerTest(),
         modem_manager_(kService, kPath, &modem_info_),
-        proxy_(new MockDBusObjectManagerProxy()),
-        proxy_factory_(this) {}
+        proxy_(new MockDBusObjectManagerProxy()) {}
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(ModemManager1Test *test) : test_(test) {}
-
-    virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
-      return test_->proxy_.release();
-    }
-
-   private:
-    ModemManager1Test *test_;
-  };
-
   virtual void SetUp() {
     modem_manager_.proxy_factory_ = &proxy_factory_;
     proxy_->IgnoreSetCallbacks();
@@ -258,6 +226,18 @@ class ModemManager1Test : public ModemManagerTest {
 
   virtual void TearDown() {
     modem_manager_.proxy_factory_ = NULL;
+  }
+
+  void Connect(const DBusObjectsWithProperties &expected_objects) {
+    EXPECT_CALL(proxy_factory_, CreateDBusObjectManagerProxy(kPath, kOwner))
+        .WillOnce(ReturnAndReleasePointee(&proxy_));
+    EXPECT_CALL(*proxy_, set_interfaces_added_callback(_));
+    EXPECT_CALL(*proxy_, set_interfaces_removed_callback(_));
+    ManagedObjectsCallback get_managed_objects_callback;
+    EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _))
+        .WillOnce(SaveArg<1>(&get_managed_objects_callback));
+    modem_manager_.Connect(kOwner);
+    get_managed_objects_callback.Run(expected_objects, Error());
   }
 
   static DBusObjectsWithProperties GetModemWithProperties() {
@@ -274,31 +254,18 @@ class ModemManager1Test : public ModemManagerTest {
 
   ModemManager1MockInit modem_manager_;
   scoped_ptr<MockDBusObjectManagerProxy> proxy_;
-  TestProxyFactory proxy_factory_;
+  MockProxyFactory proxy_factory_;
 };
 
 TEST_F(ModemManager1Test, Connect) {
-  Error e;
-
-  EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _));
-  EXPECT_CALL(modem_manager_,
-              InitModem1(
-                  Pointee(Field(&Modem::path_, StrEq(kModemPath))),
-                  _));
-
-  modem_manager_.Connect(kOwner);
-  modem_manager_.OnGetManagedObjectsReply(GetModemWithProperties(), e);
+  Connect(GetModemWithProperties());
   EXPECT_EQ(1, modem_manager_.modems_.size());
   EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
 }
 
-
 TEST_F(ModemManager1Test, AddRemoveInterfaces) {
-  EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _));
-  modem_manager_.Connect(kOwner);
-
   // Have nothing come back from GetManagedObjects
-  modem_manager_.OnGetManagedObjectsReply(DBusObjectsWithProperties(), Error());
+  Connect(DBusObjectsWithProperties());
   EXPECT_EQ(0, modem_manager_.modems_.size());
 
   // Add an object that doesn't have a modem interface.  Nothing should be added
@@ -323,8 +290,7 @@ TEST_F(ModemManager1Test, AddRemoveInterfaces) {
   // Remove the modem
   vector<string> with_modem_interface;
   with_modem_interface.push_back(MM_DBUS_INTERFACE_MODEM);
-  modem_manager_.OnInterfacesRemovedSignal(kModemPath,
-                                           with_modem_interface);
+  modem_manager_.OnInterfacesRemovedSignal(kModemPath, with_modem_interface);
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 
