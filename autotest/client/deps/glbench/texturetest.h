@@ -36,7 +36,7 @@ class TextureTest : public TestBase {
   GLuint height_;
   GLuint program_;
   int texsize_;
-  scoped_array<char> pixels_[kNumberOfTextures];
+  scoped_ptr<char[]> pixels_[kNumberOfTextures];
   GLuint textures_[kNumberOfTextures];
   UpdateFlavor flavor_;
   DISALLOW_COPY_AND_ASSIGN(TextureTest);

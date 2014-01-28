@@ -87,7 +87,7 @@ bool Bench(TestBase* test, float *slope, int64_t *bias) {
 
 void SaveImage(const char* name) {
   const int size = g_width * g_height * 4;
-  scoped_array<char> pixels(new char[size]);
+  scoped_ptr<char[]> pixels(new char[size]);
   glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   // I really think we want to use outdir as a straight argument
   FilePath dirname = FilePath(FLAGS_outdir);
@@ -101,7 +101,7 @@ void ComputeMD5(unsigned char digest[16]) {
   MD5Context ctx;
   MD5Init(&ctx);
   const int size = g_width * g_height * 4;
-  scoped_array<char> pixels(new char[size]);
+  scoped_ptr<char[]> pixels(new char[size]);
   glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   MD5Update(&ctx, (unsigned char *)pixels.get(), 4*g_width*g_height);
   MD5Final(digest, &ctx);

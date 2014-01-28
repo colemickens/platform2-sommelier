@@ -41,7 +41,7 @@ bool ReadPixelTest::Run() {
   // Default GL_PACK_ALIGNMENT is 4, round up pixel row size to multiple of 4.
   // This is a no-op because row_size is already divisible by 4.
   // One is added so that we can test reads into unaligned location.
-  scoped_array<char> buf(new char[((row_size + 3) & ~3) * g_height + 1]);
+  scoped_ptr<char[]> buf(new char[((row_size + 3) & ~3) * g_height + 1]);
   pixels_ = buf.get();
   RunTest(this, "mpixels_sec_pixel_read", g_width * g_height, true);
 
