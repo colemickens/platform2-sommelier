@@ -6,20 +6,17 @@
 
 #include <string>
 
-#include <base/stringprintf.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include "shill/event_dispatcher.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/mock_wimax_device_proxy.h"
 #include "shill/mock_wimax_provider.h"
 #include "shill/mock_wimax_service.h"
 #include "shill/nice_mock_control.h"
-#include "shill/proxy_factory.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::Unretained;
@@ -43,7 +40,6 @@ class WiMaxTest : public testing::Test {
  public:
   WiMaxTest()
       : proxy_(new MockWiMaxDeviceProxy()),
-        proxy_factory_(this),
         metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, NULL),
         dhcp_config_(new MockDHCPConfig(&control_,
@@ -55,21 +51,6 @@ class WiMaxTest : public testing::Test {
   virtual ~WiMaxTest() {}
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(WiMaxTest *test) : test_(test) {}
-
-    virtual WiMaxDeviceProxyInterface *CreateWiMaxDeviceProxy(
-        const string &/*path*/) {
-      return test_->proxy_.release();
-    }
-
-   private:
-    WiMaxTest *test_;
-
-    DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
-  };
-
   class Target {
    public:
     virtual ~Target() {}
@@ -89,7 +70,7 @@ class WiMaxTest : public testing::Test {
   }
 
   scoped_ptr<MockWiMaxDeviceProxy> proxy_;
-  TestProxyFactory proxy_factory_;
+  MockProxyFactory proxy_factory_;
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   NiceMock<MockMetrics> metrics_;
@@ -106,6 +87,8 @@ TEST_F(WiMaxTest, Constructor) {
 
 TEST_F(WiMaxTest, StartStop) {
   EXPECT_FALSE(device_->proxy_.get());
+  EXPECT_CALL(proxy_factory_, CreateWiMaxDeviceProxy(_))
+      .WillOnce(ReturnAndReleasePointee(&proxy_));
   EXPECT_CALL(*proxy_, Enable(_, _, _));
   EXPECT_CALL(*proxy_, set_networks_changed_callback(_));
   EXPECT_CALL(*proxy_, set_status_changed_callback(_));
