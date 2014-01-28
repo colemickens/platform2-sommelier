@@ -6,12 +6,11 @@
 
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/mock_dbus_service_proxy.h"
-#include "shill/proxy_factory.h"
+#include "shill/mock_proxy_factory.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::Unretained;
@@ -40,7 +39,6 @@ class DBusManagerTest : public testing::Test {
  public:
   DBusManagerTest()
       : proxy_(new MockDBusServiceProxy()),
-        proxy_factory_(this),
         manager_(new DBusManager()) {}
 
   virtual void SetUp() {
@@ -49,20 +47,6 @@ class DBusManagerTest : public testing::Test {
   }
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(DBusManagerTest *test) : test_(test) {}
-
-    virtual DBusServiceProxyInterface *CreateDBusServiceProxy() {
-      return test_->proxy_.release();
-    }
-
-   private:
-    DBusManagerTest *test_;
-
-    DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
-  };
-
   class DBusNameWatcherCallbackObserver {
    public:
     DBusNameWatcherCallbackObserver()
@@ -96,13 +80,19 @@ class DBusManagerTest : public testing::Test {
     DISALLOW_COPY_AND_ASSIGN(DBusNameWatcherCallbackObserver);
   };
 
+  MockDBusServiceProxy *ExpectCreateDBusServiceProxy() {
+    EXPECT_CALL(proxy_factory_, CreateDBusServiceProxy())
+        .WillOnce(ReturnAndReleasePointee(&proxy_));
+    return proxy_.get();
+  }
+
   scoped_ptr<MockDBusServiceProxy> proxy_;
-  TestProxyFactory proxy_factory_;
+  MockProxyFactory proxy_factory_;
   scoped_ptr<DBusManager> manager_;
 };
 
 TEST_F(DBusManagerTest, GetNameOwnerFails) {
-  MockDBusServiceProxy *proxy = proxy_.get();
+  MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
 
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
   manager_->Start();
@@ -123,7 +113,7 @@ TEST_F(DBusManagerTest, GetNameOwnerFails) {
 TEST_F(DBusManagerTest,
        GetNameOwnerReturnsAfterDBusManagerAndNameWatcherDestroyed)
 {
-  MockDBusServiceProxy *proxy = proxy_.get();
+  MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
 
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
   manager_->Start();
@@ -148,7 +138,7 @@ TEST_F(DBusManagerTest,
 }
 
 TEST_F(DBusManagerTest, NameWatchers) {
-  MockDBusServiceProxy *proxy = proxy_.get();
+  MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
 
   // Start the DBus service manager.
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));

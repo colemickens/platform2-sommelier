@@ -38,6 +38,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -45,7 +46,6 @@
 #include "shill/mock_wifi_service.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
-#include "shill/proxy_factory.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
 #include "shill/wifi_service.h"
@@ -73,6 +73,7 @@ using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Ref;
 using ::testing::Return;
+using ::testing::ReturnNull;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
@@ -95,6 +96,9 @@ class ManagerTest : public PropertyStoreTest {
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
         crypto_util_proxy_(new NiceMock<MockCryptoUtilProxy>(dispatcher(),
                                                              glib())) {
+    ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
+        .WillByDefault(ReturnNull());
+
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
                                                      metrics(),
@@ -310,19 +314,6 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(ServiceWatcher);
   };
 
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    TestProxyFactory() {}
-
-    virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
-        PowerManagerProxyDelegate */*delegate*/) {
-      return NULL;
-    }
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
-  };
-
   class TerminationActionTest :
       public base::SupportsWeakPtr<TerminationActionTest> {
    public:
@@ -415,7 +406,7 @@ class ManagerTest : public PropertyStoreTest {
     ethernet_eap_provider_->set_service(service);
   }
 
-  TestProxyFactory proxy_factory_;
+  NiceMock<MockProxyFactory> proxy_factory_;
   scoped_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
   scoped_ptr<MockDeviceInfo> device_info_;

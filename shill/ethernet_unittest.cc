@@ -9,8 +9,6 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
@@ -24,12 +22,14 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/nice_mock_control.h"
-#include "shill/proxy_factory.h"
+#include "shill/testing.h"
+#include "shill/wpa_supplicant.h"
 
 using std::string;
 using testing::_;
@@ -67,7 +67,6 @@ class EthernetTest : public testing::Test {
                                           &dispatcher_,
                                           &metrics_,
                                           &manager_)),
-        proxy_factory_(this),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()) {}
@@ -93,31 +92,6 @@ class EthernetTest : public testing::Test {
   }
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(EthernetTest *test) : test_(test) {}
-
-    virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
-        const char */*dbus_path*/, const char */*dbus_addr*/) {
-      return test_->supplicant_process_proxy_.release();
-    }
-
-    virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
-        SupplicantEventDelegateInterface */*delegate*/,
-        const DBus::Path &/*object_path*/,
-        const char */*dbus_addr*/) {
-      return test_->supplicant_interface_proxy_.release();
-    }
-
-    MOCK_METHOD2(CreateSupplicantNetworkProxy,
-                 SupplicantNetworkProxyInterface *(
-                     const DBus::Path &object_path,
-                     const char *dbus_addr));
-
-   private:
-    EthernetTest *test_;
-  };
-
   static const char kDeviceName[];
   static const char kDeviceAddress[];
   static const char kInterfacePath[];
@@ -170,14 +144,15 @@ class EthernetTest : public testing::Test {
     return ethernet_->StartEapAuthentication();
   }
   void StartSupplicant() {
-    SupplicantInterfaceProxyInterface *interface =
-        supplicant_interface_proxy_.get();
-    SupplicantProcessProxyInterface *process = supplicant_process_proxy_.get();
-    EXPECT_CALL(*supplicant_process_proxy_.get(), CreateInterface(_))
+    MockSupplicantInterfaceProxy *interface_proxy =
+        ExpectCreateSupplicantInterfaceProxy();
+    MockSupplicantProcessProxy *process_proxy =
+        ExpectCreateSupplicantProcessProxy();
+    EXPECT_CALL(*process_proxy, CreateInterface(_))
         .WillOnce(Return(kInterfacePath));
     EXPECT_TRUE(InvokeStartSupplicant());
-    EXPECT_EQ(interface, GetSupplicantInterfaceProxy());
-    EXPECT_EQ(process, GetSupplicantProcessProxy());
+    EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
+    EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
     EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
   }
   void TriggerOnEapDetected() { ethernet_->OnEapDetected(); }
@@ -186,6 +161,21 @@ class EthernetTest : public testing::Test {
   }
   void TriggerTryEapAuthentication() {
     ethernet_->TryEapAuthenticationTask();
+  }
+
+  MockSupplicantInterfaceProxy *ExpectCreateSupplicantInterfaceProxy() {
+    EXPECT_CALL(proxy_factory_,
+                CreateSupplicantInterfaceProxy(_, DBus::Path(kInterfacePath),
+                                               StrEq(WPASupplicant::kDBusAddr)))
+        .WillOnce(ReturnAndReleasePointee(&supplicant_interface_proxy_));
+    return supplicant_interface_proxy_.get();
+  }
+  MockSupplicantProcessProxy *ExpectCreateSupplicantProcessProxy() {
+    EXPECT_CALL(proxy_factory_,
+                CreateSupplicantProcessProxy(StrEq(WPASupplicant::kDBusPath),
+                                             StrEq(WPASupplicant::kDBusAddr)))
+        .WillOnce(ReturnAndReleasePointee(&supplicant_process_proxy_));
+    return supplicant_process_proxy_.get();
   }
 
   StrictMock<MockEventDispatcher> dispatcher_;
@@ -205,7 +195,7 @@ class EthernetTest : public testing::Test {
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
   scoped_refptr<MockService> mock_eap_service_;
-  NiceMock<TestProxyFactory> proxy_factory_;
+  NiceMock<MockProxyFactory> proxy_factory_;
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
 };
@@ -378,7 +368,7 @@ TEST_F(EthernetTest, StartSupplicant) {
   EXPECT_CALL(*process_proxy, CreateInterface(_)).Times(0);
   EXPECT_TRUE(InvokeStartSupplicant());
 
-  // Also, the mock pointers should remain; if the TestProxyFactory was
+  // Also, the mock pointers should remain; if the MockProxyFactory was
   // invoked again, they would be NULL.
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
   EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
@@ -386,9 +376,10 @@ TEST_F(EthernetTest, StartSupplicant) {
 }
 
 TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
+  MockSupplicantProcessProxy *process_proxy =
+      ExpectCreateSupplicantProcessProxy();
   MockSupplicantInterfaceProxy *interface_proxy =
-      supplicant_interface_proxy_.get();
-  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+      ExpectCreateSupplicantInterfaceProxy();
   EXPECT_CALL(*process_proxy, CreateInterface(_))
       .WillOnce(Throw(DBus::Error(
           "fi.w1.wpa_supplicant1.InterfaceExists",
@@ -402,7 +393,8 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
 }
 
 TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
-  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy *process_proxy =
+      ExpectCreateSupplicantProcessProxy();
   EXPECT_CALL(*process_proxy, CreateInterface(_))
       .WillOnce(Throw(DBus::Error(
           "fi.w1.wpa_supplicant1.UnknownError",

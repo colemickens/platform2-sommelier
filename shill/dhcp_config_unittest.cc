@@ -9,7 +9,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_provider.h"
@@ -19,8 +18,9 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_minijail.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/property_store_unittest.h"
-#include "shill/proxy_factory.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::FilePath;
@@ -52,7 +52,6 @@ class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
-        proxy_factory_(this),
         minijail_(new MockMinijail()),
         config_(new DHCPConfig(&control_,
                                dispatcher(),
@@ -86,18 +85,6 @@ class DHCPConfigTest : public PropertyStoreTest {
                                   bool lease_file_exists);
 
  protected:
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(DHCPConfigTest *test) : test_(test) {}
-
-    virtual DHCPProxyInterface *CreateDHCPProxy(const string &/*service*/) {
-      return test_->proxy_.release();
-    }
-
-   private:
-    DHCPConfigTest *test_;
-  };
-
   static const int kPID;
   static const unsigned int kTag;
 
@@ -105,7 +92,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   FilePath pid_file_;
   ScopedTempDir temp_dir_;
   scoped_ptr<MockDHCPProxy> proxy_;
-  TestProxyFactory proxy_factory_;
+  MockProxyFactory proxy_factory_;
   MockControl control_;
   scoped_ptr<MockMinijail> minijail_;
   DHCPConfigRefPtr config_;
@@ -195,6 +182,8 @@ TEST_F(DHCPConfigTest, InitProxy) {
   static const char kService[] = ":1.200";
   EXPECT_TRUE(proxy_.get());
   EXPECT_FALSE(config_->proxy_.get());
+  EXPECT_CALL(proxy_factory_, CreateDHCPProxy(kService))
+      .WillOnce(ReturnAndReleasePointee(&proxy_));
   config_->InitProxy(kService);
   EXPECT_FALSE(proxy_.get());
   EXPECT_TRUE(config_->proxy_.get());

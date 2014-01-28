@@ -51,6 +51,7 @@ using testing::HasSubstr;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnNull;
 using testing::ReturnRef;
 using testing::StrictMock;
 using testing::StrNe;
@@ -75,6 +76,9 @@ class ServiceTest : public PropertyStoreTest {
         storage_id_(ServiceUnderTest::kStorageId),
         power_manager_(new MockPowerManager(NULL, &proxy_factory_)),
         eap_(new MockEapCredentials()) {
+    ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
+        .WillByDefault(ReturnNull());
+
     service_->time_ = &time_;
     DefaultValue<Timestamp>::Set(Timestamp());
     service_->diagnostics_reporter_ = &diagnostics_reporter_;
@@ -89,19 +93,6 @@ class ServiceTest : public PropertyStoreTest {
 
  protected:
   typedef scoped_refptr<MockProfile> MockProfileRefPtr;
-
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    TestProxyFactory() {}
-
-    virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
-        PowerManagerProxyDelegate *delegate) {
-      return NULL;
-    }
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
-  };
 
   ServiceMockAdaptor *GetAdaptor() {
     return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
@@ -222,7 +213,7 @@ class ServiceTest : public PropertyStoreTest {
   scoped_refptr<ServiceUnderTest> service_;
   scoped_refptr<ServiceUnderTest> service2_;
   string storage_id_;
-  TestProxyFactory proxy_factory_;
+  NiceMock<MockProxyFactory> proxy_factory_;
   MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
   MockEapCredentials *eap_;  // Owned by |service_|.
 };
