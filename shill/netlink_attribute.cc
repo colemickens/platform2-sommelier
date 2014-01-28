@@ -894,14 +894,14 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
   // of zero is illegal, we still need to fill that spot in the policy
   // array so the loop will start at zero.
-  scoped_array<nla_policy> policy(new nla_policy[templates.size()]);
+  scoped_ptr<nla_policy[]> policy(new nla_policy[templates.size()]);
   for (size_t id = 0; id < templates.size() ; ++id) {
     memset(&policy[id], 0, sizeof(nla_policy));
     policy[id].type = templates[id].type;
   }
 
   // |nla_parse_nested| builds an array of |nlattr| from the input message.
-  scoped_array<nlattr *>attr(new nlattr *[templates.size()]);
+  scoped_ptr<nlattr *[]>attr(new nlattr *[templates.size()]);
   if (nla_parse_nested(attr.get(), templates.size() - 1, attr_data,
                        policy.get())) {
     LOG(ERROR) << "nla_parse_nested failed";

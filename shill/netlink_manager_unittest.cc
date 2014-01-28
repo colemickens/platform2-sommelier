@@ -457,7 +457,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   MockHandler80211 handler_sent_2;
 
   // Set up the received message as a response to sent_message_1.
-  scoped_array<unsigned char> message_memory(
+  scoped_ptr<unsigned char[]> message_memory(
       new unsigned char[sizeof(kNL80211_CMD_DISCONNECT)]);
   memcpy(message_memory.get(), kNL80211_CMD_DISCONNECT,
          sizeof(kNL80211_CMD_DISCONNECT));

@@ -71,8 +71,7 @@ bool EncryptByteStringImpl(const string &public_key,
     return false;
   }
 
-  scoped_array<unsigned char> rsa_output(
-      new unsigned char[RSA_size(rsa)]);
+  scoped_ptr<unsigned char[]> rsa_output(new unsigned char[RSA_size(rsa)]);
   LOG(INFO) << "Encrypting data with public key.";
   const int encrypted_length = RSA_public_encrypt(
       data.length(),

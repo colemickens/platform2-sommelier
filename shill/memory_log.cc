@@ -126,7 +126,7 @@ ssize_t MemoryLog::FlushToFile(const FilePath &file_path) {
   }
   struct passwd chronos;
   struct passwd *pwresult = NULL;
-  scoped_array<char> buf(new char[maximum_pw_string_size]);
+  scoped_ptr<char[]> buf(new char[maximum_pw_string_size]);
   if (getpwnam_r(kLoggedInUserName,
                  &chronos,
                  buf.get(),
