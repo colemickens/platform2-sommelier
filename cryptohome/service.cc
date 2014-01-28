@@ -55,8 +55,9 @@ namespace gobject {
 
 namespace cryptohome {
 
-const char* kSaltFilePath = "/home/.shadow/salt";
-const char* kPublicMountSaltFilePath = "/var/lib/public_mount_salt";
+const char kSaltFilePath[] = "/home/.shadow/salt";
+const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
+const char kChapsSystemToken[] = "/var/lib/chaps";
 
 // Encapsulates histogram parameters, for UMA reporting.
 struct HistogramParams {
@@ -143,19 +144,19 @@ const HistogramParams TimerCollection::kHistogramParams[kNumTimerTypes] = {
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
 const int kUpdateUserActivityPeriod = 24;  // divider of the former
 const int kDefaultRandomSeedLength = 64;
-const char* kMountThreadName = "MountThread";
-const char* kTpmInitStatusEventType = "TpmInitStatus";
+const char kMountThreadName[] = "MountThread";
+const char kTpmInitStatusEventType[] = "TpmInitStatus";
 
 // The default entropy source to seed with random data from the TPM on startup.
-const char* kDefaultEntropySource = "/dev/urandom";
+const char kDefaultEntropySource[] = "/dev/urandom";
 
 // The name of the UMA user action for reporting a failure to initialize the
 // PKCS#11.
-const char* kMetricNamePkcs11InitFail = "Cryptohome.PKCS11InitFail";
+const char kMetricNamePkcs11InitFail[] = "Cryptohome.PKCS11InitFail";
 
 // Location of the path to store basic device enrollment information that
 // will persist across powerwashes.
-const char* kPreservedEnrollmentStatePath =
+const char kPreservedEnrollmentStatePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb";
 
 // A helper function which maps an integer to a valid CertificateProfile.
@@ -286,14 +287,13 @@ static bool PrefixPresent(const std::vector<std::string>& prefixes,
 }
 
 bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
-  const char kSystemToken[] = "/var/lib/chaps";
   SecureBlob isolate =
       chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
   std::vector<std::string> tokens;
   if (!chaps_client_->GetTokenList(isolate, &tokens))
     return false;
   for (size_t i = 0; i < tokens.size(); ++i) {
-    if (tokens[i] != kSystemToken && !PrefixPresent(exclude, tokens[i])) {
+    if (tokens[i] != kChapsSystemToken && !PrefixPresent(exclude, tokens[i])) {
       LOG(INFO) << "Cleaning up PKCS #11 token: " << tokens[i];
       chaps_client_->UnloadToken(isolate, FilePath(tokens[i]));
     }
@@ -1778,9 +1778,13 @@ gboolean Service::Pkcs11IsTpmTokenReadyForUser(gchar* username,
 
 gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                         gchar** OUT_user_pin,
+                                        gint* OUT_slot,
                                         GError** error) {
-  pkcs11_init_->GetTpmTokenInfo(OUT_label,
-                                OUT_user_pin);
+  pkcs11_init_->GetTpmTokenInfo(OUT_label, OUT_user_pin);
+  *OUT_slot = -1;
+  CK_SLOT_ID slot;
+  if (pkcs11_init_->GetTpmTokenSlotForPath(FilePath(kChapsSystemToken), &slot))
+    *OUT_slot = slot;
   return TRUE;
 }
 

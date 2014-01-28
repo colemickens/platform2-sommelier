@@ -346,6 +346,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                          gchar** OUT_user_pin,
+                                         gint* OUT_slot,
                                          GError** error);
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfoForUser(gchar *username,
