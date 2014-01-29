@@ -22,9 +22,10 @@ class Error {
     kOperationFailed,  // failure, otherwise unspecified
     kAlreadyConnected,
     kAlreadyExists,
-    kOperationInitiated,
+    kIncorrectPin,
     kInProgress,
     kInternalError,
+    kInvalidApn,
     kInvalidArguments,
     kInvalidNetworkName,
     kInvalidPassphrase,
@@ -37,14 +38,13 @@ class Error {
     kNotRegistered,
     kNotSupported,
     kOperationAborted,
+    kOperationInitiated,
     kOperationTimeout,
     kPassphraseRequired,
-    kIncorrectPin,
-    kPinRequired,
-    kPinBlocked,
-    kInvalidApn,
-    kWrongState,
     kPermissionDenied,
+    kPinBlocked,
+    kPinRequired,
+    kWrongState,
     kNumErrors
   };
 
@@ -71,7 +71,7 @@ class Error {
   bool IsFailure() const { return !IsSuccess() && !IsOngoing(); }
   bool IsOngoing() const { return type_ == kOperationInitiated; }
 
-  static std::string GetName(Type type);
+  static std::string GetDBusResult(Type type);
   static std::string GetDefaultMessage(Type type);
 
   // Log an error message.  If |error| is non-NULL, also populate it.
@@ -80,7 +80,7 @@ class Error {
 
  private:
   struct Info {
-    const char *name;  // Error type name.
+    const char *dbus_result;  // Error type name.
     const char *message;  // Default Error type message.
   };
 

@@ -326,8 +326,7 @@ bool WiFiService::Load(StoreInterface *storage) {
     SetPassphrase(passphrase, &error);
     if (!error.IsSuccess() &&
         !(passphrase.empty() && error.type() == Error::kNotSupported)) {
-      LOG(ERROR) << "Passphrase could not be set: "
-                 << Error::GetName(error.type());
+      LOG(ERROR) << "Passphrase could not be set: " << error;
     }
   }
 

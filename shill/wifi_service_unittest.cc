@@ -861,8 +861,8 @@ TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
       .WillOnce(DoAll(SetArgumentPointee<2>(string()), Return(true)));
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
-                       EndsWith("Passphrase could not be set: "
-                                "org.chromium.flimflam.Error.NotSupported")))
+                       HasSubstr("Passphrase could not be set: "
+                                 "org.chromium.flimflam.Error.NotSupported")))
       .Times(1);
   EXPECT_TRUE(service->Load(&mock_store));
   Mock::VerifyAndClearExpectations(&log);

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -71,9 +72,9 @@ const ::DBus::Variant PropertyStoreTest::kUint64V =
     DBusAdaptor::Uint64ToVariant(0);
 
 PropertyStoreTest::PropertyStoreTest()
-    : internal_error_(Error::GetName(Error::kInternalError)),
-      invalid_args_(Error::GetName(Error::kInvalidArguments)),
-      invalid_prop_(Error::GetName(Error::kInvalidProperty)),
+    : internal_error_(kErrorResultInternalError),
+      invalid_args_(kErrorResultInvalidArguments),
+      invalid_prop_(kErrorResultInvalidProperty),
       path_(dir_.CreateUniqueTempDir() ? dir_.path().value() : ""),
       metrics_(dispatcher()),
       manager_(control_interface(),

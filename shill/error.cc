@@ -4,7 +4,7 @@
 
 #include "shill/error.h"
 
-#include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/error.h>
 
 #include "shill/dbus_adaptor.h"
@@ -16,33 +16,33 @@ namespace shill {
 
 // static
 const Error::Info Error::kInfos[kNumErrors] = {
-  { "Success", "Success (no error)" },
-  { "Failure", "Operation failed (no other information)" },
-  { "AlreadyConnected", "Already connected" },
-  { "AlreadyExists", "Already exists" },
-  { "OperationInitiated", "Operation initiated" },
-  { "InProgress", "In progress" },
-  { "InternalError", "Internal error" },
-  { "InvalidArguments", "Invalid arguments" },
-  { "InvalidNetworkName", "Invalid network name" },
-  { "InvalidPassphrase", "Invalid passphrase" },
-  { "InvalidProperty", "Invalid property" },
-  { "NoCarrier", "No carrier" },
-  { "NotConnected", "Not connected" },
-  { "NotFound", "Not found" },
-  { "NotImplemented", "Not implemented" },
-  { "NotOnHomeNetwork", "Not on home network" },
-  { "NotRegistered", "Not registered" },
-  { "NotSupported", "Not supported" },
-  { "OperationAborted", "Operation aborted" },
-  { "OperationTimeout", "Operation timeout" },
-  { "PassphraseRequired", "Passphrase required" },
-  { "IncorrectPin", "Incorrect PIN" },
-  { "PinRequired", "SIM PIN is required"},
-  { "PinBlocked", "SIM PIN is blocked"},
-  { "InvalidApn", "Invalid APN" },
-  { "WrongState", "Wrong state" },
-  { "PermissionDenied", "Permission denied" }
+  { kErrorResultSuccess, "Success (no error)" },
+  { kErrorResultFailure, "Operation failed (no other information)" },
+  { kErrorResultAlreadyConnected, "Already connected" },
+  { kErrorResultAlreadyExists, "Already exists" },
+  { kErrorResultIncorrectPin, "Incorrect PIN" },
+  { kErrorResultInProgress, "In progress" },
+  { kErrorResultInternalError, "Internal error" },
+  { kErrorResultInvalidApn, "Invalid APN" },
+  { kErrorResultInvalidArguments, "Invalid arguments" },
+  { kErrorResultInvalidNetworkName, "Invalid network name" },
+  { kErrorResultInvalidPassphrase, "Invalid passphrase" },
+  { kErrorResultInvalidProperty, "Invalid property" },
+  { kErrorResultNoCarrier, "No carrier" },
+  { kErrorResultNotConnected, "Not connected" },
+  { kErrorResultNotFound, "Not found" },
+  { kErrorResultNotImplemented, "Not implemented" },
+  { kErrorResultNotOnHomeNetwork, "Not on home network" },
+  { kErrorResultNotRegistered, "Not registered" },
+  { kErrorResultNotSupported, "Not supported" },
+  { kErrorResultOperationAborted, "Operation aborted" },
+  { kErrorResultOperationInitiated, "Operation initiated" },
+  { kErrorResultOperationTimeout, "Operation timeout" },
+  { kErrorResultPassphraseRequired, "Passphrase required" },
+  { kErrorResultPermissionDenied, "Permission denied" },
+  { kErrorResultPinBlocked, "SIM PIN is blocked"},
+  { kErrorResultPinRequired, "SIM PIN is required"},
+  { kErrorResultWrongState, "Wrong state" }
 };
 
 Error::Error() {
@@ -79,7 +79,7 @@ void Error::CopyFrom(const Error &error) {
 
 bool Error::ToDBusError(::DBus::Error *error) const {
   if (IsFailure()) {
-    error->set(GetName(type_).c_str(), message_.c_str());
+    error->set(GetDBusResult(type_).c_str(), message_.c_str());
     return true;
   } else {
     return false;
@@ -87,9 +87,9 @@ bool Error::ToDBusError(::DBus::Error *error) const {
 }
 
 // static
-string Error::GetName(Type type) {
+string Error::GetDBusResult(Type type) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
-  return base::StringPrintf("%s.Error.%s", SHILL_INTERFACE, kInfos[type].name);
+  return kInfos[type].dbus_result;
 }
 
 // static
@@ -109,6 +109,6 @@ void Error::PopulateAndLog(Error *error, Type type, const string &message) {
 }  // namespace shill
 
 std::ostream &operator<<(std::ostream &stream, const shill::Error &error) {
-  stream << error.GetName(error.type()) << ":" << error.message();
+  stream << error.GetDBusResult(error.type()) << ": " << error.message();
   return stream;
 }
