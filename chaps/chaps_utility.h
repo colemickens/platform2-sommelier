@@ -27,9 +27,9 @@ inline void CopyStringToCharBuffer(const std::string& source,
   size_t copy_size = source.length();
   if (copy_size > buffer_size)
     copy_size = buffer_size;
-  // TODO(dkrahn) Change the '\0' back to ' '. See crosbug.com/27295.
-  memset(buffer, '\0', buffer_size);
-  memcpy(buffer, source.data(), copy_size);
+  memset(buffer, ' ', buffer_size);
+  if (copy_size > 0)
+    memcpy(buffer, source.data(), copy_size);
 }
 
 inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
@@ -38,9 +38,9 @@ inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
   size_t copy_size = source.size();
   if (copy_size > buffer_size)
     copy_size = buffer_size;
-  // TODO(dkrahn) Change the '\0' back to ' '. See crosbug.com/27295.
-  memset(buffer, '\0', buffer_size);
-  memcpy(buffer, &source.front(), copy_size);
+  memset(buffer, ' ', buffer_size);
+  if (copy_size > 0)
+    memcpy(buffer, &source.front(), copy_size);
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".

@@ -255,7 +255,7 @@ TEST_F(TestSlotManager, QueryInfo) {
   slot_manager_->GetTokenInfo(ic_, 0, &token_info);
   EXPECT_EQ(NULL, memchr(&token_info, 0xEE, sizeof(token_info)));
   string expected_label(kTokenLabel);
-  expected_label.resize(arraysize(token_info.label), 0);
+  expected_label.resize(arraysize(token_info.label), ' ');
   string actual_label(reinterpret_cast<char*>(token_info.label),
                       arraysize(token_info.label));
   EXPECT_EQ(expected_label, actual_label);
