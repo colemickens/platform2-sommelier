@@ -46,16 +46,16 @@ class Pkcs11Init {
   // Check if the user's PKCS #11 token is valid.
   virtual bool IsUserTokenOK();
 
-  static const CK_ULONG kMaxLabelLen;
-  static const CK_CHAR kDefaultPin[];
-  static const CK_CHAR kDefaultSystemLabel[];
-  static const CK_CHAR kDefaultUserLabel[];
+  static const char kDefaultPin[];
+  static const char kDefaultSystemLabel[];
+  static const char kDefaultUserLabelPrefix[];
 
  private:
   // Returns true if a token in the given |slot_id| passes basic sanity checks.
-  // This includes checking if the |expected_label| matches the actual token
-  // label.
-  bool CheckTokenInSlot(CK_SLOT_ID slot_id, const CK_CHAR* expected_label);
+  // This includes checking if the |expected_label_prefix| matches the actual
+  // token label.
+  bool CheckTokenInSlot(CK_SLOT_ID slot_id,
+                        const std::string& expected_label_prefix);
 
   scoped_ptr<Platform> default_platform_;
   Platform* platform_;

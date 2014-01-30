@@ -21,10 +21,9 @@
 namespace cryptohome {
 
 // static
-const CK_ULONG Pkcs11Init::kMaxLabelLen = 32;
-const CK_CHAR Pkcs11Init::kDefaultPin[] = "111111";
-const CK_CHAR Pkcs11Init::kDefaultSystemLabel[] = "System TPM Token";
-const CK_CHAR Pkcs11Init::kDefaultUserLabel[] = "User-Specific TPM Token";
+const char Pkcs11Init::kDefaultPin[] = "111111";
+const char Pkcs11Init::kDefaultSystemLabel[] = "System TPM Token";
+const char Pkcs11Init::kDefaultUserLabelPrefix[] = "User TPM Token ";
 
 extern const char* kTpmOwnedFile;
 
@@ -37,21 +36,24 @@ Pkcs11Init::~Pkcs11Init() {
 
 void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
                                  gchar **OUT_user_pin) {
-  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultSystemLabel));
-  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultPin));
+  *OUT_label = g_strdup(reinterpret_cast<const gchar*>(kDefaultSystemLabel));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar*>(kDefaultPin));
 }
 
 void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
                                         gchar **OUT_label,
                                         gchar **OUT_user_pin) {
-  // All user tokens get the same label.  There will be only one per profile so
-  // there is no need for users to differentiate.
-  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserLabel));
-  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultPin));
+  std::string label = GetTpmTokenLabelForUser(
+      reinterpret_cast<const char*>(username));
+  *OUT_label = g_strdup(reinterpret_cast<const gchar*>(label.c_str()));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar*>(kDefaultPin));
 }
 
 std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
-  return std::string(reinterpret_cast<const char*>(kDefaultUserLabel));
+  // Use a truncated sanitized username in the token label so a label collision
+  // is extremely unlikely.
+  return std::string(kDefaultUserLabelPrefix) +
+         chromeos::cryptohome::home::SanitizeUserName(username).substr(0, 16);
 }
 
 bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
@@ -116,7 +118,7 @@ bool Pkcs11Init::IsUserTokenOK() {
 
   // Check if at least one sane user token exists.
   for (CK_ULONG i = 0; i < num_slots; ++i) {
-    if (CheckTokenInSlot(slot_list[i], kDefaultUserLabel)) {
+    if (CheckTokenInSlot(slot_list[i], kDefaultUserLabelPrefix)) {
       LOG(INFO) << "User PKCS #11 token looks ok.";
       return true;
     }
@@ -127,7 +129,7 @@ bool Pkcs11Init::IsUserTokenOK() {
 }
 
 bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
-                                  const CK_CHAR* expected_label) {
+                                  const std::string& expected_label_prefix) {
   CK_RV rv;
   CK_SESSION_HANDLE session_handle = 0;
   CK_SESSION_INFO session_info;
@@ -167,11 +169,11 @@ bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
     return false;
   }
 
-  if (strncmp(reinterpret_cast<const char*>(expected_label),
-              reinterpret_cast<const char*>(token_info.label),
-              kMaxLabelLen)) {
-    LOG(WARNING) << "Token Label (" << token_info.label << ") does not match "
-                 << "expected label (" << expected_label << ")";
+  std::string label(reinterpret_cast<const char*>(token_info.label),
+                    arraysize(token_info.label));
+  if (!StartsWithASCII(label, expected_label_prefix, true)) {
+    LOG(WARNING) << "Token Label (" << label << ") does not match expected "
+                 << "label prefix (" << expected_label_prefix << ")";
     return false;
   }
 
