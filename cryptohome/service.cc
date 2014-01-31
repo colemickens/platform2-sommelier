@@ -286,14 +286,13 @@ static bool PrefixPresent(const std::vector<std::string>& prefixes,
 }
 
 bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
-  const char kSystemToken[] = "/var/lib/chaps";
   SecureBlob isolate =
       chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
   std::vector<std::string> tokens;
   if (!chaps_client_->GetTokenList(isolate, &tokens))
     return false;
   for (size_t i = 0; i < tokens.size(); ++i) {
-    if (tokens[i] != kSystemToken && !PrefixPresent(exclude, tokens[i])) {
+    if (!PrefixPresent(exclude, tokens[i])) {
       LOG(INFO) << "Cleaning up PKCS #11 token: " << tokens[i];
       chaps_client_->UnloadToken(isolate, FilePath(tokens[i]));
     }
