@@ -559,6 +559,16 @@ gboolean cryptohome_tpm_attestation_get_ek(Cryptohome* self,
                                            GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationGetEK, OUT_ek_info, OUT_success);
 }
+gboolean cryptohome_tpm_attestation_reset_identity(Cryptohome* self,
+                                                   gchar* reset_token,
+                                                   GArray** OUT_reset_request,
+                                                   gboolean* OUT_success,
+                                                   GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationResetIdentity,
+                         reset_token,
+                         OUT_reset_request,
+                         OUT_success);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome* self,
                                               gchar** OUT_label,
                                               gchar** OUT_user_pin,

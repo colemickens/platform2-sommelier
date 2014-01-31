@@ -710,4 +710,11 @@ TEST_F(AttestationTest, AlternatePCACertRequest) {
                                              "", &blob));
 }
 
+TEST_F(AttestationTest, IdentityResetRequest) {
+  SecureBlob blob;
+  EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
+  attestation_.PrepareForEnrollment();
+  EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
+}
+
 }  // namespace cryptohome

@@ -305,6 +305,13 @@ class Attestation : public base::PlatformThread::Delegate,
   // available.
   virtual bool GetEKInfo(std::string* ek_info);
 
+  // Creates a request to be sent to the PCA which will reset the identity for
+  // this device on future AIK enrollments.  The |reset_token| is put in the
+  // request protobuf verbatim.  On success returns true and copies the
+  // serialized request into |reset_request|.
+  virtual bool GetIdentityResetRequest(const std::string& reset_token,
+                                       chromeos::SecureBlob* reset_request);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);
@@ -374,8 +381,8 @@ class Attestation : public base::PlatformThread::Delegate,
   Tpm* tpm_;
   Platform* platform_;
   Crypto* crypto_;
-  // A lock to protect all data members except |tpm_| and |platform_| which are
-  // not owned by this class.
+  // A lock to protect |database_pb_| because PrepareForEnrollment may happen on
+  // a worker thread.
   base::Lock lock_;
   chromeos::SecureBlob database_key_;
   chromeos::SecureBlob sealed_database_key_;

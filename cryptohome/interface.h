@@ -340,6 +340,11 @@ gboolean cryptohome_tpm_attestation_get_ek(Cryptohome* self,
                                            gchar** OUT_ek_info,
                                            gboolean* OUT_success,
                                            GError** error);
+gboolean cryptohome_tpm_attestation_reset_identity(Cryptohome *self,
+                                                   gchar* reset_token,
+                                                   GArray** OUT_reset_request,
+                                                   gboolean* OUT_success,
+                                                   GError **error);
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome* self,
                                               gchar** OUT_label,
                                               gchar** OUT_user_pin,

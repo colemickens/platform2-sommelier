@@ -320,6 +320,11 @@
       <arg type="s" name="ek_info" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
+    <method name="TpmAttestationResetIdentity">
+      <arg type="s" name="reset_token" direction="in" />
+      <arg type="ay" name="reset_request" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />
     </method>

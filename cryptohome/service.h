@@ -388,6 +388,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmAttestationGetEK(gchar** ek_info,
                                        gboolean* OUT_success,
                                        GError** error);
+  virtual gboolean TpmAttestationResetIdentity(gchar* reset_token,
+                                               GArray** OUT_reset_request,
+                                               gboolean* OUT_success,
+                                               GError** error);
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                          gchar** OUT_user_pin,

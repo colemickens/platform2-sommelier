@@ -842,6 +842,7 @@ bool Attestation::SignEnterpriseChallenge(
       SecureBlob* response) {
   if (!IsTPMReady())
     return false;
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
@@ -922,6 +923,7 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
                                       SecureBlob* response) {
   if (!IsTPMReady())
     return false;
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
@@ -950,6 +952,7 @@ bool Attestation::RegisterKey(bool is_user_specific,
     LOG(WARNING) << "Attestation: Rejecting attempt to register machine key.";
     return false;
   }
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(true, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
@@ -971,6 +974,7 @@ bool Attestation::GetKeyPayload(bool is_user_specific,
                                 const string& username,
                                 const string& key_name,
                                 SecureBlob* payload) {
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
@@ -985,6 +989,7 @@ bool Attestation::SetKeyPayload(bool is_user_specific,
                                 const string& username,
                                 const string& key_name,
                                 const SecureBlob& payload) {
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
@@ -997,6 +1002,7 @@ bool Attestation::SetKeyPayload(bool is_user_specific,
 bool Attestation::DeleteKeysByPrefix(bool is_user_specific,
                                      const string& username,
                                      const string& key_prefix) {
+  base::AutoLock lock(lock_);
   if (is_user_specific) {
     return user_key_store_->DeleteByPrefix(username, key_prefix);
   }
@@ -1032,6 +1038,24 @@ bool Attestation::GetEKInfo(std::string* ek_info) {
       "EK Certificate:\n%s\nHash:\n%s\n",
       CreatePEMCertificate(ConvertBlobToString(ek_cert)).c_str(),
       base::HexEncode(hash.data(), hash.size()).c_str());
+  return true;
+}
+
+bool Attestation::GetIdentityResetRequest(const string& reset_token,
+                                          SecureBlob* reset_request) {
+  base::AutoLock lock(lock_);
+  AttestationResetRequest proto;
+  proto.set_token(reset_token);
+  *proto.mutable_encrypted_endorsement_credential() =
+      database_pb_.credentials().default_encrypted_endorsement_credential();
+  std::string serial;
+  if (!proto.SerializeToString(&serial)) {
+    LOG(ERROR) << __func__ << "Failed to serialize protobuf.";
+    return false;
+  }
+  SecureBlob tmp(serial);
+  ClearString(&serial);
+  reset_request->swap(tmp);
   return true;
 }
 

@@ -1811,10 +1811,25 @@ gboolean Service::TpmAttestationGetEK(gchar** OUT_ek_info,
   return TRUE;
 }
 
+gboolean Service::TpmAttestationResetIdentity(gchar* reset_token,
+                                              GArray** OUT_reset_request,
+                                              gboolean* OUT_success,
+                                              GError** error) {
+  *OUT_reset_request = g_array_new(false, false,
+                                   sizeof(SecureBlob::value_type));
+  chromeos::SecureBlob reset_request;
+  *OUT_success = attestation_->GetIdentityResetRequest(
+      std::string(reinterpret_cast<char*>(reset_token)),
+      &reset_request);
+  if (*OUT_success)
+    g_array_append_vals(*OUT_reset_request,
+                        &reset_request.front(),
+                        reset_request.size());
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
-  // TODO(gauravsh): Give out more information here. The state of PKCS#11
-  // initialization, and it it failed - the reason for that.
   *OUT_ready = TRUE;
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     cryptohome::Mount* mount = it->second;
@@ -1859,7 +1874,6 @@ gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
 
 gboolean Service::Pkcs11Terminate(gchar* username, GError **error) {
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
-    // TODO(dkrahn): Make this user-specific.
     it->second->RemovePkcs11Token();
   }
   return TRUE;

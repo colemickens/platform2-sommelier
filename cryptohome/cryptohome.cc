@@ -84,6 +84,8 @@ namespace switches {
     "tpm_attestation_enterprise_challenge",
     "tpm_attestation_delete",
     "tpm_attestation_get_ek",
+    "tpm_attestation_reset_identity",
+    "tpm_attestation_reset_identity_result",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -124,6 +126,8 @@ namespace switches {
     ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE,
     ACTION_TPM_ATTESTATION_DELETE,
     ACTION_TPM_ATTESTATION_GET_EK,
+    ACTION_TPM_ATTESTATION_RESET_IDENTITY,
+    ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -1598,6 +1602,62 @@ int main(int argc, char **argv) {
     }
     printf("%s\n", ek_info);
     g_free(ek_info);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean success = FALSE;
+    std::string token = cl->GetSwitchValueASCII(switches::kPasswordSwitch);
+    chromeos::glib::ScopedArray reset_request;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_reset_identity(
+            proxy.gproxy(),
+            token.c_str(),
+            &chromeos::Resetter(&reset_request).lvalue(),
+            &success,
+            &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationResetIdentity call failed: %s.\n", error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("Failed to get identity reset request.\n");
+      return 1;
+    }
+    file_util::WriteFile(GetFile(cl), reset_request->data, reset_request->len);
+  } else if (!strcmp(
+      switches::kActions[
+          switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
+      action.c_str())) {
+    string contents;
+    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+      return 1;
+    }
+    cryptohome::AttestationResetResponse response;
+    if (!response.ParseFromString(contents)) {
+      printf("Failed to parse response.\n");
+      return 1;
+    }
+    switch (response.status()) {
+      case cryptohome::OK:
+        printf("Identity reset successful.\n");
+        break;
+      case cryptohome::SERVER_ERROR:
+        printf("Identity reset server error: %s\n", response.detail().c_str());
+        break;
+      case cryptohome::BAD_REQUEST:
+        printf("Identity reset data error: %s\n", response.detail().c_str());
+        break;
+      case cryptohome::REJECT:
+        printf("Identity reset request denied: %s\n",
+               response.detail().c_str());
+        break;
+      case cryptohome::QUOTA_LIMIT_EXCEEDED:
+        printf("Identity reset quota exceeded: %s\n",
+               response.detail().c_str());
+        break;
+      default:
+        printf("Identity reset unknown error: %s\n", response.detail().c_str());
+    }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
