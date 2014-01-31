@@ -60,6 +60,7 @@ CK_SLOT_ID Initialize() {
     LOG(INFO) << "No slots.";
     exit(-1);
   }
+  LOG(INFO) << "Choosing slot " << slot_list[0];
   return slot_list[0];
 }
 
@@ -385,28 +386,10 @@ void ReadInObject(CK_SESSION_HANDLE session,
     CreateCertificate(session, object_data, object_id, certificate);
     X509_free(certificate);
   } else if (type == kPrivateKey) {
-    // Try decoding a PKCS#1 RSAPrivateKey structure.
     RSA* rsa = d2i_RSAPrivateKey(NULL, &data_start, object_data.length());
     if (!rsa) {
-      // Rewind the ptr just in case it was modified.
-      data_start = reinterpret_cast<const unsigned char*>(object_data.c_str());
-      // Try decoding a PKCS#8 structure.
-      PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL,
-                                                        &data_start,
-                                                        object_data.length());
-      if (!p8 || ASN1_TYPE_get(p8->pkey) != V_ASN1_OCTET_STRING) {
-        LOG(ERROR) << "OpenSSL error in PKCS #8 private key parsing.";
-        exit(-1);
-      }
-      // See if we have a RSAPrivateKey in the PKCS#8 structure.
-      data_start = p8->pkey->value.octet_string->data;
-      rsa = d2i_RSAPrivateKey(NULL, &data_start,
-                              p8->pkey->value.octet_string->length);
-      PKCS8_PRIV_KEY_INFO_free(p8);
-      if (!rsa) {
-        LOG(ERROR) << "OpenSSL error in RSA private key parsing.";
-        exit(-1);
-      }
+      LOG(ERROR) << "OpenSSL error in RSA private key parsing.";
+      exit(-1);
     }
     CreatePrivateKey(session, object_id, "testing_key", rsa);
     RSA_free(rsa);
@@ -482,7 +465,7 @@ void TearDown(CK_SESSION_HANDLE session, bool logout) {
 }
 
 void PrintHelp() {
-  printf("Usage: p11_replay [--slot=<slot>] [COMMAND]\n");
+  printf("Usage: p11_replay [COMMAND]\n");
   printf("Commands:\n");
   printf("  --cleanup : Deletes all test keys.\n");
   printf("  --generate [--label=<key_label> --key_size=<size_in_bits>]"
@@ -491,8 +474,8 @@ void PrintHelp() {
          "useful for comparing key generation on different TPM models.\n");
   printf("  --import --path=<path to file> --type=<cert, privkey, pubkey>"
          " --id=<token id str>"
-         " : Reads an object into the token.  Accepts DER formatted X.509"
-         " certificates and DER formatted PKCS#1 or PKCS#8 private keys.\n");
+         " : Reads an object into the token.  Accepts DER formatted"
+         " certificates and DER formatted private keys.\n");
   printf("  --inject [--label=<key_label> --key_size=<size_in_bits>]"
          " : Locally generates a key pair suitable for replay tests and injects"
          " it into the token.\n");
@@ -609,11 +592,6 @@ int main(int argc, char** argv) {
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   base::TimeTicks start_ticks = base::TimeTicks::Now();
   CK_SLOT_ID slot = Initialize();
-  int tmp_slot = 0;
-  if (cl->HasSwitch("slot") &&
-      base::StringToInt(cl->GetSwitchValueASCII("slot"), &tmp_slot))
-    slot = tmp_slot;
-  LOG(INFO) << "Using slot " << slot;
   CK_SESSION_HANDLE session = OpenSession(slot);
   PrintTicks(&start_ticks);
   string label = "_default";
