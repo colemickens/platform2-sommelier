@@ -10,13 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libgen.h>
-
 #include "bootstat.h"
 
-static void usage(char* cmd)
+static void usage(const char* cmd)
 {
-  fprintf(stderr, "usage: %s <event-name>\n", basename(strdup(cmd)));
+  fprintf(stderr, "usage: %s <event-name>\n", basename(cmd));
   exit(EXIT_FAILURE);
 }
 
