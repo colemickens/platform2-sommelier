@@ -67,6 +67,13 @@ class IPConfig : public base::RefCounted<IPConfig> {
     uint32 lease_duration_seconds;
   };
 
+  enum Method {
+    kMethodUnknown,
+    kMethodPPP,
+    kMethodStatic,
+    kMethodDHCP
+  };
+
   enum ReleaseReason {
     kReleaseReasonDisconnect,
     kReleaseReasonStaticIP
