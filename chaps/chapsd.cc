@@ -121,7 +121,8 @@ int main(int argc, char** argv) {
     }
     chaps::TPMUtilityImpl tpm(srk_auth_data);
     chaps::ChapsFactoryImpl factory;
-    chaps::SlotManagerImpl slot_manager(&factory, &tpm);
+    chaps::SlotManagerImpl slot_manager(
+        &factory, &tpm, cl->HasSwitch("auto_load_system_token"));
     chaps::ChapsServiceImpl service(&slot_manager);
     chaps::AsyncInitThread init_thread(&lock, &tpm, &slot_manager, &service);
     PlatformThreadHandle init_thread_handle;

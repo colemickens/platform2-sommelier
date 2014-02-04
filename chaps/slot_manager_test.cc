@@ -137,7 +137,7 @@ class TestSlotManager: public ::testing::Test {
     ic_ = IsolateCredentialManager::GetDefaultIsolateCredential();
   }
   void SetUp() {
-    slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_));
+    slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false));
     ASSERT_TRUE(slot_manager_->Init());
   }
 #if GTEST_IS_THREADSAFE
@@ -161,10 +161,11 @@ class TestSlotManager: public ::testing::Test {
 typedef TestSlotManager TestSlotManager_DeathTest;
 TEST(DeathTest, InvalidInit) {
   ChapsFactoryMock factory;
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL, false),
                             "Check failed");
   TPMUtilityMock tpm;
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, &tpm), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, &tpm, false),
+                            "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
@@ -209,7 +210,7 @@ TEST_F(TestSlotManager_DeathTest, NoToken) {
 }
 
 TEST_F(TestSlotManager, DefaultSlotSetup) {
-  EXPECT_EQ(1, slot_manager_->GetSlotCount());
+  EXPECT_EQ(2, slot_manager_->GetSlotCount());
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
 }
 
@@ -228,7 +229,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   ObjectImporter* null_importer = NULL;
   EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
       .WillRepeatedly(Return(null_importer));
-  SlotManagerImpl sm(&factory, &tpm);
+  SlotManagerImpl sm(&factory, &tpm, false);
   ASSERT_TRUE(sm.Init());
   int slot_id;
   EXPECT_DEATH_IF_SUPPORTED(
@@ -304,7 +305,6 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
                                        kTokenLabel,
                                        &slot_id2));
   EXPECT_EQ(slot_id, slot_id2);
-  EXPECT_EQ(2, slot_manager_->GetSlotCount());
   EXPECT_TRUE(slot_manager_->LoadToken(ic_,
                                        FilePath("another_path"),
                                        MakeBlob(kAuthData),
@@ -317,7 +317,6 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   slot_manager_->ChangeTokenAuthData(FilePath("yet_another_path"),
                                        MakeBlob(kAuthData),
                                        MakeBlob(kNewAuthData));
-  EXPECT_LT(slot_manager_->GetSlotCount(), 5);
   // Logout with an unknown path.
   slot_manager_->UnloadToken(ic_, FilePath("still_yet_another_path"));
   slot_manager_->UnloadToken(ic_, FilePath("some_path"));
@@ -446,7 +445,6 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
                                        MakeBlob(kAuthData),
                                        kTokenLabel,
                                        &slot_id));
-  EXPECT_EQ(1, slot_manager_->GetSlotCount());
 
   EXPECT_TRUE(slot_manager_->OpenIsolate(&new_isolate_1, &new_isolate_created));
   EXPECT_TRUE(new_isolate_created);
@@ -455,7 +453,6 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
                                        MakeBlob(kAuthData),
                                        kTokenLabel,
                                        &slot_id));
-  EXPECT_EQ(2, slot_manager_->GetSlotCount());
 
   // Ensure tokens are only accessible with the valid isolate cred.
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(new_isolate_0, 0));

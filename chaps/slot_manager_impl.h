@@ -38,7 +38,9 @@ class SlotManagerImpl : public SlotManager,
                         public TokenManagerInterface,
                         public HandleGenerator {
  public:
-  SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility);
+  SlotManagerImpl(ChapsFactory* factory,
+                  TPMUtility* tpm_utility,
+                  bool auto_load_system_token);
   virtual ~SlotManagerImpl();
 
   // Initializes the slot manager. Returns true on success.
@@ -164,6 +166,7 @@ class SlotManagerImpl : public SlotManager,
   std::map<chromeos::SecureBlob, Isolate> isolate_map_;
   TPMUtility* tpm_utility_;
   base::Lock handle_generator_lock_;
+  bool auto_load_system_token_;
 
   DISALLOW_COPY_AND_ASSIGN(SlotManagerImpl);
 };
