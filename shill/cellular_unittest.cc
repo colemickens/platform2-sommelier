@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/cellular_bearer.h"
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_classic.h"
 #include "shill/cellular_capability_gsm.h"
@@ -354,7 +355,6 @@ class CellularTest : public testing::Test {
         .WillOnce(Invoke(this, &CellularTest::InvokeDisconnectMM1));
     GetCapabilityUniversal()->modem_simple_proxy_.reset(
         mm1_simple_proxy_.release());
-    GetCapabilityUniversal()->active_bearer_path_ = "/fake/path";
   }
 
   void VerifyDisconnect() {
@@ -542,6 +542,12 @@ class CellularTest : public testing::Test {
 
   void set_enabled_persistent(bool new_value) {
     device_->enabled_persistent_ = new_value;
+  }
+
+  void SetCapabilityUniversalActiveBearer(scoped_ptr<CellularBearer> bearer) {
+    SetCellularType(Cellular::kTypeUniversal);
+    CellularCapabilityUniversal *capability = GetCapabilityUniversal();
+    capability->active_bearer_ = bearer.Pass();
   }
 
   EventDispatcher dispatcher_;
@@ -1677,6 +1683,88 @@ TEST_F(CellularTest, ScanSuccess) {
   results_callback.Run(kTestNetworksGSM, error);
   EXPECT_FALSE(device_->scanning_);
   EXPECT_EQ(kTestNetworksCellular, device_->found_networks());
+}
+
+TEST_F(CellularTest, EstablishLinkDHCP) {
+  scoped_ptr<CellularBearer> bearer(
+      new CellularBearer(&proxy_factory_, "", ""));
+  bearer->set_ipv4_config_method(IPConfig::kMethodDHCP);
+  SetCapabilityUniversalActiveBearer(bearer.Pass());
+  device_->state_ = Cellular::kStateConnected;
+
+  MockCellularService *service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _, _))
+      .WillOnce(Return(dhcp_config_));
+  EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+  device_->EstablishLink();
+  EXPECT_EQ(service, device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, EstablishLinkPPP) {
+  scoped_ptr<CellularBearer> bearer(
+      new CellularBearer(&proxy_factory_, "", ""));
+  bearer->set_ipv4_config_method(IPConfig::kMethodPPP);
+  SetCapabilityUniversalActiveBearer(bearer.Pass());
+  device_->state_ = Cellular::kStateConnected;
+
+  const int kPID = 123;
+  MockGLib &mock_glib(*dynamic_cast<MockGLib *>(modem_info_.glib()));
+  EXPECT_CALL(mock_glib, ChildWatchAdd(kPID, _, _));
+  EXPECT_CALL(mock_glib, SpawnAsync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  device_->EstablishLink();
+  EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
+  EXPECT_FALSE(device_->selected_service());
+  EXPECT_FALSE(device_->is_ppp_authenticating_);
+  EXPECT_TRUE(device_->ppp_task_);
+}
+
+TEST_F(CellularTest, EstablishLinkStatic) {
+  IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
+  const char kAddress[] = "10.0.0.1";
+  const char kGateway[] = "10.0.0.254";
+  const int32 kSubnetPrefix = 16;
+  const char *const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
+
+  scoped_ptr<IPConfig::Properties> ipconfig_properties(
+      new IPConfig::Properties);
+  ipconfig_properties->address_family = kAddressFamily;
+  ipconfig_properties->address = kAddress;
+  ipconfig_properties->gateway = kGateway;
+  ipconfig_properties->subnet_prefix = kSubnetPrefix;
+  ipconfig_properties->dns_servers = vector<string>{kDNS[0], kDNS[1], kDNS[2]};
+
+  scoped_ptr<CellularBearer> bearer(
+      new CellularBearer(&proxy_factory_, "", ""));
+  bearer->set_ipv4_config_method(IPConfig::kMethodStatic);
+  bearer->set_ipv4_config_properties(ipconfig_properties.Pass());
+  SetCapabilityUniversalActiveBearer(bearer.Pass());
+  device_->state_ = Cellular::kStateConnected;
+
+  MockCellularService *service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+  device_->EstablishLink();
+  EXPECT_EQ(service, device_->selected_service());
+  ASSERT_TRUE(device_->ipconfig());
+  EXPECT_EQ(kAddressFamily, device_->ipconfig()->properties().address_family);
+  EXPECT_EQ(kAddress, device_->ipconfig()->properties().address);
+  EXPECT_EQ(kGateway, device_->ipconfig()->properties().gateway);
+  EXPECT_EQ(kSubnetPrefix, device_->ipconfig()->properties().subnet_prefix);
+  ASSERT_EQ(3, device_->ipconfig()->properties().dns_servers.size());
+  EXPECT_EQ(kDNS[0], device_->ipconfig()->properties().dns_servers[0]);
+  EXPECT_EQ(kDNS[1], device_->ipconfig()->properties().dns_servers[1]);
+  EXPECT_EQ(kDNS[2], device_->ipconfig()->properties().dns_servers[2]);
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
 }  // namespace shill

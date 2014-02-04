@@ -10,6 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>
 
 #include "shill/dbus_properties.h"
 #include "shill/ipconfig.h"
@@ -63,6 +64,9 @@ class CellularBearer {
 
  private:
   friend class CellularBearerTest;
+  FRIEND_TEST(CellularTest, EstablishLinkDHCP);
+  FRIEND_TEST(CellularTest, EstablishLinkPPP);
+  FRIEND_TEST(CellularTest, EstablishLinkStatic);
 
   // Gets the IP configuration method and properties from |properties|.
   // |address_family| specifies the IP address family of the configuration.

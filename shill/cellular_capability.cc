@@ -103,6 +103,10 @@ void CellularCapability::SetCarrier(const std::string &/*carrier*/,
   OnUnsupportedOperation(__func__, error);
 }
 
+CellularBearer *CellularCapability::GetActiveBearer() const {
+  return NULL;
+}
+
 bool CellularCapability::IsActivating() const {
   return false;
 }

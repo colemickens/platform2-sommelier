@@ -427,6 +427,15 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
   return ipconfig_->RequestIP();
 }
 
+void Device::AssignIPConfig(const IPConfig::Properties &properties) {
+  DestroyIPConfig();
+  EnableIPv6();
+  ipconfig_ = new IPConfig(control_interface_, link_name_);
+  ipconfig_->set_properties(properties);
+  dispatcher_->PostTask(Bind(&Device::OnIPConfigUpdated,
+                             weak_ptr_factory_.GetWeakPtr(), ipconfig_));
+}
+
 void Device::DestroyIPConfigLease(const string &name) {
   dhcp_provider_->DestroyLease(name);
 }

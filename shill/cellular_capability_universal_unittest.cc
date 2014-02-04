@@ -17,6 +17,7 @@
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular.h"
+#include "shill/cellular_bearer.h"
 #include "shill/cellular_service.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
@@ -232,8 +233,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
           .append_string("/dev/fake");
 
       DBusPropertiesMap ip4config;
-      ip4config[CellularCapabilityUniversal::kIpConfigPropertyMethod].writer()
-          .append_uint32(MM_BEARER_IP_METHOD_DHCP);
+      ip4config["method"].writer().append_uint32(MM_BEARER_IP_METHOD_DHCP);
       DBus::MessageIter writer =
           active_bearer_properties_[MM_BEARER_PROPERTY_IP4CONFIG].writer();
       writer << ip4config;
@@ -613,7 +613,6 @@ TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {
 TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
   Error error;
   ResultCallback disconnect_callback;
-  capability_->active_bearer_path_ = "/foo";
   EXPECT_CALL(*modem_simple_proxy_,
               Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
       .Times(0);
@@ -624,7 +623,6 @@ TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
 TEST_F(CellularCapabilityUniversalMainTest, DisconnectWithDeferredCallback) {
   Error error;
   ResultCallback disconnect_callback;
-  capability_->active_bearer_path_ = "/foo";
   EXPECT_CALL(*modem_simple_proxy_,
               Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect));
   SetSimpleProxy();
@@ -1241,7 +1239,7 @@ TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   EXPECT_FALSE(capability_->resetting_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
   // Common resources.
   const size_t kPathCount = 3;
   DBus::Path active_paths[kPathCount], inactive_paths[kPathCount];
@@ -1251,26 +1249,26 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath) {
         base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i);
   }
 
-  EXPECT_TRUE(capability_->active_bearer_path_.empty());
+  EXPECT_TRUE(capability_->GetActiveBearer() == NULL);
 
-  // Check that |active_bearer_path_| is set correctly when an active bearer
-  // is returned.
+  // Check that |active_bearer_| is set correctly when an active bearer is
+  // returned.
   capability_->OnBearersChanged({inactive_paths[0],
                                  inactive_paths[1],
                                  active_paths[2],
                                  inactive_paths[1],
                                  inactive_paths[2]});
-  capability_->UpdateActiveBearerPath();
-  EXPECT_EQ(active_paths[2], capability_->active_bearer_path_);
+  capability_->UpdateActiveBearer();
+  ASSERT_TRUE(capability_->GetActiveBearer() != NULL);
+  EXPECT_EQ(active_paths[2], capability_->GetActiveBearer()->dbus_path());
 
-  // Check that |active_bearer_path_| is empty if no active bearers are
-  // returned.
+  // Check that |active_bearer_| is NULL if no active bearers are returned.
   capability_->OnBearersChanged({inactive_paths[0],
                                  inactive_paths[1],
                                  inactive_paths[2],
                                  inactive_paths[1]});
-  capability_->UpdateActiveBearerPath();
-  EXPECT_TRUE(capability_->active_bearer_path_.empty());
+  capability_->UpdateActiveBearer();
+  EXPECT_TRUE(capability_->GetActiveBearer() == NULL);
 
   // Check that returning multiple bearers causes death.
   capability_->OnBearersChanged({active_paths[0],
@@ -1278,37 +1276,12 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath) {
                                  inactive_paths[2],
                                  active_paths[1],
                                  inactive_paths[1]});
-  EXPECT_DEATH(capability_->UpdateActiveBearerPath(),
+  EXPECT_DEATH(capability_->UpdateActiveBearer(),
                "Found more than one active bearer.");
 
   capability_->OnBearersChanged({});
-  capability_->UpdateActiveBearerPath();
-  EXPECT_TRUE(capability_->active_bearer_path_.empty());
-
-  // By default, Bearers created by this test fixture indicate that
-  // they use DHCP for IP configuration. Hence, we should not start
-  // PPP for them...
-  scoped_refptr<MockCellular> mock_cellular =
-      new MockCellular(&modem_info_, "", "", -1, Cellular::kTypeUniversal,
-                       "", "", "", &proxy_factory_);
-  capability_->cellular_ = mock_cellular;
-  EXPECT_CALL(*mock_cellular, StartPPP(_)).Times(0);
-  capability_->OnBearersChanged({active_paths[2]});
-  capability_->UpdateActiveBearerPath();
-
-  // ...but if we change the Bearer to PPP, then we should StartPPP.
-  DBusPropertiesMap ip4config;
-  DBusPropertiesMap &bearer_properties(
-      *proxy_factory_.mutable_active_bearer_properties());
-  ip4config[CellularCapabilityUniversal::kIpConfigPropertyMethod].writer()
-      .append_uint32(MM_BEARER_IP_METHOD_PPP);
-  bearer_properties.erase(MM_BEARER_PROPERTY_IP4CONFIG);
-  DBus::MessageIter writer =
-      bearer_properties[MM_BEARER_PROPERTY_IP4CONFIG].writer();
-  writer << ip4config;
-  EXPECT_CALL(*mock_cellular, StartPPP(_)).Times(1);
-  capability_->OnBearersChanged({active_paths[2]});
-  capability_->UpdateActiveBearerPath();
+  capability_->UpdateActiveBearer();
+  EXPECT_TRUE(capability_->GetActiveBearer() == NULL);
 }
 
 // Validates expected behavior of Connect function

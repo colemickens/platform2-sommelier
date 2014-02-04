@@ -21,6 +21,7 @@
 namespace shill {
 
 class Cellular;
+class CellularBearer;
 class Error;
 class ModemInfo;
 class ProxyFactory;
@@ -173,6 +174,11 @@ class CellularCapability {
   // TODO(jglasgow): Implement real error handling.
   virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
 
+  // Returns a pointer to the current active bearer object or NULL if no active
+  // bearer exists. The returned bearer object is managed by this capability
+  // object. This implementation returns NULL by default.
+  virtual CellularBearer *GetActiveBearer() const;
+
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;
 
@@ -222,7 +228,7 @@ class CellularCapability {
   friend class CellularCapabilityUniversalCDMATest;
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, TearDown);
 

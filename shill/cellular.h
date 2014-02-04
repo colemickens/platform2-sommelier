@@ -240,6 +240,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   // getters
   const std::string &dbus_owner() const { return dbus_owner_; }
+  const std::string &dbus_service() const { return dbus_service_; }
   const std::string &dbus_path() const { return dbus_path_; }
   const Operator &home_provider() const { return home_provider_; }
   const std::string &carrier() const { return carrier_; }
@@ -355,6 +356,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, DropConnection);
   FRIEND_TEST(CellularTest, DropConnectionPPP);
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
+  FRIEND_TEST(CellularTest, EstablishLinkDHCP);
+  FRIEND_TEST(CellularTest, EstablishLinkPPP);
+  FRIEND_TEST(CellularTest, EstablishLinkStatic);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, LinkEventUpWithPPP);

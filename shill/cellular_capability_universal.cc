@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/cellular_bearer.h"
 #include "shill/cellular_service.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
@@ -65,7 +66,6 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
     "operator-code";
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
-const char CellularCapabilityUniversal::kIpConfigPropertyMethod[] = "method";
 const char CellularCapabilityUniversal::kALT3100ModelId[] = "ALT3100";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
@@ -385,12 +385,11 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
     SLOG(Cellular, 1) << "Processed deferred registration loss before "
                       << "disconnect request.";
   }
-  if (active_bearer_path_.empty()) {
-    LOG(WARNING) << "In " << __func__ << "(): "
-                 << "Ignoring attempt to disconnect without bearer";
-  } else if (modem_simple_proxy_.get()) {
-    SLOG(Cellular, 2) << "Disconnect bearer " << active_bearer_path_;
-    modem_simple_proxy_->Disconnect(active_bearer_path_,
+  if (modem_simple_proxy_.get()) {
+    SLOG(Cellular, 2) << "Disconnect all bearers.";
+    // If "/" is passed as the bearer path, ModemManager will disconnect all
+    // bearers.
+    modem_simple_proxy_->Disconnect(DBus::Path(kRootPath),
                                     error,
                                     callback,
                                     kTimeoutDisconnect);
@@ -788,8 +787,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
       service->SetLastGoodApn(apn_try_list_.front());
       apn_try_list_.clear();
     }
-    active_bearer_path_ = path;
-    SLOG(Cellular, 2) << "Connected bearer " << active_bearer_path_;
+    SLOG(Cellular, 2) << "Connected bearer " << path;
   }
 
   if (!callback.is_null())
@@ -1011,78 +1009,30 @@ void CellularCapabilityUniversal::UpdateServingOperator() {
   }
 }
 
-void CellularCapabilityUniversal::UpdateActiveBearerPath() {
+void CellularCapabilityUniversal::UpdateActiveBearer() {
+  SLOG(Cellular, 3) << __func__;
+
   // Look for the first active bearer and use its path as the connected
   // one. Right now, we don't allow more than one active bearer.
-  DBus::Path new_bearer_path;
-  uint32 ipconfig_method(MM_BEARER_IP_METHOD_UNKNOWN);
-  string network_device;
-
+  active_bearer_.reset();
   for (const auto &path : bearer_paths_) {
-    scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
-        proxy_factory()->CreateDBusPropertiesProxy(path,
-                                                   cellular()->dbus_owner()));
-    DBusPropertiesMap properties(
-        properties_proxy->GetAll(MM_DBUS_INTERFACE_BEARER));
-    if (properties.empty()) {
-      LOG(WARNING) << "Could not get properties of bearer \"" << path
-                   << "\". Bearer is likely gone and thus ignored.";
+    scoped_ptr<CellularBearer> bearer(
+        new CellularBearer(proxy_factory(), path, cellular()->dbus_service()));
+    // The bearer object may have vanished before ModemManager updates the
+    // 'Bearers' property.
+    if (!bearer->Init())
       continue;
-    }
 
-    bool connected = false;
-    if (!DBusProperties::GetBool(
-            properties, MM_BEARER_PROPERTY_CONNECTED, &connected)) {
-      SLOG(Cellular, 2) << "Bearer does not indicate whether it is connected "
-                           "or not. Assume it is not connected.";
+    if (!bearer->connected())
       continue;
-    }
-
-    if (!connected) {
-      continue;
-    }
 
     SLOG(Cellular, 2) << "Found active bearer \"" << path << "\".";
-    CHECK(new_bearer_path.empty()) << "Found more than one active bearer.";
-
-    if (DBusProperties::GetString(
-            properties, MM_BEARER_PROPERTY_INTERFACE, &network_device)) {
-      SLOG(Cellular, 2) << "Bearer uses network interface \"" << network_device
-                        << "\".";
-    } else {
-      SLOG(Cellular, 2) << "Bearer does not specify network interface.";
-    }
-
-    // TODO(quiche): Add support for scenarios where the bearer is
-    // IPv6 only, or where there are conflicting configuration methods
-    // for IPv4 and IPv6. crbug.com/248360.
-    DBusPropertiesMap bearer_ip4config;
-    DBusProperties::GetDBusPropertiesMap(
-        properties, MM_BEARER_PROPERTY_IP4CONFIG, &bearer_ip4config);
-
-    if (DBusProperties::GetUint32(
-            bearer_ip4config, kIpConfigPropertyMethod, &ipconfig_method)) {
-      SLOG(Cellular, 2) << "Bearer has IPv4 config method " << ipconfig_method;
-    } else {
-      SLOG(Cellular, 2) << "Bearer does not specify IPv4 config method.";
-      for (const auto &i : bearer_ip4config) {
-        SLOG(Cellular, 5) << "Bearer IPv4 config has key \""
-                          << i.first
-                          << "\".";
-      }
-    }
-    new_bearer_path = path;
+    CHECK(!active_bearer_) << "Found more than one active bearer.";
+    active_bearer_ = bearer.Pass();
   }
-  active_bearer_path_ = new_bearer_path;
-  if (new_bearer_path.empty()) {
+
+  if (!active_bearer_)
     SLOG(Cellular, 2) << "No active bearer found.";
-    return;
-  }
-
-  // TODO(benchan): Move the following code outside this method.
-  if (ipconfig_method == MM_BEARER_IP_METHOD_PPP) {
-    cellular()->StartPPP(network_device);
-  }
 }
 
 void CellularCapabilityUniversal::InitAPNList() {
@@ -1391,6 +1341,10 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   return parsed;
 }
 
+CellularBearer *CellularCapabilityUniversal::GetActiveBearer() const {
+  return active_bearer_.get();
+}
+
 string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
   // If we know that the modem is an E362, return LTE here to make sure that
   // Chrome sees LTE as the network technology even if the actual technology is
@@ -1435,8 +1389,8 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     const vector<string> &/* invalidated_properties */) {
 
   // Update the bearers property before the modem state property as
-  // OnModemStateChanged may call UpdateActiveBearerPath, which reads the
-  // bearers property.
+  // OnModemStateChanged may call UpdateActiveBearer, which reads the bearers
+  // property.
   RpcIdentifiers bearers;
   if (DBusProperties::GetRpcIdentifiers(properties, MM_MODEM_PROPERTY_BEARERS,
                                         &bearers)) {
@@ -1672,6 +1626,13 @@ void CellularCapabilityUniversal::OnModemStateChanged(
     Cellular::ModemState state) {
   SLOG(Cellular, 3) << __func__ << ": " << Cellular::GetModemStateString(state);
 
+  if (state == Cellular::kModemStateConnected) {
+    // This assumes that ModemManager updates the Bearers list and the Bearer
+    // properties before changing Modem state to Connected.
+    SLOG(Cellular, 2) << "Update active bearer.";
+    UpdateActiveBearer();
+  }
+
   cellular()->OnModemStateChanged(state);
   // TODO(armansito): Move the deferred enable logic to Cellular
   // (See crbug.com/279499).
@@ -1680,15 +1641,6 @@ void CellularCapabilityUniversal::OnModemStateChanged(
     SLOG(Cellular, 2) << "Enabling modem after deferring.";
     deferred_enable_modem_callback_.Run();
     deferred_enable_modem_callback_.Reset();
-  } else if (state == Cellular::kModemStateConnected) {
-    // This assumes that ModemManager updates the Bearers list and the Bearer
-    // properties before changing Modem state to Connected.
-    //
-    // TODO(benchan): Instead of explicitly querying the properties of bearers
-    // to determine the active bearer, refactor the bearer related code into a
-    // proper bearer class that observes DBus properties changes.
-    SLOG(Cellular, 2) << "Updating bearer path to reflect the active bearer.";
-    UpdateActiveBearerPath();
   }
 }
 

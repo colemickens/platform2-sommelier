@@ -19,6 +19,7 @@
 #include <mobile_provider.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/cellular_bearer.h"
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_capability_universal.h"
@@ -768,6 +769,14 @@ void Cellular::OnDisconnectFailed() {
 void Cellular::EstablishLink() {
   SLOG(Cellular, 2) << __func__;
   CHECK_EQ(kStateConnected, state_);
+
+  CellularBearer *bearer = capability_->GetActiveBearer();
+  if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodPPP) {
+    LOG(INFO) << "Start PPP connection on " << bearer->data_interface();
+    StartPPP(bearer->data_interface());
+    return;
+  }
+
   unsigned int flags = 0;
   if (manager()->device_info()->GetFlags(interface_index(), &flags) &&
       (flags & IFF_UP) != 0) {
@@ -791,13 +800,31 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
     LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
-    if (AcquireIPConfig()) {
+
+    // TODO(benchan): IPv6 support is currently disabled for cellular devices.
+    // Check and obtain IPv6 configuration from the bearer when we later enable
+    // IPv6 support on cellular devices.
+    CellularBearer *bearer = capability_->GetActiveBearer();
+    if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodStatic) {
+      SLOG(Cellular, 2) << "Assign static IP configuration from bearer.";
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
-    } else {
-      LOG(ERROR) << "Unable to acquire DHCP config.";
+      AssignIPConfig(*bearer->ipv4_config_properties());
+      return;
     }
-  } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
+
+    if (AcquireIPConfig()) {
+      SLOG(Cellular, 2) << "Start DHCP to acquire IP configuration.";
+      SelectService(service_);
+      SetServiceState(Service::kStateConfiguring);
+      return;
+    }
+
+    LOG(ERROR) << "Unable to acquire IP configuration over DHCP.";
+    return;
+  }
+
+  if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
     LOG(INFO) << link_name() << " is down.";
     SetState(kStateConnected);
     DropConnection();

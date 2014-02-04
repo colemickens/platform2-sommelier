@@ -29,6 +29,7 @@ struct mobile_provider;
 
 namespace shill {
 
+class CellularBearer;
 class ModemInfo;
 
 // CellularCapabilityUniversal handles modems using the
@@ -98,6 +99,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void Reset(Error *error, const ResultCallback &callback);
 
   virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
+  virtual CellularBearer *GetActiveBearer() const;
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
@@ -154,9 +156,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kOperatorShortProperty[];
   static const char kOperatorCodeProperty[];
   static const char kOperatorAccessTechnologyProperty[];
-
-  // As above, consider having this in ModemManager-names.h.
-  static const char kIpConfigPropertyMethod[];
 
   // Modem Model ID strings.  From modem firmware via modemmanager.
   static const char kALT3100ModelId[];
@@ -229,7 +228,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               TerminationActionRemovedByStopModem);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearerPath);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -310,8 +309,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // |home_provider_info_|.
   void InitAPNList();
 
-  // Updates |active_bearer_path_| to match the currently active bearer.
-  void UpdateActiveBearerPath();
+  // Updates |active_bearer_| to match the currently active bearer.
+  void UpdateActiveBearer();
 
   Stringmap ParseScanResult(const ScanResult &result);
 
@@ -447,7 +446,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_;
   std::string sim_path_;
-  DBus::Path active_bearer_path_;
+  scoped_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_;
 

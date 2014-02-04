@@ -9,6 +9,7 @@
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 
+#include "shill/cellular_bearer.h"
 #include "shill/cellular_operator_info.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"

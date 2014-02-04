@@ -360,6 +360,9 @@ class Device : public base::RefCounted<Device> {
   // request was successfully sent.
   bool AcquireIPConfigWithLeaseName(const std::string &lease_name);
 
+  // Assigns the IP configuration |properties| to |ipconfig_|.
+  void AssignIPConfig(const IPConfig::Properties &properties);
+
   // Callback invoked on successful IP configuration updates.
   void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig);
 
