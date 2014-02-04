@@ -580,14 +580,20 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
-  // User activity corresponding to brightness-up and brightness-down key
-  // presses shouldn't increase the brightness, though.
+  // User activity corresponding to brightness- or volume-related key presses
+  // shouldn't increase the brightness, though.
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       0.0, BacklightController::TRANSITION_INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS);
   EXPECT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity(USER_ACTIVITY_VOLUME_UP_KEY_PRESS);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity(USER_ACTIVITY_VOLUME_DOWN_KEY_PRESS);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity(USER_ACTIVITY_VOLUME_MUTE_KEY_PRESS);
   EXPECT_EQ(0, backlight_.current_level());
 
   // Enter presentation mode.  The same actions that forced the backlight

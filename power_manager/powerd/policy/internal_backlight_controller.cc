@@ -287,9 +287,12 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
   // Don't increase the brightness automatically when the user hits a
   // brightness key: if they hit brightness-up, IncreaseUserBrightness()
   // will be called soon anyway; if they hit brightness-down, the screen
-  // shouldn't get turned back on.
+  // shouldn't get turned back on. Also ignore volume keys.
   if (type != USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS &&
-      type != USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS)
+      type != USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS &&
+      type != USER_ACTIVITY_VOLUME_UP_KEY_PRESS &&
+      type != USER_ACTIVITY_VOLUME_DOWN_KEY_PRESS &&
+      type != USER_ACTIVITY_VOLUME_MUTE_KEY_PRESS)
     EnsureUserBrightnessIsNonzero();
 }
 
