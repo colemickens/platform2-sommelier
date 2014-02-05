@@ -57,6 +57,9 @@ class ExternalBacklightController : public BacklightController {
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
   void UpdateScreenPowerState();
 
+  // Sends notifications to |observers_| about the current brightness level.
+  void NotifyObservers();
+
   system::DisplayPowerSetterInterface* display_power_setter_;  // weak
 
   ObserverList<BacklightControllerObserver> observers_;

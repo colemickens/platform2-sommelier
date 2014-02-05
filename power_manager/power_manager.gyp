@@ -83,6 +83,7 @@
       'target_name': 'libpolicy_stub',
       'type': 'static_library',
       'sources': [
+        'powerd/policy/backlight_controller_observer_stub.cc',
         'powerd/policy/backlight_controller_stub.cc',
       ],
     },

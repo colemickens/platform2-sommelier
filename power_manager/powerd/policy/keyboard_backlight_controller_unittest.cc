@@ -13,8 +13,8 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
-#include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 
@@ -34,13 +34,10 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_),
         test_api_(&controller_) {
-  }
-
-  virtual void SetUp() {
     controller_.AddObserver(&observer_);
   }
 
-  virtual void TearDown() {
+  virtual ~KeyboardBacklightControllerTest() {
     controller_.RemoveObserver(&observer_);
   }
 
@@ -80,7 +77,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   FakePrefs prefs_;
   system::BacklightStub backlight_;
   system::AmbientLightSensorStub light_sensor_;
-  MockBacklightControllerObserver observer_;
+  BacklightControllerObserverStub observer_;
   KeyboardBacklightController controller_;
   KeyboardBacklightController::TestApi test_api_;
 };

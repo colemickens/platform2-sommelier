@@ -61,6 +61,7 @@ void ExternalBacklightController::HandleChromeStart() {
                                          chromeos::DISPLAY_POWER_ALL_OFF :
                                          chromeos::DISPLAY_POWER_ALL_ON,
                                          base::TimeDelta());
+  NotifyObservers();
 }
 
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
@@ -122,12 +123,19 @@ int ExternalBacklightController::GetNumUserAdjustments() const {
 void ExternalBacklightController::UpdateScreenPowerState() {
   bool should_turn_off = off_for_inactivity_ || suspended_ || shutting_down_;
   if (should_turn_off != currently_off_) {
+    currently_off_ = should_turn_off;
     display_power_setter_->SetDisplayPower(should_turn_off ?
                                            chromeos::DISPLAY_POWER_ALL_OFF :
                                            chromeos::DISPLAY_POWER_ALL_ON,
                                            base::TimeDelta());
-    currently_off_ = should_turn_off;
+    NotifyObservers();
   }
+}
+
+void ExternalBacklightController::NotifyObservers() {
+  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
+                    OnBrightnessChanged(currently_off_ ? 0.0 : 100.0,
+                                        BRIGHTNESS_CHANGE_AUTOMATED, this));
 }
 
 }  // namespace policy

@@ -12,7 +12,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display_power_setter_stub.h"
@@ -193,7 +193,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   Init(POWER_BATTERY);
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
 
-  MockBacklightControllerObserver observer;
+  BacklightControllerObserverStub observer;
   controller_->AddObserver(&observer);
 
   // Send enough ambient light sensor samples to trigger a brightness change.
@@ -208,6 +208,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Increase the brightness and check that the observer is notified.
   observer.Clear();
@@ -217,6 +218,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Decrease the brightness.
   observer.Clear();
@@ -226,6 +228,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Set the brightness to a low level.
   observer.Clear();
@@ -237,6 +240,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Plug the device in.
   observer.Clear();
@@ -246,6 +250,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Dim the backlight.
   observer.Clear();
@@ -255,6 +260,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   controller_->RemoveObserver(&observer);
 }
@@ -707,7 +713,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   Init(POWER_AC);
   ASSERT_EQ(PercentToLevel(50.0), backlight_.current_level());
 
-  MockBacklightControllerObserver observer;
+  BacklightControllerObserverStub observer;
   controller_->AddObserver(&observer);
 
   // When an AC brightness policy is sent while on AC power, the brightness
@@ -721,6 +727,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // Passing a battery policy while on AC shouldn't do anything.
   observer.Clear();
@@ -737,6 +744,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
+  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
   // An empty policy shouldn't do anything.
   observer.Clear();

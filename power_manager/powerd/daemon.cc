@@ -489,9 +489,10 @@ void Daemon::Init() {
          display_backlight_controller_.get())->Init(
              display_backlight_.get(), prefs_.get(), light_sensor_.get(),
              display_power_setter_.get());
-      display_backlight_controller_->AddObserver(this);
     }
   }
+  if (display_backlight_controller_)
+    display_backlight_controller_->AddObserver(this);
 
   if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
     if (!light_sensor_.get()) {
