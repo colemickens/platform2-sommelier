@@ -60,41 +60,20 @@ class CellularCapabilityClassic : public CellularCapability {
                             ModemInfo *modem_info);
   virtual ~CellularCapabilityClassic();
 
-  virtual void StopModem(Error *error, const ResultCallback &callback);
-  virtual void Connect(const DBusPropertiesMap &properties, Error *error,
-                       const ResultCallback &callback);
-  virtual void Disconnect(Error *error, const ResultCallback &callback);
-  virtual void DisconnectCleanup();
-
-  virtual void Activate(const std::string &carrier,
-                        Error *error, const ResultCallback &callback);
-
-  // Network registration.
-  virtual void RegisterOnNetwork(const std::string &network_id,
-                                 Error *error,
-                                 const ResultCallback &callback);
-
-  // PIN management. The default implementation fails by returning an error.
-  virtual void RequirePIN(const std::string &pin, bool require,
-                          Error *error, const ResultCallback &callback);
-  virtual void EnterPIN(const std::string &pin,
-                        Error *error, const ResultCallback &callback);
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin,
-                          Error *error, const ResultCallback &callback);
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error, const ResultCallback &callback);
-
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error, const ResultCallback &callback);
-
-  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
-
+  // Inherited from CellularCapability.
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
-      const DBusPropertiesMap &properties,
-      const std::vector<std::string> &invalidated_properties);
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties) override;
+  virtual void StopModem(Error *error, const ResultCallback &callback) override;
+  virtual void SetCarrier(const std::string &carrier,
+                          Error *error,
+                          const ResultCallback &callback) override;
+  virtual void Connect(const DBusPropertiesMap &properties,
+                       Error *error,
+                       const ResultCallback &callback) override;
+  virtual void Disconnect(Error *error,
+                          const ResultCallback &callback) override;
 
  protected:
   typedef std::vector<base::Closure> CellularTaskList;
@@ -116,8 +95,6 @@ class CellularCapabilityClassic : public CellularCapability {
   virtual void ReleaseProxies();
   virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
 
-  static void OnUnsupportedOperation(const char *operation, Error *error);
-
   // Runs the next task in a list.
   // Precondition: |tasks| is not empty.
   void RunNextStep(CellularTaskList *tasks);
@@ -127,8 +104,10 @@ class CellularCapabilityClassic : public CellularCapability {
   // to true if the next task should be run regardless of the result of the
   // just-completed task.  |tasks| is the list of tasks remaining.  |error| is
   // the result of the just-completed task.
-  void StepCompletedCallback(const ResultCallback &callback, bool ignore_error,
-                             CellularTaskList *tasks, const Error &error);
+  void StepCompletedCallback(const ResultCallback &callback,
+                             bool ignore_error,
+                             CellularTaskList *tasks,
+                             const Error &error);
 
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
@@ -163,8 +142,9 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 
   // Method reply and signal callbacks from Modem interface
-  void OnModemStateChangedSignal(
-      uint32 old_state, uint32 new_state, uint32 reason);
+  void OnModemStateChangedSignal(uint32 old_state,
+                                 uint32 new_state,
+                                 uint32 reason);
   void OnGetModemInfoReply(const ResultCallback &callback,
                            const ModemHardwareInfo &info,
                            const Error &error);
@@ -176,7 +156,6 @@ class CellularCapabilityClassic : public CellularCapability {
 
   Cellular *cellular_;
   base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
-
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemGobiProxyInterface> gobi_proxy_;
 

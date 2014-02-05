@@ -82,6 +82,12 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
     InitProperties();
 }
 
+CellularCapabilityGSM::~CellularCapabilityGSM() {}
+
+string CellularCapabilityGSM::GetTypeString() const {
+  return kTechnologyFamilyGsm;
+}
+
 KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
   KeyValueStore status;
   status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);

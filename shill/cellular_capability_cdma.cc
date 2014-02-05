@@ -40,6 +40,8 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
   SLOG(Cellular, 2) << "Cellular capability constructed: CDMA";
 }
 
+CellularCapabilityCDMA::~CellularCapabilityCDMA() {}
+
 void CellularCapabilityCDMA::InitProxies() {
   CellularCapabilityClassic::InitProxies();
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
@@ -53,6 +55,10 @@ void CellularCapabilityCDMA::InitProxies() {
   proxy_->set_registration_state_callback(
       Bind(&CellularCapabilityCDMA::OnRegistrationStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
+}
+
+string CellularCapabilityCDMA::GetTypeString() const {
+  return kTechnologyFamilyCdma;
 }
 
 void CellularCapabilityCDMA::StartModem(Error *error,

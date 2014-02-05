@@ -152,6 +152,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       &CellularCapabilityUniversal::SimLockStatusToProperty);
 }
 
+CellularCapabilityUniversal::~CellularCapabilityUniversal() {}
+
 KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
     Error */*error*/) {
   KeyValueStore status;
@@ -394,16 +396,6 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
                                     callback,
                                     kTimeoutDisconnect);
   }
-}
-
-void CellularCapabilityUniversal::DisconnectCleanup() {
-  SLOG(Cellular, 2) << __func__;
-}
-
-void CellularCapabilityUniversal::Activate(const string &carrier,
-                                           Error *error,
-                                           const ResultCallback &callback) {
-  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout() {

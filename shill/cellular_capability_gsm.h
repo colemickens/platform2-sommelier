@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CAPABILITY_GSM_
-#define SHILL_CELLULAR_CAPABILITY_GSM_
+#ifndef SHILL_CELLULAR_CAPABILITY_GSM_H_
+#define SHILL_CELLULAR_CAPABILITY_GSM_H_
 
 #include <deque>
 #include <string>
@@ -32,65 +32,70 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   CellularCapabilityGSM(Cellular *cellular,
                         ProxyFactory *proxy_factory,
                         ModemInfo *modem_info);
+  virtual ~CellularCapabilityGSM();
 
   // Inherited from CellularCapability.
-  virtual void StartModem(Error *error, const ResultCallback &callback);
-  virtual void OnServiceCreated();
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties);
-  virtual void Connect(const DBusPropertiesMap &properties, Error *error,
-                       const ResultCallback &callback);
-  // The following two methods never need to report results
-  // via callbacks, which is why they don't take callbacks
-  // as arguments.
-  virtual void GetSignalQuality();
-  virtual void GetRegistrationState();
-  // The following six methods are only ever called as
-  // callbacks (from the main loop), which is why they
-  // don't take an Error * argument.
-  virtual void GetProperties(const ResultCallback &callback);
+  virtual std::string GetTypeString() const override;
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties) override;
+  virtual void StartModem(Error *error,
+                          const ResultCallback &callback) override;
+  virtual void Scan(Error *error,
+                    const ResultStringmapsCallback &callback) override;
+  virtual void RegisterOnNetwork(const std::string &network_id,
+                                 Error *error,
+                                 const ResultCallback &callback) override;
+  virtual bool IsRegistered() const override;
+  virtual void SetUnregistered(bool searching) override;
+  virtual void OnServiceCreated() override;
+  virtual std::string CreateFriendlyServiceName() override;
+  virtual std::string GetNetworkTechnologyString() const override;
+  virtual std::string GetRoamingStateString() const override;
+  virtual bool AllowRoaming() override;
+  virtual void GetSignalQuality() override;
+  virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  virtual void Connect(const DBusPropertiesMap &properties,
+                       Error *error,
+                       const ResultCallback &callback) override;
+  virtual void RequirePIN(const std::string &pin,
+                          bool require,
+                          Error *error,
+                          const ResultCallback &callback) override;
+  virtual void EnterPIN(const std::string &pin,
+                        Error *error,
+                        const ResultCallback &callback) override;
+  virtual void UnblockPIN(const std::string &unblock_code,
+                          const std::string &pin,
+                          Error *error,
+                          const ResultCallback &callback) override;
+  virtual void ChangePIN(const std::string &old_pin,
+                         const std::string &new_pin,
+                         Error *error,
+                         const ResultCallback &callback) override;
+
+  // Inherited from CellularCapabilityClassic.
+  virtual void GetRegistrationState() override;
+  // The following six methods are only ever called as callbacks (from the main
+  // loop), which is why they don't take an Error * argument.
+  virtual void GetProperties(const ResultCallback &callback) override;
+
   virtual void GetIMEI(const ResultCallback &callback);
   virtual void GetIMSI(const ResultCallback &callback);
   virtual void GetSPN(const ResultCallback &callback);
   virtual void GetMSISDN(const ResultCallback &callback);
   virtual void Register(const ResultCallback &callback);
 
-  virtual void RegisterOnNetwork(const std::string &network_id,
-                                 Error *error,
-                                 const ResultCallback &callback);
-  virtual bool IsRegistered() const;
-  virtual void SetUnregistered(bool searching);
-  virtual std::string CreateFriendlyServiceName();
-  virtual void RequirePIN(const std::string &pin, bool require,
-                          Error *error, const ResultCallback &callback);
-  virtual void EnterPIN(const std::string &pin,
-                        Error *error, const ResultCallback &callback);
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin,
-                          Error *error, const ResultCallback &callback);
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error, const ResultCallback &callback);
-  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
-  virtual std::string GetNetworkTechnologyString() const;
-  virtual std::string GetRoamingStateString() const;
-  virtual std::string GetTypeString() const {
-    return kTechnologyFamilyGsm;
-  }
-  virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &properties,
-      const std::vector<std::string> &invalidated_properties);
-  virtual bool AllowRoaming();
-
  protected:
-  virtual void InitProxies();
-  virtual void ReleaseProxies();
+  // Inherited from CellularCapabilityClassic.
+  virtual void InitProxies() override;
+  virtual void ReleaseProxies() override;
+  virtual void UpdateStatus(const DBusPropertiesMap &properties) override;
 
   // Initializes properties, such as IMSI, which are required before the device
   // is enabled.
   virtual void InitProperties();
-
-  virtual void UpdateStatus(const DBusPropertiesMap &properties);
 
  private:
   friend class CellularTest;
@@ -246,4 +251,4 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CAPABILITY_GSM_
+#endif  // SHILL_CELLULAR_CAPABILITY_GSM_H_

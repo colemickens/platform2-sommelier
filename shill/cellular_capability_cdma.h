@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CAPABILITY_CDMA_
-#define SHILL_CELLULAR_CAPABILITY_CDMA_
+#ifndef SHILL_CELLULAR_CAPABILITY_CDMA_H_
+#define SHILL_CELLULAR_CAPABILITY_CDMA_H_
 
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
@@ -27,27 +27,31 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   CellularCapabilityCDMA(Cellular *cellular,
                          ProxyFactory *proxy_factory,
                          ModemInfo *modem_info);
+  virtual ~CellularCapabilityCDMA();
 
   // Inherited from CellularCapability.
-  virtual void StartModem(Error *error, const ResultCallback &callback);
-  virtual void OnServiceCreated();
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties);
-  virtual void Activate(const std::string &carrier, Error *error,
-                        const ResultCallback &callback);
-  virtual void DisconnectCleanup();
-  virtual bool IsActivating() const;
-  virtual bool IsRegistered() const;
-  virtual void SetUnregistered(bool searching);
-  virtual std::string CreateFriendlyServiceName();
-  virtual std::string GetNetworkTechnologyString() const;
-  virtual std::string GetRoamingStateString() const;
-  virtual void GetSignalQuality();
-  virtual std::string GetTypeString() const {
-    return kTechnologyFamilyCdma;
-  }
-  virtual bool AllowRoaming();
-  virtual void GetRegistrationState();
-  virtual void GetProperties(const ResultCallback &callback);
+  virtual std::string GetTypeString() const override;
+  virtual void StartModem(Error *error,
+                          const ResultCallback &callback) override;
+  virtual void Activate(const std::string &carrier,
+                        Error *error,
+                        const ResultCallback &callback) override;
+  virtual bool IsActivating() const override;
+  virtual bool IsRegistered() const override;
+  virtual void SetUnregistered(bool searching) override;
+  virtual void OnServiceCreated() override;
+  virtual std::string CreateFriendlyServiceName() override;
+  virtual std::string GetNetworkTechnologyString() const override;
+  virtual std::string GetRoamingStateString() const override;
+  virtual bool AllowRoaming() override;
+  virtual void GetSignalQuality() override;
+  virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  virtual void DisconnectCleanup() override;
+
+  // Inherited from CellularCapabilityClassic.
+  virtual void GetRegistrationState() override;
+  virtual void GetProperties(const ResultCallback &callback) override;
+
   virtual void GetMEID(const ResultCallback &callback);
 
   uint32 activation_state() const { return activation_state_; }
@@ -55,9 +59,10 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   uint32 registration_state_1x() const { return registration_state_1x_; }
 
  protected:
-  virtual void InitProxies();
-  virtual void ReleaseProxies();
-  virtual void UpdateStatus(const DBusPropertiesMap &properties);
+  // Inherited from CellularCapabilityClassic.
+  virtual void InitProxies() override;
+  virtual void ReleaseProxies() override;
+  virtual void UpdateStatus(const DBusPropertiesMap &properties) override;
 
  private:
   friend class CellularCapabilityCDMATest;
@@ -116,4 +121,4 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CAPABILITY_CDMA_
+#endif  // SHILL_CELLULAR_CAPABILITY_CDMA_H_

@@ -58,57 +58,62 @@ class CellularCapabilityUniversal : public CellularCapability {
   CellularCapabilityUniversal(Cellular *cellular,
                               ProxyFactory *proxy_factory,
                               ModemInfo *modem_info);
+  virtual ~CellularCapabilityUniversal();
 
   // Inherited from CellularCapability.
+  virtual std::string GetTypeString() const override;
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties) override;
   // Checks the modem state.  If the state is kModemStateDisabled, then the
   // modem is enabled.  Otherwise, the enable command is buffered until the
   // modem becomes disabled.  ModemManager rejects the enable command if the
   // modem is not disabled, for example, if it is initializing instead.
-  virtual void StartModem(Error *error, const ResultCallback &callback);
-  virtual void StopModem(Error *error, const ResultCallback &callback);
-  virtual void Connect(const DBusPropertiesMap &properties, Error *error,
-                       const ResultCallback &callback);
-  virtual void Disconnect(Error *error, const ResultCallback &callback);
-  virtual void DisconnectCleanup();
-  virtual void Activate(const std::string &carrier,
-                        Error *error, const ResultCallback &callback);
-  virtual void CompleteActivation(Error *error);
-
-  virtual void OnServiceCreated();
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties);
-  virtual void GetProperties();
-  virtual bool IsRegistered() const;
-  virtual bool IsServiceActivationRequired() const;
-  virtual void Register(const ResultCallback &callback);
-
+  virtual void StartModem(Error *error,
+                          const ResultCallback &callback) override;
+  virtual void StopModem(Error *error, const ResultCallback &callback) override;
+  virtual void Reset(Error *error, const ResultCallback &callback) override;
+  virtual bool IsServiceActivationRequired() const override;
+  virtual void CompleteActivation(Error *error) override;
+  virtual void Scan(Error *error,
+                    const ResultStringmapsCallback &callback) override;
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
-                                 const ResultCallback &callback);
-  virtual void SetUnregistered(bool searching);
-  virtual std::string CreateFriendlyServiceName();
-  virtual void RequirePIN(const std::string &pin, bool require,
-                          Error *error, const ResultCallback &callback);
+                                 const ResultCallback &callback) override;
+  virtual bool IsRegistered() const override;
+  virtual void SetUnregistered(bool searching) override;
+  virtual void OnServiceCreated() override;
+  virtual std::string CreateFriendlyServiceName() override;
+  virtual std::string GetNetworkTechnologyString() const override;
+  virtual std::string GetRoamingStateString() const override;
+  virtual bool AllowRoaming() override;
+  virtual void GetSignalQuality() override;
+  virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  virtual void Connect(const DBusPropertiesMap &properties,
+                       Error *error,
+                       const ResultCallback &callback) override;
+  virtual void Disconnect(Error *error,
+                          const ResultCallback &callback) override;
+  virtual CellularBearer *GetActiveBearer() const override;
+  virtual void RequirePIN(const std::string &pin,
+                          bool require,
+                          Error *error,
+                          const ResultCallback &callback) override;
   virtual void EnterPIN(const std::string &pin,
-                        Error *error, const ResultCallback &callback);
+                        Error *error,
+                        const ResultCallback &callback) override;
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          Error *error, const ResultCallback &callback);
+                          Error *error,
+                          const ResultCallback &callback) override;
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         Error *error, const ResultCallback &callback);
-  virtual void Reset(Error *error, const ResultCallback &callback);
+                         Error *error,
+                         const ResultCallback &callback) override;
 
-  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
-  virtual CellularBearer *GetActiveBearer() const;
-  virtual std::string GetNetworkTechnologyString() const;
-  virtual std::string GetRoamingStateString() const;
-  virtual void GetSignalQuality();
-  virtual std::string GetTypeString() const;
-  virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
-  virtual bool AllowRoaming();
+  virtual void GetProperties();
+  virtual void Register(const ResultCallback &callback);
 
  protected:
   virtual void InitProxies();

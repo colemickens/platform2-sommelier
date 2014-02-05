@@ -47,9 +47,7 @@ CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
     Cellular *cellular,
     ProxyFactory *proxy_factory,
     ModemInfo *modem_info)
-    : CellularCapabilityUniversal(cellular,
-                                  proxy_factory,
-                                  modem_info),
+    : CellularCapabilityUniversal(cellular, proxy_factory, modem_info),
       weak_cdma_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       cdma_1x_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -60,6 +58,8 @@ CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
   // TODO(armansito): Update PRL for activation over cellular.
   // See crbug.com/197330.
 }
+
+CellularCapabilityUniversalCDMA::~CellularCapabilityUniversalCDMA() {}
 
 void CellularCapabilityUniversalCDMA::InitProxies() {
   SLOG(Cellular, 2) << __func__;
@@ -78,10 +78,9 @@ void CellularCapabilityUniversalCDMA::ReleaseProxies() {
   CellularCapabilityUniversal::ReleaseProxies();
 }
 
-void CellularCapabilityUniversalCDMA::Activate(
-    const string &carrier,
-    Error *error,
-    const ResultCallback &callback) {
+void CellularCapabilityUniversalCDMA::Activate(const string &carrier,
+                                               Error *error,
+                                               const ResultCallback &callback) {
   // Currently activation over the cellular network is not supported using
   // ModemManager-next. Service activation is currently carried through over
   // non-cellular networks and only the final step of the OTA activation

@@ -38,12 +38,19 @@ CellularCapability::CellularCapability(Cellular *cellular,
 
 CellularCapability::~CellularCapability() {}
 
-void CellularCapability::OnUnsupportedOperation(
-    const char *operation,
-    Error *error) {
+void CellularCapability::OnUnsupportedOperation(const char *operation,
+                                                Error *error) {
   string message("The ");
   message.append(operation).append(" operation is not supported.");
   Error::PopulateAndLog(error, Error::kNotSupported, message);
+}
+
+void CellularCapability::DisconnectCleanup() {}
+
+void CellularCapability::Activate(const string &carrier,
+                                  Error *error,
+                                  const ResultCallback &callback) {
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapability::CompleteActivation(Error *error) {
@@ -56,7 +63,8 @@ bool CellularCapability::IsServiceActivationRequired() const {
 
 void CellularCapability::RegisterOnNetwork(
     const string &/*network_id*/,
-    Error *error, const ResultCallback &/*callback*/) {
+    Error *error,
+    const ResultCallback &/*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 

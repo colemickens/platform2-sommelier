@@ -32,8 +32,7 @@ const char CellularCapabilityClassic::kModemPropertyEnabled[] = "Enabled";
 const int CellularCapabilityClassic::kTimeoutSetCarrierMilliseconds = 120000;
 
 static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
-  ModemClassicState cstate =
-      static_cast<ModemClassicState>(classic_state);
+  ModemClassicState cstate = static_cast<ModemClassicState>(classic_state);
   switch (cstate) {
     case kModemClassicStateUnknown:
       return Cellular::kModemStateUnknown;
@@ -116,14 +115,6 @@ void CellularCapabilityClassic::FinishDisable(const ResultCallback &callback) {
   callback.Run(Error());
 }
 
-void CellularCapabilityClassic::OnUnsupportedOperation(
-    const char *operation,
-    Error *error) {
-  string message("The ");
-  message.append(operation).append(" operation is not supported.");
-  Error::PopulateAndLog(error, Error::kNotSupported, message);
-}
-
 void CellularCapabilityClassic::RunNextStep(CellularTaskList *tasks) {
   CHECK(!tasks->empty());
   SLOG(Cellular, 2) << __func__ << ": " << tasks->size() << " remaining tasks";
@@ -196,7 +187,7 @@ void CellularCapabilityClassic::GetModemInfo(const ResultCallback &callback) {
 }
 
 void CellularCapabilityClassic::StopModem(Error *error,
-                                   const ResultCallback &callback) {
+                                          const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
 
   CellularTaskList *tasks = new CellularTaskList();
@@ -222,62 +213,19 @@ void CellularCapabilityClassic::StopModem(Error *error,
 }
 
 void CellularCapabilityClassic::Connect(const DBusPropertiesMap &properties,
-                                 Error *error,
-                                 const ResultCallback &callback) {
+                                        Error *error,
+                                        const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   simple_proxy_->Connect(properties, error, callback, kTimeoutConnect);
 }
 
 void CellularCapabilityClassic::Disconnect(Error *error,
-                                    const ResultCallback &callback) {
+                                           const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   if (proxy_.get())
     proxy_->Disconnect(error, callback, kTimeoutDisconnect);
   else
     LOG(ERROR) << "No proxy found in disconnect.";
-}
-
-void CellularCapabilityClassic::DisconnectCleanup() {
-  SLOG(Cellular, 2) << __func__;
-}
-
-void CellularCapabilityClassic::Activate(const string &/*carrier*/,
-                                  Error *error,
-                                  const ResultCallback &/*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapabilityClassic::RegisterOnNetwork(
-    const string &/*network_id*/,
-    Error *error, const ResultCallback &/*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapabilityClassic::RequirePIN(const std::string &/*pin*/,
-                                    bool /*require*/,
-                                    Error *error,
-                                    const ResultCallback &/*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapabilityClassic::EnterPIN(const string &/*pin*/,
-                                  Error *error,
-                                  const ResultCallback &/*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapabilityClassic::UnblockPIN(const string &/*unblock_code*/,
-                                    const string &/*pin*/,
-                                    Error *error,
-                                    const ResultCallback &/*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapabilityClassic::ChangePIN(const string &/*old_pin*/,
-                                   const string &/*new_pin*/,
-                                   Error *error,
-                                   const ResultCallback &/*callback*/) {
-  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityClassic::SetCarrier(const string &carrier,
@@ -291,11 +239,6 @@ void CellularCapabilityClassic::SetCarrier(const string &carrier,
   CHECK(error);
   gobi_proxy_->SetCarrier(carrier, error, callback,
                           kTimeoutSetCarrierMilliseconds);
-}
-
-void CellularCapabilityClassic::Scan(Error *error,
-                                     const ResultStringmapsCallback &callback) {
-  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityClassic::OnDBusPropertiesChanged(
