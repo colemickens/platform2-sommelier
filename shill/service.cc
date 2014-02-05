@@ -151,15 +151,20 @@ Service::Service(ControlInterface *control_interface,
                           &Service::SetAutoConnectFull,
                           &Service::ClearAutoConnect);
 
+  // kActivateOverNonCellularNetworkProperty: Registered in CellularService
   // kActivationStateProperty: Registered in CellularService
   // kCellularApnProperty: Registered in CellularService
   // kCellularLastGoodApnProperty: Registered in CellularService
   // kNetworkTechnologyProperty: Registered in CellularService
-  // kOperatorNameProperty: DEPRECATED
-  // kOperatorCodeProperty: DEPRECATED
+  // kOutOfCreditsProperty: Registered in CellularService
+  // kPaymentPortalProperty: Registered in CellularService
   // kRoamingStateProperty: Registered in CellularService
   // kServingOperatorProperty: Registered in CellularService
-  // kPaymentURLProperty: Registered in CellularService
+  // kUsageURLProperty: Registered in CellularService
+  // kCellularPPPUsernameProperty: Registered in CellularService
+  // kCellularPPPPasswordProperty: Registered in CellularService
+
+  // kNetworkIdProperty: Registered in WiMaxService
 
   HelpRegisterDerivedString(kCheckPortalProperty,
                             &Service::GetCheckPortal,
@@ -189,7 +194,7 @@ Service::Service(ControlInterface *control_interface,
                             &Service::GetNameProperty,
                             &Service::SetNameProperty);
   // kPassphraseProperty: Registered in WiFiService
-  // kPassphraseRequiredProperty: Registered in WiFiService
+  // kPassphraseRequiredProperty: Registered in WiFiService, WiMaxService
   HelpRegisterDerivedInt32(kPriorityProperty,
                            &Service::GetPriority,
                            &Service::SetPriority);
