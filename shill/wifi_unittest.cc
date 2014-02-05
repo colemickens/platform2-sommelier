@@ -22,8 +22,6 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
 #include "shill/event_dispatcher.h"
@@ -46,6 +44,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_netlink_manager.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_scan_session.h"
 #include "shill/mock_store.h"
@@ -61,9 +60,9 @@
 #include "shill/nice_mock_control.h"
 #include "shill/nl80211_message.h"
 #include "shill/property_store_unittest.h"
-#include "shill/proxy_factory.h"
 #include "shill/scan_session.h"
 #include "shill/technology.h"
+#include "shill/testing.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
@@ -92,6 +91,7 @@ using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Ref;
 using ::testing::Return;
+using ::testing::ReturnNew;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
@@ -233,26 +233,30 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         bss_counter_(0),
         dbus_service_proxy_(new MockDBusServiceProxy()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
-        supplicant_bss_proxy_(
-            new NiceMock<MockSupplicantBSSProxy>()),
-        dhcp_config_(new MockDHCPConfig(&control_interface_,
-                                        kDeviceName)),
+        supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
+        dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
         dbus_manager_(new DBusManager()),
         adaptor_(new DeviceMockAdaptor()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
-            new NiceMock<MockSupplicantInterfaceProxy>()),
-        proxy_factory_(this) {
+            new NiceMock<MockSupplicantInterfaceProxy>()) {
     InstallMockScanSession();
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
 
-    ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _, _)).
-        WillByDefault(Return(dhcp_config_));
-    ON_CALL(*dhcp_config_.get(), RequestIP()).
-        WillByDefault(Return(true));
-    ON_CALL(proxy_factory_, CreateSupplicantNetworkProxy(_, _)).
-        WillByDefault(InvokeWithoutArgs(
-            this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
+    ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _, _))
+        .WillByDefault(Return(dhcp_config_));
+    ON_CALL(*dhcp_config_.get(), RequestIP()).WillByDefault(Return(true));
+
+    ON_CALL(proxy_factory_, CreateDBusServiceProxy())
+        .WillByDefault(ReturnAndReleasePointee(&dbus_service_proxy_));
+    ON_CALL(proxy_factory_, CreateSupplicantProcessProxy(_, _))
+        .WillByDefault(ReturnAndReleasePointee(&supplicant_process_proxy_));
+    ON_CALL(proxy_factory_, CreateSupplicantInterfaceProxy(_, _, _))
+        .WillByDefault(ReturnAndReleasePointee(&supplicant_interface_proxy_));
+    ON_CALL(proxy_factory_, CreateSupplicantBSSProxy(_, _, _))
+        .WillByDefault(ReturnAndReleasePointee(&supplicant_bss_proxy_));
+    ON_CALL(proxy_factory_, CreateSupplicantNetworkProxy(_, _))
+        .WillByDefault(ReturnNew<NiceMock<MockSupplicantNetworkProxy>>());
     Nl80211Message::SetMessageType(kNl80211FamilyId);
 
     // Transfers ownership.
@@ -389,48 +393,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
  protected:
   typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
-
-  class TestProxyFactory : public ProxyFactory {
-   public:
-    explicit TestProxyFactory(WiFiObjectTest *test);
-
-    virtual DBusServiceProxyInterface *CreateDBusServiceProxy() {
-      return test_->dbus_service_proxy_.release();
-    }
-
-    virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
-        const char */*dbus_path*/, const char */*dbus_addr*/) {
-      return test_->supplicant_process_proxy_.release();
-    }
-
-    virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
-        SupplicantEventDelegateInterface */*delegate*/,
-        const DBus::Path &/*object_path*/,
-        const char */*dbus_addr*/) {
-      return test_->supplicant_interface_proxy_.release();
-    }
-
-    MOCK_METHOD3(CreateSupplicantBSSProxy,
-                 SupplicantBSSProxyInterface *(
-                     WiFiEndpoint *wifi_endpoint,
-                     const DBus::Path &object_path,
-                     const char *dbus_addr));
-
-    MOCK_METHOD2(CreateSupplicantNetworkProxy,
-                 SupplicantNetworkProxyInterface *(
-                     const DBus::Path &object_path,
-                     const char *dbus_addr));
-
-   private:
-    SupplicantBSSProxyInterface *CreateSupplicantBSSProxyInternal(
-        WiFiEndpoint */*wifi_endpoint*/,
-        const DBus::Path &/*object_path*/,
-        const char */*dbus_addr*/) {
-      return test_->supplicant_bss_proxy_.release();
-    }
-
-    WiFiObjectTest *test_;
-  };
 
   // Simulate the course of events when the last endpoint of a service is
   // removed.
@@ -667,9 +629,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     MockSupplicantInterfaceProxy *proxy = GetSupplicantInterfaceProxyFromWiFi();
     return proxy ? proxy : supplicant_interface_proxy_.get();
   }
-  MockSupplicantNetworkProxy *CreateSupplicantNetworkProxy() {
-    return new NiceMock<MockSupplicantNetworkProxy>();
-  }
   const string &GetSupplicantState() {
     return wifi_->supplicant_state_;
   }
@@ -887,7 +846,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_;
   }
 
-  TestProxyFactory *proxy_factory() {
+  MockProxyFactory *proxy_factory() {
     return &proxy_factory_;
   }
 
@@ -936,7 +895,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
  private:
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
-  NiceMock<TestProxyFactory> proxy_factory_;
+  MockProxyFactory proxy_factory_;
 };
 
 const char WiFiObjectTest::kDeviceName[] = "wlan0";
@@ -978,14 +937,6 @@ void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
       append_uint16(frequency);
   bss_properties[WPASupplicant::kBSSPropertyMode].writer().append_string(mode);
   wifi_->BSSAddedTask(bss_path, bss_properties);
-}
-
-WiFiObjectTest::TestProxyFactory::TestProxyFactory(WiFiObjectTest *test)
-    : test_(test) {
-  EXPECT_CALL(*this, CreateSupplicantBSSProxy(_, _, _)).Times(AnyNumber());
-  ON_CALL(*this, CreateSupplicantBSSProxy(_, _, _))
-      .WillByDefault(
-          Invoke(this, (&TestProxyFactory::CreateSupplicantBSSProxyInternal)));
 }
 
 // Most of our tests involve using a real EventDispatcher object.
@@ -1671,10 +1622,11 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  MockSupplicantNetworkProxy *network_proxy = CreateSupplicantNetworkProxy();
-  EXPECT_CALL(*proxy_factory(), CreateSupplicantNetworkProxy(
-      kPath, WPASupplicant::kDBusAddr))
-      .WillOnce(Return(network_proxy));
+  scoped_ptr<MockSupplicantNetworkProxy> network_proxy(
+      new MockSupplicantNetworkProxy());
+  EXPECT_CALL(*proxy_factory(),
+              CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
+      .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false));
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
