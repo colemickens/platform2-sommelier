@@ -878,40 +878,6 @@ cmd_ping() (
   rm -rf "$(dirname ${fifo})"
 )
 
-# TODO(dkrahn): Remove once this is the default. crosbug.com/22543
-cmd_chaps() (
-  local flag_file="/home/chronos/.disable_chaps"
-  local enabled=1
-  local changed=0
-  if [ -r ${flag_file} ]; then
-    enabled=0
-  fi
-  if [ -z "$1" ]; then
-    if [ ${enabled} -eq 1 ]; then
-      echo "Currently enabled"
-    else
-      echo "Currently disabled"
-    fi
-    return
-  fi
-  if [ "$1" = "on" ]; then
-    if [ $enabled -eq 0 ]; then
-      changed=1;
-    fi
-    rm -f "${flag_file}"
-  else
-    if [ $enabled -eq 1 ]; then
-      changed=1
-    fi
-    touch "${flag_file}"
-  fi
-  if [ $changed -eq 1 ]; then
-    echo "You must reboot for this to take effect."
-  else
-    echo "No change."
-  fi
-)
-
 cmd_progressive_scan() (
   local flag_file="/home/chronos/.progressive_scan"
   local enabled=0
@@ -1383,6 +1349,11 @@ cmd_battery_test() (
   bat_perc_dec="$((${bat_perc}%100))"
 
   echo "Battery discharged ${bat_perc_int}.${bat_perc_dec}% in ${test_length}s"
+)
+
+cmd_dump_emk() (
+  /usr/sbin/cryptohome --action=tpm_attestation_key_status \
+                       --name=attest-ent-machine
 )
 
 substr() {
