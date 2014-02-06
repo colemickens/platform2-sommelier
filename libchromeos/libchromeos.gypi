@@ -8,9 +8,6 @@
       # Need to sort that out before we enable this.
       'enable_werror': 0,
     },
-    'defines': [
-      'BASE_VER=<(libbase_ver)',
-    ],
     'include_dirs': [
       '../libchromeos',
     ],
