@@ -9,11 +9,10 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/message_loop.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/testing.h"
 
 using base::Callback;
 using base::Closure;
@@ -47,14 +46,6 @@ class HookTableTest : public testing::Test {
 };
 
 const char HookTableTest::kName[] = "test";
-
-MATCHER(IsSuccess, "") {
-  return arg.IsSuccess();
-}
-
-MATCHER(IsFailure, "") {
-  return arg.IsFailure();
-}
 
 TEST_F(HookTableTest, ActionCompletes) {
   EXPECT_CALL(*this, StartAction());

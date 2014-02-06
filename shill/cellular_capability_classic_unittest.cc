@@ -6,7 +6,6 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
@@ -25,6 +24,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/proxy_factory.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::Unretained;
@@ -34,13 +34,6 @@ using testing::NiceMock;
 using testing::_;
 
 namespace shill {
-
-MATCHER(IsSuccess, "") {
-  return arg.IsSuccess();
-}
-MATCHER(IsFailure, "") {
-  return arg.IsFailure();
-}
 
 class CellularCapabilityTest : public testing::Test {
  public:

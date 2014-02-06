@@ -11,8 +11,6 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <mobile_provider.h>
 #include <ModemManager/ModemManager.h>
 
@@ -38,6 +36,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/proxy_factory.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -56,12 +55,6 @@ using testing::_;
 
 namespace shill {
 
-MATCHER(IsSuccess, "") {
-  return arg.IsSuccess();
-}
-MATCHER(IsFailure, "") {
-  return arg.IsFailure();
-}
 MATCHER_P(HasApn, expected_apn, "") {
   string apn;
   return (DBusProperties::GetString(arg,

@@ -31,6 +31,18 @@ ACTION_P(ReturnAndReleasePointee, scoped_pointer) {
   return scoped_pointer->release();
 }
 
+MATCHER(IsSuccess, "") {
+  return arg.IsSuccess();
+}
+
+MATCHER(IsFailure, "") {
+  return arg.IsFailure();
+}
+
+MATCHER_P2(ErrorIs, error_type, error_message, "") {
+  return error_type == arg.type() && error_message == arg.message();
+}
+
 }  // namespace shill
 
 #endif  // SHILL_TESTING_H_

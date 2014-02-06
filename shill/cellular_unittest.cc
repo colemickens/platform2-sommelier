@@ -41,6 +41,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
+#include "shill/testing.h"
 
 // mm/mm-modem.h must be included after cellular_capability_universal.h
 // in order to allow MM_MODEM_CDMA_* to be defined properly.
@@ -63,14 +64,6 @@ using testing::SetArgumentPointee;
 using testing::Unused;
 
 namespace shill {
-
-MATCHER(IsSuccess, "") {
-  return arg.IsSuccess();
-}
-
-MATCHER(IsFailure, "") {
-  return arg.IsFailure();
-}
 
 class CellularPropertyTest : public PropertyStoreTest {
  public:

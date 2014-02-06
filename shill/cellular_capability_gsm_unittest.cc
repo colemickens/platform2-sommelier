@@ -10,7 +10,6 @@
 #include <base/bind.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
@@ -27,6 +26,7 @@
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_profile.h"
 #include "shill/proxy_factory.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -40,14 +40,6 @@ using testing::Return;
 using testing::SaveArg;
 
 namespace shill {
-
-MATCHER(IsSuccess, "") {
-  return arg.IsSuccess();
-}
-
-MATCHER(IsFailure, "") {
-  return arg.IsFailure();
-}
 
 class CellularCapabilityGSMTest : public testing::Test {
  public:

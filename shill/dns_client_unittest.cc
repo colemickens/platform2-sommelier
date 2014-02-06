@@ -11,8 +11,6 @@
 
 #include <base/bind.h>
 #include <base/memory/scoped_ptr.h>
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -21,6 +19,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_time.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::Unretained;
@@ -28,6 +27,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::DoAll;
+using testing::Not;
 using testing::Return;
 using testing::ReturnArg;
 using testing::ReturnNew;
@@ -53,14 +53,6 @@ const int kAresFd = 10203;
 const int kAresTimeoutMS = 2000;  // ARES transaction timeout
 const int kAresWaitMS = 1000;     // Time period ARES asks caller to wait
 }  // namespace {}
-
-MATCHER_P(IsSuccess, is_success, "") {
-  return is_success == arg.IsSuccess();
-}
-
-MATCHER_P2(IsFailure, failure_type, failure_message, "") {
-  return failure_type == arg.type() && failure_message == arg.message();
-}
 
 class DNSClientTest : public Test {
  public:
@@ -184,7 +176,7 @@ class DNSClientTest : public Test {
 
     // Make sure the callback gets called with a success result, and save
     // the callback address argument in |address_result_|.
-    EXPECT_CALL(callback_target_, CallTarget(IsSuccess(true), _))
+    EXPECT_CALL(callback_target_, CallTarget(IsSuccess(), _))
         .WillOnce(Invoke(this, &DNSClientTest::SaveCallbackArgs));
     CallCompletion();
 
@@ -333,7 +325,7 @@ TEST_F(DNSClientTest, TimeoutFirstRefresh) {
   EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(init_time_val), Return(0)))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
-  EXPECT_CALL(callback_target_, CallTarget(IsSuccess(false), _))
+  EXPECT_CALL(callback_target_, CallTarget(Not(IsSuccess()), _))
       .Times(0);
   EXPECT_CALL(ares_, Destroy(kAresChannel));
   Error error;
@@ -356,7 +348,7 @@ TEST_F(DNSClientTest, TimeoutDispatcherEvent) {
   ExpectPostCompletionTask();
   CallTimeout();
   EXPECT_CALL(callback_target_, CallTarget(
-      IsFailure(Error::kOperationTimeout, DNSClient::kErrorTimedOut), _));
+      ErrorIs(Error::kOperationTimeout, DNSClient::kErrorTimedOut), _));
   CallCompletion();
 }
 
@@ -370,7 +362,7 @@ TEST_F(DNSClientTest, TimeoutFromARES) {
   ExpectPostCompletionTask();
   CallTimeout();
   EXPECT_CALL(callback_target_, CallTarget(
-      IsFailure(Error::kOperationTimeout, DNSClient::kErrorTimedOut), _));
+      ErrorIs(Error::kOperationTimeout, DNSClient::kErrorTimedOut), _));
   CallCompletion();
 }
 
@@ -384,7 +376,7 @@ TEST_F(DNSClientTest, HostNotFound) {
   ExpectPostCompletionTask();
   CallDNSRead();
   EXPECT_CALL(callback_target_, CallTarget(
-      IsFailure(Error::kOperationFailed, DNSClient::kErrorNotFound), _));
+      ErrorIs(Error::kOperationFailed, DNSClient::kErrorNotFound), _));
   CallCompletion();
 }
 
