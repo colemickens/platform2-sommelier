@@ -4,8 +4,8 @@
 
 #include "wimax_manager/manager.h"
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
@@ -58,7 +58,7 @@ class ManagerTest : public testing::Test {
 
   bool CreateConfigFileInDir(const string &content, const FilePath &dir,
                              FilePath *config_file) {
-    if (!file_util::CreateTemporaryFileInDir(dir, config_file))
+    if (!base::CreateTemporaryFileInDir(dir, config_file))
       return false;
 
     if (file_util::WriteFile(*config_file, content.data(), content.size()) !=

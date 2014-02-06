@@ -13,7 +13,7 @@ extern "C" {
 
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
-#include <base/timer.h>
+#include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
 
 #include "wimax_manager/device.h"

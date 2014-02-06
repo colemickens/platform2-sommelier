@@ -5,7 +5,7 @@
 #include "wimax_manager/network_dbus_adaptor.h"
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "wimax_manager/network.h"

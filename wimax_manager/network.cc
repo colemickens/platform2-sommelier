@@ -4,7 +4,7 @@
 
 #include "wimax_manager/network.h"
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "wimax_manager/network_dbus_adaptor.h"
 

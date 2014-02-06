@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 

@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_vector.h>
 #include <base/stl_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "wimax_manager/device_dbus_adaptor.h"

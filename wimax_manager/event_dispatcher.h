@@ -9,8 +9,8 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/time.h>
+#include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
 
 namespace base {
 
@@ -32,7 +32,7 @@ class EventDispatcher {
   void Stop();
 
  private:
-  scoped_ptr<MessageLoop> dont_use_directly_;
+  scoped_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);

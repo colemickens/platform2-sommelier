@@ -10,7 +10,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/syslog_logging.h>
 
 #include "wimax_manager/event_dispatcher.h"

@@ -8,10 +8,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
-#include <base/timer.h>
+#include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
 
 #include "wimax_manager/dbus_adaptable.h"

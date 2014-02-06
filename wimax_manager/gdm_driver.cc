@@ -6,8 +6,8 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
-#include <base/utf_string_conversions.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/utf_string_conversions.h>
 
 #include "wimax_manager/gdm_device.h"
 #include "wimax_manager/network.h"
@@ -134,7 +134,7 @@ bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
   size_t wide_string_length = wcslen(wide_char_array);
   CHECK_LT(wide_string_length, N);
 
-  return WideToUTF8(wide_char_array, wide_string_length, utf8_string);
+  return base::WideToUTF8(wide_char_array, wide_string_length, utf8_string);
 }
 
 }  // namespace
@@ -403,8 +403,8 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
     }
 
     wstring network_name_wcs;
-    if (!UTF8ToWide(network_name.c_str(), network_name.size(),
-                    &network_name_wcs) ||
+    if (!base::UTF8ToWide(network_name.c_str(), network_name.size(),
+                          &network_name_wcs) ||
         (wcscmp(network_name_wcs.c_str(), network_list[i].NSPName) != 0)) {
       LOG(ERROR) << base::StringPrintf(
           "Ignoring network with identifer %08x "
@@ -435,8 +435,8 @@ bool GdmDriver::ConnectDeviceToNetwork(GdmDevice *device,
                                        const Network &network) {
   GDEV_ID device_id = GetDeviceId(device);
   wstring network_name_wcs;
-  if (!UTF8ToWide(network.name().c_str(), network.name().size(),
-                  &network_name_wcs)) {
+  if (!base::UTF8ToWide(network.name().c_str(), network.name().size(),
+                        &network_name_wcs)) {
     return false;
   }
 
@@ -456,7 +456,7 @@ bool GdmDriver::DisconnectDeviceFromNetwork(GdmDevice *device) {
 bool GdmDriver::CreateInitialDirectories() const {
   for (size_t i = 0; i < arraysize(InitalDirectoriesToCreate); ++i) {
     const char *directory = InitalDirectoriesToCreate[i];
-    if (!file_util::CreateDirectory(base::FilePath(directory))) {
+    if (!base::CreateDirectory(base::FilePath(directory))) {
       LOG(ERROR) << "Failed to create directory '" << directory << "'";
       return false;
     }

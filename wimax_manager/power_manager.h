@@ -8,7 +8,8 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/timer.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
 
 #include "wimax_manager/dbus_proxiable.h"
 
