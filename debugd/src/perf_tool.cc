@@ -6,7 +6,7 @@
 
 #include <fstream>
 
-#include <base/string_split.h>
+#include <base/strings/string_split.h>
 
 #include "cpu_info_parser.h"
 #include "process_with_output.h"

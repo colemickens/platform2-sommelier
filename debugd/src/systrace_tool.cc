@@ -5,7 +5,7 @@
 #include "systrace_tool.h"
 
 #include <string>
-#include <base/string_split.h>
+#include <base/strings/string_split.h>
 
 #include <chromeos/process.h>
 

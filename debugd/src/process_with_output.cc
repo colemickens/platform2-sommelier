@@ -5,9 +5,9 @@
 #include "process_with_output.h"
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
-#include <base/string_split.h>
+#include <base/strings/string_split.h>
 
 namespace debugd {
 
@@ -16,13 +16,13 @@ ProcessWithOutput::~ProcessWithOutput() {
   if (outfile_)
     fclose(outfile_);
   if (!outfile_path_.empty())
-    file_util::Delete(outfile_path_, false);  // not recursive
+    base::DeleteFile(outfile_path_, false);  // not recursive
 }
 
 bool ProcessWithOutput::Init() {
   if (!SandboxedProcess::Init())
     return false;
-  outfile_ = file_util::CreateAndOpenTemporaryFile(&outfile_path_);
+  outfile_ = base::CreateAndOpenTemporaryFile(&outfile_path_);
   if (!outfile_)
     return false;
   // We can't just RedirectOutput to the file we just created, since
@@ -38,14 +38,14 @@ bool ProcessWithOutput::Init() {
 
 bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) {
   std::string contents;
-  if (!file_util::ReadFileToString(outfile_path_, &contents))
+  if (!base::ReadFileToString(outfile_path_, &contents))
     return false;
   base::SplitString(contents, '\n', output);
   return true;
 }
 
 bool ProcessWithOutput::GetOutput(std::string* output) {
-  return file_util::ReadFileToString(outfile_path_, output);
+  return base::ReadFileToString(outfile_path_, output);
 }
 
 };  // namespace debugd

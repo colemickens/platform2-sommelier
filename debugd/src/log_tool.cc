@@ -9,8 +9,8 @@
 #include <base/base64.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #include "anonymizer_tool.h"
 #include "process_with_output.h"

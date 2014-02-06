@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include <base/json/json_writer.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 
@@ -14,6 +14,9 @@
 #include "dbus_proxies/org.freedesktop.ModemManager.h"
 #include "dbus_proxies/org.freedesktop.ModemManager.Modem.h"
 #include "dbus_proxies/org.freedesktop.ModemManager.Modem.Simple.h"
+
+using base::DictionaryValue;
+using base::ListValue;
 
 // These are lifted from modemmanager's XML files, since dbus-c++ currently
 // doesn't emit constants for enums defined in headers.

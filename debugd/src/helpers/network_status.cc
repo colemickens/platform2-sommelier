@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include <base/json/json_writer.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 
@@ -14,6 +14,9 @@
 #include "shill/dbus_proxies/org.chromium.flimflam.IPConfig.h"
 #include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 #include "shill/dbus_proxies/org.chromium.flimflam.Service.h"
+
+using base::DictionaryValue;
+using base::Value;
 
 const char* kFlimflamPath = "/";
 const char* kFlimflamService = "org.chromium.flimflam";

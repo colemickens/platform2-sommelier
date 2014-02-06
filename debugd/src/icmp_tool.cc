@@ -5,7 +5,7 @@
 #include "icmp_tool.h"
 
 #include <stdlib.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "process_with_output.h"
 

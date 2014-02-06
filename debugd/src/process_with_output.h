@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 #include "sandboxed_process.h"
 
@@ -25,7 +25,7 @@ class ProcessWithOutput : public SandboxedProcess {
   bool GetOutput(std::string* output);
   bool GetOutputLines(std::vector<std::string>* output);
  private:
-  FilePath outfile_path_;
+  base::FilePath outfile_path_;
   FILE *outfile_;
 };
 
