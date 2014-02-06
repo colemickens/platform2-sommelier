@@ -7,7 +7,7 @@
 #include <rpc/des_crypt.h>
 
 #include <base/file_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 
 #include "shill/glib.h"
 
@@ -87,7 +87,7 @@ bool CryptoDESCBC::LoadKeyMatter(const FilePath &path) {
   string matter;
   // TODO(petkov): This mimics current flimflam behavior. Fix it so that it
   // doesn't read the whole file.
-  if (!file_util::ReadFileToString(path, &matter)) {
+  if (!base::ReadFileToString(path, &matter)) {
     LOG(ERROR) << "Unable to load key matter from " << path.value();
     return false;
   }

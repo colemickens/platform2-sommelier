@@ -6,7 +6,7 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/dhcp_config.h"
 #include "shill/mock_control.h"
@@ -63,11 +63,11 @@ TEST_F(DHCPProviderTest, DestroyLease) {
   lease_file = provider_->root_.Append(base::StringPrintf(
       DHCPProvider::kDHCPCDPathFormatLease,
       kDeviceName));
-  EXPECT_TRUE(file_util::CreateDirectory(lease_file.DirName()));
+  EXPECT_TRUE(base::CreateDirectory(lease_file.DirName()));
   EXPECT_EQ(0, file_util::WriteFile(lease_file, "", 0));
-  EXPECT_TRUE(file_util::PathExists(lease_file));
+  EXPECT_TRUE(base::PathExists(lease_file));
   provider_->DestroyLease(kDeviceName);
-  EXPECT_FALSE(file_util::PathExists(lease_file));
+  EXPECT_FALSE(base::PathExists(lease_file));
 }
 
 }  // namespace shill

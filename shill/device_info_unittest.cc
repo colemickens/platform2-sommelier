@@ -17,9 +17,9 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -852,12 +852,12 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
 TEST_F(DeviceInfoTest, HasSubdir) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  EXPECT_TRUE(file_util::CreateDirectory(temp_dir.path().Append("child1")));
+  EXPECT_TRUE(base::CreateDirectory(temp_dir.path().Append("child1")));
   FilePath child2 = temp_dir.path().Append("child2");
-  EXPECT_TRUE(file_util::CreateDirectory(child2));
+  EXPECT_TRUE(base::CreateDirectory(child2));
   FilePath grandchild = child2.Append("grandchild");
-  EXPECT_TRUE(file_util::CreateDirectory(grandchild));
-  EXPECT_TRUE(file_util::CreateDirectory(grandchild.Append("greatgrandchild")));
+  EXPECT_TRUE(base::CreateDirectory(grandchild));
+  EXPECT_TRUE(base::CreateDirectory(grandchild.Append("greatgrandchild")));
   EXPECT_TRUE(DeviceInfo::HasSubdir(temp_dir.path(),
                                     FilePath("grandchild")));
   EXPECT_TRUE(DeviceInfo::HasSubdir(temp_dir.path(),
@@ -1108,7 +1108,7 @@ FilePath DeviceInfoTechnologyTest::GetInfoPath(const string &name) {
 void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
                                               const string &contents) {
   FilePath info_path = GetInfoPath(name);
-  EXPECT_TRUE(file_util::CreateDirectory(info_path.DirName()));
+  EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
   string contents_newline(contents + "\n");
   EXPECT_TRUE(file_util::WriteFile(info_path, contents_newline.c_str(),
                                    contents_newline.size()));
@@ -1117,14 +1117,14 @@ void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
 void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
                                                  const string &contents) {
   FilePath info_path = GetInfoPath(name);
-  EXPECT_TRUE(file_util::CreateDirectory(info_path.DirName()));
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath(contents), info_path));
+  EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath(contents), info_path));
 }
 
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
   // Should still be unknown even without a uevent file.
-  EXPECT_TRUE(file_util::Delete(GetInfoPath("uevent"), false));
+  EXPECT_TRUE(base::DeleteFile(GetInfoPath("uevent"), false));
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
@@ -1195,16 +1195,16 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
   FilePath device_root(temp_dir_.path().Append("sys/devices/virtual/0"));
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
-  EXPECT_TRUE(file_util::CreateDirectory(device_path));
+  EXPECT_TRUE(base::CreateDirectory(device_path));
   CreateInfoSymLink("device", device_path.value());
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                            driver_symlink));
-  EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/tty")));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
+                                       driver_symlink));
+  EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
-  EXPECT_TRUE(file_util::Delete(driver_symlink, false));
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
-                                            driver_symlink));
+  EXPECT_TRUE(base::DeleteFile(driver_symlink, false));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
+                                       driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1217,15 +1217,15 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
   FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
-  EXPECT_TRUE(file_util::CreateDirectory(device_path));
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                            driver_symlink));
-  EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/tty")));
+  EXPECT_TRUE(base::CreateDirectory(device_path));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
+                                       driver_symlink));
+  EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
-  EXPECT_TRUE(file_util::Delete(driver_symlink, false));
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
-                                            driver_symlink));
+  EXPECT_TRUE(base::DeleteFile(driver_symlink, false));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
+                                       driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1238,15 +1238,15 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem3) {
   FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
-  EXPECT_TRUE(file_util::CreateDirectory(device_path));
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                            driver_symlink));
-  EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/yyy/tty")));
+  EXPECT_TRUE(base::CreateDirectory(device_path));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
+                                       driver_symlink));
+  EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/yyy/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
-  EXPECT_TRUE(file_util::Delete(driver_symlink, false));
-  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
-                                            driver_symlink));
+  EXPECT_TRUE(base::DeleteFile(driver_symlink, false));
+  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
+                                       driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 

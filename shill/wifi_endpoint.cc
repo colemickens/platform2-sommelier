@@ -7,9 +7,9 @@
 #include <algorithm>
 
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/ieee80211.h"
@@ -22,6 +22,7 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
+using base::StringPrintf;
 using std::map;
 using std::set;
 using std::string;
@@ -622,7 +623,7 @@ void WiFiEndpoint::CheckForTetheringSignature() {
 vector<uint8_t> WiFiEndpoint::MakeHardwareAddressFromString(
     const string &bssid_string) {
   string bssid_nosep;
-  RemoveChars(bssid_string, ":", &bssid_nosep);
+  base::RemoveChars(bssid_string, ":", &bssid_nosep);
   vector<uint8_t> bssid_bytes;
   base::HexStringToBytes(bssid_nosep, &bssid_bytes);
   if (bssid_bytes.size() != kBSSIDLength) {

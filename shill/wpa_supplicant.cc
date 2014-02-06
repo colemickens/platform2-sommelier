@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 #include "shill/certificate_file.h"
 #include "shill/eap_credentials.h"

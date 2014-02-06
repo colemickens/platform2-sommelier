@@ -6,7 +6,7 @@
 #define SHILL_RTNL_MESSAGE_
 
 #include <base/basictypes.h>
-#include <base/hash_tables.h>
+#include <base/containers/hash_tables.h>
 #include <base/stl_util.h>
 
 #include "shill/byte_string.h"

@@ -6,9 +6,9 @@
 
 #include <vector>
 
-#include <base/file_path.h>
-#include <base/string_number_conversions.h>
-#include <base/stringprintf.h>
+#include <base/files/file_path.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"

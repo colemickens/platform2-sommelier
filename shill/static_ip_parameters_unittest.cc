@@ -5,7 +5,7 @@
 #include "shill/static_ip_parameters.h"
 
 #include <base/basictypes.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 

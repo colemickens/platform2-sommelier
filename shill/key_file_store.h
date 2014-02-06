@@ -5,7 +5,7 @@
 #ifndef SHILL_KEY_FILE_STORE_
 #define SHILL_KEY_FILE_STORE_
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/crypto_provider.h"

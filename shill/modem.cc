@@ -5,7 +5,7 @@
 #include "shill/modem.h"
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/cellular.h"
 #include "shill/logging.h"

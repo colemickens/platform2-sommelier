@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 #include "shill/callback80211_metrics.h"
 #include "shill/dhcp_provider.h"
@@ -76,7 +76,7 @@ void Daemon::Quit() {
       Metrics::kTerminationActionReasonTerminate)) {
     SLOG(Daemon, 1) << "No termination actions were run";
     Stop();
-    dispatcher_.PostTask(MessageLoop::QuitClosure());
+    dispatcher_.PostTask(base::MessageLoop::QuitClosure());
   }
 }
 
@@ -85,7 +85,7 @@ void Daemon::TerminationActionsCompleted(const Error &error) {
   metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonTerminate, error.IsSuccess());
   Stop();
-  dispatcher_.PostTask(MessageLoop::QuitClosure());
+  dispatcher_.PostTask(base::MessageLoop::QuitClosure());
 }
 
 void Daemon::Start() {

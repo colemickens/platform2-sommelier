@@ -15,7 +15,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST

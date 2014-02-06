@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/format_macros.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -29,6 +29,7 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
+using base::StringPrintf;
 using std::map;
 using std::set;
 using std::string;

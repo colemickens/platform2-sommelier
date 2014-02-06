@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"

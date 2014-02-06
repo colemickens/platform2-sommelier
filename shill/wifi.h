@@ -82,7 +82,7 @@
 
 #include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
@@ -297,7 +297,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Gets the list of frequencies supported by this device.
   // TODO(wdg): Remove after progressive scan field trial is over.
-  void ParseFieldTrialFile(const FilePath &field_trial_file_path);
+  void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
   void ConfigureScanFrequencies();
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;

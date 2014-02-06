@@ -9,9 +9,9 @@
 
 #include <base/callback.h>
 #include <base/location.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
-#include <base/time.h>
+#include <base/time/time.h>
 
 #include "shill/glib_io_input_handler.h"
 #include "shill/glib_io_ready_handler.h"
@@ -22,14 +22,14 @@ using base::Closure;
 namespace shill {
 
 EventDispatcher::EventDispatcher()
-    : dont_use_directly_(new MessageLoopForUI),
+    : dont_use_directly_(new base::MessageLoopForUI),
       message_loop_proxy_(base::MessageLoopProxy::current()) {
 }
 
 EventDispatcher::~EventDispatcher() {}
 
 void EventDispatcher::DispatchForever() {
-  MessageLoop::current()->Run();
+  base::MessageLoop::current()->Run();
 }
 
 void EventDispatcher::DispatchPendingEvents() {

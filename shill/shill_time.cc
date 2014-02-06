@@ -6,7 +6,7 @@
 
 #include <time.h>
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 using std::string;
 

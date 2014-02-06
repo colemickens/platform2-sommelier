@@ -13,7 +13,7 @@
 
 #include <base/format_macros.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/logging.h"
 

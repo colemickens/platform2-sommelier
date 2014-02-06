@@ -12,7 +12,7 @@
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

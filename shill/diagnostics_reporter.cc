@@ -55,7 +55,7 @@ void DiagnosticsReporter::OnConnectivityEvent() {
 
   last_log_stash_ = now.tv_sec;
   // Delete logs possibly stashed by a different user.
-  file_util::Delete(stashed_net_log_, false);
+  base::DeleteFile(stashed_net_log_, false);
 
   LOG(INFO) << "Spawning " << kNetDiagsUpload << " @ " << last_log_stash_;
   vector<char *> args;

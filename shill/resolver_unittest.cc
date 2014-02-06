@@ -7,7 +7,7 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
@@ -62,12 +62,12 @@ class ResolverTest : public Test {
 
 string ResolverTest::ReadFile() {
   string data;
-  EXPECT_TRUE(file_util::ReadFileToString(resolver_->path_, &data));
+  EXPECT_TRUE(base::ReadFileToString(resolver_->path_, &data));
   return data;
 }
 
 TEST_F(ResolverTest, NonEmpty) {
-  EXPECT_FALSE(file_util::PathExists(path_));
+  EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
   MockControl control;
@@ -79,25 +79,25 @@ TEST_F(ResolverTest, NonEmpty) {
   domain_search.push_back(kSearchDomain1);
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
-  EXPECT_TRUE(file_util::PathExists(path_));
+  EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
 
   EXPECT_TRUE(resolver_->ClearDNS());
 }
 
 TEST_F(ResolverTest, Empty) {
-  EXPECT_FALSE(file_util::PathExists(path_));
+  EXPECT_FALSE(base::PathExists(path_));
 
   MockControl control;
   vector<string> dns_servers;
   vector<string> domain_search;
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
-  EXPECT_FALSE(file_util::PathExists(path_));
+  EXPECT_FALSE(base::PathExists(path_));
 }
 
 TEST_F(ResolverTest, IgnoredSearchList) {
-  EXPECT_FALSE(file_util::PathExists(path_));
+  EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
   MockControl control;
@@ -112,7 +112,7 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   ignored_search.push_back(kSearchDomain2);
   resolver_->set_ignored_search_list(ignored_search);
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
-  EXPECT_TRUE(file_util::PathExists(path_));
+  EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedIgnoredSearchOutput, ReadFile());
 
   EXPECT_TRUE(resolver_->ClearDNS());

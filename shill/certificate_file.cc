@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/file_util.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/logging.h"
 
@@ -37,7 +37,7 @@ CertificateFile::CertificateFile()
 CertificateFile::~CertificateFile() {
   SLOG(Crypto, 2) << __func__;
   if (!output_file_.empty()) {
-    file_util::Delete(output_file_, false);
+    base::DeleteFile(output_file_, false);
   }
 }
 
@@ -97,8 +97,8 @@ string CertificateFile::ExtractHexData(const std::string &pem_data) {
 }
 
 FilePath CertificateFile::WriteFile(const string &output_data) {
-  if (!file_util::DirectoryExists(root_directory_)) {
-    if (!file_util::CreateDirectory(root_directory_)) {
+  if (!base::DirectoryExists(root_directory_)) {
+    if (!base::CreateDirectory(root_directory_)) {
       LOG(ERROR) << "Unable to create parent directory  "
                  << root_directory_.value();
       return FilePath();
@@ -107,17 +107,17 @@ FilePath CertificateFile::WriteFile(const string &output_data) {
               S_IRWXU | S_IXGRP | S_IRGRP | S_IXOTH | S_IROTH)) {
       LOG(ERROR) << "Failed to set permissions on "
                  << root_directory_.value();
-      file_util::Delete(root_directory_, true);
+      base::DeleteFile(root_directory_, true);
       return FilePath();
     }
   }
   if (!output_file_.empty()) {
-    file_util::Delete(output_file_, false);
+    base::DeleteFile(output_file_, false);
     output_file_ = FilePath();
   }
 
   FilePath output_file;
-  if (!file_util::CreateTemporaryFileInDir(root_directory_, &output_file)) {
+  if (!base::CreateTemporaryFileInDir(root_directory_, &output_file)) {
     LOG(ERROR) << "Unable to create output file.";
     return FilePath();
   }
@@ -133,7 +133,7 @@ FilePath CertificateFile::WriteFile(const string &output_data) {
   if (chmod(output_file.value().c_str(),
             S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) {
     LOG(ERROR) << "Failed to set permissions on " << output_file.value();
-    file_util::Delete(output_file, false);
+    base::DeleteFile(output_file, false);
     return FilePath();
   }
   output_file_ = output_file;

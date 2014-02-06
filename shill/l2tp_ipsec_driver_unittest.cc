@@ -7,7 +7,7 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/weak_ptr.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <vpn-manager/service_error.h>
 #include <gtest/gtest.h>
 
@@ -117,12 +117,12 @@ class L2TPIPSecDriverTest : public testing::Test,
   }
 
   bool IsPSKFileCleared(const FilePath &psk_file_path) const {
-    return !file_util::PathExists(psk_file_path) && GetPSKFile().empty();
+    return !base::PathExists(psk_file_path) && GetPSKFile().empty();
   }
 
   bool IsXauthCredentialsFileCleared(
       const FilePath &xauth_credentials_file_path) const {
-    return !file_util::PathExists(xauth_credentials_file_path) &&
+    return !base::PathExists(xauth_credentials_file_path) &&
         GetXauthCredentialsFile().empty();
   }
 
@@ -216,19 +216,19 @@ void L2TPIPSecDriverTest::ExpectInFlags(
 
 FilePath L2TPIPSecDriverTest::SetupPSKFile() {
   FilePath psk_file;
-  EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
+  EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
   EXPECT_FALSE(psk_file.empty());
-  EXPECT_TRUE(file_util::PathExists(psk_file));
+  EXPECT_TRUE(base::PathExists(psk_file));
   driver_->psk_file_ = psk_file;
   return psk_file;
 }
 
 FilePath L2TPIPSecDriverTest::SetupXauthCredentialsFile() {
   FilePath xauth_credentials_file;
-  EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(),
-                                                  &xauth_credentials_file));
+  EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(),
+                                             &xauth_credentials_file));
   EXPECT_FALSE(xauth_credentials_file.empty());
-  EXPECT_TRUE(file_util::PathExists(xauth_credentials_file));
+  EXPECT_TRUE(base::PathExists(xauth_credentials_file));
   driver_->xauth_credentials_file_ = xauth_credentials_file;
   return xauth_credentials_file;
 }
@@ -343,8 +343,7 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
   ExpectInFlags(options, "--psk_file", driver_->psk_file_.value());
   EXPECT_TRUE(error.IsSuccess());
   string contents;
-  EXPECT_TRUE(
-      file_util::ReadFileToString(driver_->psk_file_, &contents));
+  EXPECT_TRUE(base::ReadFileToString(driver_->psk_file_, &contents));
   EXPECT_EQ(kPSK, contents);
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->psk_file_.value().c_str(), &buf));
@@ -443,7 +442,7 @@ TEST_F(L2TPIPSecDriverTest, InitXauthOptions) {
                 driver_->xauth_credentials_file_.value());
   string contents;
   EXPECT_TRUE(
-      file_util::ReadFileToString(driver_->xauth_credentials_file_, &contents));
+      base::ReadFileToString(driver_->xauth_credentials_file_, &contents));
   string expected_contents(string(kUser) + "\n" + kPassword + "\n");
   EXPECT_EQ(expected_contents, contents);
   struct stat buf;
@@ -733,7 +732,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   Mock::VerifyAndClearExpectations(local_external_task);
 
   EXPECT_CALL(*local_external_task, OnDelete());
-  dispatcher_.PostTask(MessageLoop::QuitClosure());
+  dispatcher_.PostTask(base::MessageLoop::QuitClosure());
   dispatcher_.DispatchForever();
 }
 

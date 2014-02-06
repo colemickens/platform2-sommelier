@@ -17,10 +17,10 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/files/file_path.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <glib.h>
 
@@ -58,8 +58,8 @@
 #include "shill/wpa_supplicant.h"
 
 using base::Bind;
+using base::FilePath;
 using base::StringPrintf;
-using file_util::PathExists;
 using std::map;
 using std::set;
 using std::string;

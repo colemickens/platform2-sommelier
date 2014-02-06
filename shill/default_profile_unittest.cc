@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

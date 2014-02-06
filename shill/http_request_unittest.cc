@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "shill/ip_address.h"

@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/eap_credentials.h"
 #include "shill/ethernet_eap_provider.h"
@@ -30,8 +30,8 @@ EthernetEapService::EthernetEapService(ControlInterface *control_interface,
 EthernetEapService::~EthernetEapService() {}
 
 string EthernetEapService::GetStorageIdentifier() const {
-  return StringPrintf("%s_all",
-                      Technology::NameFromIdentifier(technology()).c_str());
+  return base::StringPrintf(
+      "%s_all", Technology::NameFromIdentifier(technology()).c_str());
 }
 
 string EthernetEapService::GetDeviceRpcId(Error */*error*/) const {

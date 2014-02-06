@@ -8,7 +8,7 @@
 #include <netlink/netlink.h>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/logging.h"
 #include "shill/netlink_attribute.h"

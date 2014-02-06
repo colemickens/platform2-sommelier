@@ -6,7 +6,7 @@
 
 #include <sys/stat.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -43,7 +43,7 @@ TEST_F(CertificatesTest, Write) {
   base::FilePath certfile = temp_dir.path().Append("certfile");
   EXPECT_TRUE(Certificates::Write(cert, certfile));
   string contents;
-  EXPECT_TRUE(file_util::ReadFileToString(certfile, &contents));
+  EXPECT_TRUE(base::ReadFileToString(certfile, &contents));
   EXPECT_EQ(cert_str, contents);
   struct stat buf;
   EXPECT_EQ(0, stat(certfile.value().c_str(), &buf));

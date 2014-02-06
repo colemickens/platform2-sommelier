@@ -16,10 +16,10 @@
 #include <base/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 
@@ -68,8 +68,8 @@
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
 
-
 using base::FilePath;
+using base::StringPrintf;
 using std::map;
 using std::string;
 using std::vector;
@@ -432,10 +432,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                                      string *bssid) {
     bss_counter_++;
     if (!use_ssid) {
-      *ssid = base::StringPrintf("ssid%d", bss_counter_);
+      *ssid = StringPrintf("ssid%d", bss_counter_);
     }
-    *path = base::StringPrintf("/interface/bss%d", bss_counter_);
-    *bssid = base::StringPrintf("00:00:00:00:00:%02x", bss_counter_);
+    *path = StringPrintf("/interface/bss%d", bss_counter_);
+    *bssid = StringPrintf("00:00:00:00:00:%02x", bss_counter_);
     WiFiEndpointRefPtr endpoint = MakeEndpointWithMode(*ssid, *bssid, mode);
     EXPECT_CALL(wifi_provider_,
                 OnEndpointAdded(EndpointMatch(endpoint))).Times(1);
@@ -932,7 +932,7 @@ void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
   {
     string bssid_nosep;
     vector<uint8_t> bssid_bytes;
-    RemoveChars(bssid, ":", &bssid_nosep);
+    base::RemoveChars(bssid, ":", &bssid_nosep);
     base::HexStringToBytes(bssid_nosep, &bssid_bytes);
 
     DBus::MessageIter writer(bss_properties["BSSID"].writer());

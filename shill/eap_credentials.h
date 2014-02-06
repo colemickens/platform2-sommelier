@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/technology.h"

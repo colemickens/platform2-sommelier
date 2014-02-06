@@ -7,8 +7,8 @@
 #include <base/bind.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/message_loop_proxy.h>
-#include <base/stringprintf.h>
+#include <base/message_loop/message_loop_proxy.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -51,7 +51,6 @@ class MockEventDispatchTester {
         callback_count_(0),
         got_data_(false),
         got_ready_(false),
-        input_handler_(NULL),
         tester_factory_(this) {
   }
 
@@ -82,7 +81,7 @@ class MockEventDispatchTester {
   }
 
   void StopDispatcher() {
-    dispatcher_->PostTask(MessageLoop::QuitClosure());
+    dispatcher_->PostTask(base::MessageLoop::QuitClosure());
   }
 
   void Trigger() {

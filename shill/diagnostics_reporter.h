@@ -5,7 +5,7 @@
 #ifndef SHILL_DIAGNOSTICS_REPORTER_H_
 #define SHILL_DIAGNOSTICS_REPORTER_H_
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/lazy_instance.h>
 
 namespace shill {

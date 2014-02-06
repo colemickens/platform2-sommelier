@@ -4,7 +4,7 @@
 
 #include "shill/modem_info.h"
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
@@ -47,7 +47,6 @@ ModemInfo::ModemInfo(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager),
       glib_(glib),
-      pending_activation_store_(NULL),
       provider_db_path_(kMobileProviderDBPath),
       provider_db_(NULL) {}
 

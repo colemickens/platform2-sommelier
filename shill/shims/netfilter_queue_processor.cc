@@ -21,7 +21,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 using std::deque;
 
@@ -53,7 +53,7 @@ std::string NetfilterQueueProcessor::AddressAndPortToString(uint32_t ip,
                                                             uint16_t port) {
   struct in_addr addr;
   addr.s_addr = htonl(ip);
-  return StringPrintf("%s:%d", inet_ntoa(addr), port);
+  return base::StringPrintf("%s:%d", inet_ntoa(addr), port);
 }
 
 bool NetfilterQueueProcessor::Packet::ParseNetfilterData(

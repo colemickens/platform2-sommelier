@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/format_macros.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/attribute_list.h"
 #include "shill/control_netlink_attribute.h"

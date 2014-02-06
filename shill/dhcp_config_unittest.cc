@@ -7,7 +7,7 @@
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/dbus_adaptor.h"
@@ -146,16 +146,16 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
   config->root_ = temp_dir_.path();
   FilePath varrun = temp_dir_.path().Append("var/run/dhcpcd");
-  EXPECT_TRUE(file_util::CreateDirectory(varrun));
+  EXPECT_TRUE(base::CreateDirectory(varrun));
   pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s.pid", kDeviceName));
   FilePath varlib = temp_dir_.path().Append("var/lib/dhcpcd");
-  EXPECT_TRUE(file_util::CreateDirectory(varlib));
+  EXPECT_TRUE(base::CreateDirectory(varlib));
   lease_file_ =
       varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
   EXPECT_EQ(0, file_util::WriteFile(pid_file_, "", 0));
   EXPECT_EQ(0, file_util::WriteFile(lease_file_, "", 0));
-  EXPECT_TRUE(file_util::PathExists(pid_file_));
-  EXPECT_TRUE(file_util::PathExists(lease_file_));
+  EXPECT_TRUE(base::PathExists(pid_file_));
+  EXPECT_TRUE(base::PathExists(lease_file_));
 
   return config;
 }
@@ -168,8 +168,8 @@ void DHCPConfigTest::StopRunningConfigAndExpect(DHCPConfigRefPtr config,
   DHCPConfig::ChildWatchCallback(kPID, 10, config.get());
   EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
 
-  EXPECT_FALSE(file_util::PathExists(pid_file_));
-  EXPECT_EQ(lease_file_exists, file_util::PathExists(lease_file_));
+  EXPECT_FALSE(base::PathExists(pid_file_));
+  EXPECT_EQ(lease_file_exists, base::PathExists(lease_file_));
 }
 
 TEST_F(DHCPConfigTest, GetIPv4AddressString) {

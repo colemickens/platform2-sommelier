@@ -15,9 +15,9 @@
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/stringprintf.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -209,7 +209,7 @@ void Manager::Start() {
       Bind(&Metrics::NotifyPowerStateChange, Unretained(metrics_));
   power_manager_->AddStateChangeCallback(Metrics::kMetricPowerManagerKey, cb);
 
-  CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
+  CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
 
   InitializeProfiles();
@@ -267,7 +267,7 @@ void Manager::Stop() {
 
 void Manager::InitializeProfiles() {
   DCHECK(profiles_.empty());  // The default profile must go first on stack.
-  CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
+  CHECK(base::CreateDirectory(storage_path_)) << storage_path_.value();
 
   // Ensure that we have storage for the default profile, and that
   // the persistent copy of the default profile is not corrupt.

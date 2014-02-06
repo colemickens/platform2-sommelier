@@ -6,8 +6,8 @@
 
 #include <vector>
 
-#include <base/string_util.h>
 #include <base/strings/string_tokenizer.h>
+#include <base/strings/string_util.h>
 
 using base::StringTokenizer;
 using std::string;

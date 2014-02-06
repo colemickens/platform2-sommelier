@@ -22,11 +22,12 @@
 
 #include <base/bind.h>
 #include <base/file_util.h>
+#include <base/files/file_enumerator.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -48,6 +49,7 @@
 #include "shill/wifi.h"
 
 using base::Bind;
+using base::FileEnumerator;
 using base::FilePath;
 using base::StringPrintf;
 using base::Unretained;
@@ -93,8 +95,6 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       manager_(manager),
       link_callback_(Bind(&DeviceInfo::LinkMsgHandler, Unretained(this))),
       address_callback_(Bind(&DeviceInfo::AddressMsgHandler, Unretained(this))),
-      link_listener_(NULL),
-      address_listener_(NULL),
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -201,14 +201,14 @@ FilePath DeviceInfo::GetDeviceInfoPath(const string &iface_name,
 bool DeviceInfo::GetDeviceInfoContents(const string &iface_name,
                                        const string &path_name,
                                        string *contents_out) {
-  return file_util::ReadFileToString(GetDeviceInfoPath(iface_name, path_name),
-                                     contents_out);
+  return base::ReadFileToString(GetDeviceInfoPath(iface_name, path_name),
+                                contents_out);
 }
 bool DeviceInfo::GetDeviceInfoSymbolicLink(const string &iface_name,
                                            const string &path_name,
                                            FilePath *path_out) {
-  return file_util::ReadSymbolicLink(GetDeviceInfoPath(iface_name, path_name),
-                                     path_out);
+  return base::ReadSymbolicLink(GetDeviceInfoPath(iface_name, path_name),
+                                path_out);
 }
 
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
@@ -216,7 +216,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   string type_string;
   int arp_type = ARPHRD_VOID;
   if (GetDeviceInfoContents(iface_name, kInterfaceType, &type_string) &&
-      TrimString(type_string, "\n", &type_string) &&
+      base::TrimString(type_string, "\n", &type_string) &&
       !base::StringToInt(type_string, &arp_type)) {
     arp_type = ARPHRD_VOID;
   }
@@ -276,7 +276,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     string tun_flags_str;
     int tun_flags = 0;
     if (GetDeviceInfoContents(iface_name, kInterfaceTunFlags, &tun_flags_str) &&
-        TrimString(tun_flags_str, "\n", &tun_flags_str) &&
+        base::TrimString(tun_flags_str, "\n", &tun_flags_str) &&
         base::HexStringToInt(tun_flags_str, &tun_flags) &&
         (tun_flags & IFF_TUN)) {
       SLOG(Device, 2) << StringPrintf("%s: device %s is tun device",
@@ -361,14 +361,14 @@ bool DeviceInfo::IsCdcEthernetModemDevice(const std::string &iface_name) {
 
   FilePath device_file = GetDeviceInfoPath(iface_name, kInterfaceDevice);
   FilePath device_path;
-  if (!file_util::ReadSymbolicLink(device_file, &device_path)) {
+  if (!base::ReadSymbolicLink(device_file, &device_path)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s has no device symlink",
                                     __func__, iface_name.c_str());
     return false;
   }
   if (!device_path.IsAbsolute()) {
-    device_path = device_file.DirName().Append(device_path);
-    file_util::AbsolutePath(&device_path);
+    device_path =
+        base::MakeAbsoluteFilePath(device_file.DirName().Append(device_path));
   }
 
   // Look for tty interface by enumerating all directories under the parent
@@ -381,11 +381,9 @@ bool DeviceInfo::IsCdcEthernetModemDevice(const std::string &iface_name) {
 
 // static
 bool DeviceInfo::HasSubdir(const FilePath &base_dir, const FilePath &subdir) {
-  file_util::FileEnumerator::FileType type =
-      static_cast<file_util::FileEnumerator::FileType>(
-          file_util::FileEnumerator::DIRECTORIES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS);
-  file_util::FileEnumerator dir_enum(base_dir, true, type);
+  FileEnumerator::FileType type = static_cast<FileEnumerator::FileType>(
+      FileEnumerator::DIRECTORIES | FileEnumerator::SHOW_SYM_LINKS);
+  FileEnumerator dir_enum(base_dir, true, type);
   for (FilePath curr_dir = dir_enum.Next(); !curr_dir.empty();
        curr_dir = dir_enum.Next()) {
     if (curr_dir.BaseName() == subdir)

@@ -11,7 +11,7 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/syslog_logging.h>
 
 using std::string;

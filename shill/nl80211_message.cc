@@ -33,7 +33,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/attribute_list.h"
 #include "shill/ieee80211.h"
@@ -647,7 +647,7 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
     case UnprotDisassociateMessage::kCommand:
       return new UnprotDisassociateMessage();
     default:
-      LOG(WARNING) << StringPrintf(
+      LOG(WARNING) << base::StringPrintf(
           "Unknown/unhandled netlink nl80211 message 0x%02x", gnlh->cmd);
       return new UnknownNl80211Message(gnlh->cmd);
       break;

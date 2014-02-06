@@ -8,12 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/stl_util.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -133,7 +133,7 @@ bool Profile::RemoveStorage(GLib *glib, Error *error) {
     return false;
   }
 
-  if (!file_util::Delete(path, false)) {
+  if (!base::DeleteFile(path, false)) {
     Error::PopulateAndLog(
         error, Error::kOperationFailed,
         base::StringPrintf("Could not remove path %s", path.value().c_str()));
@@ -278,7 +278,7 @@ string Profile::IdentifierToString(const Identifier &name) {
 vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
   vector<Identifier> profile_identifiers;
   string profile_data;
-  if (!file_util::ReadFileToString(path, &profile_data)) {
+  if (!base::ReadFileToString(path, &profile_data)) {
     return profile_identifiers;
   }
 

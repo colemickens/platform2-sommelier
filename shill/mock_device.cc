@@ -7,7 +7,7 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 
 namespace shill {

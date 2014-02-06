@@ -13,8 +13,8 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/file_path.h>
-#include <base/stringprintf.h>
+#include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
 
@@ -45,6 +45,7 @@
 using base::Bind;
 using base::Closure;
 using base::FilePath;
+using base::StringPrintf;
 using std::map;
 using std::string;
 using std::vector;

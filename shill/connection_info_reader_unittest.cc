@@ -8,8 +8,8 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/stringprintf.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -60,7 +60,7 @@ class ConnectionInfoReaderTest : public testing::Test {
 
   void CreateConnectionInfoFile(const char **lines, size_t num_lines,
                                 const FilePath &dir_path, FilePath *file_path) {
-    ASSERT_TRUE(file_util::CreateTemporaryFileInDir(dir_path, file_path));
+    ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {
       string line = lines[i];
       line += '\n';

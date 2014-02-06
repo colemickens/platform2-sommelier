@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

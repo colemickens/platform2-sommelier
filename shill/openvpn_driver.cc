@@ -7,9 +7,9 @@
 #include <arpa/inet.h>
 
 #include <base/file_util.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/certificate_file.h"
@@ -183,11 +183,11 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   // above and then terminating and reaping the process through ProcessKiller.
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
-    file_util::Delete(tls_auth_file_, false);
+    base::DeleteFile(tls_auth_file_, false);
     tls_auth_file_.clear();
   }
   if (!openvpn_config_file_.empty()) {
-    file_util::Delete(openvpn_config_file_, false);
+    base::DeleteFile(openvpn_config_file_, false);
     openvpn_config_file_.clear();
   }
   if (default_service_callback_tag_) {
@@ -241,9 +241,9 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options,
           argument.find(separator) != string::npos) {
         string quoted_argument(argument);
         const char separator_chars[] = { separator, '\0' };
-        ReplaceChars(argument, separator_chars, " ", &quoted_argument);
-        ReplaceChars(quoted_argument, "\\", "\\\\", &quoted_argument);
-        ReplaceChars(quoted_argument, "\"", "\\\"", &quoted_argument);
+        base::ReplaceChars(argument, separator_chars, " ", &quoted_argument);
+        base::ReplaceChars(quoted_argument, "\\", "\\\\", &quoted_argument);
+        base::ReplaceChars(quoted_argument, "\"", "\\\"", &quoted_argument);
         quoted_option.push_back("\"" + quoted_argument + "\"");
       } else {
         quoted_option.push_back(argument);
@@ -257,8 +257,8 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options,
 bool OpenVPNDriver::WriteConfigFile(
     const vector<vector<string>> &options,
     FilePath *config_file) {
-  if (!file_util::DirectoryExists(openvpn_config_directory_)) {
-    if (!file_util::CreateDirectory(openvpn_config_directory_)) {
+  if (!base::DirectoryExists(openvpn_config_directory_)) {
+    if (!base::CreateDirectory(openvpn_config_directory_)) {
       LOG(ERROR) << "Unable to create configuration directory  "
                  << openvpn_config_directory_.value();
       return false;
@@ -266,17 +266,16 @@ bool OpenVPNDriver::WriteConfigFile(
     if (chmod(openvpn_config_directory_.value().c_str(), S_IRWXU)) {
       LOG(ERROR) << "Failed to set permissions on "
                  << openvpn_config_directory_.value();
-      file_util::Delete(openvpn_config_directory_, true);
+      base::DeleteFile(openvpn_config_directory_, true);
       return false;
     }
   }
 
   string contents = JoinOptions(options, '\n');
   contents.push_back('\n');
-  if (!file_util::CreateTemporaryFileInDir(openvpn_config_directory_,
-                                           config_file) ||
+  if (!base::CreateTemporaryFileInDir(openvpn_config_directory_, config_file) ||
       file_util::WriteFile(*config_file, contents.data(), contents.size()) !=
-      static_cast<int>(contents.size())) {
+          static_cast<int>(contents.size())) {
     LOG(ERROR) << "Unable to setup OpenVPN config file.";
     return false;
   }
@@ -615,7 +614,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
     string contents =
         args()->LookupString(kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
-      if (!file_util::CreateTemporaryFile(&tls_auth_file_) ||
+      if (!base::CreateTemporaryFile(&tls_auth_file_) ||
           file_util::WriteFile(
               tls_auth_file_, contents.data(), contents.size()) !=
           static_cast<int>(contents.size())) {
@@ -998,7 +997,7 @@ KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
 bool OpenVPNDriver::ParseLSBRelease(map<string, string> *lsb_release) {
   SLOG(VPN, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
   string contents;
-  if (!file_util::ReadFileToString(lsb_release_file_, &contents)) {
+  if (!base::ReadFileToString(lsb_release_file_, &contents)) {
     LOG(ERROR) << "Unable to read the lsb-release file: "
                << lsb_release_file_.value();
     return false;

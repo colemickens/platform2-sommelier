@@ -13,9 +13,9 @@
 
 #include <base/bind.h>
 #include <base/format_macros.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -33,6 +33,7 @@
 
 using base::Bind;
 using base::SplitString;
+using base::StringPrintf;
 using std::set;
 using std::string;
 using std::vector;

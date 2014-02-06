@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 #include "shill/pending_activation_store.h"

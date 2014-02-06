@@ -103,7 +103,7 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   FilePath stashed_net_log = temp_dir_.path().Append("stashed-net-log");
   EXPECT_EQ(0, file_util::WriteFile(stashed_net_log, "", 0));
-  EXPECT_TRUE(file_util::PathExists(stashed_net_log));
+  EXPECT_TRUE(base::PathExists(stashed_net_log));
   SetStashedNetLog(stashed_net_log);
   EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(now0), Return(0)))
@@ -127,7 +127,7 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
   EXPECT_CALL(process_killer_, Wait(kPID, _)).Times(1);
   reporter_.OnConnectivityEvent();
   EXPECT_EQ(kNow0, GetLastLogStash());
-  EXPECT_FALSE(file_util::PathExists(stashed_net_log));
+  EXPECT_FALSE(base::PathExists(stashed_net_log));
   reporter_.OnConnectivityEvent();
   EXPECT_EQ(kNow1, GetLastLogStash());
 }

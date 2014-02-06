@@ -12,7 +12,7 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -1085,7 +1085,7 @@ TEST_F(ManagerTest, RemoveProfile) {
       FilePath(storage_path()).Append(string(kProfile0) + ".profile"));
 
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
-  ASSERT_TRUE(file_util::PathExists(profile_path));
+  ASSERT_TRUE(base::PathExists(profile_path));
 
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
 
@@ -1097,7 +1097,7 @@ TEST_F(ManagerTest, RemoveProfile) {
   }
 
   // Profile path should still exist.
-  EXPECT_TRUE(file_util::PathExists(profile_path));
+  EXPECT_TRUE(base::PathExists(profile_path));
 
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
 
@@ -1109,9 +1109,9 @@ TEST_F(ManagerTest, RemoveProfile) {
   }
 
   // Profile path should no longer exist.
-  EXPECT_FALSE(file_util::PathExists(profile_path));
+  EXPECT_FALSE(base::PathExists(profile_path));
 
-  // Another remove succeeds, due to a foible in file_util::Delete --
+  // Another remove succeeds, due to a foible in base::DeleteFile --
   // it is not an error to delete a file that does not exist.
   {
     Error error;
@@ -1121,7 +1121,7 @@ TEST_F(ManagerTest, RemoveProfile) {
 
   // Let's create an error case that will "work".  Create a non-empty
   // directory in the place of the profile pathname.
-  ASSERT_TRUE(file_util::CreateDirectory(profile_path.Append("foo")));
+  ASSERT_TRUE(base::CreateDirectory(profile_path.Append("foo")));
   {
     Error error;
     manager.RemoveProfile(kProfile0, &error);
@@ -1199,12 +1199,12 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
       FilePath(storage_path()).Append(string(kProfile0) + ".profile"));
 
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
-  ASSERT_TRUE(file_util::PathExists(profile_path));
+  ASSERT_TRUE(base::PathExists(profile_path));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
 
   // Ensure that even if the backing filestore is removed, we still can't
   // create a profile twice.
-  ASSERT_TRUE(file_util::Delete(profile_path, false));
+  ASSERT_TRUE(base::DeleteFile(profile_path, false));
   EXPECT_EQ(Error::kAlreadyExists, TestCreateProfile(&manager, kProfile0));
 }
 

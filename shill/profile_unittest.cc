@@ -7,11 +7,11 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stringprintf.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/glib.h"
@@ -388,10 +388,10 @@ TEST_F(ProfileTest, SaveUserProfileList) {
   EXPECT_TRUE(Profile::SaveUserProfileList(list_path, profiles));
 
   string profile_data;
-  EXPECT_TRUE(file_util::ReadFileToString(list_path, &profile_data));
-  EXPECT_EQ(StringPrintf("~%s/%s %s\n~%s/%s %s\n",
-                         kUser0, kIdentifier0, kHash0,
-                         kUser1, kIdentifier1, kHash1),
+  EXPECT_TRUE(base::ReadFileToString(list_path, &profile_data));
+  EXPECT_EQ(base::StringPrintf("~%s/%s %s\n~%s/%s %s\n",
+                               kUser0, kIdentifier0, kHash0,
+                               kUser1, kIdentifier1, kHash1),
             profile_data);
 }
 

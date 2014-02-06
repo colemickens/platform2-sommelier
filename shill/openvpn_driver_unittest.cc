@@ -6,11 +6,11 @@
 
 #include <algorithm>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -123,7 +123,7 @@ class OpenVPNDriverTest
     driver_->device_ = NULL;
     driver_->service_ = NULL;
     if (!lsb_release_file_.empty()) {
-      EXPECT_TRUE(file_util::Delete(lsb_release_file_, false));
+      EXPECT_TRUE(base::DeleteFile(lsb_release_file_, false));
       lsb_release_file_.clear();
     }
   }
@@ -321,7 +321,7 @@ void OpenVPNDriverTest::SetupLSBRelease() {
       "CHROMEOS_RELEASE_BOARD=x86-alex\n"
       "CHROMEOS_RELEASE_NAME=Chromium OS\n"
       "CHROMEOS_RELEASE_VERSION=2202.0\n";
-  EXPECT_TRUE(file_util::CreateTemporaryFile(&lsb_release_file_));
+  EXPECT_TRUE(base::CreateTemporaryFile(&lsb_release_file_));
   EXPECT_EQ(arraysize(kLSBReleaseContents),
             file_util::WriteFile(lsb_release_file_,
                                  kLSBReleaseContents,
@@ -719,8 +719,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ASSERT_FALSE(driver_->tls_auth_file_.empty());
   ExpectInFlags(options, "tls-auth", driver_->tls_auth_file_.value());
   string contents;
-  EXPECT_TRUE(
-      file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
+  EXPECT_TRUE(base::ReadFileToString(driver_->tls_auth_file_, &contents));
   EXPECT_EQ(kTLSAuthContents, contents);
   ExpectInFlags(options, "pkcs11-id", kID);
   ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
@@ -1172,9 +1171,9 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->ip_properties_.address = "1.2.3.4";
   StartConnectTimeout(0);
   FilePath tls_auth_file;
-  EXPECT_TRUE(file_util::CreateTemporaryFile(&tls_auth_file));
+  EXPECT_TRUE(base::CreateTemporaryFile(&tls_auth_file));
   EXPECT_FALSE(tls_auth_file.empty());
-  EXPECT_TRUE(file_util::PathExists(tls_auth_file));
+  EXPECT_TRUE(base::PathExists(tls_auth_file));
   driver_->tls_auth_file_ = tls_auth_file;
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
@@ -1195,7 +1194,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
   EXPECT_EQ(kErrorDetails, service_->error_details());
-  EXPECT_FALSE(file_util::PathExists(tls_auth_file));
+  EXPECT_FALSE(base::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
   EXPECT_TRUE(driver_->ip_properties_.address.empty());
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
@@ -1449,15 +1448,15 @@ TEST_F(OpenVPNDriverTest, WriteConfigFile) {
   FilePath config_directory(
       temporary_directory_.path().Append(kOpenVPNConfigDirectory));
   FilePath config_file;
-  EXPECT_FALSE(file_util::PathExists(config_directory));
+  EXPECT_FALSE(base::PathExists(config_directory));
   EXPECT_TRUE(driver_->WriteConfigFile(options, &config_file));
-  EXPECT_TRUE(file_util::PathExists(config_directory));
-  EXPECT_TRUE(file_util::PathExists(config_file));
-  EXPECT_TRUE(file_util::ContainsPath(config_directory, config_file));
+  EXPECT_TRUE(base::PathExists(config_directory));
+  EXPECT_TRUE(base::PathExists(config_file));
+  EXPECT_TRUE(config_directory.IsParent(config_file));
 
   string config_contents;
-  EXPECT_TRUE(file_util::ReadFileToString(config_file, &config_contents));
-  string expected_config_contents = StringPrintf(
+  EXPECT_TRUE(base::ReadFileToString(config_file, &config_contents));
+  string expected_config_contents = base::StringPrintf(
       "%s\n%s %s\n%s \"%s\" \"%s\"\n",
       kOption0,
       kOption1, kOption1Argument0,

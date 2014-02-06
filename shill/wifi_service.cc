@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-#include <base/stringprintf.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
 
@@ -570,9 +570,10 @@ DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
   } else if (security_ == kSecurityPsk ||
              security_ == kSecurityRsn ||
              security_ == kSecurityWpa) {
-    const string psk_proto = StringPrintf("%s %s",
-                                          WPASupplicant::kSecurityModeWPA,
-                                          WPASupplicant::kSecurityModeRSN);
+    const string psk_proto =
+        base::StringPrintf("%s %s",
+                           WPASupplicant::kSecurityModeWPA,
+                           WPASupplicant::kSecurityModeRSN);
     params[WPASupplicant::kPropertySecurityProtocol].writer().
         append_string(psk_proto.c_str());
     params[WPASupplicant::kPropertyPreSharedKey].writer().

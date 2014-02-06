@@ -5,7 +5,7 @@
 #include <deque>
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
@@ -132,7 +132,7 @@ TEST_F(MemoryLogTest, MemoryLogFlushToFileWorks) {
   EXPECT_LT(minimal_message_length,
             MemoryLog::GetInstance()->FlushToFile(test_path));
   std::string file_contents;
-  EXPECT_TRUE(file_util::ReadFileToString(test_path, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(test_path, &file_contents));
   // Log should contain all three messages
   EXPECT_NE(file_contents.find(kTestStr1), std::string::npos);
   EXPECT_NE(file_contents.find(kTestStr2), std::string::npos);
@@ -151,7 +151,7 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskCannotCreateFile) {
                        _,
                        "Failed to open file for dumping memory log to disk."));
   EXPECT_CALL(log, Log(_, _, "Failed to flush memory log to disk"));
-  file_util::CreateTemporaryFile(&tmp_path);
+  base::CreateTemporaryFile(&tmp_path);
   // Flushing fails because a directory already exists with the same name as
   // our log file.
   MemoryLog::GetInstance()->FlushToDiskImpl(
@@ -160,7 +160,7 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskCannotCreateFile) {
 
 TEST_F(MemoryLogTest, MemoryLogFlushToDiskRotateWorks) {
   FilePath tmp_dir;
-  file_util::CreateNewTempDirectory(std::string("/"), &tmp_dir);
+  base::CreateNewTempDirectory(std::string("/"), &tmp_dir);
   FilePath log_path = tmp_dir.Append("connectivity.log");
   FilePath log_path_backup = tmp_dir.Append("connectivity.bak");
   LOG(INFO) << kTestStr1;
@@ -168,7 +168,7 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskRotateWorks) {
   // Populate a dump file with some messages.
   MemoryLog::GetInstance()->FlushToDiskImpl(log_path);
   // There should be no rotated file at this point, we've only done one dump.
-  EXPECT_FALSE(file_util::PathExists(log_path_backup));
+  EXPECT_FALSE(base::PathExists(log_path_backup));
   // Tell MemoryLog it should rotate at a really small size threshhold.
   MemoryLog::GetInstance()->TestSetMaxDiskLogSize(1);
   LOG(INFO) << kTestStr3;
@@ -178,17 +178,17 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskRotateWorks) {
   MemoryLog::GetInstance()->TestSetMaxDiskLogSize(
       MemoryLog::kDefaultMaxDiskLogSizeInBytes);
   std::string file_contents;
-  EXPECT_TRUE(file_util::ReadFileToString(log_path_backup, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(log_path_backup, &file_contents));
   // Rotated log should contain the first two messages.
   EXPECT_NE(file_contents.find(kTestStr1), std::string::npos);
   EXPECT_NE(file_contents.find(kTestStr2), std::string::npos);
-  EXPECT_TRUE(file_util::Delete(tmp_dir, true));
+  EXPECT_TRUE(base::DeleteFile(tmp_dir, true));
 }
 
 TEST_F(MemoryLogTest, MemoryLogFlushToDiskWorks) {
   ScopedMockLog log;
   FilePath tmp_path;
-  file_util::CreateTemporaryFile(&tmp_path);
+  base::CreateTemporaryFile(&tmp_path);
   LOG(INFO) << kTestStr1;
   LOG(INFO) << kTestStr2;
   LOG(INFO) << kTestStr3;
@@ -196,15 +196,15 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskWorks) {
   EXPECT_CALL(log, Log(_, _, ::testing::EndsWith(tmp_path.AsUTF8Unsafe())));
   MemoryLog::GetInstance()->FlushToDiskImpl(tmp_path);
   // No rotation should have happened.
-  EXPECT_FALSE(file_util::PathExists(tmp_path.Append(".bak")));
+  EXPECT_FALSE(base::PathExists(tmp_path.Append(".bak")));
   // But we should have a dump file now.
   std::string file_contents;
-  EXPECT_TRUE(file_util::ReadFileToString(tmp_path, &file_contents));
+  EXPECT_TRUE(base::ReadFileToString(tmp_path, &file_contents));
   // Dump file should contain everything we logged.
   EXPECT_NE(file_contents.find(kTestStr1), std::string::npos);
   EXPECT_NE(file_contents.find(kTestStr2), std::string::npos);
   EXPECT_NE(file_contents.find(kTestStr3), std::string::npos);
-  EXPECT_TRUE(file_util::Delete(tmp_path, false));
+  EXPECT_TRUE(base::DeleteFile(tmp_path, false));
 }
 
 // Test that most messages go through MemoryLog

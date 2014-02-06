@@ -6,8 +6,8 @@
 
 #include <base/bind.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
 #include <ModemManager/ModemManager.h>

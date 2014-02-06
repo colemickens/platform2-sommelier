@@ -14,10 +14,10 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/async_connection.h"
 #include "shill/connection.h"
@@ -70,10 +70,8 @@ HTTPProxy::HTTPProxy(ConnectionRefPtr connection)
       write_server_callback_(Bind(&HTTPProxy::WriteToServer,
                                   weak_ptr_factory_.GetWeakPtr())),
       dispatcher_(NULL),
-      dns_client_(NULL),
       proxy_port_(-1),
       proxy_socket_(-1),
-      server_async_connection_(NULL),
       sockets_(NULL),
       client_socket_(-1),
       server_port_(kDefaultServerPort),
@@ -328,7 +326,7 @@ bool HTTPProxy::ParseClientRequest() {
 // error occurs.
 bool HTTPProxy::ProcessLastHeaderLine() {
   string *header = &client_headers_.back();
-  TrimString(*header, "\r", header);
+  base::TrimString(*header, "\r", header);
 
   if (header->empty()) {
     // Empty line terminates client headers.

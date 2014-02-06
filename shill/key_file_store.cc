@@ -8,7 +8,7 @@
 
 #include <base/files/important_file_writer.h>
 #include <base/file_util.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -45,7 +45,7 @@ void KeyFileStore::ReleaseKeyFile() {
 
 bool KeyFileStore::IsNonEmpty() const {
   int64 file_size = 0;
-  return file_util::GetFileSize(path_, &file_size) && file_size != 0;
+  return base::GetFileSize(path_, &file_size) && file_size != 0;
 }
 
 bool KeyFileStore::Open() {

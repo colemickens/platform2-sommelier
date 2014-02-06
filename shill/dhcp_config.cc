@@ -9,8 +9,8 @@
 #include <sys/wait.h>
 
 #include <base/file_util.h>
-#include <base/string_split.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/dhcpcd_proxy.h"
@@ -491,11 +491,11 @@ void DHCPConfig::CleanupClientState() {
   proxy_.reset();
   if (lease_file_suffix_ == device_name()) {
     // If the lease file suffix was left as default, clean it up at exit.
-    file_util::Delete(root_.Append(
+    base::DeleteFile(root_.Append(
         base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease,
                            device_name().c_str())), false);
   }
-  file_util::Delete(root_.Append(
+  base::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())), false);
   if (pid_) {
     int pid = pid_;

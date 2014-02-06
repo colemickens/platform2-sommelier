@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>

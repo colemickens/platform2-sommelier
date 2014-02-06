@@ -15,7 +15,7 @@
 #include <iomanip>
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 
 #include "shill/logging.h"
@@ -72,7 +72,7 @@ void MemoryLog::Clear() {
 }
 
 void MemoryLog::FlushToDisk() {
-  if (file_util::PathExists(FilePath(kLoggedInTokenPath))) {
+  if (base::PathExists(FilePath(kLoggedInTokenPath))) {
     FlushToDiskImpl(FilePath(kDefaultLoggedInDumpPath));
   } else {
     FlushToDiskImpl(FilePath(kDefaultLoggedOutDumpPath));
@@ -84,12 +84,12 @@ void MemoryLog::FlushToDiskImpl(const FilePath &file_path) {
   do {
     // If the file exists, lets make sure it is of reasonable size before
     // writing to it, and roll it over if it's too big.
-    if (!file_util::PathExists(file_path)) {
+    if (!base::PathExists(file_path)) {
       // No existing file means we can write without worry to a new file.
       continue;
     }
     int64_t file_size = -1;
-    if (!file_util::GetFileSize(file_path, &file_size) || (file_size < 0)) {
+    if (!base::GetFileSize(file_path, &file_size) || (file_size < 0)) {
       LOG(ERROR) << "Failed to get size of existing memory log dump.";
       return;
     }
@@ -98,7 +98,7 @@ void MemoryLog::FlushToDiskImpl(const FilePath &file_path) {
       // File existed, but was below our threshold.
       continue;
     }
-    if (!file_util::Move(file_path, backup_path)) {
+    if (!base::Move(file_path, backup_path)) {
       LOG(ERROR) << "Failed to move overly large memory log on disk from "
                  << file_path.value() << " to " << backup_path.value();
       return;
@@ -113,7 +113,7 @@ void MemoryLog::FlushToDiskImpl(const FilePath &file_path) {
 }
 
 ssize_t MemoryLog::FlushToFile(const FilePath &file_path) {
-  FILE *f = file_util::OpenFile(file_path, "a");
+  FILE *f = base::OpenFile(file_path, "a");
   if (!f) {
     LOG(ERROR) << "Failed to open file for dumping memory log to disk.";
     return -1;

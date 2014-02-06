@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"

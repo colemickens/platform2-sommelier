@@ -25,7 +25,7 @@
 
 #include <base/bind.h>
 #include <base/file_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vpn-manager/service_error.h>
 
@@ -179,7 +179,7 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
 
 void L2TPIPSecDriver::DeleteTemporaryFile(base::FilePath *temporary_file) {
   if (!temporary_file->empty()) {
-    file_util::Delete(*temporary_file, false);
+    base::DeleteFile(*temporary_file, false);
     temporary_file->clear();
   }
 }
@@ -272,11 +272,10 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
 bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
   string psk = args()->LookupString(kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
-    if (!file_util::CreateTemporaryFileInDir(
-            manager()->run_path(), &psk_file_) ||
+    if (!base::CreateTemporaryFileInDir(manager()->run_path(), &psk_file_) ||
         chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
         file_util::WriteFile(psk_file_, psk.data(), psk.size()) !=
-        static_cast<int>(psk.size())) {
+            static_cast<int>(psk.size())) {
       Error::PopulateAndLog(
           error, Error::kInternalError, "Unable to setup psk file.");
       return false;
@@ -335,11 +334,10 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string> *options, Error *error) {
     return false;
   }
   string xauth_credentials = user + "\n" + password + "\n";
-  if (!file_util::CreateTemporaryFileInDir(
-          manager()->run_path(), &xauth_credentials_file_) ||
+  if (!base::CreateTemporaryFileInDir(manager()->run_path(),
+                                      &xauth_credentials_file_) ||
       chmod(xauth_credentials_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
-      file_util::WriteFile(xauth_credentials_file_,
-                           xauth_credentials.data(),
+      file_util::WriteFile(xauth_credentials_file_, xauth_credentials.data(),
                            xauth_credentials.size()) !=
           static_cast<int>(xauth_credentials.size())) {
     Error::PopulateAndLog(

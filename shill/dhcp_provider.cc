@@ -5,7 +5,7 @@
 #include "shill/dhcp_provider.h"
 
 #include <base/file_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
 #include "shill/dhcp_config.h"
@@ -90,7 +90,7 @@ void DHCPProvider::UnbindPID(int pid) {
 
 void DHCPProvider::DestroyLease(const string &name) {
   SLOG(DHCP, 2) << __func__ << " name: " << name;
-  file_util::Delete(root_.Append(
+  base::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatLease,
                          name.c_str())), false);
 }

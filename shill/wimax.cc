@@ -5,8 +5,8 @@
 #include "shill/wimax.h"
 
 #include <base/bind.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/key_value_store.h"
 #include "shill/logging.h"

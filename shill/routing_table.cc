@@ -19,12 +19,12 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/file_path.h>
+#include <base/containers/hash_tables.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
-#include <base/hash_tables.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/byte_string.h"
 #include "shill/logging.h"
@@ -53,7 +53,6 @@ const char RoutingTable::kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
 
 RoutingTable::RoutingTable()
     : route_callback_(Bind(&RoutingTable::RouteMsgHandler, Unretained(this))),
-      route_listener_(NULL),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(Route, 2) << __func__;
 }

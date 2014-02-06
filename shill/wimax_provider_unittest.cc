@@ -9,7 +9,7 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/eap_credentials.h"
@@ -42,7 +42,7 @@ namespace shill {
 namespace {
 
 string GetTestLinkName(int index) {
-  return StringPrintf("wm%d", index);
+  return base::StringPrintf("wm%d", index);
 }
 
 string GetTestPath(int index) {

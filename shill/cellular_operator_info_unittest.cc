@@ -58,16 +58,16 @@ class CellularOperatorInfoTest : public testing::Test {
 
  protected:
   void SetUp() {
-    ASSERT_TRUE(file_util::CreateTemporaryFile(&info_file_path_));
+    ASSERT_TRUE(base::CreateTemporaryFile(&info_file_path_));
     ASSERT_EQ(arraysize(kTestInfoFileContent),
               file_util::WriteFile(info_file_path_, kTestInfoFileContent,
                                    arraysize(kTestInfoFileContent)));
   }
 
   void TruncateFile() {
-    FILE *file = file_util::OpenFile(info_file_path_, "rw");
-    file_util::TruncateFile(file);
-    file_util::CloseFile(file);
+    FILE *file = base::OpenFile(info_file_path_, "rw");
+    base::TruncateFile(file);
+    base::CloseFile(file);
   }
 
   void WriteToFile(const char *content) {
@@ -81,7 +81,7 @@ class CellularOperatorInfoTest : public testing::Test {
   }
 
   void TearDown() {
-    ASSERT_TRUE(file_util::Delete(info_file_path_, false));
+    ASSERT_TRUE(base::DeleteFile(info_file_path_, false));
   }
 
   GLib glib_;

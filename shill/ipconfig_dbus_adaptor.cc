@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/error.h"

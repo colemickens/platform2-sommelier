@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/error.h"
 #include "shill/logging.h"

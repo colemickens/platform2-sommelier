@@ -5,27 +5,21 @@
 #include "shill/key_file_store.h"
 
 #include <base/file_util.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "shill/key_value_store.h"
 
+using base::FileEnumerator;
 using base::FilePath;
-using file_util::FileEnumerator;
 using std::set;
 using std::string;
 using std::vector;
 using testing::Test;
-
-// TODO(benchan): Remove this workaround after finishing glib 2.32 migration.
-#ifdef GLIB_VERSION_2_32
-#define KEY_FILE_EXTRA_NEW_LINE
-#else
-#define KEY_FILE_EXTRA_NEW_LINE "\n"
-#endif
 
 namespace shill {
 
@@ -64,7 +58,7 @@ class KeyFileStoreTest : public Test {
 
 string KeyFileStoreTest::ReadKeyFile() {
   string data;
-  EXPECT_TRUE(file_util::ReadFileToString(store_.path(), &data));
+  EXPECT_TRUE(base::ReadFileToString(store_.path(), &data));
   return data;
 }
 
@@ -88,12 +82,11 @@ TEST_F(KeyFileStoreTest, OpenClose) {
 
   // Verify that the file actually got written with the right name.
   EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
-  FileEnumerator::FindInfo find_info;
-  file_enumerator.GetFindInfo(&find_info);
+  FileEnumerator::FileInfo file_info = file_enumerator.GetInfo();
 
   // Verify that the profile is a regular file, readable and writeable by the
   // owner only.
-  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, find_info.stat.st_mode);
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, file_info.stat().st_mode);
 
   ASSERT_TRUE(store_.Open());
   EXPECT_TRUE(store_.key_file_);
@@ -117,12 +110,11 @@ TEST_F(KeyFileStoreTest, MarkAsCorrupted) {
   EXPECT_FALSE(store_.IsNonEmpty());
   WriteKeyFile("garbage\n");
   EXPECT_TRUE(store_.IsNonEmpty());
-  EXPECT_TRUE(file_util::PathExists(store_.path()));
+  EXPECT_TRUE(base::PathExists(store_.path()));
   EXPECT_TRUE(store_.MarkAsCorrupted());
   EXPECT_FALSE(store_.IsNonEmpty());
-  EXPECT_FALSE(file_util::PathExists(store_.path()));
-  EXPECT_TRUE(
-      file_util::PathExists(FilePath(store_.path().value() + ".corrupted")));
+  EXPECT_FALSE(base::PathExists(store_.path()));
+  EXPECT_TRUE(base::PathExists(FilePath(store_.path().value() + ".corrupted")));
 }
 
 TEST_F(KeyFileStoreTest, GetGroups) {
@@ -287,8 +279,7 @@ TEST_F(KeyFileStoreTest, DeleteKey) {
   EXPECT_TRUE(store_.DeleteKey(kGroup, "random-key"));
   EXPECT_FALSE(store_.DeleteKey("random-group", kKeyAlive));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%d\n",
                                kGroup, kKeyAlive, kValueAlive),
             ReadKeyFile());
@@ -307,8 +298,7 @@ TEST_F(KeyFileStoreTest, DeleteGroup) {
   EXPECT_TRUE(store_.DeleteGroup(kGroupB));
   EXPECT_TRUE(store_.DeleteGroup("group-d"));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "\n"
                                "[%s]\n",
                                kGroupA, kGroupC),
@@ -342,8 +332,7 @@ TEST_F(KeyFileStoreTest, SetString) {
   ASSERT_TRUE(store_.SetString(kGroup, kKey1, kValue1));
   ASSERT_TRUE(store_.SetString(kGroup, kKey2, kValue2));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s\n"
                                "%s=%s\n",
                                kGroup, kKey1, kValue1, kKey2, kValue2),
@@ -389,8 +378,7 @@ TEST_F(KeyFileStoreTest, SetBool) {
   ASSERT_TRUE(store_.SetBool(kGroup, kKeyTrue, true));
   ASSERT_TRUE(store_.SetBool(kGroup, kKeyFalse, false));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=true\n"
                                "%s=false\n",
                                kGroup, kKeyTrue, kKeyFalse),
@@ -444,8 +432,7 @@ TEST_F(KeyFileStoreTest, SetInt) {
   ASSERT_TRUE(store_.SetInt(kGroup, kKey1, kValue1));
   ASSERT_TRUE(store_.SetInt(kGroup, kKey2, kValue2));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%d\n"
                                "%s=%d\n",
                                kGroup, kKey1, kValue1, kKey2, kValue2),
@@ -491,8 +478,7 @@ TEST_F(KeyFileStoreTest, SetUint64) {
   ASSERT_TRUE(store_.Open());
   ASSERT_TRUE(store_.SetUint64(kGroup, kKey, kValue));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s\n",
                                kGroup, kKey,
                                base::Uint64ToString(kValue).c_str()),
@@ -598,8 +584,7 @@ TEST_F(KeyFileStoreTest, SetStringList) {
     ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValues, value));
   }
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=\n"
                                "%s=;%s;\n"
                                "%s=%s;;\n"
@@ -636,8 +621,7 @@ TEST_F(KeyFileStoreTest, SetCryptedString) {
   ASSERT_TRUE(store_.Open());
   ASSERT_TRUE(store_.SetCryptedString(kGroup, kKey, kPlainText));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s\n",
                                kGroup, kKey, kROT47Text),
             ReadKeyFile());
@@ -856,8 +840,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   }
 
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
-                               "[%s]\n"
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s;\n"
                                "%s=%d\n"
                                "%s=false\n"

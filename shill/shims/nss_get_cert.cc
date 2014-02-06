@@ -9,7 +9,7 @@
 #include <string>
 
 #include <base/command_line.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 
   const string nickname = argv[1];
   const string format_str = argv[2];
-  const FilePath outfile(argv[3]);
+  const base::FilePath outfile(argv[3]);
 
   ScopedNSS nss;
   ByteString cert;

@@ -10,7 +10,7 @@
 
 #include <base/bind.h>
 #include <base/format_macros.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/logging.h"
 

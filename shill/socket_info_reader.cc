@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <limits>
 
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 
 #include "shill/file_reader.h"
 #include "shill/logging.h"

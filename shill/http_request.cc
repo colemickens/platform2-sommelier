@@ -7,8 +7,8 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/string_number_conversions.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/async_connection.h"
 #include "shill/connection.h"

@@ -20,7 +20,7 @@ void FileReader::Close() {
 }
 
 bool FileReader::Open(const FilePath &file_path) {
-  file_.reset(file_util::OpenFile(file_path, "rb"));
+  file_.reset(base::OpenFile(file_path, "rb"));
   return file_.get() != NULL;
 }
 

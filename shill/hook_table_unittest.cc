@@ -8,15 +8,15 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/testing.h"
 
+using base::Bind;
 using base::Callback;
 using base::Closure;
-using base::Bind;
 using base::Unretained;
 using std::string;
 using ::testing::_;
@@ -37,7 +37,7 @@ class HookTableTest : public testing::Test {
   HookTableTest()
       : hook_table_(&event_dispatcher_) {}
 
-  base::Callback<void(const Error &)> *GetDoneCallback() {
+  Callback<void(const Error &)> *GetDoneCallback() {
     return &hook_table_.done_cb_;
   }
 
@@ -95,7 +95,7 @@ TEST_F(HookTableTest, ActionTimesOut) {
   hook_table_.Run(kTimeout, done_cb);
 
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
-  event_dispatcher_.PostDelayedTask(MessageLoop::QuitClosure(),
+  event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitClosure(),
                                     kTimeout + 1);
   event_dispatcher_.DispatchForever();
   EXPECT_TRUE(GetDoneCallback()->is_null());
@@ -147,7 +147,7 @@ TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   hook_table_.ActionComplete(kName1);
   hook_table_.ActionComplete(kName3);
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
-  event_dispatcher_.PostDelayedTask(MessageLoop::QuitClosure(),
+  event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitClosure(),
                                     kTimeout + 1);
   event_dispatcher_.DispatchForever();
 }

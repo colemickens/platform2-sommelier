@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <base/file_util.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -94,7 +94,7 @@ bool Resolver::ClearDNS() {
 
   CHECK(!path_.empty());
 
-  return file_util::Delete(path_, false);
+  return base::DeleteFile(path_, false);
 }
 
 }  // namespace shill

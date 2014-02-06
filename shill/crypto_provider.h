@@ -5,7 +5,7 @@
 #ifndef SHILL_CRYPTO_PROVIDER_
 #define SHILL_CRYPTO_PROVIDER_
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

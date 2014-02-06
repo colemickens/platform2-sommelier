@@ -12,7 +12,7 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST

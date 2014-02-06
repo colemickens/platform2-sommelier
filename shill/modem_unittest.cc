@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>

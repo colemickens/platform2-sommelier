@@ -4,8 +4,8 @@
 
 #include "shill/metrics.h"
 
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
@@ -581,11 +581,10 @@ void Metrics::NotifyServiceStateChanged(const Service &service,
     SendServiceFailure(service);
 
   if (collect_bootstats_) {
-    bootstat_log(
-        StringPrintf("network-%s-%s",
-                     Technology::NameFromIdentifier(
-                         service.technology()).c_str(),
-                     service.GetStateString().c_str()).c_str());
+    bootstat_log(base::StringPrintf("network-%s-%s",
+                                    Technology::NameFromIdentifier(
+                                        service.technology()).c_str(),
+                                    service.GetStateString().c_str()).c_str());
   }
 
   if (new_state != Service::kStateConnected)

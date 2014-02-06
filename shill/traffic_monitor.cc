@@ -5,7 +5,7 @@
 #include "shill/traffic_monitor.h"
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <netinet/in.h>
 
 #include "shill/device.h"

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/lazy_instance.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

@@ -5,7 +5,7 @@
 #include "shill/vpn_driver.h"
 
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

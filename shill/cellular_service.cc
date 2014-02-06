@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -106,8 +106,7 @@ CellularService::CellularService(ModemInfo *modem_info,
       weak_ptr_factory_(this),
       activate_over_non_cellular_network_(false),
       cellular_(device),
-      is_auto_connecting_(false),
-      out_of_credits_detector_(NULL) {
+      is_auto_connecting_(false) {
   SetConnectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,

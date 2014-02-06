@@ -13,9 +13,9 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
-#include <base/file_path.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
+#include <base/files/file_path.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"

@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 #include "shill/arp_client.h"
 #include "shill/arp_packet.h"
