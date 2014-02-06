@@ -7,16 +7,18 @@
 #include <arpa/inet.h>  // for inet_ntop and inet_pton
 #include <netdb.h>  // for getaddrinfo
 
-#include "base/file_util.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/logging.h"
-#include "base/posix/eintr_wrapper.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+
+using base::FilePath;
 
 namespace vpn_manager {
 
-const base::FilePath *ServiceManager::temp_path_ = NULL;
+const FilePath *ServiceManager::temp_path_ = NULL;
 const char ServiceManager::kDefaultTempBasePath[] = "/var/run/l2tpipsec_vpn";
 const char ServiceManager::kPersistentSubdir[] = "current";
 const char *ServiceManager::temp_base_path_ =

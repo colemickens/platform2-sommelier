@@ -8,7 +8,7 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/process_mock.h>
 #include <chromeos/test_helpers.h>
 #include <gtest/gtest.h>
@@ -34,8 +34,8 @@ class DaemonTest : public ::testing::Test {
     FilePath cwd;
     CHECK(temp_dir_.CreateUniqueTempDir());
     FilePath test_path = temp_dir_.path().Append("daemon_testdir");
-    file_util::Delete(test_path, true);
-    file_util::CreateDirectory(test_path);
+    base::DeleteFile(test_path, true);
+    base::CreateDirectory(test_path);
     pid_file_path_ = test_path.Append("process.pid");
     daemon_.reset(new Daemon(pid_file_path_.value()));
   }
@@ -192,9 +192,9 @@ TEST_F(DaemonTest, SetProcessToSamePid) {
 
 TEST_F(DaemonTest, TerminateNoProcess) {
   WritePidFile("");
-  ASSERT_TRUE(file_util::PathExists(pid_file_path_));
+  ASSERT_TRUE(base::PathExists(pid_file_path_));
   EXPECT_TRUE(daemon_->Terminate());
-  EXPECT_FALSE(file_util::PathExists(pid_file_path_));
+  EXPECT_FALSE(base::PathExists(pid_file_path_));
 }
 
 TEST_F(DaemonTest, TerminateDeadProcess) {
@@ -203,9 +203,9 @@ TEST_F(DaemonTest, TerminateDeadProcess) {
   EXPECT_CALL(*process, Kill(SIGTERM, _)).Times(0);
   SetProcess(process);  // Passes ownership.
   WritePidFile("");
-  ASSERT_TRUE(file_util::PathExists(pid_file_path_));
+  ASSERT_TRUE(base::PathExists(pid_file_path_));
   EXPECT_TRUE(daemon_->Terminate());
-  EXPECT_FALSE(file_util::PathExists(pid_file_path_));
+  EXPECT_FALSE(base::PathExists(pid_file_path_));
 }
 
 TEST_F(DaemonTest, TerminateLiveProcess) {
@@ -217,10 +217,10 @@ TEST_F(DaemonTest, TerminateLiveProcess) {
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(0);
   SetProcess(process);  // Passes ownership.
   WritePidFile("");
-  ASSERT_TRUE(file_util::PathExists(pid_file_path_));
+  ASSERT_TRUE(base::PathExists(pid_file_path_));
   // Returns false since the daemon was unable to terminate the process.
   EXPECT_TRUE(daemon_->Terminate());
-  EXPECT_FALSE(file_util::PathExists(pid_file_path_));
+  EXPECT_FALSE(base::PathExists(pid_file_path_));
 }
 
 TEST_F(DaemonTest, Destructor) {

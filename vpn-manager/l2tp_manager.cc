@@ -9,12 +9,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "base/posix/eintr_wrapper.h"
-#include "base/string_util.h"
-#include "chromeos/process.h"
-#include "gflags/gflags.h"
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_util.h>
+#include <chromeos/process.h>
+#include <gflags/gflags.h>
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 DEFINE_bool(defaultroute, true, "defaultroute");
@@ -71,7 +71,7 @@ bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
     return false;
   }
   if (!FLAGS_pppd_plugin.empty() &&
-      !file_util::PathExists(FilePath(FLAGS_pppd_plugin))) {
+      !base::PathExists(FilePath(FLAGS_pppd_plugin))) {
     LOG(WARNING) << "pppd_plugin (" << FLAGS_pppd_plugin << ") does not exist";
   }
   if (!FLAGS_password.empty()) {
@@ -209,7 +209,7 @@ bool L2tpManager::Start() {
     return false;
   }
   l2tpd_control_path_ = temp_path()->Append("l2tpd.control");
-  file_util::Delete(l2tpd_control_path_, false);
+  base::DeleteFile(l2tpd_control_path_, false);
 
   if (!FLAGS_pppd_plugin.empty()) {
     // Pass the resolved LNS address to the plugin.
@@ -231,7 +231,7 @@ bool L2tpManager::Start() {
 int L2tpManager::Poll() {
   if (is_running()) return -1;
   if (start_ticks_.is_null()) return -1;
-  if (!was_initiated_ && file_util::PathExists(l2tpd_control_path_)) {
+  if (!was_initiated_ && base::PathExists(l2tpd_control_path_)) {
     if (!Initiate()) {
       LOG(ERROR) << "Unable to initiate connection";
       RegisterError(kServiceErrorL2tpConnectionFailed);
@@ -242,7 +242,7 @@ int L2tpManager::Poll() {
     // With the connection initated, check if it's up in 1s.
     return 1000;
   }
-  if (was_initiated_ && file_util::PathExists(FilePath(ppp_interface_path_))) {
+  if (was_initiated_ && base::PathExists(FilePath(ppp_interface_path_))) {
     LOG(INFO) << "L2TP connection now up";
     OnStarted();
     return -1;

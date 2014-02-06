@@ -13,16 +13,16 @@
 #include <string>
 #include <vector>
 
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "base/posix/eintr_wrapper.h"
-#include "base/string_number_conversions.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
-#include "chromeos/process.h"
-#include "gflags/gflags.h"
-#include "openssl/pem.h"
-#include "openssl/x509.h"
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <chromeos/process.h>
+#include <gflags/gflags.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 
 #include "vpn-manager/daemon.h"
 
@@ -118,7 +118,7 @@ bool IpsecManager::Initialize(int ike_version,
 
     // Must be a certificate based connection.
     FilePath server_ca_path(server_ca_file);
-    if (!file_util::PathExists(server_ca_path)) {
+    if (!base::PathExists(server_ca_path)) {
       LOG(ERROR) << "Invalid server CA file for IPsec layer: "
                  << server_ca_file;
       RegisterError(kServiceErrorInvalidArgument);
@@ -158,7 +158,7 @@ bool IpsecManager::Initialize(int ike_version,
         !client_cert_id.empty()) {
       LOG(WARNING) << "Specified both certificates and PSK to IPsec layer";
     }
-    if (!file_util::PathExists(FilePath(psk_file))) {
+    if (!base::PathExists(FilePath(psk_file))) {
       LOG(ERROR) << "Invalid PSK file for IPsec layer: " << psk_file;
       RegisterError(kServiceErrorInvalidArgument);
       return false;
@@ -167,7 +167,7 @@ bool IpsecManager::Initialize(int ike_version,
   }
 
   if (!xauth_credentials_file.empty()) {
-    if (!file_util::PathExists(FilePath(xauth_credentials_file))) {
+    if (!base::PathExists(FilePath(xauth_credentials_file))) {
       LOG(ERROR) << "Invalid xauth credentials file: "
                  << xauth_credentials_file;
       RegisterError(kServiceErrorInvalidArgument);
@@ -183,7 +183,7 @@ bool IpsecManager::Initialize(int ike_version,
   }
   ike_version_ = ike_version;
 
-  file_util::Delete(FilePath(kIpsecUpFile), false);
+  base::DeleteFile(FilePath(kIpsecUpFile), false);
 
   return true;
 }
@@ -232,7 +232,7 @@ bool IpsecManager::FormatIpsecSecret(std::string *formatted) {
     secret = user_pin_;
   } else {
     secret_mode = "PSK";
-    if (!file_util::ReadFileToString(FilePath(psk_file_), &secret)) {
+    if (!base::ReadFileToString(FilePath(psk_file_), &secret)) {
       LOG(ERROR) << "Unable to read PSK from " << psk_file_;
       return false;
     }
@@ -265,8 +265,8 @@ bool IpsecManager::FormatXauthSecret(std::string* formatted) {
   }
 
   std::string xauth_contents;
-  if (!file_util::ReadFileToString(FilePath(xauth_credentials_file_),
-                                   &xauth_contents)) {
+  if (!base::ReadFileToString(FilePath(xauth_credentials_file_),
+                              &xauth_contents)) {
     LOG(ERROR) << "Unable to read XAUTH credentials from "
                << xauth_credentials_file_;
     return false;
@@ -420,8 +420,8 @@ bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
 bool IpsecManager::WriteConfigFile(
     const std::string &output_name, const std::string &contents) {
   FilePath temp_file = temp_path()->Append(output_name);
-  file_util::Delete(temp_file, false);
-  if (file_util::PathExists(temp_file)) {
+  base::DeleteFile(temp_file, false);
+  if (base::PathExists(temp_file)) {
     LOG(ERROR) << "Unable to remove existing file "
                << temp_file.value();
     return false;
@@ -439,10 +439,10 @@ bool IpsecManager::WriteConfigFile(
 bool IpsecManager::MakeSymbolicLink(const std::string &output_name,
                                     const FilePath &source_path) {
   FilePath symlink_path = persistent_path_.Append(output_name);
-  // Use unlink to remove the symlink directly since file_util::Delete
+  // Use unlink to remove the symlink directly since base::DeleteFile
   // cannot delete dangling symlinks.
   unlink(symlink_path.value().c_str());
-  if (file_util::PathExists(symlink_path)) {
+  if (base::PathExists(symlink_path)) {
     LOG(ERROR) << "Unable to remove existing file "
                << symlink_path.value();
     return false;
@@ -461,7 +461,7 @@ bool IpsecManager::WriteConfigFiles() {
   // ChromeOS image are symlinks to a fixed place |persistent_path_|.
   // We create the configuration files in /var/run and link from the
   // |persistent_path_| to these newly created files.
-  if (!file_util::CreateDirectory(persistent_path_)) {
+  if (!base::CreateDirectory(persistent_path_)) {
     LOG(ERROR) << "Unable to create container directory "
                << persistent_path_.value();
     return false;
@@ -510,7 +510,7 @@ bool IpsecManager::WriteConfigFiles() {
 }
 
 bool IpsecManager::CreateIpsecRunDirectory() {
-  if (!file_util::CreateDirectory(FilePath(ipsec_run_path_)) ||
+  if (!base::CreateDirectory(FilePath(ipsec_run_path_)) ||
       !SetIpsecGroup(FilePath(ipsec_run_path_)) ||
       chmod(ipsec_run_path_.c_str(), kIpsecRunPathMode) != 0) {
     LOG(ERROR) << "Unable to create " << ipsec_run_path_;
@@ -548,7 +548,7 @@ bool IpsecManager::Start() {
 int IpsecManager::Poll() {
   if (is_running()) return -1;
   if (start_ticks_.is_null()) return -1;
-  if (!file_util::PathExists(FilePath(ipsec_up_file_))) {
+  if (!base::PathExists(FilePath(ipsec_up_file_))) {
     if (base::TimeTicks::Now() - start_ticks_ >
         base::TimeDelta::FromSeconds(FLAGS_ipsec_timeout)) {
       LOG(ERROR) << "IPsec connection timed out";

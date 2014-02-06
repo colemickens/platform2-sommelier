@@ -7,10 +7,11 @@
 
 #include <sys/socket.h>
 
-#include "base/file_util.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time.h"
-#include "gtest/gtest_prod.h"  // for FRIEND_TEST
+#include <base/file_util.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "vpn-manager/service_manager.h"
 
 namespace chromeos {
@@ -87,11 +88,11 @@ class L2tpManager : public ServiceManager {
   // Last partial line read from ppp_output_fd_.
   std::string partial_ppp_output_line_;
   // Path to a file whose existence indicates the ppp device is up.
-  FilePath ppp_interface_path_;
+  base::FilePath ppp_interface_path_;
   // Path to ppp daemon's log file.
-  FilePath ppp_output_path_;
+  base::FilePath ppp_output_path_;
   // Path to l2tp daemon's control file.
-  FilePath l2tpd_control_path_;
+  base::FilePath l2tpd_control_path_;
   // Running l2tp process.
   scoped_ptr<chromeos::Process> l2tpd_;
 };

@@ -4,13 +4,14 @@
 
 #include <sys/socket.h>
 
-#include "base/command_line.h"
-#include "base/file_util.h"
-#include "base/files/scoped_temp_dir.h"
-#include "chromeos/syslog_logging.h"
-#include "chromeos/test_helpers.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include <base/command_line.h>
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <chromeos/syslog_logging.h>
+#include <chromeos/test_helpers.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "vpn-manager/service_manager.h"
 
 using ::base::FilePath;
@@ -37,8 +38,8 @@ class ServiceManagerTest : public ::testing::Test {
   void SetUp() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("service_manager_testdir");
-    file_util::Delete(test_path_, true);
-    file_util::CreateDirectory(test_path_);
+    base::DeleteFile(test_path_, true);
+    base::CreateDirectory(test_path_);
     temp_path_ = test_path_.Append("service");
     ServiceManager::temp_base_path_ = temp_path_.value().c_str();
     ServiceManager::temp_path_ = &temp_path_;
@@ -66,9 +67,9 @@ TEST_F(ServiceManagerTest, InitializeDirectories) {
     ServiceManager::InitializeDirectories(&my_temp);
     EXPECT_TRUE(my_temp.IsValid());
     picked_temp = my_temp.path();
-    EXPECT_TRUE(file_util::DirectoryExists(picked_temp));
+    EXPECT_TRUE(base::DirectoryExists(picked_temp));
   }
-  EXPECT_FALSE(file_util::DirectoryExists(picked_temp));
+  EXPECT_FALSE(base::DirectoryExists(picked_temp));
 }
 
 TEST_F(ServiceManagerTest, OnStartedInnerSucceeds) {

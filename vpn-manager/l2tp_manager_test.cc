@@ -34,8 +34,8 @@ class L2tpManagerTest : public ::testing::Test {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("l2tp_manager_testdir");
     ServiceManager::temp_path_ = new FilePath(test_path_);
-    file_util::Delete(test_path_, true);
-    file_util::CreateDirectory(test_path_);
+    base::DeleteFile(test_path_, true);
+    base::CreateDirectory(test_path_);
     remote_address_text_ = "1.2.3.4";
     ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
                                               &remote_address_);
@@ -177,7 +177,7 @@ TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
   EXPECT_EQ(1000, l2tp_.Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
   EXPECT_TRUE(l2tp_.was_stopped());
-  EXPECT_FALSE(file_util::PathExists(control_path_));
+  EXPECT_FALSE(base::PathExists(control_path_));
 }
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForUp) {

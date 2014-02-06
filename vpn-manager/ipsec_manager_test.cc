@@ -5,7 +5,7 @@
 #include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/process_mock.h>
 #include <chromeos/syslog_logging.h>
 #include <chromeos/test_helpers.h>
@@ -43,10 +43,10 @@ class IpsecManagerTest : public ::testing::Test {
     FilePath cwd;
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("ipsec_manager_testdir");
-    file_util::Delete(test_path_, true);
-    file_util::CreateDirectory(test_path_);
+    base::DeleteFile(test_path_, true);
+    base::CreateDirectory(test_path_);
     persistent_path_ = test_path_.Append("persistent");
-    file_util::CreateDirectory(persistent_path_);
+    base::CreateDirectory(persistent_path_);
     remote_address_text_ = "1.2.3.4";
     ASSERT_TRUE(ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
                                                           &remote_address_));
@@ -68,8 +68,8 @@ class IpsecManagerTest : public ::testing::Test {
                                  kXauthUser, kXauthPassword).c_str());
     const char *srcvar = getenv("SRC");
     FilePath srcdir = srcvar ? FilePath(srcvar) : cwd;
-    file_util::CopyFile(srcdir.Append("testdata/cacert.der"),
-                        FilePath(server_ca_file_));
+    base::CopyFile(srcdir.Append("testdata/cacert.der"),
+                   FilePath(server_ca_file_));
     chromeos::ClearLog();
     starter_daemon_ = new DaemonMock;
     charon_daemon_ = new DaemonMock;
@@ -218,7 +218,7 @@ TEST_F(IpsecManagerTest, PollTimeoutWaiting) {
 TEST_F(IpsecManagerTest, PollTransitionToUp) {
   ipsec_.start_ticks_ = base::TimeTicks::Now();
   EXPECT_TRUE(ipsec_.CreateIpsecRunDirectory());
-  EXPECT_TRUE(file_util::PathExists(FilePath(ipsec_run_path_)));
+  EXPECT_TRUE(base::PathExists(FilePath(ipsec_run_path_)));
   WriteFile(ipsec_up_file_, "");
   EXPECT_FALSE(ipsec_.is_running());
   EXPECT_EQ(-1, ipsec_.Poll());
@@ -388,11 +388,10 @@ TEST_F(IpsecManagerTestIkeV1Psk, Start) {
 TEST_F(IpsecManagerTestIkeV1Psk, WriteConfigFiles) {
   EXPECT_TRUE(ipsec_.WriteConfigFiles());
   std::string conf_contents;
-  ASSERT_TRUE(file_util::ReadFileToString(
-      persistent_path_.Append("ipsec.conf"), &conf_contents));
+  ASSERT_TRUE(base::ReadFileToString(persistent_path_.Append("ipsec.conf"),
+                                     &conf_contents));
   EXPECT_EQ(GetExpectedStarter(false, false), conf_contents);
-  ASSERT_TRUE(file_util::PathExists(persistent_path_.Append(
-      "ipsec.secrets")));
+  ASSERT_TRUE(base::PathExists(persistent_path_.Append("ipsec.secrets")));
 }
 
 class IpsecManagerTestIkeV1Certs : public IpsecManagerTest {
@@ -456,12 +455,11 @@ TEST_F(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile) {
 TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
   EXPECT_TRUE(ipsec_.WriteConfigFiles());
   std::string conf_contents;
-  ASSERT_TRUE(file_util::ReadFileToString(
-      persistent_path_.Append("ipsec.conf"), &conf_contents));
+  ASSERT_TRUE(base::ReadFileToString(persistent_path_.Append("ipsec.conf"),
+                                     &conf_contents));
   EXPECT_EQ(GetExpectedStarter(false), conf_contents);
-  ASSERT_TRUE(file_util::PathExists(persistent_path_.Append(
-      "ipsec.secrets")));
-  ASSERT_TRUE(file_util::PathExists(persistent_path_.Append("cacert.der")));
+  ASSERT_TRUE(base::PathExists(persistent_path_.Append("ipsec.secrets")));
+  ASSERT_TRUE(base::PathExists(persistent_path_.Append("cacert.der")));
 }
 
 }  // namespace vpn_manager

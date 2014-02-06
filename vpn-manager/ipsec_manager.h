@@ -8,10 +8,11 @@
 #include <string>
 #include <sys/socket.h>
 
-#include "base/file_path.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time.h"
-#include "gtest/gtest_prod.h"  // for FRIEND_TEST
+#include <base/files/file_path.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "vpn-manager/service_manager.h"
 
 namespace vpn_manager {

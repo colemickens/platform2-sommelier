@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include "base/file_path.h"
-#include "gtest/gtest_prod.h"  // for FRIEND_TEST
+#include <base/files/file_path.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "vpn-manager/service_error.h"
 
@@ -156,13 +156,13 @@ class ServiceManager {
   FRIEND_TEST(ServiceManagerTest, OnStoppedFromFailure);
   FRIEND_TEST(ServiceManagerTest, OnStoppedFromSuccess);
 
-  static FilePath GetRootPersistentPath();
+  static base::FilePath GetRootPersistentPath();
 
   ServiceManager* inner_service() { return inner_service_; }
 
   ServiceManager* outer_service() { return outer_service_; }
 
-  static const FilePath* temp_path() { return temp_path_; }
+  static const base::FilePath* temp_path() { return temp_path_; }
   static const char* temp_base_path() { return temp_base_path_; }
 
  private:
@@ -194,7 +194,7 @@ class ServiceManager {
   ServiceError error_;
 
   // Path to temporary directory on cryptohome.
-  static const FilePath* temp_path_;
+  static const base::FilePath* temp_path_;
 
   // Path to base directory of temporary directory on cryptohome.
   static const char* temp_base_path_;

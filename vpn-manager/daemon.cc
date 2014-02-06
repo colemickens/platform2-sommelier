@@ -8,9 +8,9 @@
 
 #include <string>
 
-#include "base/file_path.h"
-#include "base/file_util.h"
-#include "chromeos/process.h"
+#include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <chromeos/process.h>
 
 using ::chromeos::Process;
 using ::chromeos::ProcessImpl;
@@ -36,7 +36,7 @@ chromeos::Process *Daemon::CreateProcess() {
 }
 
 bool Daemon::FindProcess() {
-  if (!file_util::PathExists(base::FilePath(pid_file_)))
+  if (!base::PathExists(base::FilePath(pid_file_)))
     return false;
 
   scoped_ptr<chromeos::Process> process(new ProcessImpl);
@@ -81,7 +81,7 @@ bool Daemon::Terminate() {
   bool result =
       !IsRunning() ||process_->Kill(SIGTERM, kTerminationTimeoutSeconds);
   ClearProcess();  // This will send a SIGKILL if we failed above.
-  file_util::Delete(base::FilePath(pid_file_), false);
+  base::DeleteFile(base::FilePath(pid_file_), false);
   return result;
 }
 
