@@ -12,7 +12,6 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus-c++/glib-integration.h>
