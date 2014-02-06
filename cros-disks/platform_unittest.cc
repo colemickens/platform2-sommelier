@@ -55,7 +55,7 @@ TEST_F(PlatformTest, CreateDirectory) {
 
   // Existent and non-empty directory
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_TRUE(platform_.CreateDirectory(path));
 }
 
@@ -73,7 +73,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
 
   // Existent and non-empty directory
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectory(path));
 }
 
@@ -97,7 +97,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
 
   // Existent and non-empty directory
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   path = new_dir.value();
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 0, reserved_paths));
@@ -106,7 +106,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   FilePath new_dir1 = temp_dir.path().Append("test1 (1)");
   EXPECT_EQ(new_dir1.value(), path);
 
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir1, &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir1, &temp_file));
   path = new_dir.value();
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 0, reserved_paths));
@@ -189,7 +189,7 @@ TEST_F(PlatformTest, GetOwnershipOfFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
   string path = temp_file.value();
 
   uid_t user_id;
@@ -203,11 +203,11 @@ TEST_F(PlatformTest, GetOwnershipOfSymbolicLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
   string file_path = temp_file.value();
   string symlink_path = file_path + "-symlink";
   FilePath temp_symlink(symlink_path);
-  ASSERT_TRUE(file_util::CreateSymbolicLink(temp_file, temp_symlink));
+  ASSERT_TRUE(base::CreateSymbolicLink(temp_file, temp_symlink));
 
   uid_t user_id;
   gid_t group_id;
@@ -246,7 +246,7 @@ TEST_F(PlatformTest, GetPermissionsOfFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
   string path = temp_file.value();
 
   mode_t mode = 0;
@@ -267,11 +267,11 @@ TEST_F(PlatformTest, GetPermissionsOfSymbolicLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
   string file_path = temp_file.value();
   string symlink_path = file_path + "-symlink";
   FilePath temp_symlink(symlink_path);
-  ASSERT_TRUE(file_util::CreateSymbolicLink(temp_file, temp_symlink));
+  ASSERT_TRUE(base::CreateSymbolicLink(temp_file, temp_symlink));
 
   mode_t mode = 0;
   EXPECT_TRUE(platform_.GetPermissions(file_path, &mode));
@@ -308,7 +308,7 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
   // Existent and non-empty directory
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectory(path));
   FilePath temp_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
 }
 

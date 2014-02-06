@@ -14,8 +14,8 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 using base::FilePath;
 using std::string;
@@ -40,7 +40,7 @@ Platform::~Platform() {
 }
 
 bool Platform::CreateDirectory(const string& path) const {
-  if (!file_util::CreateDirectory(FilePath(path))) {
+  if (!base::CreateDirectory(FilePath(path))) {
     LOG(ERROR) << "Failed to create directory '" << path << "'";
     return false;
   }

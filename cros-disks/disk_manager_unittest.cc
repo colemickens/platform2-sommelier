@@ -6,8 +6,8 @@
 
 #include <sys/mount.h>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <gmock/gmock.h>

@@ -11,8 +11,8 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "cros-disks/disk.h"
 #include "cros-disks/exfat_mounter.h"

@@ -12,10 +12,10 @@
 #include <algorithm>
 #include <utility>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 
 #include "cros-disks/platform.h"
 

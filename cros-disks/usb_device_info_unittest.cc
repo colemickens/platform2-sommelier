@@ -52,14 +52,14 @@ class USBDeviceInfoTest : public ::testing::Test {
   }
 
   virtual void TearDown() {
-    ASSERT_TRUE(file_util::Delete(FilePath(info_file_), false));
-    ASSERT_TRUE(file_util::Delete(FilePath(ids_file_), false));
+    ASSERT_TRUE(base::DeleteFile(FilePath(info_file_), false));
+    ASSERT_TRUE(base::DeleteFile(FilePath(ids_file_), false));
   }
 
  protected:
   string CreateTestDataFile(const string& content) const {
     FilePath temp_file;
-    if (file_util::CreateTemporaryFile(&temp_file) &&
+    if (base::CreateTemporaryFile(&temp_file) &&
         (static_cast<size_t>(file_util::WriteFile(temp_file, content.c_str(),
                                                   content.size())) ==
          content.size())) {

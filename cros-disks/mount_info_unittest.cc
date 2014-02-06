@@ -5,7 +5,7 @@
 #include "cros-disks/mount_info.h"
 
 #include <base/file_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;
@@ -27,14 +27,14 @@ class MountInfoTest : public ::testing::Test {
       "30 26 11:0 / /media/Test\\0401 ro - vfat /dev/sdb1 ro\n";
 
     FilePath mount_file;
-    ASSERT_TRUE(file_util::CreateTemporaryFile(&mount_file));
+    ASSERT_TRUE(base::CreateTemporaryFile(&mount_file));
     ASSERT_EQ(content.size(),
         file_util::WriteFile(mount_file, content.c_str(), content.size()));
     mount_file_ = mount_file.value();
   }
 
   virtual void TearDown() {
-    ASSERT_TRUE(file_util::Delete(FilePath(mount_file_), false));
+    ASSERT_TRUE(base::DeleteFile(FilePath(mount_file_), false));
   }
 
  protected:

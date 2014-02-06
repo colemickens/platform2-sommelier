@@ -46,7 +46,7 @@ FUSEMounter::FUSEMounter(const string& source_path,
 }
 
 MountErrorType FUSEMounter::MountImpl() {
-  if (!file_util::PathExists(FilePath(mount_program_path_))) {
+  if (!base::PathExists(FilePath(mount_program_path_))) {
     LOG(ERROR) << "Failed to find the FUSE mount program";
     return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }

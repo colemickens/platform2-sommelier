@@ -127,7 +127,7 @@ FormatErrorType FormatManager::StopFormatting(const string& device_path) {
 string FormatManager::GetFormatProgramPath(const string& filesystem) const {
   for (size_t i = 0; i < arraysize(kFormatProgramPaths); ++i) {
     string path = kFormatProgramPaths[i] + filesystem;
-    if (file_util::PathExists(FilePath(path)))
+    if (base::PathExists(FilePath(path)))
       return path;
   }
   return string();

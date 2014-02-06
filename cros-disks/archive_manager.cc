@@ -6,11 +6,11 @@
 
 #include <linux/capability.h>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/cryptohome.h>
 
 #include "cros-disks/metrics.h"
@@ -295,7 +295,7 @@ bool ArchiveManager::StartAVFS() {
   avfs_started_ = true;
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     bool base_path_exists =
-        file_util::PathExists(FilePath(kAVFSPathMapping[i].base_path));
+        base::PathExists(FilePath(kAVFSPathMapping[i].base_path));
     const string& avfs_path = kAVFSPathMapping[i].avfs_path;
     if (!base_path_exists ||
         !platform()->CreateDirectory(avfs_path) ||
@@ -318,7 +318,7 @@ bool ArchiveManager::StopAVFS() {
   bool all_unmounted = UnmountAll();
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     const string& path = kAVFSPathMapping[i].avfs_path;
-    if (!file_util::PathExists(FilePath(path)))
+    if (!base::PathExists(FilePath(path)))
       continue;
 
     if (!platform()->Unmount(path))
@@ -354,7 +354,7 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
       "ro,nodev,noexec,nosuid,allow_other,user=%s,modules=subdir,subdir=%s",
       kAVFSMountUser, base_path.c_str()));
   mount_process.AddArgument(avfs_path);
-  if (file_util::PathExists(FilePath(kAVFSSeccompFilterPolicyFile))) {
+  if (base::PathExists(FilePath(kAVFSSeccompFilterPolicyFile))) {
     mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
   } else {
     // TODO(benchan): Remove this fallback mechanism once we have policy files

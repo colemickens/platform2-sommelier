@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 
 using std::pair;
 using std::string;

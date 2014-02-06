@@ -9,7 +9,7 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;
@@ -45,7 +45,7 @@ TEST_F(FileReaderTest, OpenEmptyFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath path;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &path));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &path));
 
   EXPECT_TRUE(reader_.Open(path));
   string line;
@@ -64,7 +64,7 @@ TEST_F(FileReaderTest, ReadLine) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath path;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &path));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.path(), &path));
 
   // Test a file not ending with a new-line character
   ASSERT_EQ(content.size(),
