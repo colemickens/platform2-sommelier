@@ -10,7 +10,7 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 
@@ -25,7 +25,7 @@ class UsbDeviceEventObserver;
 // A USB device event notifier, which monitors udev events for USB devices and
 // notifies registered observers that implement UsbDeviceEventObserver
 // interface.
-class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
+class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
  public:
   // Constructs a UsbDeviceEventNotifier object by taking a raw pointer to an
   // EventDispatcher as |dispatcher| and a raw pointer to a Udev as |udev|. The
@@ -51,7 +51,7 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
   // longer be notified on USB device events.
   void RemoveObserver(UsbDeviceEventObserver* observer);
 
-  // Implements MessageLoopForIO::Watcher.
+  // Implements base::MessageLoopForIO::Watcher.
   virtual void OnFileCanReadWithoutBlocking(int file_descriptor) OVERRIDE;
   virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
 

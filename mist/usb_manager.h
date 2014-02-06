@@ -8,7 +8,7 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_vector.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 
 #include "mist/usb_error.h"
 
@@ -20,7 +20,7 @@ class EventDispatcher;
 class UsbDevice;
 
 // A USB manager for managing a USB session created by libusb 1.0.
-class UsbManager : public MessageLoopForIO::Watcher {
+class UsbManager : public base::MessageLoopForIO::Watcher {
  public:
   // Constructs a UsbManager object by taking a raw pointer to an
   // EventDispatcher as |dispatcher|. The ownership of |dispatcher| is not
@@ -68,7 +68,7 @@ class UsbManager : public MessageLoopForIO::Watcher {
   // Handles libusb events in non-blocking mode.
   void HandleEventsNonBlocking();
 
-  // Implements MessageLoopForIO::Watcher.
+  // Implements base::MessageLoopForIO::Watcher.
   virtual void OnFileCanReadWithoutBlocking(int file_descriptor) OVERRIDE;
   virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
 

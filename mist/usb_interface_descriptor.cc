@@ -8,7 +8,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "mist/usb_device.h"
 #include "mist/usb_endpoint_descriptor.h"

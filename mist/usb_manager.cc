@@ -8,12 +8,13 @@
 #include <poll.h>
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "mist/event_dispatcher.h"
 #include "mist/usb_device.h"
 #include "mist/usb_device_descriptor.h"
 
+using base::MessageLoopForIO;
 using base::StringPrintf;
 
 namespace mist {

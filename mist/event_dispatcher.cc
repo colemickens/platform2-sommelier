@@ -5,9 +5,11 @@
 #include "mist/event_dispatcher.h"
 
 #include <base/location.h>
-#include <base/message_loop_proxy.h>
-#include <base/stringprintf.h>
+#include <base/message_loop/message_loop_proxy.h>
+#include <base/strings/stringprintf.h>
 
+using base::MessageLoop;
+using base::MessageLoopForIO;
 using base::StringPrintf;
 
 namespace mist {

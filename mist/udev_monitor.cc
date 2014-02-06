@@ -7,9 +7,11 @@
 #include <libudev.h>
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "mist/udev_device.h"
+
+using base::StringPrintf;
 
 namespace mist {
 

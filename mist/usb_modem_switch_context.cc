@@ -4,7 +4,7 @@
 
 #include "mist/usb_modem_switch_context.h"
 
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "mist/config_loader.h"
 #include "mist/context.h"

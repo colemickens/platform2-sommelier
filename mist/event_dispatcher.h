@@ -11,8 +11,8 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/time.h>
+#include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
 
 namespace base {
 
@@ -48,8 +48,8 @@ class EventDispatcher {
   // |watcher| is notified when |file_descriptor| is ready for I/O. Returns true
   // on success.
   bool StartWatchingFileDescriptor(int file_descriptor,
-                                   MessageLoopForIO::Mode mode,
-                                   MessageLoopForIO::Watcher* watcher);
+                                   base::MessageLoopForIO::Mode mode,
+                                   base::MessageLoopForIO::Watcher* watcher);
 
   // Stops watching |file_descriptor| for its readiness for I/O. Returns true on
   // success.
@@ -60,10 +60,10 @@ class EventDispatcher {
   void StopWatchingAllFileDescriptors();
 
  private:
-  typedef std::map<int, MessageLoopForIO::FileDescriptorWatcher*>
+  typedef std::map<int, base::MessageLoopForIO::FileDescriptorWatcher*>
       FileDescriptorWatcherMap;
 
-  scoped_ptr<MessageLoop> dont_use_directly_;
+  scoped_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
   FileDescriptorWatcherMap file_descriptor_watchers_;
 

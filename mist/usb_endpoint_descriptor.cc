@@ -7,7 +7,7 @@
 #include <libusb.h>
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 using base::StringPrintf;
 using std::ostream;

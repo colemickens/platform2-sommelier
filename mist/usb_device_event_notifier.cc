@@ -7,8 +7,8 @@
 #include <limits>
 
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 
 #include "mist/event_dispatcher.h"
 #include "mist/udev.h"
@@ -17,6 +17,7 @@
 #include "mist/udev_monitor.h"
 #include "mist/usb_device_event_observer.h"
 
+using base::MessageLoopForIO;
 using base::StringPrintf;
 using std::string;
 

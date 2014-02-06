@@ -8,11 +8,13 @@
 
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 
 #include "mist/udev_device.h"
 #include "mist/udev_enumerate.h"
 #include "mist/udev_monitor.h"
+
+using base::StringPrintf;
 
 namespace mist {
 

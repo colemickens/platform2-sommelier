@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+using base::MessageLoopForIO;
 using std::vector;
 
 namespace mist {
