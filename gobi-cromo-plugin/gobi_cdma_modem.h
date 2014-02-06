@@ -8,7 +8,7 @@
 #define PLUGIN_GOBI_CDMA_MODEM_H_
 
 #include "gobi_modem.h"
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Cdma.h>
 
 class GobiModem;

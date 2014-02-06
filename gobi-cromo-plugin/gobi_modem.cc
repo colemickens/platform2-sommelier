@@ -20,7 +20,7 @@ extern "C" {
 };
 
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
 #include <cromo/utilities.h>

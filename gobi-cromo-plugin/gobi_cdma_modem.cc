@@ -11,9 +11,9 @@ extern "C" {
 #include <sys/types.h>
 };
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <cromo/carrier.h>
 #include <mm/mm-modem.h>
 
@@ -849,8 +849,8 @@ void GobiCdmaModem::MarkForExecPostActivationStepsAfterReset() {
 
 bool GobiCdmaModem::ShouldExecPostActivationSteps() const {
   FilePath cookie_crumb_path = GetExecPostActivationStepsCookieCrumbPath();
-  if (file_util::PathExists(cookie_crumb_path)) {
-    file_util::Delete(cookie_crumb_path, false);
+  if (base::PathExists(cookie_crumb_path)) {
+    base::DeleteFile(cookie_crumb_path, false);
     return true;
   }
   return false;
