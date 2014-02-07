@@ -160,7 +160,6 @@
             'object_policy_mock.cc',
             'object_pool_mock.cc',
             'object_store_mock.cc',
-            'pam_helper_mock.cc',
             'session_mock.cc',
             'slot_manager_mock.cc',
             'tpm_utility_mock.cc',
