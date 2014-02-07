@@ -26,6 +26,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_exit_handler.h"
+#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
@@ -256,6 +257,7 @@ class SessionManagerService
 
   scoped_ptr<NssUtil> nss_;
   KeyGenerator key_gen_;
+  DBusSignalEmitter dbus_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;

@@ -54,11 +54,6 @@ class SystemUtilsImpl : public SystemUtils {
   virtual bool AtomicFileWrite(const base::FilePath& filename,
                                const char* data,
                                int size) OVERRIDE;
-  virtual void EmitSignal(const char* signal_name) OVERRIDE;
-  virtual void EmitSignalWithStringArgs(
-      const char* signal_name,
-      const std::vector<std::string>& payload) OVERRIDE;
-  virtual void EmitStatusSignal(const char* signal_name, bool status) OVERRIDE;
 
   virtual void CallMethodOnPowerManager(const char* method_name) OVERRIDE;
   virtual scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
@@ -73,16 +68,6 @@ class SystemUtilsImpl : public SystemUtils {
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.
   static const char kResetFile[];
-
-  // Strings for encoding boolean status in signals.
-  static const char kSignalSuccess[];
-  static const char kSignalFailure[];
-
-  // Emits |signal_name| from |interface|, optionally adding contents
-  // of |payload| as args if it is not empty.
-  static void EmitSignalFrom(const char* interface,
-                             const char* signal_name,
-                             const std::vector<std::string>& payload);
 
   // Call |interface|.|method_name| on object |path| provided by service
   // |destination| with no arguments. Blocks until the called method returns.

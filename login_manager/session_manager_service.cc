@@ -199,7 +199,7 @@ bool SessionManagerService::Initialize() {
   SessionManagerImpl* impl =
       new SessionManagerImpl(
           scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
-          &key_gen_, this, login_metrics_, nss_.get(), system_);
+          &dbus_emitter_, &key_gen_, this, login_metrics_, nss_.get(), system_);
   impl_.reset(impl);
 
   liveness_checker_.reset(

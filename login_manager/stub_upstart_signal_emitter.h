@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_MOCK_UPSTART_SIGNAL_EMITTER_H_
-#define LOGIN_MANAGER_MOCK_UPSTART_SIGNAL_EMITTER_H_
+#ifndef LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_
+#define LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_
 
 #include "login_manager/upstart_signal_emitter.h"
 
 namespace login_manager {
 
-// Mock implementation of UpstartSignalEmitter that always reports success.
-class MockUpstartSignalEmitter : public UpstartSignalEmitter {
+// Stub implementation of UpstartSignalEmitter that always reports success.
+class StubUpstartSignalEmitter : public UpstartSignalEmitter {
  public:
-  MockUpstartSignalEmitter() {}
-  virtual ~MockUpstartSignalEmitter() {}
+  StubUpstartSignalEmitter() {}
+  virtual ~StubUpstartSignalEmitter() {}
   virtual bool EmitSignal(const std::string& signal_name,
                           const std::vector<std::string>& args_keyvals,
                           GError** error) {
@@ -23,4 +23,4 @@ class MockUpstartSignalEmitter : public UpstartSignalEmitter {
 
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_MOCK_UPSTART_SIGNAL_EMITTER_H_
+#endif  // LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_

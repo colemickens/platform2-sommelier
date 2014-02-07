@@ -52,10 +52,6 @@ class MockSystemUtils : public SystemUtils {
   // An empty path is returned on failure.
   base::FilePath GetUniqueFilename();
 
-  MOCK_METHOD1(EmitSignal, void(const char*));
-  MOCK_METHOD2(EmitSignalWithStringArgs, void(const char*,
-                                              const std::vector<std::string>&));
-  MOCK_METHOD2(EmitStatusSignal, void(const char*, bool));
   MOCK_METHOD1(CallMethodOnPowerManager, void(const char*));
 
   // gmock can't handle methods that return scoped_ptrs.

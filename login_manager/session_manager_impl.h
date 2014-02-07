@@ -25,6 +25,7 @@
 #include "login_manager/session_manager_interface.h"
 
 namespace login_manager {
+class DBusSignalEmitterInterface;
 class DeviceLocalAccountPolicyService;
 class KeyGenerator;
 class LoginMetrics;
@@ -60,6 +61,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   static const char kResetFile[];
 
   SessionManagerImpl(scoped_ptr<UpstartSignalEmitter> emitter,
+                     DBusSignalEmitterInterface* dbus_emitter,
                      KeyGenerator* key_gen,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
@@ -206,6 +208,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
+  DBusSignalEmitterInterface* dbus_emitter_;  // Owned by the caller.
   KeyGenerator* key_gen_;  // Owned by the caller.
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   LoginMetrics* login_metrics_;  // Owned by the caller.

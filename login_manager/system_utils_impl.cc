@@ -42,9 +42,6 @@ namespace gobject {
 struct SessionManager;
 }
 
-const char SystemUtilsImpl::kSignalSuccess[] = "success";
-const char SystemUtilsImpl::kSignalFailure[] = "failure";
-
 // Write |data| to |fd|, retrying on EINTR.
 void SystemUtils::RetryingWrite(int fd, const char* data, size_t data_length) {
   size_t written = 0;
@@ -196,23 +193,6 @@ bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
                                              (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
-void SystemUtilsImpl::EmitSignal(const char* signal_name) {
-  EmitSignalWithStringArgs(signal_name, vector<string>());
-}
-
-void SystemUtilsImpl::EmitSignalWithStringArgs(const char* signal_name,
-                                               const vector<string>& payload) {
-  EmitSignalFrom(chromium::kChromiumInterface, signal_name, payload);
-  EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name, payload);
-}
-
-void SystemUtilsImpl::EmitStatusSignal(const char* signal_name, bool status) {
-  EmitSignalFrom(chromium::kChromiumInterface, signal_name,
-                 vector<string>(1, status ? kSignalSuccess : kSignalFailure));
-  EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name,
-                 vector<string>(1, status ? kSignalSuccess : kSignalFailure));
-}
-
 void SystemUtilsImpl::CallMethodOnPowerManager(const char* method_name) {
   CallMethodOn(power_manager::kPowerManagerServiceName,
                power_manager::kPowerManagerServicePath,
@@ -264,33 +244,6 @@ bool SystemUtilsImpl::CheckAsyncMethodSuccess(DBusPendingCall* pending_call) {
 void SystemUtilsImpl::CancelAsyncMethodCall(DBusPendingCall* pending_call) {
   DCHECK(pending_call);
   dbus_pending_call_cancel(pending_call);
-}
-
-void SystemUtilsImpl::EmitSignalFrom(const char* interface,
-                                     const char* signal_name,
-                                     const vector<string>& payload) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              login_manager::kSessionManagerServicePath,
-                              interface);
-  if (!proxy) {
-    LOG(ERROR) << "No proxy; can't signal " << interface;
-    return;
-  }
-  DBusMessage* signal = ::dbus_message_new_signal(
-      login_manager::kSessionManagerServicePath, interface, signal_name);
-  if (!payload.empty()) {
-    for (vector<string>::const_iterator it = payload.begin();
-         it != payload.end();
-         ++it) {
-      // Need to be able to take the address of the value to append.
-      const char* string_arg = it->c_str();
-      dbus_message_append_args(signal,
-                               DBUS_TYPE_STRING, &string_arg,
-                               DBUS_TYPE_INVALID);
-    }
-  }
-  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  ::dbus_message_unref(signal);
 }
 
 void SystemUtilsImpl::CallMethodOn(const char* destination,

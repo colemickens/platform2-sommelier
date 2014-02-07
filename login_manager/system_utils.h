@@ -84,19 +84,6 @@ class SystemUtils {
                                const char* data,
                                int size) = 0;
 
-  // Broadcasts |signal_name| from the session manager DBus interface.
-  virtual void EmitSignal(const char* signal_name) = 0;
-
-  // Broadcasts |signal_name| from the session manager DBus interface,
-  // optionally adding |payload| as args if it is not empty.
-  virtual void EmitSignalWithStringArgs(
-      const char* signal_name,
-      const std::vector<std::string>& payload) = 0;
-
-  // Same as above, but accepts a boolean status that'll be encoded as
-  // |kSignalSuccess| and |kSignalFailure| respectively.
-  virtual void EmitStatusSignal(const char* signal_name, bool status) = 0;
-
   // Calls |method_name| on power manager.
   virtual void CallMethodOnPowerManager(const char* method_name) = 0;
 

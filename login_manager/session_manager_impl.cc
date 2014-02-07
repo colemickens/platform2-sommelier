@@ -23,6 +23,7 @@
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib.h>
 
+#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/device_policy_service.h"
@@ -150,6 +151,7 @@ struct SessionManagerImpl::UserSession {
 
 SessionManagerImpl::SessionManagerImpl(
     scoped_ptr<UpstartSignalEmitter> emitter,
+    DBusSignalEmitterInterface* dbus_emitter,
     KeyGenerator* key_gen,
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
@@ -159,6 +161,7 @@ SessionManagerImpl::SessionManagerImpl(
       session_stopping_(false),
       screen_locked_(false),
       upstart_signal_emitter_(emitter.Pass()),
+      dbus_emitter_(dbus_emitter),
       key_gen_(key_gen),
       manager_(manager),
       login_metrics_(metrics),
@@ -198,8 +201,8 @@ void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
                << SessionManagerImpl::kStopping;
     std::vector<std::string> args;
     args.push_back(SessionManagerImpl::kStopping);
-    system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
-                                      args);
+    dbus_emitter_->EmitSignalWithStringArgs(
+        login_manager::kSessionStateChangedSignal, args);
   }
 }
 
@@ -208,8 +211,8 @@ void SessionManagerImpl::AnnounceSessionStopped() {
              << SessionManagerImpl::kStopped;
   std::vector<std::string> args;
   args.push_back(SessionManagerImpl::kStopped);
-  system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
-                                    args);
+  dbus_emitter_->EmitSignalWithStringArgs(
+      login_manager::kSessionStateChangedSignal, args);
 }
 
 bool SessionManagerImpl::Initialize() {
@@ -265,7 +268,7 @@ gboolean SessionManagerImpl::EmitLoginPromptReady(gboolean* OUT_emitted,
 
 gboolean SessionManagerImpl::EmitLoginPromptVisible(GError** error) {
   login_metrics_->RecordStats("login-prompt-visible");
-  system_->EmitSignal(login_manager::kLoginPromptVisibleSignal);
+  dbus_emitter_->EmitSignal(login_manager::kLoginPromptVisibleSignal);
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible",
                                              std::vector<std::string>(),
                                              error);
@@ -376,8 +379,9 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
     std::vector<std::string> args;
     args.push_back(kStarted);
-    system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
-                                      args);
+    dbus_emitter_->EmitSignalWithStringArgs(
+        login_manager::kSessionStateChangedSignal, args);
+
     if (device_policy_->KeyMissing() &&
         !device_policy_->Mitigating() &&
         is_first_real_user) {
@@ -527,7 +531,7 @@ gboolean SessionManagerImpl::LockScreen(GError** error) {
   }
   if (!screen_locked_) {
     screen_locked_ = true;
-    system_->EmitSignal(chromium::kLockScreenSignal);
+    dbus_emitter_->EmitSignal(chromium::kLockScreenSignal);
   }
   LOG(INFO) << "LockScreen() method called.";
   return TRUE;
@@ -535,14 +539,14 @@ gboolean SessionManagerImpl::LockScreen(GError** error) {
 
 gboolean SessionManagerImpl::HandleLockScreenShown(GError** error) {
   LOG(INFO) << "HandleLockScreenShown() method called.";
-  system_->EmitSignal(login_manager::kScreenIsLockedSignal);
+  dbus_emitter_->EmitSignal(login_manager::kScreenIsLockedSignal);
   return TRUE;
 }
 
 gboolean SessionManagerImpl::HandleLockScreenDismissed(GError** error) {
   screen_locked_ = false;
   LOG(INFO) << "HandleLockScreenDismissed() method called.";
-  system_->EmitSignal(login_manager::kScreenIsUnlockedSignal);
+  dbus_emitter_->EmitSignal(login_manager::kScreenIsUnlockedSignal);
   return TRUE;
 }
 
@@ -628,14 +632,15 @@ gboolean SessionManagerImpl::SetFlagsForUser(gchar* user_email,
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
-  system_->EmitStatusSignal(login_manager::kPropertyChangeCompleteSignal,
-                            success);
+  dbus_emitter_->EmitSignalWithBoolean(
+      login_manager::kPropertyChangeCompleteSignal, success);
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
 }
 
 void SessionManagerImpl::OnKeyPersisted(bool success) {
-  system_->EmitStatusSignal(login_manager::kOwnerKeySetSignal, success);
+  dbus_emitter_->EmitSignalWithBoolean(
+      login_manager::kOwnerKeySetSignal, success);
 }
 
 void SessionManagerImpl::OnKeyGenerated(const std::string& username,

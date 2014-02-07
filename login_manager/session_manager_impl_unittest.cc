@@ -34,6 +34,7 @@
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
+#include "login_manager/mock_dbus_signal_emitter.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
@@ -42,8 +43,8 @@
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
-#include "login_manager/mock_upstart_signal_emitter.h"
 #include "login_manager/mock_user_policy_service_factory.h"
+#include "login_manager/stub_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
 using ::testing::AtMost;
@@ -73,9 +74,9 @@ namespace login_manager {
 class SessionManagerImplTest : public ::testing::Test {
  public:
   SessionManagerImplTest()
-      : upstart_(new MockUpstartSignalEmitter),
-        device_policy_service_(new MockDevicePolicyService),
-        impl_(scoped_ptr<UpstartSignalEmitter>(upstart_),
+      : device_policy_service_(new MockDevicePolicyService),
+        impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter),
+              &dbus_emitter_,
               &key_gen_,
               &manager_,
               &metrics_,
@@ -166,7 +167,6 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
   void VerifyAndClearExpectations() {
-    Mock::VerifyAndClearExpectations(upstart_);
     Mock::VerifyAndClearExpectations(device_policy_service_);
     for (map<string, MockPolicyService*>::iterator it =
              user_policy_services_.begin();
@@ -190,10 +190,10 @@ class SessionManagerImplTest : public ::testing::Test {
   // These are bare pointers, not scoped_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
   // on them after we hand them off.
-  MockUpstartSignalEmitter* upstart_;
   MockDevicePolicyService* device_policy_service_;
   map<string, MockPolicyService*> user_policy_services_;
 
+  MockDBusSignalEmitter dbus_emitter_;
   MockKeyGenerator key_gen_;
   MockProcessManagerService manager_;
   MockMetrics metrics_;
@@ -223,7 +223,7 @@ class SessionManagerImplTest : public ::testing::Test {
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner))
         .Times(1);
-    EXPECT_CALL(utils_,
+    EXPECT_CALL(dbus_emitter_,
                 EmitSignalWithStringArgs(
                     StrEq(login_manager::kSessionStateChangedSignal),
                     ElementsAre(SessionManagerImpl::kStarted)))
@@ -257,7 +257,7 @@ class SessionManagerImplTest : public ::testing::Test {
     else
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
-    EXPECT_CALL(utils_,
+    EXPECT_CALL(dbus_emitter_,
                 EmitSignalWithStringArgs(
                     StrEq(login_manager::kSessionStateChangedSignal),
                     ElementsAre(SessionManagerImpl::kStarted)))
@@ -276,7 +276,7 @@ const pid_t SessionManagerImplTest::kDummyPid = 4;
 TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   const char event_name[] = "login-prompt-visible";
   EXPECT_CALL(metrics_, RecordStats(StrEq(event_name))).Times(1);
-  EXPECT_CALL(utils_,
+  EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kLoginPromptVisibleSignal)))
       .Times(1);
   EXPECT_TRUE(impl_.EmitLoginPromptVisible(NULL));
@@ -748,7 +748,8 @@ TEST_F(SessionManagerImplTest, RestartJobWithAuth_BadCookie) {
 
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession("user@somewhere");
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
+      .Times(1);
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
@@ -757,21 +758,24 @@ TEST_F(SessionManagerImplTest, LockScreen) {
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   ExpectAndRunStartSession("user@somewhere");
   ExpectAndRunStartSession("user2@somewhere");
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
+      .Times(1);
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(0);
+  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
+      .Times(0);
   GError *error = NULL;
   EXPECT_EQ(FALSE, impl_.LockScreen(&error));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_Guest) {
   ExpectAndRunGuestSession();
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(0);
+  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
+      .Times(0);
   GError *error = NULL;
   EXPECT_EQ(FALSE, impl_.LockScreen(&error));
 }
@@ -779,7 +783,8 @@ TEST_F(SessionManagerImplTest, LockScreen_Guest) {
 TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
   ExpectAndRunStartSession("user@somewhere");
   ExpectAndRunGuestSession();
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
+      .Times(1);
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
@@ -787,17 +792,20 @@ TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession("user@somewhere");
-  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
+      .Times(1);
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
-  EXPECT_CALL(utils_, EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
+  EXPECT_CALL(dbus_emitter_,
+              EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
       .Times(1);
   EXPECT_EQ(TRUE, impl_.HandleLockScreenShown(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
-  EXPECT_CALL(utils_, EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))
+  EXPECT_CALL(dbus_emitter_,
+              EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
   EXPECT_EQ(TRUE, impl_.HandleLockScreenDismissed(&error));
   EXPECT_EQ(FALSE, impl_.ScreenIsLocked());
