@@ -34,6 +34,7 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/regen_mitigator.h"
+#include "login_manager/scoped_dbus_pending_call.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -531,7 +532,7 @@ gboolean SessionManagerImpl::LockScreen(GError** error) {
   }
   if (!screen_locked_) {
     screen_locked_ = true;
-    dbus_emitter_->EmitSignal(chromium::kLockScreenSignal);
+    system_->CallAsyncMethodOnChromium(chromeos::kLockScreen);
   }
   LOG(INFO) << "LockScreen() method called.";
   return TRUE;

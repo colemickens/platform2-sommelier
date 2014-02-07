@@ -89,9 +89,6 @@ class SystemUtils {
 
   // Initiates an async call of |method_name| on Chromium.  Returns opaque
   // pointer that can be used to retrieve the response at a later time.
-  //
-  // This can't return scoped_ptr<ScopedDBusPendingCall> because gmock can't
-  // handle a scoped_ptr return type.
   virtual scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
       const char* method_name) = 0;
 

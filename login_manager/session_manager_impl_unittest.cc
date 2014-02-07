@@ -44,6 +44,7 @@
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
+#include "login_manager/scoped_dbus_pending_call.h"
 #include "login_manager/stub_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
@@ -748,8 +749,7 @@ TEST_F(SessionManagerImplTest, RestartJobWithAuth_BadCookie) {
 
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession("user@somewhere");
-  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
-      .Times(1);
+  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
@@ -758,24 +758,19 @@ TEST_F(SessionManagerImplTest, LockScreen) {
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   ExpectAndRunStartSession("user@somewhere");
   ExpectAndRunStartSession("user2@somewhere");
-  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
-      .Times(1);
+  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
-  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
-      .Times(0);
   GError *error = NULL;
   EXPECT_EQ(FALSE, impl_.LockScreen(&error));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_Guest) {
   ExpectAndRunGuestSession();
-  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
-      .Times(0);
   GError *error = NULL;
   EXPECT_EQ(FALSE, impl_.LockScreen(&error));
 }
@@ -783,8 +778,7 @@ TEST_F(SessionManagerImplTest, LockScreen_Guest) {
 TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
   ExpectAndRunStartSession("user@somewhere");
   ExpectAndRunGuestSession();
-  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
-      .Times(1);
+  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
@@ -792,8 +786,7 @@ TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession("user@somewhere");
-  EXPECT_CALL(dbus_emitter_, EmitSignal(StrEq(chromium::kLockScreenSignal)))
-      .Times(1);
+  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
