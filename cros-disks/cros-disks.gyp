@@ -8,7 +8,6 @@
       '../metrics/metrics.gyp:libmetrics',
     ],
     'libraries': [
-      '-lgflags',
       '-lminijail',
       '-lrootdev',
     ],
