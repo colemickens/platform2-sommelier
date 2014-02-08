@@ -55,6 +55,29 @@
       <!-- key_id will be returned in the return_code -->
       <arg type="i" name="async_id" direction="out" />
     </method>
+    <!-- This may be called asynchronously. -->
+    <method name="AddKeyEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="ay" name="key_params" direction="in" />
+      <arg type="s" name="new_key" direction="in" />
+      <!-- The new_key cannot modify or replace the |key| used
+           for authorizing the operation.
+      -->
+      <arg type="ay" name="key_add_params" direction="in" />
+    </method>
+    <!-- This method looks like an AddKeyEx(clobber=true)
+         but it updates the authorizing key exclusively.
+    -->
+    <method name="UpdateKeyEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="ay" name="key_params" direction="in" />
+      <arg type="s" name="new_key" direction="in" />
+      <arg type="ay" name="new_key_params" direction="in" />
+    </method>
     <method name="Remove">
       <arg type="s" name="username" direction="in" />
       <arg type="b" name="success" direction="out" />
@@ -86,6 +109,22 @@
       <arg type="b" name="ensure_ephemeral" direction="in" />
       <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
       <arg type="i" name="async_id" direction="out" />
+    </method>
+    <!-- This may be called asynchronously. -->
+    <method name="MountEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <!-- Cryptohomes cannot be created with this call.
+           To align with the "Ex" calls, a CreateAccount
+           call should be added to populate account-wide
+           metadata. See crbug.com/342805
+
+           Only the 'auth' nested message is used from the
+           |key_params| KeyParameter protocol buffer.
+      -->
+      <arg type="ay" name="key_params" direction="in" />
+      <arg type="b" name="ensure_ephemeral" direction="in" />
     </method>
     <method name="MountGuest">
       <arg type="i" name="error_num" direction="out" />

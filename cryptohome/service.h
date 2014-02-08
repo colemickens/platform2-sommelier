@@ -182,6 +182,30 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                    gchar *new_key,
                                    gint *OUT_async_id,
                                    GError **error);
+  virtual void DoAddKeyEx(gchar *user,
+                          gchar *key,
+                          GArray *key_params,
+                          gchar *new_key,
+                          GArray *new_key_params,
+                          DBusGMethodInvocation *context);
+  virtual gboolean AddKeyEx(gchar *user,
+                            gchar *key,
+                            GArray *key_params,
+                            gchar *new_key,
+                            GArray *new_key_params,
+                            DBusGMethodInvocation *context);
+  virtual void DoUpdateKeyEx(gchar *user,
+                             gchar *key,
+                             GArray *key_params,
+                             gchar *new_key,
+                             GArray *new_key_params,
+                             DBusGMethodInvocation *context);
+  virtual gboolean UpdateKeyEx(gchar *user,
+                               gchar *key,
+                               GArray *key_params,
+                               gchar *new_key,
+                               GArray *new_key_params,
+                               DBusGMethodInvocation *response);
   virtual gboolean Remove(gchar *user,
                           gboolean *OUT_result,
                           GError **error);
@@ -211,6 +235,18 @@ class Service : public chromeos::dbus::AbstractDbusService,
       gboolean ensure_ephemeral,
       gint *OUT_async_id,
       GError **error);
+  virtual void DoMountEx(
+      const gchar *user,
+      const gchar *key,
+      const GArray *key_params,
+      gboolean ensure_ephemeral,
+      DBusGMethodInvocation *response);
+  virtual gboolean MountEx(
+      const gchar *user,
+      const gchar *key,
+      const GArray *key_params,
+      gboolean ensure_ephemeral,
+      DBusGMethodInvocation *response);
   virtual gboolean MountGuest(gint *OUT_error_code,
                               gboolean *OUT_result,
                               GError **error);

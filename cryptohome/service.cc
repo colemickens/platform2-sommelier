@@ -33,6 +33,7 @@
 #include "attestation_task.h"
 #include "cryptohome_event_source.h"
 #include "crypto.h"
+#include "dbus_transition.h"
 #include "install_attributes.h"
 #include "interface.h"
 #include "marshal.glibmarshal.h"
@@ -584,6 +585,7 @@ bool Service::Reset() {
     LOG(ERROR) << "Failed to create main loop";
     return false;
   }
+
   // Install the local event source for handling async results
   event_source_.Reset(this, g_main_loop_get_context(loop_));
   return true;
@@ -663,6 +665,12 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     }
     LOG(ERROR) << "PKCS#11 initialization failed.";
     result->mount()->set_pkcs11_state(cryptohome::Mount::kIsFailed);
+  } if (!strcmp(event->GetEventName(), kDBusErrorResponseEventType)) {
+    DBusErrorResponse* result = static_cast<DBusErrorResponse*>(event);
+    result->Run();
+  } if (!strcmp(event->GetEventName(), kDBusNoArgResponseEventType)) {
+    DBusNoArgResponse* result = static_cast<DBusNoArgResponse*>(event);
+    result->Run();
   }
 }
 
@@ -836,6 +844,63 @@ gboolean Service::AsyncAddKey(gchar *userid,
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
+  return TRUE;
+}
+
+void Service::DoAddKeyEx(gchar *userid,
+                         gchar *key,
+                         GArray *key_params,
+                         gchar *new_key,
+                         GArray *new_key_params,
+                         DBusGMethodInvocation *context) {
+  // TODO(wad) This will be fixed up in crbug.com/342905
+  GError* error = g_error_new(g_quark_from_string("cryptohome-error"),
+                              -1,
+                              "Not yet implemented");
+  DBusErrorResponse* response = new DBusErrorResponse(context, error);
+  event_source_.AddEvent(response);
+}
+
+gboolean Service::AddKeyEx(gchar *userid,
+                           gchar *key,
+                           GArray *key_params,
+                           gchar *new_key,
+                           GArray *new_key_params,
+                           DBusGMethodInvocation *context) {
+  // TODO(wad) key_params are not used yet! crbug.com/342804
+  LOG(ERROR) << "AddKeyEx not yet implemented";
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoAddKeyEx, base::Unretained(this),
+                 userid, key, key_params, new_key, new_key_params,
+                 context));
+  return TRUE;
+}
+
+void Service::DoUpdateKeyEx(gchar *userid,
+                            gchar *key,
+                            GArray *key_params,
+                            gchar *new_key,
+                            GArray *new_key_params,
+                            DBusGMethodInvocation *context) {
+  // TODO(wad) This will be fixed up in crbug.com/342905
+  GError* error = g_error_new(g_quark_from_string("cryptohome-error"),
+                              -1,
+                              "Not yet implemented");
+  DBusErrorResponse* response = new DBusErrorResponse(context, error);
+  event_source_.AddEvent(response);
+}
+
+gboolean Service::UpdateKeyEx(gchar *userid,
+                              gchar *key,
+                              GArray *key_params,
+                              gchar *new_key,
+                              GArray *new_key_params,
+                              DBusGMethodInvocation *context) {
+  LOG(ERROR) << "UpdateKeyEx is not yet implemented.";
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoUpdateKeyEx, base::Unretained(this),
+                 userid, key, key_params, new_key, new_key_params,
+                 context));
   return TRUE;
 }
 
@@ -1060,6 +1125,34 @@ gboolean Service::Mount(const gchar *userid,
 
   *OUT_error_code = result.return_code();
   *OUT_result = result.return_status();
+  return TRUE;
+}
+
+void Service::DoMountEx(const gchar *userid,
+                        const gchar *key,
+                        const GArray *key_params,
+                        gboolean ensure_ephemeral,
+                        DBusGMethodInvocation *context) {
+  // TODO(wad) This will be fixed up in crbug.com/342905
+  GError* error = g_error_new(g_quark_from_string("cryptohome-error"),
+                              -1,
+                              "Not yet implemented");
+  DBusErrorResponse* response = new DBusErrorResponse(context, error);
+  // event_source_->AddEvent is usually called from the mount_thread_
+  // via MountTaskObserverBridge, so this should be equivalent.
+  event_source_.AddEvent(response);
+}
+
+gboolean Service::MountEx(const gchar *userid,
+                          const gchar *key,
+                          const GArray *key_params,
+                          gboolean ensure_ephemeral,
+                          DBusGMethodInvocation *context) {
+  // TODO(wad) Implement this! crbug.com/342804
+  LOG(ERROR) << "MountEx not yet implemented";
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoMountEx, base::Unretained(this),
+                 userid, key, key_params, ensure_ephemeral, context));
   return TRUE;
 }
 
