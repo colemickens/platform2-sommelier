@@ -294,7 +294,8 @@ void SessionManagerService::RunBrowser() {
 
 void SessionManagerService::AbortBrowser(int signal,
                                          const std::string& message) {
-  browser_->KillEverything(signal, message);
+  browser_->Kill(signal, message);
+  browser_->WaitAndAbort(GetKillTimeout());
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
