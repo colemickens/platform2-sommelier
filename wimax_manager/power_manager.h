@@ -5,12 +5,10 @@
 #ifndef WIMAX_MANAGER_POWER_MANAGER_H_
 #define WIMAX_MANAGER_POWER_MANAGER_H_
 
-#include <glib.h>
-
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/time.h>
+#include <base/timer.h>
 
 #include "wimax_manager/dbus_proxiable.h"
 
@@ -48,8 +46,6 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   void OnPowerStateChanged(const std::string &new_power_state);
 
  private:
-  void CancelSuspendTimeout();
-
   // Calls the power manager's HandleSuspendReadiness method to report readiness
   // for suspend attempt |suspend_id|.
   void SendHandleSuspendReadiness(int suspend_id);
@@ -62,7 +58,7 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   int suspend_delay_id_;
 
   bool suspended_;
-  guint suspend_timeout_id_;
+  base::OneShotTimer<PowerManager> suspend_timeout_timer_;
   Manager *wimax_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);

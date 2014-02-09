@@ -25,14 +25,6 @@ const char kPowerStateMem[] = "mem";
 const char kPowerStateOn[] = "on";
 const char kSuspendDelayDescription[] = "wimax-manager";
 
-gboolean OnSuspendTimedOut(gpointer data) {
-  CHECK(data);
-
-  reinterpret_cast<PowerManager *>(data)->ResumeOnSuspendTimedOut();
-
-  return FALSE;
-}
-
 // Serializes |protobuf| to |out| and returns true on success.
 bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
                              vector<uint8> *out) {
@@ -66,7 +58,6 @@ PowerManager::PowerManager(Manager *wimax_manager)
     : suspend_delay_registered_(false),
       suspend_delay_id_(0),
       suspended_(false),
-      suspend_timeout_id_(0),
       wimax_manager_(wimax_manager) {
   CHECK(wimax_manager_);
 }
@@ -84,14 +75,13 @@ void PowerManager::Initialize() {
 }
 
 void PowerManager::Finalize() {
-  CancelSuspendTimeout();
+  suspend_timeout_timer_.Stop();
   UnregisterSuspendDelay();
 }
 
 void PowerManager::ResumeOnSuspendTimedOut() {
   LOG(WARNING) << "Timed out waiting for power state change signal from "
                << "power manager. Assume suspend is canceled.";
-  suspend_timeout_id_ = 0;
   OnPowerStateChanged(kPowerStateOn);
 }
 
@@ -167,8 +157,11 @@ void PowerManager::OnSuspendImminent(const vector<uint8> &serialized_proto) {
   // If the power manager does not emit a PowerStateChanged "mem" signal within
   // |kSuspendTimeoutInSeconds|, assume suspend is canceled. Schedule a callback
   // to resume.
-  suspend_timeout_id_ = g_timeout_add_seconds(
-      kSuspendTimeoutInSeconds, OnSuspendTimedOut, this);
+  suspend_timeout_timer_.Start(
+      FROM_HERE,
+      base::TimeDelta::FromSeconds(kSuspendTimeoutInSeconds),
+      this,
+      &PowerManager::ResumeOnSuspendTimedOut);
 }
 
 void PowerManager::OnPowerStateChanged(const string &new_power_state) {
@@ -176,7 +169,7 @@ void PowerManager::OnPowerStateChanged(const string &new_power_state) {
 
   // Cancel any pending suspend timeout regardless of the new power state
   // to avoid resuming unexpectedly.
-  CancelSuspendTimeout();
+  suspend_timeout_timer_.Stop();
 
   if (new_power_state == kPowerStateMem) {
     suspended_ = true;
@@ -186,13 +179,6 @@ void PowerManager::OnPowerStateChanged(const string &new_power_state) {
   if (suspended_ && new_power_state == kPowerStateOn) {
     wimax_manager_->Resume();
     suspended_ = false;
-  }
-}
-
-void PowerManager::CancelSuspendTimeout() {
-  if (suspend_timeout_id_) {
-    g_source_remove(suspend_timeout_id_);
-    suspend_timeout_id_ = 0;
   }
 }
 

@@ -5,14 +5,13 @@
 #ifndef WIMAX_MANAGER_MANAGER_H_
 #define WIMAX_MANAGER_MANAGER_H_
 
-#include <glib.h>
-
 #include <vector>
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
+#include <base/timer.h>
 #include <gtest/gtest_prod.h>
 
 #include "wimax_manager/dbus_adaptable.h"
@@ -36,6 +35,7 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   bool Initialize();
   bool Finalize();
   bool ScanDevices();
+  void OnDeviceScan();
   void CancelDeviceScan();
 
   void Suspend();
@@ -64,7 +64,7 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   ScopedVector<Device> devices_;
 
   int num_device_scans_;
-  guint device_scan_timeout_id_;
+  base::OneShotTimer<Manager> device_scan_timer_;
   DBusService dbus_service_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

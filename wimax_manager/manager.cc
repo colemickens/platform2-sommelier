@@ -31,21 +31,11 @@ const int kDefaultDeviceScanIntervalInSeconds = 1;
 const int kDeviceScanDelayAfterResumeInSeconds = 3;
 const char kDefaultConfigFile[] = "/usr/share/wimax-manager/default.conf";
 
-gboolean OnDeviceScanNeeded(gpointer data) {
-  CHECK(data);
-
-  reinterpret_cast<Manager *>(data)->ScanDevices();
-  // ScanDevices decides if a rescan is needed later, so return FALSE
-  // to prevent this function from being called repeatedly.
-  return FALSE;
-}
-
 }  // namespace
 
 Manager::Manager(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       num_device_scans_(0),
-      device_scan_timeout_id_(0),
       dbus_service_(this) {
 }
 
@@ -103,7 +93,7 @@ bool Manager::Finalize() {
 }
 
 bool Manager::ScanDevices() {
-  device_scan_timeout_id_ = 0;
+  device_scan_timer_.Stop();
 
   if (!devices_.empty())
     return true;
@@ -125,18 +115,22 @@ bool Manager::ScanDevices() {
   // indefinitely, stop the device scan after a number of attempts.
   if (++num_device_scans_ < kMaxNumberOfDeviceScans) {
     VLOG(1) << "No WiMAX devices detected. Rescan later.";
-    device_scan_timeout_id_ = g_timeout_add_seconds(
-        kDefaultDeviceScanIntervalInSeconds, OnDeviceScanNeeded, this);
+    device_scan_timer_.Start(
+        FROM_HERE,
+        base::TimeDelta::FromSeconds(kDefaultDeviceScanIntervalInSeconds),
+        this,
+        &Manager::OnDeviceScan);
   }
   return true;
 }
 
+void Manager::OnDeviceScan() {
+  ScanDevices();
+}
+
 void Manager::CancelDeviceScan() {
   // Cancel any pending device scan.
-  if (device_scan_timeout_id_ != 0) {
-    g_source_remove(device_scan_timeout_id_);
-    device_scan_timeout_id_ = 0;
-  }
+  device_scan_timer_.Stop();
   num_device_scans_ = 0;
 }
 
@@ -149,8 +143,11 @@ void Manager::Suspend() {
 void Manager::Resume() {
   // After resuming from suspend, the old device may not have been cleaned up.
   // Delay the device scan to avoid getting the old device.
-  g_timeout_add_seconds(kDeviceScanDelayAfterResumeInSeconds,
-                        OnDeviceScanNeeded, this);
+  device_scan_timer_.Start(
+      FROM_HERE,
+      base::TimeDelta::FromSeconds(kDeviceScanDelayAfterResumeInSeconds),
+      this,
+      &Manager::OnDeviceScan);
 }
 
 bool Manager::LoadConfig(const base::FilePath &file_path) {
