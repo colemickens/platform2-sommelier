@@ -6,16 +6,21 @@
 #include "image_burner_impl.h"
 #include "image_burner_utils.h"
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
 
-  logging::InitLogging("/var/log/image_burner.log",
-                       logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
-                       logging::LOCK_LOG_FILE,
-                       logging::DELETE_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_ALL;
+  settings.log_file = FILE_PATH_LITERAL("/var/log/image_burner.log");
+  settings.lock_log = logging::LOCK_LOG_FILE;
+  settings.delete_old = logging::DELETE_OLD_LOG_FILE;
+  settings.dcheck_state =
+      logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS;
+  logging::InitLogging(settings);
+
   g_type_init();
 
   imageburn::BurnWriter writer;
