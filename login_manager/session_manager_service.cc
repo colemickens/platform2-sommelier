@@ -476,7 +476,7 @@ void SessionManagerService::AllowGracefulExitOrRunForever() {
         base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
                    this));
   } else {
-    DLOG(INFO) << "Ok, running forever...";
+    DLOG(INFO) << "OK, running forever...";
   }
 }
 
