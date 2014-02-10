@@ -7,7 +7,6 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include <utility>
@@ -370,7 +369,6 @@ TEST(SmsCache, twopart_duplicate) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();
 }

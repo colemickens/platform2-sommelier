@@ -5,7 +5,6 @@
 
 #include <base/logging.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "sms_message.h"
@@ -643,7 +642,6 @@ TEST(CreateSmsMessage, NonIntlSMSC) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();
 }

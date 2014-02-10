@@ -6,7 +6,6 @@
 
 #include <base/logging.h>
 #include <dbus-c++/glib-integration.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 
@@ -52,7 +51,6 @@ TEST(Carrier, Find) {
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();
 }

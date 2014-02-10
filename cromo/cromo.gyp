@@ -17,7 +17,6 @@
     },
     'link_settings': {
       'libraries': [
-        '-lgflags',
         '-ldl',
         '-lminijail',
       ],

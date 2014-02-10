@@ -6,7 +6,6 @@
 #include "utilities.h"
 
 #include <base/logging.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 TEST(Utilities, ExtractString) {
@@ -321,7 +320,6 @@ TEST(Utilities, Ucs2Utf8RoundTrip) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();
 }
