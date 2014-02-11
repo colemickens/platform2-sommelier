@@ -6,13 +6,13 @@
 
 #include <libudev.h>
 
-#include "base/stringprintf.h"
+#include "base/strings/stringprintf.h"
 
 namespace permission_broker {
 
 DenyUsbDeviceClassRule::DenyUsbDeviceClassRule(const uint8_t device_class)
     : UsbSubsystemUdevRule("DenyUsbDeviceClassRule"),
-      device_class_(StringPrintf("%.2x", device_class)) {}
+      device_class_(base::StringPrintf("%.2x", device_class)) {}
 
 DenyUsbDeviceClassRule::~DenyUsbDeviceClassRule() {}
 

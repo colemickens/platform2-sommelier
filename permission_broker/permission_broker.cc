@@ -21,7 +21,7 @@
 
 #include "base/logging.h"
 #include "base/stl_util.h"
-#include "base/stringprintf.h"
+#include "base/strings/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "permission_broker/rule.h"
@@ -135,10 +135,10 @@ bool PermissionBroker::ExpandUsbIdentifiersToPaths(
   struct udev_enumerate *const enumerate = udev_enumerate_new(udev_);
   udev_enumerate_add_match_is_initialized(enumerate);
   udev_enumerate_add_match_subsystem(enumerate, "usb");
-  udev_enumerate_add_match_sysattr(enumerate, "idVendor", StringPrintf("%.4x",
-      vendor_id).c_str());
-  udev_enumerate_add_match_sysattr(enumerate, "idProduct", StringPrintf("%.4x",
-      product_id).c_str());
+  udev_enumerate_add_match_sysattr(
+      enumerate, "idVendor", base::StringPrintf("%.4x", vendor_id).c_str());
+  udev_enumerate_add_match_sysattr(
+      enumerate, "idProduct", base::StringPrintf("%.4x", product_id).c_str());
   udev_enumerate_scan_devices(enumerate);
 
   struct udev_list_entry *entry = NULL;

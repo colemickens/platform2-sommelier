@@ -8,13 +8,13 @@
 
 #include <string>
 
-#include "base/stringprintf.h"
+#include "base/strings/stringprintf.h"
 
 namespace permission_broker {
 
 DenyUsbVendorIdRule::DenyUsbVendorIdRule(const uint16_t vendor_id)
     : UsbSubsystemUdevRule("DenyUsbVendorIdRule"),
-      vendor_id_(StringPrintf("%.4x", vendor_id)) {}
+      vendor_id_(base::StringPrintf("%.4x", vendor_id)) {}
 
 DenyUsbVendorIdRule::~DenyUsbVendorIdRule() {}
 
