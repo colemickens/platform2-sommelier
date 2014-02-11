@@ -35,16 +35,6 @@ mount_or_fail()
   cleanup_mounts
 }
 
-# The kernel and /sbin/init mount /proc, /sys and /dev before
-# we get here.
-mount -n -t tmpfs -o nodev,noexec,nosuid tmp /tmp
-# Mount debugfs as crossystem requires chromeos_arm driver interface.
-mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
-  debugfs /sys/kernel/debug
-
-# bootstat writes timings to both tmpfs and debugfs.
-bootstat pre-startup
-
 # Some startup functions are split into a separate library which may be
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
@@ -52,7 +42,7 @@ bootstat pre-startup
 # Factory related functions
 . /usr/share/cros/factory_utils.sh
 
-mkdir -p /dev/shm /dev/pts
+mkdir -p /dev/pts /dev/shm
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
@@ -352,9 +342,20 @@ remember_mount /var
 remember_mount /home/chronos
 mount_var_and_home_chronos ${FACTORY_MODE} || cleanup_mounts
 
+# /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock
+# are sym links to /run and /run/lock respectively for backwards compatibility.
+if [ ! -L /var/run ]; then
+  rm -rf /var/run
+  ln -s /run /var/run
+fi
+if [ ! -L /var/lock ]; then
+  rm -rf /var/lock
+  ln -s /run/lock /var/lock
+fi
+
 # Make sure required /var subdirectories exist.
-mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lock /var/log/metrics \
-                 /var/run /var/tmp
+mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
+                 /var/tmp
 
 # /var/tmp must be world-writable and sticky
 chmod 1777 /var/tmp
@@ -366,10 +367,6 @@ chown chronos:chronos /home/chronos /var/log/metrics
 chgrp syslog /var/log
 chmod 1775 /var/log
 
-mount_or_fail -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
-touch /var/run/.ramfs  # TODO: Is this needed?
-mount_or_fail -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
-touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 # Mount stateful partition for dev packages.
