@@ -117,6 +117,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       resumed_at_((struct timeval) {0}),
       fast_scans_remaining_(kNumFastScanAttempts),
       has_already_completed_(false),
+      is_roaming_in_progress_(false),
       is_debugging_connection_(false),
       eap_state_handler_(new SupplicantEAPStateHandler()),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
@@ -753,6 +754,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
                 << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
   has_already_completed_ = false;
+  is_roaming_in_progress_ = false;
 
   // Any change in CurrentBSS means supplicant is actively changing our
   // connectivity.  We no longer need to track any previously pending
@@ -988,8 +990,10 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
   }
 
   // At this point, we know that |pending_service_| was NULL, and that
-  // we're still on |current_service_|. This is the most boring case
-  // of all, because there's no state to update here.
+  // we're still on |current_service_|.  We should track this roaming
+  // event so we can refresh our IPConfig if it succeeds.
+  is_roaming_in_progress_ = true;
+
   return;
 }
 
@@ -1390,6 +1394,17 @@ void WiFi::StateChanged(const string &new_state) {
     if (affected_service->IsConnected()) {
       StopReconnectTimer();
       EnableHighBitrates();
+      if (is_roaming_in_progress_) {
+        // This means wpa_supplicant completed a roam without an intervening
+        // disconnect.  We should renew our DHCP lease just in case the new
+        // AP is on a different subnet than where we started.
+        is_roaming_in_progress_ = false;
+        const IPConfigRefPtr &ip_config = ipconfig();
+        if (ip_config) {
+          LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
+          ip_config->RenewIP();
+        }
+      }
     } else if (has_already_completed_) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else {

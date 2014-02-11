@@ -528,6 +528,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Indicates that the current BSS has reached the completed state according
   // to supplicant.
   bool has_already_completed_;
+  // Indicates that the current BSS for a connected service has changed, which
+  // implies that a driver-based roam has been initiated.  If this roam
+  // succeeds, we should renew our lease.
+  bool is_roaming_in_progress_;
   // Indicates that we are debugging a problematic connection.
   bool is_debugging_connection_;
   // Tracks the process of an EAP negotiation.

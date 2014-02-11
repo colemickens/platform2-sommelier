@@ -38,6 +38,7 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_ipconfig.h"
 #include "shill/mock_link_monitor.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -740,6 +741,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
   bool GetSupplicantPresent() {
     return wifi_->supplicant_present_;
+  }
+  bool GetIsRoamingInProgress() {
+    return wifi_->is_roaming_in_progress_;
+  }
+  void SetIPConfig(const IPConfigRefPtr &ipconfig) {
+    return wifi_->set_ipconfig(ipconfig);
   }
   bool SetBgscanMethod(const string &method) {
     ::DBus::Error error;
@@ -2082,6 +2089,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
   EXPECT_EQ(NULL, GetCurrentService().get());
   EXPECT_EQ(NULL, GetPendingService().get());
+  EXPECT_FALSE(GetIsRoamingInProgress());
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
@@ -2104,6 +2112,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   EXPECT_CALL(*wifi_provider(), IncrementConnectCount(_));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service1.get(), GetCurrentService().get());
+  EXPECT_FALSE(GetIsRoamingInProgress());
   Mock::VerifyAndClearExpectations(service0);
   Mock::VerifyAndClearExpectations(service1);
 }
@@ -2120,7 +2129,19 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
       AddEndpointToService(service, 0, 0, kNetworkModeAdHoc, &endpoint);
   EXPECT_CALL(*service, NotifyCurrentEndpoint(EndpointMatch(endpoint)));
   ReportCurrentBSSChanged(bss_path);
+  EXPECT_TRUE(GetIsRoamingInProgress());
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // If we report a "completed" state change on a connected service after
+  // wpa_supplicant has roamed, we should renew our IPConfig.
+  scoped_refptr<MockIPConfig> ipconfig(
+      new MockIPConfig(control_interface(), kDeviceName));
+  SetIPConfig(ipconfig);
+  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*ipconfig, RenewIP());
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+  Mock::VerifyAndClearExpectations(ipconfig);
+  EXPECT_FALSE(GetIsRoamingInProgress());
 }
 
 TEST_F(WiFiMainTest, NewConnectPreemptsPending) {
