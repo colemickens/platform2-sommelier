@@ -428,7 +428,7 @@ message PerfDataProto {
     repeated uint64 data = 2;
   }
 
-  // Next tag: 5
+  // Next tag: 6
   message PerfBuildID {
     // Misc field in perf_event_header.
     optional uint32 misc = 1;
@@ -437,10 +437,14 @@ message PerfDataProto {
     optional uint32 pid = 2;
 
     // Build id.  Should always contain kBuildIDArraySize bytes of data.
+    // perf_reader.h defines kBuildIDArraySize = 20.
     optional bytes build_id_hash = 3;
 
     // Filename.
     optional string filename = 4;
+
+    // Filename Md5sum prefix.
+    optional uint64 filename_md5_prefix = 5;
   }
 
   // Next tag: 5

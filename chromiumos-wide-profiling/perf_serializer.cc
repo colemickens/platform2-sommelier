@@ -731,6 +731,7 @@ bool PerfSerializer::SerializeBuildIDEvent(
   to->set_pid(from->pid);
   to->set_build_id_hash(from->build_id, kBuildIDArraySize);
   to->set_filename(from->filename);
+  to->set_filename_md5_prefix(Md5Prefix(from->filename));
   return true;
 }
 
