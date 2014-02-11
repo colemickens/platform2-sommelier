@@ -8,14 +8,14 @@
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 #include <string>
 
 class BootModeTest : public ::testing::Test {
  public:
   void SetUp() {
-    EXPECT_TRUE(file_util::CreateNewTempDirectory("", &temp_dir_));
+    EXPECT_TRUE(base::CreateNewTempDirectory("", &temp_dir_));
 
     developer_switch_path_ = temp_dir_.value();
     developer_switch_path_.append("/CHSW");
@@ -38,7 +38,7 @@ class BootModeTest : public ::testing::Test {
   }
   void TearDown() {
     if (!temp_dir_.empty())
-      file_util::Delete(temp_dir_, true);
+      base::DeleteFile(temp_dir_, true);
     temp_dir_.clear();
   }
 
@@ -48,24 +48,23 @@ class BootModeTest : public ::testing::Test {
   // the active firmware number, and the |cmdline| is the /proc/cmdline
   // that the "system" booted in.
   void UpdateFiles(int chsw, int fw, const char *cmdline) {
-    std::string data = StringPrintf("%d", chsw);
-    EXPECT_EQ(
-      file_util::WriteFile(FilePath(developer_switch_.platform_file_path()),
-                           data.c_str(),
-                           data.length()), data.length());
+    std::string data = base::StringPrintf("%d", chsw);
+    EXPECT_EQ(file_util::WriteFile(
+                  base::FilePath(developer_switch_.platform_file_path()),
+                  data.c_str(), data.length()),
+              data.length());
 
-    data = StringPrintf("%d", fw);
-    EXPECT_EQ(
-      file_util::WriteFile(FilePath(active_main_firmware_.platform_file_path()),
-                           data.c_str(),
-                           data.length()), data.length());
+    data = base::StringPrintf("%d", fw);
+    EXPECT_EQ(file_util::WriteFile(
+                  base::FilePath(active_main_firmware_.platform_file_path()),
+                  data.c_str(), data.length()),
+              data.length());
 
     data.assign(cmdline);
-    EXPECT_EQ(
-      file_util::WriteFile(FilePath(bootloader_type_.platform_file_path()),
-                           data.c_str(),
-                           data.length()), data.length());
-
+    EXPECT_EQ(file_util::WriteFile(
+                  base::FilePath(bootloader_type_.platform_file_path()),
+                  data.c_str(), data.length()),
+              data.length());
   }
 
   static const char *kUnsupportedText;
@@ -83,7 +82,7 @@ class BootModeTest : public ::testing::Test {
   static const char *kCrosLegacy;
   static const char *kCrosSecure;
  protected:
-   FilePath temp_dir_;
+   base::FilePath temp_dir_;
    cros_boot_mode::BootMode boot_mode_;
    cros_boot_mode::DeveloperSwitch developer_switch_;
    std::string developer_switch_path_;
