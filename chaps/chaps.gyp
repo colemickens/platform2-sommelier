@@ -96,7 +96,7 @@
       'dependencies': [
         'chaps-protos',
         'libchaps_static',
-        '../metrics/metrics.gyp:libmetrics',
+        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
       ],
       'libraries': [
         '-ldl',
@@ -264,7 +264,7 @@
           'type': 'executable',
           'dependencies': [
             'libchaps_static',
-            '../metrics/metrics.gyp:libmetrics',
+            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
           ],
           'libraries': [
             '-lleveldb',
@@ -282,7 +282,7 @@
           'dependencies': [
             'libchaps_static',
             'libchaps_test',
-            '../metrics/metrics.gyp:libmetrics',
+            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
@@ -296,7 +296,7 @@
           'dependencies': [
             'libchaps_static',
             'libchaps_test',
-            '../metrics/metrics.gyp:libmetrics',
+            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
