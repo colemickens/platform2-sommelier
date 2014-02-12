@@ -150,10 +150,13 @@ int FirmwareUpdate(const string &install_dir, bool is_update) {
   return result;
 }
 
-// Matches commandline arguments of chrome-chroot-postinst
+// Do post install stuff.
 //
+// Install kernel, set up the proper bootable partition in
+// GPT table, update firmware if necessary and possible.
+//
+// install_config defines the root, kernel and boot partitions.
 // src_version of the form "10.2.3.4" or "12.3.2"
-// install_dev of the form "/dev/sda3"
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             string src_version,
@@ -270,11 +273,19 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   // Create a file indicating that the install is completed. The file
   // will be used in /sbin/chromeos_startup to run tasks on the next boot.
   // See comments above about removing ureadahead files.
-  if (!Touch("/mnt/stateful_partition/.install_completed")) {
-    printf("Touch(/mnt/stateful_partition/.install_completed) FAILED\n");
+  string stateful_mnt = "/mnt/stateful_partition";
+  string install_completed = stateful_mnt + "/.install_completed";
+  if (!Touch(install_completed)) {
+    printf("Touch(%s) FAILED\n", install_completed.c_str());
     if (is_factory_install)
       return false;
   }
+
+  // If present, remove firmware checking completion file to force a disk
+  // firmware check at reboot.
+  string disk_fw_check_complete = stateful_mnt +
+      "/unencrypted/cache/.disk_firmware_upgrade_completed";
+  unlink(disk_fw_check_complete.c_str());
 
   // In postinst in future, we may provide an option (ex, --update_firmware).
   string firmware_tag_file = (install_config.root.mount() +
