@@ -17,45 +17,13 @@ class MockSessionManager : public SessionManagerInterface {
   MockSessionManager();
   virtual ~MockSessionManager();
 
-  MOCK_METHOD0(AnnounceSessionStoppingIfNeeded, void());
-  MOCK_METHOD0(AnnounceSessionStopped, void());
-  MOCK_METHOD2(ImportValidateAndStoreGeneratedKey, void(const std::string&,
-                                                        const base::FilePath&));
-  MOCK_METHOD0(ScreenIsLocked, bool());
   MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD0(Finalize, void());
-  MOCK_METHOD2(EmitLoginPromptReady, gboolean(gboolean*, GError**));
-  MOCK_METHOD1(EmitLoginPromptVisible, gboolean(GError**));
-  MOCK_METHOD4(EnableChromeTesting, gboolean(gboolean,
-                                             const gchar**,
-                                             gchar**,
-                                             GError**));
-  MOCK_METHOD4(StartSession,
-               gboolean(gchar*, gchar*, gboolean*, GError**));
-  MOCK_METHOD3(StopSession, gboolean(gchar*, gboolean*, GError**));
-  MOCK_METHOD2(StorePolicy, gboolean(GArray*, DBusGMethodInvocation*));
-  MOCK_METHOD2(RetrievePolicy, gboolean(GArray**, GError**));
-  MOCK_METHOD3(StorePolicyForUser,
-               gboolean(gchar*, GArray*, DBusGMethodInvocation*));
-  MOCK_METHOD3(RetrievePolicyForUser, gboolean(gchar*, GArray**, GError**));
-  MOCK_METHOD3(StoreDeviceLocalAccountPolicy,
-               gboolean(gchar*, GArray*, DBusGMethodInvocation*));
-  MOCK_METHOD3(RetrieveDeviceLocalAccountPolicy,
-               gboolean(gchar*, GArray**, GError**));
-  MOCK_METHOD1(RetrieveSessionState, gboolean(gchar**));
-  MOCK_METHOD0(RetrieveActiveSessions, GHashTable*(void));
-  MOCK_METHOD1(LockScreen, gboolean(GError**));
-  MOCK_METHOD1(HandleLockScreenShown, gboolean(GError**));
-
-  MOCK_METHOD1(HandleLockScreenDismissed, gboolean(GError**));
-
-  MOCK_METHOD4(RestartJob,
-               gboolean(gint, gchar*, gboolean*, GError**));
-  MOCK_METHOD5(RestartJobWithAuth,
-               gboolean(gint, gchar*, gchar*, gboolean*, GError**));
-  MOCK_METHOD2(StartDeviceWipe, gboolean(gboolean*, GError**));
-  MOCK_METHOD3(SetFlagsForUser,
-               gboolean(gchar*, const gchar**, GError**));
+  MOCK_METHOD0(GetStartUpFlags, std::vector<std::string>());
+  MOCK_METHOD0(AnnounceSessionStoppingIfNeeded, void());
+  MOCK_METHOD0(AnnounceSessionStopped, void());
+  MOCK_METHOD0(ScreenIsLocked, bool());
+  MOCK_METHOD0(InitiateDeviceWipe, void());
 };
 }  // namespace login_manager
 

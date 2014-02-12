@@ -195,12 +195,19 @@ bool SessionManagerService::Initialize() {
     return false;
 
   // Initially store in derived-type pointer, so that we can initialize
-  // appropriately below but also grab startup flags.
+  // appropriately below..
   SessionManagerImpl* impl =
       new SessionManagerImpl(
           scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
           &dbus_emitter_, &key_gen_, this, login_metrics_, nss_.get(), system_);
-  impl_.reset(impl);
+
+  // Wire impl to dbus-glib glue.
+  if (session_manager_)
+    g_object_unref(session_manager_);
+  session_manager_ =
+      reinterpret_cast<gobject::SessionManager*>(
+          g_object_new(gobject::session_manager_get_type(), NULL));
+  session_manager_->impl = impl;
 
   liveness_checker_.reset(
       new LivenessCheckerImpl(this,
@@ -209,19 +216,12 @@ bool SessionManagerService::Initialize() {
                               enable_browser_abort_on_hang_,
                               liveness_checking_interval_));
 
+  impl_.reset(impl);
   if (!InitializeImpl())
     return false;
 
   // Set any flags that were specified system-wide.
-  browser_->SetExtraArguments(impl->GetStartUpFlags());
-
-  // Wire impl to dbus-glib glue.
-  if (session_manager_)
-    g_object_unref(session_manager_);
-  session_manager_ =
-      reinterpret_cast<gobject::SessionManager*>(
-          g_object_new(gobject::session_manager_get_type(), NULL));
-  session_manager_->impl = impl_.get();
+  browser_->SetExtraArguments(impl_->GetStartUpFlags());
 
   return true;
 }
@@ -460,7 +460,7 @@ base::TimeDelta SessionManagerService::GetKillTimeout() {
 bool SessionManagerService::InitializeImpl() {
   if (!impl_->Initialize()) {
     LOG(ERROR) << "Policy key is likely corrupt. Initiating device wipe.";
-    impl_->StartDeviceWipe(NULL, NULL);
+    impl_->InitiateDeviceWipe();
     impl_->Finalize();
     exit_code_ = MUST_WIPE_DEVICE;
     return false;

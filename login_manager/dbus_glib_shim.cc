@@ -4,7 +4,7 @@
 
 #include "login_manager/dbus_glib_shim.h"
 
-#include "login_manager/session_manager_interface.h"
+#include "login_manager/session_manager_impl.h"
 
 namespace login_manager {
 namespace gobject {

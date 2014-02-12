@@ -853,7 +853,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
                                        nss_.GetSlot()))
       .WillOnce(Return(true));
 
-  impl_.ImportValidateAndStoreGeneratedKey(email, key_file_path);
+  impl_.OnKeyGenerated(email, key_file_path);
   EXPECT_FALSE(file_util::PathExists(key_file_path));
 }
 

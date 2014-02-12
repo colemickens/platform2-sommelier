@@ -15,13 +15,13 @@
 
 // Helpers for using GObjects until we can get a C++ wrapper going.
 namespace login_manager {
-class SessionManagerInterface;
+class SessionManagerImpl;
 
 namespace gobject {  // Namespace hiding the GObject type data.
 
 struct SessionManager {
   GObject parent_instance;
-  SessionManagerInterface *impl;  // pointer to SessionManager API implemention.
+  SessionManagerImpl *impl;  // pointer to SessionManager API implemention.
 };
 struct SessionManagerClass { GObjectClass parent_class; };
 

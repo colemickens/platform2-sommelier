@@ -74,79 +74,173 @@ class SessionManagerImpl : public SessionManagerInterface,
       scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
       scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy);
 
-  std::vector<std::string> GetStartUpFlags() {
+  // SessionManagerInterface implementation.
+  // Should set up policy stuff; if false DIE.
+  virtual bool Initialize() OVERRIDE;
+  virtual void Finalize() OVERRIDE;
+
+  virtual void AnnounceSessionStoppingIfNeeded() OVERRIDE;
+  virtual void AnnounceSessionStopped() OVERRIDE;
+  virtual bool ScreenIsLocked() OVERRIDE { return screen_locked_; }
+  virtual std::vector<std::string> GetStartUpFlags() OVERRIDE {
     return device_policy_->GetStartUpFlags();
   }
 
-  // SessionManagerInterface implementation.
-  void AnnounceSessionStoppingIfNeeded() OVERRIDE;
-  void AnnounceSessionStopped() OVERRIDE;
-  void ImportValidateAndStoreGeneratedKey(const std::string& username,
-                                          const base::FilePath& temp_key_file);
-  bool ScreenIsLocked() OVERRIDE { return screen_locked_; }
-  // Should set up policy stuff; if false DIE.
-  bool Initialize() OVERRIDE;
-  void Finalize() OVERRIDE;
+  // Starts a 'Powerwash' of the device by touching a flag file, then
+  // rebooting to allow early-boot code to wipe parts of stateful we
+  // need wiped. Have a look at /src/platform/init/chromeos_startup
+  // for the gory details.
+  virtual void InitiateDeviceWipe() OVERRIDE;
 
-  gboolean EmitLoginPromptReady(gboolean* OUT_emitted,
-                                GError** error) OVERRIDE;
-  gboolean EmitLoginPromptVisible(GError** error) OVERRIDE;
+  //////////////////////////////////////////////////////////////////////////////
+  // Methods exposed via RPC are defined below.
 
+  // Emits the "login-prompt-ready" and "login-prompt-visible" upstart signals.
+  gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
+  gboolean EmitLoginPromptVisible(GError** error);
+
+  // Adds an argument to the chrome child job that makes it open a testing
+  // channel, then kills and restarts chrome. The name of the socket used
+  // for testing is returned in OUT_filepath.
+  // If force_relaunch is true, Chrome will be restarted with each
+  // invocation. Otherwise, it will only be restarted on the first invocation.
+  // The extra_args parameter can include any additional arguments
+  // that need to be passed to Chrome on subsequent launches.
   gboolean EnableChromeTesting(gboolean force_relaunch,
                                const gchar** extra_args,
                                gchar** OUT_filepath,
-                               GError** error) OVERRIDE;
+                               GError** error);
 
+  // In addition to emitting "start-user-session" upstart signal and
+  // "SessionStateChanged:started" D-Bus signal, this function will
+  // also call browser_.job->StartSession(email_address).
   gboolean StartSession(gchar* email_address,
                         gchar* unique_identifier,
                         gboolean* OUT_done,
-                        GError** error) OVERRIDE;
+                        GError** error);
+
+  // In addition to emitting "stop-user-session", this function will
+  // also call browser_.job->StopSession().
   gboolean StopSession(gchar* unique_identifier,
                        gboolean* OUT_done,
-                       GError** error) OVERRIDE;
+                       GError** error);
 
-  gboolean StorePolicy(GArray* policy_blob,
-                       DBusGMethodInvocation* context) OVERRIDE;
-  gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error) OVERRIDE;
+  // |policy_blob| is a serialized protobuffer containing a device policy
+  // and a signature over that policy.  Verify the sig and persist
+  // |policy_blob| to disk.
+  //
+  // The signature is a SHA1 with RSA signature over the policy,
+  // verifiable with |key_|.
+  //
+  // Returns TRUE if the signature checks out, FALSE otherwise.
+  gboolean StorePolicy(GArray* policy_blob, DBusGMethodInvocation* context);
 
+  // Get the policy_blob and associated signature off of disk.
+  // Returns TRUE if the data is can be fetched, FALSE otherwise.
+  gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error);
+
+  // Similar to StorePolicy above, but for user policy. |policy_blob| is a
+  // serialized PolicyFetchResponse protobuf which wraps the actual policy data
+  // along with an SHA1-RSA signature over the policy data. The policy data is
+  // opaque to session manager, the exact definition is only relevant to client
+  // code in Chrome.
+  //
+  // Calling this function attempts to persist |policy_blob| for |user_email|.
+  // Policy is stored in a root-owned location within the user's cryptohome
+  // (for privacy reasons). The first attempt to store policy also installs the
+  // signing key for user policy. This key is used later to verify policy
+  // updates pushed by Chrome.
+  //
+  // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
+  // and reports the final result of the call asynchronously through |context|.
   gboolean StorePolicyForUser(gchar* user_email,
                               GArray* policy_blob,
-                              DBusGMethodInvocation* context) OVERRIDE;
+                              DBusGMethodInvocation* context);
+
+  // Retrieves user policy for |user_email| and returns it in |policy_blob|.
+  // Returns TRUE if the policy is available, FALSE otherwise.
   gboolean RetrievePolicyForUser(gchar* user_email,
                                  GArray** OUT_policy_blob,
-                                 GError** error) OVERRIDE;
+                                 GError** error);
 
-  gboolean StoreDeviceLocalAccountPolicy(
-      gchar* account_id,
-      GArray* policy_blob,
-      DBusGMethodInvocation* context) OVERRIDE;
+  // Similar to StorePolicy above, but for device-local accounts. |policy_blob|
+  // is a serialized PolicyFetchResponse protobuf which wraps the actual policy
+  // data along with an SHA1-RSA signature over the policy data. The policy data
+  // is opaque to session manager, the exact definition is only relevant to
+  // client code in Chrome.
+  //
+  // Calling this function attempts to persist |policy_blob| for the
+  // device-local account specified in the |account_id| parameter. Policy is
+  // stored in the root-owned /var/lib/device_local_accounts directory in the
+  // stateful partition. Signatures are checked against the owner key, key
+  // rotation is not allowed.
+  //
+  // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
+  // and reports the final result of the call asynchronously through |context|.
+  gboolean StoreDeviceLocalAccountPolicy(gchar* account_id,
+                                         GArray* policy_blob,
+                                         DBusGMethodInvocation* context);
+
+  // Retrieves device-local account policy for the specified |account_id| and
+  // returns it in |policy_blob|. Returns TRUE if the policy is available, FALSE
+  // otherwise.
   gboolean RetrieveDeviceLocalAccountPolicy(gchar* account_id,
                                             GArray** OUT_policy_blob,
-                                            GError** error) OVERRIDE;
+                                            GError** error);
 
-  gboolean RetrieveSessionState(gchar** OUT_state) OVERRIDE;
-  GHashTable* RetrieveActiveSessions() OVERRIDE;
+  // Get information about the current session.
+  gboolean RetrieveSessionState(gchar** OUT_state);
 
-  gboolean LockScreen(GError** error) OVERRIDE;
-  gboolean HandleLockScreenShown(GError** error) OVERRIDE;
+  // Enumerate active user sessions.
+  // The return value is a hash table, mapping {username: sanitized username},
+  // sometimes called the "user hash".
+  // The contents of the hash table are owned by the implementation of
+  // this interface, but the caller is responsible for unref'ing
+  // the GHashTable structure.
+  GHashTable* RetrieveActiveSessions();
 
-  gboolean HandleLockScreenDismissed(GError** error) OVERRIDE;
+  // Handles LockScreen request from Chromium or PowerManager. It emits
+  // LockScreen signal to Chromium Browser to tell it to lock the screen. The
+  // browser should call the HandleScreenLocked method when the screen is
+  // actually locked.
+  gboolean LockScreen(GError** error);
 
+  // Intended to be called by Chromium. Updates canonical system-locked state,
+  // and broadcasts ScreenIsLocked signal over DBus.
+  gboolean HandleLockScreenShown(GError** error);
+
+  // Intended to be called by Chromium. Updates canonical system-locked state,
+  // and broadcasts ScreenIsUnlocked signal over DBus.
+  gboolean HandleLockScreenDismissed(GError** error);
+
+  // Restarts job with specified pid replacing its command line arguments
+  // with provided.
   gboolean RestartJob(gint pid,
                       gchar* arguments,
                       gboolean* OUT_done,
-                      GError** error) OVERRIDE;
+                      GError** error);
+
+  // Restarts job with specified pid as RestartJob(), but authenticates the
+  // caller based on a supplied cookie value also known to the session manager
+  // rather than pid.
   gboolean RestartJobWithAuth(gint pid,
                               gchar* cookie,
                               gchar* arguments,
                               gboolean* OUT_done,
-                              GError** error) OVERRIDE;
+                              GError** error);
 
-  gboolean StartDeviceWipe(gboolean *OUT_done, GError** error) OVERRIDE;
+  // Sets the device up to "Powerwash" on reboot, and then triggers a reboot.
+  gboolean StartDeviceWipe(gboolean *OUT_done, GError** error);
 
+  // Stores in memory the flags that session manager should apply the next time
+  // it restarts Chrome inside an existing session. The flags should be cleared
+  // on StopSession signal or when session manager itself is restarted. Chrome
+  // will wait on successful confirmation of this call and terminate itself to
+  // allow session manager to restart it and apply the necessary flag. All flag
+  // validation is to be done inside Chrome.
   gboolean SetFlagsForUser(gchar* user_email,
                            const gchar** flags,
-                           GError** error) OVERRIDE;
+                           GError** error);
 
   // PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success) OVERRIDE;
@@ -164,6 +258,12 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   typedef std::map<std::string, UserSession*> UserSessionMap;
 
+  // Given a policy key stored at temp_key_file, pulls it off disk,
+  // validates that it is a correctly formed key pair, and ensures it is
+  // stored for the future in the provided user's NSSDB.
+  void ImportValidateAndStoreGeneratedKey(const std::string& username,
+                                          const base::FilePath& temp_key_file);
+
   // Encodes the result of a policy retrieve operation as specified in |success|
   // and |policy_data| into |policy_blob| and |error|. Returns TRUE if
   // successful, FALSE otherwise.
@@ -171,12 +271,6 @@ class SessionManagerImpl : public SessionManagerInterface,
                                  const std::vector<uint8>& policy_data,
                                  GArray** policy_blob,
                                  GError** error);
-
-  // Starts a 'Powerwash' of the device by touching a flag file, then
-  // rebooting to allow early-boot code to wipe parts of stateful we
-  // need wiped. Have a look at /src/platform/init/chromeos_startup
-  // for the gory details.
-  void InitiateDeviceWipe();
 
   // Safely converts a gchar* parameter from DBUS to a std::string.
   static std::string GCharToString(const gchar* str);

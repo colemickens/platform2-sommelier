@@ -301,10 +301,8 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   EXPECT_CALL(*session_manager_impl_, Initialize()).WillOnce(Return(false));
 
   // Expect Powerwash to be triggered.
-  EXPECT_CALL(*session_manager_impl_, StartDeviceWipe(_, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*session_manager_impl_, Finalize())
-      .Times(1);
+  EXPECT_CALL(*session_manager_impl_, InitiateDeviceWipe()).Times(1);
+  EXPECT_CALL(*session_manager_impl_, Finalize()).Times(1);
 
   ASSERT_FALSE(manager_->test_api().InitializeImpl());
   ASSERT_EQ(SessionManagerService::MUST_WIPE_DEVICE, manager_->exit_code());
