@@ -2,7 +2,6 @@
   'target_defaults': {
     'dependencies': [
       '../libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
-      '../metrics/metrics.gyp:libmetrics',
       '../system_api/system_api.gyp:system_api-power_manager-protos',
     ],
     'variables': {
