@@ -5,7 +5,7 @@
   'target_defaults': {
     'dependencies': [
       '../libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
-      '../metrics/metrics.gyp:libmetrics',
+      '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
     ],
     'variables': {
       'deps': [
