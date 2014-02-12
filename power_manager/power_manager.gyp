@@ -1,8 +1,11 @@
 {
+  'variables': {
+    'libbase_ver': 242728,
+  },
   'target_defaults': {
     'variables': {
       'deps': [
-        'libchrome-242728',
+        'libchrome-<(libbase_ver)',
         'libudev',
         'protobuf-lite',
       ],
@@ -91,7 +94,7 @@
       'target_name': 'libpowerd',
       'type': 'static_library',
       'dependencies': [
-        '../metrics/metrics.gyp:libmetrics',
+        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
         'libpolicy',
         'libsystem',
         'libutil',
