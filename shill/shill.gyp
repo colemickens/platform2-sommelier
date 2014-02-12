@@ -122,7 +122,7 @@
       'target_name': 'libshill',
       'type': 'static_library',
       'dependencies': [
-        '../metrics/metrics.gyp:libmetrics',
+        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
         '../system_api/system_api.gyp:system_api-power_manager-protos',
         'shill-adaptors',
         'shill-proxies',
