@@ -110,11 +110,8 @@ void MetricsReporter::HandleSessionStateChange(SessionState state) {
             kMetricMaxPercent);
       }
 
-      const int session_length_sec = std::min(kMetricLengthOfSessionMax,
-          static_cast<int>(
-              (clock_.GetCurrentTime() - session_start_time_).InSeconds()));
       SendMetric(kMetricLengthOfSessionName,
-                 session_length_sec,
+                 (clock_.GetCurrentTime() - session_start_time_).InSeconds(),
                  kMetricLengthOfSessionMin,
                  kMetricLengthOfSessionMax,
                  kMetricDefaultBuckets);
@@ -288,19 +285,13 @@ bool MetricsReporter::SendMetric(const std::string& name,
                                  int sample,
                                  int min,
                                  int max,
-                                 int nbuckets) {
+                                 int num_buckets) {
   VLOG(1) << "Sending metric " << name << " (sample=" << sample << " min="
-          << min << " max=" << max << " nbuckets=" << nbuckets << ")";
+          << min << " max=" << max << " num_buckets=" << num_buckets << ")";
 
-  if (sample < min) {
-    LOG(WARNING) << name << " sample " << sample << " is less than " << min;
-    sample = min;
-  } else if (sample > max) {
-    LOG(WARNING) << name << " sample " << sample << " is greater than " << max;
-    sample = max;
-  }
-
-  if (!metrics_lib_->SendToUMA(name, sample, min, max, nbuckets)) {
+  // If the sample falls outside of the histogram's range, just let it end up in
+  // the underflow or overflow bucket.
+  if (!metrics_lib_->SendToUMA(name, sample, min, max, num_buckets)) {
     LOG(ERROR) << "Failed to send metric " << name;
     return false;
   }
@@ -329,10 +320,10 @@ bool MetricsReporter::SendMetricWithPowerSource(const std::string& name,
                                                 int sample,
                                                 int min,
                                                 int max,
-                                                int nbuckets) {
+                                                int num_buckets) {
   const std::string full_name = AppendPowerSourceToEnumName(
       name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
-  return SendMetric(full_name, sample, min, max, nbuckets);
+  return SendMetric(full_name, sample, min, max, num_buckets);
 }
 
 bool MetricsReporter::SendEnumMetricWithPowerSource(const std::string& name,

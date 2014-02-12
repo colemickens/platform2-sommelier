@@ -53,7 +53,7 @@ const time_t kMetricBatteryDischargeRateInterval = 30;  // seconds
 
 const char kMetricBatteryDischargeRateWhileSuspendedName[] =
     "Power.BatteryDischargeRateWhileSuspended";  // mW
-const int kMetricBatteryDischargeRateWhileSuspendedMin = 0;
+const int kMetricBatteryDischargeRateWhileSuspendedMin = 1;
 const int kMetricBatteryDischargeRateWhileSuspendedMax = 30000;
 const int kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec = 60;
 
@@ -66,18 +66,18 @@ const char kMetricBatteryRemainingAtStartOfSessionName[] =
 
 const char kMetricNumberOfAlsAdjustmentsPerSessionName[] =
     "Power.NumberOfAlsAdjustmentsPerSession";
-const int kMetricNumberOfAlsAdjustmentsPerSessionMin = 0;
+const int kMetricNumberOfAlsAdjustmentsPerSessionMin = 1;
 const int kMetricNumberOfAlsAdjustmentsPerSessionMax = 10000;
 
 const char kMetricUserBrightnessAdjustmentsPerSessionName[] =
     "Power.UserBrightnessAdjustmentsPerSession";
-const int kMetricUserBrightnessAdjustmentsPerSessionMin = 0;
+const int kMetricUserBrightnessAdjustmentsPerSessionMin = 1;
 const int kMetricUserBrightnessAdjustmentsPerSessionMax = 10000;
 
 const char kMetricLengthOfSessionName[] =
     "Power.LengthOfSession";
-const int kMetricLengthOfSessionMin = 0;
-const int kMetricLengthOfSessionMax = (60*60*12);
+const int kMetricLengthOfSessionMin = 1;
+const int kMetricLengthOfSessionMax = 60 * 60 * 12;
 
 const char kMetricNumOfSessionsPerChargeName[] =
     "Power.NumberOfSessionsPerCharge";
@@ -91,7 +91,7 @@ const int kMetricPowerButtonDownTimeMax = 8 * 1000;
 
 const char kMetricPowerButtonAcknowledgmentDelayName[] =
     "Power.PowerButtonAcknowledgmentDelay";  // ms
-const int kMetricPowerButtonAcknowledgmentDelayMin = 0;
+const int kMetricPowerButtonAcknowledgmentDelayMin = 1;
 const int kMetricPowerButtonAcknowledgmentDelayMax = 8 * 1000;
 
 const char kMetricBatteryInfoSampleName[] = "Power.BatteryInfoSample";

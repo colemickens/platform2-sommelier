@@ -97,7 +97,7 @@ class MetricsReporter {
                   int sample,
                   int min,
                   int max,
-                  int nbuckets);
+                  int num_buckets);
 
   // Sends an enumeration (linear) histogram sample.
   bool SendEnumMetric(const std::string& name,
@@ -109,7 +109,7 @@ class MetricsReporter {
                                  int sample,
                                  int min,
                                  int max,
-                                 int nbuckets);
+                                 int num_buckets);
   bool SendEnumMetricWithPowerSource(const std::string& name,
                                      int sample,
                                      int max);

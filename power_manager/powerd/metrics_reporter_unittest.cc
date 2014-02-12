@@ -321,7 +321,7 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
 
     AdvanceTime(base::TimeDelta::FromSeconds(kSessionSecs[i]));
     ExpectMetric(kMetricLengthOfSessionName,
-                 std::min(kSessionSecs[i], kMetricLengthOfSessionMax),
+                 kSessionSecs[i],
                  kMetricLengthOfSessionMin,
                  kMetricLengthOfSessionMax,
                  kMetricDefaultBuckets);
@@ -399,10 +399,11 @@ TEST_F(MetricsReporterTest, SendMetric) {
   ExpectMetric("Dummy.Metric", 3, 1, 100, 50);
   EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric", 3, 1, 100, 50));
 
-  // Out-of-bounds values should be capped.
-  ExpectMetric("Dummy.Metric2", 0, 0, 20, 4);
+  // Out-of-bounds values should not be capped (so they can instead land in the
+  // underflow or overflow bucket).
+  ExpectMetric("Dummy.Metric2", -1, 0, 20, 4);
   EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric2", -1, 0, 20, 4));
-  ExpectMetric("Dummy.Metric3", 25, 5, 25, 6);
+  ExpectMetric("Dummy.Metric3", 30, 5, 25, 6);
   EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric3", 30, 5, 25, 6));
 }
 
