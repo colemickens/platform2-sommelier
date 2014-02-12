@@ -13,7 +13,7 @@ CPPFLAGS += $(PC_CFLAGS)
 CPPFLAGS += -I.
 CXXFLAGS += -fPIC -Wall -Werror -g
 LDLIBS += -lGobiConnectionMgmt -lGobiImageMgmt -lpthread -lrt \
-          -ludev -lmetrics -lgobi3k $(PC_LIBS)
+          -ludev -lmetrics-$(BASE_VER) -lgobi3k $(PC_LIBS)
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
