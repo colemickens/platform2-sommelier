@@ -32,14 +32,11 @@ message SerializedVaultKeyset {
   // }
   // repeated OptionalMetadata metadata;
 
-  optional string label = 9;  // unique-per-account
   enum Type {
     PASSWORD_CROS_LEGACY = 0;
     // Password plain which is signed by a RSA-SHA256 key
     PASSWORD_PLAIN = 1;
   }
-  optional Type type = 10 [default=PASSWORD_CROS_LEGACY];
-  optional uint64 revision = 11 [default=0];
 
   // Software-enforced privileges.
   enum Privileges {
@@ -55,7 +52,7 @@ message SerializedVaultKeyset {
     // Allows a key to be updated in place if authorized (e.g., by a signature).
     AUTHORIZED_UPDATE = 16;
   }
-  optional Privileges privs = 12 [default=DEFAULT];
+
   enum AuthorizationType {
     // Changes must be authorized by a HMAC-SHA256
     // with a sub-key of the privilege_key, which is wrapped by the
@@ -65,6 +62,4 @@ message SerializedVaultKeyset {
     // The subkeys are computed as one-half of a SHA512 of the priv_key.
     AES256_HMAC_SHA256 = 0;
   }
-  optional AuthorizationType authorization_type = 13;
-  optional bytes wrapped_authorization_key = 14;
 }
