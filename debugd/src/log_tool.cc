@@ -175,14 +175,18 @@ static const Log common_logs[] = {
 };
 
 static const Log extra_logs[] = {
+#if USE_CELLULAR
   { "mm-status", "/usr/bin/modem status" },
+#endif  // USE_CELLULAR
   { "network-devices", "/usr/bin/connectivity show devices" },
   { "network-services", "/usr/bin/connectivity show services" },
   { NULL, NULL }
 };
 
 static const Log feedback_logs[] = {
+#if USE_CELLULAR
   { "mm-status", "/usr/bin/modem status-feedback" },
+#endif  // USE_CELLULAR
   { "network-devices", "/usr/bin/connectivity show-feedback devices" },
   { "network-services", "/usr/bin/connectivity show-feedback services" },
   { NULL, NULL }

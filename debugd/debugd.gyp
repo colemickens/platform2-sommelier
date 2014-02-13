@@ -18,6 +18,10 @@
     "cflags": [
       '-fvisibility=hidden',
     ],
+    'defines': [
+      'USE_CELLULAR=<(USE_cellular)',
+      'USE_WIMAX=<(USE_wimax)',
+    ],
   },
   'targets': [
     {
@@ -118,14 +122,6 @@
       ]
     },
     {
-      'target_name': 'modem_status',
-      'type': 'executable',
-      'dependencies': ['debugd-proxies'],
-      'sources': [
-        'src/helpers/modem_status.cc',
-      ]
-    },
-    {
       'target_name': 'network_status',
       'type': 'executable',
       'dependencies': ['debugd-proxies'],
@@ -133,16 +129,20 @@
         'src/helpers/network_status.cc',
       ]
     },
-    {
-      'target_name': 'wimax_status',
-      'type': 'executable',
-      'dependencies': ['debugd-proxies'],
-      'sources': [
-        'src/helpers/wimax_status.cc',
-      ]
-    },
   ],
   'conditions': [
+    ['USE_cellular == 1', {
+      'targets': [
+        {
+          'target_name': 'modem_status',
+          'type': 'executable',
+          'dependencies': ['debugd-proxies'],
+          'sources': [
+            'src/helpers/modem_status.cc',
+          ]
+        },
+      ],
+    }],
     ['USE_test == 1', {
       'targets': [
         {
@@ -157,6 +157,18 @@
             'src/process_with_id_test.cc',
             'src/random_selector_test.cc',
             'src/testrunner.cc',
+          ]
+        },
+      ],
+    }],
+    ['USE_wimax == 1', {
+      'targets': [
+        {
+          'target_name': 'wimax_status',
+          'type': 'executable',
+          'dependencies': ['debugd-proxies'],
+          'sources': [
+            'src/helpers/wimax_status.cc',
           ]
         },
       ],

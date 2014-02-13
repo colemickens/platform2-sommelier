@@ -14,6 +14,9 @@ WiMaxStatusTool::WiMaxStatusTool() {}
 WiMaxStatusTool::~WiMaxStatusTool() {}
 
 std::string WiMaxStatusTool::GetWiMaxStatus(DBus::Error& error) {  // NOLINT
+  if (!USE_WIMAX)
+    return "";
+
   char *envvar = getenv("DEBUGD_HELPERS");
   std::string path = StringPrintf("%s/wimax_status", envvar ? envvar
                                   : "/usr/libexec/debugd/helpers");

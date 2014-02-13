@@ -16,6 +16,9 @@ ModemStatusTool::ModemStatusTool() { }
 ModemStatusTool::~ModemStatusTool() { }
 
 std::string ModemStatusTool::GetModemStatus(DBus::Error& error) { // NOLINT
+  if (!USE_CELLULAR)
+    return "";
+
   char *envvar = getenv("DEBUGD_HELPERS");
   std::string path = StringPrintf("%s/modem_status", envvar ? envvar
                                   : "/usr/libexec/debugd/helpers");
@@ -31,6 +34,9 @@ std::string ModemStatusTool::GetModemStatus(DBus::Error& error) { // NOLINT
 }
 
 string ModemStatusTool::RunModemCommand(const string& command) {
+  if (!USE_CELLULAR)
+    return "";
+
   if (command == "get-oma-status") {
     return SendATCommand("AT+OMADM=?");
   }
@@ -54,6 +60,9 @@ string ModemStatusTool::RunModemCommand(const string& command) {
 }
 
 string ModemStatusTool::SendATCommand(const string& command) {
+  if (!USE_CELLULAR)
+    return "";
+
   char *envvar = getenv("DEBUGD_HELPERS");
   string path = StringPrintf("%s/send_at_command.sh",
                              envvar ? envvar : "/usr/libexec/debugd/helpers");
