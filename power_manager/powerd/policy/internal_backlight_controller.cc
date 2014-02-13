@@ -277,6 +277,10 @@ void InternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {
 
 void InternalBacklightController::HandleSessionStateChange(SessionState state) {
   EnsureUserBrightnessIsNonzero();
+  if (state == SESSION_STARTED) {
+    als_adjustment_count_ = 0;
+    user_adjustment_count_ = 0;
+  }
 }
 
 void InternalBacklightController::HandlePowerButtonPress() {
@@ -439,7 +443,9 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
       TransitionStyle transition =
           cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
           TRANSITION_SLOW : TRANSITION_FAST;
-      UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
+      if (UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED) &&
+          cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT)
+        als_adjustment_count_++;
     }
   }
 }

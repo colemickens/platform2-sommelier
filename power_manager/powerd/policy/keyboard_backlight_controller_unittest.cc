@@ -156,6 +156,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   Init();
   ASSERT_EQ(20, backlight_.current_level());
+  EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 
   // ALS returns bad value.
   light_sensor_.set_lux(-1);
@@ -178,6 +179,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   EXPECT_EQ(75, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(1, controller_.GetNumAmbientLightSensorAdjustments());
 
   // First decrease; hysteresis not overcome.
   light_sensor_.set_lux(50);
@@ -190,6 +192,11 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   EXPECT_EQ(50, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(2, controller_.GetNumAmbientLightSensorAdjustments());
+
+  // The count should be reset after a new session starts.
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 
 TEST_F(KeyboardBacklightControllerTest, TwoValueLimitsPref) {
@@ -430,6 +437,10 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
   EXPECT_FALSE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
+
+  // The count should be reset after a new session starts.
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(0, controller_.GetNumUserAdjustments());
 }
 
 TEST_F(KeyboardBacklightControllerTest, DecreaseUserBrightness) {

@@ -163,6 +163,10 @@ void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
 void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
   session_state_ = state;
+  if (state == SESSION_STARTED) {
+    num_als_adjustments_ = 0;
+    num_user_adjustments_ = 0;
+  }
 }
 
 void KeyboardBacklightController::HandlePowerButtonPress() {}
@@ -255,11 +259,12 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
   if (ignore_ambient_light_)
     return;
   percent_for_ambient_light_ = brightness_percent;
-  num_als_adjustments_++;
   TransitionStyle transition =
       cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
       TRANSITION_SLOW : TRANSITION_FAST;
-  UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
+  if (UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED) &&
+      cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT)
+    num_als_adjustments_++;
 }
 
 void KeyboardBacklightController::OnBrightnessChanged(

@@ -372,13 +372,16 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   // The controller should leave the initial brightness unchanged before it's
   // received a reading from the ambient light sensor.
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
   // After getting the first reading from the sensor, we should do a slow
-  // transition to the lower level.
+  // transition to the lower level. The initial adjustment doesn't contribute to
+  // the adjustment count.
   light_sensor_.NotifyObservers();
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Pass a bunch of higher readings and check that we slowly increase the
   // brightness.
@@ -388,6 +391,28 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(1, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // Check that the adjustment count is reset when a new session starts.
+  controller_->HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
+}
+
+TEST_F(InternalBacklightControllerTest, PowerSourceChangeNotReportedAsAmbient) {
+  // Set a single step for ambient-light-controlled brightness levels, using 60%
+  // while on AC and 50% while on battery.
+  initial_backlight_level_ = max_backlight_level_;
+  default_als_steps_ = "60.0 50.0 -1 -1";
+  Init(POWER_AC);
+  ASSERT_EQ(PercentToLevel(60.0), backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // The brightness should be updated after switching to battery power, but the
+  // change shouldn't be reported as having been triggered by the ambient light
+  // sensor.
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  ASSERT_EQ(PercentToLevel(50.0), backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 }
 
 TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
@@ -502,14 +527,17 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
 }
 
 TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
-  Init(POWER_AC);
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
+  Init(POWER_AC);
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
+  EXPECT_EQ(0, controller_->GetNumUserAdjustments());
 
   const double kUserPercent = 80.0;
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       kUserPercent, BacklightController::TRANSITION_INSTANT));
   EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
+  EXPECT_EQ(1, controller_->GetNumUserAdjustments());
 
   // Changes to the ambient light level shouldn't affect the backlight
   // brightness after the user has manually set it.
@@ -517,6 +545,11 @@ TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
   for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
     light_sensor_.NotifyObservers();
   EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // Starting a new session should reset the user adjustment count.
+  controller_->HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(0, controller_->GetNumUserAdjustments());
 }
 
 TEST_F(InternalBacklightControllerTest, DeferInitialAdjustment) {

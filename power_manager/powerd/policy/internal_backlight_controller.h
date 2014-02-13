@@ -184,7 +184,8 @@ class InternalBacklightController : public BacklightController,
   // Has UpdateState() already set the initial state?
   bool already_set_initial_state_;
 
-  // Number of ambient-light- and user-triggered brightness adjustments.
+  // Number of ambient-light- and user-triggered brightness adjustments in the
+  // current session.
   int als_adjustment_count_;
   int user_adjustment_count_;
 

@@ -118,7 +118,7 @@ class BacklightController {
   virtual bool DecreaseUserBrightness(bool allow_off) = 0;
 
   // Returns the number of times that the backlight has been adjusted as a
-  // result of ALS readings or user requests.
+  // result of ALS readings or user requests during the current session.
   virtual int GetNumAmbientLightSensorAdjustments() const = 0;
   virtual int GetNumUserAdjustments() const = 0;
 
