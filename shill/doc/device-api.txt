@@ -190,6 +190,30 @@ Methods		dict GetProperties()
 			before it is clear whether the operation actually
 			succeeded.
 
+			All methods except "Status" return an empty string.
+			For "Status", the returned string can be one of:
+
+				"Connected" : The TDLS link is active.
+				"Disabled" : TDLS is disabled on this device.
+				"Disconnected" : The TDLS link has been
+						 disconnected.
+				"Nonexistent" : No information is known
+						about this TDLS peer.
+				"Unknown" : The TDLS link is in an unknown
+					    state.
+
+			Possible Errors:
+				[service].Error.InProgress
+					An IP-to-MAC address lookup is being
+					performed.  The caller should retry
+					this operation.
+				[service].Error.InvalidArguments
+					The |operation| is unknown or the
+					|peer| address is misformatted or
+					does not belong to the local subnet.
+				[service].Error.OperationFailed
+					The TDLS or ARP operation failed.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
