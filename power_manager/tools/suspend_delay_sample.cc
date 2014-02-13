@@ -104,6 +104,9 @@ void DBusSignalConnected(const std::string& interface,
 }
 
 int main(int argc, char* argv[]) {
+  google::SetUsageMessage(
+      "Exercise powerd's functionality that permits other processes to\n"
+      "perform last-minute work before the system suspends.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;

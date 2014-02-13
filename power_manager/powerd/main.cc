@@ -64,6 +64,7 @@ std::string GetTimeAsString(time_t utime) {
 int main(int argc, char* argv[]) {
   // gflags rewrites argv; give base::CommandLine first crack at it.
   CommandLine::Init(argc, argv);
+  google::SetUsageMessage("powerd, the Chromium OS userspace power manager.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";

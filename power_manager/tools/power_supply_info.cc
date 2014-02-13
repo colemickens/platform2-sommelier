@@ -92,6 +92,8 @@ class InfoDisplay {
 }  // namespace
 
 int main(int argc, char** argv) {
+  google::SetUsageMessage(
+      "Print information obtained from /sys about the power supply.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;

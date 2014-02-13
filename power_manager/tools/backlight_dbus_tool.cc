@@ -53,6 +53,8 @@ bool SetCurrentBrightness(dbus::ObjectProxy* proxy, double percent, int style) {
 
 // A tool to talk to powerd and get or set the backlight level.
 int main(int argc, char* argv[]) {
+  google::SetUsageMessage(
+      "Query or change the panel backlight brightness via powerd.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
   base::AtExitManager at_exit_manager;

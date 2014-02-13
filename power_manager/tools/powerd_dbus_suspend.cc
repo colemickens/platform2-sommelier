@@ -50,6 +50,7 @@ void OnTimeout() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  google::SetUsageMessage("Instruct powerd to suspend the system.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
