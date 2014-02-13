@@ -16,6 +16,7 @@
 #include <base/stringprintf.h>
 #include <base/values.h>
 #include <chaps/isolate.h>
+#include <chaps/token_manager_client.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <set>
@@ -1316,6 +1317,7 @@ bool Mount::InsertPkcs11Token() {
   SecureBlob auth_data;
   if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
     return false;
+  chaps::TokenManagerClient chaps_client;
   // If migration is required, send it before the login event.
   if (is_pkcs11_passkey_migration_required_) {
     LOG(INFO) << "Migrating authorization data.";
@@ -1324,7 +1326,7 @@ bool Mount::InsertPkcs11Token() {
                                          salt_file,
                                          &old_auth_data))
       return false;
-    chaps_client_.ChangeTokenAuthData(
+    chaps_client.ChangeTokenAuthData(
         token_dir,
         old_auth_data,
         auth_data);
@@ -1333,7 +1335,7 @@ bool Mount::InsertPkcs11Token() {
   }
   Pkcs11Init pkcs11init;
   int slot_id = 0;
-  if (!chaps_client_.LoadToken(
+  if (!chaps_client.LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir,
       auth_data,
@@ -1348,7 +1350,8 @@ bool Mount::InsertPkcs11Token() {
 void Mount::RemovePkcs11Token() {
   std::string username = current_user_->username();
   FilePath token_dir = homedirs_->GetChapsTokenDir(username);
-  chaps_client_.UnloadToken(
+  chaps::TokenManagerClient chaps_client;
+  chaps_client.UnloadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir);
 }

@@ -19,7 +19,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/time.h>
 #include <base/values.h>
-#include <chaps/token_manager_client.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -741,9 +740,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::TimeDelta old_user_last_activity_time_;
 
   Pkcs11State pkcs11_state_;
-
-  // Used to load / unload PKCS #11 tokens in Chaps.
-  chaps::TokenManagerClient chaps_client_;
 
   // Used to track the user's passkey. PKCS #11 initialization consumes and
   // clears this value.
