@@ -46,6 +46,7 @@ const char kPropertyDeviceTypeUSBDevice[] = "usb_device";
 const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
 const char kPropertyMistSupportedDevice[] = "MIST_SUPPORTED_DEVICE";
 const char kPropertyModel[] = "ID_MODEL";
+const char kPropertyPartitionEntryType[] = "ID_PART_ENTRY_TYPE";
 const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
 const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
 const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
@@ -55,8 +56,12 @@ const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kLoopDevicePathPrefix[] = "/sys/devices/virtual/block/loop";
 const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
 const char kUSBIdentifierDatabase[] = "/usr/share/misc/usb.ids";
-const char* kNonAutoMountableFilesystemLabels[] = {
-  "C-ROOT", "C-STATE", NULL
+const char* kPartitionTypesToHide[] = {
+  "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",  // EFI system partition
+  "fe3a2a5d-4f32-41a7-b725-accc3285a309",  // Chrome OS kernel
+  "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec",  // Chrome OS root filesystem
+  "cab6e88e-abf3-4102-a07a-d4bb9be3c1d3",  // Chrome OS firmware
+  "2e0a753d-9e48-43b0-8337-b15192cb1b5e",  // Chrome OS reserved
 };
 
 }  // namespace
@@ -301,16 +306,12 @@ bool UdevDevice::IsHidden() {
       (GetPartitionCount() > 0))
     return true;
 
-  // TODO(benchan): Find a better way to filter out Chrome OS specific
-  // partitions instead of excluding partitions with certain labels
-  // (e.g. C-ROOT, C-STATE).
-  string filesystem_label = GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel);
-  if (!filesystem_label.empty()) {
-    for (const char** label = kNonAutoMountableFilesystemLabels;
-        *label; ++label) {
-      if (strcmp(*label, filesystem_label.c_str()) == 0) {
+  // Hide special partitions based on partition type.
+  string partition_type = GetProperty(kPropertyPartitionEntryType);
+  if (!partition_type.empty()) {
+    for (size_t i = 0; i < arraysize(kPartitionTypesToHide); ++i) {
+      if (partition_type == kPartitionTypesToHide[i])
         return true;
-      }
     }
   }
   return false;
