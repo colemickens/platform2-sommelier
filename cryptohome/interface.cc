@@ -102,26 +102,20 @@ gboolean cryptohome_async_add_key(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(AsyncAddKey, userid, key, new_key, OUT_async_id);
 }
 gboolean cryptohome_add_key_ex(Cryptohome* self,
-                               gchar* userid,
-                               gchar* key,
-                               GArray* key_params,
-                               gchar* new_key,
-                               GArray* new_key_params,
+                               GArray* id,
+                               GArray* auth,
+                               GArray* params,
                                DBusGMethodInvocation* error) {
   // Leave the response called error to reuse WRAP.
-  CRYPTOHOME_WRAP_METHOD(AddKeyEx, userid, key, key_params,
-                                   new_key, new_key_params);
+  CRYPTOHOME_WRAP_METHOD(AddKeyEx, id, auth, params);
 }
 gboolean cryptohome_update_key_ex(Cryptohome* self,
-                                  gchar* userid,
-                                  gchar* key,
-                                  GArray* key_params,
-                                  gchar* new_key,
-                                  GArray* new_key_params,
+                                  GArray* id,
+                                  GArray* auth,
+                                  GArray* params,
                                   DBusGMethodInvocation* error) {
   // Leave the response called error to reuse WRAP.
-  CRYPTOHOME_WRAP_METHOD(UpdateKeyEx, userid, key, key_params,
-                                      new_key, new_key_params);
+  CRYPTOHOME_WRAP_METHOD(UpdateKeyEx, id, auth, params);
 }
 gboolean cryptohome_remove(Cryptohome* self,
                            gchar* userid,
@@ -183,13 +177,12 @@ gboolean cryptohome_async_mount(Cryptohome* self,
                          ensure_ephemeral, OUT_async_id);
 }
 gboolean cryptohome_mount_ex(Cryptohome* self,
-                             gchar* userid,
-                             gchar* key,
-                             GArray* key_params,
-                             gboolean ensure_ephemeral,
+                             GArray* id,
+                             GArray* auth,
+                             GArray* params,
                              DBusGMethodInvocation* error) {
   // Leave the response called error to reuse WRAP.
-  CRYPTOHOME_WRAP_METHOD(MountEx, userid, key, key_params, ensure_ephemeral);
+  CRYPTOHOME_WRAP_METHOD(MountEx, id, auth, params);
 }
 gboolean cryptohome_mount_guest(Cryptohome* self,
                                 gint* OUT_error_code,

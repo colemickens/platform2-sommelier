@@ -24,8 +24,13 @@ LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
 	-lpthread -lscrypt -ltspi -lvboot_host -lm
 
-PROTOS := install_attributes tpm_status vault_keyset attestation \
-          key_parameters
+SHARED_PROTOS := rpc key
+SHARED_PROTO_PATH := $(SYSROOT)/usr/include/chromeos/dbus/cryptohome
+SHARED_PB_HDRS := $(patsubst %,shared-pbs/%.pb.h,$(SHARED_PROTOS))
+SHARED_PB_SRCS := $(patsubst %,shared-pbs/%.pb.cc,$(SHARED_PROTOS))
+SHARED_PB_OBJS := $(patsubst %,shared-pbs/%.pb.o,$(SHARED_PROTOS))
+
+PROTOS := install_attributes tpm_status vault_keyset attestation
 PB_HDRS := $(patsubst %,%.pb.h,$(PROTOS))
 PB_SRCS := $(patsubst %,%.pb.cc,$(PROTOS))
 PB_OBJS := $(patsubst %.cc,%.o,$(PB_SRCS))
@@ -34,7 +39,7 @@ MARSHAL_HDRS := $(patsubst %,%.glibmarshal.h,$(MARSHALS))
 MARSHAL_SRCS := $(patsubst %,%.glibmarshal.c,$(MARSHALS))
 MARSHAL_OBJS := $(patsubst %.c,%.o,$(MARSHAL_SRCS))
 BINDING_HDRS := bindings/client.h bindings/server.h
-GEN_HDRS := $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS)
+GEN_HDRS := $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS) $(SHARED_PB_HDRS)
 ME_OBJS := mount-encrypted.o mount-helpers.o
 
 TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o mock_%.o, \
@@ -59,16 +64,23 @@ $(eval \
 # Add after we add the generated rules to CXX_OBJECTS.
 $(eval $(call add_object_rules,$(MARSHAL_OBJS),CC,c))
 $(eval $(call add_object_rules,$(PB_OBJS),CXX,cc))
-SHARED_OBJS += $(MARSHAL_OBJS) $(PB_OBJS)
+$(eval $(call add_object_rules,$(SHARED_PB_OBJS),CXX,cc))
+SHARED_OBJS += $(MARSHAL_OBJS) $(PB_OBJS) $(SHARED_PB_OBJS)
 
 all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
 all: CXX_BINARY(lockbox-cache) CC_BINARY(mount-encrypted)
 tests: TEST(CXX_BINARY(cryptohome_testrunner))
 
+shared-pbs/%.pb.cc: $(SHARED_PROTO_PATH)/%.proto
+	mkdir -p $(dir $@)
+	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
+shared-pbs/%.pb.h: $(SHARED_PROTO_PATH)/%.proto
+	mkdir -p $(dir $@)
+	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
 %.pb.cc: $(SRC)/%.proto
-	$(PROTOC) $^ --proto_path $(dir $^) --cpp_out $(dir $@)
+	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
 %.pb.h: $(SRC)/%.proto
-	$(PROTOC) $^ --proto_path $(dir $^) --cpp_out $(dir $@)
+	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
 %.glibmarshal.c: $(SRC)/%.list
 	$(GLIB_GENMARSHAL) --body --prefix=cryptohome $^ > $@
 %.glibmarshal.h: $(SRC)/%.list
