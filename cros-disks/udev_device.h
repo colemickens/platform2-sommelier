@@ -50,8 +50,8 @@ class UdevDevice {
   // Gets the total and remaining capacity of the device.
   void GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const;
 
-  // Gets the number of primary partitions on the device.
-  size_t GetPrimaryPartitionCount() const;
+  // Gets the number of partitions on the device.
+  size_t GetPartitionCount() const;
 
   // Gets the device media type used on the device.
   DeviceMediaType GetDeviceMediaType() const;

@@ -216,10 +216,10 @@ TEST_F(UdevDeviceTest, GetPropertyFromBlkIdForNonexistentProperty) {
   }
 }
 
-TEST_F(UdevDeviceTest, GetPrimaryPartitionCount) {
+TEST_F(UdevDeviceTest, GetPartitionCount) {
   if (boot_device_) {
     UdevDevice device(boot_device_);
-    EXPECT_NE(0, device.GetPrimaryPartitionCount());
+    EXPECT_NE(0, device.GetPartitionCount());
   }
 }
 

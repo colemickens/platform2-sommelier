@@ -19,7 +19,6 @@
         'gobject-2.0',
         'gthread-2.0',
         'libchrome-<(libbase_ver)',
-        'libparted',
         'libudev',
       ],
     },
