@@ -178,7 +178,7 @@ disk_info() {
     | sed -re 's/ +$//' -e 's/[ -]/_/g')
   disk_fw_rev=$(sed -nre \
       '/^\t+Firmware/s|\t+Firmware Revision: +(.*)|\1|p' "${hdparm_out}" \
-    | sed -re 's/ \+$//' -e 's/[ -]/_/g')
+    | sed -re 's/ +$//' -e 's/[ -]/_/g')
   if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
     return 1
   fi
@@ -231,10 +231,6 @@ disk_upgrade_devices() {
   local rc=0
   local tries=0
 
-  if [ ! -f "${disk_rules}" ]; then
-    log_msg "Unable to find rules file in ${FLAGS_fw_package_dir}"
-    return 120
-  fi
   shift # skip disk rules parameters.
   for device in "$@"; do
     sucess=""
@@ -322,7 +318,11 @@ main() {
     erase_tmp_dir=${FLAGS_TRUE}
     FLAGS_tmp_dir=$(mktemp -d)
   fi
-  disk_rules=${FLAGS_tmp_dir}/disk_rules
+  if [ ! -f "${disk_rules_raw}" ]; then
+    log_msg "Unable to find rules file in ${FLAGS_fw_package_dir}"
+    return 120
+  fi
+  disk_rules=${FLAGS_tmp_dir}/rules
 
   # remove unnecessary lines
   sed '/^#/d;/^[[:space:]]*$/d' "${disk_rules_raw}" > "${disk_rules}"
