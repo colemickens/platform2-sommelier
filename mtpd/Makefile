@@ -15,7 +15,7 @@ GEN_DBUSXX(%):
 		$(DBUSXX_XML2CPP) $< --adaptor=$(TARGET_OR_MEMBER))
 
 PROTOC ?= protoc
-BASE_VER ?= 180609
+BASE_VER ?= 242728
 PC_DEPS = dbus-c++-1 glib-2.0 gthread-2.0 gobject-2.0 libmtp \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER) protobuf
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))

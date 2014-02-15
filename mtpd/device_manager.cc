@@ -9,27 +9,16 @@
 #include <set>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-
-#include "build_config.h"
-#include "device_event_delegate.h"
-#include "service_constants.h"
-
-// TODO(thestig) Merge these once libchrome catches up to Chromium's base,
-// or when mtpd moves into its own repo. http://crbug.com/221123
-#if defined(CROS_BUILD)
-#include <base/file_path.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/stringprintf.h>
-#else
-#include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
-#endif
+
+#include "device_event_delegate.h"
+#include "service_constants.h"
 
 namespace {
 
