@@ -8,15 +8,15 @@
 
 namespace cryptohome {
 
-const char* kDBusErrorResponseEventType = "DBusErrorResponse";
-const char* kDBusNoArgResponseEventType = "DBusNoArgResponse";
+const char* kDBusErrorReplyEventType = "DBusErrorReply";
+const char* kDBusReplyEventType = "DBusReply";
 
 
-DBusNoArgResponse::DBusNoArgResponse(DBusGMethodInvocation* context) :
-  context_(context) {
+DBusReply::DBusReply(DBusGMethodInvocation* context, std::string* reply) :
+  context_(context), reply_(reply) {
 }
 
-DBusErrorResponse::DBusErrorResponse(DBusGMethodInvocation* context,
+DBusErrorReply::DBusErrorReply(DBusGMethodInvocation* context,
                                      GError* error) :
   context_(context), error_(error) {
 }

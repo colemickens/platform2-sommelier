@@ -35,6 +35,8 @@
 #include "mount.h"
 #include "pkcs11_init.h"
 #include "platform.h"
+#include "shared-pbs/key.pb.h"
+#include "shared-pbs/rpc.pb.h"
 #include "tpm.h"
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
@@ -47,6 +49,7 @@ namespace switches {
   static const char kActionSwitch[] = "action";
   static const char *kActions[] = {
     "mount",
+    "mount_ex",
     "mount_guest",
     "mount_public",
     "unmount",
@@ -54,6 +57,8 @@ namespace switches {
     "test_auth",
     "migrate_key",
     "add_key",
+    "add_key_ex",
+    "update_key_ex",
     "remove",
     "obfuscate_user",
     "dump_keyset",
@@ -89,6 +94,7 @@ namespace switches {
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
+    ACTION_MOUNT_EX,
     ACTION_MOUNT_GUEST,
     ACTION_MOUNT_PUBLIC,
     ACTION_UNMOUNT,
@@ -96,6 +102,8 @@ namespace switches {
     ACTION_TEST_AUTH,
     ACTION_MIGRATE_KEY,
     ACTION_ADD_KEY,
+    ACTION_ADD_KEY_EX,
+    ACTION_UPDATE_KEY_EX,
     ACTION_REMOVE,
     ACTION_OBFUSCATE_USER,
     ACTION_DUMP_KEYSET,
@@ -131,6 +139,8 @@ namespace switches {
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
+  static const char kKeyLabelSwitch[] = "key_label";
+  static const char kNewKeyLabelSwitch[] = "new_key_label";
   static const char kOldPasswordSwitch[] = "old_password";
   static const char kNewPasswordSwitch[] = "new_password";
   static const char kForceSwitch[] = "force";
@@ -249,6 +259,64 @@ bool ConfirmRemove(const std::string& user) {
     return false;
   }
   return true;
+}
+
+template<class ProtoBuf>
+GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
+  guint len = pb.ByteSize();
+  GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
+  g_array_set_size(ary, len);
+  if (!pb.SerializeToArray(ary->data, len)) {
+    printf("Failed to serialize protocol buffer.\n");
+    return NULL;
+  }
+  return ary;
+}
+
+bool BuildAccountId(CommandLine* cl, cryptohome::AccountIdentifier *id) {
+  std::string user;
+  if (!GetUsername(cl, &user)) {
+    printf("No username specified.\n");
+    return false;
+  }
+  id->set_email(user);
+  return true;
+}
+
+bool BuildAuthorization(CommandLine* cl,
+                        const chromeos::dbus::Proxy& proxy,
+                        cryptohome::AuthorizationRequest* auth) {
+  std::string password;
+  GetPassword(proxy, cl, switches::kPasswordSwitch,
+              "Enter the password",
+              &password);
+
+  auth->mutable_key()->set_secret(password);
+  if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
+    auth->mutable_key()->mutable_data()->set_label(
+        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+  }
+
+  return true;
+}
+
+void HandleReply(DBusGProxy* proxy, GArray* OUT_reply,
+                 GError* error, gpointer userdata) {
+    cryptohome::BaseReply reply;
+    std::vector<std::string>* messages =
+        static_cast<std::vector<std::string>*>(userdata);
+    if (OUT_reply &&
+        reply.ParseFromArray(OUT_reply->data, OUT_reply->len)) {
+      reply.PrintDebugString();
+      if (!reply.has_error()) {
+        printf("%s\n", messages->at(0).c_str());
+        exit(0);
+      }
+      printf("%s\n", messages->at(1).c_str());
+      exit(reply.error());
+    }
+    printf("%s\n", messages->at(1).c_str());
+    exit(-1);
 }
 
 class ClientLoop {
@@ -484,6 +552,60 @@ int main(int argc, char **argv) {
     } else {
       printf("Mount succeeded.\n");
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_EX],
+                action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, &auth))
+      return -1;
+
+    cryptohome::MountRequest mount_req;
+    mount_req.set_require_ephemeral(
+        cl->HasSwitch(switches::kEnsureEphemeralSwitch));
+    if (cl->HasSwitch(switches::kCreateSwitch)) {
+      cryptohome::CreateRequest* create = mount_req.mutable_create();
+      create->set_copy_authorization_key(true);
+    }
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(mount_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return -1;
+
+    std::vector<std::string> messages;
+    messages.push_back("Mount succeeded.");
+    messages.push_back("Mount failed.");
+
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      DBusGProxyCall* call = org_chromium_CryptohomeInterface_mount_ex_async(
+                                 proxy.gproxy(),
+                                 account_ary.get(),
+                                 auth_ary.get(),
+                                 req_ary.get(),
+                                 &HandleReply,
+                                 static_cast<gpointer>(&messages));
+      if (!call)
+        return -1;
+      g_main_loop_run(loop);
+      return -1;
+    }
+
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_mount_ex(proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          req_ary.get(),
+          &out_reply,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("MountEx call failed: %s", error->message);
+      return -1;
+    }
+    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST],
                 action.c_str())) {
     gboolean done = false;
@@ -704,6 +826,123 @@ int main(int argc, char **argv) {
     } else {
       printf("Key %d was added.\n", key_index);
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
+                action.c_str())) {
+    std::string new_password;
+    GetPassword(proxy, cl, switches::kNewPasswordSwitch,
+                "Enter the new password",
+                &new_password);
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, &auth))
+      return -1;
+
+    cryptohome::AddKeyRequest key_req;
+    key_req.set_clobber_if_exists(true);
+    cryptohome::Key* key = key_req.mutable_key();
+    key->set_secret(new_password);
+    cryptohome::KeyData* data = key->mutable_data();
+    data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
+
+    // TODO(wad) Add a privileges cl interface
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return -1;
+
+    std::vector<std::string> messages;
+    messages.push_back("Key added.");
+    messages.push_back("Key addition failed.");
+
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      DBusGProxyCall* call = org_chromium_CryptohomeInterface_add_key_ex_async(
+                                 proxy.gproxy(),
+                                 account_ary.get(),
+                                 auth_ary.get(),
+                                 req_ary.get(),
+                                 &HandleReply,
+                                 static_cast<gpointer>(&messages));
+      if (!call)
+        return -1;
+      g_main_loop_run(loop);
+      return -1;
+    }
+
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_add_key_ex(proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          req_ary.get(),
+          &out_reply,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("Failed to call AddKeyEx!\n");
+    }
+    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
+  } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_KEY_EX],
+                action.c_str())) {
+    std::string new_password;
+    GetPassword(proxy, cl, switches::kNewPasswordSwitch,
+                "Enter the new password",
+                &new_password);
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, &auth))
+      return -1;
+
+    cryptohome::UpdateKeyRequest key_req;
+    cryptohome::Key* key = key_req.mutable_changes();
+    key->set_secret(new_password);
+    cryptohome::KeyData* data = key->mutable_data();
+    if (cl->HasSwitch(switches::kNewKeyLabelSwitch))
+      data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
+
+    // TODO(wad) Add a privileges cl interface
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return -1;
+
+    std::vector<std::string> messages;
+    messages.push_back("Key updated.");
+    messages.push_back("Key update failed.");
+
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      DBusGProxyCall* call =
+          org_chromium_CryptohomeInterface_update_key_ex_async(
+              proxy.gproxy(),
+              account_ary.get(),
+              auth_ary.get(),
+              req_ary.get(),
+              &HandleReply,
+              static_cast<gpointer>(&messages));
+      if (!call)
+        return -1;
+      g_main_loop_run(loop);
+      return -1;
+    }
+
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_update_key_ex(proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          req_ary.get(),
+          &out_reply,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("Failed to call UpdateKeyEx!\n");
+    }
+    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
     std::string user;

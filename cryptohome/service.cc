@@ -669,11 +669,11 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     }
     LOG(ERROR) << "PKCS#11 initialization failed.";
     result->mount()->set_pkcs11_state(cryptohome::Mount::kIsFailed);
-  } if (!strcmp(event->GetEventName(), kDBusErrorResponseEventType)) {
-    DBusErrorResponse* result = static_cast<DBusErrorResponse*>(event);
+  } if (!strcmp(event->GetEventName(), kDBusErrorReplyEventType)) {
+    DBusErrorReply* result = static_cast<DBusErrorReply*>(event);
     result->Run();
-  } if (!strcmp(event->GetEventName(), kDBusNoArgResponseEventType)) {
-    DBusNoArgResponse* result = static_cast<DBusNoArgResponse*>(event);
+  } if (!strcmp(event->GetEventName(), kDBusReplyEventType)) {
+    DBusReply* result = static_cast<DBusReply*>(event);
     result->Run();
   }
 }
@@ -856,11 +856,9 @@ void Service::DoAddKeyEx(GArray *account_id,
                          GArray *add_key_request,
                          DBusGMethodInvocation *context) {
   // TODO(wad) This will be fixed up in crbug.com/342905
-  GError* error = g_error_new(g_quark_from_string("cryptohome-error"),
-                              -1,
-                              "Not yet implemented");
-  DBusErrorResponse* response = new DBusErrorResponse(context, error);
-  event_source_.AddEvent(response);
+  BaseReply reply;
+  reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  SendReply(context, reply);
 }
 
 gboolean Service::AddKeyEx(GArray *account_id,
@@ -879,12 +877,9 @@ void Service::DoUpdateKeyEx(GArray *account_id,
                             GArray *authorization_request,
                             GArray *update_key_request,
                             DBusGMethodInvocation *context) {
-  // TODO(wad) This will be fixed up in crbug.com/342905
-  GError* error = g_error_new(g_quark_from_string("cryptohome-error"),
-                              -1,
-                              "Not yet implemented");
-  DBusErrorResponse* response = new DBusErrorResponse(context, error);
-  event_source_.AddEvent(response);
+  BaseReply reply;
+  reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  SendReply(context, reply);
 }
 
 gboolean Service::UpdateKeyEx(GArray *account_id,
@@ -1127,15 +1122,9 @@ void Service::DoMountEx(const GArray *account_id,
                         const GArray *authorization_request,
                         const GArray *mount_request,
                         DBusGMethodInvocation *context) {
-  // TODO(wad) This will be fixed up in crbug.com/342905
-  GError* error = g_error_new(g_quark_from_string("cryptohome-error"),
-                              -1,
-                              "Not yet implemented");
-  // TODO(wad) Switch this over to a MountReply message.
-  DBusErrorResponse* response = new DBusErrorResponse(context, error);
-  // event_source_->AddEvent is usually called from the mount_thread_
-  // via MountTaskObserverBridge, so this should be equivalent.
-  event_source_.AddEvent(response);
+  BaseReply reply;
+  reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  SendReply(context, reply);
 }
 
 gboolean Service::MountEx(const GArray *account_id,

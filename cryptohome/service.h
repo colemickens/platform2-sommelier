@@ -20,6 +20,7 @@
 #include <metrics/timer.h>
 
 #include "cryptohome_event_source.h"
+#include "dbus_transition.h"
 #include "install_attributes.h"
 #include "mount.h"
 #include "mount_factory.h"
@@ -470,6 +471,16 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Unload any pkcs11 tokens _not_ belonging to one of the mounts in |exclude|.
   // This is used to clean up any stale loaded tokens after a cryptohome crash.
   virtual bool UnloadPkcs11Tokens(const std::vector<std::string>& exclude);
+
+  // Posts a message back from the mount_thread_ to the main thread to
+  // reply to a DBus message.
+  template<class PB> void SendReply(DBusGMethodInvocation* context,
+                                    const PB& reply) {
+    std::string* reply_str = new std::string;
+    reply.SerializeToString(reply_str);
+    DBusReply* reply_cb = new DBusReply(context, reply_str);
+    event_source_.AddEvent(reply_cb);
+  }
 
  private:
   FRIEND_TEST_ALL_PREFIXES(ServiceInterfaceTest, GetPublicMountPassKey);

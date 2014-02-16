@@ -71,12 +71,15 @@ all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
 all: CXX_BINARY(lockbox-cache) CC_BINARY(mount-encrypted)
 tests: TEST(CXX_BINARY(cryptohome_testrunner))
 
-shared-pbs/%.pb.cc: $(SHARED_PROTO_PATH)/%.proto
+shared-pbs/%.pb.cc: $(SHARED_PROTO_PATH)/%.proto shared-pbs/%.pb.h
 	mkdir -p $(dir $@)
-	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
+	$(PROTOC) --proto_path=$(dir $@) $(dir $@)$(notdir $<) \
+ 	  --proto_path=$(dir $<) --cpp_out=$(dir $@)
 shared-pbs/%.pb.h: $(SHARED_PROTO_PATH)/%.proto
 	mkdir -p $(dir $@)
-	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
+	sed -e 's/LITE_RUNTIME/CODE_SIZE/g' $< > $(dir $@)$(notdir $<)
+	$(PROTOC) --proto_path=$(dir $@) $(dir $@)$(notdir $<) \
+ 	  --proto_path=$(dir $<) --cpp_out=$(dir $@)
 %.pb.cc: $(SRC)/%.proto
 	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
 %.pb.h: $(SRC)/%.proto

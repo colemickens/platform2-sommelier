@@ -18,6 +18,8 @@
 // the main/DBus thread to issue its reply -- be it success or
 // failure.  CryptohomeEventBase is used as a knock-off PostTask
 // and the classes in this file provide the glue.
+#ifndef CRYPTOHOME_DBUS_TRANSITION_H_
+#define CRYPTOHOME_DBUS_TRANSITION_H_
 
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/dbus.h>
@@ -26,8 +28,8 @@
 
 namespace cryptohome {
 
-extern const char* kDBusErrorResponseEventType;
-extern const char* kDBusNoArgResponseEventType;
+extern const char* kDBusErrorReplyEventType;
+extern const char* kDBusReplyEventType;
 
 struct GErrorDeleter {
   inline void operator()(void* ptr) const {
@@ -35,13 +37,13 @@ struct GErrorDeleter {
   }
 };
 
-class DBusErrorResponse : public CryptohomeEventBase {
+class DBusErrorReply : public CryptohomeEventBase {
  public:
   // Takes ownership of both pointers.
-  DBusErrorResponse(DBusGMethodInvocation* context, GError* error);
-  virtual ~DBusErrorResponse() { }
+  DBusErrorReply(DBusGMethodInvocation* context, GError* error);
+  virtual ~DBusErrorReply() { }
   virtual const char* GetEventName() const {
-    return kDBusErrorResponseEventType;
+    return kDBusErrorReplyEventType;
   }
   virtual void Run() {
     dbus_g_method_return_error (context_, error_.get());
@@ -52,22 +54,27 @@ class DBusErrorResponse : public CryptohomeEventBase {
   scoped_ptr<GError, GErrorDeleter> error_;
 };
 
-// TODO(wad): Convert this to take a base::Bind which will be
-// executed in the main_loop like dbus/bus.h ExportMethod until
-// we move to it.
-class DBusNoArgResponse : public CryptohomeEventBase {
+class DBusReply : public CryptohomeEventBase {
  public:
-  DBusNoArgResponse(DBusGMethodInvocation* context);
-  virtual ~DBusNoArgResponse() { }
+  // Ownership is taken for both pointers.
+  DBusReply(DBusGMethodInvocation* context, std::string* reply);
+  virtual ~DBusReply() { }
   virtual const char* GetEventName() const {
-    return kDBusNoArgResponseEventType;
+    return kDBusReplyEventType;
   }
   virtual void Run() {
-    dbus_g_method_return(context_);
+    chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(tmp_array.get(),
+                        reply_->c_str(),
+                        reply_->size());
+    dbus_g_method_return(context_, tmp_array.get());
   }
  private:
   // If this event is not serviced, the memory will be leaked.
   DBusGMethodInvocation* context_;
+  scoped_ptr<std::string> reply_;
 };
 
 }  // namespace cryptohome
+
+#endif  // CRYPTOHOME_DBUS_TRANSITION_H_
