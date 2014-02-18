@@ -441,8 +441,8 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --enable-partial-swap \
             --enable-impl-side-painting \
             --max-tiles-for-interest-area=512 \
-            --enterprise-enrollment-initial-modulus=8 \
-            --enterprise-enrollment-modulus-limit=12 \
+            --enterprise-enrollment-initial-modulus=9 \
+            --enterprise-enrollment-modulus-limit=13 \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
