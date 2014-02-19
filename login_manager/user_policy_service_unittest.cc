@@ -79,7 +79,7 @@ class UserPolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(*store_, Persist())
         .InSequence(sequence)
         .WillOnce(Return(true));
-    EXPECT_CALL(completion_, Success())
+    EXPECT_CALL(completion_, ReportSuccess())
         .InSequence(sequence);
   }
 
@@ -187,7 +187,7 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InSequence s;
   EXPECT_CALL(*key_, Verify(_, _, _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_CALL(completion_, ReportFailure(_));
 
   EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_, 0));
 

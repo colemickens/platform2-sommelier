@@ -14,6 +14,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/message_loop.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/fake_job_manager.h"
@@ -43,6 +44,7 @@ class ChildExitHandlerTest : public ::testing::Test {
   }
 
  protected:
+  MessageLoopForIO loop_;
   MockSystemUtils mock_utils_;
   ChildExitHandler handler_;
   FakeJobManager fake_manager_;

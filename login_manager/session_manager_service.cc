@@ -4,19 +4,7 @@
 
 #include "login_manager/session_manager_service.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <glib.h>
-#include <grp.h>
-#include <secder.h>
-#include <signal.h>
-#include <stdio.h>
-#include <sys/errno.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
 
 #include <algorithm>
 #include <utility>
@@ -32,35 +20,31 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/string_util.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
-#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <chromeos/utility.h>
+#include <dbus/bus.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_handler.h"
-#include "login_manager/dbus_glib_shim.h"
+#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
+#include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/termination_handler.h"
-
-// Forcibly namespace the dbus-bindings generated server bindings instead of
-// modifying the files afterward.
-namespace login_manager {  // NOLINT
-namespace gobject {  // NOLINT
-#include "login_manager/server.h"
-}  // namespace gobject
-}  // namespace login_manager
+#include "login_manager/upstart_signal_emitter.h"
 
 namespace em = enterprise_management;
 namespace login_manager {
@@ -68,6 +52,14 @@ namespace login_manager {
 namespace {
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
+
+void FireAndForgetDBusMethodCall(dbus::ObjectProxy* proxy,
+                                 const char* interface,
+                                 const char* method) {
+  dbus::MethodCall call(interface, method);
+  proxy->CallMethod(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                    dbus::ObjectProxy::EmptyResponseCallback());
+}
 
 }  // anonymous namespace
 
@@ -108,10 +100,10 @@ SessionManagerService::SessionManagerService(
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
-      session_manager_(NULL),
-      main_loop_(NULL),
-      loop_proxy_(MessageLoop::current()->message_loop_proxy()),
+      loop_proxy_(MessageLoopForIO::current()->message_loop_proxy()),
       quit_closure_(quit_closure),
+      match_rule_(StringPrintf("type='method_call', interface='%s'",
+                               kSessionManagerInterface)),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
@@ -128,95 +120,56 @@ SessionManagerService::SessionManagerService(
 }
 
 SessionManagerService::~SessionManagerService() {
-  if (main_loop_)
-    g_main_loop_unref(main_loop_);
-  if (session_manager_)
-    g_object_unref(session_manager_);
-
-  // Remove this in case it was added by StopSession().
-  g_idle_remove_by_data(this);
   RevertHandlers();
   TerminationHandler::RevertHandlers();
 }
 
 bool SessionManagerService::Initialize() {
-  // Install the type-info for the service with dbus.
-  dbus_g_object_type_install_info(
-      gobject::session_manager_get_type(),
-      &gobject::dbus_glib_session_manager_object_info);
-  dbus_glib_global_set_disable_legacy_property_access();
-  // Register DBus signals with glib.
-  // The gobject system seems to need to have glib signals hanging off
-  // the SessionManager gtype that correspond with the DBus signals we
-  // wish to emit.  These calls create and register them.
-  // TODO(cmasone): remove these when we migrate away from dbus-glib.
-  g_signal_new("session_state_changed",
-               gobject::session_manager_get_type(),
-               G_SIGNAL_RUN_LAST,
-               0,               // class offset
-               NULL, NULL,      // accumulator and data
-               // TODO: This is wrong.  If you need to use it at some point
-               // (probably only if you need to listen to this GLib signal
-               // instead of to the D-Bus signal), you should generate an
-               // appropriate marshaller that takes two string arguments.
-               // See e.g. http://goo.gl/vEGT4.
-               g_cclosure_marshal_VOID__STRING,
-               G_TYPE_NONE,     // return type
-               2,               // num params
-               G_TYPE_STRING,   // "started", "stopping", or "stopped"
-               G_TYPE_STRING);  // current user
-  g_signal_new("login_prompt_visible",
-               gobject::session_manager_get_type(),
-               G_SIGNAL_RUN_LAST,
-               0,               // class offset
-               NULL, NULL,      // accumulator and data
-               NULL,            // Use default marshaller.
-               G_TYPE_NONE,     // return type
-               0);              // num params
-  g_signal_new("screen_is_locked",
-               gobject::session_manager_get_type(),
-               G_SIGNAL_RUN_LAST,
-               0,               // class offset
-               NULL, NULL,      // accumulator and data
-               NULL,            // Use default marshaller.
-               G_TYPE_NONE,     // return type
-               0);              // num params
-  g_signal_new("screen_is_unlocked",
-               gobject::session_manager_get_type(),
-               G_SIGNAL_RUN_LAST,
-               0,               // class offset
-               NULL, NULL,      // accumulator and data
-               NULL,            // Use default marshaller.
-               G_TYPE_NONE,     // return type
-               0);              // num params
-
   LOG(INFO) << "SessionManagerService starting";
+  InitializeDBus();
 
-  if (!Reset())
-    return false;
+  dbus::ObjectProxy* chrome_dbus_proxy = bus_->GetObjectProxy(
+      chromeos::kLibCrosServiceName,
+      dbus::ObjectPath(chromeos::kLibCrosServicePath));
 
-  // Initially store in derived-type pointer, so that we can initialize
-  // appropriately below..
-  SessionManagerImpl* impl =
-      new SessionManagerImpl(
-          scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
-          &dbus_emitter_, &key_gen_, this, login_metrics_, nss_.get(), system_);
+  dbus::ObjectProxy* powerd_dbus_proxy = bus_->GetObjectProxy(
+      power_manager::kPowerManagerServiceName,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  // Wire impl to dbus-glib glue.
-  if (session_manager_)
-    g_object_unref(session_manager_);
-  session_manager_ =
-      reinterpret_cast<gobject::SessionManager*>(
-          g_object_new(gobject::session_manager_get_type(), NULL));
-  session_manager_->impl = impl;
+  dbus::ObjectProxy* upstart_dbus_proxy = bus_->GetObjectProxy(
+      UpstartSignalEmitter::kServiceName,
+      dbus::ObjectPath(UpstartSignalEmitter::kPath));
 
   liveness_checker_.reset(
       new LivenessCheckerImpl(this,
-                              system_,
+                              chrome_dbus_proxy,
                               loop_proxy_,
                               enable_browser_abort_on_hang_,
                               liveness_checking_interval_));
 
+  // Initially store in derived-type pointer, so that we can initialize
+  // appropriately below.
+  scoped_ptr<UpstartSignalEmitter> upstart_emitter(
+      new UpstartSignalEmitter(upstart_dbus_proxy));
+
+  SessionManagerImpl* impl = new SessionManagerImpl(
+      upstart_emitter.Pass(),
+      dbus_emitter_.get(),
+      base::Bind(&FireAndForgetDBusMethodCall,
+                 base::Unretained(chrome_dbus_proxy),
+                 chromeos::kLibCrosServiceInterface,
+                 chromeos::kLockScreen),
+      base::Bind(&FireAndForgetDBusMethodCall,
+                 base::Unretained(powerd_dbus_proxy),
+                 power_manager::kPowerManagerInterface,
+                 power_manager::kRequestRestartMethod),
+      &key_gen_,
+      this,
+      login_metrics_,
+      nss_.get(),
+      system_);
+
+  adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);
   if (!InitializeImpl())
     return false;
@@ -224,60 +177,15 @@ bool SessionManagerService::Initialize() {
   // Set any flags that were specified system-wide.
   browser_->SetExtraArguments(impl_->GetStartUpFlags());
 
+  adaptor_->ExportDBusMethods(session_manager_dbus_object_);
+  TakeDBusServiceOwnership();
   return true;
-}
-
-bool SessionManagerService::Register(
-    const chromeos::dbus::BusConnection &connection) {
-  if (!chromeos::dbus::AbstractDbusService::Register(connection))
-    return false;
-  const std::string filter =
-      StringPrintf("type='method_call', interface='%s'", service_interface());
-  DBusConnection* conn =
-      ::dbus_g_connection_get_connection(connection.g_connection());
-  CHECK(conn);
-  DBusError error;
-  ::dbus_error_init(&error);
-  ::dbus_bus_add_match(conn, filter.c_str(), &error);
-  if (::dbus_error_is_set(&error)) {
-    LOG(WARNING) << "Failed to add match to bus: " << error.name << ", message="
-                 << (error.message ? error.message : "unknown error");
-    return false;
-  }
-  if (!::dbus_connection_add_filter(conn,
-                                    &SessionManagerService::FilterMessage,
-                                    this,
-                                    NULL)) {
-    LOG(WARNING) << "Failed to add filter to connection";
-    return false;
-  }
-  return true;
-}
-
-bool SessionManagerService::Reset() {
-  if (main_loop_)
-    g_main_loop_unref(main_loop_);
-  main_loop_ = g_main_loop_new(NULL, false);
-  if (!main_loop_) {
-    LOG(ERROR) << "Failed to create main loop";
-    return false;
-  }
-  return true;
-}
-
-bool SessionManagerService::Run() {
-  NOTREACHED();
-  return false;
-}
-
-bool SessionManagerService::Shutdown() {
-  NOTREACHED();
-  return false;
 }
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
   impl_->Finalize();
+  ShutDownDBus();
 }
 
 void SessionManagerService::ScheduleShutdown() {
@@ -379,7 +287,7 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        void* data) {
   SessionManagerService* service = static_cast<SessionManagerService*>(data);
   if (::dbus_message_is_method_call(message,
-                                    service->service_interface(),
+                                    kSessionManagerInterface,
                                     kSessionManagerRestartJob)) {
     const char* sender = ::dbus_message_get_sender(message);
     if (!sender) {
@@ -462,6 +370,47 @@ bool SessionManagerService::InitializeImpl() {
     return false;
   }
   return true;
+}
+
+void SessionManagerService::InitializeDBus() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  bus_ = new dbus::Bus(options);
+  CHECK(bus_->Connect());
+  CHECK(bus_->SetUpAsyncOperations());
+
+  CHECK(bus_->AddFilterFunction(&SessionManagerService::FilterMessage, this));
+  dbus::ScopedDBusError error;
+  bus_->AddMatch(match_rule_, error.get());
+  CHECK(!error.is_set()) << "Failed to add match to bus: " << error.name()
+                         << ", message="
+                         << (error.message() ? error.message() : "unknown.");
+
+  session_manager_dbus_object_ = bus_->GetExportedObject(
+      dbus::ObjectPath(kSessionManagerServicePath));
+
+  dbus_emitter_.reset(new DBusSignalEmitter(session_manager_dbus_object_,
+                                            kSessionManagerInterface));
+}
+
+void SessionManagerService::TakeDBusServiceOwnership() {
+  // Note that this needs to happen *after* all methods are exported
+  // (http://crbug.com/331431).
+  // This should pass dbus::Bus::REQUIRE_PRIMARY once on the new libchrome.
+  CHECK(bus_->RequestOwnershipAndBlock(kSessionManagerServiceName))
+      << "Unable to take ownership of " << kSessionManagerServiceName;
+}
+
+void SessionManagerService::ShutDownDBus() {
+  dbus::ScopedDBusError error;
+  bus_->RemoveMatch(match_rule_, error.get());
+  if (error.is_set()) {
+    LOG(ERROR) << "Failed to remove match from bus: " << error.name()
+               << ", message="
+               << (error.message() ? error.message() : "unknown.");
+  }
+  bus_->RemoveFilterFunction(&SessionManagerService::FilterMessage, this);
+  bus_->ShutdownAndBlock();
 }
 
 void SessionManagerService::AllowGracefulExitOrRunForever() {

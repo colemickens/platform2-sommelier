@@ -16,14 +16,11 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/time.h>
-#include <dbus/dbus.h>
 #include <gmock/gmock.h>
 
 #include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
-
-class ScopedDBusPendingCall;
 
 class MockSystemUtils : public SystemUtils {
  public:
@@ -52,29 +49,7 @@ class MockSystemUtils : public SystemUtils {
   // An empty path is returned on failure.
   base::FilePath GetUniqueFilename();
 
-  MOCK_METHOD1(CallMethodOnPowerManager, void(const char*));
-
-  // gmock can't handle methods that return scoped_ptrs.
-  // To simulate fake async calls, one can use
-  // EnqueueFakePendingCall() below to add fake ScopedDBusPendingCalls
-  // to a FIFO queue that will be used to service calls to this method.
-  // If the queue becomes exhausted and this method is called again, test
-  // failures will be added.
-  scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
-      const char* method_name) OVERRIDE;
-
-  MOCK_METHOD1(CheckAsyncMethodSuccess, bool(DBusPendingCall*));
-
-  MOCK_METHOD1(CancelAsyncMethodCall, void(DBusPendingCall*));
   MOCK_CONST_METHOD1(AppendToClobberLog, void(const char*));
-  MOCK_METHOD3(SetAndSendGError, void(ChromeOSLoginError,
-                                      DBusGMethodInvocation*,
-                                      const char*));
-
-  // Add |fake_call| to the FIFO queue of fake pending calls managed by this
-  // mock class.  If this queue is not exhausted by the time of this class'
-  // destruction, the associated test will fail.
-  void EnqueueFakePendingCall(scoped_ptr<ScopedDBusPendingCall> fake_call);
 
  private:
   // Ensures that temp_dir_ (inherited from SystemUtils) exists.
@@ -93,7 +68,6 @@ class MockSystemUtils : public SystemUtils {
   base::FilePath unique_file_path_;
 
   SystemUtilsImpl real_utils_;
-  ScopedVector<ScopedDBusPendingCall> fake_calls_;
   base::ScopedTempDir temp_dir_;
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);
 };

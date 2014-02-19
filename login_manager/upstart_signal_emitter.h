@@ -8,26 +8,40 @@
 #include <string>
 #include <vector>
 
-#include <glib.h>
+#include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
+
+namespace dbus {
+class ObjectProxy;
+class Response;
+}
 
 namespace login_manager {
-
 // Simple mockable class for emitting Upstart signals.
 class UpstartSignalEmitter {
  public:
-  UpstartSignalEmitter() {}
-  virtual ~UpstartSignalEmitter() {}
+  static const char kServiceName[];
+  static const char kPath[];
+  static const char kInterface[];
+  static const char kMethodName[];
+
+  explicit UpstartSignalEmitter(dbus::ObjectProxy* proxy);
+  virtual ~UpstartSignalEmitter();
 
   // Emits an upstart signal.  |args_keyvals| will be provided as
   // environment variables to any upstart jobs kicked off as a result
   // of the signal. Each element of |args_keyvals| is a string of the format
   // "key=value".
   //
-  // If the emission fails and |error| is non-NULL, records an error message in
-  // it.  Returns true if the emission is successful and false otherwise.
-  virtual bool EmitSignal(const std::string& signal_name,
-                          const std::vector<std::string>& args_keyvals,
-                          GError** error);
+  // Returns NULL if emitting the signal fails.
+  // Caller takes ownership of this Response*.
+  virtual scoped_ptr<dbus::Response> EmitSignal(
+      const std::string& signal_name,
+      const std::vector<std::string>& args_keyvals);
+
+ private:
+  dbus::ObjectProxy* upstart_dbus_proxy_;  // Weak, owned by caller.
+  DISALLOW_COPY_AND_ASSIGN(UpstartSignalEmitter);
 };
 
 }  // namespace login_manager

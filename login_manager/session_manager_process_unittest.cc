@@ -165,7 +165,7 @@ class SessionManagerProcessTest : public ::testing::Test {
  private:
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
-  MessageLoopForUI message_loop_;
+  MessageLoopForIO message_loop_;
   base::RunLoop run_loop_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);

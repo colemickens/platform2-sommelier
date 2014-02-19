@@ -9,22 +9,13 @@ include common.mk
 PKG_CONFIG ?= pkg-config
 
 BASE_VER ?= 180609
-PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 nss \
-	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_DEPS = dbus-1 glib-2.0 nss libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/.. -I$(OUT) -DOS_CHROMEOS -DUSE_NSS -D__STDC_FORMAT_MACROS
 CPPFLAGS += $(PC_CFLAGS)
 LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite -lmetrics
-
-# Special logic for generating dbus service bindings.
-DBUS_SOURCE = $(SRC)/session_manager.xml
-DBUS_SERVER = server.h
-$(DBUS_SERVER): $(DBUS_SOURCE)
-	dbus-binding-tool --mode=glib-server \
-	 --prefix=`basename $(DBUS_SOURCE) .xml` $(DBUS_SOURCE) > $(DBUS_SERVER)
-clean: CLEAN($(DBUS_SERVER))
 
 # Special logic for generating protobuffer bindings.
 PROTO_PATH = $(SYSROOT)/usr/include/proto
@@ -44,7 +35,7 @@ $(eval $(call add_object_rules,$(PROTO_OBJS),CXX,cc,CXXFLAGS))
 # The binaries we build and the objects they depend on
 KEYGEN_BIN = keygen
 KEYGEN_OBJS = keygen.o keygen_worker.o nss_util.o policy_key.o \
-	scoped_dbus_pending_call.o system_utils_impl.o
+	system_utils_impl.o
 SESSION_BIN = session_manager
 SESSION_OBJS = $(PROTO_OBJS) \
   $(filter-out keygen%.o mock_%.o fake_%.o \
@@ -55,8 +46,6 @@ TEST_OBJS = $(PROTO_OBJS) $(filter-out %main.o keygen.o,$(CXX_OBJECTS))
 # Require proto and dbus bindings to be generated first.
 $(patsubst %.o,%.o.depends,$(filter-out keygen.o,$(CXX_OBJECTS))): \
 	$(PROTO_HEADERS)
-# Ensure dbus service bindings are generated when we need them.
-session_manager_service.o.depends: $(DBUS_SERVER)
 
 CXX_BINARY($(KEYGEN_BIN)): $(KEYGEN_OBJS)
 clean: CLEAN($(KEYGEN_BIN))

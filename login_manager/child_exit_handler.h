@@ -5,13 +5,14 @@
 #ifndef LOGIN_MANAGER_CHILD_EXIT_HANDLER_H_
 #define LOGIN_MANAGER_CHILD_EXIT_HANDLER_H_
 
+#include <signal.h>
+
 #include <vector>
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
-#include <glib.h>
-
-#include "login_manager/watcher.h"
+#include <base/memory/scoped_ptr.h>
+#include <base/message_loop.h>
 
 namespace login_manager {
 class JobManagerInterface;
@@ -21,7 +22,7 @@ class SystemUtils;
 // into a write on a pipe. The data written contains the child's exit status.
 // Also watches the other end of this pipe and, when data appears, the info
 // is read and the appropriate object that manages that child is informed.
-class ChildExitHandler : public Watcher {
+class ChildExitHandler : public MessageLoopForIO::Watcher {
  public:
   explicit ChildExitHandler(SystemUtils* system);
   virtual ~ChildExitHandler();
@@ -36,11 +37,6 @@ class ChildExitHandler : public Watcher {
   static void RevertHandlers();
 
  private:
-  // |data| is a Watcher*.
-  static gboolean HandleChildrenExiting(GIOChannel* source,
-                                        GIOCondition condition,
-                                        gpointer data);
-
   // Determines which JobManagers' child exited, and handles appropriately.
   void Dispatch(const siginfo_t& info);
 
@@ -49,6 +45,10 @@ class ChildExitHandler : public Watcher {
 
   // Objects that are managing a child job.
   std::vector<JobManagerInterface*> managers_;
+
+  // Controller used to manage watching of shutdown pipe.
+  scoped_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
+
   SystemUtils* system_;
   DISALLOW_COPY_AND_ASSIGN(ChildExitHandler);
 };

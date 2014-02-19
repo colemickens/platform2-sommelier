@@ -12,30 +12,29 @@
 #include <base/cancelable_callback.h>
 #include <base/compiler_specific.h>
 #include <base/location.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop_proxy.h>
 #include <base/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/dbus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 
-#include "login_manager/scoped_dbus_pending_call.h"
 #include "login_manager/process_manager_service_interface.h"
-#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
 LivenessCheckerImpl::LivenessCheckerImpl(
     ProcessManagerServiceInterface* manager,
-    SystemUtils* utils,
+    dbus::ObjectProxy* chrome_dbus_proxy,
     const scoped_refptr<base::MessageLoopProxy>& loop,
     bool enable_aborting,
     base::TimeDelta interval)
     : manager_(manager),
-      system_(utils),
+      chrome_dbus_proxy_(chrome_dbus_proxy),
       loop_proxy_(loop),
       enable_aborting_(enable_aborting),
       interval_(interval),
+      last_ping_acked_(true),
       ALLOW_THIS_IN_INITIALIZER_LIST(weak_ptr_factory_(this)) {
 }
 
@@ -45,7 +44,7 @@ LivenessCheckerImpl::~LivenessCheckerImpl() {
 
 void LivenessCheckerImpl::Start() {
   Stop();  // To be certain.
-  outstanding_liveness_ping_.reset();
+  last_ping_acked_ = true;
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(),
@@ -59,10 +58,6 @@ void LivenessCheckerImpl::Start() {
 void LivenessCheckerImpl::Stop() {
   weak_ptr_factory_.InvalidateWeakPtrs();
   liveness_check_.Cancel();
-  if (outstanding_liveness_ping_.get()) {
-    system_->CancelAsyncMethodCall(outstanding_liveness_ping_->Get());
-    outstanding_liveness_ping_.reset();
-  }
 }
 
 bool LivenessCheckerImpl::IsRunning() {
@@ -71,8 +66,7 @@ bool LivenessCheckerImpl::IsRunning() {
 
 void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // If there's an un-acked ping, the browser needs to be taken down.
-  if (outstanding_liveness_ping_.get() &&
-      !system_->CheckAsyncMethodSuccess(outstanding_liveness_ping_->Get())) {
+  if (!last_ping_acked_) {
     LOG(WARNING) << "Browser hang detected!";
     if (enable_aborting_) {
       // Note: If this log message is changed, the desktopui_HangDetector
@@ -87,8 +81,14 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   }
 
   DLOG(INFO) << "Sending a liveness ping to the browser.";
-  outstanding_liveness_ping_ =
-      system_->CallAsyncMethodOnChromium(chromeos::kCheckLiveness);
+  last_ping_acked_ = false;
+  dbus::MethodCall ping(chromeos::kLibCrosServiceInterface,
+                        chromeos::kCheckLiveness);
+  chrome_dbus_proxy_->CallMethod(&ping,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                                 base::Bind(&LivenessCheckerImpl::HandleAck,
+                                            weak_ptr_factory_.GetWeakPtr()));
+
   DLOG(INFO) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
@@ -97,6 +97,10 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
       FROM_HERE,
       liveness_check_.callback(),
       interval);
+}
+
+void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
+  last_ping_acked_ = (response != NULL);
 }
 
 }  // namespace login_manager

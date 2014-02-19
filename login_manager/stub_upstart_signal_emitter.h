@@ -7,17 +7,20 @@
 
 #include "login_manager/upstart_signal_emitter.h"
 
+#include <base/memory/scoped_ptr.h>
+#include <dbus/message.h>
+
 namespace login_manager {
 
 // Stub implementation of UpstartSignalEmitter that always reports success.
 class StubUpstartSignalEmitter : public UpstartSignalEmitter {
  public:
-  StubUpstartSignalEmitter() {}
+  StubUpstartSignalEmitter() : UpstartSignalEmitter(NULL) {}
   virtual ~StubUpstartSignalEmitter() {}
-  virtual bool EmitSignal(const std::string& signal_name,
-                          const std::vector<std::string>& args_keyvals,
-                          GError** error) {
-    return true;
+  virtual scoped_ptr<dbus::Response> EmitSignal(
+      const std::string& signal_name,
+      const std::vector<std::string>& args_keyvals) {
+    return scoped_ptr<dbus::Response>(dbus::Response::CreateEmpty());
   }
 };
 

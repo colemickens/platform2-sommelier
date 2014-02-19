@@ -13,7 +13,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace enterprise_management {
@@ -46,16 +45,16 @@ class PolicyService {
   class Error {
    public:
     Error();
-    Error(ChromeOSLoginError code, const std::string& message);
+    Error(const std::string& code, const std::string& message);
 
     // Sets new error code and message.
-    void Set(ChromeOSLoginError code, const std::string& message);
+    void Set(const std::string& code, const std::string& message);
 
-    ChromeOSLoginError code() const { return code_; }
+    const std::string& code() const { return code_; }
     const std::string& message() const { return message_; }
 
    private:
-    ChromeOSLoginError code_;
+    std::string code_;
     std::string message_;
 
     DISALLOW_COPY_AND_ASSIGN(Error);
@@ -65,8 +64,8 @@ class PolicyService {
   class Completion {
    public:
     virtual ~Completion();
-    virtual void Success() = 0;
-    virtual void Failure(const Error& error) = 0;
+    virtual void ReportSuccess() = 0;
+    virtual void ReportFailure(const Error& error) = 0;
   };
 
   // Delegate for notifications about key and policy getting persisted.

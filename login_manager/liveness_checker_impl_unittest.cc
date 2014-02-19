@@ -12,13 +12,13 @@
 #include <base/run_loop.h>
 #include <base/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/dbus.h>
+#include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
-#include "login_manager/scoped_dbus_pending_call.h"
 
 using ::base::TimeDelta;
 using ::testing::AtLeast;
@@ -34,45 +34,28 @@ namespace login_manager {
 class LivenessCheckerImplTest : public ::testing::Test {
  public:
   LivenessCheckerImplTest() {}
-  virtual ~LivenessCheckerImplTest() {
-    // NB: checker_ must be destroyed before system_.
-  }
+  virtual ~LivenessCheckerImplTest() {}
 
   virtual void SetUp() {
     manager_.reset(new StrictMock<MockProcessManagerService>);
+    object_proxy_ = new MockObjectProxy;
     loop_proxy_ = base::MessageLoopProxy::current();
     checker_.reset(new LivenessCheckerImpl(manager_.get(),
-                                           &system_,
+                                           object_proxy_.get(),
                                            loop_proxy_,
                                            true,
                                            TimeDelta::FromSeconds(0)));
   }
 
   void ExpectUnAckedLivenessPing() {
-    scoped_ptr<ScopedDBusPendingCall> call =
-        ScopedDBusPendingCall::CreateForTesting();
-    EXPECT_CALL(system_, CheckAsyncMethodSuccess(call->Get()))
-        .WillOnce(Return(false));
-    EXPECT_CALL(system_, CancelAsyncMethodCall(call->Get()))
-        .Times(1);
-    system_.EnqueueFakePendingCall(call.Pass());
+    EXPECT_CALL(*object_proxy_.get(), CallMethod(_, _, _)).Times(1);
   }
 
   // Expect two pings, the first with a response.
   void ExpectLivenessPingResponsePing() {
-    scoped_ptr<ScopedDBusPendingCall> call1 =
-        ScopedDBusPendingCall::CreateForTesting();
-    scoped_ptr<ScopedDBusPendingCall> call2 =
-        ScopedDBusPendingCall::CreateForTesting();
-    EXPECT_CALL(system_, CheckAsyncMethodSuccess(call1->Get()))
-        .WillOnce(Return(true));
-    EXPECT_CALL(system_, CheckAsyncMethodSuccess(call2->Get()))
-        .WillOnce(Return(false));
-    EXPECT_CALL(system_, CancelAsyncMethodCall(call2->Get()))
-        .Times(1);
-
-    system_.EnqueueFakePendingCall(call1.Pass());
-    system_.EnqueueFakePendingCall(call2.Pass());
+    EXPECT_CALL(*object_proxy_.get(), CallMethod(_, _, _))
+        .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
+        .WillOnce(Return());
   }
 
   // Expect three runs through CheckAndSendLivenessPing():
@@ -80,35 +63,28 @@ class LivenessCheckerImplTest : public ::testing::Test {
   // 2) Last ping was ACK'd, so expect a no-op during this run.
   // 3) Caller should expect action during this run; Quit after it.
   void ExpectPingResponsePingCheckPingAndQuit() {
-    scoped_ptr<ScopedDBusPendingCall> call1 =
-        ScopedDBusPendingCall::CreateForTesting();
-    scoped_ptr<ScopedDBusPendingCall> call2 =
-        ScopedDBusPendingCall::CreateForTesting();
-    scoped_ptr<ScopedDBusPendingCall> call3 =
-        ScopedDBusPendingCall::CreateForTesting();
-
-    EXPECT_CALL(system_, CheckAsyncMethodSuccess(call1->Get()))
-        .WillOnce(Return(true));
-    EXPECT_CALL(system_, CheckAsyncMethodSuccess(call2->Get()))
-        .WillOnce(DoAll(InvokeWithoutArgs(MessageLoop::current(),
-                                          &MessageLoop::QuitNow),
-                        Return(false)));
-    EXPECT_CALL(system_, CancelAsyncMethodCall(call3->Get()))
-        .Times(1);
-
-    system_.EnqueueFakePendingCall(call1.Pass());
-    system_.EnqueueFakePendingCall(call2.Pass());
-    system_.EnqueueFakePendingCall(call3.Pass());
+    EXPECT_CALL(*object_proxy_.get(), CallMethod(_, _, _))
+        .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
+        .WillOnce(Return())
+        .WillOnce(
+            InvokeWithoutArgs(MessageLoop::current(), &MessageLoop::QuitNow));
   }
 
   MessageLoop loop_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
-  StrictMock<MockSystemUtils> system_;
+  scoped_refptr<MockObjectProxy> object_proxy_;
   scoped_ptr<StrictMock<MockProcessManagerService> > manager_;
 
   scoped_ptr<LivenessCheckerImpl> checker_;
 
  private:
+
+  void Respond(dbus::MethodCall* method_call,
+               int timeout_ms,
+               dbus::ObjectProxy::ResponseCallback callback) {
+    callback.Run(dbus::Response::CreateEmpty());
+  }
+
   DISALLOW_COPY_AND_ASSIGN(LivenessCheckerImplTest);
 };
 
@@ -128,9 +104,9 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(),
-                                         &system_,
+                                         object_proxy_.get(),
                                          loop_proxy_,
-                                         false  /* Disable aborting */,
+                                         false,  // Disable aborting
                                          TimeDelta()));
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!

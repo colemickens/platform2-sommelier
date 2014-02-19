@@ -894,8 +894,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get())
       .WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(completion_, Success()).Times(AnyNumber());
-  EXPECT_CALL(completion_, Failure(_)).Times(AnyNumber());
+  EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
+  EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
 
   // Installing a policy blob that doesn't have a request token (indicates local
   // owner) should not create the file.
@@ -950,8 +950,8 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get())
       .WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(completion_, Success()).Times(AnyNumber());
-  EXPECT_CALL(completion_, Failure(_)).Times(AnyNumber());
+  EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
+  EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
                       policy_str_.size(), &completion_,
@@ -983,8 +983,8 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get())
       .WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(completion_, Success()).Times(AnyNumber());
-  EXPECT_CALL(completion_, Failure(_)).Times(AnyNumber());
+  EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
+  EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
                       policy_str_.size(), &completion_,

@@ -8,44 +8,36 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <chromeos/dbus/dbus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 
 namespace login_manager {
 
-const char kDestination[] = "com.ubuntu.Upstart";
-const char kPath[] = "/com/ubuntu/Upstart";
-const char kInterface[] = "com.ubuntu.Upstart0_6";
-const char kMethodName[] = "EmitEvent";
+const char UpstartSignalEmitter::kServiceName[] = "com.ubuntu.Upstart";
+const char UpstartSignalEmitter::kPath[] = "/com/ubuntu/Upstart";
+const char UpstartSignalEmitter::kInterface[] = "com.ubuntu.Upstart0_6";
+const char UpstartSignalEmitter::kMethodName[] = "EmitEvent";
 
-bool UpstartSignalEmitter::EmitSignal(
+UpstartSignalEmitter::UpstartSignalEmitter(dbus::ObjectProxy* proxy)
+    : upstart_dbus_proxy_(proxy) {
+}
+
+UpstartSignalEmitter::~UpstartSignalEmitter() {}
+
+scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
     const std::string& signal_name,
-    const std::vector<std::string>& args_keyvals,
-    GError** error) {
+    const std::vector<std::string>& args_keyvals) {
   DLOG(INFO) << "Emitting " << signal_name << " Upstart signal";
 
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kDestination, kPath, kInterface);
-  if (!proxy) {
-    LOG(ERROR) << "No proxy; can't call " << kInterface << "." << kMethodName;
-    return false;
-  }
-  char** env = g_new(char*, args_keyvals.size() + 1);  // NULL-terminated.
-  for (size_t i = 0; i < args_keyvals.size(); ++i) {
-    env[i] = g_strdup(args_keyvals[i].c_str());
-  }
-  env[args_keyvals.size()] = NULL;
-  bool success = ::dbus_g_proxy_call(proxy.gproxy(), kMethodName, error,
-                                     G_TYPE_STRING, signal_name.c_str(),
-                                     G_TYPE_STRV, env,
-                                     G_TYPE_BOOLEAN, true,
-                                     G_TYPE_INVALID,
-                                     G_TYPE_INVALID);
-  if (*error) {
-    LOG(ERROR) << kInterface << "." << kPath << " failed: "
-               << (*error)->message;
-  }
-  g_strfreev(env);  // Free the elements as well.
-  return success;
+  dbus::MethodCall method_call(UpstartSignalEmitter::kInterface,
+                               UpstartSignalEmitter::kMethodName);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(signal_name);
+  writer.AppendArrayOfStrings(args_keyvals);
+  writer.AppendBool(true);
+
+  return scoped_ptr<dbus::Response>(upstart_dbus_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 }
 
 }  // namespace login_manager

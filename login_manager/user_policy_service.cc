@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
@@ -69,8 +70,8 @@ bool UserPolicyService::Store(const uint8* policy_blob,
       !policy_data.ParseFromString(policy.policy_data())) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    Error error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
-    completion->Failure(error);
+    Error error(dbus_error::kSigDecodeFail, msg);
+    completion->ReportFailure(error);
     return false;
   }
 

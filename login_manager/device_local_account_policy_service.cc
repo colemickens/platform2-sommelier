@@ -14,6 +14,7 @@
 #include <chromeos/cryptohome.h>
 
 #include "login_manager/chrome_device_policy.pb.h"
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/policy_store.h"
@@ -46,9 +47,9 @@ bool DeviceLocalAccountPolicyService::Store(const std::string& account_id,
                                       PolicyService::Completion* completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
-    PolicyService::Error error(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
+    PolicyService::Error error(dbus_error::kInvalidAccount,
                                "Invalid device-local account");
-    completion->Failure(error);
+    completion->ReportFailure(error);
     return false;
   }
 

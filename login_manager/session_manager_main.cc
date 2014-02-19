@@ -24,8 +24,6 @@
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/time.h>
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/glib/object.h>
 #include <chromeos/syslog_logging.h>
 
 #include "login_manager/browser_job.h"
@@ -190,8 +188,7 @@ int main(int argc, char* argv[]) {
                      &system));
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
-  ::g_type_init();
-  MessageLoopForUI message_loop;
+  MessageLoopForIO message_loop;
   base::RunLoop run_loop;
 
   scoped_refptr<SessionManagerService> manager =
@@ -206,7 +203,6 @@ int main(int argc, char* argv[]) {
           &system);
 
   LOG_IF(FATAL, !manager->Initialize());
-  LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()));
 
   // Allows devs to start/stop browser manually.
   if (should_run_browser) {

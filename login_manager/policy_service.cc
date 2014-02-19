@@ -15,6 +15,7 @@
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
 
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
@@ -26,16 +27,16 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 PolicyService::Error::Error()
-    : code_(CHROMEOS_LOGIN_ERROR_DECODE_FAIL) {
+    : code_(dbus_error::kSigDecodeFail) {
 }
 
-PolicyService::Error::Error(ChromeOSLoginError code,
+PolicyService::Error::Error(const std::string& code,
                             const std::string& message)
     : code_(code),
       message_(message) {
 }
 
-void PolicyService::Error::Set(ChromeOSLoginError code,
+void PolicyService::Error::Set(const std::string& code,
                                const std::string& message) {
   code_ = code;
   message_ = message;
@@ -72,8 +73,8 @@ bool PolicyService::Store(const uint8* policy_blob,
       !policy.has_policy_data_signature()) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    Error error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
-    completion->Failure(error);
+    Error error(dbus_error::kSigDecodeFail, msg);
+    completion->ReportFailure(error);
     return FALSE;
   }
 
@@ -148,8 +149,8 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     if (!installed) {
       const char msg[] = "Failed to install policy key!";
       LOG(ERROR) << msg;
-      Error error(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
-      completion->Failure(error);
+      Error error(dbus_error::kPubkeySetIllegal, msg);
+      completion->ReportFailure(error);
       return false;
     }
 
@@ -166,8 +167,8 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
                      sig.size())) {
     const char msg[] = "Signature could not be verified.";
     LOG(ERROR) << msg;
-    Error error(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
-    completion->Failure(error);
+    Error error(dbus_error::kVerifyFail, msg);
+    completion->ReportFailure(error);
     return false;
   }
 
@@ -199,13 +200,13 @@ void PolicyService::OnPolicyPersisted(Completion* completion, bool status) {
   if (status) {
     LOG(INFO) << "Persisted policy to disk.";
     if (completion)
-      completion->Success();
+      completion->ReportSuccess();
   } else {
     std::string msg = "Failed to persist policy to disk.";
     LOG(ERROR) << msg;
     if (completion){
-      Error error(CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
-      completion->Failure(error);
+      Error error(dbus_error::kSigEncodeFail, msg);
+      completion->ReportFailure(error);
     }
   }
 

@@ -10,11 +10,10 @@
 #include <unistd.h>
 
 #include <base/logging.h>
-#include <glib.h>
+#include <base/message_loop.h>
 
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/system_utils.h"
-#include "login_manager/watcher.h"
 
 namespace login_manager {
 
@@ -55,7 +54,8 @@ void SIGTERMHandler(int signal) {
 }  // anonymous namespace
 
 TerminationHandler::TerminationHandler(ProcessManagerServiceInterface* manager)
-    : manager_(manager) {
+    : manager_(manager),
+      fd_watcher_(new MessageLoopForIO::FileDescriptorWatcher) {
   int pipefd[2];
   PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
   g_shutdown_pipe_read_fd = pipefd[0];
@@ -66,12 +66,11 @@ TerminationHandler::~TerminationHandler() {}
 
 void TerminationHandler::Init() {
   SetUpHandlers();
-  g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
-                      G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                      HandleKill,
-                      this,
-                      NULL);
+  if (!MessageLoopForIO::current()->WatchFileDescriptor(
+          g_shutdown_pipe_read_fd, true, MessageLoopForIO::WATCH_READ,
+          fd_watcher_.get(), this)) {
+    LOG(ERROR) << "Watching shutdown pipe failed. Graceful exit impossible.";
+  }
 }
 
 void TerminationHandler::OnFileCanReadWithoutBlocking(int fd) {
@@ -93,16 +92,6 @@ void TerminationHandler::RevertHandlers() {
   CHECK(sigaction(SIGTERM, &action, NULL) == 0);
   CHECK(sigaction(SIGINT, &action, NULL) == 0);
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
-}
-
-// static
-gboolean TerminationHandler::HandleKill(GIOChannel* source,
-                                        GIOCondition condition,
-                                        gpointer data) {
-  CHECK(G_IO_IN & condition);
-  Watcher* handler = static_cast<Watcher*>(data);
-  handler->OnFileCanReadWithoutBlocking(g_io_channel_unix_get_fd(source));
-  return FALSE;  // So that the event source that called this gets removed.
 }
 
 void TerminationHandler::SetUpHandlers() {

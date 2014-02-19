@@ -20,18 +20,12 @@
 #include <base/time.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/dbus-glib.h>
-#include <glib.h>
 
 namespace base {
 class FilePath;
 }
 
-struct DBusPendingCall;
-
 namespace login_manager {
-
-class ScopedDBusPendingCall;
 
 class SystemUtilsImpl : public SystemUtils {
  public:
@@ -54,27 +48,11 @@ class SystemUtilsImpl : public SystemUtils {
   virtual bool AtomicFileWrite(const base::FilePath& filename,
                                const char* data,
                                int size) OVERRIDE;
-
-  virtual void CallMethodOnPowerManager(const char* method_name) OVERRIDE;
-  virtual scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
-      const char* method_name) OVERRIDE;
-  virtual bool CheckAsyncMethodSuccess(DBusPendingCall* pending_call) OVERRIDE;
-  virtual void CancelAsyncMethodCall(DBusPendingCall* pending_call) OVERRIDE;
-
   virtual void AppendToClobberLog(const char* msg) const OVERRIDE;
-  virtual void SetAndSendGError(ChromeOSLoginError code,
-                                DBusGMethodInvocation* context,
-                                const char* message) OVERRIDE;
+
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.
   static const char kResetFile[];
-
-  // Call |interface|.|method_name| on object |path| provided by service
-  // |destination| with no arguments. Blocks until the called method returns.
-  static void CallMethodOn(const char* destination,
-                           const char* path,
-                           const char* interface,
-                           const char* method_name);
 
   base::ScopedTempDir temp_dir_;
 

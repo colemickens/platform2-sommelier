@@ -98,7 +98,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
 };
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreInvalidAccount) {
-  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_CALL(completion_, ReportFailure(_));
   EXPECT_FALSE(
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
@@ -111,7 +111,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreSuccess) {
   SetupAccount();
   SetupKey();
 
-  EXPECT_CALL(completion_, Success());
+  EXPECT_CALL(completion_, ReportSuccess());
   EXPECT_TRUE(
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
@@ -126,7 +126,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
 
   policy_blob_ = "bad!";
 
-  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_CALL(completion_, ReportFailure(_));
   EXPECT_FALSE(
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
@@ -141,7 +141,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadSignature) {
   EXPECT_CALL(key_, Verify(_, _, _, _))
       .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_CALL(completion_, ReportFailure(_));
   EXPECT_FALSE(
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
@@ -168,7 +168,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
   EXPECT_CALL(key_, Rotate(_, _)).Times(0);
   EXPECT_CALL(key_, ClobberCompromisedKey(_)).Times(0);
 
-  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_CALL(completion_, ReportFailure(_));
   EXPECT_FALSE(
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
@@ -252,7 +252,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdFallback) {
   service_->UpdateDeviceSettings(device_settings);
   SetupKey();
 
-  EXPECT_CALL(completion_, Success());
+  EXPECT_CALL(completion_, ReportSuccess());
   EXPECT_TRUE(
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
@@ -282,7 +282,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdIgnored) {
   service_->UpdateDeviceSettings(device_settings);
   SetupKey();
 
-  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_CALL(completion_, ReportFailure(_));
   EXPECT_FALSE(
       service_->Store(kDeprecatedId,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),

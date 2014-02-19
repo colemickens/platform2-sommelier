@@ -11,6 +11,10 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 
+namespace dbus {
+class ExportedObject;
+}
+
 namespace login_manager {
 
 // Simple mockable interface for emitting DBus signals.
@@ -39,7 +43,7 @@ class DBusSignalEmitterInterface {
 // Simple mockable interface for emitting DBus signals.
 class DBusSignalEmitter : public DBusSignalEmitterInterface {
  public:
-  DBusSignalEmitter();
+  DBusSignalEmitter(dbus::ExportedObject* object, const std::string& interface);
   virtual ~DBusSignalEmitter();
 
   virtual void EmitSignal(const std::string& signal_name) OVERRIDE;
@@ -49,10 +53,8 @@ class DBusSignalEmitter : public DBusSignalEmitterInterface {
                                     const std::string& payload) OVERRIDE;
 
  private:
-  // Does the actual work of emitting the signal.
-  void EmitSignalFrom(const std::string& interface,
-                      const std::string& signal_name,
-                      const std::vector<std::string>& payload);
+  dbus::ExportedObject* object_;  // Weak, owned by caller.
+  const std::string interface_;
   DISALLOW_COPY_AND_ASSIGN(DBusSignalEmitter);
 };
 

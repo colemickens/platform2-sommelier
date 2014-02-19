@@ -4,8 +4,6 @@
 
 #include "login_manager/session_manager_impl.h"
 
-#include <glib.h>
-#include <signal.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -14,6 +12,8 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -22,14 +22,12 @@
 #include <base/message_loop_proxy.h>
 #include <base/string_util.h>
 #include <chromeos/cryptohome.h>
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/glib/object.h>
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/file_checker.h"
@@ -44,7 +42,6 @@
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
-#include "login_manager/scoped_dbus_pending_call.h"
 #include "login_manager/stub_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
@@ -60,11 +57,9 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
 
-using chromeos::Resetter;
 using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::cryptohome::home::SanitizeUserName;
 using chromeos::cryptohome::home::SetSystemSalt;
-using chromeos::glib::ScopedError;
 
 using std::map;
 using std::string;
@@ -78,12 +73,20 @@ class SessionManagerImplTest : public ::testing::Test {
       : device_policy_service_(new MockDevicePolicyService),
         impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter),
               &dbus_emitter_,
+              base::Bind(&SessionManagerImplTest::FakeLockScreen,
+                         base::Unretained(this)),
+              base::Bind(&SessionManagerImplTest::FakeRestartDevice,
+                         base::Unretained(this)),
               &key_gen_,
               &manager_,
               &metrics_,
               &nss_,
               &utils_),
-        fake_salt_("fake salt") {
+        fake_salt_("fake salt"),
+        actual_locks_(0),
+        expected_locks_(0),
+        actual_restarts_(0),
+        expected_restarts_(0) {
   }
 
   virtual ~SessionManagerImplTest() {}
@@ -106,6 +109,8 @@ class SessionManagerImplTest : public ::testing::Test {
 
   virtual void TearDown() OVERRIDE {
     SetSystemSalt(NULL);
+    EXPECT_EQ(actual_locks_, expected_locks_);
+    EXPECT_EQ(actual_restarts_, expected_restarts_);
   }
 
  protected:
@@ -133,6 +138,14 @@ class SessionManagerImplTest : public ::testing::Test {
     ExpectStartSessionUnownedBoilerplate(email_string, true, false);
   }
 
+  void ExpectLockScreen() {
+    expected_locks_ = 1;
+  }
+
+  void ExpectDeviceRestart() {
+    expected_restarts_ = 1;
+  }
+
   void ExpectStorePolicy(MockDevicePolicyService* service,
                          const string& policy,
                          int flags) {
@@ -140,26 +153,14 @@ class SessionManagerImplTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
-  void ExpectAndRunStartSession(const string& const_email) {
-    gboolean out;
-    // Need a non-const gchar*.
-    gchar* email = g_strdup(const_email.c_str());
-    gchar nothing[] = "";
-
+  void ExpectAndRunStartSession(const string& email) {
     ExpectStartSession(email);
-    EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
-    g_free(email);
+    EXPECT_TRUE(impl_.StartSession(email, kNothing, NULL));
   }
 
   void ExpectAndRunGuestSession() {
-    gboolean out;
-    // Need a non-const gchar*.
-    gchar* incognito = g_strdup(kGuestUserName);
-    gchar nothing[] = "";
-
     ExpectGuestSession();
-    EXPECT_EQ(TRUE, impl_.StartSession(incognito, nothing, &out, NULL));
-    g_free(incognito);
+    EXPECT_TRUE(impl_.StartSession(kGuestUserName, kNothing, NULL));
   }
 
   PolicyService* CreateUserPolicyService(const string& username) {
@@ -181,13 +182,6 @@ class SessionManagerImplTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&utils_);
   }
 
-  // Caller takes ownership.
-  GArray* CreateArray(const char* input, const int len) {
-    GArray* output = g_array_new(FALSE, FALSE, 1);
-    g_array_append_vals(output, input, len);
-    return output;
-  }
-
   // These are bare pointers, not scoped_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
   // on them after we hand them off.
@@ -202,9 +196,12 @@ class SessionManagerImplTest : public ::testing::Test {
   MockSystemUtils utils_;
 
   SessionManagerImpl impl_;
+  SessionManagerImpl::Error error_;
   base::ScopedTempDir tmpdir_;
 
   static const pid_t kDummyPid;
+  static const char kNothing[];
+  static const char kSaneEmail[];
  private:
   void ExpectSessionBoilerplate(const string& email_string,
                                 bool guest,
@@ -267,12 +264,29 @@ class SessionManagerImplTest : public ::testing::Test {
         .WillOnce(Return(false));
   }
 
-  DISALLOW_COPY_AND_ASSIGN(SessionManagerImplTest);
+  void FakeLockScreen() {
+    actual_locks_++;
+  }
+
+  void FakeRestartDevice() {
+    actual_restarts_++;
+  }
 
   string fake_salt_;
+
+  // Used by fake closures that simulate calling chrome and powerd to lock
+  // the screen and restart the device.
+  uint actual_locks_;
+  uint expected_locks_;
+  uint actual_restarts_;
+  uint expected_restarts_;
+
+  DISALLOW_COPY_AND_ASSIGN(SessionManagerImplTest);
 };
 
 const pid_t SessionManagerImplTest::kDummyPid = 4;
+const char SessionManagerImplTest::kNothing[] = "";
+const char SessionManagerImplTest::kSaneEmail[] = "user@somewhere.com";
 
 TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   const char event_name[] = "login-prompt-visible";
@@ -280,13 +294,13 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kLoginPromptVisibleSignal)))
       .Times(1);
-  EXPECT_TRUE(impl_.EmitLoginPromptVisible(NULL));
+  impl_.EmitLoginPromptVisible(&error_);
 }
 
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {
-  // DBus arrays are null-terminated.
-  const gchar* args1[] = {"--repeat-arg", "--one-time-arg", NULL};
-  gchar* testing_path = NULL;
+  std::vector<std::string> args;
+  args.push_back("--repeat-arg");
+  args.push_back("--one-time-arg");
 
   base::FilePath expected = utils_.GetUniqueFilename();
   ASSERT_FALSE(expected.empty());
@@ -294,227 +308,139 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
 
   EXPECT_CALL(manager_,
               RestartBrowserWithArgs(
-                  ElementsAre(args1[0], args1[1],
+                  ElementsAre(args[0], args[1],
                               HasSubstr(expected_testing_path)),
                   true))
       .Times(1);
 
-  EXPECT_TRUE(impl_.EnableChromeTesting(false, args1, &testing_path, NULL));
-  ASSERT_TRUE(testing_path != NULL);
+  string testing_path = impl_.EnableChromeTesting(false, args, NULL);
   EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
 
   // Calling again, without forcing relaunch, should not do anything.
-  testing_path = NULL;
-  EXPECT_TRUE(impl_.EnableChromeTesting(false, args1, &testing_path, NULL));
-  ASSERT_TRUE(testing_path != NULL);
+  testing_path.clear();
+  testing_path = impl_.EnableChromeTesting(false, args, NULL);
   EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
 
   // Force relaunch.  Should go through the whole path again.
-  const gchar* args2[] = {"--dummy", "--repeat-arg", NULL};
-  testing_path = NULL;
+  args[0] = "--dummy";
+  args[1] = "--repeat-arg";
+  testing_path.empty();
   EXPECT_CALL(manager_,
               RestartBrowserWithArgs(
-                  ElementsAre(args2[0], args2[1],
+                  ElementsAre(args[0], args[1],
                               HasSubstr(expected_testing_path)),
                   true))
       .Times(1);
 
-  EXPECT_TRUE(impl_.EnableChromeTesting(true, args2, &testing_path, NULL));
-  ASSERT_TRUE(testing_path != NULL);
+  testing_path = impl_.EnableChromeTesting(true, args, NULL);
   EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
 }
 
 TEST_F(SessionManagerImplTest, StartSession) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSession(email);
-
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
+  ExpectStartSession(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, &error_));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_New) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSessionUnowned(email);
-
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
+  ExpectStartSessionUnowned(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, &error_));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_InvalidUser) {
-  gboolean out;
-  gchar email[] = "user";
-  gchar nothing[] = "";
-  ScopedError error;
-  EXPECT_EQ(FALSE, impl_.StartSession(email,
-                                      nothing,
-                                      &out,
-                                      &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, error->code);
+  const char bad_email[] = "user";
+  EXPECT_FALSE(impl_.StartSession(bad_email, kNothing, &error_));
+  EXPECT_EQ(dbus_error::kInvalidAccount, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_Twice) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSession(email);
+  ExpectStartSession(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
 
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
-
-  EXPECT_EQ(FALSE, impl_.StartSession(email,
-                                      nothing,
-                                      &out,
-                                      &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, error->code);
+  EXPECT_FALSE(impl_.StartSession(kSaneEmail, kNothing, &error_));
+  EXPECT_EQ(dbus_error::kSessionExists, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_TwoUsers) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSession(email);
-
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
+  ExpectStartSession(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
   VerifyAndClearExpectations();
 
-  gchar email2[] = "user2@somewhere";
+  const char email2[] = "user2@somewhere";
   ExpectStartSession(email2);
-  EXPECT_EQ(TRUE, impl_.StartSession(email2,
-                                      nothing,
-                                      &out,
-                                      &Resetter(&error).lvalue()));
+  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_OwnerAndOther) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSessionUnowned(email);
+  ExpectStartSessionUnowned(kSaneEmail);
 
-  EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
   VerifyAndClearExpectations();
 
-  gchar email2[] = "user2@somewhere";
+  const char email2[] = "user2@somewhere";
   ExpectStartSession(email2);
-  EXPECT_EQ(TRUE, impl_.StartSession(email2, nothing, &out, NULL));
+  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSessionUnowned(email);
+  ExpectStartSessionUnowned(kSaneEmail);
 
-  EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
   VerifyAndClearExpectations();
 
-  gchar email2[] = "user2@somewhere";
+  const char email2[] = "user2@somewhere";
   ExpectStartSessionOwningInProcess(email2);
-  EXPECT_EQ(TRUE, impl_.StartSession(email2, nothing, &out, NULL));
+  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ScopedError error;
-
   nss_.MakeBadDB();
-  EXPECT_EQ(FALSE, impl_.StartSession(email,
-                                      nothing,
-                                      &out,
-                                      &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, error->code);
+  EXPECT_FALSE(impl_.StartSession(kSaneEmail, kNothing, &error_));
+  EXPECT_EQ(dbus_error::kNoUserNssDb, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ScopedError error;
-
   // Upon the owner login check, return an error.
   EXPECT_CALL(*device_policy_service_,
-              CheckAndHandleOwnerLogin(StrEq(email), _, _, _))
+              CheckAndHandleOwnerLogin(StrEq(kSaneEmail), _, _, _))
       .WillOnce(Return(false));
 
-  EXPECT_EQ(FALSE, impl_.StartSession(email,
-                                      nothing,
-                                      &out,
-                                      &Resetter(&error).lvalue()));
+  EXPECT_FALSE(impl_.StartSession(kSaneEmail, kNothing, &error_));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_Owner) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartOwnerSession(email);
-
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
+  ExpectStartOwnerSession(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSessionOwnerLost(email);
-
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
+  ExpectStartSessionOwnerLost(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
 }
 
 TEST_F(SessionManagerImplTest, StopSession) {
-  gboolean out;
-  gchar nothing[] = "";
   EXPECT_CALL(manager_, ScheduleShutdown()).Times(1);
-  impl_.StopSession(nothing, &out, NULL);
+  EXPECT_TRUE(impl_.StopSession());
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   const string fake_policy("fake policy");
-  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
   ExpectStorePolicy(device_policy_service_,
                     fake_policy,
                     PolicyService::KEY_ROTATE |
                     PolicyService::KEY_INSTALL_NEW |
                     PolicyService::KEY_CLOBBER);
-  EXPECT_EQ(TRUE, impl_.StorePolicy(policy_blob, NULL));
-  g_array_free(policy_blob, TRUE);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(), NULL);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
-  ExpectAndRunStartSession("user@somewhere");
+  ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
-  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
   ExpectStorePolicy(device_policy_service_,
                     fake_policy,
                     PolicyService::KEY_ROTATE);
-  EXPECT_EQ(TRUE, impl_.StorePolicy(policy_blob, NULL));
-  g_array_free(policy_blob, TRUE);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(), NULL);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
@@ -523,65 +449,68 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
   EXPECT_CALL(*device_policy_service_, Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
-  GArray* out_blob;
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.RetrievePolicy(&out_blob,
-                                       &Resetter(&error).lvalue()));
-  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  vector<uint8> out_blob;
+  impl_.RetrievePolicy(&out_blob, NULL);
+
+  EXPECT_EQ(fake_policy.size(), out_blob.size());
   EXPECT_TRUE(
-      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
-  g_array_free(out_blob, TRUE);
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob.begin()));
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
-  EXPECT_CALL(utils_, SetAndSendGError(_, _, _));
-
-  gchar username[] = "user@somewhere.com";
   const string fake_policy("fake policy");
-  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_EQ(FALSE, impl_.StorePolicyForUser(username, policy_blob, NULL));
-  g_array_free(policy_blob, TRUE);
+  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  MockPolicyServiceCompletion completion;
+  EXPECT_CALL(completion,
+              ReportFailure(PolicyErrorEq(dbus_error::kSessionDoesNotExist)))
+      .Times(1);
+  impl_.StorePolicyForUser(kSaneEmail,
+                           policy_blob.data(), policy_blob.size(),
+                           &completion);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
-  gchar username[] = "user@somewhere.com";
-  ExpectAndRunStartSession(username);
+  ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
-  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_CALL(*user_policy_services_[username],
+  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
-                    PolicyService::KEY_ROTATE |
-                    PolicyService::KEY_INSTALL_NEW))
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  EXPECT_EQ(TRUE, impl_.StorePolicyForUser(username, policy_blob, NULL));
-  g_array_free(policy_blob, TRUE);
+  impl_.StorePolicyForUser(kSaneEmail,
+                           policy_blob.data(), policy_blob.size(),
+                           NULL);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
-  EXPECT_CALL(utils_, SetAndSendGError(_, _, _));
-
-  gchar user1[] = "user1@somewhere.com";
-  ExpectAndRunStartSession(user1);
-  ASSERT_TRUE(user_policy_services_[user1]);
+  ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(user_policy_services_[kSaneEmail]);
 
   // Store policy for the signed-in user.
   const std::string fake_policy("fake policy");
-  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_CALL(*user_policy_services_[user1],
+  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
-                    PolicyService::KEY_ROTATE |
-                    PolicyService::KEY_INSTALL_NEW))
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  EXPECT_EQ(TRUE, impl_.StorePolicyForUser(user1, policy_blob, NULL));
-  Mock::VerifyAndClearExpectations(user_policy_services_[user1]);
+  impl_.StorePolicyForUser(kSaneEmail,
+                           policy_blob.data(), policy_blob.size(),
+                           NULL);
+  Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
 
   // Storing policy for another username fails before his session starts.
-  gchar user2[] = "user2@somewhere.com";
-  EXPECT_EQ(FALSE, impl_.StorePolicyForUser(user2, policy_blob, NULL));
+  const char user2[] = "user2@somewhere.com";
+  MockPolicyServiceCompletion completion;
+  EXPECT_CALL(completion,
+              ReportFailure(PolicyErrorEq(dbus_error::kSessionDoesNotExist)))
+      .Times(1);
+  impl_.StorePolicyForUser(user2,
+                           policy_blob.data(), policy_blob.size(),
+                           &completion);
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
@@ -592,74 +521,57 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
-                    PolicyService::KEY_ROTATE |
-                    PolicyService::KEY_INSTALL_NEW))
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  EXPECT_EQ(TRUE, impl_.StorePolicyForUser(user2, policy_blob, NULL));
+  impl_.StorePolicyForUser(user2,
+                           policy_blob.data(), policy_blob.size(),
+                           NULL);
   Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
-
-  // Cleanup.
-  g_array_free(policy_blob, TRUE);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
-  gchar username[] = "user@somewhere.com";
-  GArray* out_blob = NULL;
-  ScopedError error;
-  EXPECT_EQ(FALSE, impl_.RetrievePolicyForUser(username,
-                                               &out_blob,
-                                               &Resetter(&error).lvalue()));
-  EXPECT_FALSE(out_blob);
+  vector<uint8> out_blob;
+  impl_.RetrievePolicyForUser(kSaneEmail, &out_blob, &error_);
+  EXPECT_EQ(out_blob.size(), 0);
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
-  gchar username[] = "user@somewhere.com";
-  ExpectAndRunStartSession(username);
+  ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
   const vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
-  EXPECT_CALL(*user_policy_services_[username], Retrieve(_))
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
-  GArray* out_blob = NULL;
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(username,
-                                              &out_blob,
-                                              &Resetter(&error).lvalue()));
-  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  vector<uint8> out_blob;
+  impl_.RetrievePolicyForUser(kSaneEmail, &out_blob, &error_);
+  EXPECT_EQ(fake_policy.size(), out_blob.size());
   EXPECT_TRUE(
-      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
-  g_array_free(out_blob, TRUE);
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob.begin()));
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
-  gchar user1[] = "user1@somewhere.com";
-  ExpectAndRunStartSession(user1);
-  ASSERT_TRUE(user_policy_services_[user1]);
+  ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(user_policy_services_[kSaneEmail]);
 
   // Retrieve policy for the signed-in user.
   const std::string fake_policy("fake policy");
   const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
-  EXPECT_CALL(*user_policy_services_[user1], Retrieve(_))
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
-  GArray* out_blob = NULL;
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(user1,
-                                              &out_blob,
-                                              &Resetter(&error).lvalue()));
-  Mock::VerifyAndClearExpectations(user_policy_services_[user1]);
-  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  std::vector<uint8> out_blob;
+  impl_.RetrievePolicyForUser(kSaneEmail, &out_blob, NULL);
+  Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
+  EXPECT_EQ(fake_policy.size(), out_blob.size());
   EXPECT_TRUE(
-      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
-  g_array_free(out_blob, TRUE);
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob.begin()));
 
   // Retrieving policy for another username fails before his session starts.
-  gchar user2[] = "user2@somewhere.com";
-  out_blob = NULL;
-  error.reset();
-  EXPECT_EQ(FALSE, impl_.RetrievePolicyForUser(user2,
-                                               &out_blob,
-                                               &Resetter(&error).lvalue()));
+  const char user2[] = "user2@somewhere.com";
+  out_blob.clear();
+  impl_.RetrievePolicyForUser(user2, &out_blob, &error_);
+  EXPECT_EQ(error_.name(), dbus_error::kSessionDoesNotExist);
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
@@ -669,138 +581,101 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   EXPECT_CALL(*user_policy_services_[user2], Retrieve(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
                       Return(true)));
-  out_blob = NULL;
-  error.reset();
-  EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(user2,
-                                              &out_blob,
-                                              &Resetter(&error).lvalue()));
+  out_blob.clear();
+  impl_.RetrievePolicyForUser(user2, &out_blob, NULL);
   Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
-  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  EXPECT_EQ(fake_policy.size(), out_blob.size());
   EXPECT_TRUE(
-      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
-  g_array_free(out_blob, TRUE);
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob.begin()));
 }
 
 TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-
-  ExpectStartSession(email);
-  EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
-  GHashTable* active_users = impl_.RetrieveActiveSessions();
-  EXPECT_EQ(g_hash_table_size(active_users), 1);
-  EXPECT_EQ(reinterpret_cast<char*>(g_hash_table_lookup(active_users, email)),
-            SanitizeUserName(email));
-  g_hash_table_unref(active_users);
+  ExpectStartSession(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  std::map<std::string, std::string> active_users;
+  impl_.RetrieveActiveSessions(&active_users);
+  EXPECT_EQ(active_users.size(), 1);
+  EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
   VerifyAndClearExpectations();
 
-  gchar email2[] = "user2@somewhere";
+  const char email2[] = "user2@somewhere";
   ExpectStartSession(email2);
-  EXPECT_EQ(TRUE, impl_.StartSession(email2, nothing, &out, NULL));
-  active_users = impl_.RetrieveActiveSessions();
-  EXPECT_EQ(g_hash_table_size(active_users), 2);
-  EXPECT_EQ(reinterpret_cast<char*>(g_hash_table_lookup(active_users, email)),
-            SanitizeUserName(email));
-  EXPECT_EQ(reinterpret_cast<char*>(g_hash_table_lookup(active_users, email2)),
-            SanitizeUserName(email2));
-  g_hash_table_unref(active_users);
+  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
+  active_users.clear();
+  impl_.RetrieveActiveSessions(&active_users);
+  EXPECT_EQ(active_users.size(), 2);
+  EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
+  EXPECT_EQ(active_users[email2], SanitizeUserName(email2));
 }
 
 TEST_F(SessionManagerImplTest, RestartJob_UnknownPid) {
-  gboolean out;
-  gint pid = kDummyPid;
-  gchar arguments[] = "";
-  ScopedError error;
-  EXPECT_CALL(manager_, IsBrowser(pid)).WillOnce(Return(false));
+  EXPECT_CALL(manager_, IsBrowser(kDummyPid)).WillOnce(Return(false));
 
-  EXPECT_EQ(FALSE, impl_.RestartJob(pid, arguments, &out,
-                                    &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, error->code);
-  EXPECT_EQ(FALSE, out);
+  EXPECT_FALSE(impl_.RestartJob(kDummyPid, "", &error_));
+  EXPECT_EQ(dbus_error::kUnknownPid, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, RestartJob) {
-  gboolean out;
-  gint pid = kDummyPid;
-  gchar arguments[] = "dummy";
+  const char arguments[] = "dummy";
 
-  EXPECT_CALL(manager_, IsBrowser(pid)).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsBrowser(kDummyPid)).WillOnce(Return(true));
   EXPECT_CALL(manager_, RestartBrowserWithArgs(ElementsAre(arguments), false))
       .Times(1);
   ExpectGuestSession();
 
-  EXPECT_EQ(TRUE, impl_.RestartJob(pid, arguments, &out, NULL));
-  EXPECT_EQ(TRUE, out);
-}
-
-TEST_F(SessionManagerImplTest, RestartJobWithAuth_BadCookie) {
-  gboolean out;
-  gint pid = kDummyPid;
-  gchar cookie[] = "bogus-cookie";
-  gchar arguments[] = "dummy";
-
-  // Ensure there's no browser restarting.
-  EXPECT_CALL(manager_, RestartBrowserWithArgs(_, _)).Times(0);
-  EXPECT_EQ(FALSE, impl_.RestartJobWithAuth(pid, cookie, arguments, &out,
-                                            NULL));
-  EXPECT_EQ(FALSE, out);
+  EXPECT_EQ(TRUE, impl_.RestartJob(kDummyPid, arguments, NULL));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen) {
-  ExpectAndRunStartSession("user@somewhere");
-  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
-  GError *error = NULL;
-  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
-  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+  ExpectAndRunStartSession(kSaneEmail);
+  ExpectLockScreen();
+  impl_.LockScreen(NULL);
+  EXPECT_TRUE(impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   ExpectAndRunStartSession("user@somewhere");
   ExpectAndRunStartSession("user2@somewhere");
-  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
-  GError *error = NULL;
-  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  ExpectLockScreen();
+  impl_.LockScreen(NULL);
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
-  GError *error = NULL;
-  EXPECT_EQ(FALSE, impl_.LockScreen(&error));
+  impl_.LockScreen(&error_);
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_Guest) {
   ExpectAndRunGuestSession();
-  GError *error = NULL;
-  EXPECT_EQ(FALSE, impl_.LockScreen(&error));
+  impl_.LockScreen(&error_);
+  EXPECT_EQ(dbus_error::kSessionExists, error_.name());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
-  ExpectAndRunStartSession("user@somewhere");
+  ExpectAndRunStartSession(kSaneEmail);
   ExpectAndRunGuestSession();
-  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
-  GError *error = NULL;
-  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  ExpectLockScreen();
+  impl_.LockScreen(&error_);
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
-  ExpectAndRunStartSession("user@somewhere");
-  utils_.EnqueueFakePendingCall(ScopedDBusPendingCall::CreateForTesting());
-  GError *error = NULL;
-  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  ExpectAndRunStartSession(kSaneEmail);
+  ExpectLockScreen();
+  impl_.LockScreen(&error_);
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
   EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
       .Times(1);
-  EXPECT_EQ(TRUE, impl_.HandleLockScreenShown(&error));
+  impl_.HandleLockScreenShown();
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
   EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
-  EXPECT_EQ(TRUE, impl_.HandleLockScreenDismissed(&error));
+  impl_.HandleLockScreenDismissed();
   EXPECT_EQ(FALSE, impl_.ScreenIsLocked());
 }
 
@@ -808,45 +683,37 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(utils_.Exists(logged_in_path));
   ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1", 1));
-  GError *error = NULL;
-  gboolean done = FALSE;
-  EXPECT_EQ(FALSE, impl_.StartDeviceWipe(&done, &error));
+  impl_.StartDeviceWipe(&error_);
+  EXPECT_EQ(error_.name(), dbus_error::kSessionExists);
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
   FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   FilePath reset_path(SessionManagerImpl::kResetFile);
   ASSERT_TRUE(utils_.RemoveFile(logged_in_path));
-  EXPECT_CALL(utils_, CallMethodOnPowerManager(_)).Times(1);
-  gboolean done = FALSE;
-  EXPECT_EQ(TRUE, impl_.StartDeviceWipe(&done, NULL));
-  EXPECT_TRUE(done);
+  ExpectDeviceRestart();
+  impl_.StartDeviceWipe(NULL);
 }
 
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
-  base::ScopedTempDir tmpdir;
   FilePath key_file_path;
   string key("key_contents");
-  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir.path(),
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(),
                                                   &key_file_path));
   ASSERT_EQ(file_util::WriteFile(key_file_path, key.c_str(), key.size()),
             key.size());
 
   // Start a session, to set up NSSDB for the user.
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartOwnerSession(email);
-  ASSERT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
+  ExpectStartOwnerSession(kSaneEmail);
+  ASSERT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
 
   EXPECT_CALL(*device_policy_service_,
-              ValidateAndStoreOwnerKey(StrEq(email),
+              ValidateAndStoreOwnerKey(StrEq(kSaneEmail),
                                        StrEq(key),
                                        nss_.GetSlot()))
       .WillOnce(Return(true));
 
-  impl_.OnKeyGenerated(email, key_file_path);
+  impl_.OnKeyGenerated(kSaneEmail, key_file_path);
   EXPECT_FALSE(file_util::PathExists(key_file_path));
 }
 

@@ -7,7 +7,6 @@
 
 #include "login_manager/session_manager_interface.h"
 
-#include <base/file_path.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {

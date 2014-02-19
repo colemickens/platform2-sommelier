@@ -5,24 +5,20 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_IMPL_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_IMPL_H_
 
-#include <map>
+#include "login_manager/session_manager_interface.h"
 
 #include <stdlib.h>
 
+#include <map>
+
 #include <base/basictypes.h>
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/dbus/error_constants.h>
-#include <chromeos/glib/object.h>
-#include <dbus/dbus-glib-bindings.h>
-#include <dbus/dbus-glib.h>
-#include <glib-object.h>
+#include <base/callback.h>
 
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
-#include "login_manager/session_manager_interface.h"
 
 namespace login_manager {
 class DBusSignalEmitterInterface;
@@ -60,8 +56,26 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
+  class Error {
+   public:
+    Error();
+    Error(const std::string& name, const std::string& message);
+    virtual ~Error();
+
+    void Set(const std::string& name, const std::string& message);
+    bool is_set() const { return set_; }
+    const std::string& name() const { return name_; }
+    const std::string& message() const { return message_; }
+   private:
+    std::string name_;
+    std::string message_;
+    bool set_;
+  };
+
   SessionManagerImpl(scoped_ptr<UpstartSignalEmitter> emitter,
                      DBusSignalEmitterInterface* dbus_emitter,
+                     base::Closure lock_screen_closure,
+                     base::Closure restart_device_closure,
                      KeyGenerator* key_gen,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
@@ -95,152 +109,46 @@ class SessionManagerImpl : public SessionManagerInterface,
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
 
-  // Emits the "login-prompt-ready" and "login-prompt-visible" upstart signals.
-  gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
-  gboolean EmitLoginPromptVisible(GError** error);
+  void EmitLoginPromptVisible(Error* error);
+  std::string EnableChromeTesting(bool force_relaunch,
+                                  std::vector<std::string> extra_args,
+                                  Error* error);
+  bool StartSession(const std::string& email,
+                    const std::string& unique_id,
+                    Error* error);
+  bool StopSession();
 
-  // Adds an argument to the chrome child job that makes it open a testing
-  // channel, then kills and restarts chrome. The name of the socket used
-  // for testing is returned in OUT_filepath.
-  // If force_relaunch is true, Chrome will be restarted with each
-  // invocation. Otherwise, it will only be restarted on the first invocation.
-  // The extra_args parameter can include any additional arguments
-  // that need to be passed to Chrome on subsequent launches.
-  gboolean EnableChromeTesting(gboolean force_relaunch,
-                               const gchar** extra_args,
-                               gchar** OUT_filepath,
-                               GError** error);
+  void StorePolicy(const uint8* policy_blob, size_t policy_blob_len,
+                   PolicyService::Completion* completion);
+  void RetrievePolicy(std::vector<uint8>* policy_data, Error* error);
 
-  // In addition to emitting "start-user-session" upstart signal and
-  // "SessionStateChanged:started" D-Bus signal, this function will
-  // also call browser_.job->StartSession(email_address).
-  gboolean StartSession(gchar* email_address,
-                        gchar* unique_identifier,
-                        gboolean* OUT_done,
-                        GError** error);
+  void StorePolicyForUser(const std::string& user_email,
+                          const uint8* policy_blob,
+                          size_t policy_blob_len,
+                          PolicyService::Completion* completion);
+  void RetrievePolicyForUser(const std::string& user_email,
+                             std::vector<uint8>* policy_data,
+                             Error* error);
 
-  // In addition to emitting "stop-user-session", this function will
-  // also call browser_.job->StopSession().
-  gboolean StopSession(gchar* unique_identifier,
-                       gboolean* OUT_done,
-                       GError** error);
+  void StoreDeviceLocalAccountPolicy(const std::string& account_id,
+                                     const uint8* policy_blob,
+                                     size_t policy_blob_len,
+                                     PolicyService::Completion* completion);
+  void RetrieveDeviceLocalAccountPolicy(const std::string& account_id,
+                                        std::vector<uint8>* policy_data,
+                                        Error* error);
 
-  // |policy_blob| is a serialized protobuffer containing a device policy
-  // and a signature over that policy.  Verify the sig and persist
-  // |policy_blob| to disk.
-  //
-  // The signature is a SHA1 with RSA signature over the policy,
-  // verifiable with |key_|.
-  //
-  // Returns TRUE if the signature checks out, FALSE otherwise.
-  gboolean StorePolicy(GArray* policy_blob, DBusGMethodInvocation* context);
+  const char* RetrieveSessionState();
+  void RetrieveActiveSessions(std::map<std::string, std::string>* sessions);
 
-  // Get the policy_blob and associated signature off of disk.
-  // Returns TRUE if the data is can be fetched, FALSE otherwise.
-  gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error);
+  void LockScreen(Error* error);
+  void HandleLockScreenShown();
+  void HandleLockScreenDismissed();
 
-  // Similar to StorePolicy above, but for user policy. |policy_blob| is a
-  // serialized PolicyFetchResponse protobuf which wraps the actual policy data
-  // along with an SHA1-RSA signature over the policy data. The policy data is
-  // opaque to session manager, the exact definition is only relevant to client
-  // code in Chrome.
-  //
-  // Calling this function attempts to persist |policy_blob| for |user_email|.
-  // Policy is stored in a root-owned location within the user's cryptohome
-  // (for privacy reasons). The first attempt to store policy also installs the
-  // signing key for user policy. This key is used later to verify policy
-  // updates pushed by Chrome.
-  //
-  // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
-  // and reports the final result of the call asynchronously through |context|.
-  gboolean StorePolicyForUser(gchar* user_email,
-                              GArray* policy_blob,
-                              DBusGMethodInvocation* context);
-
-  // Retrieves user policy for |user_email| and returns it in |policy_blob|.
-  // Returns TRUE if the policy is available, FALSE otherwise.
-  gboolean RetrievePolicyForUser(gchar* user_email,
-                                 GArray** OUT_policy_blob,
-                                 GError** error);
-
-  // Similar to StorePolicy above, but for device-local accounts. |policy_blob|
-  // is a serialized PolicyFetchResponse protobuf which wraps the actual policy
-  // data along with an SHA1-RSA signature over the policy data. The policy data
-  // is opaque to session manager, the exact definition is only relevant to
-  // client code in Chrome.
-  //
-  // Calling this function attempts to persist |policy_blob| for the
-  // device-local account specified in the |account_id| parameter. Policy is
-  // stored in the root-owned /var/lib/device_local_accounts directory in the
-  // stateful partition. Signatures are checked against the owner key, key
-  // rotation is not allowed.
-  //
-  // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
-  // and reports the final result of the call asynchronously through |context|.
-  gboolean StoreDeviceLocalAccountPolicy(gchar* account_id,
-                                         GArray* policy_blob,
-                                         DBusGMethodInvocation* context);
-
-  // Retrieves device-local account policy for the specified |account_id| and
-  // returns it in |policy_blob|. Returns TRUE if the policy is available, FALSE
-  // otherwise.
-  gboolean RetrieveDeviceLocalAccountPolicy(gchar* account_id,
-                                            GArray** OUT_policy_blob,
-                                            GError** error);
-
-  // Get information about the current session.
-  gboolean RetrieveSessionState(gchar** OUT_state);
-
-  // Enumerate active user sessions.
-  // The return value is a hash table, mapping {username: sanitized username},
-  // sometimes called the "user hash".
-  // The contents of the hash table are owned by the implementation of
-  // this interface, but the caller is responsible for unref'ing
-  // the GHashTable structure.
-  GHashTable* RetrieveActiveSessions();
-
-  // Handles LockScreen request from Chromium or PowerManager. It emits
-  // LockScreen signal to Chromium Browser to tell it to lock the screen. The
-  // browser should call the HandleScreenLocked method when the screen is
-  // actually locked.
-  gboolean LockScreen(GError** error);
-
-  // Intended to be called by Chromium. Updates canonical system-locked state,
-  // and broadcasts ScreenIsLocked signal over DBus.
-  gboolean HandleLockScreenShown(GError** error);
-
-  // Intended to be called by Chromium. Updates canonical system-locked state,
-  // and broadcasts ScreenIsUnlocked signal over DBus.
-  gboolean HandleLockScreenDismissed(GError** error);
-
-  // Restarts job with specified pid replacing its command line arguments
-  // with provided.
-  gboolean RestartJob(gint pid,
-                      gchar* arguments,
-                      gboolean* OUT_done,
-                      GError** error);
-
-  // Restarts job with specified pid as RestartJob(), but authenticates the
-  // caller based on a supplied cookie value also known to the session manager
-  // rather than pid.
-  gboolean RestartJobWithAuth(gint pid,
-                              gchar* cookie,
-                              gchar* arguments,
-                              gboolean* OUT_done,
-                              GError** error);
-
-  // Sets the device up to "Powerwash" on reboot, and then triggers a reboot.
-  gboolean StartDeviceWipe(gboolean *OUT_done, GError** error);
-
-  // Stores in memory the flags that session manager should apply the next time
-  // it restarts Chrome inside an existing session. The flags should be cleared
-  // on StopSession signal or when session manager itself is restarted. Chrome
-  // will wait on successful confirmation of this call and terminate itself to
-  // allow session manager to restart it and apply the necessary flag. All flag
-  // validation is to be done inside Chrome.
-  gboolean SetFlagsForUser(gchar* user_email,
-                           const gchar** flags,
-                           GError** error);
+  bool RestartJob(pid_t pid, const std::string& arguments, Error* error);
+  void StartDeviceWipe(Error* error);
+  void SetFlagsForUser(const std::string&user_email,
+                       const std::vector<std::string>& session_user_flags);
 
   // PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success) OVERRIDE;
@@ -264,34 +172,16 @@ class SessionManagerImpl : public SessionManagerInterface,
   void ImportValidateAndStoreGeneratedKey(const std::string& username,
                                           const base::FilePath& temp_key_file);
 
-  // Encodes the result of a policy retrieve operation as specified in |success|
-  // and |policy_data| into |policy_blob| and |error|. Returns TRUE if
-  // successful, FALSE otherwise.
-  gboolean EncodeRetrievedPolicy(bool success,
-                                 const std::vector<uint8>& policy_data,
-                                 GArray** policy_blob,
-                                 GError** error);
-
-  // Safely converts a gchar* parameter from DBUS to a std::string.
-  static std::string GCharToString(const gchar* str);
-
-  // Initializes |error| with |code| and |message|.
-  static void SetGError(GError** error,
-                        ChromeOSLoginError code,
-                        const char* message);
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
-
-  // Check cookie against internally stored auth cookie.
-  bool IsValidCookie(const char *cookie);
 
   bool AllSessionsAreIncognito();
 
   UserSession* CreateUserSession(const std::string& username,
                                  bool is_incognito,
-                                 GError** error);
+                                 std::string* error);
 
-  PolicyService* GetPolicyService(gchar* user_email);
+  PolicyService* GetPolicyService(const std::string& user_email);
 
   bool session_started_;
   bool session_stopping_;
@@ -301,6 +191,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   base::FilePath chrome_testing_path_;
 
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
+
+  base::Closure lock_screen_closure_;
+  base::Closure restart_device_closure_;
 
   DBusSignalEmitterInterface* dbus_emitter_;  // Owned by the caller.
   KeyGenerator* key_gen_;  // Owned by the caller.

@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
@@ -94,7 +95,7 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Persist())
         .InSequence(sequence)
         .WillOnce(Return(true));
-    EXPECT_CALL(completion_, Success()).Times(1);
+    EXPECT_CALL(completion_, ReportSuccess()).Times(1);
     EXPECT_CALL(delegate_, OnPolicyPersisted(true));
   }
 
@@ -110,12 +111,12 @@ class PolicyServiceTest : public testing::Test {
         .WillRepeatedly(Return(return_value));
   }
 
-  void ExpectStoreFail(int flags, ChromeOSLoginError code) {
+  void ExpectStoreFail(int flags, const std::string& code) {
     EXPECT_CALL(key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
-    EXPECT_CALL(completion_, Success()).Times(0);
-    EXPECT_CALL(completion_, Failure(_)).Times(1);
+    EXPECT_CALL(completion_, ReportSuccess()).Times(0);
+    EXPECT_CALL(completion_, ReportFailure(_)).Times(1);
 
     EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_,
                                  flags));
@@ -192,19 +193,19 @@ TEST_F(PolicyServiceTest, StoreWrongSignature) {
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
-  ExpectStoreFail(kAllKeyFlags, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL);
+  ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoData) {
   InitPolicy("", "", "", "");
 
-  ExpectStoreFail(kAllKeyFlags, CHROMEOS_LOGIN_ERROR_DECODE_FAIL);
+  ExpectStoreFail(kAllKeyFlags, dbus_error::kSigDecodeFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoSignature) {
   InitPolicy(fake_data_, "", "", "");
 
-  ExpectStoreFail(kAllKeyFlags, CHROMEOS_LOGIN_ERROR_DECODE_FAIL);
+  ExpectStoreFail(kAllKeyFlags, dbus_error::kSigDecodeFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoKey) {
@@ -218,7 +219,7 @@ TEST_F(PolicyServiceTest, StoreNoKey) {
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
-  ExpectStoreFail(kAllKeyFlags, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL);
+  ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNewKey) {
@@ -294,7 +295,7 @@ TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
   ExpectKeyEqualsFalse(s1);
   ExpectKeyPopulated(s2, false);
 
-  ExpectStoreFail(0, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY);
+  ExpectStoreFail(0, dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, StoreRotation) {
@@ -350,8 +351,7 @@ TEST_F(PolicyServiceTest, StoreRotationNoSignature) {
   ExpectKeyEqualsFalse(s1);
   ExpectKeyPopulated(s2, true);
 
-  ExpectStoreFail(PolicyService::KEY_ROTATE,
-                  CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY);
+  ExpectStoreFail(PolicyService::KEY_ROTATE, dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, StoreRotationBadSignature) {
@@ -364,8 +364,7 @@ TEST_F(PolicyServiceTest, StoreRotationBadSignature) {
       .InSequence(s1, s2)
       .WillOnce(Return(false));
 
-  ExpectStoreFail(PolicyService::KEY_ROTATE,
-                  CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY);
+  ExpectStoreFail(PolicyService::KEY_ROTATE, dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
@@ -375,7 +374,7 @@ TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
   ExpectKeyEqualsFalse(s1);
   ExpectKeyPopulated(s2, true);
 
-  ExpectStoreFail(0, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY);
+  ExpectStoreFail(0, dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, Retrieve) {

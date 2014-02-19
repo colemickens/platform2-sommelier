@@ -7,6 +7,8 @@
 
 #include "login_manager/policy_service.h"
 
+#include <gmock/gmock.h>
+
 namespace login_manager {
 class MockPolicyService : public PolicyService {
  public:
@@ -19,12 +21,16 @@ class MockPolicyService : public PolicyService {
   MOCK_METHOD0(PersistPolicySync, bool(void));
 };
 
+MATCHER_P(PolicyErrorEq, error_code, "") {
+  return (arg.code() == error_code);
+}
+
 class MockPolicyServiceCompletion : public PolicyService::Completion {
  public:
   MockPolicyServiceCompletion();
   virtual ~MockPolicyServiceCompletion();
-  MOCK_METHOD0(Success, void(void));
-  MOCK_METHOD1(Failure, void(const PolicyService::Error&));
+  MOCK_METHOD0(ReportSuccess, void(void));
+  MOCK_METHOD1(ReportFailure, void(const PolicyService::Error&));
 };
 
 class MockPolicyServiceDelegate : public PolicyService::Delegate {

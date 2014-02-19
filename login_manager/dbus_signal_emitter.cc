@@ -7,12 +7,9 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/logging.h>
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/dbus/service_constants.h>
-#include <dbus/dbus-glib-lowlevel.h>
-#include <dbus/dbus-glib.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
 
 namespace login_manager {
 
@@ -21,7 +18,11 @@ const char DBusSignalEmitterInterface::kSignalFailure[] = "failure";
 
 DBusSignalEmitterInterface::~DBusSignalEmitterInterface() {}
 
-DBusSignalEmitter::DBusSignalEmitter() {}
+DBusSignalEmitter::DBusSignalEmitter(dbus::ExportedObject* object,
+                                     const std::string& interface)
+    : object_(object),
+      interface_(interface) {
+}
 
 DBusSignalEmitter::~DBusSignalEmitter() {}
 
@@ -37,39 +38,12 @@ void DBusSignalEmitter::EmitSignalWithSuccessFailure(
 
 void DBusSignalEmitter::EmitSignalWithString(const std::string& signal_name,
                                              const std::string& payload) {
-  std::vector<std::string> to_pass;
-  to_pass.push_back(payload);
-  EmitSignalFrom(kSessionManagerInterface, signal_name, to_pass);
-}
-
-void DBusSignalEmitter::EmitSignalFrom(
-    const std::string& interface,
-    const std::string& signal_name,
-    const std::vector<std::string>& payload) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kSessionManagerServicePath,
-                              interface.c_str());
-  if (!proxy) {
-    LOG(ERROR) << "No proxy; can't signal " << interface;
-    return;
-  }
-  DBusMessage* signal =
-      ::dbus_message_new_signal(kSessionManagerServicePath,
-                                interface.c_str(),
-                                signal_name.c_str());
+  dbus::Signal signal(interface_, signal_name);
   if (!payload.empty()) {
-    for (std::vector<std::string>::const_iterator it = payload.begin();
-         it != payload.end();
-         ++it) {
-      // Need to be able to take the address of the value to append.
-      const char* string_arg = it->c_str();
-      dbus_message_append_args(signal,
-                               DBUS_TYPE_STRING, &string_arg,
-                               DBUS_TYPE_INVALID);
-    }
+    dbus::MessageWriter writer(&signal);
+    writer.AppendString(payload);
   }
-  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  ::dbus_message_unref(signal);
+  object_->SendSignal(&signal);
 }
 
 }  // namespace login_manager

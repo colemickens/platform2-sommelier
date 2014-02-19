@@ -4,17 +4,8 @@
 
 #include "login_manager/termination_handler.h"
 
-#include <signal.h>
-#include <sys/types.h>
-
 #include <base/basictypes.h>
-#include <base/file_path.h>
-#include <base/file_util.h>
-#include <base/files/scoped_temp_dir.h>
-#include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/time.h>
-#include <chromeos/cryptohome.h>
+#include <base/message_loop.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/mock_process_manager_service.h"
@@ -35,6 +26,7 @@ class TerminationHandlerTest : public ::testing::Test {
   }
 
  protected:
+  MessageLoopForIO loop_;
   MockProcessManagerService mock_manager_;
   TerminationHandler handler_;
 

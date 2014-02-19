@@ -15,6 +15,7 @@
 #include <crypto/scoped_nss_types.h>
 
 #include "login_manager/chrome_device_policy.pb.h"
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
@@ -312,7 +313,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
     const char err_msg[] = "Could not sign policy containing new owner data.";
     if (error) {
       LOG(WARNING) << err_msg;
-      error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg);
+      error->Set(dbus_error::kPubkeySetIllegal, err_msg);
     } else {
       LOG(ERROR) << err_msg;
     }
@@ -340,7 +341,7 @@ RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
     const char msg[] = "Could not verify that owner key belongs to this user.";
     LOG(WARNING) << msg;
     if (error)
-      error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
+      error->Set(dbus_error::kPubkeySetIllegal, msg);
     return NULL;
   }
   return result;

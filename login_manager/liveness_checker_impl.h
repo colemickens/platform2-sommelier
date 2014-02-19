@@ -17,10 +17,13 @@ namespace base {
 class MessageLoopProxy;
 }  // namespace base
 
+namespace dbus {
+class ObjectProxy;
+class Response;
+}  // namespace base
+
 namespace login_manager {
-class ScopedDBusPendingCall;
 class ProcessManagerServiceInterface;
-class SystemUtils;
 
 // An implementation of LivenessChecker that pings the browser over DBus,
 // and expects the response to a ping to come in reliably before the next
@@ -30,7 +33,7 @@ class SystemUtils;
 class LivenessCheckerImpl : public LivenessChecker {
  public:
   LivenessCheckerImpl(ProcessManagerServiceInterface* manager,
-                      SystemUtils* utils,
+                      dbus::ObjectProxy* chrome_dbus_proxy,
                       const scoped_refptr<base::MessageLoopProxy>& loop,
                       bool enable_aborting,
                       base::TimeDelta interval);
@@ -52,13 +55,17 @@ class LivenessCheckerImpl : public LivenessChecker {
   }
 
  private:
-  ProcessManagerServiceInterface* manager_;
-  SystemUtils* system_;
+  // Handle async response to liveness ping by setting last_ping_acked_,
+  // iff there is a successful response.
+  void HandleAck(dbus::Response* response);
+
+  ProcessManagerServiceInterface* manager_;  // Owned by the caller.
+  dbus::ObjectProxy* chrome_dbus_proxy_;  // Owned by the caller.
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 
   const bool enable_aborting_;
   const base::TimeDelta interval_;
-  scoped_ptr<ScopedDBusPendingCall> outstanding_liveness_ping_;
+  bool last_ping_acked_;
   base::CancelableClosure liveness_check_;
   base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_;
 

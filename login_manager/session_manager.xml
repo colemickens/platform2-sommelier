@@ -4,25 +4,36 @@
   Use of this source code is governed by a BSD-style license that can be
   found in the LICENSE file.
 
-     dbus-binding-tool -mode=glib-server -prefix=session_manager session_manager.xml
-                        &gt; server.h
 -->
-<node name="/org/chromium/">
+<node xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
   <interface name="org.chromium.SessionManagerInterface">
-    <annotation name="org.freedesktop.DBus.GLib.CSymbol"
-                value="session_manager"/>
-    <method name="EmitLoginPromptReady">
-      <arg type="b" name="emitted" direction="out" />
-    </method>
+    <!-- Emits the "login-prompt-visible" upstart signal and
+         LoginPromptVisible DBus signal. -->
     <method name="EmitLoginPromptVisible">
     </method>
     <signal name="LoginPromptVisible">
     </signal>
+    <!-- Restarts the browser, leaving it open for testing automation.
+         Adds an argument to the chrome child job command line that causes it,
+         upon restart, to open a testing channel. Next, kills and restarts
+         chrome. The name of the socket used for testing is returned in the
+         response.
+
+         If force_relaunch is true, Chrome will be restarted with each
+         invocation. Otherwise, it will only be restarted if
+         automation is not yet enabled.  The extra_args parameter can
+         include any additional arguments that need to be passed to
+         Chrome on subsequent launches. -->
     <method name="EnableChromeTesting">
       <arg type="b" name="force_relaunch" direction="in" />
       <arg type="as" name="extra_arguments" direction="in" />
       <arg type="s" name="filepath" direction="out" />
     </method>
+
+    <!-- In addition to emitting "start-user-session" upstart signal
+         and "SessionStateChanged:started" D-Bus signal, this
+         function will also update bookkeeping to know about a
+         session for email_address. -->
     <method name="StartSession">
       <!-- Meant to be human-readable -->
       <arg type="s" name="email_address" direction="in" />
@@ -30,112 +41,140 @@
       <arg type="s" name="unique_identifier" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+
+    <!-- In addition to emitting "stop-user-session", this function
+         will also terminate all active user sessions. -->
     <method name="StopSession">
       <!-- Meant to be machine-readable, unused for now -->
       <arg type="s" name="unique_identifier" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+
+    <!-- Stores a device policy.
+
+         policy_blob should contain a serialized protobuffer
+         containing a device policy and a signature over that
+         policy. This method will erify the sig and persist the policy
+         blob to disk.
+
+         The signature is a SHA1 with RSA signature over the policy,
+         verifiable with the device-wide policy key. -->
     <method name="StorePolicy">
-      <!-- Async annotation means that this method can respond asynchronously;
-	   in the normal case, once the handler bound to this method call
-	   returns, dbus-daemon will send a response back to the caller. -->
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="ay" name="policy_blob" direction="in" />
-      <arg type="b" direction="out">
-	<!-- This means that the caller doesn't have to pass in an
-	     out-param to get the result of this call.  In synchronous
-	     operation, this is mapped to the return value of the
-	     method call.  In async mode, this is just another value
-	     passed to the callback. -->
-	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
-      </arg>
+      <arg type="b" direction="out"></arg>
     </method>
+
+    <!-- Retrieve device policy stored by StorePolicy. -->
     <method name="RetrievePolicy">
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
+
+    <!-- Similar to StorePolicy above, but for user policy.
+         policy_blob should contain a serialized PolicyFetchResponse protobuf
+         which wraps the actual policy data along with an SHA1-RSA signature
+         over the policy data. The policy data is opaque to session_manager,
+         the exact definition is only relevant to client code in Chrome.
+
+         Calling this function attempts to persist the policy blob for
+         a given user. Policy is stored in a root-owned location
+         within the user's cryptohome (for privacy reasons). The
+         first attempt to store policy also installs the signing
+         key for user policy. This key is used later to verify policy
+         updates pushed by Chrome. -->
     <method name="StorePolicyForUser">
-      <!-- This method is implemented asynchronously. -->
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="s" name="user_email" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
-      <arg type="b" direction="out">
-        <!-- This is the return value. -->
-        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
-      </arg>
+      <arg type="b" direction="out"></arg>
     </method>
+
+    <!-- Retrieves user policy for a given user. -->
     <method name="RetrievePolicyForUser">
       <arg type="s" name="user_email" direction="in" />
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
+
+    <!-- Similar to StorePolicyForUser above, but for device-local
+         accounts.  policy_blob should contain a serialized
+         PolicyFetchResponse protobuf which wraps the actual policy
+         data along with an SHA1-RSA signature over the policy
+         data. The policy data is opaque to session manager, the exact
+         definition is only relevant to client code in Chrome.
+
+         Calling this function attempts to persist the policy blob for
+         the device-local account specified in the method call. Policy
+         is stored in the root-owned /var/lib/device_local_accounts
+         directory in the stateful partition. Signatures are checked
+         against the owner key, key rotation is not allowed. -->
     <method name="StoreDeviceLocalAccountPolicy">
-      <!-- This method is implemented asynchronously. -->
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
-      <arg type="b" direction="out">
-        <!-- This is the return value. -->
-        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
-      </arg>
+      <arg type="b" direction="out"></arg>
     </method>
+
+    <!-- Retrieves device-local account policy for the specified account_id. -->
     <method name="RetrieveDeviceLocalAccountPolicy">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
+
+    <!-- Get information about the current session. -->
     <method name="RetrieveSessionState">
       <!-- started, stopping, stopped -->
       <arg type="s" name="state" direction="out" />
     </method>
+
+    <!-- Enumerate active user sessions. -->
     <method name="RetrieveActiveSessions">
       <!-- a dictionary mapping { username: sanitized_user_name }. -->
-      <arg type="a{ss}" direction="out">
-        <!-- This is the return value. -->
-        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
-      </arg>
+      <arg type="a{ss}" direction="out"></arg>
     </method>
+
     <signal name="SessionStateChanged">
       <!-- started, stopping, stopped -->
       <arg type="s" name="state" />
       <!-- user whose session is starting or stopping (empty for guest) -->
       <arg type="s" name="user" />
     </signal>
+
+    <!-- Allows other processes to request screen locking.
+         Emits LockScreen signal to Chromium Browser to tell it to lock the
+         screen. The browser should call the HandleScreenLocked
+         method when the screen is actually locked.-->
     <method name="LockScreen">
-      <!-- Lock screen -->
     </method>
+
+    <!-- Handle notification from Chrome that the lock screen is visible -->
     <method name="HandleLockScreenShown">
-      <!-- Handle notification from Chrome that the lock screen is visible -->
     </method>
+
+    <!-- Handle notification from Chrome that the lock screen is hidden -->
     <method name="HandleLockScreenDismissed">
-      <!-- Handle notification from Chrome that the lock screen is hidden -->
     </method>
+
     <signal name="ScreenIsLocked">
       <!-- Broadcast that the browser locked the screen -->
     </signal>
     <signal name="ScreenIsUnlocked">
       <!-- Broadcast that the browser unlocked the screen -->
     </signal>
+
+    <!-- Restarts job with specified pid replacing its command line arguments
+         with provided. -->
     <method name="RestartJob">
-      <!-- PID of the job to restart -->
+       <!-- PID of the job to restart -->
       <arg type="i" name="pid" direction="in" />
       <!-- Command line arguments to restart the job with -->
       <arg type="s" name="command_line" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
-    <method name="RestartJobWithAuth">
-      <!-- PID of the job to restart -->
-      <arg type="i" name="pid" direction="in" />
-      <!-- Authentication cookie -->
-      <arg type="s" name="cookie" direction="in" />
-      <!-- Command line arguments to restart the job with -->
-      <arg type="s" name="command_line" direction="in" />
-      <arg type="b" name="done" direction="out" />
-    </method>
+
+    <!-- Sets the device up to "Powerwash" on reboot, and triggers a reboot. -->
     <method name="StartDeviceWipe">
-      <!-- Initiates a wipe of the device's state -->
       <arg type="b" name="done" direction="out" />
     </method>
+
+    <!-- Sets browser flags to be applied on next in-session restart -->
     <method name="SetFlagsForUser">
-      <!--  Sets the flags to be applied on next in-session restart -->
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="s" name="user_email" direction="in" />
       <arg type="as" name="flags" direction="in" />
     </method>

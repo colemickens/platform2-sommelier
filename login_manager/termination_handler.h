@@ -7,9 +7,8 @@
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
-#include <glib.h>
-
-#include "login_manager/watcher.h"
+#include <base/memory/scoped_ptr.h>
+#include <base/message_loop.h>
 
 namespace login_manager {
 class ProcessManagerServiceInterface;
@@ -17,7 +16,7 @@ class ProcessManagerServiceInterface;
 // Sets up signal handlers for termination signals, and converts signal receipt
 // into a write on a pipe. Watches that pipe for data and, when some appears,
 // triggers process shutdown.
-class TerminationHandler : public Watcher {
+class TerminationHandler : public MessageLoopForIO::Watcher {
  public:
   explicit TerminationHandler(ProcessManagerServiceInterface* manager);
   virtual ~TerminationHandler();
@@ -31,13 +30,11 @@ class TerminationHandler : public Watcher {
   // Revert signal handlers registered by this class.
   static void RevertHandlers();
  private:
-  // |data| is a Watcher*.
-  static gboolean HandleKill(GIOChannel* source,
-                             GIOCondition condition,
-                             gpointer data);
-
   // Interface that allows process shutdown to be triggered.
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
+
+  // Controller used to manage watching of shutdown pipe.
+  scoped_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
   // Set up signal handlers for TERM, INT, and HUP.
   void SetUpHandlers();

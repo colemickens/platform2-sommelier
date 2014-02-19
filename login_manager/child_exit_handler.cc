@@ -11,13 +11,12 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/message_loop.h>
 #include <base/time.h>
-#include <glib.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/system_utils.h"
-#include "login_manager/watcher.h"
 
 namespace login_manager {
 
@@ -40,7 +39,9 @@ void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
 
 }  // anonymous namespace
 
-ChildExitHandler::ChildExitHandler(SystemUtils* system) : system_(system) {
+ChildExitHandler::ChildExitHandler(SystemUtils* system)
+    : fd_watcher_(new MessageLoopForIO::FileDescriptorWatcher),
+      system_(system) {
   int pipefd[2];
   PLOG_IF(FATAL, pipe2(pipefd,
                        O_CLOEXEC | O_NONBLOCK) < 0) << "Failed to create pipe";
@@ -54,12 +55,11 @@ void ChildExitHandler::Init(const std::vector<JobManagerInterface*>& managers) {
   managers_ = managers;
 
   SetUpHandler();
-  g_io_add_watch_full(g_io_channel_unix_new(g_child_pipe_read_fd),
-                      G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                      HandleChildrenExiting,
-                      this,
-                      NULL);
+  if (!MessageLoopForIO::current()->WatchFileDescriptor(
+          g_child_pipe_read_fd, true, MessageLoopForIO::WATCH_READ,
+          fd_watcher_.get(), this)) {
+    LOG(FATAL) << "Watching child pipe failed. Can't manage browser process.";
+  }
 }
 
 void ChildExitHandler::OnFileCanReadWithoutBlocking(int fd) {
@@ -82,16 +82,6 @@ void ChildExitHandler::RevertHandlers() {
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_DFL;
   CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
-}
-
-// static
-gboolean ChildExitHandler::HandleChildrenExiting(GIOChannel* source,
-                                                 GIOCondition condition,
-                                                 gpointer data) {
-  CHECK(G_IO_IN & condition);
-  Watcher* handler = static_cast<Watcher*>(data);
-  handler->OnFileCanReadWithoutBlocking(g_io_channel_unix_get_fd(source));
-  return TRUE;  // So that the event source that called this remains installed.
 }
 
 void ChildExitHandler::Dispatch(const siginfo_t& info) {

@@ -84,33 +84,10 @@ class SystemUtils {
                                const char* data,
                                int size) = 0;
 
-  // Calls |method_name| on power manager.
-  virtual void CallMethodOnPowerManager(const char* method_name) = 0;
-
-  // Initiates an async call of |method_name| on Chromium.  Returns opaque
-  // pointer that can be used to retrieve the response at a later time.
-  virtual scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
-      const char* method_name) = 0;
-
-  // Expects |pending_call| to have succeeded by now.  Returns true if
-  // so, false if not, and ensures that |pending_call| is never going
-  // to return after now.  If |pending_call| returned an error, it is
-  // logged before returning.
-  //
-  // |pending_call| will no longer be usable; the caller should destroy.
-  virtual bool CheckAsyncMethodSuccess(DBusPendingCall* pending_call) = 0;
-
-  // |pending_call| will no longer be usable; the caller should destroy.
-  virtual void CancelAsyncMethodCall(DBusPendingCall* pending_call) = 0;
-
   // Makes a best-effort attempt to append |msg| to the system log that is
   // persisted across stateful partition wipes.
   virtual void AppendToClobberLog(const char* msg) const = 0;
 
-  // Initializes |error| with |code| and |message|; returns it via |context|.
-  virtual void SetAndSendGError(ChromeOSLoginError code,
-                                DBusGMethodInvocation* context,
-                                const char* message) = 0;
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

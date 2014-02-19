@@ -8,20 +8,12 @@
 
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/scoped_vector.h>
-
-#include "login_manager/scoped_dbus_pending_call.h"
 
 namespace login_manager {
 
-MockSystemUtils::MockSystemUtils() {
-}
+MockSystemUtils::MockSystemUtils() {}
 
-MockSystemUtils::~MockSystemUtils() {
-  EXPECT_TRUE(fake_calls_.empty()) << "CallAsyncMethodOnChromium expected"
-                                   << " to be called " << fake_calls_.size()
-                                   << " more times.";
-}
+MockSystemUtils::~MockSystemUtils() {}
 
 bool MockSystemUtils::Exists(const FilePath& file) {
   return EnsureTempDir() && real_utils_.Exists(PutInsideTempdir(file));
@@ -78,22 +70,6 @@ base::FilePath MockSystemUtils::GetUniqueFilename() {
     }
   }
   return unique_file_path_;
-}
-
-scoped_ptr<ScopedDBusPendingCall> MockSystemUtils::CallAsyncMethodOnChromium(
-    const char* method_name) {
-  if (fake_calls_.empty()) {
-    ADD_FAILURE() << "CallAsyncMethodOnChromium called too many times!";
-    return scoped_ptr<ScopedDBusPendingCall>(NULL);
-  }
-  ScopedDBusPendingCall* to_return = fake_calls_[0];
-  fake_calls_.weak_erase(fake_calls_.begin());
-  return scoped_ptr<ScopedDBusPendingCall>(to_return);
-}
-
-void MockSystemUtils::EnqueueFakePendingCall(
-    scoped_ptr<ScopedDBusPendingCall> fake_call) {
-  fake_calls_.push_back(fake_call.release());
 }
 
 bool MockSystemUtils::EnsureTempDir() {

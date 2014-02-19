@@ -5,13 +5,6 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
-#include <dbus/dbus.h>
-#include <errno.h>
-#include <glib.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include <string>
 #include <vector>
 
@@ -21,20 +14,16 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
-#include <chromeos/dbus/abstract_dbus_service.h>
-#include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
 
 #include "login_manager/child_exit_handler.h"
-#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/process_manager_service_interface.h"
-#include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/termination_handler.h"
-#include "login_manager/upstart_signal_emitter.h"
 
 class MessageLoop;
 
@@ -42,14 +31,21 @@ namespace base {
 class MessageLoopProxy;
 }  // namespace base
 
+namespace dbus {
+class ExportedObject;
+class ObjectProxy;
+}  // namespace dbus
+
 namespace login_manager {
 namespace gobject {
 struct SessionManager;
 }  // namespace gobject
 
 class BrowserJobInterface;
+class DBusSignalEmitterInterface;
 class LoginMetrics;
 class NssUtil;
+class SessionManagerDBusAdaptor;
 class SystemUtils;
 
 // Provides methods for running the browser, watching its progress, and
@@ -63,7 +59,6 @@ class SystemUtils;
 // ::g_type_init() must be called before this class is used.
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
-      public chromeos::dbus::AbstractDbusService,
       public JobManagerInterface,
       public ProcessManagerServiceInterface {
  public:
@@ -133,34 +128,9 @@ class SessionManagerService
   // TestApi exposes internal routines for testing purposes.
   TestApi test_api() { return TestApi(this); }
 
-  ////////////////////////////////////////////////////////////////////////////
-  // Implementing chromeos::dbus::AbstractDbusService
-  virtual const char* service_name() const {
-    return kSessionManagerServiceName;
-  }
-  virtual const char* service_path() const {
-    return kSessionManagerServicePath;
-  }
-  virtual const char* service_interface() const {
-    return kSessionManagerInterface;
-  }
-  virtual GObject* service_object() const {
-    return G_OBJECT(session_manager_);
-  }
+  bool Initialize();
 
-  virtual bool Initialize() OVERRIDE;
-  virtual bool Register(const chromeos::dbus::BusConnection &conn) OVERRIDE;
-  virtual bool Reset() OVERRIDE;
-
-  // DEPRECATED
-  // TODO(cmasone): Remove as part of http://crbug.com/330880
-  virtual bool Run() OVERRIDE;
-
-  // DEPRECATED
-  // TODO(cmasone): Remove as part of http://crbug.com/330880
-  virtual bool Shutdown() OVERRIDE;
-
-  // Tears down object set up during Initialize(), cleans up child processes,
+  // Tears down objects set up during Initialize(), cleans up child processes,
   // and announces that the user session has stopped over DBus.
   void Finalize();
 
@@ -203,17 +173,9 @@ class SessionManagerService
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();
 
- protected:
-  virtual GMainLoop* main_loop() { return main_loop_; }
-
  private:
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
-
-  // |data| is a SessionManagerService*.
-  static gboolean HandleChildrenExiting(GIOChannel* source,
-                                        GIOCondition condition,
-                                        gpointer data);
 
   // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
@@ -232,7 +194,18 @@ class SessionManagerService
   // We trigger a reboot and then wipe (most of) the stateful partition.
   bool InitializeImpl();
 
-  // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
+  // Initializes connection to DBus system bus, and creates proxies to talk
+  // to other needed services. Failure is fatal.
+  void InitializeDBus();
+
+  // Takes ownership of the Session Manager's well-known service name.
+  // Failure is fatal.
+  void TakeDBusServiceOwnership();
+
+  // Tears down DBus connection. Failure is fatal.
+  void ShutDownDBus();
+
+  // Tell us that, if we want, we can cause a graceful exit from MessageLoop.
   void AllowGracefulExitOrRunForever();
 
   // Sets the proccess' exit code immediately and posts a QuitClosure to the
@@ -246,24 +219,27 @@ class SessionManagerService
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 
-  gobject::SessionManager* session_manager_;
-  GMainLoop* main_loop_;
   // All task posting should be done via the MessageLoopProxy in loop_proxy_.
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   base::Closure quit_closure_;
+
+  scoped_refptr<dbus::Bus> bus_;
+  const std::string match_rule_;
+  dbus::ExportedObject* session_manager_dbus_object_;  // Owned by bus_;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.
 
   scoped_ptr<NssUtil> nss_;
   KeyGenerator key_gen_;
-  DBusSignalEmitter dbus_emitter_;
+  scoped_ptr<DBusSignalEmitterInterface> dbus_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
 
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
   scoped_ptr<SessionManagerInterface> impl_;
+  scoped_ptr<SessionManagerDBusAdaptor> adaptor_;
 
   ChildExitHandler child_exit_handler_;
   TerminationHandler term_handler_;
