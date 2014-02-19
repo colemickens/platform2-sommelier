@@ -202,6 +202,9 @@ class Service : public base::RefCounted<Service> {
   }
 
   virtual ConnectFailure failure() const { return failure_; }
+  // Sets the |previous_error_| property based on the current |failure_|, and
+  // sets a serial number for this failure.
+  virtual void SaveFailure();
   // Records the failure mode and time. Sets the Service state to "Failure".
   virtual void SetFailure(ConnectFailure failure);
   // Records the failure mode and time. Sets the Service state to "Idle".
@@ -735,6 +738,8 @@ class Service : public base::RefCounted<Service> {
   bool connectable_;
   std::string error_;
   std::string error_details_;
+  std::string previous_error_;
+  int32 previous_error_serial_number_;
   bool explicitly_disconnected_;
   int32 priority_;
   uint8 crypto_algorithm_;

@@ -120,6 +120,7 @@ Service::Service(ControlInterface *control_interface,
       connectable_(false),
       error_(ConnectFailureToString(failure_)),
       error_details_(kErrorDetailsNone),
+      previous_error_serial_number_(0),
       explicitly_disconnected_(false),
       priority_(kPriorityNone),
       crypto_algorithm_(kCryptoNone),
@@ -195,6 +196,10 @@ Service::Service(ControlInterface *control_interface,
                             &Service::SetNameProperty);
   // kPassphraseProperty: Registered in WiFiService
   // kPassphraseRequiredProperty: Registered in WiFiService, WiMaxService
+  store_.RegisterConstString(kPreviousErrorProperty,
+                             &previous_error_);
+  store_.RegisterConstInt32(kPreviousErrorSerialNumberProperty,
+                            &previous_error_serial_number_);
   HelpRegisterDerivedInt32(kPriorityProperty,
                            &Service::GetPriority,
                            &Service::SetPriority);
@@ -377,8 +382,14 @@ void Service::ThrottleFutureAutoConnects() {
                         kAutoConnectCooldownBackoffFactor));
 }
 
+void Service::SaveFailure() {
+  previous_error_ = ConnectFailureToString(failure_);
+  ++previous_error_serial_number_;
+}
+
 void Service::SetFailure(ConnectFailure failure) {
   failure_ = failure;
+  SaveFailure();
   failed_time_ = time(NULL);
   UpdateErrorProperty();
   SetState(kStateFailure);
@@ -390,6 +401,7 @@ void Service::SetFailureSilent(ConnectFailure failure) {
   // |failed_time_|.
   SetState(kStateIdle);
   failure_ = failure;
+  SaveFailure();
   UpdateErrorProperty();
   failed_time_ = time(NULL);
 }

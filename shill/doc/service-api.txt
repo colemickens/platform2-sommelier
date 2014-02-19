@@ -1029,6 +1029,27 @@ Properties	boolean AutoConnect [readwrite]
 			Type property of the underliying physical service used.
 			Otherwise the property is not present.
 
+		string PreviousError [readonly]
+
+			The most recent service error status logged.  Even
+			after the service leaves the failed state, this
+			property retains the last value that the Error property
+			contained.
+
+			Note that no PropertyChanged signals are sent for
+			this property. The Error property should be monitored
+			instead.
+
+		int32 PreviousErrorSerialNumber [readonly]
+
+			This number increases by one every time a service
+			failure is logged.  It returns to zero if shill
+			restarts.
+
+			Note that no PropertyChanged signals are sent for
+			this property. The Error property should be monitored
+			instead.
+
 		int32 Priority [readwrite]
 
 			An optional value used to calculate the priority order

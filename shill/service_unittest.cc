@@ -243,6 +243,8 @@ TEST_F(ServiceTest, Constructor) {
   EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_FALSE(service_->has_ever_connected());
+  EXPECT_EQ(0, service_->previous_error_serial_number_);
+  EXPECT_EQ("", service_->previous_error_);
 }
 
 TEST_F(ServiceTest, CalculateState) {
@@ -705,27 +707,33 @@ TEST_F(ServiceTest, State) {
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_TRUE(service_->IsFailed());
   EXPECT_GT(service_->failed_time_, 0);
+  EXPECT_GT(service_->previous_error_serial_number_, 0);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
   const string out_of_range_error(
       Service::ConnectFailureToString(Service::kFailureOutOfRange));
   EXPECT_EQ(out_of_range_error, service_->error());
+  EXPECT_EQ(out_of_range_error, service_->previous_error_);
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsFailed());
   EXPECT_EQ(service_->failed_time_, 0);
   EXPECT_EQ(unknown_error, service_->error());
+  EXPECT_EQ(out_of_range_error, service_->previous_error_);
+  EXPECT_GT(service_->previous_error_serial_number_, 0);
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetFailureSilent(Service::kFailurePinMissing);
   EXPECT_TRUE(service_->IsFailed());
   EXPECT_GT(service_->failed_time_, 0);
+  EXPECT_GT(service_->previous_error_serial_number_, 0);
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailurePinMissing, service_->failure());
   const string pin_missing_error(
       Service::ConnectFailureToString(Service::kFailurePinMissing));
   EXPECT_EQ(pin_missing_error, service_->error());
+  EXPECT_EQ(pin_missing_error, service_->previous_error_);
 
   // If the Service has a Profile, the profile should be saved when
   // the service enters kStateConnected. (The case where the service
