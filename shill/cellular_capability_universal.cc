@@ -1858,25 +1858,30 @@ void CellularCapabilityUniversal::On3GPPSubscriptionStateChanged(
                     << updated_state;
 
   // A one-to-one enum mapping.
+  SubscriptionState new_subscription_state;
   switch (updated_state) {
     case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN:
-      subscription_state_ = kSubscriptionStateUnknown;
+      new_subscription_state = kSubscriptionStateUnknown;
       break;
     case MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED:
-      subscription_state_ = kSubscriptionStateProvisioned;
+      new_subscription_state = kSubscriptionStateProvisioned;
       break;
     case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED:
-      subscription_state_ = kSubscriptionStateUnprovisioned;
+      new_subscription_state = kSubscriptionStateUnprovisioned;
       break;
     case MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA:
-      subscription_state_ = kSubscriptionStateOutOfData;
+      new_subscription_state = kSubscriptionStateOutOfData;
       break;
     default:
       LOG(ERROR) << "Unrecognized MMModem3gppSubscriptionState: "
                  << updated_state;
-      subscription_state_ = kSubscriptionStateUnknown;
+      new_subscription_state = kSubscriptionStateUnknown;
       return;
   }
+  if (new_subscription_state == subscription_state_)
+    return;
+
+  subscription_state_ = new_subscription_state;
 
   UpdateServiceActivationState();
   UpdatePendingActivationState();
