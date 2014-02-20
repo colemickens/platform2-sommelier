@@ -14,7 +14,7 @@
 # Further, the path at present is /bin:/usr/bin:/usr/bin/X11
 # so (e.g.) lspci needs the full path.
 
-cras,/usr/bin/cras_test_client --dump_server_info
+cras,/usr/bin/cras_test_client --dump_server_info --dump_audio_thread
 env,set
 setxkbmap,/usr/bin/setxkbmap -print -query
 xinput,/usr/bin/xinput list --long
