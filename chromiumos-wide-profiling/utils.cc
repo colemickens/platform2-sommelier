@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <zlib.h>
 
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -24,6 +25,9 @@ const int kFileReadSize = 1024;
 
 // Number of hex digits in a byte.
 const int kNumHexDigitsInByte = 2;
+
+// Initial buffer size when reading compresed files.
+const int kInitialBufferSizeForCompressedFiles = 4096;
 
 }  // namespace
 
@@ -65,6 +69,46 @@ uint64 Md5Prefix(const string& input) {
        << static_cast<unsigned int>(digest[i]);
   ss >> digest_prefix;
   return digest_prefix;
+}
+
+bool GZFileToBuffer(const string& filename, std::vector<char>* contents) {
+  gzFile fp = gzopen(filename.c_str(), "rb");
+  if (!fp)
+    return false;
+  size_t total_bytes_read = 0;
+  contents->resize(kInitialBufferSizeForCompressedFiles);
+  while (true) {
+    size_t bytes_read = gzread(
+        fp,
+        &((*contents)[total_bytes_read]),
+        contents->size() - total_bytes_read);
+    total_bytes_read += bytes_read;
+    if (total_bytes_read != contents->size())
+      break;
+    contents->resize(contents->size() * 2);
+  }
+  gzclose(fp);
+  contents->resize(total_bytes_read);
+  int error;
+  const char* error_string = gzerror(fp, &error);
+  if (error != Z_STREAM_END && error != Z_OK) {
+    LOG(ERROR) << "Error while reading gzip file: " << error_string;
+    return false;
+  }
+  return true;
+}
+
+bool BufferToGZFile(const string& filename, const std::vector<char>& contents) {
+  gzFile fp;
+  fp = gzopen(filename.c_str(), "wb");
+  if (!fp)
+    return false;
+  if (!contents.empty()) {
+    CHECK_GT(gzwrite(fp,
+                     &contents[0], contents.size() * sizeof(contents[0])), 0);
+  }
+  gzclose(fp);
+  return true;
 }
 
 bool BufferToFile(const string& filename, const std::vector<char>& contents) {

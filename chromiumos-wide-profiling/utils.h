@@ -26,6 +26,12 @@ bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
 bool BufferToFile(const string& filename, const std::vector<char>& contents);
 
+// Stores the value of |contents| within a compressed file with name |filename|.
+bool BufferToGZFile(const string& filename, const std::vector<char>& contents);
+
+// Reads a compressed file with name |filename| into |contents|.
+bool GZFileToBuffer(const string& filename, std::vector<char>* contents);
+
 uint64 Md5Prefix(const string& input);
 
 // Returns a string that represents |array| in hexadecimal.

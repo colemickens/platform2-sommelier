@@ -8,6 +8,7 @@
 #include "perf_serializer.h"
 #include "perf_protobuf_io.h"
 #include "quipper_test.h"
+#include "test_utils.h"
 #include "utils.h"
 
 namespace quipper {
@@ -46,6 +47,13 @@ TEST(UtilsTest, TestHexToString) {
   hex_number[0] = 0x8f;
   hex_number[arraysize(hex_number) - 1] = 0x64;
   EXPECT_EQ("8f02081840a08064", HexToString(hex_number, arraysize(hex_number)));
+}
+
+TEST(UtilsTest, TestGZRead) {
+  std::vector<char> contents;
+  GZFileToBuffer(GetTestInputFilePath("hello_world.txt.gz"), &contents);
+  string string_contents(contents.begin(), contents.end());
+  EXPECT_EQ(string_contents, "hello world\n");
 }
 
 TEST(UtilsTest, TestStringToHex) {
