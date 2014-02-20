@@ -157,9 +157,9 @@ TEST(PerfSerializerTest, Test1Cycle) {
     ASSERT_EQ(output_perf_reader2.events().size(),
               input_perf_reader.events().size());
 
-    EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
+    EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
     EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
-    EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
+    EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data2));
     EXPECT_TRUE(ComparePerfBuildIDLists(output_perf_data, output_perf_data2));
   }
 }
@@ -233,10 +233,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
     const string output_perf_data = output_path + test_file + ".ser.comm.out";
     EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
                                                output_perf_data));
-    // Compare only DSO names, since the commands will not match.
-    EXPECT_TRUE(ComparePerfReportsByFields(input_perf_data,
-                                           output_perf_data,
-                                           "dso,sym"));
+    EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
   }
 }
 

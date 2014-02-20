@@ -15,33 +15,24 @@
 
 #include "base/logging.h"
 
+#include "perf_serializer.h"
+#include "quipper_proto.h"
 #include "utils.h"
 
+using quipper::PerfDataProto;
+using quipper::PerfSerializer;
+using quipper::TextFormat;
+
 namespace {
-
-// By default, sort normal files by command, DSO name, and symbol/address.
-const char kDefaultSortFields[] = "comm,dso,sym";
-
-// By default, sort piped files by command and DSO name.
-const char kDefaultPipedSortFields[] = "comm,dso";
-
-// Tolerance for equality comparison in CompareMapsAccountingForUnknownEntries.
-const double kPerfReportEntryErrorThreshold = 0.05;
 
 // Newline character.
 const char kNewLineDelimiter = '\n';
 
-const char kPerfReportCommentCharacter = '#';
-const char kPerfReportMetadataFieldCharacter = ':';
-const char kPerfReportDataFieldDelimiter = ',';
-const char kMetadataDelimiter = ',';
+// Extension of protobuf files in text format.
+const char kProtobufTextExtension[] = ".pb_text.gz";
 
-const char kReportExtension[] = ".report";
+// Extension of build ID lists.
 const char kBuildIDListExtension[] = ".buildids";
-const int kPerfReportParseError = -1;
-const char kUnknownDSOString[] = "[unknown]";
-const int kUninitializedUnknownValue = -1;
-const char kEventMetadataType[] = "event";
 
 enum PerfDataType {
   kPerfDataNormal,    // Perf data is in normal format.
@@ -57,50 +48,6 @@ enum {
   PERF_REPORT_SHARED_OBJECT,
   NUM_PERF_REPORT_FIELDS,
 };
-
-string GetPerfReportArgs(PerfDataType data_type, const string& sort_fields) {
-  // The marker in the command strings where custom sort fields can be inserted.
-  const char kSortFieldsPlaceholder[] = "[SORT_FIELDS]";
-
-  // List of basic arguments for perf report.
-  const char* kPerfReportArgs[] = {
-    "report",                     // Tells perf to generate a perf report.
-    "--symfs=/dev/null",          // Don't attempt to symbolize.
-    "--stdio",                    // Output to stdio.
-    "--force",                    // Ignore file permissions.
-    "--sort",                     // Specify fields by which to sort.
-    kSortFieldsPlaceholder,       // Value of previous arg, listing sort fields.
-    "-t ,",                       // Use comma as a separator.
-    "-n",                         // Show event count.
-    "-I",                         // Show topology metadata.
-    "-i",                         // Use subsequent input file.
-  };
-
-  // Append this to the command for piped data.
-  const char kPipedReportSuffix[] = "- < ";
-
-  // Construct the argument string by concatenating the arguments.
-  string args;
-  for (size_t i = 0; i < arraysize(kPerfReportArgs); ++i)
-    args += string(kPerfReportArgs[i]) + " ";
-
-  args.replace(args.find(kSortFieldsPlaceholder),
-               strlen(kSortFieldsPlaceholder),
-               sort_fields);
-
-  switch(data_type) {
-  case kPerfDataNormal:
-    // Do nothing.
-    break;
-  case kPerfDataPiped:
-    args += kPipedReportSuffix;
-    break;
-  default:
-    LOG(ERROR) << "Invalid perf data type: " << data_type;
-    break;
-  }
-  return args;
-}
 
 string GetPerfCommandString(const string& args, const string& filename) {
   // Construct the commands.
@@ -155,298 +102,33 @@ void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
     SplitString(string(&bytes[0], bytes.size()), kNewLineDelimiter, lines);
 }
 
-// Calls "perf report" on a given perf data file and returns the report output.
-bool CallPerfReport(const string& filename,
-                    const string& sort_fields,
-                    PerfDataType perf_data_type,
-                    std::vector<char>* report_output) {
-  // Try reading from an pre-generated report.  If it doesn't exist, call perf
-  // report.
-  if (!quipper::FileToBuffer(filename + "." + sort_fields + kReportExtension,
-                             report_output)) {
-    string cmd =
-        GetPerfCommandString(GetPerfReportArgs(perf_data_type, sort_fields),
-                                               filename);
-    report_output->clear();
-    if (!quipper::RunCommandAndGetStdout(cmd, report_output))
-      return false;
-  }
-  return true;
-}
-
-// Given a perf piped data file, get the perf report and read it into a string.
-// is_normal_mode should be true if the INPUT file to quipper was in normal
-// mode.  Note that a file written by quipper is always in normal mode.
-bool GetPerfReport(const string& filename,
-                   std::vector<string>* output,
-                   string sort_fields,
-                   bool is_normal_mode) {
-  std::vector<char> report_output;
-  if (!CallPerfReport(filename,
-                      sort_fields,
-                      is_normal_mode ? kPerfDataNormal : kPerfDataPiped,
-                      &report_output)) {
+bool ReadExistingProtobufText(const string& filename, string* output_string) {
+  std::vector<char> output_buffer;
+  if (!quipper::GZFileToBuffer(filename + kProtobufTextExtension,
+                               &output_buffer)) {
+    LOG(ERROR) << "Could not open file " << filename + kProtobufTextExtension;
     return false;
   }
-  std::vector<string> lines;
-  SeparateLines(report_output, &lines);
-
-  // Read line by line, discarding commented lines.
-  // Only keep commented lines of the form
-  // # <supported metadata> :
-  // Where <supported metadata> is any string in kSupportedMetadata.
-  output->clear();
-  for (size_t i = 0; i < lines.size(); ++i) {
-    string line = lines[i];
-    if (line.empty()) {
-      output->push_back(line);
-      continue;
-    }
-    bool use_line = false;
-    if (line[0] != kPerfReportCommentCharacter)
-      use_line = true;
-
-    for (size_t j = 0; quipper::kSupportedMetadata[j]; ++j) {
-      stringstream ss;
-      ss << kPerfReportCommentCharacter << " "
-         << quipper::kSupportedMetadata[j];
-      string valid_prefix = ss.str();
-      if (line.substr(0, valid_prefix.size()) == valid_prefix)
-        use_line = true;
-    }
-
-    if (use_line) {
-      TrimWhitespace(&line);
-      output->push_back(line);
-    }
-  }
-
+  output_string->assign(&output_buffer[0], output_buffer.size());
   return true;
 }
 
-// Populates the map using information from the report.
-// Returns the index at which the next section begins, or kPerfReportParseError
-// to signal an error.
-// The report is expected to contain lines in the format
-// Overhead,Samples,Command,Shared Object
-// And the section ends with the empty string.
-int ParsePerfReportSection(const std::vector<string>& report, size_t index,
-                           std::map<string, double>* dso_to_overhead,
-                           std::map<string, int>* dso_to_num_samples) {
-  dso_to_overhead->clear();
-  dso_to_num_samples->clear();
-  while (index < report.size() && !report[index].empty()) {
-    const string& item = report[index++];
-    std::vector<string> tokens;
-    SplitString(item, kPerfReportDataFieldDelimiter, &tokens);
-
-    if (tokens.size() != NUM_PERF_REPORT_FIELDS)
-      return kPerfReportParseError;
-
-    string key = tokens[PERF_REPORT_COMMAND] + "+"
-        + tokens[PERF_REPORT_SHARED_OBJECT];
-    double overhead = atof(tokens[PERF_REPORT_OVERHEAD].c_str());
-    int num_samples = atoi(tokens[PERF_REPORT_SAMPLES].c_str());
-
-    if (num_samples == 0)
-      return kPerfReportParseError;
-
-    CHECK(dso_to_overhead->find(key) == dso_to_overhead->end())
-        << "Command + Shared Object " << key << " occurred twice in a section";
-    dso_to_overhead->insert(std::pair<string, double>(key, overhead));
-    dso_to_num_samples->insert(std::pair<string, int>(key, num_samples));
+// Given a perf data file, return its protobuf representation (given by
+// PerfSerializer) as a text string.
+bool GetProtobufTextFormat(const string& filename, string* output_string) {
+  PerfDataProto perf_data_proto;
+  PerfSerializer serializer;
+  if (!serializer.SerializeFromFile(filename, &perf_data_proto)) {
+    return false;
+  }
+  // Reset the timestamp field since it causes reproducability issues when
+  // testing.
+  perf_data_proto.set_timestamp_sec(0);
+  if (!TextFormat::PrintToString(perf_data_proto, output_string)) {
+    return false;
   }
 
-  // Skip any more empty lines.
-  while (index < report.size() && report[index].empty())
-    ++index;
-
-  return index;
-}
-
-// Compares two maps created by ParsePerfReportSection.
-// The input map may contain kUnknownDSOString, but the output map should not.
-// class T is used to support ints and doubles.
-// Checks the following conditions:
-// 1. No key in output_map has a substring kUnknownDSOString.
-// 2. Every key in input_map without the kUnknownDSOString substring is also
-//    present in output_map.
-// 3. The values in input_map and output_map agree with each other.
-template <class T>
-bool CompareMapsAccountingForUnknownEntries(
-    const std::map<string, T>& input_map,
-    const std::map<string, T>& output_map) {
-  T unknown_value = kUninitializedUnknownValue;
-  T output_minus_input = 0;
-  typename std::map<string, T>::const_iterator it;
-
-  for (it = input_map.begin(); it != input_map.end(); ++it) {
-    string key = it->first;
-    if (key.find(kUnknownDSOString) != string::npos) {
-      CHECK_EQ(unknown_value, kUninitializedUnknownValue);
-      unknown_value = it->second;
-    } else if (output_map.find(key) == output_map.end()) {
-      return false;
-    } else {
-      output_minus_input += (output_map.at(key) - it->second);
-    }
-  }
-
-  // Add any items present in output_map but not input_map.
-  for (it = output_map.begin(); it != output_map.end(); ++it) {
-    string key = it->first;
-    if (key.find(kUnknownDSOString) != string::npos)
-      return false;
-    else if (input_map.find(key) == input_map.end())
-      output_minus_input += it->second;
-  }
-
-  // If there were no unknown samples, don't use the error threshold,
-  // because in this case the reports should be identical.
-  if (unknown_value == kUninitializedUnknownValue)
-    return output_minus_input == 0;
-
-  T difference = output_minus_input - unknown_value;
-  return (difference < kPerfReportEntryErrorThreshold) &&
-         (difference > -kPerfReportEntryErrorThreshold);
-}
-
-// Concatenates a vector of strings to a single string, using the following
-// format:
-// { |vec[0]|, |vec[1]|, ... , |vec[n-1]| }
-string ConcatStringVector(const std::vector<string>& strings) {
-  string result = "{ ";
-  for (size_t i = 0; i < strings.size(); ++i) {
-    result += strings[i];
-    if (i + 1 < strings.size())
-      result += string(kMetadataDelimiter, 1) + " ";
-  }
-  result += " }";
-  return result;
-}
-
-// For each string in |*lines|:
-// 1. Separate the string fields by |kPerfReportDataFieldDelimiter|.
-// 2. Trim whitespace from each field.
-// 3. Combine the fields in the format:
-//    { field0, field1, field2, ... }
-void FormatLineFields(std::vector<string>* lines) {
-  for (size_t i = 0; i < lines->size(); ++i) {
-    string& line = lines->at(i);
-    std::vector<string> line_fields;
-    SplitString(line, kPerfReportDataFieldDelimiter, &line_fields);
-    for (size_t j = 0; j < line_fields.size(); ++j)
-      TrimWhitespace(&line_fields[j]);
-    line = ConcatStringVector(line_fields);
-  }
-}
-
-// Returns a set of event metadata in key/value format, extracted from a line of
-// metadata from perf report, in |metadata_string|.
-// TODO(sque): add a unit test for this.
-bool GetEventMetadata(const string& metadata_string,
-                      quipper::MetadataSet* metadata_map) {
-  string input = metadata_string.c_str();
-  // Event type metadata is of the format:
-  // # event : name = cycles, type = 0, config = 0x0, config1 = 0x0,
-  //     config2 = 0x0, excl_usr = 0, excl_kern = 0, id = { 11, 12 }
-  std::vector<string> metadata_pairs;
-  SplitString(input, kMetadataDelimiter, &metadata_pairs);
-  for (size_t i = 0; i < metadata_pairs.size(); ++i) {
-    const string& pair = metadata_pairs[i];
-    // Further split the event sub-field string into key-value pairs.
-    size_t equal_sign_position = pair.find("=");
-    if (equal_sign_position == string::npos)
-      continue;
-    string key = pair.substr(0, equal_sign_position);
-    string value = pair.substr(equal_sign_position + 1);
-    TrimWhitespace(&key);
-    TrimWhitespace(&value);
-    // Make sure this is not overwriting an existing key-value pair.
-    CHECK(metadata_map->find(key) == metadata_map->end());
-  }
   return true;
-}
-
-// Compares the contents of two sets of metadata, organized as key-value pairs:
-// <metadata type, metadata value>
-// Returns true if there is no metadata type with mismatched values.
-// If a metadata type exists in one but not in the other, it does not count as a
-// mismatch.
-bool CompareMetadata(const quipper::MetadataSet& input,
-                     const quipper::MetadataSet& output) {
-  quipper::MetadataSet::const_iterator iter;
-  int num_metadata_mismatches = 0;
-  for (iter = input.begin(); iter != input.end(); ++iter) {
-    const string& type = iter->first;
-    if (output.find(type) == output.end())
-      continue;
-    const std::vector<string>& input_values = iter->second;
-    const std::vector<string>& output_values = output.at(type);
-    if (input_values == output_values)
-      continue;
-    if (type != kEventMetadataType) {
-      LOG(ERROR) << "Mismatch in input and output metadata of type " << type
-                 << ": [" << ConcatStringVector(input_values) << "] vs ["
-                 << ConcatStringVector(output_values) << "]";
-      ++num_metadata_mismatches;
-      continue;
-    }
-    // There may be multiple event types.  Make sure the number is the same
-    // between input and output.
-    if (input_values.size() != output_values.size()) {
-      LOG(ERROR) << "Input and output metadata have different numbers of event"
-                 << " types: " << input_values.size() << " vs "
-                 << output_values.size();
-      ++num_metadata_mismatches;
-      continue;
-    }
-
-    // For the event type metadata strings, further break them down by
-    // sub-field.
-    for (size_t i = 0; i < input_values.size(); ++i) {
-      quipper::MetadataSet input_event_metadata;
-      quipper::MetadataSet output_event_metadata;
-      CHECK(GetEventMetadata(input_values[i], &input_event_metadata));
-      CHECK(GetEventMetadata(output_values[i], &output_event_metadata));
-      // There's a recursive call here.  Make sure that the recursive call is
-      // not triggered again, by checking that none of the event type sub-fields
-      // has the key |kEventMetadataType|.
-      CHECK(input_event_metadata.find(kEventMetadataType) ==
-            input_event_metadata.end());
-      CHECK(output_event_metadata.find(kEventMetadataType) ==
-            output_event_metadata.end());
-      // The event sub-fields have the same format as the general metadata, so
-      // reuse this function to check the sub-fields.
-      // e.g.
-      //
-      // input_event_metadata = {
-      //   hostname : localhost,
-      //   os release : 3.4.0,
-      //   perf version : 3.4.2,
-      //   arch : x86_64,
-      //   nrcpus online : 2,
-      //   nrcpus avail : 2,
-      //   event : name = cycles, type = 0, config = 0x0, config1 = 0x0,
-      //           config2 = 0x0, excl_usr = 0, excl_kern = 0, id = { 11, 12 }
-      // }
-      //
-      // The event field in the above data can be shown in a similar format:
-      // event_data = {
-      //   name: cycles
-      //   type: 0,
-      //   config: 0x0,
-      //   config1: 0x0,
-      //   config2: 0x0,
-      //   excl_usr: 0,
-      //   excl_kern: 0,
-      //   id: { 11, 12 },
-      // }
-      if (!CompareMetadata(input_event_metadata, output_event_metadata))
-        ++num_metadata_mismatches;
-    }
-  }
-  return (num_metadata_mismatches == 0);
 }
 
 }  // namespace
@@ -473,53 +155,6 @@ const char* kSupportedMetadata[] = {
   "node1 cpu list",       // NUMA topology.
   NULL,
 };
-
-namespace {
-
-// Stores the metadata types found in |report| in |*seen_metadata|.
-// Returns the number of lines at the beginning of |report| containing metadata.
-// Each string in |report| is a line of the report.
-int ExtractReportMetadata(const std::vector<string>& report,
-                          MetadataSet* seen_metadata) {
-  size_t index = 0;
-  while (index < report.size()) {
-    const string& line = report[index];
-    if (line[0] != kPerfReportCommentCharacter)
-      break;
-    size_t index_of_colon = line.find(kPerfReportMetadataFieldCharacter);
-    if (index_of_colon == string::npos)
-      return -1;
-
-    // Get the metadata type name.
-    string key = line.substr(1, index_of_colon - 1);
-    TrimWhitespace(&key);
-
-    bool metadata_is_supported = false;
-    for (size_t i = 0; kSupportedMetadata[i]; ++i) {
-      if (key == kSupportedMetadata[i]) {
-        metadata_is_supported = true;
-        break;
-      }
-    }
-
-    // The field should have only ASCII printable characters.  The opposite of
-    // printable characters are control charaters.
-    if (std::find_if(key.begin(), key.end(), iscntrl) != key.end())
-      return -1;
-
-    // Add the metadata to the set of seen metadata.
-    if (seen_metadata && metadata_is_supported) {
-      string value = line.substr(index_of_colon + 1, string::npos);
-      TrimWhitespace(&value);
-      (*seen_metadata)[key].push_back(value);
-    }
-
-    ++index;
-  }
-  return index;
-}
-
-}  // namespace
 
 long int GetFileSize(const string& filename) {
   FILE* fp = fopen(filename.c_str(), "rb");
@@ -563,115 +198,6 @@ ScopedTempPath::~ScopedTempPath() {
     LOG(ERROR) << "Error while removing " << path_ << ", errno: " << errno;
 }
 
-bool ComparePerfReports(const string& quipper_input,
-                        const string& quipper_output) {
-  return ComparePerfReportsByFields(quipper_input,
-                                    quipper_output,
-                                    kDefaultSortFields);
-}
-
-bool ComparePerfReportsByFields(const string& quipper_input,
-                                const string& quipper_output,
-                                const string& sort_fields) {
-  // Generate a perf report for each file.
-  std::vector<string> quipper_input_report, quipper_output_report;
-  CHECK(GetPerfReport(quipper_input, &quipper_input_report,
-                      sort_fields, true));
-  CHECK(GetPerfReport(quipper_output, &quipper_output_report,
-                      sort_fields, true));
-
-  // Extract the metadata from the reports.
-  MetadataSet input_metadata, output_metadata;
-  int input_index =
-      ExtractReportMetadata(quipper_input_report, &input_metadata);
-  int output_index =
-      ExtractReportMetadata(quipper_output_report, &output_metadata);
-
-  if (!CompareMetadata(input_metadata, output_metadata)) {
-    LOG(ERROR) << "Mismatch between input and output metadata.";
-    return false;
-  }
-
-  if (input_index < 0) {
-    LOG(ERROR) << "Could not find start of input report body.";
-    return false;
-  }
-  if (output_index < 0) {
-    LOG(ERROR) << "Could not find start of output report body.";
-    return false;
-  }
-
-  // Trim whitespace in each of the comma-separated fields.
-  // e.g. a line line this:
-  //     10.32,829,libc-2.15.so              ,[.] 0x00000000000b7e52
-  // becomes this:
-  //     10.32,829,libc-2.15.so,[.] 0x00000000000b7e52
-  FormatLineFields(&quipper_input_report);
-  FormatLineFields(&quipper_output_report);
-
-  // Compare the output log contents after the metadata.
-  if (!std::equal(quipper_input_report.begin() + input_index,
-                  quipper_input_report.end(),
-                  quipper_output_report.begin() + output_index)) {
-    LOG(ERROR) << "Input and output report contents don't match.";
-    return false;
-  }
-
-  return true;
-}
-
-bool ComparePipedPerfReports(const string& quipper_input,
-                             const string& quipper_output,
-                             MetadataSet* seen_metadata) {
-  // Generate a perf report for each file.
-  std::vector<string> quipper_input_report, quipper_output_report;
-  CHECK(GetPerfReport(quipper_input, &quipper_input_report,
-                      kDefaultPipedSortFields, false));
-  CHECK(GetPerfReport(quipper_output, &quipper_output_report,
-                      kDefaultPipedSortFields, true));
-  int input_size = quipper_input_report.size();
-  int output_size = quipper_output_report.size();
-
-  // TODO(sque): The chromiumos perf tool does not show metadata for piped data,
-  // but other perf tools might.  We should check that the metadata values match
-  // when both the input and output reports have metadata.
-  int input_index = ExtractReportMetadata(quipper_input_report, NULL);
-  int output_index =
-      ExtractReportMetadata(quipper_output_report, seen_metadata);
-
-  if (input_index < 0)
-    return false;
-  if (output_index < 0)
-    return false;
-
-  // Parse each section of the perf report and make sure they agree.
-  // See ParsePerfReportSection and CompareMapsAccountingForUnknownEntries.
-
-  while (input_index < input_size && output_index < output_size) {
-    std::map<string, double> input_overhead, output_overhead;
-    std::map<string, int> input_num_samples, output_num_samples;
-
-    input_index = ParsePerfReportSection(quipper_input_report, input_index,
-                                         &input_overhead, &input_num_samples);
-    if (input_index == kPerfReportParseError)
-      return false;
-    output_index = ParsePerfReportSection(quipper_output_report, output_index,
-                                          &output_overhead,
-                                          &output_num_samples);
-    if (output_index == kPerfReportParseError)
-      return false;
-
-    if (!CompareMapsAccountingForUnknownEntries(input_overhead,
-                                                output_overhead))
-      return false;
-    if (!CompareMapsAccountingForUnknownEntries(input_num_samples,
-                                                output_num_samples))
-      return false;
-  }
-
-  return (input_index == input_size) && (output_index == output_size);
-}
-
 bool GetPerfBuildIDMap(const string& filename,
                        std::map<string, string>* output) {
   // Try reading from an pre-generated report.  If it doesn't exist, call perf
@@ -705,6 +231,19 @@ bool GetPerfBuildIDMap(const string& filename,
   }
 
   return true;
+}
+
+bool CheckPerfDataAgainstBaseline(const string& filename) {
+  string existing_input_file = GetTestInputFilePath(basename(filename.c_str()));
+  string baseline;
+  if (!ReadExistingProtobufText(existing_input_file , &baseline)) {
+    return false;
+  }
+  string protobuf_text;
+  if (!GetProtobufTextFormat(filename, &protobuf_text)) {
+    return false;
+  }
+  return baseline == protobuf_text;
 }
 
 bool ComparePerfBuildIDLists(const string& file1, const string& file2) {
