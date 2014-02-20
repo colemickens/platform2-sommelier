@@ -323,14 +323,6 @@ gboolean cryptohome_async_tpm_attestation_create_enroll_request(
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateEnrollRequest, pca_type,
                          OUT_async_id);
 }
-gboolean cryptohome_async_tpm_attestation_create_enroll_request_new(
-    Cryptohome* self,
-    gint pca_type,
-    gint* OUT_async_id,
-    GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateEnrollRequest, pca_type,
-                         OUT_async_id);
-}
 gboolean cryptohome_tpm_attestation_enroll(Cryptohome* self,
                                            gint pca_type,
                                            GArray* pca_response,
@@ -344,14 +336,6 @@ gboolean cryptohome_async_tpm_attestation_enroll(Cryptohome* self,
                                                  GArray* pca_response,
                                                  gint* OUT_async_id,
                                                  GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationEnroll, pca_type, pca_response,
-                         OUT_async_id);
-}
-gboolean cryptohome_async_tpm_attestation_enroll_new(Cryptohome* self,
-                                                     gint pca_type,
-                                                     GArray* pca_response,
-                                                     gint* OUT_async_id,
-                                                     GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationEnroll, pca_type, pca_response,
                          OUT_async_id);
 }
