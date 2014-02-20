@@ -36,15 +36,15 @@
 #include "dbus_transition.h"
 #include "install_attributes.h"
 #include "interface.h"
+#include "key.pb.h"
 #include "marshal.glibmarshal.h"
 #include "mount.h"
 #include "platform.h"
+#include "rpc.pb.h"
 #include "stateful_recovery.h"
 #include "tpm.h"
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
-#include "shared-pbs/key.pb.h"
-#include "shared-pbs/rpc.pb.h"
 
 using chromeos::SecureBlob;
 
@@ -80,6 +80,7 @@ class TimerCollection {
     kSyncGuestMountTimer,
     kTpmTakeOwnershipTimer,
     kPkcs11InitTimer,
+    kMountExTimer,
     kNumTimerTypes  // For the number of timer types.
   };
 
@@ -132,6 +133,7 @@ const HistogramParams TimerCollection::kHistogramParams[kNumTimerTypes] = {
   {"Cryptohome.TimeToMountGuestAsync", 0, 4000, 50},
   {"Cryptohome.TimeToMountGuestSync", 0, 4000, 50},
   {"Cryptohome.TimeToTakeTpmOwnership", 0, 100000, 50},
+  {"Cryptohome.TimeToMountEx", 0, 4000, 50},
   {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50}
 };
 // A note on the PKCS#11 initialization time:
@@ -260,6 +262,8 @@ Service::Service()
       mounts_lock_(),
       default_mount_factory_(new cryptohome::MountFactory),
       mount_factory_(default_mount_factory_.get()),
+      default_reply_factory_(new cryptohome::DBusReplyFactory),
+      reply_factory_(default_reply_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       guest_user_(chromeos::cryptohome::home::kGuestUserName),
@@ -311,6 +315,47 @@ bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
     }
   }
   return true;
+}
+
+CryptohomeErrorCode Service::MountErrorToCryptohomeError(
+   const MountError code) const {
+  switch (code) {
+  case MOUNT_ERROR_FATAL:
+    return CRYPTOHOME_ERROR_MOUNT_FATAL;
+  case MOUNT_ERROR_KEY_FAILURE:
+   return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  case MOUNT_ERROR_MOUNT_POINT_BUSY:
+    return CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+  case MOUNT_ERROR_TPM_COMM_ERROR:
+    return CRYPTOHOME_ERROR_TPM_COMM_ERROR;
+  case MOUNT_ERROR_TPM_DEFEND_LOCK:
+    return CRYPTOHOME_ERROR_TPM_DEFEND_LOCK;
+  case MOUNT_ERROR_USER_DOES_NOT_EXIST:
+    return CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+  case MOUNT_ERROR_TPM_NEEDS_REBOOT:
+    return CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT;
+  case MOUNT_ERROR_RECREATED:
+  default:
+    return CRYPTOHOME_ERROR_NOT_SET;
+  }
+}
+
+void Service::SendReply(DBusGMethodInvocation* context,
+                        const BaseReply& reply) {
+  // DBusReply will take ownership of the |reply_str|.
+  scoped_ptr<std::string> reply_str(new std::string);
+  reply.SerializeToString(reply_str.get());
+  event_source_.AddEvent(reply_factory_->NewReply(context,
+                                                  reply_str.release()));
+}
+
+void Service::SendInvalidArgsReply(DBusGMethodInvocation* context,
+                                   const char* message) {
+    GError* error = g_error_new_literal(DBUS_GERROR,
+                                        DBUS_GERROR_INVALID_ARGS,
+                                        message);
+    DBusErrorReply* reply_cb = reply_factory_->NewErrorReply(context, error);
+    event_source_.AddEvent(reply_cb);
 }
 
 bool Service::CleanUpStaleMounts(bool force) {
@@ -1118,24 +1163,203 @@ gboolean Service::Mount(const gchar *userid,
   return TRUE;
 }
 
-void Service::DoMountEx(const GArray *account_id,
-                        const GArray *authorization_request,
-                        const GArray *mount_request,
+void Service::DoMountEx(AccountIdentifier* identifier,
+                        AuthorizationRequest* authorization,
+                        MountRequest* request,
                         DBusGMethodInvocation *context) {
+  if (!identifier || !authorization || !request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  // Setup a reply for use during error handling.
   BaseReply reply;
-  reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+
+  // Needed to pass along |recreated|
+  MountReply* mount_reply = reply.MutableExtension(MountReply::reply);
+  mount_reply->set_recreated(false);
+
+  // See ::Mount for detailed commentary.
+  if (mounts_.size() == 0)
+    CleanUpStaleMounts(false);
+
+  // At present, we only enforce non-empty email addresses.
+  // In the future, we may wish to canonicalize if we don't move
+  // to requiring a IdP-unique identifier.
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+
+  // An AuthorizationRequest key without a label will test against
+  // all VaultKeysets of a compatible key().data().type().
+  if (authorization->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+
+  if (request->has_create()) {
+    if (request->create().copy_authorization_key()) {
+      Key *auth_key = request->mutable_create()->add_keys();
+      *auth_key = authorization->key();
+      // Don't allow a key creation and mount if the key lacks
+      // the privileges.
+      if (!auth_key->data().privileges().mount()) {
+        reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED);
+        SendReply(context, reply);
+        return;
+      }
+    }
+    int keys_size = request->create().keys_size();
+    if (keys_size == 0) {
+      SendInvalidArgsReply(context, "CreateRequest supplied with no keys");
+      return;
+    } else if (keys_size > 1) {
+      LOG(INFO) << "MountEx: unimplemented CreateRequest with multiple keys";
+      reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+      SendReply(context, reply);
+      return;
+    } else {
+      const Key key = request->create().keys(0);
+      // TODO(wad) Ensure the labels are all unique.
+      if (key.secret().empty() || !key.has_data() ||
+          key.data().label().empty()) {
+        SendInvalidArgsReply(context,
+                             "CreateRequest Keys are not fully specified");
+        return;
+      }
+    }
+  }
+
+  UsernamePasskey credentials(identifier->email().c_str(),
+                            SecureBlob(authorization->key().secret().c_str(),
+                                       authorization->key().secret().length()));
+  // Everything else can be the default.
+  credentials.set_key_data(authorization->key().data());
+
+  if (!request->has_create() && !homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
+  // While it would be cleaner to implement the privilege enforcement
+  // here, that can only be done if a label was supplied.  If a wildcard
+  // was supplied, then we can only perform the enforcement after the
+  // matching key is identified.
+  //
+  // See Mount::MountCryptohome for privilege checking.
+
+  scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
+  bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
+  // TODO(wad,ellyjones) Change this behavior to return failure even
+  // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
+  if (guest_mounted && !guest_mount->UnmountCryptohome()) {
+    LOG(ERROR) << "Could not unmount cryptohome from Guest session";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    SendReply(context, reply);
+    return;
+  }
+
+  // Don't overlay an ephemeral mount over a file-backed one.
+  scoped_refptr<cryptohome::Mount> user_mount =
+      GetOrCreateMountForUser(identifier->email());
+  if (request->require_ephemeral() && user_mount->IsVaultMounted()) {
+    // TODO(wad,ellyjones) Change this behavior to return failure even
+    // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
+    if (!user_mount->UnmountCryptohome()) {
+      LOG(ERROR) << "Could not unmount vault before an ephemeral mount.";
+      reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+      SendReply(context, reply);
+      return;
+    }
+  }
+
+  if (user_mount->IsMounted()) {
+    LOG(INFO) << "Mount exists. Rechecking credentials.";
+    // Attempt a short-circuited credential test.
+    if (user_mount->AreSameUser(credentials) &&
+        user_mount->AreValid(credentials)) {
+      SendReply(context, reply);
+      return;
+    }
+    // If the Mount has invalid credentials (repopulated from system state)
+    // this will ensure a user can still sign-in with the right ones.
+    // TODO(wad) Should we unmount on a failed re-mount attempt?
+    if (!user_mount->AreValid(credentials) &&
+        !homedirs_->AreCredentialsValid(credentials)) {
+      reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    }
+    SendReply(context, reply);
+    return;
+  }
+
+  // See Mount for a relevant comment.
+  if (install_attrs_->is_first_install()) {
+    install_attrs_->Finalize();
+  }
+
+  // As per the other timers, this really only tracks time spent in
+  // MountCryptohome() not in the other areas prior.
+  timer_collection_->UpdateTimer(TimerCollection::kMountExTimer, true);
+  MountError code = MOUNT_ERROR_NONE;
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = request->has_create();
+  mount_args.ensure_ephemeral = request->require_ephemeral();
+  bool status = user_mount->MountCryptohome(credentials,
+                                            mount_args,
+                                            &code);
+  user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
+
+  // Provide an authoritative filesystem-sanitized username.
+  mount_reply->set_sanitized_username(
+      chromeos::cryptohome::home::SanitizeUserName(identifier->email()));
+
+  // Mark the timer as done.
+  timer_collection_->UpdateTimer(TimerCollection::kMountExTimer, false);
+  if (!status) {
+    reply.set_error(MountErrorToCryptohomeError(code));
+  }
+  if (code == MOUNT_ERROR_RECREATED) {
+    mount_reply->set_recreated(true);
+  }
+
   SendReply(context, reply);
+
+  // Update user activity timestamp to be able to detect old users.
+  // This action is not mandatory, so we perform it after
+  // CryptohomeMount() returns, in background.
+  user_mount->UpdateCurrentUserActivityTimestamp(0);
+  // Time to push the task for PKCS#11 initialization.
+  // TODO(wad) This call will PostTask back to the same thread. It is safe, but
+  //           it seems pointless.
+  InitializePkcs11(user_mount);
 }
 
 gboolean Service::MountEx(const GArray *account_id,
                           const GArray *authorization_request,
                           const GArray *mount_request,
                           DBusGMethodInvocation *context) {
-  // TODO(wad) Implement this! crbug.com/342804
-  LOG(ERROR) << "MountEx not yet implemented";
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<MountRequest> request(new MountRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  if (!request->ParseFromArray(mount_request->data, mount_request->len))
+    request.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoMountEx, base::Unretained(this),
-                 account_id, authorization_request, mount_request, context));
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
   return TRUE;
 }
 

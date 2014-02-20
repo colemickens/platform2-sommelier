@@ -11,9 +11,11 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/threading/platform_thread.h>
+#include <base/sha1.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <base/threading/platform_thread.h>
 #include <base/values.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
@@ -61,6 +63,7 @@ const char kMountDir[] = "mount";
 const char kSkeletonDir[] = "skeleton";
 const char kKeyFile[] = "master.";
 const int kKeyFileMax = 100;  // master.0 ... master.99
+const char kKeyLegacyPrefix[] = "legacy-";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kGuestMountPath[] = "guestfs";
@@ -360,6 +363,22 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
   crypto_->ClearKeyset();
 
+  // Before we use the matching keyset, make sure it isn't being misused.
+  // Note, privileges don't protect against information leakage, they are
+  // just software/DAC policy enforcement mechanisms.
+  //
+  // In the future we may provide some assurance by wrapping privileges
+  // with the wrapped_key, but that is still of limited benefit.
+  if (serialized.has_key_data() && // legacy keys are full privs
+      !serialized.key_data().privileges().mount()) {
+    // TODO(wad): Convert to CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED
+    // TODO(wad): Expose the safe-printable label rather than the Chrome
+    //            supplied one for log output.
+    LOG(INFO) << "Mount attempt with unprivileged key";
+    *mount_error = MOUNT_ERROR_KEY_FAILURE;
+    return false;
+  }
+
   // Add the decrypted key to the keyring so that ecryptfs can use it
   string key_signature, fnek_signature;
   if (!crypto_->AddKeyset(vault_keyset, &key_signature, &fnek_signature)) {
@@ -433,6 +452,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // request.
   current_user_->SetUser(credentials);
   current_user_->set_key_index(index);
+  if (serialized.has_key_data()) {
+    current_user_->set_key_data(serialized.key_data());
+  }
 
   // Move the tracked subdirectories from mount_point_/user to vault_path
   // as passthrough directories.
@@ -720,6 +742,14 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
     LOG(ERROR) << "Failed to add vault keyset to new user";
     return false;
   }
+  // Merge in the key data from credentials using the label() as
+  // the existence test. (All new-format calls must populate the
+  // label on creation.)
+  if (!credentials.key_data().label().empty()) {
+    *serialized.mutable_key_data() = credentials.key_data();
+  }
+
+  // TODO(wad) move to storage by label-derivative and not number.
   if (!StoreVaultKeysetForUser(
        credentials.GetObfuscatedUsername(system_salt_),
        0, // first key
@@ -810,6 +840,8 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   current_user_->GetObfuscatedUsername(&obfuscated_username);
   if (!obfuscated_username.empty() && !ephemeral_mount_) {
     SerializedVaultKeyset serialized;
+    // TODO(wad) Start using current_user_'s key_data label when
+    //           it is defined.
     LoadVaultKeysetForUser(obfuscated_username, current_user_->key_index(),
                            &serialized);
     base::Time timestamp = platform_->GetCurrentTime();
@@ -919,7 +951,8 @@ bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
     return false;
   }
   // Load the encrypted keyset
-  std::string user_key_file = GetUserKeyFileForUser(obfuscated_username, index);
+  std::string user_key_file = GetUserLegacyKeyFileForUser(obfuscated_username,
+                                                          index);
   if (!platform_->FileExists(user_key_file)) {
     return false;
   }
@@ -948,8 +981,9 @@ bool Mount::StoreVaultKeysetForUser(
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  return platform_->WriteFile(GetUserKeyFileForUser(obfuscated_username, index),
-                              final_blob);
+  return platform_->WriteFile(
+    GetUserLegacyKeyFileForUser(obfuscated_username, index),
+    final_blob);
 }
 
 bool Mount::DecryptVaultKeyset(const Credentials& credentials,
@@ -982,6 +1016,28 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
       LOG(ERROR) << "Could not parse keyset " << *iter
                  << " for " << obfuscated_username;
       continue;
+    }
+
+    // If a specific key was requested by label, then check if the
+    // label matches or if the key does not have a label, use the
+    // legacy-key translation from index to label.
+    //
+    // Label-less requests will still iterate over all keys.
+    if (!credentials.key_data().label().empty()) {
+      // If we're searching by label, don't let a no-key-found become
+      // MOUNT_ERROR_FATAL.  In the past, no parseable key was a fatal
+      // error.  Just treat it like an invalid key.  This allows for
+      // multiple per-label requests then a wildcard, worst case, before
+      // the Cryptohome is removed.
+      *error = MOUNT_ERROR_KEY_FAILURE;
+      if (serialized->has_key_data()) {
+        if (credentials.key_data().label() != serialized->key_data().label())
+          continue;
+      } else {
+        if (credentials.key_data().label() !=
+            StringPrintf("%s%d", kKeyLegacyPrefix, *iter))
+          continue;
+      }
     }
 
     // Attempt decrypt the master key with the passkey
@@ -1108,7 +1164,7 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
     credentials.GetObfuscatedUsername(system_salt_);
   std::vector<std::string> files(2);
   files[0] = GetUserSaltFileForUser(obfuscated_username, key_index);
-  files[1] = GetUserKeyFileForUser(obfuscated_username, key_index);
+  files[1] = GetUserLegacyKeyFileForUser(obfuscated_username, key_index);
   if (!CacheOldFiles(files)) {
     LOG(ERROR) << "Couldn't cache old key material.";
     return false;
@@ -1118,6 +1174,12 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
     RevertCacheFiles(files);
     return false;
   }
+
+  // Note that existing legacy keysets are not automatically annotated.
+  // All _new_ interfaces that support KeyData will implicitly translate
+  // master.<index> to label=<kKeyLegacyFormat,index> for checking on
+  // label uniqueness.  This means that we will still be able to use the
+  // lack of KeyData in the future as input to migration.
   if (!StoreVaultKeysetForUser(credentials.GetObfuscatedUsername(system_salt_),
                                key_index, *serialized)) {
     LOG(ERROR) << "Write to master key failed";
@@ -1155,14 +1217,29 @@ string Mount::GetUserSaltFileForUser(const string& obfuscated_username,
                       index);
 }
 
-string Mount::GetUserKeyFileForUser(const string& obfuscated_username,
-                                    int index) const {
+string Mount::GetUserLegacyKeyFileForUser(const string& obfuscated_username,
+                                          int index) const {
   DCHECK(index < kKeyFileMax && index >= 0);
   return StringPrintf("%s/%s/%s%d",
                       shadow_root_.c_str(),
                       obfuscated_username.c_str(),
                       kKeyFile,
                       index);
+}
+
+// This is the new planned format for keyfile storage.
+string Mount::GetUserKeyFileForUser(const string& obfuscated_username,
+                                    const string& label) const {
+  DCHECK(!label.empty());
+  // SHA1 is not for any other purpose than to provide a reasonably
+  // collision-resistant, fixed length, path-safe file suffix.
+  string digest = base::SHA1HashString(label);
+  string safe_label = base::HexEncode(digest.c_str(), digest.length());
+  return StringPrintf("%s/%s/%s%s",
+                      shadow_root_.c_str(),
+                      obfuscated_username.c_str(),
+                      kKeyFile,
+                      safe_label.c_str());
 }
 
 string Mount::GetUserEphemeralPath(const string& obfuscated_username) const {
@@ -1647,9 +1724,17 @@ Value* Mount::GetStatus() {
         keyset_dict->SetBoolean("tpm", tpm);
         keyset_dict->SetBoolean("scrypt", scrypt);
         keyset_dict->SetBoolean("ok", true);
+        keyset_dict->SetInteger("last_activity",
+                                keyset.last_activity_timestamp());
+        if (keyset.has_key_data()) {
+          // TODO(wad) Add additional KeyData
+          keyset_dict->SetString("label", keyset.key_data().label());
+        }
       } else {
         keyset_dict->SetBoolean("ok", false);
       }
+      // TODO(wad) Replace key_index use with key_label() use once
+      //           legacy keydata is populated.
       if (!ephemeral_mount_ && *iter == current_user_->key_index())
         keyset_dict->SetBoolean("current", true);
       keyset_dict->SetInteger("index", *iter);

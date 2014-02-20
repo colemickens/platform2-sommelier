@@ -75,6 +75,20 @@ class DBusReply : public CryptohomeEventBase {
   scoped_ptr<std::string> reply_;
 };
 
+class DBusReplyFactory {
+ public:
+  DBusReplyFactory() { }
+  virtual ~DBusReplyFactory() { }
+  virtual DBusReply* NewReply(DBusGMethodInvocation* context,
+                              std::string* reply) {
+    return new DBusReply(context, reply);
+  }
+  virtual DBusErrorReply* NewErrorReply(DBusGMethodInvocation* context,
+                                        GError* error) {
+    return new DBusErrorReply(context, error);
+  }
+};
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_DBUS_TRANSITION_H_

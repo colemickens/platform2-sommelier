@@ -1087,6 +1087,26 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
   EXPECT_EQ(index, -1);
 }
 
+TEST_F(KeysetManagementTest, AddKeysetInvalidPrivileges) {
+  // Check for key use that lacks valid add privileges
+  KeysetSetUp();
+
+  // The injected keyset in the fixture handles the up_ validation.
+  cryptohome::SecureBlob newkey;
+  cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
+
+  SerializedVaultKeyset serialized;
+  serialized.mutable_key_data()->mutable_privileges()->set_add(false);
+  EXPECT_CALL(*active_vk_, serialized())
+    .WillOnce(ReturnRef(serialized))
+    .WillOnce(ReturnRef(serialized));
+
+   int index = -1;
+  // Tery to authenticate with a key that cannot add keys.
+  ASSERT_FALSE(homedirs_.AddKeyset(*up_, newkey, &index));
+  EXPECT_EQ(index, -1);
+}
+
 TEST_F(KeysetManagementTest, AddKeyset0Available) {
   // While this doesn't affect the hole-finding logic, it's good to cover the
   // full logical behavior by changing which key auths too.

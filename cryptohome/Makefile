@@ -24,11 +24,12 @@ LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
 	-lpthread -lscrypt -ltspi -lvboot_host -lm
 
-SHARED_PROTOS := rpc key
+SHARED_PROTOS := key rpc
+SHARED_PROTO_FILES := $(patsubst %,%.proto,$(SHARED_PROTOS))
 SHARED_PROTO_PATH := $(SYSROOT)/usr/include/chromeos/dbus/cryptohome
-SHARED_PB_HDRS := $(patsubst %,shared-pbs/%.pb.h,$(SHARED_PROTOS))
-SHARED_PB_SRCS := $(patsubst %,shared-pbs/%.pb.cc,$(SHARED_PROTOS))
-SHARED_PB_OBJS := $(patsubst %,shared-pbs/%.pb.o,$(SHARED_PROTOS))
+SHARED_PB_HDRS := $(patsubst %,%.pb.h,$(SHARED_PROTOS))
+SHARED_PB_SRCS := $(patsubst %,%.pb.cc,$(SHARED_PROTOS))
+SHARED_PB_OBJS := $(patsubst %,%.pb.o,$(SHARED_PROTOS))
 
 PROTOS := install_attributes tpm_status vault_keyset attestation
 PB_HDRS := $(patsubst %,%.pb.h,$(PROTOS))
@@ -39,7 +40,7 @@ MARSHAL_HDRS := $(patsubst %,%.glibmarshal.h,$(MARSHALS))
 MARSHAL_SRCS := $(patsubst %,%.glibmarshal.c,$(MARSHALS))
 MARSHAL_OBJS := $(patsubst %.c,%.o,$(MARSHAL_SRCS))
 BINDING_HDRS := bindings/client.h bindings/server.h
-GEN_HDRS := $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS) $(SHARED_PB_HDRS)
+GEN_HDRS := $(SHARED_PB_HDRS) $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS)
 ME_OBJS := mount-encrypted.o mount-helpers.o
 
 TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o mock_%.o, \
@@ -71,19 +72,21 @@ all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
 all: CXX_BINARY(lockbox-cache) CC_BINARY(mount-encrypted)
 tests: TEST(CXX_BINARY(cryptohome_testrunner))
 
-shared-pbs/%.pb.cc: $(SHARED_PROTO_PATH)/%.proto shared-pbs/%.pb.h
-	mkdir -p $(dir $@)
-	$(PROTOC) --proto_path=$(dir $@) $(dir $@)$(notdir $<) \
- 	  --proto_path=$(dir $<) --cpp_out=$(dir $@)
-shared-pbs/%.pb.h: $(SHARED_PROTO_PATH)/%.proto
-	mkdir -p $(dir $@)
-	sed -e 's/LITE_RUNTIME/CODE_SIZE/g' $< > $(dir $@)$(notdir $<)
-	$(PROTOC) --proto_path=$(dir $@) $(dir $@)$(notdir $<) \
- 	  --proto_path=$(dir $<) --cpp_out=$(dir $@)
-%.pb.cc: $(SRC)/%.proto
-	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
-%.pb.h: $(SRC)/%.proto
-	$(PROTOC) $^ --proto_path=$(dir $^) --cpp_out=$(dir $@)
+# Pull in any shared proto files so they can have their optimization changed.
+%.proto: $(SHARED_PROTO_PATH)/%.proto
+	sed -e 's/LITE_RUNTIME/CODE_SIZE/g' $< > $@
+$(SHARED_PB_SRCS): %.pb.cc: %.proto $(SHARED_PROTO_FILES)
+	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
+		--cpp_out=$(dir $@)
+$(SHARED_PB_HDRS): %.pb.h: %.proto $(SHARED_PROTO_FILES)
+	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
+		--cpp_out=$(dir $@)
+%.pb.cc: $(SRC)/%.proto $(SHARED_PROTO_FILES)
+	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
+		--cpp_out=$(dir $@)
+%.pb.h: $(SRC)/%.proto $(SHARED_PROTO_FILES)
+	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
+		--cpp_out=$(dir $@)
 %.glibmarshal.c: $(SRC)/%.list
 	$(GLIB_GENMARSHAL) --body --prefix=cryptohome $^ > $@
 %.glibmarshal.h: $(SRC)/%.list
@@ -110,4 +113,4 @@ CXX_BINARY(lockbox-cache): tpm_status.pb.o cryptolib.o platform.o tpm.o \
 
 clean: CLEAN(*.pb.cc) CLEAN(*.pb.h) CLEAN(cryptohomed) CLEAN(lockbox-cache)
 clean: CLEAN(cryptohome) CLEAN(cryptohome-path) CLEAN(cryptohome_testrunner)
-clean: CLEAN(mount-encrypted)
+clean: CLEAN(mount-encrypted) CLEAN($(SHARED_PROTO_FILES))

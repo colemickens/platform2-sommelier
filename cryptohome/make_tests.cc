@@ -132,6 +132,7 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   username = info->username;
   password = info->password;
   create = info->create;
+  use_key_data = false;
   // Stub system salt must already be in place. See MountTest::SetUp().
   // Sanitized usernames and obfuscated ones differ by case. Accomodate both.
   // TODO(ellyjones) fix this discrepancy!
@@ -206,6 +207,9 @@ void TestUser::GenerateCredentials() {
                                         salt,
                                         &passkey);
   UsernamePasskey up(username, passkey);
+  if (use_key_data) {
+    up.set_key_data(key_data);
+  }
   bool created;
   // NOTE! This code gives us generated credentials for credentials tests NOT
   // NOTE! golden credentials to test against.  This means we won't see problems

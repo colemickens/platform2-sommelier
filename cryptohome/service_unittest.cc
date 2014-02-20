@@ -22,6 +22,7 @@
 #include "make_tests.h"
 #include "mock_attestation.h"
 #include "mock_crypto.h"
+#include "mock_dbus_transition.h"
 #include "mock_homedirs.h"
 #include "mock_install_attributes.h"
 #include "mock_mount.h"
@@ -35,11 +36,15 @@ using chromeos::SecureBlob;
 
 namespace cryptohome {
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
+using ::testing::SaveArgPointee;
 using ::testing::StartsWith;
+using ::testing::StrEq;
 using ::testing::SetArgumentPointee;
 
 const char kImageDir[] = "test_image_dir";
@@ -556,4 +561,124 @@ TEST(Standalone, LoadEnrollmentState) {
   EXPECT_FALSE(success);
 }
 
+class MountExTest : public ::testing::Test {
+ public:
+  MountExTest() { }
+  virtual ~MountExTest() { }
+
+  void SetUp() {
+    service_.set_homedirs(&homedirs_);
+    service_.set_install_attrs(&attrs_);
+    service_.set_initialize_tpm(false);
+    service_.set_platform(&platform_);
+    service_.set_chaps_client(&chaps_client_);
+    service_.set_reply_factory(&reply_factory_);
+    // Empty token list by default.  The effect is that there are no attempts
+    // to unload tokens unless a test explicitly sets up the token list.
+    EXPECT_CALL(chaps_client_, GetTokenList(_, _))
+        .WillRepeatedly(Return(true));
+  }
+
+  void TearDown() { }
+
+  template<class ProtoBuf>
+  GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
+    guint len = pb.ByteSize();
+    GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
+    g_array_set_size(ary, len);
+    if (!pb.SerializeToArray(ary->data, len)) {
+      printf("Failed to serialize protocol buffer.\n");
+      return NULL;
+    }
+    return ary;
+  }
+
+ protected:
+  NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockInstallAttributes> attrs_;
+  MockDBusReplyFactory reply_factory_;
+
+  MockPlatform platform_;
+  chaps::TokenManagerClientMock chaps_client_;
+  Service service_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MountExTest);
+};
+
+
+TEST_F(MountExTest, InvalidArgsChecks) {
+  // Fast path through Initialize()
+  EXPECT_CALL(homedirs_, Init())
+    .WillOnce(Return(true));
+  // Skip the CleanUpStaleMounts bit.
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+    .WillRepeatedly(Return(false));
+  ASSERT_TRUE(service_.Initialize());
+
+  scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
+  scoped_ptr<MountRequest> req(new MountRequest);
+  // Expect an error about missing email.
+  GError* call_err = NULL;
+  // |error| will be cleaned up by event_source_
+  MockDBusErrorReply *error = new MockDBusErrorReply();
+  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
+  // Run will never be called because we aren't running the event loop.
+  // For the same reason, DoMountEx is called directly.
+  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
+  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", call_err->message);
+  g_error_free(call_err);
+  call_err = NULL;
+
+  error = new MockDBusErrorReply();
+  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
+  id->set_email("foo@gmail.com");
+  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
+  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", call_err->message);
+  g_error_free(call_err);
+  call_err = NULL;
+
+  error = new MockDBusErrorReply();
+  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
+  id->set_email("foo@gmail.com");
+  auth->mutable_key()->set_secret("");
+  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
+  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", call_err->message);
+  g_error_free(call_err);
+  call_err = NULL;
+
+  error = new MockDBusErrorReply();
+  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
+  id->set_email("foo@gmail.com");
+  auth->mutable_key()->set_secret("blerg");
+  req->mutable_create();
+  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
+  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("CreateRequest supplied with no keys", call_err->message);
+  g_error_free(call_err);
+  call_err = NULL;
+
+  error = new MockDBusErrorReply();
+  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
+  id->set_email("foo@gmail.com");
+  auth->mutable_key()->set_secret("blerg");
+  // Empty key
+  // TODO(wad) Add remaining missing field tests and NULL tests
+  req->mutable_create()->add_keys();
+  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
+  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("CreateRequest Keys are not fully specified",
+               call_err->message);
+  g_error_free(call_err);
+  call_err = NULL;
+}
 }  // namespace cryptohome

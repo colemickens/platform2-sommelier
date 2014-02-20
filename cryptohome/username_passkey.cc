@@ -29,9 +29,18 @@ UsernamePasskey::~UsernamePasskey() {
 
 void UsernamePasskey::Assign(const Credentials& rhs) {
   username_.assign(rhs.username());
+  key_data_ = rhs.key_data();
   SecureBlob passkey;
   rhs.GetPasskey(&passkey);
   passkey_.assign(passkey.begin(), passkey.end());
+}
+
+void UsernamePasskey::set_key_data(const KeyData& data) {
+  key_data_ = data;
+}
+
+const KeyData& UsernamePasskey::key_data() const {
+  return key_data_;
 }
 
 std::string UsernamePasskey::username() const {

@@ -51,6 +51,8 @@ extern const char kRootHomeSuffix[];
 extern const char kMountDir[];
 // Name of the key file.
 extern const char kKeyFile[];
+// Automatic label prefix of a legacy key ("%s%d")
+extern const char kKeyLegacyPrefix[];
 // Maximum number of key files.
 extern const int kKeyFileMax;
 // File system type for ephemeral mounts.
@@ -412,14 +414,24 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   std::string GetUserSaltFileForUser(const std::string& obfuscated_username,
                                      int index) const;
 
-  // Gets the user's key file name
+
+  // Gets the user's key file name by index
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
   //   index - which key file to load
-  std::string GetUserKeyFileForUser(
+  std::string GetUserLegacyKeyFileForUser(
       const std::string& obfuscated_username,
       int index) const;
+
+  // Gets the user's key file name by label
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the Credentials
+  //   label - which key file to load by KeyData::label()
+  std::string GetUserKeyFileForUser(
+      const std::string& obfuscated_username,
+      const std::string& label) const;
 
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.

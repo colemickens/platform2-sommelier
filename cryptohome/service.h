@@ -26,6 +26,7 @@
 #include "mount_factory.h"
 #include "mount_task.h"
 #include "pkcs11_init.h"
+#include "rpc.pb.h"
 #include "tpm_init.h"
 
 namespace chaps {
@@ -40,7 +41,6 @@ struct Cryptohome;
 
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
-
 
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
@@ -103,6 +103,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   }
   virtual void set_mount_factory(cryptohome::MountFactory* mf) {
     mount_factory_ = mf;
+  }
+  virtual void set_reply_factory(cryptohome::DBusReplyFactory* rf) {
+    reply_factory_ = rf;
   }
   virtual void set_use_tpm(bool value) {
     use_tpm_ = value;
@@ -229,9 +232,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
       gint *OUT_async_id,
       GError **error);
   virtual void DoMountEx(
-      const GArray *account_id,
-      const GArray *authorization_request,
-      const GArray *mount_request,
+      AccountIdentifier* identifier,
+      AuthorizationRequest* authorization,
+      MountRequest* request,
       DBusGMethodInvocation *response);
   virtual gboolean MountEx(
       const GArray *account_id,
@@ -473,14 +476,20 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual bool UnloadPkcs11Tokens(const std::vector<std::string>& exclude);
 
   // Posts a message back from the mount_thread_ to the main thread to
-  // reply to a DBus message.
-  template<class PB> void SendReply(DBusGMethodInvocation* context,
-                                    const PB& reply) {
-    std::string* reply_str = new std::string;
-    reply.SerializeToString(reply_str);
-    DBusReply* reply_cb = new DBusReply(context, reply_str);
-    event_source_.AddEvent(reply_cb);
-  }
+  // reply to a DBus message.  Only call from mount_thread_-based
+  // functions!
+  virtual void SendReply(DBusGMethodInvocation* context,
+                         const BaseReply& reply);
+
+  // Posts a message back from mount_thread_ to the main thread where
+  // a DBus InvalidArgs GError is returned to the called.
+  // Only call from mount_thread_-based functions!
+  virtual void SendInvalidArgsReply(DBusGMethodInvocation* context,
+                                    const char* message);
+
+  // Returns a CryptohomeErrorCode for an internal Mount::MountError code.
+  virtual CryptohomeErrorCode MountErrorToCryptohomeError(
+      const MountError code) const;
 
  private:
   FRIEND_TEST_ALL_PREFIXES(ServiceInterfaceTest, GetPublicMountPassKey);
@@ -551,6 +560,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   base::Lock mounts_lock_;  // Protects against parallel insertions only.
   scoped_ptr<cryptohome::MountFactory> default_mount_factory_;
   cryptohome::MountFactory* mount_factory_;
+  scoped_ptr<cryptohome::DBusReplyFactory> default_reply_factory_;
+  cryptohome::DBusReplyFactory* reply_factory_;
 
   typedef std::map<int,
                    scoped_refptr<MountTaskPkcs11Init> > Pkcs11TaskMap;

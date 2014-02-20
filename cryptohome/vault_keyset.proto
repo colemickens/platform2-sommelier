@@ -4,6 +4,8 @@
 
 package cryptohome;
 
+import "key.proto";
+
 message SerializedVaultKeyset {
   enum Flags {
     NONE = 0;
@@ -33,5 +35,5 @@ message SerializedVaultKeyset {
   // repeated OptionalMetadata metadata;
 
   // This will come from system_api once we're finalized on the API.
-  // optional KeyData key_data = 9;
+  optional KeyData key_data = 9;
 }

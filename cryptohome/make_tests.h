@@ -96,6 +96,8 @@ class TestUser {
   chromeos::Blob credentials;
   chromeos::Blob user_salt;
   chromeos::SecureBlob passkey;
+  bool use_key_data;
+  KeyData key_data;
 };
 
 }  // namespace cryptohome

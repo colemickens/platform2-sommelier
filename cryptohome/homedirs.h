@@ -65,12 +65,23 @@ class HomeDirs {
   virtual bool GetVaultKeysets(const std::string& obfuscated,
                                std::vector<int>* keysets) const;
 
+  // Returns a VaultKeyset that matches the label in Credentials.
+  // If Credentials has no label or if no matching keyset is
+  // found, NULL will be returned.
+  //
+  // The caller DOES take ownership of the returned VaultKeyset pointer.
+  // There is no guarantee the keyset is valid.
+  virtual VaultKeyset* GetVaultKeyset(const Credentials& creds) const;
+
   // Removes the cryptohome for the named user.
   virtual bool Remove(const std::string& username);
 
   // Returns true if the supplied Credentials are a valid (username, passkey)
   // pair.
   virtual bool AreCredentialsValid(const Credentials& credentials);
+
+  // Returns true if a path exists for the Credentials (username).
+  virtual bool Exists(const Credentials& credentials) const;
 
   // Returns true if a valid keyset can be decrypted with |creds|.  If true,
   // |vk| will contain the decrypted value. If false, |vk| will contain the

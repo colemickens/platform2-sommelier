@@ -28,6 +28,7 @@ void UserSession::Init(const SecureBlob& salt) {
 bool UserSession::SetUser(const Credentials& credentials) {
   obfuscated_username_ = credentials.GetObfuscatedUsername(username_salt_);
   username_ = credentials.username();
+  key_data_ = credentials.key_data();
   key_index_ = -1;  // Invalid key index.
 
   key_salt_.resize(PKCS5_SALT_LEN);
@@ -59,6 +60,7 @@ void UserSession::Reset() {
   key_salt_.resize(0);
   cipher_.resize(0);
   key_index_ = -1;
+  key_data_.Clear();
 }
 
 bool UserSession::CheckUser(const Credentials& credentials) const {
@@ -69,6 +71,13 @@ bool UserSession::CheckUser(const Credentials& credentials) const {
 
 bool UserSession::Verify(const Credentials& credentials) const {
   if (!CheckUser(credentials)) {
+    return false;
+  }
+  // If the incoming credentials have no label, then just
+  // test the secret.  If it is labeled, then the label must
+  // match.
+  if (!credentials.key_data().label().empty() &&
+      credentials.key_data().label() != key_data_.label()) {
     return false;
   }
 
@@ -99,7 +108,5 @@ int UserSession::key_index() const {
                          << "Guest mount? Ephemeral mount?";
   return key_index_;
 }
-
-
 
 }  // namespace cryptohome

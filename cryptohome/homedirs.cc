@@ -177,11 +177,53 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
 
   std::vector<int>::const_iterator iter = key_indices.begin();
   for ( ;iter != key_indices.end(); ++iter) {
-    if (vk->Load(GetVaultKeysetPath(obfuscated, *iter)) &&
-        vk->Decrypt(passkey))
+    if (!vk->Load(GetVaultKeysetPath(obfuscated, *iter)))
+      continue;
+    // Skip decrypt attempts if the label doesn't match.
+    // Treat an empty creds label as a wildcard.
+    // Allow a creds label of "prefix<num>" for fixed indexing.
+    if (!creds.key_data().label().empty() &&
+        creds.key_data().label() != vk->serialized().key_data().label() &&
+        creds.key_data().label() !=
+          StringPrintf("%s%d", kKeyLegacyPrefix, *iter))
+      continue;
+    if (vk->Decrypt(passkey))
       return true;
   }
   return false;
+}
+
+bool HomeDirs::Exists(const Credentials& credentials) const {
+  std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
+  std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
+  return platform_->DirectoryExists(user_dir);
+}
+
+VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
+  if (credentials.key_data().label().empty())
+    return NULL;
+  std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
+
+  // Walk all indices to find a match.
+  // We should move to label-derived suffixes to be efficient.
+  std::vector<int> key_indices;
+  if (!GetVaultKeysets(obfuscated, &key_indices))
+    return NULL;
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::vector<int>::const_iterator iter = key_indices.begin();
+  for ( ;iter != key_indices.end(); ++iter) {
+    if (!LoadVaultKeysetForUser(obfuscated, *iter, vk.get())) {
+      continue;
+    }
+    // Test against the label if the key has a label or create a label
+    // automatically from the index number.
+    std::string label = (vk->serialized().has_key_data() ?
+                         vk->serialized().key_data().label() :
+                         StringPrintf("%s%d", kKeyLegacyPrefix, *iter));
+    if (label == credentials.key_data().label())
+      return vk.release();
+  }
+  return NULL;
 }
 
 // TODO(wad) Figure out how this might fit in with vault_keyset.cc
@@ -220,6 +262,9 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
   return keysets->size() != 0;
 }
 
+// TODO(wad,antrim) When Chrome's managed_user_authenticator.cc stops
+// using AsyncAddKey() or if we can short-circuit its behavior on
+// the interface side.
 bool HomeDirs::AddKeyset(const Credentials& existing_credentials,
                          const SecureBlob& new_passkey,
                          int* index) {
@@ -231,6 +276,15 @@ bool HomeDirs::AddKeyset(const Credentials& existing_credentials,
   scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   if (!GetValidKeyset(existing_credentials, vk.get())) {
     LOG(WARNING) << "AddKeyset: authentication failed";
+    return false;
+  }
+
+  // Check the privileges to ensure Add is allowed.
+  if (vk->serialized().has_key_data() && // legacy keys are full privs
+      !vk->serialized().key_data().privileges().add()) {
+    // TODO(wad) Ensure this error can be returned as a KEY_DENIED error
+    //           for AddKeyEx.
+    LOG(WARNING) << "AddKeyset: no add() privilege";
     return false;
   }
 
@@ -524,9 +578,26 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     LOG(ERROR) << "Attempted migration of key-less mount.";
     return false;
   }
+
+  // Grab the current key and check its permissions early.
+  // add() and remove() are required.  mount() was checked
+  // already during MountCryptohome().
+  scoped_ptr<VaultKeyset> vk(
+    vault_keyset_factory()->New(platform_, crypto_));
+  if (!LoadVaultKeysetForUser(obfuscated, key_index, vk.get())) {
+    LOG(ERROR) << "Migrate: failed to reload the active keyset";
+    return false;
+  }
+  if (vk->serialized().has_key_data() && // legacy keys are full privs
+      (!vk->serialized().key_data().privileges().add() ||
+       !vk->serialized().key_data().privileges().remove())) {
+    LOG(ERROR) << "Migrate: key lacks sufficient privileges()";
+    return false;
+  }
+
   int new_key_index = -1;
   if (!AddKeyset(oldcreds, newkey, &new_key_index)) {
-    LOG(ERROR) << "Failed to add the new keyset";
+    LOG(ERROR) << "Migrate: failed to add the new keyset";
     return false;
   }
 

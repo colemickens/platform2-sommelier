@@ -10,6 +10,8 @@
 
 #include <chromeos/secure_blob.h>
 
+#include "key.pb.h"
+
 namespace cryptohome {
 
 class Credentials {
@@ -29,12 +31,15 @@ class Credentials {
   virtual std::string GetObfuscatedUsername(
       const chromeos::Blob &system_salt) const = 0;
 
-  // Returns a the user's passkey
+  // Returns the user's passkey
   //
   // Parameters
   //  passkey - A SecureBlob containing the passkey
   //
   virtual void GetPasskey(chromeos::SecureBlob* passkey) const = 0;
+
+  // Returns the associated KeyData for the passkey, if defined.
+  virtual const KeyData& key_data() const = 0;
 };
 
 }  // namespace cryptohome

@@ -272,6 +272,153 @@ TEST_F(MountTest, BadDecryptTest) {
   ASSERT_FALSE(mount->AreValid(up));
 }
 
+TEST_F(MountTest, MountCryptohomeNoPrivileges) {
+  // Check that Mount only works if the mount permission is given.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  scoped_refptr<Mount> mount = new Mount();
+  NiceMock<MockTpm> tpm;
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
+
+  MockPlatform platform;
+  mount->set_platform(&platform);
+  mount->crypto()->set_platform(&platform);
+
+  NiceMock<MockHomeDirs> mock_homedirs;
+  mount->set_homedirs(&mock_homedirs);
+  EXPECT_CALL(mock_homedirs, Init())
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform, SetMask(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit(mount.get()));
+
+  TestUser *user = &helper_.users[0];
+  user->key_data.set_label("my key!");
+  user->use_key_data = true;
+  user->key_data.mutable_privileges()->set_mount(false);
+  // Regenerate the serialized vault keyset.
+  user->GenerateCredentials();
+  UsernamePasskey up(user->username, user->passkey);
+  // Let the legacy key iteration work here.
+
+  user->InjectUserPaths(&platform, chronos_uid_, chronos_gid_, shared_gid_,
+                        kDaemonGid);
+  user->InjectKeyset(&platform, false);
+
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(mock_homedirs, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+                          Return(true)));
+
+  EXPECT_CALL(platform, ClearUserKeyring())
+    .WillOnce(Return(0));
+
+  EXPECT_CALL(platform, CreateDirectory(user->vault_mount_path))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform,
+              CreateDirectory(mount->GetNewUserPath(user->username)))
+    .WillRepeatedly(Return(true));
+
+  MountError error = MOUNT_ERROR_NONE;
+  EXPECT_FALSE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
+  EXPECT_EQ(MOUNT_ERROR_KEY_FAILURE, error);
+}
+
+TEST_F(MountTest, MountCryptohomeHasPrivileges) {
+  // Check that Mount only works if the mount permission is given.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  scoped_refptr<Mount> mount = new Mount();
+  NiceMock<MockTpm> tpm;
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
+
+  MockPlatform platform;
+  mount->set_platform(&platform);
+  mount->crypto()->set_platform(&platform);
+
+  NiceMock<MockHomeDirs> mock_homedirs;
+  mount->set_homedirs(&mock_homedirs);
+  EXPECT_CALL(mock_homedirs, Init())
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform, SetMask(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit(mount.get()));
+
+  TestUser *user = &helper_.users[0];
+  user->key_data.set_label("my key!");
+  user->use_key_data = true;
+  user->key_data.mutable_privileges()->set_mount(true);
+  // Regenerate the serialized vault keyset.
+  user->GenerateCredentials();
+  UsernamePasskey up(user->username, user->passkey);
+  // Let the legacy key iteration work here.
+
+  user->InjectUserPaths(&platform, chronos_uid_, chronos_gid_, shared_gid_,
+                        kDaemonGid);
+  user->InjectKeyset(&platform, false);
+
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(mock_homedirs, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+                          Return(true)));
+
+  EXPECT_CALL(platform, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform, ClearUserKeyring())
+    .WillOnce(Return(0));
+
+  EXPECT_CALL(platform, CreateDirectory(user->vault_mount_path))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform,
+              CreateDirectory(mount->GetNewUserPath(user->username)))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform, IsDirectoryMounted(user->vault_mount_path))
+    .WillOnce(Return(false));
+  // user exists, so there'll be no skel copy after.
+  EXPECT_CALL(platform, Mount(_, _, _, _))
+    .WillRepeatedly(Return(true));
+  // Only one mount, so the legacy mount point is used.
+  EXPECT_CALL(platform, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform, Bind(_, _))
+    .WillRepeatedly(Return(true));
+
+  MountError error = MOUNT_ERROR_NONE;
+  ASSERT_TRUE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
+
+  EXPECT_CALL(platform, Unmount(_, _, _))
+      .Times(5)
+      .WillRepeatedly(Return(true));
+
+  // Unmount here to avoid the scoped Mount doing it implicitly.
+  EXPECT_CALL(platform, GetCurrentTime())
+      .WillOnce(Return(base::Time::Now()));
+  EXPECT_CALL(platform, WriteFile(user->keyset_path, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, ClearUserKeyring())
+    .WillOnce(Return(0));
+  EXPECT_TRUE(mount->UnmountCryptohome());
+}
+
+
 // A fixture for testing chaps directory checks.
 class ChapsDirectoryTest : public ::testing::Test {
  public:
@@ -625,7 +772,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_TRUE(homedirs.Init());
 
   // Load the pre-generated keyset
-  std::string key_path = mount->GetUserKeyFileForUser(
+  std::string key_path = mount->GetUserLegacyKeyFileForUser(
       up.GetObfuscatedUsername(helper_.system_salt), 0);
   cryptohome::SerializedVaultKeyset serialized;
   EXPECT_TRUE(serialized.ParseFromArray(

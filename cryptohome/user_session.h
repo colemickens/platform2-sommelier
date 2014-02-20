@@ -77,6 +77,16 @@ class UserSession {
   // Get the current key index of this session
   int key_index() const;
 
+  // Allow updating outside of construction
+  void set_key_data(const KeyData& data) {
+    key_data_ = data;
+  }
+
+  // Get the current key data of this session.
+  const KeyData& key_data() const {
+    return key_data_;
+  }
+
  private:
   std::string obfuscated_username_;
   std::string username_;
@@ -84,6 +94,7 @@ class UserSession {
   chromeos::SecureBlob key_salt_;
   chromeos::SecureBlob cipher_;
   int key_index_;
+  KeyData key_data_;
 
   DISALLOW_COPY_AND_ASSIGN(UserSession);
 };
