@@ -13,6 +13,10 @@ STATEFUL="/mnt/stateful_partition"
 ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
 SHADOW="/home/.shadow"
 
+# Paths for the CRX cache. Shared with installer/crx-import.conf
+UNVALIDATED_CRX_CACHE=${STATEFUL}/unencrypted/import_extensions
+VALIDATED_CRX_CACHE=/var/cache/external_cache
+
 # Get the percentage of space used on the stateful partition.
 get_stateful_usage_percent() {
   local stateful_space="$(df -P ${STATEFUL} | grep -m 1 ${STATEFUL})"
@@ -109,6 +113,19 @@ rotate_logs() {
   sudo pkill -HUP rsyslogd
 }
 
+# Wipe the unencyrpted CRX cache if it still exists.
+wipe_crx_cache() {
+  # If we are on removable media or we haven't imported the crx cache,
+  # don't wipe.
+  local root_dev="$(basename "$(rootdev -s -d)")"
+  local removable="$(cat "/sys/block/${root_dev}/removable")" || :
+  if [ ${removable:-0} -eq 0 ] && [ -d "${UNVALIDATED_CRX_CACHE}" ] && \
+      [ -f "${VALIDATED_CRX_CACHE}/.initialized" ]; then
+    echo "Wiping unvalidated crx cache as it has already been imported."
+    rm -rf "${UNVALIDATED_CRX_CACHE}"
+  fi
+}
+
 if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
   echo "Exiting early because ${CLEANUP_PAUSED_FILE} exists."
   exit 1
@@ -162,3 +179,5 @@ if [ "$(get_stateful_free_space_blocks)" -le \
      "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
   report_additional_statistics
 fi
+
+wipe_crx_cache
