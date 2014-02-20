@@ -65,29 +65,12 @@ class ScopedTempDir : public ScopedTempPath {
   ScopedTempDir();
 };
 
-// Returns true if the perf reports show the same summary.  Metadata
-// is compared if it is present in kSupportedMetadata in utils.cc.
-bool ComparePerfReportsByFields(const string& quipper_input,
-                                const string& quipper_output,
-                                const string& sort_fields);
-
-// Default implementation of ComparePerfReportsByFields(), where |sort_fields|
-// is set to a default value.
-bool ComparePerfReports(const string& quipper_input,
-                        const string& quipper_output);
-
-// Similar to ComparePerfReports, but for piped perf data files.
-// Warning: This is not commutative - |quipper_input| must be the piped perf
-// data file passed to quipper, and |quipper_output| must be the file written
-// by quipper.
-bool ComparePipedPerfReports(const string& quipper_input,
-                             const string& quipper_output,
-                             MetadataSet* seen_metadata);
-
 // Given a perf data file, get the list of build ids and create a map from
 // filenames to build ids.
 bool GetPerfBuildIDMap(const string& filename,
                        std::map<string, string>* output);
+
+bool CheckPerfDataAgainstBaseline(const string& filename);
 
 // Returns true if the perf buildid-lists are the same.
 bool ComparePerfBuildIDLists(const string& file1, const string& file2);
