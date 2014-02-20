@@ -1605,6 +1605,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_enroll_request(
               proxy.gproxy(),
+              cryptohome::Attestation::kDefaultPCA,
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationCreateEnrollRequest call failed: %s.\n",
@@ -1636,8 +1637,8 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedError error;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
-          proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
-          &success, &chromeos::Resetter(&error).lvalue())) {
+              proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
+              &success, &chromeos::Resetter(&error).lvalue())) {
         printf("TpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
       }
@@ -1646,8 +1647,8 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_enroll(
-          proxy.gproxy(), data.get(), &async_id,
-          &chromeos::Resetter(&error).lvalue())) {
+              proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
+              &async_id, &chromeos::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
       } else {

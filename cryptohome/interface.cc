@@ -317,9 +317,10 @@ gboolean cryptohome_tpm_attestation_create_enroll_request(
 }
 gboolean cryptohome_async_tpm_attestation_create_enroll_request(
     Cryptohome* self,
+    gint pca_type,
     gint* OUT_async_id,
     GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateEnrollRequest, 0,
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateEnrollRequest, pca_type,
                          OUT_async_id);
 }
 gboolean cryptohome_async_tpm_attestation_create_enroll_request_new(
@@ -339,10 +340,11 @@ gboolean cryptohome_tpm_attestation_enroll(Cryptohome* self,
                          OUT_success);
 }
 gboolean cryptohome_async_tpm_attestation_enroll(Cryptohome* self,
+                                                 gint pca_type,
                                                  GArray* pca_response,
                                                  gint* OUT_async_id,
                                                  GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationEnroll, 0, pca_response,
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationEnroll, pca_type, pca_response,
                          OUT_async_id);
 }
 gboolean cryptohome_async_tpm_attestation_enroll_new(Cryptohome* self,
@@ -367,20 +369,6 @@ gboolean cryptohome_tpm_attestation_create_cert_request(
                          username,
                          request_origin,
                          OUT_pca_request);
-}
-gboolean cryptohome_async_tpm_attestation_create_cert_request_by_profile(
-    Cryptohome* self,
-    gint certificate_profile,
-    gchar* username,
-    gchar* request_origin,
-    gint* OUT_async_id,
-    GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
-                         0,
-                         certificate_profile,
-                         username,
-                         request_origin,
-                         OUT_async_id);
 }
 gboolean cryptohome_async_tpm_attestation_create_cert_request(
     Cryptohome* self,
