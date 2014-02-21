@@ -15,8 +15,6 @@
 #include <dbus/dbus-glib.h>
 
 namespace login_manager {
-using std::string;
-using std::vector;
 
 const char DBusSignalEmitterInterface::kSignalSuccess[] = "success";
 const char DBusSignalEmitterInterface::kSignalFailure[] = "failure";
@@ -27,39 +25,40 @@ DBusSignalEmitter::DBusSignalEmitter() {}
 
 DBusSignalEmitter::~DBusSignalEmitter() {}
 
-void DBusSignalEmitter::EmitSignal(const char* signal_name) {
-  EmitSignalWithStringArgs(signal_name, vector<string>());
+void DBusSignalEmitter::EmitSignal(const std::string& signal_name) {
+  EmitSignalWithString(signal_name, std::string());
 }
 
-void DBusSignalEmitter::EmitSignalWithStringArgs(
-    const char* signal_name,
-    const vector<string>& payload) {
-  EmitSignalFrom(chromium::kChromiumInterface, signal_name, payload);
-  EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name, payload);
+void DBusSignalEmitter::EmitSignalWithSuccessFailure(
+    const std::string& signal_name,
+    const bool success) {
+  EmitSignalWithString(signal_name, success ? kSignalSuccess : kSignalFailure);
 }
 
-void DBusSignalEmitter::EmitSignalWithBoolean(const char* signal_name,
-                                              bool status) {
-  EmitSignalFrom(chromium::kChromiumInterface, signal_name,
-                 vector<string>(1, status ? kSignalSuccess : kSignalFailure));
-  EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name,
-                 vector<string>(1, status ? kSignalSuccess : kSignalFailure));
+void DBusSignalEmitter::EmitSignalWithString(const std::string& signal_name,
+                                             const std::string& payload) {
+  std::vector<std::string> to_pass;
+  to_pass.push_back(payload);
+  EmitSignalFrom(kSessionManagerInterface, signal_name, to_pass);
 }
 
-void DBusSignalEmitter::EmitSignalFrom(const char* interface,
-                                       const char* signal_name,
-                                       const vector<string>& payload) {
+void DBusSignalEmitter::EmitSignalFrom(
+    const std::string& interface,
+    const std::string& signal_name,
+    const std::vector<std::string>& payload) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              login_manager::kSessionManagerServicePath,
-                              interface);
+                              kSessionManagerServicePath,
+                              interface.c_str());
   if (!proxy) {
     LOG(ERROR) << "No proxy; can't signal " << interface;
     return;
   }
-  DBusMessage* signal = ::dbus_message_new_signal(
-      login_manager::kSessionManagerServicePath, interface, signal_name);
+  DBusMessage* signal =
+      ::dbus_message_new_signal(kSessionManagerServicePath,
+                                interface.c_str(),
+                                signal_name.c_str());
   if (!payload.empty()) {
-    for (vector<string>::const_iterator it = payload.begin();
+    for (std::vector<std::string>::const_iterator it = payload.begin();
          it != payload.end();
          ++it) {
       // Need to be able to take the address of the value to append.

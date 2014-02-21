@@ -7,6 +7,8 @@
 
 #include "login_manager/dbus_signal_emitter.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace login_manager {
@@ -17,10 +19,10 @@ class MockDBusSignalEmitter : public DBusSignalEmitterInterface {
   MockDBusSignalEmitter();
   virtual ~MockDBusSignalEmitter();
 
-  MOCK_METHOD1(EmitSignal, void(const char*));
-  MOCK_METHOD2(EmitSignalWithStringArgs,
-               void(const char*, const std::vector<std::string>&));
-  MOCK_METHOD2(EmitSignalWithBoolean, void(const char*, bool));
+  MOCK_METHOD1(EmitSignal, void(const std::string&));
+  MOCK_METHOD2(EmitSignalWithSuccessFailure, void(const std::string&, bool));
+  MOCK_METHOD2(EmitSignalWithString, void(const std::string&,
+                                          const std::string&));
 };
 
 }  // namespace login_manager

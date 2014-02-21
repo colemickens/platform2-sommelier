@@ -225,9 +225,9 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner))
         .Times(1);
     EXPECT_CALL(dbus_emitter_,
-                EmitSignalWithStringArgs(
+                EmitSignalWithString(
                     StrEq(login_manager::kSessionStateChangedSignal),
-                    ElementsAre(SessionManagerImpl::kStarted)))
+                    StrEq(SessionManagerImpl::kStarted)))
         .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
@@ -259,9 +259,9 @@ class SessionManagerImplTest : public ::testing::Test {
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
     EXPECT_CALL(dbus_emitter_,
-                EmitSignalWithStringArgs(
+                EmitSignalWithString(
                     StrEq(login_manager::kSessionStateChangedSignal),
-                    ElementsAre(SessionManagerImpl::kStarted)))
+                    StrEq(SessionManagerImpl::kStarted)))
         .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));

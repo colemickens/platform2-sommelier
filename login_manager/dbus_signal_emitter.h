@@ -23,17 +23,17 @@ class DBusSignalEmitterInterface {
   virtual ~DBusSignalEmitterInterface();
 
   // Broadcasts |signal_name| from the session manager DBus interface.
-  virtual void EmitSignal(const char* signal_name) = 0;
+  virtual void EmitSignal(const std::string& signal_name) = 0;
+
+  // Broadcasts |signal_name| from the session manager DBus interface,
+  // with kSignalSuccess if |success| is true, kSignalFailure otherwise.
+  virtual void EmitSignalWithSuccessFailure(const std::string& signal_name,
+                                            const bool success) = 0;
 
   // Broadcasts |signal_name| from the session manager DBus interface,
   // optionally adding |payload| as args if it is not empty.
-  virtual void EmitSignalWithStringArgs(
-      const char* signal_name,
-      const std::vector<std::string>& payload) = 0;
-
-  // Same as above, but accepts a boolean status that'll be encoded as
-  // |kSignalSuccess| and |kSignalFailure| respectively.
-  virtual void EmitSignalWithBoolean(const char* signal_name, bool status) = 0;
+  virtual void EmitSignalWithString(const std::string& signal_name,
+                                    const std::string& payload) = 0;
 };
 
 // Simple mockable interface for emitting DBus signals.
@@ -42,17 +42,16 @@ class DBusSignalEmitter : public DBusSignalEmitterInterface {
   DBusSignalEmitter();
   virtual ~DBusSignalEmitter();
 
-  virtual void EmitSignal(const char* signal_name) OVERRIDE;
-  virtual void EmitSignalWithStringArgs(
-      const char* signal_name,
-      const std::vector<std::string>& payload) OVERRIDE;
-  virtual void EmitSignalWithBoolean(const char* signal_name,
-                                     bool status) OVERRIDE;
+  virtual void EmitSignal(const std::string& signal_name) OVERRIDE;
+  virtual void EmitSignalWithSuccessFailure(const std::string& signal_name,
+                                            const bool success) OVERRIDE;
+  virtual void EmitSignalWithString(const std::string& signal_name,
+                                    const std::string& payload) OVERRIDE;
 
  private:
   // Does the actual work of emitting the signal.
-  void EmitSignalFrom(const char* interface,
-                      const char* signal_name,
+  void EmitSignalFrom(const std::string& interface,
+                      const std::string& signal_name,
                       const std::vector<std::string>& payload);
   DISALLOW_COPY_AND_ASSIGN(DBusSignalEmitter);
 };
