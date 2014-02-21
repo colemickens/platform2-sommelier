@@ -93,12 +93,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   void ExpectShutdown() {
     EXPECT_CALL(*session_manager_impl_, AnnounceSessionStoppingIfNeeded())
         .Times(1);
-  }
-
-  void ExpectFinalization() {
     EXPECT_CALL(*session_manager_impl_, AnnounceSessionStopped())
-        .Times(1);
-    EXPECT_CALL(*session_manager_impl_, Finalize())
         .Times(1);
   }
 
@@ -128,7 +123,6 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          base::TimeDelta(),
                                          &metrics_,
                                          &real_utils_);
-    manager_->Reset();
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
   }
@@ -197,7 +191,6 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
 
   ExpectLivenessChecking();
   ExpectShutdown();
-  ExpectFinalization();
 
   // Expect the job to be killed.
   EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
@@ -214,7 +207,6 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
                  manager_.get()));
 
   ForceRunLoop();
-  manager_->Finalize();
 }
 
 // If the browser exits and asks to stop, the session manager

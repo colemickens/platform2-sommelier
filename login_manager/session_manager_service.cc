@@ -136,6 +136,7 @@ SessionManagerService::~SessionManagerService() {
   // Remove this in case it was added by StopSession().
   g_idle_remove_by_data(this);
   RevertHandlers();
+  TerminationHandler::RevertHandlers();
 }
 
 bool SessionManagerService::Initialize() {
@@ -276,10 +277,7 @@ bool SessionManagerService::Shutdown() {
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
-  liveness_checker_->Stop();
-  CleanupChildren(GetKillTimeout());
   impl_->Finalize();
-  impl_->AnnounceSessionStopped();
 }
 
 void SessionManagerService::ScheduleShutdown() {
@@ -446,8 +444,6 @@ void SessionManagerService::RevertHandlers() {
   action.sa_handler = SIG_DFL;
   CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
   CHECK(sigaction(SIGALRM, &action, NULL) == 0);
-  ChildExitHandler::RevertHandlers();
-  TerminationHandler::RevertHandlers();
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {
@@ -484,6 +480,12 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   shutting_down_ = true;
   exit_code_ = code;
   impl_->AnnounceSessionStoppingIfNeeded();
+
+  ChildExitHandler::RevertHandlers();
+  liveness_checker_->Stop();
+  CleanupChildren(GetKillTimeout());
+  impl_->AnnounceSessionStopped();
+
   loop_proxy_->PostTask(FROM_HERE, quit_closure_);
   LOG(INFO) << "SessionManagerService quitting run loop";
 }
