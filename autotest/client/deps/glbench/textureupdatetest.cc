@@ -16,16 +16,16 @@ class TextureUpdateTest : public TextureTest {
  public:
   TextureUpdateTest() {}
   virtual ~TextureUpdateTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "texture_update"; }
 };
 
-bool TextureUpdateTest::TestFunc(int iter) {
+bool TextureUpdateTest::TestFunc(uint64_t iterations) {
   glGetError();
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
-  for (int i = 0; i < iter - 1; ++i) {
+  for (uint64_t i = 0; i < iterations - 1; ++i) {
     switch (flavor_) {
       case TEX_IMAGE:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width_, height_,

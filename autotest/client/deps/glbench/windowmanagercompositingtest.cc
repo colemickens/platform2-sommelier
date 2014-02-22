@@ -21,7 +21,7 @@ class WindowManagerCompositingTest : public TestBase {
       compositing_background_program_(0),
       compositing_foreground_program_(0) {}
   virtual ~WindowManagerCompositingTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual bool Run();
   virtual const char* Name() const { return "compositing"; }
 
@@ -58,8 +58,8 @@ bool WindowManagerCompositingTest::Run() {
   return true;
 }
 
-bool WindowManagerCompositingTest::TestFunc(int iter) {
-  for (int i = 0 ; i < iter; ++i) {
+bool WindowManagerCompositingTest::TestFunc(uint64_t iterations) {
+  for (uint64_t i = 0 ; i < iterations; ++i) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw the background

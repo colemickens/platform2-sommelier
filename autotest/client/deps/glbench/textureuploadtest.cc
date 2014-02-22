@@ -15,14 +15,14 @@ class TextureUploadTest : public TextureTest {
  public:
   TextureUploadTest() {}
   virtual ~TextureUploadTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "texture_upload"; }
 };
 
-bool TextureUploadTest::TestFunc(int iter) {
+bool TextureUploadTest::TestFunc(uint64_t iterations) {
   glGetError();
 
-  for (int i = 0; i < iter - 1; ++i) {
+  for (uint64_t i = 0; i < iterations - 1; ++i) {
     glBindTexture(GL_TEXTURE_2D, textures_[i % kNumberOfTextures]);
     switch (flavor_) {
       case TEX_IMAGE:

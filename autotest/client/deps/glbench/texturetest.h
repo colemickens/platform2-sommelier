@@ -22,7 +22,7 @@ class TextureTest : public TestBase {
  public:
   TextureTest() {}
   virtual ~TextureTest() {}
-  virtual bool TestFunc(int iter) = 0;
+  virtual bool TestFunc(uint64_t iterations) = 0;
   virtual bool Run();
   virtual const char* Name() const = 0;
 

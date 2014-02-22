@@ -17,17 +17,17 @@ class TextureReuseTest : public TextureTest {
  public:
   TextureReuseTest() {}
   virtual ~TextureReuseTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "texture_reuse"; }
 };
 
-bool TextureReuseTest::TestFunc(int iter) {
+bool TextureReuseTest::TestFunc(uint64_t iterations) {
   glGetError();
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
 
-  for (int i = 0; i < iter - 1; ++i) {
+  for (uint64_t i = 0; i < iterations - 1; ++i) {
     glBindTexture(GL_TEXTURE_2D, textures_[i % kNumberOfTextures]);
     switch (flavor_) {
       case TEX_IMAGE:

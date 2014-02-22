@@ -23,14 +23,14 @@ class ContextTest : public GLInterfaceTest {
  public:
   ContextTest() {}
   virtual ~ContextTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "context"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ContextTest);
 };
 
-bool ContextTest::TestFunc(int iter) {
+bool ContextTest::TestFunc(uint64_t iterations) {
   GLInterface* interface = g_main_gl_interface.get();
   CHECK(interface);
   GLContext main_context = interface->GetMainContext();
@@ -38,7 +38,7 @@ bool ContextTest::TestFunc(int iter) {
   CHECK(main_context);
   CHECK(new_context);
 
-  for (int i = 0 ; i < iter; ++i) {
+  for (uint64_t i = 0 ; i < iterations; ++i) {
     if (!render_func_.is_null())
       render_func_.Run();
     interface->MakeCurrent(IsEven(i) ? new_context : main_context);

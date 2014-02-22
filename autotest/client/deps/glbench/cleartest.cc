@@ -13,7 +13,7 @@ class ClearTest : public TestBase {
  public:
   ClearTest() : mask_(0) {}
   virtual ~ClearTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual bool Run();
   virtual const char* Name() const { return "clear"; }
 
@@ -23,11 +23,11 @@ class ClearTest : public TestBase {
 };
 
 
-bool ClearTest::TestFunc(int iter) {
+bool ClearTest::TestFunc(uint64_t iterations) {
   GLbitfield mask = mask_;
   glClear(mask);
   glFlush();  // Kick GPU as soon as possible
-  for (int i = 0 ; i < iter-1; ++i) {
+  for (uint64_t i = 0; i < iterations - 1; ++i) {
     glClear(mask);
   }
   return true;

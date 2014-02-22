@@ -15,15 +15,15 @@ class SwapTest : public GLInterfaceTest {
  public:
   SwapTest() {}
   virtual ~SwapTest() {}
-  virtual bool TestFunc(int iter);
+  virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "swap"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTest);
 };
 
-bool SwapTest::TestFunc(int iter) {
-  for (int i = 0 ; i < iter; ++i) {
+bool SwapTest::TestFunc(uint64_t iterations) {
+  for (uint64_t i = 0 ; i < iterations; ++i) {
     if (!render_func_.is_null())
       render_func_.Run();
     g_main_gl_interface->SwapBuffers();
