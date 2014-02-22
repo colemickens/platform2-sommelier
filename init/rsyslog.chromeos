@@ -18,8 +18,8 @@ if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 
 
 $outchannel tlsdate,/var/log/tlsdate.log,65536,/usr/sbin/simple-rotate /var/log/tlsdate.log
 # Keep tlsdate stuff in /var/log/tlsdate.log
-if $programname == 'tlsdate' then :omfile:$tlsdate
-if $programname == 'tlsdate' then ~
+if ($programname startswith 'tlsdate') then :omfile:$tlsdate
+& ~  # Don't log tlsdate messages anywhere else.
 
 # Log all kernel messages to the console.
 # Logging much else clutters up the screen.
