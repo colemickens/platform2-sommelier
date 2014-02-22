@@ -377,9 +377,7 @@ main() {
   fi
 
   # Light up the screen if possible.
-  if [ -x /usr/sbin/lightup_screen ]; then
-    /usr/sbin/lightup_screen >/dev/null 2>&1
-  fi
+  backlight_tool --set_brightness_percent 100 || true
 
   # Hides cursor and prevents console from blanking after long inactivity.
   setterm -cursor off -blank 0 -powersave off -powerdown 0 >"$STDOUT" || true
