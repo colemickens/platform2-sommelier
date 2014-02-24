@@ -41,14 +41,14 @@ class Attestation : public base::PlatformThread::Delegate,
     kMaxPCAType
   };
   // The caller retains ownership of all pointers.
-  Attestation(Tpm* tpm,
-              Platform* platform,
-              Crypto* crypto,
-              InstallAttributes* install_attributes);
+  Attestation();
   virtual ~Attestation();
 
   // Must be called before any other method.
-  virtual void Initialize();
+  virtual void Initialize(Tpm* tpm,
+                          Platform* platform,
+                          Crypto* crypto,
+                          InstallAttributes* install_attributes);
 
   // Returns true if the attestation enrollment blobs already exist.
   virtual bool IsPreparedForEnrollment();

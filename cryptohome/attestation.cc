@@ -206,24 +206,16 @@ const char Attestation::kAlternatePCAKeyAttributeName[] =
 const char Attestation::kAlternatePCAKeyIDAttributeName[] =
     "enterprise.alternate_pca_key_id";
 
-Attestation::Attestation(Tpm* tpm,
-                         Platform* platform,
-                         Crypto* crypto,
-                         InstallAttributes* install_attributes)
-    : tpm_(tpm),
-      platform_(platform),
-      crypto_(crypto),
-      database_path_(kDefaultDatabasePath),
+Attestation::Attestation()
+    : database_path_(kDefaultDatabasePath),
       thread_(base::kNullThreadHandle),
       pkcs11_key_store_(new Pkcs11KeyStore()),
       user_key_store_(pkcs11_key_store_.get()),
       enterprise_test_key_(NULL),
-      install_attributes_(install_attributes),
       install_attributes_observer_(this),
       is_tpm_ready_(false),
       is_prepare_in_progress_(false) {
   metrics_.Init();
-  install_attributes_observer_.Add(install_attributes_);
 }
 
 Attestation::~Attestation() {
@@ -232,8 +224,20 @@ Attestation::~Attestation() {
   ClearDatabase();
 }
 
-void Attestation::Initialize() {
+void Attestation::Initialize(Tpm* tpm,
+                             Platform* platform,
+                             Crypto* crypto,
+                             InstallAttributes* install_attributes) {
   base::AutoLock lock(lock_);
+  // Inject dependencies.
+  tpm_ = tpm;
+  platform_ = platform;
+  crypto_ = crypto;
+  if (install_attributes_ != install_attributes) {
+    install_attributes_ = install_attributes;
+    install_attributes_observer_.Add(install_attributes_);
+  }
+
   if (tpm_) {
     string serial_encrypted_db;
     if (!LoadDatabase(&serial_encrypted_db)) {

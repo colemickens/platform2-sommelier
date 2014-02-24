@@ -265,8 +265,7 @@ Service::Service()
       public_mount_salt_(),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
-      default_attestation_(
-          new Attestation(tpm_, platform_, crypto_, install_attrs_)),
+      default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()) {
 }
 
@@ -410,7 +409,10 @@ bool Service::Initialize() {
   // Clean up any unreferenced mountpoints at startup.
   CleanUpStaleMounts(false);
 
-  attestation_->Initialize();
+  // Pass in all the shared dependencies here rather than
+  // needing to always get the Attestation object to set them
+  // during testing.
+  attestation_->Initialize(tpm_, platform_, crypto_, install_attrs_);
 
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.

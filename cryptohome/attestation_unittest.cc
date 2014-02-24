@@ -40,8 +40,7 @@ static const char* kTestUser = "test_user";
 class AttestationTest : public testing::Test {
  public:
   AttestationTest() : crypto_(&platform_),
-                      attestation_(&tpm_, &platform_, &crypto_,
-                                   &install_attributes_),
+                      attestation_(),
                       rsa_(NULL) {
     crypto_.set_tpm(&tpm_);
     crypto_.set_use_tpm(true);
@@ -63,6 +62,7 @@ class AttestationTest : public testing::Test {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsBeingOwned()).WillByDefault(Return(false));
+    attestation_.Initialize(&tpm_, &platform_, &crypto_, &install_attributes_);
   }
 
   virtual bool WriteDB(const string& path, const string& db) {
@@ -290,7 +290,8 @@ class AttestationTest : public testing::Test {
 };
 
 TEST(AttestationTest_, NullTpm) {
-  Attestation without_tpm(NULL, NULL, new Crypto(NULL),
+  Attestation without_tpm;
+  without_tpm.Initialize(NULL, NULL, new Crypto(NULL),
                           new InstallAttributes(NULL));
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
@@ -597,7 +598,6 @@ TEST_F(AttestationTest, GetEKInfo) {
 
 TEST_F(AttestationTest, FinalizeEndorsementData) {
   // Simulate first login.
-  attestation_.Initialize();
   attestation_.PrepareForEnrollment();
   // Expect endorsement data to be available.
   AttestationDatabase db = GetPersistentDatabase();
@@ -606,7 +606,7 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
               db.credentials().has_endorsement_credential());
 
   // Simulate second login.
-  attestation_.Initialize();
+  attestation_.Initialize(&tpm_, &platform_, &crypto_, &install_attributes_);
   // Expect endorsement data to be no longer available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&

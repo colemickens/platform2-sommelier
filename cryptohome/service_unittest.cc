@@ -20,6 +20,7 @@
 
 #include "crypto.h"
 #include "make_tests.h"
+#include "mock_attestation.h"
 #include "mock_crypto.h"
 #include "mock_homedirs.h"
 #include "mock_install_attributes.h"
@@ -100,6 +101,12 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   service.set_mount_for_user("chromeos-user", mount.get());
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
+  NiceMock<MockAttestation> attest;
+  service.set_attestation(&attest);
+  NiceMock<chaps::TokenManagerClientMock> chaps;
+  NiceMock<MockPlatform> platform;
+  service.set_platform(&platform);
+  service.set_chaps_client(&chaps);
   service.set_initialize_tpm(false);
   service.Initialize();
   gboolean out = FALSE;
@@ -136,6 +143,10 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
+  NiceMock<MockAttestation> attest;
+  service.set_attestation(&attest);
+  NiceMock<chaps::TokenManagerClientMock> chaps;
+  service.set_chaps_client(&chaps);
   service.Initialize();
 
   SecureBlob passkey;
@@ -192,6 +203,10 @@ TEST_F(ServiceInterfaceTest, GetPublicMountPassKey) {
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
+  NiceMock<MockAttestation> attest;
+  service.set_attestation(&attest);
+  NiceMock<chaps::TokenManagerClientMock> chaps;
+  service.set_chaps_client(&chaps);
   service.Initialize();
 
   const char kPublicUser1[] = "public_user_1";
@@ -251,6 +266,10 @@ TEST(Standalone, CheckAutoCleanupCallback) {
 
   service.set_auto_cleanup_period(2);  // 2ms = 500HZ
   service.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
+  NiceMock<MockAttestation> attest;
+  service.set_attestation(&attest);
+  NiceMock<chaps::TokenManagerClientMock> chaps;
+  service.set_chaps_client(&chaps);
   service.Initialize();
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
 }
@@ -263,6 +282,8 @@ TEST(Standalone, CheckAutoCleanupCallbackFirst) {
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
+  NiceMock<MockAttestation> attest;
+  service.set_attestation(&attest);
 
   // Service will schedule first cleanup right after its init.
   EXPECT_CALL(homedirs, Init())
