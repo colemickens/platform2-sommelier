@@ -14,7 +14,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -46,7 +46,8 @@ class BrowserJobTest : public ::testing::Test {
                                const char name[],
                                const char value[]) {
     std::vector<std::string>::const_iterator user_flag =
-        std::find(argv.begin(), argv.end(), StringPrintf("%s%s", name, value));
+        std::find(argv.begin(), argv.end(),
+                  base::StringPrintf("%s%s", name, value));
     EXPECT_NE(user_flag, argv.end()) << "argv should contain " << name << value;
   }
 
@@ -54,7 +55,8 @@ class BrowserJobTest : public ::testing::Test {
                                   const char name[],
                                   const char value[]) {
     std::vector<std::string>::const_iterator user_flag =
-        std::find(argv.begin(), argv.end(), StringPrintf("%s%s", name, value));
+        std::find(argv.begin(), argv.end(),
+                  base::StringPrintf("%s%s", name, value));
     EXPECT_EQ(user_flag, argv.end()) << "argv shouldn't contain "
                                      << name << value;
   }

@@ -20,9 +20,9 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/switches/chrome_switches.h>
 
 #include "login_manager/file_checker.h"
@@ -175,7 +175,7 @@ void BrowserJob::StopSession() {
 }
 
 const std::string BrowserJob::GetName() const {
-  FilePath exec_file(arguments_[0]);
+  base::FilePath exec_file(arguments_[0]);
   return exec_file.BaseName().value();
 }
 

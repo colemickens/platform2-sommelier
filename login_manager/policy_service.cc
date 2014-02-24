@@ -11,7 +11,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
 
@@ -56,7 +56,7 @@ PolicyService::PolicyService(
       policy_key_(policy_key),
       main_loop_(main_loop),
       delegate_(NULL) ,
-      ALLOW_THIS_IN_INITIALIZER_LIST(weak_ptr_factory_(this)) {
+      weak_ptr_factory_(this) {
 }
 
 PolicyService::~PolicyService() {

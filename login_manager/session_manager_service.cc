@@ -14,15 +14,15 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
-#include <base/string_util.h>
-#include <base/time.h>
+#include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
@@ -100,19 +100,18 @@ SessionManagerService::SessionManagerService(
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
-      loop_proxy_(MessageLoopForIO::current()->message_loop_proxy()),
+      loop_proxy_(base::MessageLoopForIO::current()->message_loop_proxy()),
       quit_closure_(quit_closure),
-      match_rule_(StringPrintf("type='method_call', interface='%s'",
-                               kSessionManagerInterface)),
+      match_rule_(base::StringPrintf("type='method_call', interface='%s'",
+                                     kSessionManagerInterface)),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(uid, utils),
-      liveness_checker_(NULL),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       child_exit_handler_(utils),
-      ALLOW_THIS_IN_INITIALIZER_LIST(term_handler_(this)),
+      term_handler_(this),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
@@ -355,7 +354,7 @@ void SessionManagerService::RevertHandlers() {
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {
-  if (file_util::PathExists(FilePath(kCollectChromeFile)))
+  if (base::PathExists(base::FilePath(kCollectChromeFile)))
     return base::TimeDelta::FromSeconds(kKillTimeoutCollectChrome);
   else
     return kill_timeout_;
@@ -397,7 +396,8 @@ void SessionManagerService::TakeDBusServiceOwnership() {
   // Note that this needs to happen *after* all methods are exported
   // (http://crbug.com/331431).
   // This should pass dbus::Bus::REQUIRE_PRIMARY once on the new libchrome.
-  CHECK(bus_->RequestOwnershipAndBlock(kSessionManagerServiceName))
+  CHECK(bus_->RequestOwnershipAndBlock(kSessionManagerServiceName,
+                                       dbus::Bus::REQUIRE_PRIMARY))
       << "Unable to take ownership of " << kSessionManagerServiceName;
 }
 

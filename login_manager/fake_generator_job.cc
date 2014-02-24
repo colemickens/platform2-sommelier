@@ -8,10 +8,10 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/time.h>
+#include <base/time/time.h>
 
 #include "login_manager/generator_job.h"
 #include "login_manager/key_generator.h"
@@ -51,7 +51,7 @@ FakeGeneratorJob::~FakeGeneratorJob() {}
 
 bool FakeGeneratorJob::RunInBackground() {
   base::FilePath full_path(filename_);
-  if (!file_util::CreateDirectory(full_path.DirName())) {
+  if (!base::CreateDirectory(full_path.DirName())) {
     PLOG(ERROR) << "Could not create directory " << full_path.DirName().value();
     return false;
   }

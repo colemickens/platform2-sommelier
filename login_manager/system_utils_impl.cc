@@ -18,12 +18,12 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/process.h>
@@ -105,7 +105,7 @@ bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                                   int32* file_size_32) {
   // Get the file size (must fit in a 32 bit int for NSS).
   int64 file_size;
-  if (!file_util::GetFileSize(file, &file_size)) {
+  if (!base::GetFileSize(file, &file_size)) {
     LOG(ERROR) << "Could not get size of " << file.value();
     return false;
   }
@@ -119,14 +119,14 @@ bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
 }
 
 bool SystemUtilsImpl::Exists(const base::FilePath& file) {
-  return file_util::PathExists(file);
+  return base::PathExists(file);
 }
 
 bool SystemUtilsImpl::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
   if (!temp_dir_.IsValid() && !temp_dir_.CreateUniqueTempDir())
     return false;
   base::FilePath local_temp_file;
-  if (file_util::CreateTemporaryFileInDir(temp_dir_.path(), &local_temp_file)) {
+  if (base::CreateTemporaryFileInDir(temp_dir_.path(), &local_temp_file)) {
     if (chmod(local_temp_file.value().c_str(), 0644) == 0) {
       *temp_file = local_temp_file;
       return true;
@@ -144,14 +144,14 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
   // It will be made write-only below; we need to be able to read it
   // when trying to create a unique name inside it.
   base::FilePath temp_dir_path;
-  if (!file_util::CreateNewTempDirectory(
+  if (!base::CreateNewTempDirectory(
           FILE_PATH_LITERAL(""), &temp_dir_path)) {
     PLOG(ERROR) << "Can't create temp dir";
     return false;
   }
   // Create a temporary file in the temporary directory, to be deleted later.
   // This ensures a unique name.
-  if (!file_util::CreateTemporaryFileInDir(temp_dir_path, temp_file_path)) {
+  if (!base::CreateTemporaryFileInDir(temp_dir_path, temp_file_path)) {
     PLOG(ERROR) << "Can't get temp file name in " << temp_dir_path.value();
     return false;
   }
@@ -168,22 +168,22 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
 }
 
 bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
-  if (file_util::DirectoryExists(filename))
+  if (base::DirectoryExists(filename))
     return false;
-  return file_util::Delete(filename, false);
+  return base::DeleteFile(filename, false);
 }
 
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
                                       const char* data,
                                       int size) {
   base::FilePath scratch_file;
-  if (!file_util::CreateTemporaryFileInDir(filename.DirName(), &scratch_file))
+  if (!base::CreateTemporaryFileInDir(filename.DirName(), &scratch_file))
     return false;
   if (file_util::WriteFile(scratch_file, data, size) != size)
     return false;
 
-  return (file_util::ReplaceFile(scratch_file, filename) &&
-          file_util::SetPosixFilePermissions(filename,
+  return (base::ReplaceFile(scratch_file, filename, NULL) &&
+          base::SetPosixFilePermissions(filename,
                                              (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 

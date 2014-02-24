@@ -15,15 +15,15 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
-#include <base/time.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <chromeos/syslog_logging.h>
 
 #include "login_manager/browser_job.h"
@@ -168,12 +168,12 @@ int main(int argc, char* argv[]) {
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-  FileChecker checker((FilePath(magic_chrome_file)));  // So vexing!
+  FileChecker checker((base::FilePath(magic_chrome_file)));  // So vexing!
 
   // Used to report various metrics around user type (guest vs non), dev-mode,
   // and policy/key file status.
-  FilePath flag_file_dir(kFlagFileDir);
-  if (!file_util::CreateDirectory(flag_file_dir))
+  base::FilePath flag_file_dir(kFlagFileDir);
+  if (!base::CreateDirectory(flag_file_dir))
     PLOG(FATAL) << "Cannot create flag file directory at " << kFlagFileDir;
   LoginMetrics metrics(flag_file_dir);
 
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
                      &system));
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
-  MessageLoopForIO message_loop;
+  base::MessageLoopForIO message_loop;
   base::RunLoop run_loop;
 
   scoped_refptr<SessionManagerService> manager =

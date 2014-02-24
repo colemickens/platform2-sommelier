@@ -10,7 +10,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop_proxy.h>
 
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/device_management_backend.pb.h"
@@ -25,7 +25,7 @@ namespace login_manager {
 UserPolicyService::UserPolicyService(
     scoped_ptr<PolicyStore> policy_store,
     scoped_ptr<PolicyKey> policy_key,
-    const FilePath& key_copy_path,
+    const base::FilePath& key_copy_path,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     SystemUtils* system_utils)
     : PolicyService(policy_store.Pass(), policy_key.get(), main_loop),
@@ -42,8 +42,8 @@ void UserPolicyService::PersistKeyCopy() {
   if (key_copy_path_.empty())
     return;
   if (scoped_policy_key_->IsPopulated()) {
-    FilePath dir(key_copy_path_.DirName());
-    file_util::CreateDirectory(dir);
+    base::FilePath dir(key_copy_path_.DirName());
+    base::CreateDirectory(dir);
     mode_t mode = S_IRWXU | S_IXGRP | S_IXOTH;
     chmod(dir.value().c_str(), mode);
 

@@ -8,7 +8,7 @@ include common.mk
 
 PKG_CONFIG ?= pkg-config
 
-BASE_VER ?= 180609
+BASE_VER ?= 242728
 PC_DEPS = dbus-1 glib-2.0 nss libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))

@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <chromeos/cryptohome.h>
 
@@ -38,9 +38,10 @@ KeyGenerator::~KeyGenerator() {}
 
 bool KeyGenerator::Start(const string& username) {
   DCHECK(!generating_) << "Must call Reset() between calls to Start()!";
-  FilePath user_path(chromeos::cryptohome::home::GetUserPath(username));
-  FilePath temporary_key_path(user_path.AppendASCII(kTemporaryKeyFilename));
-  if (!file_util::Delete(temporary_key_path, false)) {
+  base::FilePath user_path(chromeos::cryptohome::home::GetUserPath(username));
+  base::FilePath temporary_key_path(
+      user_path.AppendASCII(kTemporaryKeyFilename));
+  if (!base::DeleteFile(temporary_key_path, false)) {
     PLOG(ERROR) << "Old keygen state still present; can't generate keys: ";
     return false;
   }
@@ -69,7 +70,7 @@ bool KeyGenerator::IsManagedJob(pid_t pid) {
 void KeyGenerator::HandleExit(const siginfo_t& info) {
   CHECK(delegate_) << "Must set a delegate before exit can be handled.";
   if (info.si_status == 0) {
-    FilePath key_file(temporary_key_filename_);
+    base::FilePath key_file(temporary_key_filename_);
     delegate_->OnKeyGenerated(key_owner_username_, key_file);
   } else {
     DLOG(WARNING) << "Key generation failed with " << info.si_status;

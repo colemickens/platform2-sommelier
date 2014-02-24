@@ -6,17 +6,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -165,7 +165,7 @@ class SessionManagerProcessTest : public ::testing::Test {
  private:
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
-  MessageLoopForIO message_loop_;
+  base::MessageLoopForIO message_loop_;
   base::RunLoop run_loop_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);

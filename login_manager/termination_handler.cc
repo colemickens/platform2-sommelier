@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #include <base/logging.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/system_utils.h"
@@ -55,7 +55,7 @@ void SIGTERMHandler(int signal) {
 
 TerminationHandler::TerminationHandler(ProcessManagerServiceInterface* manager)
     : manager_(manager),
-      fd_watcher_(new MessageLoopForIO::FileDescriptorWatcher) {
+      fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher) {
   int pipefd[2];
   PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
   g_shutdown_pipe_read_fd = pipefd[0];
@@ -66,8 +66,8 @@ TerminationHandler::~TerminationHandler() {}
 
 void TerminationHandler::Init() {
   SetUpHandlers();
-  if (!MessageLoopForIO::current()->WatchFileDescriptor(
-          g_shutdown_pipe_read_fd, true, MessageLoopForIO::WATCH_READ,
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+          g_shutdown_pipe_read_fd, true, base::MessageLoopForIO::WATCH_READ,
           fd_watcher_.get(), this)) {
     LOG(ERROR) << "Watching shutdown pipe failed. Graceful exit impossible.";
   }

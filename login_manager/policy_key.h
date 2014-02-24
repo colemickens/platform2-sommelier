@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 
 namespace crypto {
@@ -30,7 +30,7 @@ class SystemUtils;
 // before on-disk storage has been checked will be denied.
 class PolicyKey {
  public:
-  PolicyKey(const FilePath& key_file, NssUtil* nss);
+  PolicyKey(const base::FilePath& key_file, NssUtil* nss);
   virtual ~PolicyKey();
 
   virtual bool Equals(const std::string& key_der) const;
@@ -89,7 +89,7 @@ class PolicyKey {
  private:
   static const uint8 kAlgorithm[];
 
-  const FilePath key_file_;
+  const base::FilePath key_file_;
   bool have_checked_disk_;
   bool have_replaced_;
   std::vector<uint8> key_;

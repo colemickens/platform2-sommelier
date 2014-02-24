@@ -6,7 +6,7 @@
 #define LOGIN_MANAGER_USER_POLICY_SERVICE_H_
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "login_manager/policy_service.h"
@@ -22,7 +22,7 @@ class UserPolicyService : public PolicyService {
  public:
   UserPolicyService(scoped_ptr<PolicyStore> policy_store,
                     scoped_ptr<PolicyKey> policy_key,
-                    const FilePath& key_copy_path,
+                    const base::FilePath& key_copy_path,
                     const scoped_refptr<base::MessageLoopProxy>& main_loop,
                     SystemUtils* system_utils);
   virtual ~UserPolicyService();
@@ -51,7 +51,7 @@ class UserPolicyService : public PolicyService {
 
   // If non-empty then a copy of |scoped_policy_key_| will be stored at this
   // path, readable by chronos.
-  FilePath key_copy_path_;
+  base::FilePath key_copy_path_;
 
   // Owned by our owner.
   SystemUtils* system_utils_;

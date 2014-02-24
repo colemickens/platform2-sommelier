@@ -8,7 +8,7 @@
 #include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <crypto/rsa_private_key.h>
@@ -34,11 +34,12 @@ int main(int argc, char* argv[]) {
   std::string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
   if (log_file.empty())
     log_file.assign(switches::kDefaultLogFile);
-  logging::InitLogging(log_file.c_str(),
-                       logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_ALL;
+  settings.log_file = log_file.c_str();
+  settings.lock_log = logging::DONT_LOCK_LOG_FILE;
+  settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
+  logging::InitLogging(settings);
 
   if (cl->GetArgs().size() != 2) {
     LOG(FATAL) << "Usage: keygen /path/to/output_file /path/to/user/homedir";

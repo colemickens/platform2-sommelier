@@ -9,11 +9,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop_proxy.h>
-#include <base/stringprintf.h>
+#include <base/message_loop/message_loop_proxy.h>
+#include <base/strings/stringprintf.h>
 
 #include "chromeos/cryptohome.h"
 
@@ -32,20 +32,21 @@ namespace {
 // Daemon name we use for storing per-user data on the file system.
 const char kDaemonName[] = "session_manager";
 // Name of the subdirectory to store policy in.
-const FilePath::CharType kPolicyDir[] = FILE_PATH_LITERAL("policy");
+const base::FilePath::CharType kPolicyDir[] = FILE_PATH_LITERAL("policy");
 // The policy protobuffer blob is written to this file.
-const FilePath::CharType kPolicyDataFile[] = FILE_PATH_LITERAL("policy");
+const base::FilePath::CharType kPolicyDataFile[] = FILE_PATH_LITERAL("policy");
 // Holds the public key for policy signing.
-const FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
+const base::FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
 
 // Directory that contains the public keys for user policy verification.
 // These keys are duplicates from the key contained in the vault, so that the
 // chrome process can read them; the authoritative version of the key is still
 // the vault's.
-const FilePath::CharType kPolicyKeyCopyDir[] =
+const base::FilePath::CharType kPolicyKeyCopyDir[] =
     FILE_PATH_LITERAL("/var/run/user_policy");
 // Name of the policy key files.
-const FilePath::CharType kPolicyKeyCopyFile[] = FILE_PATH_LITERAL("policy.pub");
+const base::FilePath::CharType kPolicyKeyCopyFile[] =
+    FILE_PATH_LITERAL("policy.pub");
 
 }  // namespace
 
@@ -65,8 +66,9 @@ UserPolicyServiceFactory::~UserPolicyServiceFactory() {
 
 PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
   using chromeos::cryptohome::home::GetDaemonPath;
-  FilePath policy_dir(GetDaemonPath(username, kDaemonName).Append(kPolicyDir));
-  if (!file_util::CreateDirectory(policy_dir)) {
+  base::FilePath policy_dir(
+      GetDaemonPath(username, kDaemonName).Append(kPolicyDir));
+  if (!base::CreateDirectory(policy_dir)) {
     PLOG(ERROR) << "Failed to create user policy directory.";
     return NULL;
   }
@@ -87,7 +89,7 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
 
   using chromeos::cryptohome::home::SanitizeUserName;
   const std::string sanitized(SanitizeUserName(username));
-  const FilePath key_copy_file(base::StringPrintf("%s/%s/%s",
+  const base::FilePath key_copy_file(base::StringPrintf("%s/%s/%s",
                                                   kPolicyKeyCopyDir,
                                                   sanitized.c_str(),
                                                   kPolicyKeyCopyFile));

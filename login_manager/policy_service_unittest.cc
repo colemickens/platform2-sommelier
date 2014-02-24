@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
 #include <gmock/gmock.h>
@@ -141,7 +141,7 @@ class PolicyServiceTest : public testing::Test {
   const uint8* policy_data_;
   uint32 policy_len_;
 
-  MessageLoop loop_;
+  base::MessageLoop loop_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.

@@ -11,12 +11,12 @@
 #include <unistd.h>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chromeos/cryptohome.h>
 #include <gtest/gtest.h>
 
@@ -98,9 +98,9 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
       .WillByDefault(InvokeWithoutArgs(MockNssUtil::CreateShortKey));
   EXPECT_CALL(nss, GenerateKeyPairForUser(_)).Times(1);
 
-  const FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
+  const base::FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
   ASSERT_EQ(keygen::GenerateKey(key_file_path, tmpdir_.path(), &nss), 0);
-  ASSERT_TRUE(file_util::PathExists(key_file_path));
+  ASSERT_TRUE(base::PathExists(key_file_path));
 
   SystemUtilsImpl utils;
   int32 file_size = 0;

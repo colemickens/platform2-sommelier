@@ -33,7 +33,7 @@ int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
           status.defunct_prefs_file_state * 1   /* 4^0 */);
 }
 
-LoginMetrics::LoginMetrics(const FilePath& per_boot_flag_dir)
+LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
     : per_boot_flag_file_(per_boot_flag_dir.Append(kLoginMetricsFlagFile)) {
   metrics_lib_.Init();
 }
@@ -46,7 +46,7 @@ void LoginMetrics::SendLoginUserType(bool dev_mode, bool incognito,
 }
 
 bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
-  if (!file_util::PathExists(per_boot_flag_file_)) {
+  if (!base::PathExists(per_boot_flag_file_)) {
     metrics_lib_.SendEnumToUMA(kLoginPolicyFilesMetric,
                                LoginMetrics::PolicyFilesStatusCode(status),
                                kMaxPolicyFilesValue);
@@ -62,7 +62,7 @@ void LoginMetrics::RecordStats(const char* tag) {
 }
 
 bool LoginMetrics::HasRecordedChromeExec() {
-  return file_util::PathExists(FilePath(LoginMetrics::kChromeUptimeFile));
+  return base::PathExists(base::FilePath(LoginMetrics::kChromeUptimeFile));
 }
 
 // static

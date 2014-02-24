@@ -14,9 +14,9 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 
 #include "login_manager/system_utils.h"
 
@@ -85,7 +85,7 @@ void GeneratorJob::WaitAndAbort(base::TimeDelta timeout) {
 }
 
 const std::string GeneratorJob::GetName() const {
-  FilePath exec_file(kKeygenExecutable);
+  base::FilePath exec_file(kKeygenExecutable);
   return exec_file.BaseName().value();
 }
 

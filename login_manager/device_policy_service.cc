@@ -6,10 +6,10 @@
 
 #include <secmodt.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
@@ -48,15 +48,16 @@ DevicePolicyService* DevicePolicyService::Create(
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
-  return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
-                                 FilePath(kPolicyPath),
-                                 scoped_ptr<PolicyStore>(
-                                     new PolicyStore(FilePath(kPolicyPath))),
-                                 owner_key,
-                                 main_loop,
-                                 metrics,
-                                 mitigator,
-                                 nss);
+  return new DevicePolicyService(
+      base::FilePath(kSerialRecoveryFlagFile),
+      base::FilePath(kPolicyPath),
+      scoped_ptr<PolicyStore>(
+          new PolicyStore(base::FilePath(kPolicyPath))),
+      owner_key,
+      main_loop,
+      metrics,
+      mitigator,
+      nss);
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -122,8 +123,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 }
 
 DevicePolicyService::DevicePolicyService(
-    const FilePath& serial_recovery_flag_file,
-    const FilePath& policy_file,
+    const base::FilePath& serial_recovery_flag_file,
+    const base::FilePath& policy_file,
     scoped_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
@@ -365,7 +366,7 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
   em::PolicyData policy_data;
   int64 policy_size = 0;
   bool recovery_needed = false;
-  if (!file_util::GetFileSize(FilePath(policy_file_), &policy_size) ||
+  if (!base::GetFileSize(base::FilePath(policy_file_), &policy_size) ||
       !policy_size) {
     recovery_needed = true;
   }
@@ -388,7 +389,7 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
                     << serial_recovery_flag_file_.value();
     }
   } else {
-    if (!file_util::Delete(serial_recovery_flag_file_, false)) {
+    if (!base::DeleteFile(serial_recovery_flag_file_, false)) {
       PLOG(WARNING) << "Failed to delete "
                     << serial_recovery_flag_file_.value();
     }

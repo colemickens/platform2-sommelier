@@ -4,10 +4,11 @@
 
 #include "login_manager/mock_nss_util.h"
 
+#include <pk11pub.h>
 #include <secmodt.h>
 #include <unistd.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
@@ -33,7 +34,8 @@ MockNssUtil::~MockNssUtil() {}
 
 // static
 crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
-  crypto::RSAPrivateKey* ret = crypto::RSAPrivateKey::CreateSensitive(256);
+  crypto::RSAPrivateKey* ret =
+      crypto::RSAPrivateKey::CreateSensitive(GetPrivateNSSKeySlot(), 256);
   LOG_IF(ERROR, ret == NULL) << "returning NULL!!!";
   return ret;
 }
@@ -42,7 +44,7 @@ crypto::ScopedPK11Slot MockNssUtil::OpenUserDB(
     const base::FilePath& user_homedir) {
   if (return_bad_db_)
     return crypto::ScopedPK11Slot();
-  return crypto::ScopedPK11Slot(GetPrivateNSSKeySlot());
+  return crypto::ScopedPK11Slot(PK11_ReferenceSlot(GetSlot()));
 }
 
 base::FilePath MockNssUtil::GetOwnerKeyFilePath() {

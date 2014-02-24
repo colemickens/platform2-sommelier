@@ -16,8 +16,8 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/time.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
+#include <base/time/time.h>
 
 namespace login_manager {
 

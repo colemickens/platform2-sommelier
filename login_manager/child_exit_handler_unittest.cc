@@ -11,10 +11,10 @@
 
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/fake_job_manager.h"
@@ -44,7 +44,7 @@ class ChildExitHandlerTest : public ::testing::Test {
   }
 
  protected:
-  MessageLoopForIO loop_;
+  base::MessageLoopForIO loop_;
   MockSystemUtils mock_utils_;
   ChildExitHandler handler_;
   FakeJobManager fake_manager_;
@@ -62,7 +62,7 @@ TEST_F(ChildExitHandlerTest, DataOnPipe) {
   canned.si_status = 1;
 
   base::FilePath scratch;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(), &scratch));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &scratch));
   ASSERT_TRUE(file_util::WriteFile(scratch,
                                    reinterpret_cast<char*>(&canned),
                                    sizeof(canned)));

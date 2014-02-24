@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <gtest/gtest.h>
 
@@ -20,7 +20,7 @@ void FakeGeneratedKeyHandler::OnKeyGenerated(
     const std::string& username,
     const base::FilePath& temp_key_file) {
   key_username_ = username;
-  if (!file_util::ReadFileToString(temp_key_file, &key_contents_))
+  if (!base::ReadFileToString(temp_key_file, &key_contents_))
     ADD_FAILURE() << temp_key_file.value() << " could not be read.";
 }
 

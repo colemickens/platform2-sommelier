@@ -109,8 +109,8 @@ class DevicePolicyService : public PolicyService {
   friend class MockDevicePolicyService;
 
   // Takes ownership of |policy_store| and |mitigator|.
-  DevicePolicyService(const FilePath& serial_recovery_flag_file,
-                      const FilePath& policy_file,
+  DevicePolicyService(const base::FilePath& serial_recovery_flag_file,
+                      const base::FilePath& policy_file,
                       scoped_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
@@ -143,8 +143,8 @@ class DevicePolicyService : public PolicyService {
   // TODO(mnissler): Remove once bogus enterprise serials are fixed.
   void UpdateSerialNumberRecoveryFlagFile();
 
-  const FilePath serial_recovery_flag_file_;
-  const FilePath policy_file_;
+  const base::FilePath serial_recovery_flag_file_;
+  const base::FilePath policy_file_;
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;

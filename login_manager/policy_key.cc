@@ -4,7 +4,7 @@
 
 #include "login_manager/policy_key.h"
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
@@ -24,7 +24,7 @@ const uint8 PolicyKey::kAlgorithm[15] = {
   0xf7, 0x0d, 0x01, 0x01, 0x05, 0x05, 0x00
 };
 
-PolicyKey::PolicyKey(const FilePath& key_file, NssUtil* nss)
+PolicyKey::PolicyKey(const base::FilePath& key_file, NssUtil* nss)
     : key_file_(key_file),
       have_checked_disk_(false),
       have_replaced_(false),
@@ -50,7 +50,7 @@ bool PolicyKey::IsPopulated() const { return !key_.empty(); }
 
 bool PolicyKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;
-  if (!file_util::PathExists(key_file_)) {
+  if (!base::PathExists(key_file_)) {
     LOG(INFO) << "No policy key on disk at " << key_file_.value();
     return true;
   }
@@ -62,7 +62,7 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
   }
 
   std::vector<uint8> buffer(safe_file_size, 0);
-  int data_read = file_util::ReadFile(key_file_,
+  int data_read = base::ReadFile(key_file_,
                                       reinterpret_cast<char*>(&buffer[0]),
                                       safe_file_size);
   if (data_read != safe_file_size) {
@@ -104,7 +104,7 @@ bool PolicyKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
 bool PolicyKey::Persist() {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(HaveCheckedDisk()) << "Haven't checked disk for owner key yet!";
-  if (!have_replaced_ && file_util::PathExists(key_file_)) {
+  if (!have_replaced_ && base::PathExists(key_file_)) {
     LOG(ERROR) << "Tried to overwrite owner key!";
     return false;
   }

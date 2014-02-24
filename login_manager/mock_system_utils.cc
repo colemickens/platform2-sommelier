@@ -15,17 +15,17 @@ MockSystemUtils::MockSystemUtils() {}
 
 MockSystemUtils::~MockSystemUtils() {}
 
-bool MockSystemUtils::Exists(const FilePath& file) {
+bool MockSystemUtils::Exists(const base::FilePath& file) {
   return EnsureTempDir() && real_utils_.Exists(PutInsideTempdir(file));
 }
 
-bool MockSystemUtils::AtomicFileWrite(const FilePath& file,
+bool MockSystemUtils::AtomicFileWrite(const base::FilePath& file,
                                       const char* data,
                                       int size) {
   if (!EnsureTempDir())
     return false;
   base::FilePath to_write(PutInsideTempdir(file));
-  if (!file_util::CreateDirectory(to_write.DirName())) {
+  if (!base::CreateDirectory(to_write.DirName())) {
     PLOG(ERROR) << "Could not recursively create "
                 << to_write.DirName().value();
     return false;
@@ -33,29 +33,29 @@ bool MockSystemUtils::AtomicFileWrite(const FilePath& file,
   return real_utils_.AtomicFileWrite(to_write, data, size);
 }
 
-bool MockSystemUtils::ReadFileToString(const FilePath& file,
+bool MockSystemUtils::ReadFileToString(const base::FilePath& file,
                                        std::string* out) {
-  return EnsureTempDir() && file_util::ReadFileToString(PutInsideTempdir(file),
-                                                        out);
+  return EnsureTempDir() && base::ReadFileToString(PutInsideTempdir(file), out);
 }
 
-bool MockSystemUtils::EnsureAndReturnSafeFileSize(const FilePath& file,
+bool MockSystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                                   int32* file_size_32) {
   return (EnsureTempDir() &&
           real_utils_.EnsureAndReturnSafeFileSize(PutInsideTempdir(file),
                                                   file_size_32));
 }
 
-bool MockSystemUtils::RemoveFile(const FilePath& file) {
+bool MockSystemUtils::RemoveFile(const base::FilePath& file) {
   return EnsureTempDir() && real_utils_.RemoveFile(PutInsideTempdir(file));
 }
 
 bool MockSystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
-    FilePath* temp_file_path) {
+    base::FilePath* temp_file_path) {
   return CreateReadOnlyFileInTempDir(temp_file_path);
 }
 
-bool MockSystemUtils::CreateReadOnlyFileInTempDir(FilePath* temp_file_path) {
+bool MockSystemUtils::CreateReadOnlyFileInTempDir(
+    base::FilePath* temp_file_path) {
   *temp_file_path = GetUniqueFilename();
   return !temp_file_path->empty();
 }
@@ -63,8 +63,8 @@ bool MockSystemUtils::CreateReadOnlyFileInTempDir(FilePath* temp_file_path) {
 base::FilePath MockSystemUtils::GetUniqueFilename() {
   if (unique_file_path_.empty()) {
     if (EnsureTempDir() &&
-        !file_util::CreateTemporaryFileInDir(temp_dir_.path(),
-                                             &unique_file_path_)) {
+        !base::CreateTemporaryFileInDir(temp_dir_.path(),
+                                        &unique_file_path_)) {
       PLOG(ERROR) << "Could not create file in " << temp_dir_.path().value();
       unique_file_path_.clear();
     }

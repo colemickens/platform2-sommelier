@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #include <base/logging.h>
-#include <base/time.h>
+#include <base/time/time.h>
 
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"

@@ -11,8 +11,8 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <chromeos/cryptohome.h>
 #include <gmock/gmock.h>
@@ -40,7 +40,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   virtual void SetUp() OVERRIDE {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-    FilePath salt_path = temp_dir_.path().Append("salt");
+    base::FilePath salt_path = temp_dir_.path().Append("salt");
     ASSERT_EQ(0, file_util::WriteFile(salt_path, NULL, 0));
     chromeos::cryptohome::home::SetSystemSaltPath(salt_path.value());
 
@@ -82,11 +82,11 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
 
  protected:
   const std::string fake_account_;
-  FilePath fake_account_policy_path_;
+  base::FilePath fake_account_policy_path_;
 
   std::string policy_blob_;
 
-  MessageLoop loop_;
+  base::MessageLoop loop_;
   base::ScopedTempDir temp_dir_;
 
   MockPolicyKey key_;
@@ -104,7 +104,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreInvalidAccount) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreSuccess) {
@@ -117,7 +117,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreSuccess) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
@@ -132,7 +132,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadSignature) {
@@ -147,7 +147,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadSignature) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
@@ -174,7 +174,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveInvalidAccount) {
@@ -198,7 +198,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveSuccess) {
   SetupAccount();
   SetupKey();
 
-  ASSERT_TRUE(file_util::CreateDirectory(fake_account_policy_path_.DirName()));
+  ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
   ASSERT_EQ(policy_blob_.size(),
             file_util::WriteFile(fake_account_policy_path_,
                                  policy_blob_.c_str(), policy_blob_.size()));
@@ -216,7 +216,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, PurgeStaleAccounts) {
 
   em::ChromeDeviceSettingsProto device_settings;
   service_->UpdateDeviceSettings(device_settings);
-  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs) {
@@ -225,21 +225,21 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs) {
   const char *kDir2Lower = "da4b9237bacccdf19c0760cab7aec4a8359010b0";
   const char *kUnrelated = "foobar";
 
-  FilePath fp1(temp_dir_.path().Append(kDir1));
-  FilePath fp2(temp_dir_.path().Append(kDir2));
-  FilePath fp2lower(temp_dir_.path().Append(kDir2Lower));
-  FilePath fpunrel(temp_dir_.path().Append(kUnrelated));
+  base::FilePath fp1(temp_dir_.path().Append(kDir1));
+  base::FilePath fp2(temp_dir_.path().Append(kDir2));
+  base::FilePath fp2lower(temp_dir_.path().Append(kDir2Lower));
+  base::FilePath fpunrel(temp_dir_.path().Append(kUnrelated));
 
-  EXPECT_TRUE(file_util::CreateDirectory(fp1));
-  EXPECT_TRUE(file_util::CreateDirectory(fp2));
-  EXPECT_TRUE(file_util::CreateDirectory(fpunrel));
+  EXPECT_TRUE(base::CreateDirectory(fp1));
+  EXPECT_TRUE(base::CreateDirectory(fp2));
+  EXPECT_TRUE(base::CreateDirectory(fpunrel));
 
   EXPECT_TRUE(service_->MigrateUppercaseDirs());
 
-  EXPECT_TRUE(file_util::DirectoryExists(fp1));
-  EXPECT_FALSE(file_util::DirectoryExists(fp2));
-  EXPECT_TRUE(file_util::DirectoryExists(fp2lower));
-  EXPECT_TRUE(file_util::DirectoryExists(fpunrel));
+  EXPECT_TRUE(base::DirectoryExists(fp1));
+  EXPECT_FALSE(base::DirectoryExists(fp2));
+  EXPECT_TRUE(base::DirectoryExists(fp2lower));
+  EXPECT_TRUE(base::DirectoryExists(fpunrel));
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdFallback) {
@@ -258,7 +258,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdFallback) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 
   std::vector<uint8> policy_data;
   EXPECT_TRUE(service_->Retrieve(fake_account_, &policy_data));
@@ -288,7 +288,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdIgnored) {
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
+  EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
 }  // namespace login_manager

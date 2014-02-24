@@ -9,8 +9,8 @@
 #include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -86,7 +86,7 @@ class UserPolicyServiceTest : public ::testing::Test {
  protected:
   SystemUtilsImpl system_utils_;
   base::ScopedTempDir tmpdir_;
-  FilePath key_copy_file_;
+  base::FilePath key_copy_file_;
 
   const std::string fake_signature_;
 
@@ -96,7 +96,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   const uint8* policy_data_;
   uint32 policy_len_;
 
-  MessageLoop loop_;
+  base::MessageLoop loop_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -156,13 +156,13 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
       .InSequence(s2)
       .WillOnce(Return(true));
 
-  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
+  EXPECT_FALSE(base::PathExists(key_copy_file_));
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
   base::RunLoop().RunUntilIdle();
 
-  EXPECT_TRUE(file_util::PathExists(key_copy_file_));
+  EXPECT_TRUE(base::PathExists(key_copy_file_));
   std::string content;
-  EXPECT_TRUE(file_util::ReadFileToString(key_copy_file_, &content));
+  EXPECT_TRUE(base::ReadFileToString(key_copy_file_, &content));
   ASSERT_EQ(1u, content.size());
   EXPECT_EQ(key_value[0], content[0]);
 }
@@ -178,7 +178,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
+  EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
 
 TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
@@ -201,12 +201,12 @@ TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, public_key_der())
       .WillOnce(ReturnRef(key_value));
-  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
+  EXPECT_FALSE(base::PathExists(key_copy_file_));
 
   service_->PersistKeyCopy();
-  EXPECT_TRUE(file_util::PathExists(key_copy_file_));
+  EXPECT_TRUE(base::PathExists(key_copy_file_));
   std::string content;
-  EXPECT_TRUE(file_util::ReadFileToString(key_copy_file_, &content));
+  EXPECT_TRUE(base::ReadFileToString(key_copy_file_, &content));
   ASSERT_EQ(1u, content.size());
   EXPECT_EQ(key_value[0], content[0]);
 
@@ -214,7 +214,7 @@ TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
   EXPECT_CALL(*key_, IsPopulated())
       .WillRepeatedly(Return(false));
   service_->PersistKeyCopy();
-  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
+  EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
 
 }  // namespace login_manager

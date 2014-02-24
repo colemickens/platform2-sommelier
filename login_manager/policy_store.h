@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 #include "login_manager/device_management_backend.pb.h"
 
@@ -26,7 +26,7 @@ class PolicyKey;
 // THIS CLASS DOES NO SIGNATURE VALIDATION.
 class PolicyStore {
  public:
-  explicit PolicyStore(const FilePath& policy_path);
+  explicit PolicyStore(const base::FilePath& policy_path);
   virtual ~PolicyStore();
 
   virtual bool DefunctPrefsFilePresent();
@@ -48,7 +48,7 @@ class PolicyStore {
   static const char kPrefsFileName[];
 
   enterprise_management::PolicyFetchResponse policy_;
-  const FilePath policy_path_;
+  const base::FilePath policy_path_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyStore);
 };

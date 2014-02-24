@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest.h>
 
@@ -34,12 +34,12 @@ class PolicyKey;
 class DeviceLocalAccountPolicyService {
  public:
   // Name of the subdirectory to store policy in.
-  static const FilePath::CharType kPolicyDir[];
+  static const base::FilePath::CharType kPolicyDir[];
   // File name of the file within |kPolicyDir| that holds the policy blob.
-  static const FilePath::CharType kPolicyFileName[];
+  static const base::FilePath::CharType kPolicyFileName[];
 
   DeviceLocalAccountPolicyService(
-      const FilePath& device_local_account_dir,
+      const base::FilePath& device_local_account_dir,
       PolicyKey* owner_key,
       const scoped_refptr<base::MessageLoopProxy>& main_loop);
   ~DeviceLocalAccountPolicyService();
@@ -84,7 +84,7 @@ class DeviceLocalAccountPolicyService {
   bool IsValidAccountKey(const std::string& str);
 
   // The base path for storing device-local account information on disk.
-  const FilePath device_local_account_dir_;
+  const base::FilePath device_local_account_dir_;
 
   // The policy key to verify signatures against.
   PolicyKey* owner_key_;

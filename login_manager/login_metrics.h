@@ -6,7 +6,7 @@
 #define LOGIN_MANAGER_LOGIN_METRICS_H_
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <metrics/metrics_library.h>
 
 namespace login_manager {
@@ -59,7 +59,7 @@ class LoginMetrics {
     PolicyFileState defunct_prefs_file_state;
   };
 
-  explicit LoginMetrics(const FilePath& per_boot_flag_dir);
+  explicit LoginMetrics(const base::FilePath& per_boot_flag_dir);
   virtual ~LoginMetrics();
 
   // Sends the type of user that logs in (guest, owner or other) and the mode
@@ -102,7 +102,7 @@ class LoginMetrics {
   // (owner, guest or other) and the mode (normal or developer).
   static int LoginUserTypeCode(bool dev_mode, bool guest, bool owner);
 
-  const FilePath per_boot_flag_file_;
+  const base::FilePath per_boot_flag_file_;
   MetricsLibrary metrics_lib_;
 
   DISALLOW_COPY_AND_ASSIGN(LoginMetrics);

@@ -14,8 +14,8 @@
 #include <base/basictypes.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stringprintf.h>
-#include <base/time.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus-glib.h>

@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "login_manager/system_utils_impl.h"
@@ -34,17 +34,18 @@ class MockSystemUtils : public SystemUtils {
 
   // All filesystem-touching methods write to a ScopedTempDir that's owned by
   // this class.
-  bool Exists(const FilePath& file) OVERRIDE;
-  bool AtomicFileWrite(const FilePath& file,
+  bool Exists(const base::FilePath& file) OVERRIDE;
+  bool AtomicFileWrite(const base::FilePath& file,
                        const char* data,
                        int size) OVERRIDE;
-  bool ReadFileToString(const FilePath& file, std::string* out);
-  bool EnsureAndReturnSafeFileSize(const FilePath& file,
+  bool ReadFileToString(const base::FilePath& file, std::string* out);
+  bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                    int32* file_size_32) OVERRIDE;
-  bool RemoveFile(const FilePath& file) OVERRIDE;
+  bool RemoveFile(const base::FilePath& file) OVERRIDE;
 
-  bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path) OVERRIDE;
-  bool CreateReadOnlyFileInTempDir(FilePath* temp_file_path) OVERRIDE;
+  bool GetUniqueFilenameInWriteOnlyTempDir(
+      base::FilePath* temp_file_path) OVERRIDE;
+  bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file_path) OVERRIDE;
   // Get filename to be returned by the above. Returns full path to the file.
   // An empty path is returned on failure.
   base::FilePath GetUniqueFilename();

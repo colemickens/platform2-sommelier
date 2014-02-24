@@ -5,12 +5,13 @@
 #include "login_manager/device_local_account_policy_service.h"
 
 #include <base/file_util.h>
+#include <base/files/file_enumerator.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
 
 #include "login_manager/chrome_device_policy.pb.h"
@@ -23,13 +24,15 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-const FilePath::CharType DeviceLocalAccountPolicyService::kPolicyDir[] =
-    FILE_PATH_LITERAL("policy");
-const FilePath::CharType DeviceLocalAccountPolicyService::kPolicyFileName[] =
+const base::FilePath::CharType
+DeviceLocalAccountPolicyService::kPolicyDir[] = FILE_PATH_LITERAL("policy");
+
+const base::FilePath::CharType
+DeviceLocalAccountPolicyService::kPolicyFileName[] =
     FILE_PATH_LITERAL("policy");
 
 DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
-    const FilePath& device_local_account_dir,
+    const base::FilePath& device_local_account_dir,
     PolicyKey* owner_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop)
     : device_local_account_dir_(device_local_account_dir),
@@ -95,31 +98,31 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   MigrateUppercaseDirs();
 
   // Purge all existing on-disk accounts that are no longer defined.
-  file_util::FileEnumerator enumerator(device_local_account_dir_, false,
-                                       file_util::FileEnumerator::DIRECTORIES);
-  FilePath subdir;
+  base::FileEnumerator enumerator(device_local_account_dir_, false,
+                                  base::FileEnumerator::DIRECTORIES);
+  base::FilePath subdir;
   while (!(subdir = enumerator.Next()).empty()) {
     if (IsValidAccountKey(subdir.BaseName().value()) &&
         policy_map_.find(subdir.BaseName().value()) == policy_map_.end()) {
       LOG(INFO) << "Purging " << subdir.value();
-      if (!file_util::Delete(subdir, true))
+      if (!base::DeleteFile(subdir, true))
         LOG(ERROR) << "Failed to delete " << subdir.value();
     }
   }
 }
 
 bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
-  file_util::FileEnumerator enumerator(device_local_account_dir_, false,
-                                       file_util::FileEnumerator::DIRECTORIES);
-  FilePath subdir;
+  base::FileEnumerator enumerator(device_local_account_dir_, false,
+                                  base::FileEnumerator::DIRECTORIES);
+  base::FilePath subdir;
 
   while (!(subdir = enumerator.Next()).empty()) {
     std::string upper = subdir.BaseName().value();
     std::string lower = StringToLowerASCII(upper);
     if (IsValidAccountKey(lower) && lower != upper) {
-      FilePath subdir_to(subdir.DirName().Append(lower));
+      base::FilePath subdir_to(subdir.DirName().Append(lower));
       LOG(INFO) << "Migrating " << upper << " to " << lower;
-      if (!file_util::ReplaceFile(subdir, subdir_to))
+      if (!base::ReplaceFile(subdir, subdir_to, NULL))
         LOG(ERROR) << "Failed to migrate " << subdir.value();
     }
   }
@@ -136,12 +139,12 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
 
   // Lazily create and initialize the policy service instance.
   if (!entry->second) {
-    const FilePath policy_path =
+    const base::FilePath policy_path =
         device_local_account_dir_
             .AppendASCII(key)
             .Append(kPolicyDir)
             .Append(kPolicyFileName);
-    if (!file_util::CreateDirectory(policy_path.DirName())) {
+    if (!base::CreateDirectory(policy_path.DirName())) {
       LOG(ERROR) << "Failed to create directory for " << policy_path.value();
       return NULL;
     }

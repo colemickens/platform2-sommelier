@@ -18,9 +18,9 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
-#include <base/string_util.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
+#include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
@@ -680,7 +680,7 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
-  FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
+  base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(utils_.Exists(logged_in_path));
   ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1", 1));
   impl_.StartDeviceWipe(&error_);
@@ -688,18 +688,18 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
-  FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
-  FilePath reset_path(SessionManagerImpl::kResetFile);
+  base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
+  base::FilePath reset_path(SessionManagerImpl::kResetFile);
   ASSERT_TRUE(utils_.RemoveFile(logged_in_path));
   ExpectDeviceRestart();
   impl_.StartDeviceWipe(NULL);
 }
 
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
-  FilePath key_file_path;
+  base::FilePath key_file_path;
   string key("key_contents");
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(),
-                                                  &key_file_path));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(),
+                                             &key_file_path));
   ASSERT_EQ(file_util::WriteFile(key_file_path, key.c_str(), key.size()),
             key.size());
 
@@ -714,7 +714,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
       .WillOnce(Return(true));
 
   impl_.OnKeyGenerated(kSaneEmail, key_file_path);
-  EXPECT_FALSE(file_util::PathExists(key_file_path));
+  EXPECT_FALSE(base::PathExists(key_file_path));
 }
 
 class SessionManagerImplStaticTest : public ::testing::Test {

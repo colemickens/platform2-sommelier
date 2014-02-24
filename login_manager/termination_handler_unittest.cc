@@ -5,7 +5,7 @@
 #include "login_manager/termination_handler.h"
 
 #include <base/basictypes.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/mock_process_manager_service.h"
@@ -26,7 +26,7 @@ class TerminationHandlerTest : public ::testing::Test {
   }
 
  protected:
-  MessageLoopForIO loop_;
+  base::MessageLoopForIO loop_;
   MockProcessManagerService mock_manager_;
   TerminationHandler handler_;
 

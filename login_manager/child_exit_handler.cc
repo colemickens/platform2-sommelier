@@ -11,8 +11,8 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop.h>
-#include <base/time.h>
+#include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/job_manager.h"
@@ -40,7 +40,7 @@ void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
 }  // anonymous namespace
 
 ChildExitHandler::ChildExitHandler(SystemUtils* system)
-    : fd_watcher_(new MessageLoopForIO::FileDescriptorWatcher),
+    : fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher),
       system_(system) {
   int pipefd[2];
   PLOG_IF(FATAL, pipe2(pipefd,
@@ -55,8 +55,8 @@ void ChildExitHandler::Init(const std::vector<JobManagerInterface*>& managers) {
   managers_ = managers;
 
   SetUpHandler();
-  if (!MessageLoopForIO::current()->WatchFileDescriptor(
-          g_child_pipe_read_fd, true, MessageLoopForIO::WATCH_READ,
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+          g_child_pipe_read_fd, true, base::MessageLoopForIO::WATCH_READ,
           fd_watcher_.get(), this)) {
     LOG(FATAL) << "Watching child pipe failed. Can't manage browser process.";
   }
@@ -64,9 +64,7 @@ void ChildExitHandler::Init(const std::vector<JobManagerInterface*>& managers) {
 
 void ChildExitHandler::OnFileCanReadWithoutBlocking(int fd) {
   siginfo_t info;
-  while (file_util::ReadFromFD(fd,
-                               reinterpret_cast<char*>(&info),
-                               sizeof(info))) {
+  while (base::ReadFromFD(fd, reinterpret_cast<char*>(&info), sizeof(info))) {
     DCHECK(info.si_signo == SIGCHLD) << "Wrong signal!";
     Dispatch(info);
   }

@@ -5,18 +5,18 @@
 #ifndef LOGIN_MANAGER_FILE_CHECKER_H_
 #define LOGIN_MANAGER_FILE_CHECKER_H_
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 namespace login_manager {
 class FileChecker {
  public:
-  explicit FileChecker(const FilePath& filename);
+  explicit FileChecker(const base::FilePath& filename);
   virtual ~FileChecker();
 
   virtual bool exists();
 
  private:
-  const FilePath filename_;
+  const base::FilePath filename_;
 
   DISALLOW_COPY_AND_ASSIGN(FileChecker);
 };

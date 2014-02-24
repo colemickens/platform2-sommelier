@@ -4,8 +4,8 @@
 
 #include <string>
 
-#include <base/message_loop_proxy.h>
-#include <base/time.h>
+#include <base/message_loop/message_loop_proxy.h>
+#include <base/time/time.h>
 
 #include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_dbus_signal_emitter.h"
@@ -37,7 +37,7 @@
 
 namespace login_manager {
 MockDevicePolicyService::MockDevicePolicyService()
-    : DevicePolicyService(FilePath(""), FilePath(""),
+    : DevicePolicyService(base::FilePath(""), base::FilePath(""),
                           scoped_ptr<PolicyStore>(),
                           NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
@@ -45,7 +45,7 @@ MockDevicePolicyService::~MockDevicePolicyService() {}
 MockDBusSignalEmitter::MockDBusSignalEmitter() {}
 MockDBusSignalEmitter::~MockDBusSignalEmitter() {}
 
-MockFileChecker::MockFileChecker() : FileChecker(FilePath()) {}
+MockFileChecker::MockFileChecker() : FileChecker(base::FilePath()) {}
 MockFileChecker::~MockFileChecker() {}
 
 MockKeyGenerator::MockKeyGenerator() : KeyGenerator(-1, NULL) {}
@@ -54,13 +54,13 @@ MockKeyGenerator::~MockKeyGenerator() {}
 MockLivenessChecker::MockLivenessChecker() {}
 MockLivenessChecker::~MockLivenessChecker() {}
 
-MockMetrics::MockMetrics() : LoginMetrics(FilePath("")) {}
+MockMetrics::MockMetrics() : LoginMetrics(base::FilePath("")) {}
 MockMetrics::~MockMetrics() {}
 
 MockMitigator::MockMitigator() {}
 MockMitigator::~MockMitigator() {}
 
-MockPolicyKey::MockPolicyKey() : PolicyKey(FilePath(""), NULL) {}
+MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(""), NULL) {}
 MockPolicyKey::~MockPolicyKey() {}
 
 MockPolicyService::MockPolicyService()
@@ -73,7 +73,7 @@ MockPolicyServiceCompletion::~MockPolicyServiceCompletion() {}
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() {}
 MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 
-MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
+MockPolicyStore::MockPolicyStore() : PolicyStore(base::FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}
 
 MockProcessManagerService::MockProcessManagerService() {}

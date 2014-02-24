@@ -4,7 +4,7 @@
 
 #include <login_manager/system_utils_impl.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
@@ -14,9 +14,9 @@ namespace login_manager {
 
 TEST(SystemUtilsTest, CorrectFileWrite) {
   base::ScopedTempDir tmpdir;
-  FilePath scratch;
+  base::FilePath scratch;
   ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir.path(), &scratch));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir.path(), &scratch));
 
   std::string old_data("what");
   std::string new_data("ho, neighbor");
@@ -29,7 +29,7 @@ TEST(SystemUtilsTest, CorrectFileWrite) {
                                     new_data.c_str(),
                                     new_data.length()));
   std::string written_data;
-  ASSERT_TRUE(file_util::ReadFileToString(scratch, &written_data));
+  ASSERT_TRUE(base::ReadFileToString(scratch, &written_data));
   ASSERT_EQ(new_data, written_data);
 }
 

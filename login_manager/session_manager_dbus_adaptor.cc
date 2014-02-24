@@ -31,15 +31,16 @@ void HandleSynchronousDBusMethodCall(
     dbus::ExportedObject::ResponseSender response_sender) {
   scoped_ptr<dbus::Response> response = handler.Run(method_call);
   if (!response)
-    response.reset(dbus::Response::FromMethodCall(method_call));
-  response_sender.Run(response.release());
+    response = dbus::Response::FromMethodCall(method_call);
+  response_sender.Run(response.Pass());
 }
 
 scoped_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
                                        const std::string& name,
                                        const std::string& message) {
-  return scoped_ptr<dbus::Response>(
-      dbus::ErrorResponse::FromMethodCall(call, name, message));
+  return dbus::ErrorResponse::FromMethodCall(call,
+                                             name,
+                                             message).PassAs<dbus::Response>();
 }
 
 // Creates a new "invalid args" reply to call.
@@ -59,7 +60,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBool(
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
   } else {
-    response.reset(dbus::Response::FromMethodCall(call));
+    response = dbus::Response::FromMethodCall(call);
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(payload);
   }
@@ -74,7 +75,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithString(
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
   } else {
-    response.reset(dbus::Response::FromMethodCall(call));
+    response = dbus::Response::FromMethodCall(call);
     dbus::MessageWriter writer(response.get());
     writer.AppendString(payload);
   }
@@ -89,7 +90,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
   } else {
-    response.reset(dbus::Response::FromMethodCall(call));
+    response = dbus::Response::FromMethodCall(call);
     dbus::MessageWriter writer(response.get());
     writer.AppendArrayOfBytes(vector_as_array(&payload), payload.size());
   }
@@ -134,15 +135,16 @@ void DBusMethodCompletion::ReportSuccess() {
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call_));
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(true);
-  sender_.Run(response.release());
+  sender_.Run(response.Pass());
   call_ = NULL;
   delete this;
 }
 
 void DBusMethodCompletion::ReportFailure(const PolicyService::Error& error) {
-  sender_.Run(dbus::ErrorResponse::FromMethodCall(call_,
-                                                  error.code(),
-                                                  error.message()));
+  sender_.Run(dbus::ErrorResponse::FromMethodCall(
+      call_,
+      error.code(),
+      error.message()).PassAs<dbus::Response>());
   call_ = NULL;
   delete this;
 }
@@ -258,7 +260,7 @@ void SessionManagerDBusAdaptor::StorePolicy(
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
   if (!reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
-    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).release());
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
     impl_->StorePolicy(policy_blob, policy_blob_len,
                        new DBusMethodCompletion(call, sender));
@@ -284,7 +286,7 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
   // policy_blob points into reader after pop.
   if (!reader.PopString(&user_email) ||
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
-    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).release());
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
     impl_->StorePolicyForUser(user_email, policy_blob, policy_blob_len,
                               new DBusMethodCompletion(call, sender));
@@ -316,7 +318,7 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
   // policy_blob points into reader after pop.
   if (!reader.PopString(&account_id) ||
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
-    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).release());
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
     impl_->StoreDeviceLocalAccountPolicy(
         account_id, policy_blob, policy_blob_len,

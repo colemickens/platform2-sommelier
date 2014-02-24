@@ -12,7 +12,7 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 
 namespace login_manager {
 class JobManagerInterface;
@@ -22,7 +22,7 @@ class SystemUtils;
 // into a write on a pipe. The data written contains the child's exit status.
 // Also watches the other end of this pipe and, when data appears, the info
 // is read and the appropriate object that manages that child is informed.
-class ChildExitHandler : public MessageLoopForIO::Watcher {
+class ChildExitHandler : public base::MessageLoopForIO::Watcher {
  public:
   explicit ChildExitHandler(SystemUtils* system);
   virtual ~ChildExitHandler();
@@ -47,7 +47,7 @@ class ChildExitHandler : public MessageLoopForIO::Watcher {
   std::vector<JobManagerInterface*> managers_;
 
   // Controller used to manage watching of shutdown pipe.
-  scoped_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
+  scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
   SystemUtils* system_;
   DISALLOW_COPY_AND_ASSIGN(ChildExitHandler);

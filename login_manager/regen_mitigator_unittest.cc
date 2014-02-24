@@ -11,7 +11,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"

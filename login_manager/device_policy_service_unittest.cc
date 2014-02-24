@@ -10,11 +10,11 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
@@ -302,11 +302,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::vector<uint8> fake_key_vector_;
   std::string new_fake_sig_;
 
-  MessageLoop loop_;
+  base::MessageLoop loop_;
 
   base::ScopedTempDir tmpdir_;
-  FilePath serial_recovery_flag_file_;
-  FilePath policy_file_;
+  base::FilePath serial_recovery_flag_file_;
+  base::FilePath policy_file_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -834,17 +834,17 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
   EXPECT_TRUE(service_->Initialize());
-  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
   EXPECT_TRUE(service_->Initialize());
-  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   // Fake the policy file gone.
-  file_util::Delete(policy_file_, false);
+  base::DeleteFile(policy_file_, false);
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
   EXPECT_TRUE(service_->Initialize());
-  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 }
 
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
@@ -887,7 +887,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   MockNssUtil nss;
   InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
-  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   EXPECT_CALL(key_, Verify(_, _, _, _))
       .WillRepeatedly(Return(true));
@@ -904,7 +904,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
                       policy_str_.size(), &completion_,
                       PolicyService::KEY_CLOBBER));
-  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   // Storing an enterprise policy blob with the |valid_serial_number_missing|
   // flag set should create the flag file.
@@ -913,12 +913,12 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
                       policy_str_.size(), &completion_,
                       PolicyService::KEY_CLOBBER));
-  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Storing bad policy shouldn't remove the file.
   EXPECT_FALSE(service_->Store(NULL, 0, &completion_,
                                PolicyService::KEY_CLOBBER));
-  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Clearing the flag should remove the file.
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", false));
@@ -926,7 +926,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
                       policy_str_.size(), &completion_,
                       PolicyService::KEY_CLOBBER));
-  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 }
 
 TEST_F(DevicePolicyServiceTest, GetSettings) {

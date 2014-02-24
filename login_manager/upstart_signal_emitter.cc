@@ -36,8 +36,8 @@ scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
   writer.AppendArrayOfStrings(args_keyvals);
   writer.AppendBool(true);
 
-  return scoped_ptr<dbus::Response>(upstart_dbus_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  return upstart_dbus_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
 }  // namespace login_manager

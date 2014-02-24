@@ -8,11 +8,11 @@
 #include <utility>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
@@ -210,7 +210,7 @@ base::FilePath NssUtilImpl::GetOwnerKeyFilePath() {
 }
 
 base::FilePath NssUtilImpl::GetNssdbSubpath() {
-  return FilePath(kNssdbSubpath);
+  return base::FilePath(kNssdbSubpath);
 }
 
 bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {

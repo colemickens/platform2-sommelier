@@ -14,7 +14,7 @@ namespace login_manager {
 // static
 const char PolicyStore::kPrefsFileName[] = "preferences";
 
-PolicyStore::PolicyStore(const FilePath& policy_path)
+PolicyStore::PolicyStore(const base::FilePath& policy_path)
     : policy_path_(policy_path) {
 }
 
@@ -22,21 +22,21 @@ PolicyStore::~PolicyStore() {
 }
 
 bool PolicyStore::DefunctPrefsFilePresent() {
-  return file_util::PathExists(policy_path_.DirName().Append(kPrefsFileName));
+  return base::PathExists(policy_path_.DirName().Append(kPrefsFileName));
 }
 
 bool PolicyStore::LoadOrCreate() {
-  if (!file_util::PathExists(policy_path_))
+  if (!base::PathExists(policy_path_))
     return true;
 
   std::string polstr;
-  if (!file_util::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
+  if (!base::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
     PLOG(ERROR) << "Could not read policy off disk at " << policy_path_.value();
     return false;
   }
   if (!policy_.ParseFromString(polstr)) {
     LOG(ERROR) << "Policy on disk could not be parsed and will be deleted!";
-    file_util::Delete(policy_path_, false);
+    base::DeleteFile(policy_path_, false);
     return false;
   }
   return true;

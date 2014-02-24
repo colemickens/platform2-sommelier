@@ -7,11 +7,12 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <crypto/nss_util.h>
+#include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
 #include <gtest/gtest.h>
 
@@ -27,17 +28,17 @@ class PolicyKeyTest : public ::testing::Test {
 
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
+    ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
     ASSERT_EQ(2, file_util::WriteFile(tmpfile_, "a", 2));
   }
 
   virtual void TearDown() {}
 
   void StartUnowned() {
-    file_util::Delete(tmpfile_, false);
+    base::DeleteFile(tmpfile_, false);
   }
 
-  FilePath tmpfile_;
+  base::FilePath tmpfile_;
 
  private:
   base::ScopedTempDir tmpdir_;
@@ -92,7 +93,7 @@ TEST_F(PolicyKeyTest, NoKeyToLoad) {
 
 TEST_F(PolicyKeyTest, EmptyKeyToLoad) {
   ASSERT_EQ(0, file_util::WriteFile(tmpfile_, "", 0));
-  ASSERT_TRUE(file_util::PathExists(tmpfile_));
+  ASSERT_TRUE(base::PathExists(tmpfile_));
   CheckPublicKeyUtil bad_key_util(false);
 
   PolicyKey key(tmpfile_, &bad_key_util);
@@ -168,9 +169,10 @@ TEST_F(PolicyKeyTest, SignVerify) {
   StartUnowned();
   PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
+  crypto::ScopedPK11Slot test_slot(crypto::GetPrivateNSSKeySlot());
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
-      crypto::RSAPrivateKey::CreateSensitive(512));
+      crypto::RSAPrivateKey::CreateSensitive(test_slot.get(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -198,9 +200,10 @@ TEST_F(PolicyKeyTest, RotateKey) {
   StartUnowned();
   PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
+  crypto::ScopedPK11Slot test_slot(crypto::GetPrivateNSSKeySlot());
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
-      crypto::RSAPrivateKey::CreateSensitive(512));
+      crypto::RSAPrivateKey::CreateSensitive(test_slot.get(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -219,8 +222,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(key2.HaveCheckedDisk());
   ASSERT_TRUE(key2.IsPopulated());
 
-  scoped_ptr<crypto::RSAPrivateKey> new_pair(
-      crypto::RSAPrivateKey::CreateSensitive(512));
+  scoped_ptr<crypto::RSAPrivateKey> new_pair(MockNssUtil::CreateShortKey());
   ASSERT_NE(new_pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
   std::vector<uint8> new_export;
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
@@ -257,7 +259,7 @@ TEST_F(PolicyKeyTest, ResetKey) {
   key.ClobberCompromisedKey(std::vector<uint8>());
   ASSERT_TRUE(!key.IsPopulated());
   ASSERT_TRUE(key.Persist());
-  ASSERT_FALSE(file_util::PathExists(tmpfile_));
+  ASSERT_FALSE(base::PathExists(tmpfile_));
 }
 
 }  // namespace login_manager

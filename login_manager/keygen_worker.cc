@@ -11,7 +11,7 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <crypto/rsa_private_key.h>
@@ -33,9 +33,9 @@ int GenerateKey(const base::FilePath& file_path,
     LOG(FATAL) << "Corrupted key on disk at " << file_path.value();
   if (key.IsPopulated())
     LOG(FATAL) << "Existing owner key at " << file_path.value();
-  FilePath nssdb = user_homedir.Append(nss->GetNssdbSubpath());
-  PLOG_IF(FATAL, !file_util::PathExists(nssdb)) << nssdb.value()
-                                                << " does not exist!";
+  base::FilePath nssdb = user_homedir.Append(nss->GetNssdbSubpath());
+  PLOG_IF(FATAL, !base::PathExists(nssdb)) << nssdb.value()
+                                           << " does not exist!";
   if (!file_util::VerifyPathControlledByUser(file_path.DirName(),
                                              nssdb,
                                              getuid(),

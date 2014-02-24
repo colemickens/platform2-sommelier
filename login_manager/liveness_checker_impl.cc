@@ -13,8 +13,8 @@
 #include <base/compiler_specific.h>
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop_proxy.h>
-#include <base/time.h>
+#include <base/message_loop/message_loop_proxy.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -35,7 +35,7 @@ LivenessCheckerImpl::LivenessCheckerImpl(
       enable_aborting_(enable_aborting),
       interval_(interval),
       last_ping_acked_(true),
-      ALLOW_THIS_IN_INITIALIZER_LIST(weak_ptr_factory_(this)) {
+      weak_ptr_factory_(this) {
 }
 
 LivenessCheckerImpl::~LivenessCheckerImpl() {

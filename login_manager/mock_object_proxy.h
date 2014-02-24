@@ -7,9 +7,15 @@
 
 #include <string>
 
+#include <base/memory/scoped_ptr.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
+
+namespace dbus {
+class MethodCall;
+class Response;
+}
 
 namespace login_manager {
 
@@ -22,9 +28,19 @@ class MockObjectProxy : public dbus::ObjectProxy {
                           dbus::ObjectPath(""),
                           dbus::ObjectProxy::DEFAULT_OPTIONS) {
   }
-
-  MOCK_METHOD2(CallMethodAndBlock,
+  // GMock doesn't support the return type of scoped_ptr<> because scoped_ptr is
+  // uncopyable. This is a workaround which defines |MockCallMethodAndBlock| as
+  // a mock method and makes |CallMethodAndBlock| call the mocked method.
+  // Use |MockCallMethodAndBlock| for setting/testing expectations.
+  MOCK_METHOD2(MockCallMethodAndBlock,
                dbus::Response*(dbus::MethodCall* method_call, int timeout_ms));
+  virtual scoped_ptr<dbus::Response> CallMethodAndBlock(
+      dbus::MethodCall* method_call,
+      int timeout_ms) OVERRIDE {
+    return scoped_ptr<dbus::Response>(MockCallMethodAndBlock(method_call,
+                                                             timeout_ms));
+  }
+
   MOCK_METHOD3(CallMethod, void(dbus::MethodCall* method_call,
                                 int timeout_ms,
                                 dbus::ObjectProxy::ResponseCallback callback));

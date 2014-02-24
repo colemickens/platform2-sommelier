@@ -13,7 +13,7 @@
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {

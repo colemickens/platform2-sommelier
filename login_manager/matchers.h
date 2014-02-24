@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {

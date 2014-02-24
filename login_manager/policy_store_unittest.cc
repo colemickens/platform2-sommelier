@@ -24,8 +24,8 @@ class PolicyStoreTest : public ::testing::Test {
 
     // Create a temporary filename that's guaranteed to not exist, but is
     // inside our scoped directory so it'll get deleted later.
-    ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
-    ASSERT_TRUE(file_util::Delete(tmpfile_, false));
+    ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
+    ASSERT_TRUE(base::DeleteFile(tmpfile_, false));
   }
 
   virtual void TearDown() {
@@ -41,7 +41,7 @@ class PolicyStoreTest : public ::testing::Test {
   }
 
   base::ScopedTempDir tmpdir_;
-  FilePath tmpfile_;
+  base::FilePath tmpfile_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PolicyStoreTest);
@@ -59,8 +59,8 @@ TEST_F(PolicyStoreTest, CreateEmptyStore) {
 }
 
 TEST_F(PolicyStoreTest, FailBrokenStore) {
-  FilePath bad_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(), &bad_file));
+  base::FilePath bad_file;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &bad_file));
   PolicyStore store(bad_file);
   ASSERT_FALSE(store.LoadOrCreate());
 }

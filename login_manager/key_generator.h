@@ -11,9 +11,9 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/time.h>
+#include <base/time/time.h>
 
 #include "login_manager/generator_job.h"
 #include "login_manager/job_manager.h"

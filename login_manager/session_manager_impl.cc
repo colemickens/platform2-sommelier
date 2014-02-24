@@ -13,10 +13,10 @@
 #include <base/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <crypto/scoped_nss_types.h>
@@ -69,7 +69,7 @@ const char kLegalCharacters[] =
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
 // Device-local account state directory.
-const FilePath::CharType kDeviceLocalAccountStateDir[] =
+const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
     FILE_PATH_LITERAL("/var/lib/device_local_accounts");
 }  // namespace
 
@@ -169,7 +169,7 @@ void SessionManagerImpl::AnnounceSessionStopped() {
 
 bool SessionManagerImpl::Initialize() {
   scoped_refptr<base::MessageLoopProxy> loop_proxy =
-      MessageLoop::current()->message_loop_proxy();
+      base::MessageLoop::current()->message_loop_proxy();
 
   key_gen_->set_delegate(this);
 
@@ -185,9 +185,10 @@ bool SessionManagerImpl::Initialize() {
                                                           nss_,
                                                           system_));
   device_local_account_policy_.reset(
-      new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
-                                          &owner_key_,
-                                          loop_proxy));
+      new DeviceLocalAccountPolicyService(
+          base::FilePath(kDeviceLocalAccountStateDir),
+          &owner_key_,
+          loop_proxy));
 
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(
@@ -227,7 +228,7 @@ std::string SessionManagerImpl::EnableChromeTesting(
   bool already_enabled = !chrome_testing_path_.empty();
 
   if (!already_enabled) {
-    FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
+    base::FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
     if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
       error->Set(dbus_error::kTestingChannelError,
                  "Could not create testing channel filename.");
@@ -328,7 +329,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
   }
 
   // Record that a login has successfully completed on this boot.
-  system_->AtomicFileWrite(FilePath(kLoggedInFlag), "1", 1);
+  system_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1", 1);
   return true;
 }
 
@@ -507,7 +508,7 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
 }
 
 void SessionManagerImpl::StartDeviceWipe(Error* error) {
-  const FilePath session_path(kLoggedInFlag);
+  const base::FilePath session_path(kLoggedInFlag);
   if (system_->Exists(session_path)) {
     const char msg[] = "A user has already logged in this boot.";
     LOG(ERROR) << msg;
@@ -541,11 +542,11 @@ void SessionManagerImpl::OnKeyGenerated(const std::string& username,
 
 void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
     const std::string& username,
-    const FilePath& temp_key_file) {
+    const base::FilePath& temp_key_file) {
   DLOG(INFO) << "Processing generated key at " << temp_key_file.value();
   std::string key;
-  file_util::ReadFileToString(temp_key_file, &key);
-  PLOG_IF(WARNING, !file_util::Delete(temp_key_file, false))
+  base::ReadFileToString(temp_key_file, &key);
+  PLOG_IF(WARNING, !base::DeleteFile(temp_key_file, false))
       << "Can't delete " << temp_key_file.value();
   device_policy_->ValidateAndStoreOwnerKey(
       username,
@@ -555,7 +556,7 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
 
 void SessionManagerImpl::InitiateDeviceWipe() {
   const char *contents = "fast safe";
-  const FilePath reset_path(kResetFile);
+  const base::FilePath reset_path(kResetFile);
   system_->AtomicFileWrite(reset_path, contents, strlen(contents));
   restart_device_closure_.Run();
 }

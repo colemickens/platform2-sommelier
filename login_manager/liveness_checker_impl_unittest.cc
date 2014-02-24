@@ -7,10 +7,10 @@
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
@@ -67,10 +67,11 @@ class LivenessCheckerImplTest : public ::testing::Test {
         .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
         .WillOnce(Return())
         .WillOnce(
-            InvokeWithoutArgs(MessageLoop::current(), &MessageLoop::QuitNow));
+            InvokeWithoutArgs(base::MessageLoop::current(),
+                              &base::MessageLoop::QuitNow));
   }
 
-  MessageLoop loop_;
+  base::MessageLoop loop_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   scoped_refptr<MockObjectProxy> object_proxy_;
   scoped_ptr<StrictMock<MockProcessManagerService> > manager_;
@@ -82,7 +83,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   void Respond(dbus::MethodCall* method_call,
                int timeout_ms,
                dbus::ObjectProxy::ResponseCallback callback) {
-    callback.Run(dbus::Response::CreateEmpty());
+    callback.Run(dbus::Response::CreateEmpty().get());
   }
 
   DISALLOW_COPY_AND_ASSIGN(LivenessCheckerImplTest);
