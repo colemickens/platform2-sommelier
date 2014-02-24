@@ -11,7 +11,7 @@ string GetTestInputFilePath(const string& filename) {
 }
 
 string GetPerfPath() {
-  return "/usr/sbin/perf";
+  return "/usr/bin/perf";
 }
 
 }  // namespace quipper
