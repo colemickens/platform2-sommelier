@@ -17,7 +17,7 @@ namespace {
 const char kQuipperLocation[] = "/usr/bin/quipper";
 
 // Base perf command line to be used.
-const char kPerfRecord[] = "/usr/sbin/perf record -a";
+const char kPerfRecord[] = "/usr/bin/perf record -a";
 
 // This is the key in /proc/cpuinfo whose value is the model name of the CPU.
 const char kCPUModelNameKey[] = "model name";
