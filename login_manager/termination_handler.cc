@@ -77,6 +77,7 @@ void TerminationHandler::OnFileCanReadWithoutBlocking(int fd) {
   // We only get called if there's data on the pipe.  If there's data, we're
   // supposed to exit.  So, don't even bother to read it.
   LOG(INFO) << "HUP, INT, or TERM received; exiting.";
+  fd_watcher_->StopWatchingFileDescriptor();  // Ensure we're not called again.
   manager_->ScheduleShutdown();
 }
 
