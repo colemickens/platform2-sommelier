@@ -1377,17 +1377,6 @@ void Manager::SortServicesTask() {
   sort(services_.begin(), services_.end(),
        ServiceSorter(kCompareConnectivityState, technology_order_));
 
-  adaptor_->EmitRpcIdentifierArrayChanged(kServicesProperty,
-                                          EnumerateAvailableServices(NULL));
-  adaptor_->EmitRpcIdentifierArrayChanged(kServiceWatchListProperty,
-                                          EnumerateWatchedServices(NULL));
-
-  Error error;
-  adaptor_->EmitStringsChanged(kConnectedTechnologiesProperty,
-                               ConnectedTechnologies(&error));
-  adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
-                              DefaultTechnology(&error));
-
   if (!services_.empty()) {
     ConnectionRefPtr default_connection = default_service->connection();
     if (default_connection &&
@@ -1405,8 +1394,19 @@ void Manager::SortServicesTask() {
       default_service = NULL;
     }
   }
+
+  Error error;
+  adaptor_->EmitRpcIdentifierArrayChanged(kServicesProperty,
+                                          EnumerateAvailableServices(NULL));
+  adaptor_->EmitRpcIdentifierArrayChanged(kServiceWatchListProperty,
+                                          EnumerateWatchedServices(NULL));
+  adaptor_->EmitStringsChanged(kConnectedTechnologiesProperty,
+                               ConnectedTechnologies(&error));
+  adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
+                              DefaultTechnology(&error));
   NotifyDefaultServiceChanged(default_service);
   RefreshConnectionState();
+
   AutoConnect();
 }
 
