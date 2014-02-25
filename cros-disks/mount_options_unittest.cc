@@ -117,37 +117,43 @@ TEST_F(MountOptionsTest, ToString) {
   mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
-  // options: nodev, rw, nosuid, noexec, sync
-  expected_string = "sync,rw,nodev,noexec,nosuid";
+  // options: nodev, rw, nosuid, noexec, dirsync
+  expected_string = "dirsync,rw,nodev,noexec,nosuid";
+  options.push_back("dirsync");
+  mount_options.Initialize(options, false, "", "");
+  EXPECT_EQ(expected_string, mount_options.ToString());
+
+  // options: nodev, rw, nosuid, noexec, dirsync, sync
+  expected_string = "dirsync,sync,rw,nodev,noexec,nosuid";
   options.push_back("sync");
   mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
-  // options: nodev, rw, nosuid, noexec, sync
+  // options: nodev, rw, nosuid, noexec, dirsync, sync
   // default uid=1000, gid=1001
   // ignore user and group ID
-  expected_string = "sync,rw,nodev,noexec,nosuid";
+  expected_string = "dirsync,sync,rw,nodev,noexec,nosuid";
   mount_options.Initialize(options, false, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
-  // options: nodev, rw, nosuid, noexec, sync
+  // options: nodev, rw, nosuid, noexec, dirsync, sync
   // default uid=1000, gid=1001
-  expected_string = "sync,rw,uid=1000,gid=1001,nodev,noexec,nosuid";
+  expected_string = "dirsync,sync,rw,uid=1000,gid=1001,nodev,noexec,nosuid";
   mount_options.Initialize(options, true, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
-  // options: nodev, rw, nosuid, noexec, sync, uid=2000, gid=2001
+  // options: nodev, rw, nosuid, noexec, dirsync, sync, uid=2000, gid=2001
   // default uid=1000, gid=1001
   // ignore user and group ID
   options.push_back("uid=2000");
   options.push_back("gid=2001");
-  expected_string = "sync,rw,nodev,noexec,nosuid";
+  expected_string = "dirsync,sync,rw,nodev,noexec,nosuid";
   mount_options.Initialize(options, false, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
-  // options: nodev, rw, nosuid, noexec, sync, uid=2000, gid=2001
+  // options: nodev, rw, nosuid, noexec, dirsync, sync, uid=2000, gid=2001
   // default uid=1000, gid=1001
-  expected_string = "sync,rw,uid=2000,gid=2001,nodev,noexec,nosuid";
+  expected_string = "dirsync,sync,rw,uid=2000,gid=2001,nodev,noexec,nosuid";
   mount_options.Initialize(options, true, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 

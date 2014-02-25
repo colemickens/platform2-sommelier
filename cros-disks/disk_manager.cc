@@ -313,44 +313,51 @@ void DiskManager::RegisterDefaultFilesystems() {
   // TODO(benchan): Perhaps these settings can be read from a config file.
   Filesystem vfat_fs("vfat");
   vfat_fs.set_accepts_user_and_group_id(true);
-  vfat_fs.AddExtraMountOption("flush");
+  vfat_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
+  vfat_fs.AddExtraMountOption(MountOptions::kOptionFlush);
   vfat_fs.AddExtraMountOption("shortname=mixed");
-  vfat_fs.AddExtraMountOption("utf8");
+  vfat_fs.AddExtraMountOption(MountOptions::kOptionUtf8);
   RegisterFilesystem(vfat_fs);
 
   Filesystem exfat_fs("exfat");
   exfat_fs.set_mounter_type(ExFATMounter::kMounterType);
   exfat_fs.set_accepts_user_and_group_id(true);
+  exfat_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
   RegisterFilesystem(exfat_fs);
 
   Filesystem ntfs_fs("ntfs");
   ntfs_fs.set_mounter_type(NTFSMounter::kMounterType);
   ntfs_fs.set_accepts_user_and_group_id(true);
+  ntfs_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
   RegisterFilesystem(ntfs_fs);
 
   Filesystem hfsplus_fs("hfsplus");
   hfsplus_fs.set_accepts_user_and_group_id(true);
+  hfsplus_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
   RegisterFilesystem(hfsplus_fs);
 
   Filesystem iso9660_fs("iso9660");
   iso9660_fs.set_is_mounted_read_only(true);
   iso9660_fs.set_accepts_user_and_group_id(true);
-  iso9660_fs.AddExtraMountOption("utf8");
+  iso9660_fs.AddExtraMountOption(MountOptions::kOptionUtf8);
   RegisterFilesystem(iso9660_fs);
 
   Filesystem udf_fs("udf");
   udf_fs.set_is_mounted_read_only(true);
   udf_fs.set_accepts_user_and_group_id(true);
-  udf_fs.AddExtraMountOption("utf8");
+  udf_fs.AddExtraMountOption(MountOptions::kOptionUtf8);
   RegisterFilesystem(udf_fs);
 
   Filesystem ext2_fs("ext2");
+  ext2_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
   RegisterFilesystem(ext2_fs);
 
   Filesystem ext3_fs("ext3");
+  ext3_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
   RegisterFilesystem(ext3_fs);
 
   Filesystem ext4_fs("ext4");
+  ext4_fs.AddExtraMountOption(MountOptions::kOptionDirSync);
   RegisterFilesystem(ext4_fs);
 }
 

@@ -17,6 +17,7 @@ using std::vector;
 namespace cros_disks {
 
 const char MountOptions::kOptionBind[] = "bind";
+const char MountOptions::kOptionDirSync[] = "dirsync";
 const char MountOptions::kOptionFlush[] = "flush";
 const char MountOptions::kOptionNoDev[] = "nodev";
 const char MountOptions::kOptionNoExec[] = "noexec";
@@ -60,6 +61,7 @@ void MountOptions::Initialize(const vector<string>& options,
       // We'll add these options unconditionally below.
       continue;
     } else if (option == kOptionBind ||
+               option == kOptionDirSync ||
                option == kOptionFlush ||
                option == kOptionSynchronous ||
                option == kOptionUtf8 ||
@@ -132,6 +134,8 @@ pair<unsigned long, string> MountOptions::ToMountFlagsAndData() const {
       flags &= ~static_cast<unsigned long>(MS_RDONLY);
     } else if (option == kOptionBind) {
       flags |= MS_BIND;
+    } else if (option == kOptionDirSync) {
+      flags |= MS_DIRSYNC;
     } else if (option == kOptionNoDev) {
       flags |= MS_NODEV;
     } else if (option == kOptionNoExec) {

@@ -15,6 +15,7 @@ namespace cros_disks {
 class MountOptions {
  public:
   static const char kOptionBind[];
+  static const char kOptionDirSync[];
   static const char kOptionFlush[];
   static const char kOptionNoDev[];
   static const char kOptionNoExec[];
