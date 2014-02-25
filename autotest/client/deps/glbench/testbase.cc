@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
-#include <stdio.h>
 #include <png.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include "base/memory/scoped_ptr.h"
 #include "base/file_util.h"
@@ -31,13 +32,22 @@ uint64_t TimeTest(TestBase* test, uint64_t iterations) {
     return time2 - time1;
 }
 
-// Target minimum iteration duration of 5s.
-#define MIN_ITERATION_DURATION_US 5000000
+// Target minimum iteration duration of 1s. This means the final/longest
+// iteration is between 1s and 2s and the machine is active for 2s to 4s.
+#define MIN_ITERATION_DURATION_US 1000000
 
-// Benchmark some draw commands, by running it many times.
-// We want to measure the marginal cost, so we try more and more
-// iterations until we reach the minimum specified time.
+// Benchmark some draw commands, by running it many times. We want to measure
+// the marginal cost, so we try more and more iterations until we reach the
+// minimum specified iteration time.
 double Bench(TestBase* test) {
+  // Conservatively let machine cool down. Our goal is to sleep at least three
+  // times as much (on average) as being active to dissipate heat.
+  // TODO(ihf): Investigate if it is necessary to idle even more in the future.
+  // In particular cooling down until reaching a temperature threshold.
+  const int cool_time = static_cast<int>((10*MIN_ITERATION_DURATION_US)/1.e6);
+  // TODO(ihf): Remove this sleep if we have better ways to handle burst/power.
+  sleep(cool_time);
+
   // Do two iterations because initial timings can vary wildly.
   TimeTest(test, 2);
 
