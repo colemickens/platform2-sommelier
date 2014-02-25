@@ -2442,29 +2442,55 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   scoped_refptr<MockConnection> mock_connection1(
       new NiceMock<MockConnection>(device_info_.get()));
 
-  // If neither service has a Connection, the DefaultService should be
-  // NULL.
+  // A single registered Service, without a connection.  The
+  // DefaultService should be NULL.  If a change notification is
+  // generated, it should reference kNullPath.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty,
+                                       DBusAdaptor::kNullPath))
+      .Times(AnyNumber());
   manager()->RegisterService(mock_service0);
   CompleteServiceSort();
+
+  // Adding another Service, also without a connection, does not
+  // change DefaultService.  Furthermore, we do not send a change
+  // notification for DefaultService.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
+      .Times(0);
   manager()->RegisterService(mock_service1);
   CompleteServiceSort();
 
-  // An explicit sort doesn't change anything.
+  // An explicit sort doesn't change anything, and does not emit a
+  // change notification for DefaultService.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
+      .Times(0);
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  // Re-ordering the services doesn't change DefaultService.
+  // Re-ordering the unconnected Services doesn't change
+  // DefaultService, and (hence) does not emit a change notification
+  // for DefaultService.
   mock_service1->SetPriority(1, NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
+      .Times(0);
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
-  // Re-ordering the services doesn't change DefaultService.
+  // Re-ordering the unconnected Services doesn't change
+  // DefaultService, and (hence) does not emit a change notification
+  // for DefaultService.
   mock_service1->SetPriority(0, NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
+      .Times(0);
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
@@ -2472,9 +2498,12 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   mock_service1->set_mock_connection(mock_connection1);
 
   // If both Services have Connections, the DefaultService follows
-  // from ServiceOrderIs.
+  // from ServiceOrderIs.  We notify others of the change in
+  // DefaultService.
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
@@ -2492,28 +2521,41 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
-  // Deregistering the current DefaultService causes the other Service
-  // to become default.
+  // Deregistering a DefaultServiceCallback works as expected.  (Later
+  // code causes DefaultService changes, but we see no further calls
+  // to |service_watcher|.)
   manager()->DeregisterDefaultServiceCallback(tag);
-  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_)).Times(0);
+
+  // Deregistering the current DefaultService causes the other Service
+  // to become default.  Appropriate notifications are sent.
+  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   mock_service1->set_mock_connection(NULL);  // So DeregisterService works.
   manager()->DeregisterService(mock_service1);
   CompleteServiceSort();
 
   // Deregistering the only Service causes the DefaultService to become
-  // NULL.
+  // NULL.  Appropriate notifications are sent.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   mock_service0->set_mock_connection(NULL);  // So DeregisterService works.
   manager()->DeregisterService(mock_service0);
   CompleteServiceSort();
 
-  // An explicit sort doesn't change anything.
+  // An explicit sort doesn't change anything, and does not generate
+  // an external notification.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _)).Times(0);
   manager()->SortServicesTask();
 }
 
