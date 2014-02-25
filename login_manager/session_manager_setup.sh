@@ -377,7 +377,7 @@ if use_flag_is_set gpu_sandbox_allow_sysv_shm; then
 fi
 
 VIDEO_FLAGS=
-if is_board peach_pit; then
+if is_board peach_pit || is_board peach_pi; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
 fi
 
