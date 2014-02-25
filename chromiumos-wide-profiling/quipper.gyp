@@ -24,6 +24,7 @@
         'perf_serializer.cc',
         'utils.cc',
       ],
+      'hard_dependency': 1,
       'dependencies': [
         'perf_data_proto',
       ]
@@ -34,6 +35,7 @@
       'sources': [
         'conversion_utils.cc',
       ],
+      'hard_dependency': 1,
       'dependencies': [
         'common',
       ]
