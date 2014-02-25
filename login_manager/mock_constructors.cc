@@ -37,7 +37,7 @@
 
 namespace login_manager {
 MockDevicePolicyService::MockDevicePolicyService()
-    : DevicePolicyService(base::FilePath(""), base::FilePath(""),
+    : DevicePolicyService(base::FilePath(), base::FilePath(),
                           scoped_ptr<PolicyStore>(),
                           NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
@@ -54,13 +54,13 @@ MockKeyGenerator::~MockKeyGenerator() {}
 MockLivenessChecker::MockLivenessChecker() {}
 MockLivenessChecker::~MockLivenessChecker() {}
 
-MockMetrics::MockMetrics() : LoginMetrics(base::FilePath("")) {}
+MockMetrics::MockMetrics() : LoginMetrics(base::FilePath()) {}
 MockMetrics::~MockMetrics() {}
 
 MockMitigator::MockMitigator() {}
 MockMitigator::~MockMitigator() {}
 
-MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(""), NULL) {}
+MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), NULL) {}
 MockPolicyKey::~MockPolicyKey() {}
 
 MockPolicyService::MockPolicyService()
@@ -73,7 +73,7 @@ MockPolicyServiceCompletion::~MockPolicyServiceCompletion() {}
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() {}
 MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 
-MockPolicyStore::MockPolicyStore() : PolicyStore(base::FilePath("")) {}
+MockPolicyStore::MockPolicyStore() : PolicyStore(base::FilePath()) {}
 MockPolicyStore::~MockPolicyStore() {}
 
 MockProcessManagerService::MockProcessManagerService() {}
