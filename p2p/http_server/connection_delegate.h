@@ -158,14 +158,16 @@ class ConnectionDelegate : public ConnectionDelegateInterface {
   // Number of bytes to read at once when processing HTTP headers.
   static const unsigned int kLineBufSize = 256;
 
-  // Number of bytes to read/send at once.
+  // Number of bytes to read/send at once. With a max speed of 125
+  // kB/s - see common/constants.h - 64 KiB works out to sending
+  // approximately twice a second.
   //
   // TODO(zeuthen): Verify this is a good buffer size e.g. that it's a
   // good tradeoff between wakeups and smooth streaming. Many factors to
   // consider here. This is tracked in
   //
   // https://code.google.com/p/chromium/issues/detail?id=246325
-  static const unsigned int kPayloadBufferSize = 1048576;
+  static const unsigned int kPayloadBufferSize = 65536;
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionDelegate);
 };

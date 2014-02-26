@@ -19,8 +19,9 @@ constexpr int kMaxSimultaneousDownloads = 3;
 // kMaxSimultaneousDownloads.
 constexpr int kMaxSimultaneousDownloadsPollTimeSeconds = 30;
 
-// The maximum rate per download, in bytes per second.
-constexpr int64 kMaxSpeedPerDownload = 1 * 1000 * 1000;
+// The maximum rate per download, in bytes per second. Currently set
+// to 125 kB/s.
+constexpr int64 kMaxSpeedPerDownload = 125 * 1000;
 
 // The name of p2p server binary.
 constexpr char kServerBinaryName[] = "p2p-server";
