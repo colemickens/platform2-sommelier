@@ -87,10 +87,10 @@ bool GZFileToBuffer(const string& filename, std::vector<char>* contents) {
       break;
     contents->resize(contents->size() * 2);
   }
-  gzclose(fp);
   contents->resize(total_bytes_read);
   int error;
   const char* error_string = gzerror(fp, &error);
+  gzclose(fp);
   if (error != Z_STREAM_END && error != Z_OK) {
     LOG(ERROR) << "Error while reading gzip file: " << error_string;
     return false;
