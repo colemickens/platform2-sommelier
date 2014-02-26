@@ -490,7 +490,7 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
 
   gchar **argv = NULL;
   gint argc = 0;
-  GError* parse_error;
+  GError* parse_error = NULL;
   if (!g_shell_parse_argv(arguments.c_str(), &argc, &argv, &parse_error)) {
     LOG(ERROR) << "Could not parse command: " << parse_error->message;
     g_strfreev(argv);
