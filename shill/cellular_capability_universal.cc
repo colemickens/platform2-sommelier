@@ -661,7 +661,10 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
     // Mark an activated service for auto-connect by default. Since data from
     // the user profile will be loaded after the call to OnServiceCreated, this
     // property will be corrected based on the user data at that time.
-    cellular()->service()->SetAutoConnect(true);
+    // NOTE: This function can be called outside the service initialization
+    // path so make sure we don't overwrite the auto-connect setting.
+    if (cellular()->service()->activation_state() != activation_state)
+      cellular()->service()->SetAutoConnect(true);
   }
   cellular()->service()->SetActivationState(activation_state);
   // TODO(benchan): For now, assume the cellular service is activated over

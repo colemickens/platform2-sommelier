@@ -79,7 +79,9 @@ class CellularService : public Service {
   }
 
   virtual void SetActivationState(const std::string &state);
-  const std::string &activation_state() const { return activation_state_; }
+  virtual const std::string &activation_state() const {
+      return activation_state_;
+  }
 
   void SetOLP(const OLP &olp);
   const OLP &olp() const { return olp_; }

@@ -4,11 +4,19 @@
 
 #include "shill/mock_cellular_service.h"
 
+#include <chromeos/dbus/service_constants.h>
+
+using testing::ReturnRef;
+
 namespace shill {
 
 MockCellularService::MockCellularService(ModemInfo *modem_info,
                                          const CellularRefPtr &device)
-    : CellularService(modem_info, device) {}
+    : CellularService(modem_info, device),
+      default_activation_state_(kActivationStateUnknown) {
+  ON_CALL(*this, activation_state())
+      .WillByDefault(ReturnRef(default_activation_state_));
+}
 
 MockCellularService::~MockCellularService() {}
 

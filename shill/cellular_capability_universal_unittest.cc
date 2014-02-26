@@ -50,6 +50,7 @@ using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::SaveArg;
 using testing::_;
 
@@ -1695,6 +1696,19 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
   EXPECT_TRUE(service_->auto_connect());
+
+  // Make sure we don't overwrite auto-connect if a service is already
+  // activated before calling UpdateServiceActivationState().
+  service_->SetAutoConnect(false);
+  EXPECT_FALSE(service_->auto_connect());
+  const string activation_state = kActivationStateActivated;
+  EXPECT_CALL(*service_, activation_state())
+      .WillOnce(ReturnRef(activation_state));
+  EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(service_);
+  EXPECT_FALSE(service_->auto_connect());
 
   service_->SetAutoConnect(false);
   cellular_->set_mdn("0000000000");
