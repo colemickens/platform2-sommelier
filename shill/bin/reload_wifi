@@ -16,9 +16,16 @@ error () {
   exit 1
 }
 
+if [ -n "${1}" ] ; then
+  eval $(udevadm info --query=property --path="/sys/class/net/${1}" |
+         egrep '^(DEVPATH|DEVTYPE|SUBSYSTEM|INTERFACE)')
+  EVENT=device_hang
+fi
+
 if [ "${SUBSYSTEM}" != "net" -o
      "${DEVTYPE}" != "wlan" -o
-     "${EVENT}" != "device_hang" ] ; then
+     "${EVENT}" != "device_hang" -o
+     -z "${DEVPATH}" ] ; then
   exit 0
 fi
 
