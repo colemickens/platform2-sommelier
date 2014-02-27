@@ -51,7 +51,8 @@ bool Property::SetValue(double new_value) const {
     current_value = GetCurrentValue();
   }
 
-  return (abs(current_value - new_value) <= MAX_ALLOWABLE_DIFFERENCE);
+  return (abs(static_cast<int>(current_value - new_value))
+          <= MAX_ALLOWABLE_DIFFERENCE);
 }
 
 int Property::GetDeviceNumber() const {
