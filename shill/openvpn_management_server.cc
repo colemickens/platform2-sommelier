@@ -261,27 +261,38 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
   string user = driver_->args()->LookupString(kOpenVPNUserProperty, "");
   string password = driver_->args()->LookupString(kOpenVPNPasswordProperty, "");
   string otp = driver_->args()->LookupString(kOpenVPNOTPProperty, "");
-  if (user.empty() || password.empty() || otp.empty()) {
+  string token = driver_->args()->LookupString(kOpenVPNTokenProperty, "");
+  if (user.empty() || (token.empty() && (password.empty() || otp.empty()))) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
+                     << (token.empty() ? " no-token" : "")
                      << (password.empty() ? " no-password" : "")
                      << (otp.empty() ? " no-otp" : "");
     driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
     return;
   }
-  string b64_password;
-  string b64_otp;
-  if (!glib_->B64Encode(password, &b64_password) ||
-      !glib_->B64Encode(otp, &b64_otp)) {
-    LOG(ERROR) << "Unable to base64-encode credentials.";
-    return;
+
+  string password_encoded;
+  if (!token.empty()) {
+    password_encoded = StringPrintf("t:%s", token.c_str());
+    // Don't reuse token.
+    driver_->args()->RemoveString(kOpenVPNTokenProperty);
+  } else {
+    string b64_password;
+    string b64_otp;
+    if (!glib_->B64Encode(password, &b64_password) ||
+        !glib_->B64Encode(otp, &b64_otp)) {
+      LOG(ERROR) << "Unable to base64-encode credentials.";
+      return;
+    }
+    password_encoded = StringPrintf("SCRV1:%s:%s",
+                                    b64_password.c_str(),
+                                    b64_otp.c_str());
+    // Don't reuse OTP.
+    driver_->args()->RemoveString(kOpenVPNOTPProperty);
   }
   SendUsername(tag, user);
-  SendPassword(tag, StringPrintf("SCRV1:%s:%s",
-                                 b64_password.c_str(),
-                                 b64_otp.c_str()));
-  // Don't reuse OTP.
-  driver_->args()->RemoveString(kOpenVPNOTPProperty);
+  SendPassword(tag, password_encoded);
 }
 
 void OpenVPNManagementServer::PerformAuthentication(const string &tag) {

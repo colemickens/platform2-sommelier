@@ -255,6 +255,7 @@ class Metrics {
     kVpnUserAuthenticationTypeOpenVpnCertificate = 1,
     kVpnUserAuthenticationTypeOpenVpnUsernamePassword = 2,
     kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp = 3,
+    kVpnUserAuthenticationTypeOpenVpnUsernameToken = 7,
     kVpnUserAuthenticationTypeL2tpIpsecNone = 4,
     kVpnUserAuthenticationTypeL2tpIpsecCertificate = 5,
     kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword = 6,

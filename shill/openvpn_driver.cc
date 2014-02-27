@@ -98,6 +98,8 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNStaticChallengeProperty, 0 },
   { kOpenVPNTLSAuthContentsProperty, 0 },
   { kOpenVPNTLSRemoteProperty, 0 },
+  { kOpenVPNTokenProperty,
+    Property::kEphemeral | Property::kCredential | Property::kWriteOnly },
   { kOpenVPNUserProperty, 0 },
   { kProviderHostProperty, 0 },
   { kProviderTypeProperty, 0 },
@@ -986,7 +988,8 @@ KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
   SLOG(VPN, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.SetBool(kPassphraseRequiredProperty,
-                args()->LookupString(kOpenVPNPasswordProperty, "").empty());
+                args()->LookupString(kOpenVPNPasswordProperty, "").empty() &&
+                args()->LookupString(kOpenVPNTokenProperty, "").empty());
   return props;
 }
 
@@ -1050,7 +1053,9 @@ void OpenVPNDriver::ReportConnectionMetrics() {
       Metrics::kMetricVpnDriverMax);
 
   if (args()->LookupString(kOpenVPNCaCertNSSProperty, "") != "" ||
-      args()->LookupString(kOpenVPNCaCertProperty, "") != "") {
+      args()->LookupString(kOpenVPNCaCertProperty, "") != "" ||
+      (args()->ContainsStrings(kOpenVPNCaCertPemProperty) &&
+       !args()->GetStrings(kOpenVPNCaCertPemProperty).empty())) {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
@@ -1063,6 +1068,13 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
+  if (args()->LookupString(kOpenVPNTokenProperty, "") != "") {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
   if (args()->LookupString(kOpenVPNOTPProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,

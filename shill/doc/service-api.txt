@@ -931,6 +931,15 @@ Properties	boolean AutoConnect [readwrite]
 			documentation.  The current value of this property
 			is readable in the "Provider" property of this service.
 
+		string OpenVPN.Token [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies a
+			single-use token to be used during the authentication
+			phase instead of the the password or OTP parameters.
+			The connection manager only stores this value for the
+			duration of a connection attempt and will never persist
+			this to a stored profile.
+
 		string OpenVPN.User [writeonly]
 
 			(VPN services of type OpenVPN only) Specifies

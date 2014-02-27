@@ -58,13 +58,21 @@ class OpenVPNManagementServerTest : public testing::Test {
         .WillOnce(Return(value.size()));
   }
 
-  void ExpectStaticChallengeResponse() {
+  void ExpectOTPStaticChallengeResponse() {
     driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
     driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
     driver_.args()->SetString(kOpenVPNOTPProperty, "123456");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" jojo\n");
     ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
+  }
+
+  void ExpectTokenStaticChallengeResponse() {
+    driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
+    driver_.args()->SetString(kOpenVPNTokenProperty, "toto");
+    SetConnectedSocket();
+    ExpectSend("username \"Auth\" jojo\n");
+    ExpectSend("password \"Auth\" \"t:toto\"\n");
   }
 
   void ExpectAuthenticationResponse() {
@@ -267,7 +275,7 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">HOLD:Waiting for hold release\n"
         "SUCCESS: Hold released.";
     InputData data = CreateInputDataFromString(s);
-    ExpectStaticChallengeResponse();
+    ExpectOTPStaticChallengeResponse();
     ExpectPINResponse();
     EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
                                      Service::kErrorDetailsNone));
@@ -330,7 +338,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
-  ExpectStaticChallengeResponse();
+  ExpectOTPStaticChallengeResponse();
   EXPECT_TRUE(
       server_.ProcessNeedPasswordMessage(
           ">PASSWORD:Need 'Auth' SC:user/password/otp"));
@@ -386,18 +394,27 @@ TEST_F(OpenVPNManagementServerTest, ParsePasswordFailedReason) {
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
-                                   Service::kErrorDetailsNone)).Times(3);
+                                   Service::kErrorDetailsNone)).Times(4);
   server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
   server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
   server_.PerformStaticChallenge("Auth");
+  driver_.args()->Clear();
+  driver_.args()->SetString(kOpenVPNTokenProperty, "toto");
+  server_.PerformStaticChallenge("Auth");
 }
 
-TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
-  ExpectStaticChallengeResponse();
+TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeOTP) {
+  ExpectOTPStaticChallengeResponse();
   server_.PerformStaticChallenge("Auth");
   EXPECT_FALSE(driver_.args()->ContainsString(kOpenVPNOTPProperty));
+}
+
+TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeToken) {
+  ExpectTokenStaticChallengeResponse();
+  server_.PerformStaticChallenge("Auth");
+  EXPECT_FALSE(driver_.args()->ContainsString(kOpenVPNTokenProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {

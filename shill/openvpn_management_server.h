@@ -64,8 +64,9 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthentication);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthenticationNoCreds);
-  FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds);
+  FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeOTP);
+  FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeToken);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessFailedPasswordMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessHoldMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);

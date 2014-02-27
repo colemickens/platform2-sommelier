@@ -48,6 +48,7 @@ using testing::AnyNumber;
 using testing::DoAll;
 using testing::ElementsAreArray;
 using testing::Field;
+using testing::Mock;
 using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
@@ -56,8 +57,37 @@ using testing::StrictMock;
 
 namespace shill {
 
-class OpenVPNDriverTest : public testing::Test,
-                          public RPCTaskDelegate {
+struct AuthenticationExpectations {
+  AuthenticationExpectations()
+      : remote_authentication_type(Metrics::kVpnRemoteAuthenticationTypeMax) {}
+  AuthenticationExpectations(
+      const string &ca_cert_in,
+      const string &client_cert_in,
+      const string &user_in,
+      const string &otp_in,
+      const string &token_in,
+      Metrics::VpnRemoteAuthenticationType remote_authentication_type_in,
+      const vector<Metrics::VpnUserAuthenticationType>
+          &user_authentication_types_in)
+      : ca_cert(ca_cert_in),
+        client_cert(client_cert_in),
+        user(user_in),
+        otp(otp_in),
+        token(token_in),
+        remote_authentication_type(remote_authentication_type_in),
+        user_authentication_types(user_authentication_types_in) {}
+  string ca_cert;
+  string client_cert;
+  string user;
+  string otp;
+  string token;
+  Metrics::VpnRemoteAuthenticationType remote_authentication_type;
+  vector<Metrics::VpnUserAuthenticationType> user_authentication_types;
+};
+
+class OpenVPNDriverTest
+    : public testing::TestWithParam<AuthenticationExpectations>,
+      public RPCTaskDelegate {
  public:
   OpenVPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
@@ -125,6 +155,14 @@ class OpenVPNDriverTest : public testing::Test,
 
   KeyValueStore *GetArgs() {
     return driver_->args();
+  }
+
+  KeyValueStore GetProviderProperties(const PropertyStore &store) {
+    KeyValueStore props;
+    Error error;
+    EXPECT_TRUE(
+        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
+    return props;
   }
 
   void RemoveStringArg(const string &arg) {
@@ -341,7 +379,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
   driver_->Notify("up", config);
 }
 
-TEST_F(OpenVPNDriverTest, NotifyUMA) {
+TEST_P(OpenVPNDriverTest, NotifyUMA) {
   map<string, string> config;
   driver_->service_ = service_;
   driver_->device_ = device_;
@@ -354,20 +392,91 @@ TEST_F(OpenVPNDriverTest, NotifyUMA) {
       Metrics::kMetricVpnDriverMax));
   EXPECT_CALL(metrics_, SendEnumToUMA(
       Metrics::kMetricVpnRemoteAuthenticationType,
-      Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
+      GetParam().remote_authentication_type,
       Metrics::kVpnRemoteAuthenticationTypeMax));
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      Metrics::kMetricVpnUserAuthenticationType,
-      Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
-      Metrics::kVpnUserAuthenticationTypeMax));
+  for (const auto &authentication_type : GetParam().user_authentication_types) {
+    EXPECT_CALL(metrics_, SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        authentication_type,
+        Metrics::kVpnUserAuthenticationTypeMax));
+  }
 
   Error unused_error;
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  store.SetStringProperty(kOpenVPNCaCertProperty, "x", &unused_error);
-  store.SetStringProperty(kOpenVPNUserProperty, "y", &unused_error);
+  if (!GetParam().ca_cert.empty()) {
+    store.SetStringsProperty(kOpenVPNCaCertPemProperty,
+                             vector<string>{ GetParam().ca_cert },
+                             &unused_error);
+  }
+  if (!GetParam().client_cert.empty()) {
+    store.SetStringProperty(kOpenVPNClientCertIdProperty,
+                            GetParam().client_cert,
+                            &unused_error);
+  }
+  if (!GetParam().user.empty()) {
+    store.SetStringProperty(kOpenVPNUserProperty, GetParam().user,
+                            &unused_error);
+  }
+  if (!GetParam().otp.empty()) {
+    store.SetStringProperty(kOpenVPNOTPProperty, GetParam().otp, &unused_error);
+  }
+  if (!GetParam().token.empty()) {
+    store.SetStringProperty(kOpenVPNTokenProperty, GetParam().token,
+                            &unused_error);
+  }
   driver_->Notify("up", config);
+  Mock::VerifyAndClearExpectations(&metrics_);
 }
+
+INSTANTIATE_TEST_CASE_P(
+    OpenVPNDriverAuthenticationTypes,
+    OpenVPNDriverTest,
+    ::testing::Values(
+      AuthenticationExpectations(
+          "", "", "", "", "",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnNone }),
+      AuthenticationExpectations(
+          "", "client_cert", "", "", "",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate }),
+      AuthenticationExpectations(
+          "", "client_cert", "user", "", "",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword }),
+      AuthenticationExpectations(
+          "", "", "user", "", "",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword }),
+      AuthenticationExpectations(
+          "", "client_cert", "user", "otp", "",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp }),
+      AuthenticationExpectations(
+          "", "client_cert", "user", "otp", "token",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken }),
+      AuthenticationExpectations(
+          "ca_cert", "client_cert", "user", "otp", "token",
+          Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
+          vector<Metrics::VpnUserAuthenticationType> {
+              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
+              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken })));
 
 TEST_F(OpenVPNDriverTest, NotifyFail) {
   map<string, string> dict;
@@ -1230,25 +1339,27 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
   EXPECT_EQ(kUser, GetArgs()->LookupString(kOpenVPNUserProperty, ""));
 }
 
-TEST_F(OpenVPNDriverTest, GetProvider) {
+TEST_F(OpenVPNDriverTest, PassphraseRequired) {
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  {
-    KeyValueStore props;
-    Error error;
-    EXPECT_TRUE(
-        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
-    EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
-  }
-  {
-    KeyValueStore props;
-    SetArg(kOpenVPNPasswordProperty, "random-password");
-    Error error;
-    EXPECT_TRUE(
-        store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
-    EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
-    EXPECT_FALSE(props.ContainsString(kOpenVPNPasswordProperty));
-  }
+  KeyValueStore props = GetProviderProperties(store);
+  EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
+
+  SetArg(kOpenVPNPasswordProperty, "random-password");
+  props = GetProviderProperties(store);
+  EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
+  // This parameter should be write-only.
+  EXPECT_FALSE(props.ContainsString(kOpenVPNPasswordProperty));
+
+  SetArg(kOpenVPNPasswordProperty, "");
+  props = GetProviderProperties(store);
+  EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
+
+  SetArg(kOpenVPNTokenProperty, "random-token");
+  props = GetProviderProperties(store);
+  EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
+  // This parameter should be write-only.
+  EXPECT_FALSE(props.ContainsString(kOpenVPNTokenProperty));
 }
 
 TEST_F(OpenVPNDriverTest, ParseLSBRelease) {
