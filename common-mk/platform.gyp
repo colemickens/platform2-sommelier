@@ -46,6 +46,11 @@
                 '<(DEPTH)/platform/debugd/debugd.gyp:*',
               ],
             }],
+            ['USE_feedback == 1', {
+              'dependencies': [
+                '<(DEPTH)/platform2/feedback/feedback.gyp:*',
+              ],
+            }],
             ['USE_gdmwimax == 1', {
               'dependencies': [
                 '<(DEPTH)/platform/wimax_manager/wimax_manager.gyp:*',

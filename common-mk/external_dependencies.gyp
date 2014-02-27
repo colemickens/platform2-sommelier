@@ -100,5 +100,27 @@
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
+    {
+      'target_name': 'feedback-protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '<(sysroot)/usr/include/proto',
+        'proto_out_dir': 'include/bindings',
+      },
+      'cflags': [
+        '-fvisibility=hidden',
+      ],
+      'sources': [
+        '<(proto_in_dir)/annotations.proto',
+        '<(proto_in_dir)/chrome.proto',
+        '<(proto_in_dir)/common.proto',
+        '<(proto_in_dir)/config.proto',
+        '<(proto_in_dir)/dom.proto',
+        '<(proto_in_dir)/extension.proto',
+        '<(proto_in_dir)/math.proto',
+        '<(proto_in_dir)/web.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
   ],
 }
