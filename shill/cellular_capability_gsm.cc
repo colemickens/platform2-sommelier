@@ -479,7 +479,7 @@ void CellularCapabilityGSM::SetHomeProvider() {
   if (provider_info->networks && provider_info->networks[0]) {
     oper.SetCode(provider_info->networks[0]);
   }
-  if (provider_info->country) {
+  if (*provider_info->country) {
     oper.SetCountry(provider_info->country);
   }
   if (spn_.empty()) {
@@ -513,7 +513,7 @@ void CellularCapabilityGSM::UpdateOperatorInfo() {
           serving_operator_.SetName(provider_name);
         }
       }
-      if (provider->country && *provider->country) {
+      if (*provider->country) {
         serving_operator_.SetCountry(provider->country);
       }
       SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
