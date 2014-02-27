@@ -1,0 +1,5 @@
+package attestation;
+
+message StatsResponse {
+  required int32 uptime = 1;
+}

@@ -1,0 +1,20 @@
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef ATTESTATION_COMMON_DBUS_INTERFACE_H
+#define ATTESTATION_COMMON_DBUS_INTERFACE_H
+
+namespace attestation {
+
+// TODO(namnguyen): Move to chromeos/system_api once we're ready.
+constexpr char kAttestationInterface[] = "org.chromium.Attestation";
+constexpr char kAttestationServicePath[] = "/org/chromium/Attestation";
+constexpr char kAttestationServiceName[] = "org.chromium.Attestation";
+
+// Methods exported by attestation.
+constexpr char kStatsMethod[] = "GetStats";
+
+}; // namespace attestation
+
+#endif // ATTESTATION_COMMON_DBUS_INTERFACE_H
