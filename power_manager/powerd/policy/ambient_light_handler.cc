@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 
+#include <cmath>
 #include <limits>
 
 #include "base/strings/string_number_conversions.h"
@@ -117,7 +118,7 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
   double percent_delta = std::numeric_limits<double>::max();
   for (size_t i = 0; i < steps_.size(); i++) {
     double temp_delta =
-        abs(initial_brightness_percent - steps_[i].ac_target_percent);
+        fabs(initial_brightness_percent - steps_[i].ac_target_percent);
     if (temp_delta < percent_delta) {
       percent_delta = temp_delta;
       step_index_ = i;

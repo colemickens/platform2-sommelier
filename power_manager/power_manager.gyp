@@ -70,6 +70,11 @@
     {
       'target_name': 'libpolicy',
       'type': 'static_library',
+      'link_settings': {
+         'libraries': [
+           '-lm',
+         ],
+       },
       'sources': [
         'powerd/policy/ambient_light_handler.cc',
         'powerd/policy/dark_resume_policy.cc',

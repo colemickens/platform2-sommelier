@@ -372,7 +372,7 @@ void KeyboardBacklightController::InitUserStepIndex() {
   double percent_delta = 2 * user_percent_max_;
   size_t i;
   for (i = 0; i < user_steps_.size(); i++) {
-    double temp_delta = abs(percent - user_steps_[i]);
+    double temp_delta = fabs(percent - user_steps_[i]);
     if (temp_delta < percent_delta) {
       percent_delta = temp_delta;
       user_step_index_ = i;
