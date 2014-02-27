@@ -56,6 +56,7 @@
             ['USE_tpm == 1', {
               'dependencies': [
                 '<(DEPTH)/chaps/chaps.gyp:*',
+                '<(DEPTH)/platform2/attestation/attestation.gyp:*',
               ],
             }],
             ['USE_vpn == 1', {
