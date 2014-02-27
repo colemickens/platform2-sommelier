@@ -75,13 +75,6 @@ log_wakeup_count() {
 }
 
 enable_debug() {
-    # On some systems (snow), disabling console_suspend does bad things if
-    # serial console is enabled. Check if console is non-null and bail out
-    # if so.
-    if egrep -q "console=\w+" /proc/cmdline; then
-        return
-    fi
-
     # Enable debug info.
     if [ -e /sys/module/printk/parameters/console_suspend ]; then
         echo -n 'N' > /sys/module/printk/parameters/console_suspend
