@@ -9,7 +9,12 @@ if (len(sys.argv) < 4):
 (_, name, property_key, value) = sys.argv
 
 flim = flimflam.FlimFlam()
-service = flim.FindElementByNameSubstring('Service', name)
+service = flim.FindElementByPropertySubstring('Service', 'Name', name)
+
+if not service:
+    print "Could not find service: %s" % (sys.argv[1])
+    sys.exit(1)
+
 if property_key in ["Priority"]:
     service.SetProperty(property_key, int(value))
 elif property_key in ["AutoConnect", "WiFi.HiddenSSID", "EAP.UseSystemCAs",
