@@ -137,6 +137,8 @@ print_mmc_info() {
     mmc_result=$(cat ${mmc_path} 2>/dev/null)
     printf "%-20s | %s\n" "${mmc_name}" "${mmc_result}"
   done
+
+  mmc extcsd read "/dev/$1"
 }
 
 main() {
