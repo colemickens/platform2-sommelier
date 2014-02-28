@@ -21,7 +21,6 @@ class InputStub : public InputInterface {
   bool touch_devices_enabled() const { return touch_devices_enabled_; }
 
   void set_lid_state(LidState state) { lid_state_ = state; }
-  void set_display_connected(bool connected) { display_connected_ = connected; }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
   }
@@ -36,7 +35,6 @@ class InputStub : public InputInterface {
   virtual void RemoveObserver(InputObserver* observer) OVERRIDE;
   virtual LidState QueryLidState() OVERRIDE;
   virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
-  virtual bool IsDisplayConnected() const OVERRIDE;
   virtual int GetActiveVT() OVERRIDE;
   virtual bool SetWakeInputsState(bool enable) OVERRIDE;
   virtual void SetTouchDevicesState(bool enable) OVERRIDE;
@@ -45,7 +43,6 @@ class InputStub : public InputInterface {
   // Current input state.
   LidState lid_state_;
   bool usb_input_device_connected_;
-  bool display_connected_;
   int active_vt_;
   bool wake_inputs_enabled_;
   bool touch_devices_enabled_;

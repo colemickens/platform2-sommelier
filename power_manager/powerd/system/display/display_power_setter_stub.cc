@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/display_power_setter_stub.h"
+#include "power_manager/powerd/system/display/display_power_setter_stub.h"
 
 namespace power_manager {
 namespace system {

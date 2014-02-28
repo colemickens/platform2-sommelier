@@ -47,12 +47,6 @@ const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
 const char kBluetoothMatchString[] = "bluetooth";
 
-// Path containing directories describing the state of DRM devices.
-const char kSysClassDrmPath[] = "/sys/class/drm";
-
-// Glob-style pattern for device directories within kSysClassDrmPath.
-const char kDrmDeviceMatchPattern[] = "card*";
-
 // Path to the console device where VT_GETSTATE ioctls are made to get the
 // currently-active VT.
 const char kConsolePath[] = "/dev/tty0";
@@ -90,8 +84,6 @@ bool GetSuffixNumber(const std::string& name,
 }  // namespace
 
 const char Input::kInputUdevSubsystem[] = "input";
-const char Input::kDrmStatusFile[] = "status";
-const char Input::kDrmStatusConnected[] = "connected";
 
 // Takes ownership of a file descriptor and watches it for readability.
 class Input::EventFileDescriptor {
@@ -170,8 +162,7 @@ bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
   udev_->AddObserver(kInputUdevSubsystem, this);
 
   // Don't bother doing anything more if we're running under a test.
-  if (!sysfs_input_path_for_testing_.empty() ||
-      !sysfs_drm_path_for_testing_.empty())
+  if (!sysfs_input_path_for_testing_.empty())
     return true;
 
   if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1)
@@ -247,31 +238,6 @@ bool Input::IsUSBInputDeviceConnected() const {
         !IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
     if (usb_at_word_head && usb_at_word_tail)
       return true;
-  }
-  return false;
-}
-
-bool Input::IsDisplayConnected() const {
-  base::FileEnumerator enumerator(
-      sysfs_drm_path_for_testing_.empty() ?
-          base::FilePath(kSysClassDrmPath) :
-          sysfs_drm_path_for_testing_,
-      false,
-      static_cast<base::FileEnumerator::FileType>(
-          base::FileEnumerator::FILES |
-          base::FileEnumerator::DIRECTORIES |
-          base::FileEnumerator::SHOW_SYM_LINKS),
-      kDrmDeviceMatchPattern);
-  for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
-       device_path = enumerator.Next()) {
-    base::FilePath status_path = device_path.Append(kDrmStatusFile);
-    std::string status;
-    if (base::ReadFileToString(status_path, &status)) {
-      // Trim whitespace to deal with trailing newlines.
-      TrimWhitespaceASCII(status, TRIM_TRAILING, &status);
-      if (status == kDrmStatusConnected)
-        return true;
-    }
   }
   return false;
 }

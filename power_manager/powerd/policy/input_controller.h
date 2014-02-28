@@ -22,6 +22,7 @@ class DBusSenderInterface;
 class PrefsInterface;
 
 namespace system {
+class DisplayWatcherInterface;
 class InputInterface;
 }  // namespace system
 
@@ -76,6 +77,7 @@ class InputController : public system::InputObserver {
   // Ownership of passed-in pointers remains with the caller.
   void Init(system::InputInterface* input,
             Delegate* delegate,
+            system::DisplayWatcherInterface* display_watcher,
             DBusSenderInterface* dbus_sender,
             PrefsInterface* prefs);
 
@@ -108,6 +110,7 @@ class InputController : public system::InputObserver {
 
   system::InputInterface* input_;  // weak
   Delegate* delegate_;  // weak
+  system::DisplayWatcherInterface* display_watcher_;  // weak
   DBusSenderInterface* dbus_sender_;  // weak
 
   scoped_ptr<Clock> clock_;

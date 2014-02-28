@@ -11,6 +11,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input_interface.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
 
@@ -28,6 +29,7 @@ const int kCheckActiveVTFrequencySec = 60;
 InputController::InputController()
     : input_(NULL),
       delegate_(NULL),
+      display_watcher_(NULL),
       dbus_sender_(NULL),
       clock_(new Clock),
       only_has_external_display_(false),
@@ -41,11 +43,13 @@ InputController::~InputController() {
 
 void InputController::Init(system::InputInterface* input,
                            Delegate* delegate,
+                           system::DisplayWatcherInterface* display_watcher,
                            DBusSenderInterface* dbus_sender,
                            PrefsInterface* prefs) {
   input_ = input;
   input_->AddObserver(this);
   delegate_ = delegate;
+  display_watcher_ = display_watcher;
   dbus_sender_ = dbus_sender;
 
   prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
@@ -118,7 +122,7 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
   LOG(INFO) << "Power button " << ButtonStateToString(state);
 
   if (state == BUTTON_DOWN && only_has_external_display_ &&
-      !input_->IsDisplayConnected()) {
+      display_watcher_->GetDisplays().empty()) {
     delegate_->ShutDownForPowerButtonWithNoDisplay();
     return;
   }

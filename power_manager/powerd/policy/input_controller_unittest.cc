@@ -14,6 +14,8 @@
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/system/display/display_info.h"
+#include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/powerd/system/input_stub.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
 
@@ -82,7 +84,8 @@ class InputControllerTest : public ::testing::Test {
  protected:
   // Initializes |controller_|.
   void Init() {
-    controller_.Init(&input_, &delegate_, &dbus_sender_, &prefs_);
+    controller_.Init(
+        &input_, &delegate_, &display_watcher_, &dbus_sender_, &prefs_);
   }
 
   // Tests that one InputEvent D-Bus signal has been sent and returns the
@@ -116,6 +119,7 @@ class InputControllerTest : public ::testing::Test {
 
   FakePrefs prefs_;
   system::InputStub input_;
+  system::DisplayWatcherStub display_watcher_;
   DBusSenderStub dbus_sender_;
   TestInputControllerDelegate delegate_;
   InputController controller_;
@@ -157,7 +161,8 @@ TEST_F(InputControllerTest, LidEvents) {
 
 TEST_F(InputControllerTest, PowerButtonEvents) {
   prefs_.SetInt64(kExternalDisplayOnlyPref, 1);
-  input_.set_display_connected(true);
+  std::vector<system::DisplayInfo> displays(1, system::DisplayInfo());
+  display_watcher_.set_displays(displays);
   Init();
 
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
@@ -174,7 +179,8 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
   dbus_sender_.ClearSentSignals();
 
   // With no displays connected, the system should shut down immediately.
-  input_.set_display_connected(false);
+  displays.clear();
+  display_watcher_.set_displays(displays);
   input_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
   EXPECT_EQ(kShutDown, delegate_.GetActions());
   EXPECT_EQ(0, dbus_sender_.num_sent_signals());

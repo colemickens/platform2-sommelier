@@ -20,7 +20,7 @@
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
-#include "power_manager/powerd/system/display_power_setter_stub.h"
+#include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev_stub.h"

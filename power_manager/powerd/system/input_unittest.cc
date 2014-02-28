@@ -21,30 +21,15 @@ class InputTest : public testing::Test {
   InputTest() {
     CHECK(input_dir_.CreateUniqueTempDir());
     input_.set_sysfs_input_path_for_testing(input_dir_.path());
-    CHECK(drm_dir_.CreateUniqueTempDir());
-    input_.set_sysfs_drm_path_for_testing(drm_dir_.path());
-    CHECK(device_dir_.CreateUniqueTempDir());
     input_.Init(&prefs_, &udev_);
   }
   virtual ~InputTest() {}
 
  protected:
-  // Creates a directory named |device_name| in |device_dir_| and adds a symlink
-  // to it in |drm_dir_|. Returns the path to the directory.
-  base::FilePath CreateDrmDevice(const std::string& device_name) {
-    base::FilePath device_path = device_dir_.path().Append(device_name);
-    CHECK(base::CreateDirectory(device_path));
-    CHECK(base::CreateSymbolicLink(
-              device_path, drm_dir_.path().Append(device_name)));
-    return device_path;
-  }
-
   FakePrefs prefs_;
   base::ScopedTempDir input_dir_;
-  base::ScopedTempDir drm_dir_;
 
-  // Directory holding device information symlinked to from the above
-  // directories.
+  // Directory holding device information symlinked to from |input_dir_|.
   base::ScopedTempDir device_dir_;
 
   UdevStub udev_;
@@ -95,55 +80,6 @@ TEST_F(InputTest, DetectUSBDevices) {
   input_.set_sysfs_input_path_for_testing(input_dir_.path());
   ASSERT_TRUE(base::CreateDirectory(input_dir_.path().Append("usb12")));
   EXPECT_FALSE(input_.IsUSBInputDeviceConnected());
-}
-
-TEST_F(InputTest, IsDisplayConnected) {
-  // False if there aren't any devices.
-  EXPECT_FALSE(input_.IsDisplayConnected());
-
-  // False if there's no status file.
-  base::FilePath device_path = CreateDrmDevice("card0-DP-1");
-  EXPECT_FALSE(input_.IsDisplayConnected());
-
-  // False if the device reports that it's disconnected.
-  const char kDisconnected[] = "disconnected";
-  base::FilePath status_path = device_path.Append(Input::kDrmStatusFile);
-  ASSERT_TRUE(file_util::WriteFile(status_path, kDisconnected,
-      strlen(kDisconnected)));
-  EXPECT_FALSE(input_.IsDisplayConnected());
-
-  // True when the device's status goes to "connected".
-  ASSERT_TRUE(file_util::WriteFile(status_path, Input::kDrmStatusConnected,
-      strlen(Input::kDrmStatusConnected)));
-  EXPECT_TRUE(input_.IsDisplayConnected());
-
-  // A trailing newline should be okay.
-  std::string kConnectedNewline(Input::kDrmStatusConnected);
-  kConnectedNewline += "\n";
-  ASSERT_TRUE(file_util::WriteFile(status_path, kConnectedNewline.c_str(),
-      kConnectedNewline.size()));
-  EXPECT_TRUE(input_.IsDisplayConnected());
-
-  // True when one device is connected even if there's another disconnected
-  // device.
-  base::FilePath second_device_path = CreateDrmDevice("card0-DP-0");
-  base::FilePath second_status_path =
-      second_device_path.Append(Input::kDrmStatusFile);
-  ASSERT_TRUE(file_util::WriteFile(second_status_path, kDisconnected,
-      strlen(kDisconnected)));
-  EXPECT_TRUE(input_.IsDisplayConnected());
-
-  // Disconnect the original device and create a new device that has a
-  // "connected" status but doesn't match the expected naming pattern for a
-  // video card. IsDisplayConnected() should return false.
-  ASSERT_TRUE(file_util::WriteFile(status_path, kDisconnected,
-      strlen(kDisconnected)));
-  base::FilePath misnamed_device_path = CreateDrmDevice("control32");
-  base::FilePath misnamed_status_path =
-      misnamed_device_path.Append(Input::kDrmStatusFile);
-  ASSERT_TRUE(file_util::WriteFile(misnamed_status_path,
-      kConnectedNewline.c_str(), kConnectedNewline.size()));
-  EXPECT_FALSE(input_.IsDisplayConnected());
 }
 
 TEST_F(InputTest, RegisterForUdevEvents) {

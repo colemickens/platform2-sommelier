@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_STUB_H_
-#define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_STUB_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_STUB_H_
+#define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_STUB_H_
 
 #include "base/time/time.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/powerd/system/display_power_setter.h"
+#include "power_manager/powerd/system/display/display_power_setter.h"
 
 namespace power_manager {
 namespace system {
@@ -47,4 +47,4 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
 }  // system
 }  // power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_STUB_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_STUB_H_

@@ -8,7 +8,7 @@
 
 #include "base/compiler_specific.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
-#include "power_manager/powerd/system/display_power_setter_stub.h"
+#include "power_manager/powerd/system/display/display_power_setter_stub.h"
 
 namespace power_manager {
 namespace policy {

@@ -30,10 +30,6 @@ class InputInterface {
   // Checks if any USB input devices are connected.
   virtual bool IsUSBInputDeviceConnected() const = 0;
 
-  // Returns true if a display (internal or external) is connected to the
-  // device.
-  virtual bool IsDisplayConnected() const = 0;
-
   // Returns the (1-indexed) number of the currently-active virtual terminal.
   virtual int GetActiveVT() = 0;
 

@@ -46,6 +46,7 @@ namespace system {
 class AmbientLightSensor;
 class AudioClient;
 class DisplayPowerSetter;
+class DisplayWatcher;
 class Input;
 class InternalBacklight;
 class Udev;
@@ -219,6 +220,7 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<DBusSender> dbus_sender_;
 
   scoped_ptr<system::AmbientLightSensor> light_sensor_;
+  scoped_ptr<system::DisplayWatcher> display_watcher_;
   scoped_ptr<system::DisplayPowerSetter> display_power_setter_;
   scoped_ptr<system::InternalBacklight> display_backlight_;
   scoped_ptr<policy::BacklightController> display_backlight_controller_;

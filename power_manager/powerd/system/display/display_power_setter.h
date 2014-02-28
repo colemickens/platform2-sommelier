@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_H_
-#define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_H_
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
@@ -69,4 +69,4 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
 }  // system
 }  // power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_POWER_SETTER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_H_

@@ -29,7 +29,8 @@
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
-#include "power_manager/powerd/system/display_power_setter.h"
+#include "power_manager/powerd/system/display/display_power_setter.h"
+#include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/udev.h"
@@ -437,6 +438,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       update_engine_dbus_proxy_(NULL),
       state_controller_delegate_(new StateControllerDelegate(this)),
       dbus_sender_(new DBusSender),
+      display_watcher_(new system::DisplayWatcher),
       display_power_setter_(new system::DisplayPowerSetter),
       udev_(new system::Udev),
       input_(new system::Input),
@@ -480,6 +482,7 @@ void Daemon::Init() {
     light_sensor_->Init();
   }
 
+  display_watcher_->Init(udev_.get());
   display_power_setter_->Init(chrome_dbus_proxy_);
   if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
     display_backlight_controller_.reset(
@@ -543,7 +546,8 @@ void Daemon::Init() {
                    dark_resume_policy_.get(), prefs_.get());
 
   CHECK(input_->Init(prefs_.get(), udev_.get()));
-  input_controller_->Init(input_.get(), this, dbus_sender_.get(), prefs_.get());
+  input_controller_->Init(input_.get(), this, display_watcher_.get(),
+                          dbus_sender_.get(), prefs_.get());
 
   const PowerSource power_source =
       power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;

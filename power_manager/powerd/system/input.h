@@ -36,21 +36,11 @@ class Input : public InputInterface,
   // udev subsystem to watch for input device-related events.
   static const char kInputUdevSubsystem[];
 
-  // Filename within a DRM device directory containing the device's hotplug
-  // status.
-  static const char kDrmStatusFile[];
-
-  // Value in |kDrmStatusFile| indicating that the device is connected.
-  static const char kDrmStatusConnected[];
-
   Input();
   virtual ~Input();
 
   void set_sysfs_input_path_for_testing(const base::FilePath& path) {
     sysfs_input_path_for_testing_ = path;
-  }
-  void set_sysfs_drm_path_for_testing(const base::FilePath& path) {
-    sysfs_drm_path_for_testing_ = path;
   }
 
   // Returns true on success.
@@ -61,7 +51,6 @@ class Input : public InputInterface,
   virtual void RemoveObserver(InputObserver* observer) OVERRIDE;
   virtual LidState QueryLidState() OVERRIDE;
   virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
-  virtual bool IsDisplayConnected() const OVERRIDE;
   virtual int GetActiveVT() OVERRIDE;
   virtual bool SetWakeInputsState(bool enable) OVERRIDE;
   virtual void SetTouchDevicesState(bool enable) OVERRIDE;
@@ -139,9 +128,6 @@ class Input : public InputInterface,
   // Used by IsUSBInputDeviceConnected() instead of the default path if
   // non-empty.
   base::FilePath sysfs_input_path_for_testing_;
-
-  // Used by IsDisplayConnected() instead of the default path if non-empty.
-  base::FilePath sysfs_drm_path_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(Input);
 };

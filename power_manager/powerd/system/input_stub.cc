@@ -12,7 +12,6 @@ namespace system {
 InputStub::InputStub()
     : lid_state_(LID_OPEN),
       usb_input_device_connected_(true),
-      display_connected_(true),
       active_vt_(1),
       wake_inputs_enabled_(true),
       touch_devices_enabled_(true) {
@@ -44,10 +43,6 @@ LidState InputStub::QueryLidState() {
 
 bool InputStub::IsUSBInputDeviceConnected() const {
   return usb_input_device_connected_;
-}
-
-bool InputStub::IsDisplayConnected() const {
-  return display_connected_;
 }
 
 int InputStub::GetActiveVT() {
