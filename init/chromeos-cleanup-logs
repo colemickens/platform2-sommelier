@@ -119,8 +119,11 @@ wipe_crx_cache() {
   # don't wipe.
   local root_dev="$(basename "$(rootdev -s -d)")"
   local removable="$(cat "/sys/block/${root_dev}/removable")" || :
+  local disk_percent="$(get_stateful_usage_percent)" || :
+  [ -z "${disk_percent}" ] && disk_percent=0
   if [ ${removable:-0} -eq 0 ] && [ -d "${UNVALIDATED_CRX_CACHE}" ] && \
-      [ -f "${VALIDATED_CRX_CACHE}/.initialized" ]; then
+      [ -f "${VALIDATED_CRX_CACHE}/.initialized" ] && \
+      [ ${disk_percent} -gt 25 ]; then
     echo "Wiping unvalidated crx cache as it has already been imported."
     rm -rf "${UNVALIDATED_CRX_CACHE}"
   fi
