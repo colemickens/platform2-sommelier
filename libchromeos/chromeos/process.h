@@ -20,6 +20,7 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #endif
+#include <gtest/gtest_prod.h>
 
 #if BASE_VER >= 242728
 using base::StringPrintf;
@@ -167,6 +168,8 @@ class ProcessImpl : public Process {
   bool PopulatePipeMap();
 
  private:
+  FRIEND_TEST(ProcessTest, ResetPidByFile);
+
   // Pid of currently managed process or 0 if no currently managed
   // process.  pid must not be modified except by calling
   // UpdatePid(new_pid).

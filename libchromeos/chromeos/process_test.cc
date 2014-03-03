@@ -35,16 +35,12 @@ static const char kBinFalse[] = "/bin/false";
 static const char kBinSleep[] = "/bin/sleep";
 static const char kBinTrue[] = "/bin/true";
 
-using chromeos::Process;
-using chromeos::ProcessImpl;
-using chromeos::ClearLog;
-using chromeos::FindLog;
-using chromeos::GetLog;
+namespace chromeos {
 
 // Test that the mock has all the functions of the interface by
 // instantiating it.  This variable is not used elsewhere.
 struct CompileMocks {
-  chromeos::ProcessMock process_mock;
+  ProcessMock process_mock;
 };
 
 TEST(SimpleProcess, Basic) {
@@ -83,7 +79,7 @@ class ProcessTest : public ::testing::Test {
 #endif
     CreateDirectory(test_path_);
     process_.RedirectOutput(output_file_);
-    chromeos::ClearLog();
+    ClearLog();
   }
 
   void TearDown() {
@@ -302,6 +298,11 @@ TEST_F(ProcessTest, ResetPidByFile) {
   EXPECT_TRUE(file_util::WriteFile(pid_path, "456\n", 4));
   EXPECT_TRUE(process_.ResetPidByFile(pid_path.value()));
   EXPECT_EQ(456, process_.pid());
+  // The purpose of this unit test is to check if Process::ResetPidByFile() can
+  // properly read a pid from a file. We don't really want to kill the process
+  // with pid 456, so update the pid to 0 to prevent the Process destructor from
+  // killing any innocent process.
+  process_.UpdatePid(0);
 }
 
 TEST_F(ProcessTest, KillSleeper) {
@@ -328,3 +329,5 @@ TEST_F(ProcessTest, PreExecCallback) {
   process_.SetPreExecCallback(base::Bind(&ReturnFalse));
   ASSERT_NE(0, process_.Run());
 }
+
+}  // namespace chromeos
