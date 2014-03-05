@@ -62,9 +62,16 @@ class Platform2(object):
 
   def get_buildroot(self):
     """Return the path to the folder where build artifacts are located."""
-
-    return os.path.join(self.sysroot,
-                        'var/cache/portage/chromeos-base/platform2/')
+    if not self.incremental:
+      workdir = os.environ.get('WORKDIR')
+      if workdir:
+        # Matches $(cros-workon_get_build_dir) behavior.
+        return os.path.join(workdir, 'build')
+      else:
+        return os.getcwd()
+    else:
+      return os.path.join(self.sysroot,
+                          'var/cache/portage/chromeos-base/platform2/')
 
   def get_products_path(self):
     """Return the path to the folder where build product are located."""
