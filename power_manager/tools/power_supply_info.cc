@@ -36,7 +36,7 @@ namespace {
 const char kPowerStatusPath[] = "/sys/class/power_supply";
 
 // Number of columns that should be used to display field names.
-const int kFieldNameColumns = 22;
+const int kFieldNameColumns = 27;
 
 std::string BoolToString(bool value) {
   return value ? "yes" : "no";
@@ -172,6 +172,8 @@ int main(int argc, char** argv) {
     display.PrintValue("current (A)", status.battery_current);
     display.PrintValue("charge (Ah)", status.battery_charge);
     display.PrintValue("full charge (Ah)", status.battery_charge_full);
+    display.PrintValue("full charge design (Ah)",
+        status.battery_charge_full_design);
     display.PrintValue("percentage", status.battery_percentage);
     display.PrintValue("display percentage",
         status.display_battery_percentage);
