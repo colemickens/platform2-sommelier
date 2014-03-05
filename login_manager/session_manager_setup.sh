@@ -200,6 +200,11 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
     /proc/sys/kernel/core_pattern
 fi
 
+# Increase maximum file descriptors to 2048 (default is otherwise 1024).
+# Some offline websites using IndexedDB are particularly hungry for
+# descriptors, so the default is insufficient. See crbug.com/251385.
+ulimit -n 2048
+
 # Remove consent file if it had at one point been created by this script.
 if [ -f "$CONSENT_FILE" ]; then
   CONSENT_USER_GROUP=$(stat -c %U:%G "$CONSENT_FILE")
