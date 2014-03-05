@@ -71,6 +71,8 @@ class SessionManagerDBusAdaptor {
   scoped_ptr<dbus::Response> StartDeviceWipe(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> SetFlagsForUser(dbus::MethodCall* call);
 
+  scoped_ptr<dbus::Response> Introspect(dbus::MethodCall* call);
+
  private:
   // Pointer to a member function for handling a DBus method call.
   typedef scoped_ptr<dbus::Response> (

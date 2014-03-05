@@ -11,6 +11,7 @@
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <dbus/exported_object.h>
@@ -21,6 +22,13 @@
 
 namespace login_manager {
 namespace {
+
+const char kBindingsPath[] =
+  "/usr/share/dbus-1/interfaces/org.chromium.SessionManagerInterface.xml";
+const char kDBusIntrospectableInterface[] =
+  "org.freedesktop.DBus.Introspectable";
+const char kDBusIntrospectMethod[] =
+  "org.freedesktop.DBus.Introspectable.Introspect";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -204,6 +212,12 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        &SessionManagerDBusAdaptor::StartDeviceWipe);
   ExportSyncDBusMethod(object, kSessionManagerSetFlagsForUser,
                        &SessionManagerDBusAdaptor::SetFlagsForUser);
+
+  CHECK(object->ExportMethodAndBlock(
+      kDBusIntrospectableInterface, kDBusIntrospectMethod,
+      base::Bind(&HandleSynchronousDBusMethodCall,
+                 base::Bind(&SessionManagerDBusAdaptor::Introspect,
+                            base::Unretained(this)))));
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitLoginPromptVisible(
@@ -426,6 +440,19 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
   }
   impl_->SetFlagsForUser(user_email, session_user_flags);
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::Introspect(
+    dbus::MethodCall* call) {
+  std::string output;
+  if (!base::ReadFileToString(base::FilePath(kBindingsPath), &output)) {
+    PLOG(ERROR) << "Can't read XML bindings from disk:";
+    return CreateError(call, "Can't read XML bindings from disk.", "");
+  }
+  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(output);
+  return response.Pass();
 }
 
 void SessionManagerDBusAdaptor::ExportSyncDBusMethod(
