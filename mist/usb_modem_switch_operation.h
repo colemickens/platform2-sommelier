@@ -26,11 +26,12 @@ class UsbModemInfo;
 class UsbModemSwitchContext;
 class UsbTransfer;
 
-// A USB modem switch operation, which switches a USB modem from the mass
-// storage mode to the modem mode. The whole operation involves the following
-// tasks:
-// 1. Open the USB modem device, find and claim the mass storage interface of
-//    the modem.
+// A USB modem switch operation for switching a USB modem into the modem mode.
+// The whole operation involves the following tasks:
+// 1. Open the USB modem device. If the modem has a USB configuration that
+//    exposes a MBIM interface, select that configuration and complete the
+//    switch operation. Otherwise, find and claim the mass storage interface of
+//    the mdoem.
 // 2. Initiate a bulk output transfer of a (or multiple) special USB message(s)
 //    to the mass storage endpoint of the modem.
 // 3. On some modems, a bulk input transfer from the mass storage endpoint of
@@ -93,11 +94,27 @@ class UsbModemSwitchOperation
   // returns.
   void Complete(bool success);
 
+  // Detaches all the kernel drivers associated with the interfaces of the
+  // currently active USB configuration. Continues to detach other kernel
+  // drivers if it fails to detach any driver.
+  void DetachAllKernelDrivers();
+
+  // Returns the value of the USB configuration at which the device exposes a
+  // MBIM interface, or kUsbConfigurationValueInvalid if no MBIM interface is
+  // found.
+  int GetMBIMConfigurationValue();
+
+  // Sets the USB configuration of the device to |configuration|. Returns true
+  // on success.
+  bool SetConfiguration(int configuration);
+
   // Closes the device.
   void CloseDevice();
 
-  // Opens the device and claims the mass storage interface on the device.
-  void OpenDeviceAndClaimMassStorageInterface();
+  // Opens the device. If the device has a USB configuration that exposes a MBIM
+  // interface, selects that configuration and completes the switch operation.
+  // Otherwise, finds and claims the mass storage interface on the device.
+  void OpenDeviceAndSelectInterface();
 
   // Clears the halt condition on the endpoint at |endpoint_address|. Returns
   // true on success.

@@ -13,7 +13,13 @@ namespace mist {
 
 // USB class codes.
 enum UsbClass {
+  kUsbClassCommunication = 0x02,
   kUsbClassMassStorage = 0x08
+};
+
+// USB subclass codes.
+enum UsbSubClass {
+  kUsbSubClassMBIM = 0x0e
 };
 
 // USB endpoint direction, which is one-to-one equivalent to the
@@ -59,6 +65,9 @@ enum UsbTransferStatus {
   // Additional enum value to indicate an unknown transfer status.
   kUsbTransferStatusUnknown
 };
+
+// Invalid USB configuration value
+const int kUsbConfigurationValueInvalid = -1;
 
 // Returns the USB endpoint direction of |endpoint_address|.
 UsbDirection GetUsbDirectionOfEndpointAddress(uint8 endpoint_address);

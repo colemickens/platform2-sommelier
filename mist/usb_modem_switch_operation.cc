@@ -102,7 +102,7 @@ void UsbModemSwitchOperation::Start(
   LOG(INFO) << "Starting the modem switch operation in "
             << initial_delay.InMilliseconds() << " ms.";
   ScheduleDelayedTask(
-      &UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface,
+      &UsbModemSwitchOperation::OpenDeviceAndSelectInterface,
       initial_delay);
 }
 
@@ -149,6 +149,113 @@ void UsbModemSwitchOperation::Complete(bool success) {
       Bind(completion_callback_, Unretained(this), success));
 }
 
+void UsbModemSwitchOperation::DetachAllKernelDrivers() {
+  scoped_ptr<UsbConfigDescriptor> config_descriptor(
+      device_->GetActiveConfigDescriptor());
+  if (!config_descriptor)
+    return;
+
+  for (uint8 interface_number = 0;
+       interface_number < config_descriptor->GetNumInterfaces();
+       ++interface_number) {
+    if (!device_->DetachKernelDriver(interface_number) &&
+        // UsbDevice::DetachKernelDriver returns UsbError::kErrorNotFound when
+        // there is no driver attached to the device.
+        device_->error().type() != UsbError::kErrorNotFound) {
+      LOG(ERROR) << StringPrintf(
+          "Could not detach kernel driver from interface %u: %s",
+          interface_number, device_->error().ToString());
+      // Continue to detach other kernel drivers in case of an error.
+    }
+  }
+}
+
+int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
+  CHECK(device_);
+
+  scoped_ptr<UsbDeviceDescriptor> device_descriptor(
+      device_->GetDeviceDescriptor());
+  if (!device_descriptor) {
+    LOG(ERROR) << "Could not get device descriptor: " << device_->error();
+    return kUsbConfigurationValueInvalid;
+  }
+
+  VLOG(2) << *device_descriptor;
+
+  for (uint8 config_index = 0;
+       config_index < device_descriptor->GetNumConfigurations();
+       ++config_index) {
+    scoped_ptr<UsbConfigDescriptor> config_descriptor(
+        device_->GetConfigDescriptor(config_index));
+    if (!config_descriptor)
+      continue;
+
+    VLOG(2) << *config_descriptor;
+
+    for (uint8 interface_number = 0;
+         interface_number < config_descriptor->GetNumInterfaces();
+         ++interface_number) {
+      scoped_ptr<UsbInterface> interface(
+          config_descriptor->GetInterface(interface_number));
+      if (!interface)
+        continue;
+
+      scoped_ptr<UsbInterfaceDescriptor> interface_descriptor(
+          interface->GetAlternateSetting(
+              kDefaultUsbInterfaceAlternateSettingIndex));
+      if (!interface_descriptor)
+        continue;
+
+      VLOG(2) << *interface_descriptor;
+
+      if (interface_descriptor->GetInterfaceClass() != kUsbClassCommunication ||
+          interface_descriptor->GetInterfaceSubclass() != kUsbSubClassMBIM)
+        continue;
+
+      int configuration_value = config_descriptor->GetConfigurationValue();
+      LOG(INFO) << StringPrintf("Found MBIM support at configuration %d "
+                                "on device '%s'.",
+                                configuration_value,
+                                switch_context_->sys_path().c_str());
+      return configuration_value;
+    }
+  }
+  return kUsbConfigurationValueInvalid;
+}
+
+bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
+  scoped_ptr<UsbConfigDescriptor> config_descriptor(
+      device_->GetActiveConfigDescriptor());
+  if (!config_descriptor) {
+    LOG(ERROR) << "Could not get active configuration descriptor: "
+               << device_->error();
+    return false;
+  }
+
+  if (config_descriptor->GetConfigurationValue() == configuration) {
+    LOG(INFO) << StringPrintf("Device '%s' is already in configuration %d. ",
+                              switch_context_->sys_path().c_str(),
+                              configuration);
+    return true;
+  }
+
+  DetachAllKernelDrivers();
+  if (device_->SetConfiguration(configuration)) {
+    LOG(INFO) << StringPrintf(
+                     "Successfully selected configuration %d for device '%s'.",
+                     configuration,
+                     switch_context_->sys_path().c_str());
+    return true;
+  }
+
+  LOG(ERROR) << StringPrintf(
+                    "Could not select configuration %d for device '%s': %s",
+                    configuration,
+                    switch_context_->sys_path().c_str(),
+                    device_->error().ToString());
+  return false;
+}
+
 void UsbModemSwitchOperation::CloseDevice() {
   if (!device_)
     return;
@@ -169,7 +276,7 @@ void UsbModemSwitchOperation::CloseDevice() {
   device_.reset();
 }
 
-void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
+void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   CHECK(!interface_claimed_);
 
   device_.reset(
@@ -205,6 +312,15 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
     return;
   }
   VLOG(2) << *config_descriptor;
+
+  int mbim_configuration_value = GetMBIMConfigurationValue();
+  if (mbim_configuration_value != kUsbConfigurationValueInvalid) {
+    LOG(INFO) << StringPrintf("Switching device '%s' to MBIM configuration %d.",
+                              switch_context_->sys_path().c_str(),
+                              mbim_configuration_value);
+    Complete(SetConfiguration(mbim_configuration_value));
+    return;
+  }
 
   scoped_ptr<UsbInterface> interface(
       config_descriptor->GetInterface(kDefaultUsbInterfaceIndex));
@@ -242,9 +358,8 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
 
   interface_number_ = interface_descriptor->GetInterfaceNumber();
   out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
-  bool expect_response = switch_context_->modem_info()->expect_response();
 
-  if (expect_response) {
+  if (switch_context_->modem_info()->expect_response()) {
     scoped_ptr<UsbEndpointDescriptor> in_endpoint_descriptor(
         interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
             kUsbTransferTypeBulk, kUsbDirectionIn));
