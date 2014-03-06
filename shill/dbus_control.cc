@@ -28,7 +28,7 @@ DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
   try {
     result = new DeviceDBusAdaptor(connection_.get(), device);
   } catch(const DBus::Error &error) {
-    LOG(ERROR) << error.message();
+    LOG(FATAL) << error.message();
   }
   return result;
 }
@@ -38,7 +38,7 @@ IPConfigAdaptorInterface *DBusControl::CreateIPConfigAdaptor(IPConfig *config) {
   try {
     result = new IPConfigDBusAdaptor(connection_.get(), config);
   } catch(const DBus::Error &error) {
-    LOG(ERROR) << error.message();
+    LOG(FATAL) << error.message();
   }
   return result;
 }
@@ -48,7 +48,7 @@ ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
   try {
     result = new ManagerDBusAdaptor(connection_.get(), manager);
   } catch(const DBus::Error &error) {
-    LOG(ERROR) << error.message();
+    LOG(FATAL) << error.message();
   }
   return result;
 }
@@ -58,7 +58,7 @@ ProfileAdaptorInterface *DBusControl::CreateProfileAdaptor(Profile *profile) {
   try {
     result = new ProfileDBusAdaptor(connection_.get(), profile);
   } catch(const DBus::Error &error) {
-    LOG(ERROR) << error.message();
+    LOG(FATAL) << error.message();
   }
   return result;
 }
@@ -68,7 +68,7 @@ RPCTaskAdaptorInterface *DBusControl::CreateRPCTaskAdaptor(RPCTask *task) {
   try {
     result = new RPCTaskDBusAdaptor(connection_.get(), task);
   } catch(const DBus::Error &error) {
-    LOG(ERROR) << error.message();
+    LOG(FATAL) << error.message();
   }
   return result;
 }
@@ -78,7 +78,7 @@ ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
   try {
     result = new ServiceDBusAdaptor(connection_.get(), service);
   } catch(const DBus::Error &error) {
-    LOG(ERROR) << error.message();
+    LOG(FATAL) << error.message();
   }
   return result;
 }
