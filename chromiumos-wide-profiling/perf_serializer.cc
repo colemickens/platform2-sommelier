@@ -611,7 +611,7 @@ bool PerfSerializer::SerializeThrottleSample(
     const event_t& event,
     PerfDataProto_ThrottleEvent* sample) const {
   const struct throttle_event& throttle = event.throttle;
-  sample->set_time(throttle.time);
+  sample->set_time_ns(throttle.time);
   sample->set_id(throttle.id);
   sample->set_stream_id(throttle.stream_id);
 
@@ -622,7 +622,7 @@ bool PerfSerializer::DeserializeThrottleSample(
     const PerfDataProto_ThrottleEvent& sample,
     event_t* event) const {
   struct throttle_event& throttle = event->throttle;
-  throttle.time = sample.time();
+  throttle.time = sample.time_ns();
   throttle.id = sample.id();
   throttle.stream_id = sample.stream_id();
 
