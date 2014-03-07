@@ -419,6 +419,13 @@ if is_developer_end_user; then
   DEVELOPER_MODE_FLAG="--system-developer-mode"
 fi
 
+# TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
+# at crbug.com/309806.
+DISABLE_DEMO_MODE_FLAG=
+if use_flag_is_set moblab; then
+  DISABLE_DEMO_MODE_FLAG="--disable-demo-mode"
+fi
+
 # There has been a steady supply of bug reports about screen locking. These
 # messages are useful for determining what happened within feedback reports.
 add_vmodule_pattern "screen_locker=1"
@@ -502,4 +509,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${GPU_FLAGS} \
             ${VIDEO_FLAGS} \
             ${OZONE_FLAGS} \
-            ${DEVELOPER_MODE_FLAG}
+            ${DEVELOPER_MODE_FLAG} \
+            ${DISABLE_DEMO_MODE_FLAG}
