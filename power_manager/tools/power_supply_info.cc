@@ -18,17 +18,13 @@
 #include "base/time/time.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
 // Displays info about battery and line power.
 
 using base::TimeDelta;
-
-DEFINE_string(prefs_dir, "/var/lib/power_manager",
-              "Directory containing prefs that can be changed at runtime.");
-DEFINE_string(default_prefs_dir, "/usr/share/power_manager",
-              "Directory containing default prefs.");
 
 namespace {
 
@@ -98,11 +94,10 @@ int main(int argc, char** argv) {
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
-  std::vector<base::FilePath> pref_paths;
-  pref_paths.push_back(base::FilePath(FLAGS_prefs_dir));
-  pref_paths.push_back(base::FilePath(FLAGS_default_prefs_dir));
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(pref_paths));
+  CHECK(prefs.Init(power_manager::util::GetPrefPaths(
+      base::FilePath(power_manager::kReadWritePrefsDir),
+      base::FilePath(power_manager::kReadOnlyPrefsDir))));
 
   power_manager::system::UdevStub udev;
   base::FilePath path(kPowerStatusPath);
