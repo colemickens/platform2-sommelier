@@ -103,6 +103,10 @@ class ExternalBacklightController : public BacklightController,
       ExternalDisplayMap;
   ExternalDisplayMap external_displays_;
 
+  // Number of times the user has requested that the brightness be changed in
+  // the current session.
+  int num_brightness_adjustments_in_session_;
+
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklightController);
 };
 

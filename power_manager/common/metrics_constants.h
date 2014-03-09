@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_METRICS_CONSTANTS_H_
-#define POWER_MANAGER_POWERD_METRICS_CONSTANTS_H_
+#ifndef POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
+#define POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 #pragma once
 
 #include <time.h>
@@ -89,6 +89,12 @@ extern const int kMetricPowerButtonAcknowledgmentDelayMax;
 
 extern const char kMetricBatteryInfoSampleName[];
 
+extern const char kMetricExternalBrightnessRequestResultName[];
+extern const char kMetricExternalBrightnessReadResultName[];
+extern const char kMetricExternalBrightnessWriteResultName[];
+extern const char kMetricExternalDisplayOpenResultName[];
+extern const int kMetricExternalDisplayResultMax;
+
 // Enum for kMetricBatteryInfoSample.
 enum BatteryInfoSampleResult {
   BATTERY_INFO_READ,
@@ -99,4 +105,4 @@ enum BatteryInfoSampleResult {
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_METRICS_CONSTANTS_H_
+#endif  // POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_

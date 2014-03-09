@@ -17,6 +17,8 @@
 
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 
@@ -67,8 +69,24 @@ bool ExternalDisplay::RealDelegate::Init(const base::FilePath& i2c_path) {
   fd_ = open(i2c_path.value().c_str(), O_RDWR);
   if (fd_ < 0) {
     PLOG(ERROR) << "Unable to open " << i2c_path.value();
+    OpenResult result = OPEN_FAILURE_UNKNOWN;
+    switch (errno) {
+      case EACCES:
+        result = OPEN_FAILURE_EACCES;
+        break;
+      case ENOENT:
+        result = OPEN_FAILURE_ENOENT;
+        break;
+      default:
+        result = OPEN_FAILURE_UNKNOWN;
+        break;
+    }
+    SendEnumMetric(kMetricExternalDisplayOpenResultName,
+                   result, kMetricExternalDisplayResultMax);
     return false;
   }
+  SendEnumMetric(kMetricExternalDisplayOpenResultName,
+                 OPEN_SUCCESS, kMetricExternalDisplayResultMax);
   return true;
 }
 
@@ -151,13 +169,20 @@ bool ExternalDisplay::RequestBrightness() {
   std::vector<uint8> message;
   message.push_back(kDdcGetCommand);
   message.push_back(kDdcBrightnessIndex);
-  return SendMessage(message);
+  const SendResult result = SendMessage(message);
+  SendEnumMetric(kMetricExternalBrightnessRequestResultName,
+                 result, kMetricExternalDisplayResultMax);
+  return result == SEND_SUCCESS;
 }
 
 bool ExternalDisplay::ReadBrightness() {
   std::vector<uint8> message(8);
-  if (!ReceiveMessage(&message))
+  const ReceiveResult result = ReceiveMessage(&message);
+  if (result != RECEIVE_SUCCESS) {
+    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+                   result, kMetricExternalDisplayResultMax);
     return false;
+  }
 
   // Validate the message.
   DCHECK_EQ(message.size(), 8);
@@ -165,17 +190,23 @@ bool ExternalDisplay::ReadBrightness() {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with command " << ByteToHex(message[0]) << " (expected "
                  << ByteToHex(kDdcGetReplyCommand) << ")";
+    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+                   RECEIVE_BAD_COMMAND, kMetricExternalDisplayResultMax);
     return false;
   }
   if (message[1] != 0x0) {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with non-zero result code " << ByteToHex(message[1]);
+    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+                   RECEIVE_BAD_RESULT, kMetricExternalDisplayResultMax);
     return false;
   }
   if (message[2] != kDdcBrightnessIndex) {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with feature index " << ByteToHex(message[2])
                  << " (expected " << ByteToHex(kDdcBrightnessIndex) << ")";
+    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+                   RECEIVE_BAD_INDEX, kMetricExternalDisplayResultMax);
     return false;
   }
   // Don't bother checking the "VCP type code" in the fourth byte.
@@ -194,6 +225,8 @@ bool ExternalDisplay::ReadBrightness() {
           << " and maximum brightness " << max_brightness_ << " from "
           << delegate_->GetName();
   last_brightness_update_time_ = clock_.GetCurrentTime();
+  SendEnumMetric(kMetricExternalBrightnessReadResultName,
+                 RECEIVE_SUCCESS, kMetricExternalDisplayResultMax);
   return true;
 }
 
@@ -220,11 +253,17 @@ bool ExternalDisplay::WriteBrightness() {
   message.push_back(kDdcBrightnessIndex);
   message.push_back(new_brightness >> 8);    // High byte.
   message.push_back(new_brightness & 0xff);  // Low byte.
-  if (!SendMessage(message))
+  const SendResult result = SendMessage(message);
+  if (result != SEND_SUCCESS) {
+    SendEnumMetric(kMetricExternalBrightnessWriteResultName,
+                   result, kMetricExternalDisplayResultMax);
     return false;
+  }
 
   current_brightness_ = new_brightness;
   last_brightness_update_time_ = clock_.GetCurrentTime();
+  SendEnumMetric(kMetricExternalBrightnessWriteResultName,
+                 SEND_SUCCESS, kMetricExternalDisplayResultMax);
   return true;
 }
 
@@ -273,7 +312,8 @@ void ExternalDisplay::UpdateState() {
   }
 }
 
-bool ExternalDisplay::SendMessage(const std::vector<uint8>& body) {
+ExternalDisplay::SendResult ExternalDisplay::SendMessage(
+    const std::vector<uint8>& body) {
   // The body is preceded by an address byte and a length byte and followed by a
   // checksum byte.
   std::vector<uint8> message(body.size() + 3);
@@ -301,10 +341,12 @@ bool ExternalDisplay::SendMessage(const std::vector<uint8>& body) {
 
   VLOG(2) << "Sending data to " << delegate_->GetName()
           << ": " << base::HexEncode(&message[0], message.size());
-  return delegate_->PerformI2COperation(&ioctl_data);
+  return delegate_->PerformI2COperation(&ioctl_data) ? SEND_SUCCESS :
+      SEND_IOCTL_FAILED;
 }
 
-bool ExternalDisplay::ReceiveMessage(std::vector<uint8>* body) {
+ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
+    std::vector<uint8>* body) {
   DCHECK(body);
 
   // The message is preceded by an address and a length and followed by a
@@ -324,7 +366,7 @@ bool ExternalDisplay::ReceiveMessage(std::vector<uint8>* body) {
   ioctl_data.msgs = &i2c_message;
   ioctl_data.nmsgs = 1;
   if (!delegate_->PerformI2COperation(&ioctl_data))
-    return false;
+    return RECEIVE_IOCTL_FAILED;
 
   VLOG(2) << "Received data from " << delegate_->GetName()
           << ": " << base::HexEncode(&(message[0]), message.size());
@@ -341,24 +383,24 @@ bool ExternalDisplay::ReceiveMessage(std::vector<uint8>* body) {
                  << " (expected " << ByteToHex(computed_checksum)
                  << " for message "
                  << base::HexEncode(&(message[0]), message.size()) << ")";
-    return false;
+    return RECEIVE_BAD_CHECKSUM;
   }
   if (message[0] != kDdcDisplayAddress) {
     LOG(WARNING) << "Ignoring reply from " << delegate_->GetName()
                  << " with source address " << ByteToHex(message[0])
                  << " (expected " << ByteToHex(kDdcDisplayAddress) << ")";
-    return false;
+    return RECEIVE_BAD_ADDRESS;
   }
   const size_t received_length = message[1] & ~kDdcMessageBodyLengthMask;
   if (received_length != body->size()) {
     LOG(WARNING) << "Ignoring reply from " << delegate_->GetName()
                  << " containing body of length " << received_length
                  << " (expected " << body->size() << ")";
-    return false;
+    return RECEIVE_BAD_LENGTH;
   }
 
   memcpy(&((*body)[0]), &(message[2]), body->size());
-  return true;
+  return RECEIVE_SUCCESS;
 }
 
 }  // namespace system

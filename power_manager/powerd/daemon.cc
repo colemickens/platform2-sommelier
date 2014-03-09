@@ -22,7 +22,6 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/metrics_collector.h"
-#include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/metrics_constants.h"
+#include "power_manager/common/metrics_constants.h"
 
 namespace power_manager {
 
@@ -95,5 +95,15 @@ const int kMetricPowerButtonAcknowledgmentDelayMin = 1;
 const int kMetricPowerButtonAcknowledgmentDelayMax = 8 * 1000;
 
 const char kMetricBatteryInfoSampleName[] = "Power.BatteryInfoSample";
+
+const char kMetricExternalBrightnessRequestResultName[] =
+    "Power.ExternalBrightnessRequestResult";
+const char kMetricExternalBrightnessReadResultName[] =
+    "Power.ExternalBrightnessReadResult";
+const char kMetricExternalBrightnessWriteResultName[] =
+    "Power.ExternalBrightnessWriteResult";
+const char kMetricExternalDisplayOpenResultName[] =
+    "Power.ExternalDisplayOpenResult";
+const int kMetricExternalDisplayResultMax = 10;
 
 }  // namespace power_manager

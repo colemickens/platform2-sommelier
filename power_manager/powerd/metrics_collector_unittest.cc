@@ -17,9 +17,9 @@
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/power_supply.h"
 

@@ -30,6 +30,7 @@
       'sources': [
         'common/clock.cc',
         'common/dbus_sender.cc',
+        'common/metrics_constants.cc',
         'common/metrics_sender.cc',
         'common/power_constants.cc',
         'common/prefs.cc',
@@ -112,7 +113,6 @@
       'sources': [
         'powerd/daemon.cc',
         'powerd/metrics_collector.cc',
-        'powerd/metrics_constants.cc',
       ],
     },
     {

@@ -8,10 +8,10 @@
 #include <cmath>
 
 #include "base/logging.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 
 namespace power_manager {

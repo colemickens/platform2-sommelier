@@ -25,7 +25,8 @@ ExternalBacklightController::ExternalBacklightController()
       off_for_inactivity_(false),
       suspended_(false),
       shutting_down_(false),
-      currently_off_(false) {
+      currently_off_(false),
+      num_brightness_adjustments_in_session_(0) {
 }
 
 ExternalBacklightController::~ExternalBacklightController() {
@@ -59,7 +60,10 @@ void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
 void ExternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
 void ExternalBacklightController::HandleSessionStateChange(
-    SessionState state) {}
+    SessionState state) {
+  if (state == SESSION_STARTED)
+    num_brightness_adjustments_in_session_ = 0;
+}
 
 void ExternalBacklightController::HandlePowerButtonPress() {}
 
@@ -116,11 +120,13 @@ bool ExternalBacklightController::SetUserBrightnessPercent(
 }
 
 bool ExternalBacklightController::IncreaseUserBrightness() {
+  num_brightness_adjustments_in_session_++;
   AdjustBrightnessByPercent(kBrightnessAdjustmentPercent);
   return true;
 }
 
 bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
+  num_brightness_adjustments_in_session_++;
   AdjustBrightnessByPercent(-kBrightnessAdjustmentPercent);
   return true;
 }
@@ -132,7 +138,7 @@ int ExternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
 }
 
 int ExternalBacklightController::GetNumUserAdjustments() const {
-  return 0;
+  return num_brightness_adjustments_in_session_;
 }
 
 void ExternalBacklightController::OnDisplaysChanged(

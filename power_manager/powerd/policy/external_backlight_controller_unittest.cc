@@ -39,8 +39,14 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
   EXPECT_FALSE(controller_.GetBrightnessPercent(&percent));
   EXPECT_FALSE(controller_.SetUserBrightnessPercent(
       50.0, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(0, controller_.GetNumUserAdjustments());
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  EXPECT_EQ(1, controller_.GetNumUserAdjustments());
   EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  EXPECT_EQ(2, controller_.GetNumUserAdjustments());
+
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(0, controller_.GetNumUserAdjustments());
 }
 
 TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {

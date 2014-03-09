@@ -12,6 +12,8 @@
 
 #include "base/compiler_specific.h"
 #include "base/strings/string_number_conversions.h"
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender_stub.h"
 #include "power_manager/powerd/system/display/external_display.h"
 
 namespace power_manager {
@@ -193,8 +195,19 @@ class ExternalDisplayTest : public testing::Test {
             low_byte);
   }
 
+  // Pops and returns a string representation of the metric stored in
+  // |metrics_sender_|. Crashes if multiple metrics are stored.
+  std::string PopMetric() {
+    CHECK_LE(metrics_sender_.num_metrics(), 1);
+    const std::string metric = metrics_sender_.GetMetric(0);
+    metrics_sender_.clear_metrics();
+    return metric;
+  }
+
   // What a message requesting the display brightness should look like.
   std::string request_brightness_message_;
+
+  MetricsSenderStub metrics_sender_;
 
   TestDelegate* delegate_;  // weak pointer
   ExternalDisplay display_;
@@ -206,6 +219,11 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
   // brightness" request being sent.
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessRequestResultName,
+                ExternalDisplay::SEND_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            PopMetric());
 
   // After the timer fires, the reply should be read and a request to set the
   // brightness to 60 should be sent.
@@ -214,6 +232,20 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
             test_api_.GetTimerDelay().InMilliseconds());
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+
+  // The successful read and write should both be reported.
+  EXPECT_EQ(2, metrics_sender_.num_metrics());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessReadResultName,
+                ExternalDisplay::RECEIVE_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(0));
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessWriteResultName,
+                ExternalDisplay::SEND_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(1));
+  metrics_sender_.clear_metrics();
 
   // Asking for more changes shouldn't result in requests being sent at first,
   // since no time has passed since the previous request. After the timer fires,
@@ -253,46 +285,72 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
 }
 
 TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
-  // Each pair consists of a mangled reply to send and a human-readable
-  // description of the test case.
-  std::vector<std::pair<std::vector<uint8>, std::string> > test_cases;
+  struct TestCase {
+    // Reply message that should be sent from the display.
+    std::vector<uint8> reply;
+    // Metric enum value that should be reported after the failed read.
+    ExternalDisplay::ReceiveResult metric;
+    // Description of what's being tested.
+    std::string description;
+  };
+
+  std::vector<TestCase> test_cases;
   std::vector<uint8> reply = GetBrightnessReply(50, 100);
   reply[reply.size() - 1] += 1;
-  test_cases.push_back(make_pair(reply, "incorrect checksum"));
+  test_cases.push_back(TestCase{
+      reply, ExternalDisplay::RECEIVE_BAD_CHECKSUM, "incorrect checksum"});
 
   reply = GetBrightnessReply(50, 100);
   reply[0] += 1;
   UpdateChecksum(ExternalDisplay::kDdcVirtualHostAddress, &reply);
-  test_cases.push_back(make_pair(reply, "incorrect source address"));
+  test_cases.push_back(TestCase{
+      reply, ExternalDisplay::RECEIVE_BAD_ADDRESS, "incorrect source address"});
 
   reply = GetBrightnessReply(50, 100);
   reply[1] = ExternalDisplay::kDdcMessageBodyLengthMask | 9;  // Should be 8.
   UpdateChecksum(ExternalDisplay::kDdcVirtualHostAddress, &reply);
-  test_cases.push_back(make_pair(reply, "incorrect body length"));
+  test_cases.push_back(TestCase{
+      reply, ExternalDisplay::RECEIVE_BAD_LENGTH, "incorrect body length"});
 
   reply = GetBrightnessReply(50, 100);
   reply[2] = ExternalDisplay::kDdcSetCommand;
   UpdateChecksum(ExternalDisplay::kDdcVirtualHostAddress, &reply);
-  test_cases.push_back(make_pair(reply, "non-reply command"));
+  test_cases.push_back(TestCase{
+      reply, ExternalDisplay::RECEIVE_BAD_COMMAND, "non-reply command"});
 
   reply = GetBrightnessReply(50, 100);
   reply[3] = 0x1;  // Should be 0x0 for success.
   UpdateChecksum(ExternalDisplay::kDdcVirtualHostAddress, &reply);
-  test_cases.push_back(make_pair(reply, "non-zero result code"));
+  test_cases.push_back(TestCase{
+      reply, ExternalDisplay::RECEIVE_BAD_RESULT, "non-zero result code"});
 
   reply = GetBrightnessReply(50, 100);
   reply[4] = ExternalDisplay::kDdcBrightnessIndex + 1;
   UpdateChecksum(ExternalDisplay::kDdcVirtualHostAddress, &reply);
-  test_cases.push_back(make_pair(reply, "non-brightness feature index"));
+  test_cases.push_back(TestCase{
+      reply, ExternalDisplay::RECEIVE_BAD_INDEX, "non-brightness index"});
 
   // Run through each test case, making sure that no subsequent request is sent
   // after the bogus reply is returned. The timer also shouldn't be rescheduled.
   for (size_t i = 0; i < test_cases.size(); ++i) {
-    SCOPED_TRACE(test_cases[i].second);
+    SCOPED_TRACE(test_cases[i].description);
+
     display_.AdjustBrightnessByPercent(10.0);
     ASSERT_EQ(request_brightness_message_, delegate_->PopSentMessage());
-    delegate_->set_reply_message(test_cases[i].first);
+    EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                  kMetricExternalBrightnessRequestResultName,
+                  ExternalDisplay::SEND_SUCCESS,
+                  kMetricExternalDisplayResultMax).ToString(),
+              PopMetric());
+
+    delegate_->set_reply_message(test_cases[i].reply);
     ASSERT_TRUE(test_api_.TriggerTimeout());
+    EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                  kMetricExternalBrightnessReadResultName,
+                  test_cases[i].metric,
+                  kMetricExternalDisplayResultMax).ToString(),
+              PopMetric());
+
     EXPECT_EQ("", delegate_->PopSentMessage());
     EXPECT_FALSE(test_api_.TriggerTimeout());
   }
@@ -303,6 +361,11 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   delegate_->set_report_write_failure(true);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_FALSE(test_api_.TriggerTimeout());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessRequestResultName,
+                ExternalDisplay::SEND_IOCTL_FAILED,
+                kMetricExternalDisplayResultMax).ToString(),
+            PopMetric());
 
   // Now let the initial request succeed but make the read fail. The timer
   // should be stopped.
@@ -312,6 +375,19 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
+
+  EXPECT_EQ(2, metrics_sender_.num_metrics());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessRequestResultName,
+                ExternalDisplay::SEND_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(0));
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessReadResultName,
+                ExternalDisplay::RECEIVE_IOCTL_FAILED,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(1));
+  metrics_sender_.clear_metrics();
 
   // Let the initial request and read succeed, but make the attempt to change
   // the brightness fail. The timer should be stopped.
@@ -323,12 +399,35 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
 
+  EXPECT_EQ(3, metrics_sender_.num_metrics());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessRequestResultName,
+                ExternalDisplay::SEND_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(0));
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessReadResultName,
+                ExternalDisplay::RECEIVE_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(1));
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessWriteResultName,
+                ExternalDisplay::SEND_IOCTL_FAILED,
+                kMetricExternalDisplayResultMax).ToString(),
+            metrics_sender_.GetMetric(2));
+  metrics_sender_.clear_metrics();
+
   // The previously-read brightness should still be cached, so another
   // adjustment attempt should be attempted immediately. Let it succeed this
   // time.
   delegate_->set_report_write_failure(false);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessWriteResultName,
+                ExternalDisplay::SEND_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            PopMetric());
 }
 
 TEST_F(ExternalDisplayTest, MinimumAndMaximumBrightness) {
