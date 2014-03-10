@@ -1,8 +1,0 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
-This upstart job is installed by chromeos-base/openssh-server-init to
-enable the openssh-server on startup. This applies to any profiles that
-RDEPEND on chromeos-base/openssh-server-init as well as Chromium OS
-developer and test images.
