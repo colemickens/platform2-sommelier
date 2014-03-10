@@ -30,6 +30,7 @@
       'sources': [
         'common/clock.cc',
         'common/dbus_sender.cc',
+        'common/metrics_sender.cc',
         'common/power_constants.cc',
         'common/prefs.cc',
         'common/util.cc',
@@ -110,8 +111,8 @@
       ],
       'sources': [
         'powerd/daemon.cc',
+        'powerd/metrics_collector.cc',
         'powerd/metrics_constants.cc',
-        'powerd/metrics_reporter.cc',
       ],
     },
     {
@@ -191,6 +192,7 @@
             'common/action_recorder.cc',
             'common/dbus_sender_stub.cc',
             'common/fake_prefs.cc',
+            'common/metrics_sender_stub.cc',
             'common/test_main_loop_runner.cc',
           ],
         },
@@ -271,7 +273,7 @@
           ],
           'sources': [
             'common/testrunner.cc',
-            'powerd/metrics_reporter_unittest.cc',
+            'powerd/metrics_collector_unittest.cc',
           ],
         },
       ],

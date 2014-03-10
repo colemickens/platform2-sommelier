@@ -27,12 +27,13 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 
-class MetricsLibrary;
+class MetricsSender;
 
 namespace power_manager {
 
 class DBusSender;
-class MetricsReporter;
+class MetricsCollector;
+class MetricsSender;
 class Prefs;
 
 namespace policy {
@@ -217,6 +218,7 @@ class Daemon : public policy::BacklightControllerObserver,
   dbus::ObjectProxy* update_engine_dbus_proxy_;  // weak; owned by |bus_|
 
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
+  scoped_ptr<MetricsSender> metrics_sender_;
   scoped_ptr<DBusSender> dbus_sender_;
 
   scoped_ptr<system::AmbientLightSensor> light_sensor_;
@@ -239,8 +241,7 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<SuspenderDelegate> suspender_delegate_;
   scoped_ptr<policy::Suspender> suspender_;
 
-  scoped_ptr<MetricsLibrary> metrics_library_;
-  scoped_ptr<MetricsReporter> metrics_reporter_;
+  scoped_ptr<MetricsCollector> metrics_collector_;
 
   // True once the shutdown process has started. Remains true until the
   // system has powered off.

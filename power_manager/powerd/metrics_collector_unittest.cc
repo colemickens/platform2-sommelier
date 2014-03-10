@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/metrics_reporter.h"
+#include "power_manager/powerd/metrics_collector.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,6 +17,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
@@ -31,12 +32,15 @@ using ::testing::Test;
 
 namespace power_manager {
 
-class MetricsReporterTest : public Test {
+class MetricsCollectorTest : public Test {
  public:
-  MetricsReporterTest() {
-    metrics_reporter_.clock_.set_current_time_for_testing(
+  MetricsCollectorTest()
+      : metrics_lib_(new StrictMock<MetricsLibraryMock>),
+        metrics_sender_(
+            scoped_ptr<MetricsLibraryInterface>(metrics_lib_)) {
+    collector_.clock_.set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
-    metrics_reporter_.clock_.set_current_wall_time_for_testing(
+    collector_.clock_.set_current_wall_time_for_testing(
         base::Time::FromInternalValue(2000));
 
     power_status_.battery_percentage = 100.0;
@@ -44,38 +48,37 @@ class MetricsReporterTest : public Test {
   }
 
  protected:
-  // Initializes |metrics_reporter_|.
+  // Initializes |collector_|.
   void Init() {
-    metrics_reporter_.Init(&prefs_, &metrics_lib_,
-                           &display_backlight_controller_,
-                           &keyboard_backlight_controller_, power_status_);
+    collector_.Init(&prefs_, &display_backlight_controller_,
+                    &keyboard_backlight_controller_, power_status_);
   }
 
   // Advances both the monotonically-increasing time and wall time by
   // |interval|.
   void AdvanceTime(base::TimeDelta interval) {
-    metrics_reporter_.clock_.set_current_time_for_testing(
-        metrics_reporter_.clock_.GetCurrentTime() + interval);
-    metrics_reporter_.clock_.set_current_wall_time_for_testing(
-        metrics_reporter_.clock_.GetCurrentWallTime() + interval);
+    collector_.clock_.set_current_time_for_testing(
+        collector_.clock_.GetCurrentTime() + interval);
+    collector_.clock_.set_current_wall_time_for_testing(
+        collector_.clock_.GetCurrentWallTime() + interval);
   }
 
   // Adds expectations to ignore all metrics sent by HandleSessionStateChange()
   // (except ones listed in |metrics_to_test_|).
   void IgnoreHandleSessionStateChangeMetrics() {
-    IgnoreEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+    IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
         kMetricBatteryRemainingAtStartOfSessionName, POWER_AC));
-    IgnoreEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+    IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
         kMetricBatteryRemainingAtStartOfSessionName, POWER_BATTERY));
-    IgnoreEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+    IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
         kMetricBatteryRemainingAtEndOfSessionName, POWER_AC));
-    IgnoreEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+    IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
         kMetricBatteryRemainingAtEndOfSessionName, POWER_BATTERY));
     IgnoreMetric(kMetricLengthOfSessionName);
     IgnoreMetric(kMetricNumberOfAlsAdjustmentsPerSessionName);
-    IgnoreMetric(MetricsReporter::AppendPowerSourceToEnumName(
+    IgnoreMetric(MetricsCollector::AppendPowerSourceToEnumName(
         kMetricUserBrightnessAdjustmentsPerSessionName, POWER_AC));
-    IgnoreMetric(MetricsReporter::AppendPowerSourceToEnumName(
+    IgnoreMetric(MetricsCollector::AppendPowerSourceToEnumName(
         kMetricUserBrightnessAdjustmentsPerSessionName, POWER_BATTERY));
   }
 
@@ -94,7 +97,7 @@ class MetricsReporterTest : public Test {
   // HandlePowerStatusUpdate().
   void UpdatePowerStatusLinePower(bool line_power_on) {
     power_status_.line_power_on = line_power_on;
-    metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+    collector_.HandlePowerStatusUpdate(power_status_);
   }
 
   // Adds a metrics library mock expectation that the specified metric
@@ -104,7 +107,7 @@ class MetricsReporterTest : public Test {
                     int min,
                     int max,
                     int buckets) {
-    EXPECT_CALL(metrics_lib_, SendToUMA(name, sample, min, max, buckets))
+    EXPECT_CALL(*metrics_lib_, SendToUMA(name, sample, min, max, buckets))
         .Times(1)
         .WillOnce(Return(true))
         .RetiresOnSaturation();
@@ -113,7 +116,7 @@ class MetricsReporterTest : public Test {
   // Adds a metrics library mock expectation that the specified enum
   // metric will be generated.
   void ExpectEnumMetric(const std::string& name, int sample, int max) {
-    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
+    EXPECT_CALL(*metrics_lib_, SendEnumToUMA(name, sample, max))
         .Times(1)
         .WillOnce(Return(true))
         .RetiresOnSaturation();
@@ -123,7 +126,7 @@ class MetricsReporterTest : public Test {
   void IgnoreMetric(const std::string& name) {
     if (metrics_to_test_.count(name))
       return;
-    EXPECT_CALL(metrics_lib_, SendToUMA(name, _, _, _, _))
+    EXPECT_CALL(*metrics_lib_, SendToUMA(name, _, _, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
   }
@@ -132,7 +135,7 @@ class MetricsReporterTest : public Test {
   void IgnoreEnumMetric(const std::string& name) {
     if (metrics_to_test_.count(name))
       return;
-    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, _, _))
+    EXPECT_CALL(*metrics_lib_, SendEnumToUMA(name, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
   }
@@ -157,9 +160,10 @@ class MetricsReporterTest : public Test {
   system::PowerStatus power_status_;
 
   // StrictMock turns all unexpected calls into hard failures.
-  StrictMock<MetricsLibraryMock> metrics_lib_;
+  StrictMock<MetricsLibraryMock>* metrics_lib_;  // Weak pointer.
+  MetricsSender metrics_sender_;
 
-  MetricsReporter metrics_reporter_;
+  MetricsCollector collector_;
 
   // Names of metrics that will not be ignored by calls to Ignore*(). Tests
   // should insert the metrics that they're testing into this set and then call
@@ -167,39 +171,39 @@ class MetricsReporterTest : public Test {
   std::set<std::string> metrics_to_test_;
 };
 
-TEST_F(MetricsReporterTest, BacklightLevel) {
+TEST_F(MetricsCollectorTest, BacklightLevel) {
   power_status_.line_power_on = false;
   Init();
-  ASSERT_TRUE(metrics_reporter_.generate_backlight_metrics_timer_.IsRunning());
-  metrics_reporter_.HandleScreenDimmedChange(true, base::TimeTicks::Now());
-  metrics_reporter_.GenerateBacklightLevelMetrics();
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  ASSERT_TRUE(collector_.generate_backlight_metrics_timer_.IsRunning());
+  collector_.HandleScreenDimmedChange(true, base::TimeTicks::Now());
+  collector_.GenerateBacklightLevelMetrics();
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   const int64 kCurrentDisplayPercent = 57;
   display_backlight_controller_.set_percent(kCurrentDisplayPercent);
   const int64 kCurrentKeyboardPercent = 43;
   keyboard_backlight_controller_.set_percent(kCurrentKeyboardPercent);
 
-  metrics_reporter_.HandleScreenDimmedChange(false, base::TimeTicks::Now());
-  ExpectEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+  collector_.HandleScreenDimmedChange(false, base::TimeTicks::Now());
+  ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
                        kMetricBacklightLevelName, POWER_BATTERY),
                    kCurrentDisplayPercent, kMetricMaxPercent);
   ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMetricMaxPercent);
-  metrics_reporter_.GenerateBacklightLevelMetrics();
+  collector_.GenerateBacklightLevelMetrics();
 
   power_status_.line_power_on = true;
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  ExpectEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+  collector_.HandlePowerStatusUpdate(power_status_);
+  ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
                        kMetricBacklightLevelName, POWER_AC),
                    kCurrentDisplayPercent, kMetricMaxPercent);
   ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMetricMaxPercent);
-  metrics_reporter_.GenerateBacklightLevelMetrics();
+  collector_.GenerateBacklightLevelMetrics();
 }
 
-TEST_F(MetricsReporterTest, BatteryDischargeRate) {
+TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   power_status_.line_power_on = false;
   Init();
 
@@ -213,38 +217,38 @@ TEST_F(MetricsReporterTest, BatteryDischargeRate) {
 
   power_status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 
   power_status_.battery_energy_rate = 4.5;
   ExpectBatteryDischargeRateMetric(4500);
   AdvanceTime(interval);
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 
   power_status_.battery_energy_rate = 6.4;
   ExpectBatteryDischargeRateMetric(6400);
   AdvanceTime(interval);
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
   IgnoreHandlePowerStatusUpdateMetrics();
 
   // Another update before the full interval has elapsed shouldn't result in
   // another report.
   AdvanceTime(interval / 2);
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 
   // Neither should a call while the energy rate is negative.
   AdvanceTime(interval);
   power_status_.battery_energy_rate = -4.0;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 
   // Ditto for a call while the system is on AC power.
   power_status_.line_power_on = true;
   power_status_.battery_energy_rate = 4.0;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 }
 
-TEST_F(MetricsReporterTest, BatteryInfoWhenChargeStarts) {
+TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
   const double kBatteryPercentages[] = { 10.1, 10.7, 82.4, 82.5, 100.0 };
 
   power_status_.line_power_on = false;
@@ -260,7 +264,7 @@ TEST_F(MetricsReporterTest, BatteryInfoWhenChargeStarts) {
     power_status_.line_power_on = false;
     power_status_.battery_charge_full = kBatteryPercentages[i];
     power_status_.battery_percentage = kBatteryPercentages[i];
-    metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+    collector_.HandlePowerStatusUpdate(power_status_);
 
     power_status_.line_power_on = true;
     ExpectEnumMetric(kMetricBatteryRemainingWhenChargeStartsName,
@@ -270,13 +274,13 @@ TEST_F(MetricsReporterTest, BatteryInfoWhenChargeStarts) {
                      round(100.0 * power_status_.battery_charge_full /
                            power_status_.battery_charge_full_design),
                      kMetricBatteryChargeHealthMax);
-    metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+    collector_.HandlePowerStatusUpdate(power_status_);
 
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
+    Mock::VerifyAndClearExpectations(metrics_lib_);
   }
 }
 
-TEST_F(MetricsReporterTest, SessionStartOrStop) {
+TEST_F(MetricsCollectorTest, SessionStartOrStop) {
   const uint kAlsAdjustments[] = { 0, 100 };
   const uint kUserAdjustments[] = { 0, 200 };
   const double kBatteryPercentages[] = { 10.5, 23.0 };
@@ -292,15 +296,15 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
     IgnoreHandlePowerStatusUpdateMetrics();
     power_status_.battery_percentage = kBatteryPercentages[i];
     ExpectEnumMetric(
-        MetricsReporter::AppendPowerSourceToEnumName(
+        MetricsCollector::AppendPowerSourceToEnumName(
             kMetricBatteryRemainingAtStartOfSessionName, POWER_BATTERY),
         round(kBatteryPercentages[i]), kMetricMaxPercent);
-    metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-    metrics_reporter_.HandleSessionStateChange(SESSION_STARTED);
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
+    collector_.HandlePowerStatusUpdate(power_status_);
+    collector_.HandleSessionStateChange(SESSION_STARTED);
+    Mock::VerifyAndClearExpectations(metrics_lib_);
 
     ExpectEnumMetric(
-        MetricsReporter::AppendPowerSourceToEnumName(
+        MetricsCollector::AppendPowerSourceToEnumName(
             kMetricBatteryRemainingAtEndOfSessionName, POWER_BATTERY),
         round(kBatteryPercentages[i]), kMetricMaxPercent);
 
@@ -312,7 +316,7 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
                  kMetricNumberOfAlsAdjustmentsPerSessionMax,
                  kMetricDefaultBuckets);
     ExpectMetric(
-        MetricsReporter::AppendPowerSourceToEnumName(
+        MetricsCollector::AppendPowerSourceToEnumName(
             kMetricUserBrightnessAdjustmentsPerSessionName, POWER_BATTERY),
         kUserAdjustments[i],
         kMetricUserBrightnessAdjustmentsPerSessionMin,
@@ -326,46 +330,46 @@ TEST_F(MetricsReporterTest, SessionStartOrStop) {
                  kMetricLengthOfSessionMax,
                  kMetricDefaultBuckets);
 
-    metrics_reporter_.HandleSessionStateChange(SESSION_STOPPED);
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
+    collector_.HandleSessionStateChange(SESSION_STOPPED);
+    Mock::VerifyAndClearExpectations(metrics_lib_);
   }
 }
 
-TEST_F(MetricsReporterTest, GenerateNumOfSessionsPerChargeMetric) {
+TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
   metrics_to_test_.insert(kMetricNumOfSessionsPerChargeName);
   power_status_.line_power_on = false;
   Init();
 
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // If the session is already started when going off line power, it should be
   // counted. Additional power status updates that don't describe a power source
   // change shouldn't increment the count.
   IgnoreHandleSessionStateChangeMetrics();
-  metrics_reporter_.HandleSessionStateChange(SESSION_STARTED);
+  collector_.HandleSessionStateChange(SESSION_STARTED);
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(false);
   UpdatePowerStatusLinePower(false);
   UpdatePowerStatusLinePower(false);
   ExpectNumOfSessionsPerChargeMetric(1);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Sessions that start while on battery power should also be counted.
   IgnoreHandleSessionStateChangeMetrics();
-  metrics_reporter_.HandleSessionStateChange(SESSION_STOPPED);
+  collector_.HandleSessionStateChange(SESSION_STOPPED);
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(false);
-  metrics_reporter_.HandleSessionStateChange(SESSION_STARTED);
-  metrics_reporter_.HandleSessionStateChange(SESSION_STOPPED);
-  metrics_reporter_.HandleSessionStateChange(SESSION_STARTED);
-  metrics_reporter_.HandleSessionStateChange(SESSION_STOPPED);
-  metrics_reporter_.HandleSessionStateChange(SESSION_STARTED);
+  collector_.HandleSessionStateChange(SESSION_STARTED);
+  collector_.HandleSessionStateChange(SESSION_STOPPED);
+  collector_.HandleSessionStateChange(SESSION_STARTED);
+  collector_.HandleSessionStateChange(SESSION_STOPPED);
+  collector_.HandleSessionStateChange(SESSION_STARTED);
   ExpectNumOfSessionsPerChargeMetric(3);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Check that the pref is used, so the count will persist across reboots.
   IgnoreHandlePowerStatusUpdateMetrics();
@@ -373,7 +377,7 @@ TEST_F(MetricsReporterTest, GenerateNumOfSessionsPerChargeMetric) {
   prefs_.SetInt64(kNumSessionsOnCurrentChargePref, 5);
   ExpectNumOfSessionsPerChargeMetric(5);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Negative values in the pref should be ignored.
   prefs_.SetInt64(kNumSessionsOnCurrentChargePref, -2);
@@ -381,61 +385,61 @@ TEST_F(MetricsReporterTest, GenerateNumOfSessionsPerChargeMetric) {
   UpdatePowerStatusLinePower(false);
   ExpectNumOfSessionsPerChargeMetric(1);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
-TEST_F(MetricsReporterTest, SendEnumMetric) {
+TEST_F(MetricsCollectorTest, SendEnumMetric) {
   Init();
   ExpectEnumMetric("Dummy.EnumMetric", 50, 200);
-  EXPECT_TRUE(metrics_reporter_.SendEnumMetric("Dummy.EnumMetric", 50, 200));
+  EXPECT_TRUE(SendEnumMetric("Dummy.EnumMetric", 50, 200));
 
   // Out-of-bounds values should be capped.
   ExpectEnumMetric("Dummy.EnumMetric2", 20, 20);
-  EXPECT_TRUE(metrics_reporter_.SendEnumMetric("Dummy.EnumMetric2", 21, 20));
+  EXPECT_TRUE(SendEnumMetric("Dummy.EnumMetric2", 21, 20));
 }
 
-TEST_F(MetricsReporterTest, SendMetric) {
+TEST_F(MetricsCollectorTest, SendMetric) {
   Init();
   ExpectMetric("Dummy.Metric", 3, 1, 100, 50);
-  EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric", 3, 1, 100, 50));
+  EXPECT_TRUE(SendMetric("Dummy.Metric", 3, 1, 100, 50));
 
   // Out-of-bounds values should not be capped (so they can instead land in the
   // underflow or overflow bucket).
   ExpectMetric("Dummy.Metric2", -1, 0, 20, 4);
-  EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric2", -1, 0, 20, 4));
+  EXPECT_TRUE(SendMetric("Dummy.Metric2", -1, 0, 20, 4));
   ExpectMetric("Dummy.Metric3", 30, 5, 25, 6);
-  EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric3", 30, 5, 25, 6));
+  EXPECT_TRUE(SendMetric("Dummy.Metric3", 30, 5, 25, 6));
 }
 
-TEST_F(MetricsReporterTest, SendMetricWithPowerSource) {
+TEST_F(MetricsCollectorTest, SendMetricWithPowerSource) {
   power_status_.line_power_on = false;
   Init();
   ExpectMetric("Dummy.MetricOnBattery", 3, 1, 100, 50);
-  EXPECT_TRUE(metrics_reporter_.SendMetricWithPowerSource(
+  EXPECT_TRUE(collector_.SendMetricWithPowerSource(
       "Dummy.Metric", 3, 1, 100, 50));
 
   IgnoreHandlePowerStatusUpdateMetrics();
   power_status_.line_power_on = true;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
   ExpectMetric("Dummy.MetricOnAC", 6, 2, 200, 80);
-  EXPECT_TRUE(metrics_reporter_.SendMetricWithPowerSource(
+  EXPECT_TRUE(collector_.SendMetricWithPowerSource(
       "Dummy.Metric", 6, 2, 200, 80));
 }
 
-TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
+TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
   Init();
 
   // We should ignore a button release that wasn't preceded by a press.
-  metrics_reporter_.HandlePowerButtonEvent(BUTTON_UP);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerButtonEvent(BUTTON_UP);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Presses that are followed by additional presses should also be ignored.
-  metrics_reporter_.HandlePowerButtonEvent(BUTTON_DOWN);
-  metrics_reporter_.HandlePowerButtonEvent(BUTTON_DOWN);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerButtonEvent(BUTTON_DOWN);
+  collector_.HandlePowerButtonEvent(BUTTON_DOWN);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Send a regular sequence of events and check that the duration is reported.
-  metrics_reporter_.HandlePowerButtonEvent(BUTTON_DOWN);
+  collector_.HandlePowerButtonEvent(BUTTON_DOWN);
   const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(243);
   AdvanceTime(kDuration);
   ExpectMetric(kMetricPowerButtonDownTimeName,
@@ -443,10 +447,10 @@ TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
                kMetricPowerButtonDownTimeMin,
                kMetricPowerButtonDownTimeMax,
                kMetricDefaultBuckets);
-  metrics_reporter_.HandlePowerButtonEvent(BUTTON_UP);
+  collector_.HandlePowerButtonEvent(BUTTON_UP);
 }
 
-TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
+TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   const double kEnergyBeforeSuspend = 60;
   const double kEnergyAfterResume = 50;
   const base::TimeDelta kSuspendDuration = base::TimeDelta::FromHours(1);
@@ -458,84 +462,84 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
 
   // We shouldn't send a sample if we haven't suspended.
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Ditto if the system is on AC before suspending...
   power_status_.line_power_on = true;
   power_status_.battery_energy = kEnergyBeforeSuspend;
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  metrics_reporter_.PrepareForSuspend();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
                kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
                kMetricSuspendAttemptsBuckets);
-  metrics_reporter_.HandleResume(1);
+  collector_.HandleResume(1);
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // ... or after resuming...
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyBeforeSuspend;
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  metrics_reporter_.PrepareForSuspend();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 2,
                kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
                kMetricSuspendAttemptsBuckets);
-  metrics_reporter_.HandleResume(2);
+  collector_.HandleResume(2);
   power_status_.line_power_on = true;
   power_status_.battery_energy = kEnergyAfterResume;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // ... or if the battery's energy increased while the system was
   // suspended (i.e. it was temporarily connected to AC while suspended).
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyBeforeSuspend;
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  metrics_reporter_.PrepareForSuspend();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
                kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
                kMetricSuspendAttemptsBuckets);
-  metrics_reporter_.HandleResume(1);
+  collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyBeforeSuspend + 5.0;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // The sample also shouldn't be reported if the system wasn't suspended
   // for very long.
   power_status_.battery_energy = kEnergyBeforeSuspend;
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  metrics_reporter_.PrepareForSuspend();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
   AdvanceTime(base::TimeDelta::FromSeconds(
       kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
   ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
                kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
                kMetricSuspendAttemptsBuckets);
-  metrics_reporter_.HandleResume(1);
+  collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // The sample should be reported if the energy decreased over a long
   // enough time.
   power_status_.battery_energy = kEnergyBeforeSuspend;
   IgnoreHandlePowerStatusUpdateMetrics();
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
-  metrics_reporter_.PrepareForSuspend();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
                kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
                kMetricSuspendAttemptsBuckets);
-  metrics_reporter_.HandleResume(1);
+  collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   const int rate_mw = static_cast<int>(round(
       1000 * (kEnergyBeforeSuspend - kEnergyAfterResume) /
@@ -544,7 +548,7 @@ TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
                kMetricBatteryDischargeRateWhileSuspendedMin,
                kMetricBatteryDischargeRateWhileSuspendedMax,
                kMetricDefaultBuckets);
-  metrics_reporter_.HandlePowerStatusUpdate(power_status_);
+  collector_.HandlePowerStatusUpdate(power_status_);
 }
 
 }  // namespace power_manager

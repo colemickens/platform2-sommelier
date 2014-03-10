@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_METRICS_REPORTER_H_
-#define POWER_MANAGER_POWERD_METRICS_REPORTER_H_
+#ifndef POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
+#define POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
 #pragma once
 
 #include <gtest/gtest_prod.h>
@@ -18,8 +18,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/power_supply.h"
 
-class MetricsLibraryInterface;
-
 namespace power_manager {
 
 class PrefsInterface;
@@ -29,7 +27,14 @@ class BacklightController;
 }
 
 // Used by Daemon to report metrics by way of Chrome.
-class MetricsReporter {
+//
+// This class handles the reporting of complex metrics (e.g. tracking the
+// session start time and reporting related metrics after the session stops).
+//
+// Classes that just need to report simple metrics in response to an event
+// should use the convenience functions declared in common/metrics_sender.h to
+// send metrics directly.
+class MetricsCollector {
  public:
   // Returns a copy of |enum_name| with a suffix describing |power_source|
   // appended to it. Public so it can be called by tests.
@@ -37,13 +42,12 @@ class MetricsReporter {
       const std::string& enum_name,
       PowerSource power_source);
 
-  MetricsReporter();
-  ~MetricsReporter();
+  MetricsCollector();
+  ~MetricsCollector();
 
   // Initializes the object and starts |generate_backlight_metrics_timer_|.
   // Ownership of pointers remains with the caller.
   void Init(PrefsInterface* prefs,
-            MetricsLibraryInterface* metrics_lib,
             policy::BacklightController* display_backlight_controller,
             policy::BacklightController* keyboard_backlight_controller,
             const system::PowerStatus& power_status);
@@ -83,28 +87,11 @@ class MetricsReporter {
   void SendPowerButtonAcknowledgmentDelayMetric(base::TimeDelta delay);
 
  private:
-  friend class MetricsReporterTest;
-  FRIEND_TEST(MetricsReporterTest, BacklightLevel);
-  FRIEND_TEST(MetricsReporterTest, SendEnumMetric);
-  FRIEND_TEST(MetricsReporterTest, SendMetric);
-  FRIEND_TEST(MetricsReporterTest, SendMetricWithPowerSource);
+  friend class MetricsCollectorTest;
+  FRIEND_TEST(MetricsCollectorTest, BacklightLevel);
+  FRIEND_TEST(MetricsCollectorTest, SendMetricWithPowerSource);
 
-  // See MetricsLibrary::SendToUMA in metrics/metrics_library.h for a
-  // description of the arguments in the below methods.
-
-  // Sends a regular (exponential) histogram sample.
-  bool SendMetric(const std::string& name,
-                  int sample,
-                  int min,
-                  int max,
-                  int num_buckets);
-
-  // Sends an enumeration (linear) histogram sample.
-  bool SendEnumMetric(const std::string& name,
-                      int sample,
-                      int max);
-
-  // These methods also append the current power source to |name|.
+  // These methods append the current power source to |name|.
   bool SendMetricWithPowerSource(const std::string& name,
                                  int sample,
                                  int min,
@@ -133,7 +120,6 @@ class MetricsReporter {
   void GenerateNumOfSessionsPerChargeMetric();
 
   PrefsInterface* prefs_;
-  MetricsLibraryInterface* metrics_lib_;
   policy::BacklightController* display_backlight_controller_;
   policy::BacklightController* keyboard_backlight_controller_;
 
@@ -149,7 +135,7 @@ class MetricsReporter {
   base::TimeTicks session_start_time_;
 
   // Runs GenerateBacklightLevelMetric().
-  base::RepeatingTimer<MetricsReporter> generate_backlight_metrics_timer_;
+  base::RepeatingTimer<MetricsCollector> generate_backlight_metrics_timer_;
 
   // Timestamp of the last generated battery discharge rate metric.
   base::TimeTicks last_battery_discharge_rate_metric_timestamp_;
@@ -181,9 +167,9 @@ class MetricsReporter {
   // sample when it is next called.
   bool report_battery_discharge_rate_while_suspended_;
 
-  DISALLOW_COPY_AND_ASSIGN(MetricsReporter);
+  DISALLOW_COPY_AND_ASSIGN(MetricsCollector);
 };
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_METRICS_REPORTER_H_
+#endif  // POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_

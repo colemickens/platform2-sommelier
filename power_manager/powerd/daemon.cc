@@ -17,11 +17,12 @@
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/dbus_sender.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/metrics_collector.h"
 #include "power_manager/powerd/metrics_constants.h"
-#include "power_manager/powerd/metrics_reporter.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
@@ -307,7 +308,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual void ReportUserActivityMetrics() OVERRIDE {
-    daemon_->metrics_reporter_->GenerateUserActivityMetrics();
+    daemon_->metrics_collector_->GenerateUserActivityMetrics();
   }
 
  private:
@@ -402,7 +403,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   }
 
   virtual void HandleCanceledSuspendRequest(int num_suspend_attempts) {
-    daemon_->metrics_reporter_->HandleCanceledSuspendRequest(
+    daemon_->metrics_collector_->HandleCanceledSuspendRequest(
         num_suspend_attempts);
   }
 
@@ -450,8 +451,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       dark_resume_policy_(new policy::DarkResumePolicy),
       suspender_delegate_(new SuspenderDelegate(this)),
       suspender_(new policy::Suspender),
-      metrics_library_(new MetricsLibrary),
-      metrics_reporter_(new MetricsReporter),
+      metrics_collector_(new MetricsCollector),
       shutting_down_(false),
       run_dir_(run_dir),
       session_state_(SESSION_STOPPED),
@@ -459,6 +459,11 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false) {
+  scoped_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
+  metrics_lib->Init();
+  metrics_sender_.reset(
+      new MetricsSender(metrics_lib.PassAs<MetricsLibraryInterface>()));
+
   CHECK(prefs_->Init(util::GetPrefPaths(
       base::FilePath(read_write_prefs_dir),
       base::FilePath(read_only_prefs_dir))));
@@ -534,11 +539,9 @@ void Daemon::Init() {
                       prefs_.get(), udev_.get());
   power_supply_->RefreshImmediately();
 
-  metrics_library_->Init();
-  metrics_reporter_->Init(prefs_.get(), metrics_library_.get(),
-                          display_backlight_controller_.get(),
-                          keyboard_backlight_controller_.get(),
-                          power_supply_->power_status());
+  metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
+                           keyboard_backlight_controller_.get(),
+                           power_supply_->power_status());
 
   OnPowerStatusUpdate();
 
@@ -633,7 +636,7 @@ void Daemon::PrepareForSuspend() {
 
   power_supply_->SetSuspended(true);
   audio_client_->MuteSystem();
-  metrics_reporter_->PrepareForSuspend();
+  metrics_collector_->PrepareForSuspend();
 }
 
 void Daemon::HandleSuspendAttemptCompletion(bool suspend_was_successful,
@@ -653,7 +656,7 @@ void Daemon::HandleSuspendAttemptCompletion(bool suspend_was_successful,
   }
 
   if (suspend_was_successful)
-    metrics_reporter_->HandleResume(num_suspend_attempts);
+    metrics_collector_->HandleResume(num_suspend_attempts);
 
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
@@ -673,7 +676,7 @@ void Daemon::HandleLidOpened() {
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
-  metrics_reporter_->HandlePowerButtonEvent(state);
+  metrics_collector_->HandlePowerButtonEvent(state);
   if (state == BUTTON_DOWN && display_backlight_controller_)
     display_backlight_controller_->HandlePowerButtonPress();
 }
@@ -686,7 +689,7 @@ void Daemon::DeferInactivityTimeoutForVT2() {
 void Daemon::ShutDownForPowerButtonWithNoDisplay() {
   LOG(INFO) << "Shutting down due to power button press while no display is "
             << "connected";
-  metrics_reporter_->HandlePowerButtonEvent(BUTTON_DOWN);
+  metrics_collector_->HandlePowerButtonEvent(BUTTON_DOWN);
   ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
 }
 
@@ -696,7 +699,7 @@ void Daemon::HandleMissingPowerButtonAcknowledgment() {
 }
 
 void Daemon::ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) {
-  metrics_reporter_->SendPowerButtonAcknowledgmentDelayMetric(delay);
+  metrics_collector_->SendPowerButtonAcknowledgmentDelayMetric(delay);
 }
 
 void Daemon::OnAudioStateChange(bool active) {
@@ -711,7 +714,7 @@ void Daemon::OnPowerStatusUpdate() {
   if (status.battery_is_present)
     LOG(INFO) << GetPowerStatusBatteryDebugString(status);
 
-  metrics_reporter_->HandlePowerStatusUpdate(status);
+  metrics_collector_->HandlePowerStatusUpdate(status);
 
   const PowerSource power_source =
       status.line_power_on ? POWER_AC : POWER_BATTERY;
@@ -1233,7 +1236,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     return;
 
   session_state_ = state;
-  metrics_reporter_->HandleSessionStateChange(state);
+  metrics_collector_->HandleSessionStateChange(state);
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
   if (display_backlight_controller_)
@@ -1262,7 +1265,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
 
   shutting_down_ = true;
   suspender_->HandleShutdown();
-  metrics_reporter_->HandleShutdown(reason);
+  metrics_collector_->HandleShutdown(reason);
 
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.
@@ -1304,7 +1307,7 @@ void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
     display_backlight_controller_->SetDimmedForInactivity(dimmed);
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->SetDimmedForInactivity(dimmed);
-  metrics_reporter_->HandleScreenDimmedChange(
+  metrics_collector_->HandleScreenDimmedChange(
       dimmed, state_controller_->last_user_activity_time());
 }
 
@@ -1313,7 +1316,7 @@ void Daemon::SetBacklightsOffForInactivity(bool off) {
     display_backlight_controller_->SetOffForInactivity(off);
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->SetOffForInactivity(off);
-  metrics_reporter_->HandleScreenOffChange(
+  metrics_collector_->HandleScreenOffChange(
       off, state_controller_->last_user_activity_time());
 }
 

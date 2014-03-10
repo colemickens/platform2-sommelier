@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/metrics_reporter.h"
+#include "power_manager/powerd/metrics_collector.h"
 
 #include <algorithm>
 #include <cmath>
 
 #include "base/logging.h"
-#include "metrics/metrics_library.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/metrics_constants.h"
@@ -17,16 +17,15 @@
 namespace power_manager {
 
 // static
-std::string MetricsReporter::AppendPowerSourceToEnumName(
+std::string MetricsCollector::AppendPowerSourceToEnumName(
     const std::string& enum_name,
     PowerSource power_source) {
   return enum_name +
       (power_source == POWER_AC ? kMetricACSuffix : kMetricBatterySuffix);
 }
 
-MetricsReporter::MetricsReporter()
+MetricsCollector::MetricsCollector()
     : prefs_(NULL),
-      metrics_lib_(NULL),
       display_backlight_controller_(NULL),
       keyboard_backlight_controller_(NULL),
       session_state_(SESSION_STOPPED),
@@ -35,16 +34,14 @@ MetricsReporter::MetricsReporter()
       report_battery_discharge_rate_while_suspended_(false) {
 }
 
-MetricsReporter::~MetricsReporter() {}
+MetricsCollector::~MetricsCollector() {}
 
-void MetricsReporter::Init(
+void MetricsCollector::Init(
     PrefsInterface* prefs,
-    MetricsLibraryInterface* metrics_lib,
     policy::BacklightController* display_backlight_controller,
     policy::BacklightController* keyboard_backlight_controller,
     const system::PowerStatus& power_status) {
   prefs_ = prefs;
-  metrics_lib_ = metrics_lib;
   display_backlight_controller_ = display_backlight_controller;
   keyboard_backlight_controller_ = keyboard_backlight_controller;
   last_power_status_ = power_status;
@@ -52,11 +49,11 @@ void MetricsReporter::Init(
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timer_.Start(FROM_HERE,
         base::TimeDelta::FromMilliseconds(kMetricBacklightLevelIntervalMs),
-        this, &MetricsReporter::GenerateBacklightLevelMetrics);
+        this, &MetricsCollector::GenerateBacklightLevelMetrics);
   }
 }
 
-void MetricsReporter::HandleScreenDimmedChange(
+void MetricsCollector::HandleScreenDimmedChange(
     bool dimmed,
     base::TimeTicks last_user_activity_time) {
   if (dimmed) {
@@ -69,7 +66,7 @@ void MetricsReporter::HandleScreenDimmedChange(
   }
 }
 
-void MetricsReporter::HandleScreenOffChange(
+void MetricsCollector::HandleScreenOffChange(
     bool off,
     base::TimeTicks last_user_activity_time) {
   if (off) {
@@ -82,7 +79,7 @@ void MetricsReporter::HandleScreenOffChange(
   }
 }
 
-void MetricsReporter::HandleSessionStateChange(SessionState state) {
+void MetricsCollector::HandleSessionStateChange(SessionState state) {
   if (state == session_state_)
     return;
 
@@ -135,7 +132,7 @@ void MetricsReporter::HandleSessionStateChange(SessionState state) {
   }
 }
 
-void MetricsReporter::HandlePowerStatusUpdate(
+void MetricsCollector::HandlePowerStatusUpdate(
     const system::PowerStatus& status) {
   const bool previously_on_line_power = last_power_status_.line_power_on;
   last_power_status_ = status;
@@ -170,18 +167,18 @@ void MetricsReporter::HandlePowerStatusUpdate(
                  BATTERY_INFO_MAX);
 }
 
-void MetricsReporter::HandleShutdown(ShutdownReason reason) {
+void MetricsCollector::HandleShutdown(ShutdownReason reason) {
   SendEnumMetric(kMetricShutdownReasonName, static_cast<int>(reason),
                  kMetricShutdownReasonMax);
 }
 
-void MetricsReporter::PrepareForSuspend() {
+void MetricsCollector::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentWallTime();
 }
 
-void MetricsReporter::HandleResume(int num_suspend_attempts) {
+void MetricsCollector::HandleResume(int num_suspend_attempts) {
   SendMetric(kMetricSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
              kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
              kMetricSuspendAttemptsBuckets);
@@ -190,13 +187,13 @@ void MetricsReporter::HandleResume(int num_suspend_attempts) {
   report_battery_discharge_rate_while_suspended_ = true;
 }
 
-void MetricsReporter::HandleCanceledSuspendRequest(int num_suspend_attempts) {
+void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
   SendMetric(kMetricSuspendAttemptsBeforeCancelName, num_suspend_attempts,
              kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
              kMetricSuspendAttemptsBuckets);
 }
 
-void MetricsReporter::GenerateUserActivityMetrics() {
+void MetricsCollector::GenerateUserActivityMetrics() {
   if (last_idle_event_timestamp_.is_null())
     return;
 
@@ -229,7 +226,7 @@ void MetricsReporter::GenerateUserActivityMetrics() {
   }
 }
 
-void MetricsReporter::GenerateBacklightLevelMetrics() {
+void MetricsCollector::GenerateBacklightLevelMetrics() {
   if (!screen_dim_timestamp_.is_null() || !screen_off_timestamp_.is_null())
     return;
 
@@ -248,7 +245,7 @@ void MetricsReporter::GenerateBacklightLevelMetrics() {
   }
 }
 
-void MetricsReporter::HandlePowerButtonEvent(ButtonState state) {
+void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
   // Just keep track of the time when the button was pressed.
   if (state == BUTTON_DOWN) {
     if (!last_power_button_down_timestamp_.is_null())
@@ -272,7 +269,7 @@ void MetricsReporter::HandlePowerButtonEvent(ButtonState state) {
              kMetricDefaultBuckets);
 }
 
-void MetricsReporter::SendPowerButtonAcknowledgmentDelayMetric(
+void MetricsCollector::SendPowerButtonAcknowledgmentDelayMetric(
     base::TimeDelta delay) {
   SendMetric(kMetricPowerButtonAcknowledgmentDelayName,
              delay.InMilliseconds(),
@@ -281,60 +278,25 @@ void MetricsReporter::SendPowerButtonAcknowledgmentDelayMetric(
              kMetricDefaultBuckets);
 }
 
-bool MetricsReporter::SendMetric(const std::string& name,
-                                 int sample,
-                                 int min,
-                                 int max,
-                                 int num_buckets) {
-  VLOG(1) << "Sending metric " << name << " (sample=" << sample << " min="
-          << min << " max=" << max << " num_buckets=" << num_buckets << ")";
-
-  // If the sample falls outside of the histogram's range, just let it end up in
-  // the underflow or overflow bucket.
-  if (!metrics_lib_->SendToUMA(name, sample, min, max, num_buckets)) {
-    LOG(ERROR) << "Failed to send metric " << name;
-    return false;
-  }
-  return true;
-}
-
-bool MetricsReporter::SendEnumMetric(const std::string& name,
-                                     int sample,
-                                     int max) {
-  VLOG(1) << "Sending enum metric " << name << " (sample=" << sample
-          << " max=" << max << ")";
-
-  if (sample > max) {
-    LOG(WARNING) << name << " sample " << sample << " is greater than " << max;
-    sample = max;
-  }
-
-  if (!metrics_lib_->SendEnumToUMA(name, sample, max)) {
-    LOG(ERROR) << "Failed to send enum metric " << name;
-    return false;
-  }
-  return true;
-}
-
-bool MetricsReporter::SendMetricWithPowerSource(const std::string& name,
-                                                int sample,
-                                                int min,
-                                                int max,
-                                                int num_buckets) {
+bool MetricsCollector::SendMetricWithPowerSource(const std::string& name,
+                                                 int sample,
+                                                 int min,
+                                                 int max,
+                                                 int num_buckets) {
   const std::string full_name = AppendPowerSourceToEnumName(
       name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
   return SendMetric(full_name, sample, min, max, num_buckets);
 }
 
-bool MetricsReporter::SendEnumMetricWithPowerSource(const std::string& name,
-                                                    int sample,
-                                                    int max) {
+bool MetricsCollector::SendEnumMetricWithPowerSource(const std::string& name,
+                                                     int sample,
+                                                     int max) {
   const std::string full_name = AppendPowerSourceToEnumName(
       name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
   return SendEnumMetric(full_name, sample, max);
 }
 
-void MetricsReporter::GenerateBatteryDischargeRateMetric() {
+void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   // The battery discharge rate metric is relevant and collected only
   // when running on battery.
   if (!last_power_status_.battery_is_present ||
@@ -362,7 +324,7 @@ void MetricsReporter::GenerateBatteryDischargeRateMetric() {
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
 }
 
-void MetricsReporter::GenerateBatteryDischargeRateWhileSuspendedMetric() {
+void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   // Do nothing unless this is the first time we're called after resuming.
   if (!report_battery_discharge_rate_while_suspended_)
     return;
@@ -396,14 +358,14 @@ void MetricsReporter::GenerateBatteryDischargeRateWhileSuspendedMetric() {
              kMetricDefaultBuckets);
 }
 
-void MetricsReporter::IncrementNumOfSessionsPerChargeMetric() {
+void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {
   int64 num = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &num);
   num = std::max(num, static_cast<int64>(0));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, num + 1);
 }
 
-void MetricsReporter::GenerateNumOfSessionsPerChargeMetric() {
+void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
   int64 sample = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &sample);
   if (sample <= 0)
