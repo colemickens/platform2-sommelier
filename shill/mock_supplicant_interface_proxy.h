@@ -33,6 +33,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
                                   const std::string &field,
                                   const std::string &value));
   MOCK_METHOD0(Reassociate, void());
+  MOCK_METHOD0(Reattach, void());
   MOCK_METHOD0(RemoveAllNetworks, void());
   MOCK_METHOD1(RemoveNetwork, void(const ::DBus::Path &network));
   MOCK_METHOD1(Scan,

@@ -19,6 +19,8 @@
     </method>
     <method name="Reassociate">
     </method>
+    <method name="Reattach">
+    </method>
     <method name="RemoveNetwork">
       <arg name="network" type="o" direction="in"/>
     </method>

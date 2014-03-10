@@ -29,6 +29,7 @@ class SupplicantInterfaceProxyInterface {
                             const std::string &field,
                             const std::string &value) = 0;
   virtual void Reassociate() = 0;
+  virtual void Reattach() = 0;
   virtual void RemoveAllNetworks() = 0;
   virtual void RemoveNetwork(const ::DBus::Path &network) = 0;
   virtual void Scan(

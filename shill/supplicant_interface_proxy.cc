@@ -110,6 +110,16 @@ void SupplicantInterfaceProxy::Reassociate() {
   }
 }
 
+void SupplicantInterfaceProxy::Reattach() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.Reattach();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::RemoveAllNetworks() {
   SLOG(DBus, 2) << __func__;
   try {

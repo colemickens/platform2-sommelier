@@ -2471,15 +2471,15 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        EndsWith("gateway was never found."))).Times(1);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reassociate()).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnLinkMonitorFailure();
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       EndsWith("Called Reassociate()."))).Times(1);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reassociate()).Times(1);
+                       EndsWith("Called Reattach()."))).Times(1);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(1);
   OnLinkMonitorFailure();
   OnSupplicantVanish();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reassociate()).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        EndsWith("Cannot reassociate."))).Times(1);
   OnLinkMonitorFailure();
