@@ -840,7 +840,6 @@ int main(int argc, char **argv) {
       return -1;
 
     cryptohome::AddKeyRequest key_req;
-    key_req.set_clobber_if_exists(true);
     cryptohome::Key* key = key_req.mutable_key();
     key->set_secret(new_password);
     cryptohome::KeyData* data = key->mutable_data();
@@ -881,7 +880,8 @@ int main(int argc, char **argv) {
           req_ary.get(),
           &out_reply,
           &chromeos::Resetter(&error).lvalue())) {
-      printf("Failed to call AddKeyEx!\n");
+      printf("AddKeyEx call failed: %s", error->message);
+      return -1;
     }
     HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_KEY_EX],

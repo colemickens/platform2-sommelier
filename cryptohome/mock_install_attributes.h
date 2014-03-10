@@ -24,6 +24,8 @@ class MockInstallAttributes : public InstallAttributes {
 
   MOCK_METHOD0(PrepareSystem, bool());
 
+  MOCK_METHOD1(SetTpm, void(Tpm*));
+
   MOCK_METHOD0(Init, bool());
 
   MOCK_CONST_METHOD0(IsReady, bool());

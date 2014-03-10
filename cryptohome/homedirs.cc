@@ -262,11 +262,10 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
   return keysets->size() != 0;
 }
 
-// TODO(wad,antrim) When Chrome's managed_user_authenticator.cc stops
-// using AsyncAddKey() or if we can short-circuit its behavior on
-// the interface side.
-bool HomeDirs::AddKeyset(const Credentials& existing_credentials,
+CryptohomeErrorCode HomeDirs::AddKeyset(
+                         const Credentials& existing_credentials,
                          const SecureBlob& new_passkey,
+                         const KeyData* new_data,  // NULLable
                          int* index) {
   // TODO(wad) Determine how to best bubble up the failures MOUNT_ERROR
   //           encapsulate wrt the TPM behavior.
@@ -276,16 +275,17 @@ bool HomeDirs::AddKeyset(const Credentials& existing_credentials,
   scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   if (!GetValidKeyset(existing_credentials, vk.get())) {
     LOG(WARNING) << "AddKeyset: authentication failed";
-    return false;
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   }
 
   // Check the privileges to ensure Add is allowed.
-  if (vk->serialized().has_key_data() && // legacy keys are full privs
+  // Keys without extended data are considered fully privileged.
+  if (vk->serialized().has_key_data() &&
       !vk->serialized().key_data().privileges().add()) {
     // TODO(wad) Ensure this error can be returned as a KEY_DENIED error
     //           for AddKeyEx.
     LOG(WARNING) << "AddKeyset: no add() privilege";
-    return false;
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
   }
 
   // Walk the namespace looking for the first free spot.
@@ -307,16 +307,35 @@ bool HomeDirs::AddKeyset(const Credentials& existing_credentials,
 
   if (!vk_file) {
     LOG(WARNING) << "Failed to find an available keyset slot";
-    return false;
+    return CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED;
   }
   // Once the file has been claimed, we can release the handle.
   platform_->CloseFile(vk_file);
 
+  // Since we're reusing the same VaultKeyset, be careful with the
+  // metadata.
+  vk->mutable_serialized()->clear_key_data();
+  if (new_data) {
+    *(vk->mutable_serialized()->mutable_key_data()) = *new_data;
+  }
+
+  // Before persisting, check, in a racy-way, if there is
+  // an existing labeled credential.
+  UsernamePasskey search_cred(existing_credentials.username().c_str(),
+                              SecureBlob("", 0));
+  search_cred.set_key_data(vk->serialized().key_data());
+  scoped_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
+  if (match.get()) {
+    LOG(INFO) << "Label already exists.";
+    platform_->DeleteFile(vk_path, false);
+    return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
+  }
+
   // Repersist the VK with the new creds.
-  bool added = true;
+  CryptohomeErrorCode added = CRYPTOHOME_ERROR_NOT_SET;
   if (!vk->Encrypt(new_passkey) || !vk->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
-    added = false;
+    added = CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
     platform_->DeleteFile(vk_path, false);
   } else {
     *index = new_index;
@@ -588,15 +607,22 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     LOG(ERROR) << "Migrate: failed to reload the active keyset";
     return false;
   }
-  if (vk->serialized().has_key_data() && // legacy keys are full privs
-      (!vk->serialized().key_data().privileges().add() ||
-       !vk->serialized().key_data().privileges().remove())) {
-    LOG(ERROR) << "Migrate: key lacks sufficient privileges()";
-    return false;
+  const KeyData *key_data = NULL;
+  if (vk->serialized().has_key_data()) {
+    key_data = &(vk->serialized().key_data());
+    // legacy keys are full privs
+    if (!vk->serialized().key_data().privileges().add() ||
+        !vk->serialized().key_data().privileges().remove()) {
+      LOG(ERROR) << "Migrate: key lacks sufficient privileges()";
+      return false;
+    }
   }
 
   int new_key_index = -1;
-  if (!AddKeyset(oldcreds, newkey, &new_key_index)) {
+  // Note, this will fail if the new keyset uses the same label.
+  // TODO(wad) Add clobber support here. crbug.com/342804
+  if (AddKeyset(oldcreds, newkey, key_data, &new_key_index) !=
+      CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "Migrate: failed to add the new keyset";
     return false;
   }

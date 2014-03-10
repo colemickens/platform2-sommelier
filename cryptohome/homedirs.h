@@ -21,6 +21,7 @@
 
 #include "crypto.h"
 #include "mount_factory.h"
+#include "rpc.pb.h"
 #include "vault_keyset.pb.h"
 #include "vault_keyset_factory.h"
 
@@ -96,8 +97,13 @@ class HomeDirs {
   // unwrap the homedir key and the |new_credentials| to rewrap and persist to
   // disk.  The key index is return in the |index| pointer if the function
   // returns true.  |index| is not modified if the function returns false.
-  virtual bool AddKeyset(const Credentials& existing_credentials,
+  // |new_data|, when provided, is copied to the key_data of the new keyset.
+  // If |new_data| is provided, a best-effort attempt will be made at ensuring
+  // key_data().label() is unique.
+  virtual CryptohomeErrorCode AddKeyset(
+                         const Credentials& existing_credentials,
                          const chromeos::SecureBlob& new_passkey,
+                         const KeyData* new_data,
                          int* index);
 
   // Removes the keyset specified by |index| from the list for the user

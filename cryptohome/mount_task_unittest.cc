@@ -195,8 +195,8 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
 
 TEST_F(MountTaskTest, AddPasskeyTest) {
   MockHomeDirs homedirs;
-  EXPECT_CALL(homedirs, AddKeyset(_, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs, AddKeyset(_, _, _, _))
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskAddPasskey> mount_task

@@ -567,9 +567,11 @@ class MountExTest : public ::testing::Test {
   virtual ~MountExTest() { }
 
   void SetUp() {
+    service_.set_attestation(&attest_);
     service_.set_homedirs(&homedirs_);
     service_.set_install_attrs(&attrs_);
     service_.set_initialize_tpm(false);
+    service_.set_use_tpm(false);
     service_.set_platform(&platform_);
     service_.set_chaps_client(&chaps_client_);
     service_.set_reply_factory(&reply_factory_);
@@ -577,6 +579,8 @@ class MountExTest : public ::testing::Test {
     // to unload tokens unless a test explicitly sets up the token list.
     EXPECT_CALL(chaps_client_, GetTokenList(_, _))
         .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
+        .WillRepeatedly(Return(false));
   }
 
   void TearDown() { }
@@ -594,6 +598,7 @@ class MountExTest : public ::testing::Test {
   }
 
  protected:
+  NiceMock<MockAttestation> attest_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockInstallAttributes> attrs_;
   MockDBusReplyFactory reply_factory_;
@@ -681,4 +686,147 @@ TEST_F(MountExTest, InvalidArgsChecks) {
   g_error_free(call_err);
   call_err = NULL;
 }
+
+class AddKeyExTest : public ::testing::Test {
+ public:
+  AddKeyExTest() { }
+  virtual ~AddKeyExTest() { }
+
+  void SetUp() {
+    // Ensure service is cleanly mocked/faked.
+    service_.set_attestation(&attest_);
+    service_.set_homedirs(&homedirs_);
+    service_.set_install_attrs(&attrs_);
+    service_.set_initialize_tpm(false);
+    service_.set_use_tpm(false);
+    service_.set_platform(&platform_);
+    service_.set_chaps_client(&chaps_client_);
+    service_.set_reply_factory(&reply_factory_);
+    service_.set_crypto(&crypto_);
+    // Empty token list by default.  The effect is that there are no attempts
+    // to unload tokens unless a test explicitly sets up the token list.
+    EXPECT_CALL(chaps_client_, GetTokenList(_, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
+        .WillRepeatedly(Return(false));
+    g_error_ = NULL;
+
+    // Fast path through Initialize()
+    EXPECT_CALL(homedirs_, Init())
+      .WillOnce(Return(true));
+    // Skip the CleanUpStaleMounts bit.
+    EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+      .WillRepeatedly(Return(false));
+    ASSERT_TRUE(service_.Initialize());
+  }
+
+  void TearDown() {
+    if (g_error_) {
+      g_error_free(g_error_);
+      g_error_ = NULL;
+    }
+  }
+
+  template<class ProtoBuf>
+  GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
+    guint len = pb.ByteSize();
+    GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
+    g_array_set_size(ary, len);
+    if (!pb.SerializeToArray(ary->data, len)) {
+      printf("Failed to serialize protocol buffer.\n");
+      return NULL;
+    }
+    return ary;
+  }
+
+  void SetupErrorReply() {
+    g_error_ = NULL;
+    // |error| will be cleaned up by event_source_
+    MockDBusErrorReply *error = new MockDBusErrorReply();
+    EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+      .WillOnce(DoAll(SaveArg<1>(&g_error_), Return(error)));
+  }
+
+  void PrepareArguments() {
+    id_.reset(new AccountIdentifier);
+    auth_.reset(new AuthorizationRequest);
+    req_.reset(new AddKeyRequest);
+  }
+
+ protected:
+  NiceMock<MockAttestation> attest_;
+  NiceMock<MockInstallAttributes> attrs_;
+  NiceMock<MockCrypto> crypto_;
+  NiceMock<MockHomeDirs> homedirs_;
+  MockDBusReplyFactory reply_factory_;
+
+  scoped_ptr<AccountIdentifier> id_;
+  scoped_ptr<AuthorizationRequest> auth_;
+  scoped_ptr<AddKeyRequest> req_;
+
+  GError* g_error_;
+
+  MockPlatform platform_;
+  chaps::TokenManagerClientMock chaps_client_;
+  Service service_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AddKeyExTest);
+};
+
+
+TEST_F(AddKeyExTest, InvalidArgsNoEmail) {
+  SetupErrorReply();
+  PrepareArguments();
+  // Run will never be called because we aren't running the event loop.
+  // For the same reason, DoMountEx is called directly.
+  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", g_error_->message);
+}
+
+TEST_F(AddKeyExTest, InvalidArgsNoSecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(AddKeyExTest, InvalidArgsNoNewKeySet) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  req_->clear_key();
+  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No new key supplied", g_error_->message);
+}
+
+TEST_F(AddKeyExTest, InvalidArgsNoKeyFilled) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  req_->mutable_key();
+  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No new key supplied", g_error_->message);
+}
+
+TEST_F(AddKeyExTest, InvalidArgsNoNewKeyLabel) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  req_->mutable_key();
+  // No label
+  req_->mutable_key()->set_secret("some secret");
+  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No new key label supplied", g_error_->message);
+}
+
 }  // namespace cryptohome

@@ -896,25 +896,97 @@ gboolean Service::AsyncAddKey(gchar *userid,
   return TRUE;
 }
 
-void Service::DoAddKeyEx(GArray *account_id,
-                         GArray *authorization_request,
-                         GArray *add_key_request,
-                         DBusGMethodInvocation *context) {
-  // TODO(wad) This will be fixed up in crbug.com/342905
+void Service::DoAddKeyEx(AccountIdentifier* identifier,
+                         AuthorizationRequest* authorization,
+                         AddKeyRequest* add_key_request,
+                         DBusGMethodInvocation* context) {
+  if (!identifier || !authorization || !add_key_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  // Setup a reply for use during error handling.
   BaseReply reply;
-  reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+
+  // An AuthorizationRequest key without a label will test against
+  // all VaultKeysets of a compatible key().data().type().
+  if (authorization->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+
+  // TODO(wad) Label-based clobbering isn't done yet.
+  if (add_key_request->clobber_if_exists()) {
+    reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    SendReply(context, reply);
+    return;
+  }
+
+  if (!add_key_request->has_key() || add_key_request->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No new key supplied");
+    return;
+  }
+
+  if (add_key_request->key().data().label().empty()) {
+    SendInvalidArgsReply(context, "No new key label supplied");
+    return;
+  }
+
+  UsernamePasskey credentials(
+      identifier->email().c_str(),
+      SecureBlob(authorization->key().secret().c_str(),
+                 authorization->key().secret().length()));
+  credentials.set_key_data(authorization->key().data());
+
+  if (!homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
+  int index = -1;
+  SecureBlob new_secret(add_key_request->key().secret().c_str(),
+                        add_key_request->key().secret().length());
+  reply.set_error(homedirs_->AddKeyset(credentials,
+                                       new_secret,
+                                       &add_key_request->key().data(),
+                                       &index));
+  if (reply.error() == CRYPTOHOME_ERROR_NOT_SET) {
+    // Don't set the error if there wasn't one.
+    reply.clear_error();
+  }
   SendReply(context, reply);
 }
 
-gboolean Service::AddKeyEx(GArray *account_id,
-                           GArray *authorization_request,
-                           GArray *add_key_request,
+gboolean Service::AddKeyEx(GArray* account_id,
+                           GArray* authorization_request,
+                           GArray* add_key_request,
                            DBusGMethodInvocation *context) {
-  // TODO(wad) key_params are not used yet! crbug.com/342804
-  LOG(ERROR) << "AddKeyEx not yet implemented";
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<AddKeyRequest> request(new AddKeyRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  if (!request->ParseFromArray(add_key_request->data, add_key_request->len))
+    request.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoAddKeyEx, base::Unretained(this),
-                 account_id, authorization_request, add_key_request, context));
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
   return TRUE;
 }
 

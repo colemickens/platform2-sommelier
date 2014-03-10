@@ -186,14 +186,14 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                    gchar *new_key,
                                    gint *OUT_async_id,
                                    GError **error);
-  virtual void DoAddKeyEx(GArray *account_id,
-                          GArray *authorization_request,
-                          GArray *add_key_request,
-                          DBusGMethodInvocation *context);
-  virtual gboolean AddKeyEx(GArray *account_id,
-                            GArray *authorization_request,
-                            GArray *add_key_request,
-                            DBusGMethodInvocation *context);
+  virtual void DoAddKeyEx(AccountIdentifier* account_id,
+                          AuthorizationRequest*  authorization_request,
+                          AddKeyRequest* add_key_request,
+                          DBusGMethodInvocation* context);
+  virtual gboolean AddKeyEx(GArray* account_id,
+                            GArray* authorization_request,
+                            GArray* add_key_request,
+                            DBusGMethodInvocation* context);
   virtual void DoUpdateKeyEx(GArray *account_id,
                              GArray *authorization_request,
                              GArray *update_key_request,

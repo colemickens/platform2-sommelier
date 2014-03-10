@@ -103,7 +103,8 @@ void MountTaskMigratePasskey::Run() {
 void MountTaskAddPasskey::Run() {
   CHECK(homedirs_);
   int index = -1;
-  bool status = homedirs_->AddKeyset(credentials_, new_key_, &index);
+  bool status = (homedirs_->AddKeyset(credentials_, new_key_, NULL, &index) ==
+                 CRYPTOHOME_ERROR_NOT_SET);
   result()->set_return_status(status);
   // Failure will yield a -1 return code.
   result()->set_return_code(static_cast<MountError>(index));

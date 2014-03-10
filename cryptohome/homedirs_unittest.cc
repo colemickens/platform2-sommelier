@@ -1003,7 +1003,16 @@ class KeysetManagementTest : public HomeDirsTest {
                   key.size()) == 0;
   }
 
+  virtual const SerializedVaultKeyset& FakeSerialized() const {
+    return serialized_;
+  }
+
+  virtual SerializedVaultKeyset* FakeMutableSerialized() {
+    return &serialized_;
+  }
+
   virtual void KeysetSetUp() {
+    serialized_.Clear();
     NiceMock<MockTpm> tpm;
     homedirs_.crypto()->set_tpm(&tpm);
     homedirs_.crypto()->set_use_tpm(false);
@@ -1036,6 +1045,13 @@ class KeysetManagementTest : public HomeDirsTest {
     EXPECT_CALL(*active_vk_, Decrypt(_))
       .WillOnce(Invoke(this, &KeysetManagementTest::VkDecrypt0));
 
+    EXPECT_CALL(*active_vk_, serialized())
+      .WillRepeatedly(
+          Invoke(this, &KeysetManagementTest::FakeSerialized));
+    EXPECT_CALL(*active_vk_, mutable_serialized())
+      .WillRepeatedly(
+          Invoke(this,&KeysetManagementTest::FakeMutableSerialized));
+
     cryptohome::SecureBlob passkey;
     cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                           system_salt_, &passkey);
@@ -1047,6 +1063,7 @@ class KeysetManagementTest : public HomeDirsTest {
   std::vector<chromeos::SecureBlob> keys_;
   scoped_ptr<UsernamePasskey> up_;
   SecureBlob system_salt_;
+  SerializedVaultKeyset serialized_;
 };
 
 
@@ -1068,7 +1085,8 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
 
-  ASSERT_TRUE(homedirs_.AddKeyset(*up_, newkey, &index));
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, 1);
 }
 
@@ -1083,7 +1101,8 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
     .Times(0);
   // Try to authenticate with an unknown key.
   UsernamePasskey bad_p(test_helper_.users[1].username, newkey);
-  ASSERT_FALSE(homedirs_.AddKeyset(bad_p, newkey, &index));
+  ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+            homedirs_.AddKeyset(bad_p, newkey, NULL, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -1095,15 +1114,11 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidPrivileges) {
   cryptohome::SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  SerializedVaultKeyset serialized;
-  serialized.mutable_key_data()->mutable_privileges()->set_add(false);
-  EXPECT_CALL(*active_vk_, serialized())
-    .WillOnce(ReturnRef(serialized))
-    .WillOnce(ReturnRef(serialized));
-
+  serialized_.mutable_key_data()->mutable_privileges()->set_add(false);
    int index = -1;
   // Tery to authenticate with a key that cannot add keys.
-  ASSERT_FALSE(homedirs_.AddKeyset(*up_, newkey, &index));
+  ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -1129,9 +1144,10 @@ TEST_F(KeysetManagementTest, AddKeyset0Available) {
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
 
- int index = -1;
+  int index = -1;
   // Try to authenticate with an unknown key.
-  ASSERT_TRUE(homedirs_.AddKeyset(*up_, newkey, &index));
+  ASSERT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, 0);
 }
 
@@ -1154,9 +1170,9 @@ TEST_F(KeysetManagementTest, AddKeyset10Available) {
   EXPECT_CALL(*active_vk_, Save(EndsWith("master.10")))
     .WillOnce(Return(true));
 
- int index = -1;
-  // Try to authenticate with an unknown key.
-  ASSERT_TRUE(homedirs_.AddKeyset(*up_, newkey, &index));
+  int index = -1;
+  ASSERT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, 10);
 }
 
@@ -1174,8 +1190,8 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
     .Times(0);
 
   int index = -1;
-  // Try to authenticate with an unknown key.
-  ASSERT_FALSE(homedirs_.AddKeyset(*up_, newkey, &index));
+  ASSERT_EQ(CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -1194,7 +1210,8 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(EndsWith("master.0"), false))
     .WillOnce(Return(true));
-  ASSERT_FALSE(homedirs_.AddKeyset(*up_, newkey, &index));
+  ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -1215,7 +1232,8 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(EndsWith("master.0"), false))
     .WillOnce(Return(true));
-  ASSERT_FALSE(homedirs_.AddKeyset(*up_, newkey, &index));
+  ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            homedirs_.AddKeyset(*up_, newkey, NULL, &index));
   EXPECT_EQ(index, -1);
 }
 
