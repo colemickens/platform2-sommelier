@@ -11,20 +11,19 @@
 #include <metrics/metrics_library.h>
 
 namespace login_manager {
+namespace {
+// Uptime stats file created when session_manager executes Chrome.
+// For any case of reload after crash no stats are recorded.
+// For any signout stats are recorded.
+const char kChromeUptimeFile[] = "/tmp/uptime-chrome-exec";
 
-// static
-const char LoginMetrics::kChromeUptimeFile[] = "/tmp/uptime-chrome-exec";
-
-//static
-const char LoginMetrics::kLoginUserTypeMetric[] = "Login.UserType";
-//static
-const char LoginMetrics::kLoginPolicyFilesMetric[] =
-    "Login.PolicyFilesStatePerBoot";
-//static
-const int LoginMetrics::kMaxPolicyFilesValue = 64;
-
-// static
-const char LoginMetrics::kLoginMetricsFlagFile[] = "per_boot_flag";
+const char kLoginConsumerAllowsNewUsersMetric[] =
+    "Login.ConsumerNewUsersAllowed";
+const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
+const char kLoginUserTypeMetric[] = "Login.UserType";
+const int kMaxPolicyFilesValue = 64;
+const char kLoginMetricsFlagFile[] = "per_boot_flag";
+}  // namespace
 
 // static
 int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
@@ -38,6 +37,11 @@ LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
   metrics_lib_.Init();
 }
 LoginMetrics::~LoginMetrics() {}
+
+void LoginMetrics::SendConsumerAllowsNewUsers(bool allowed) {
+  int uma_code = allowed ? ANY_USER_ALLOWED : ONLY_WHITELISTED_ALLOWED;
+  metrics_lib_.SendEnumToUMA(kLoginConsumerAllowsNewUsersMetric, uma_code, 1);
+}
 
 void LoginMetrics::SendLoginUserType(bool dev_mode, bool incognito,
                                      bool owner) {
@@ -62,7 +66,7 @@ void LoginMetrics::RecordStats(const char* tag) {
 }
 
 bool LoginMetrics::HasRecordedChromeExec() {
-  return base::PathExists(base::FilePath(LoginMetrics::kChromeUptimeFile));
+  return base::PathExists(base::FilePath(kChromeUptimeFile));
 }
 
 // static

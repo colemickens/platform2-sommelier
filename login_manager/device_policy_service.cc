@@ -30,6 +30,18 @@ namespace login_manager {
 using crypto::RSAPrivateKey;
 using google::protobuf::RepeatedPtrField;
 
+namespace {
+// Returns true if |policy| was not pushed by an enterprise.
+bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
+  em::PolicyData poldata;
+  if (!policy.has_policy_data() ||
+      !poldata.ParseFromString(policy.policy_data())) {
+    return false;
+  }
+  return !poldata.has_request_token() && poldata.has_username();
+}
+}  // namespace
+
 // static
 const char DevicePolicyService::kPolicyPath[] = "/var/lib/whitelist/policy";
 // static
@@ -65,6 +77,10 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
     PK11SlotInfo* slot,
     bool* is_owner,
     Error* error) {
+  // Record metrics around consumer usage of user whitelisting.
+  if (IsConsumerPolicy(store()->Get()))
+    metrics_->SendConsumerAllowsNewUsers(PolicyAllowsNewUsers(store()->Get()));
+
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
   scoped_ptr<RSAPrivateKey> signing_key(
@@ -257,6 +273,41 @@ const em::ChromeDeviceSettingsProto& DevicePolicyService::GetSettings() {
   }
 
   return *settings_;
+}
+
+// static
+bool DevicePolicyService::PolicyAllowsNewUsers(
+    const em::PolicyFetchResponse& policy) {
+  em::PolicyData poldata;
+  if (!policy.has_policy_data() ||
+      !poldata.ParseFromString(policy.policy_data())) {
+    return false;
+  }
+  em::ChromeDeviceSettingsProto polval;
+  if (!poldata.has_policy_type() ||
+      poldata.policy_type() != DevicePolicyService::kDevicePolicyType ||
+      !poldata.has_policy_value() ||
+      !polval.ParseFromString(poldata.policy_value())) {
+    return false;
+  }
+  // Explicitly states that new users are allowed.
+  bool explicitly_allowed = (polval.has_allow_new_users() &&
+                             polval.allow_new_users().allow_new_users());
+  // Doesn't state that new users are allowed, but also doesn't have a
+  // non-empty whitelist.
+  bool not_disallowed =
+      !polval.has_allow_new_users() &&
+      !(polval.has_user_whitelist() &&
+        polval.user_whitelist().user_whitelist_size() > 0);
+  // States that new users are not allowed, but doesn't specify a whitelist.
+  // So, we fail open. Such policies are the result of a long-fixed bug, but
+  // we're not certain all users ever got migrated.
+  bool failed_open =
+      polval.has_allow_new_users() &&
+      !polval.allow_new_users().allow_new_users() &&
+      !polval.has_user_whitelist();
+
+  return explicitly_allowed || not_disallowed || failed_open;
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,

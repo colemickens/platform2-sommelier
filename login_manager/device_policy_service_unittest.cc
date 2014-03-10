@@ -291,6 +291,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
     return LoginMetrics::GOOD;
   }
 
+  bool PolicyAllowsNewUsers(const em::ChromeDeviceSettingsProto settings) {
+    InitPolicy(settings, owner_, fake_sig_, "", false);
+    return DevicePolicyService::PolicyAllowsNewUsers(policy_proto_);
+  }
+
   em::PolicyFetchResponse policy_proto_;
   std::string policy_str_;
 
@@ -329,9 +334,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   ExpectGetPolicy(s, policy_proto_);
   ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -355,9 +360,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
   ExpectGetPolicy(s, policy_proto_);
   ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -383,9 +388,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
   ExpectGetPolicy(s, policy_proto_);
   ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -404,9 +409,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = true;
@@ -424,9 +429,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
   PolicyService::Error error;
   bool is_owner = true;
@@ -449,6 +454,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -471,6 +477,7 @@ TEST_F(DevicePolicyServiceTest,
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -491,6 +498,7 @@ TEST_F(DevicePolicyServiceTest,
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(false);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = true;
@@ -512,6 +520,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
       .InSequence(s)
       .WillOnce(Return(false));
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -541,9 +550,9 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
           .WillOnce(Return(false));
 
   ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
+  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -551,6 +560,36 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
                                                   nss.GetSlot(),
                                                   &is_owner,
                                                   &error));
+}
+
+TEST_F(DevicePolicyServiceTest, PolicyAllowsNewUsers) {
+  em::ChromeDeviceSettingsProto allowed;
+  allowed.mutable_allow_new_users()->set_allow_new_users(true);
+  EXPECT_TRUE(PolicyAllowsNewUsers(allowed));
+
+  allowed.mutable_user_whitelist();
+  EXPECT_TRUE(PolicyAllowsNewUsers(allowed));
+
+  allowed.mutable_user_whitelist()->add_user_whitelist("a@b");
+  EXPECT_TRUE(PolicyAllowsNewUsers(allowed));
+
+  em::ChromeDeviceSettingsProto broken;
+  broken.mutable_allow_new_users()->set_allow_new_users(false);
+  EXPECT_TRUE(PolicyAllowsNewUsers(broken));
+
+  em::ChromeDeviceSettingsProto disallowed = broken;
+  disallowed.mutable_user_whitelist();
+  disallowed.mutable_user_whitelist()->add_user_whitelist("a@b");
+  EXPECT_FALSE(PolicyAllowsNewUsers(disallowed));
+
+  em::ChromeDeviceSettingsProto not_disallowed;
+  EXPECT_TRUE(PolicyAllowsNewUsers(not_disallowed));
+  not_disallowed.mutable_user_whitelist();
+  EXPECT_TRUE(PolicyAllowsNewUsers(not_disallowed));
+
+  em::ChromeDeviceSettingsProto implicitly_disallowed = not_disallowed;
+  implicitly_disallowed.mutable_user_whitelist()->add_user_whitelist("a@b");
+  EXPECT_FALSE(PolicyAllowsNewUsers(implicitly_disallowed));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {

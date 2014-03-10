@@ -22,6 +22,7 @@ class RSAPrivateKey;
 }
 
 namespace enterprise_management {
+class PolicyFetchResponse;
 class ChromeDeviceSettingsProto;
 }
 
@@ -117,6 +118,11 @@ class DevicePolicyService : public PolicyService {
                       LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss);
+
+  // Returns true if |policy| allows arbitrary new users to sign in.
+  // Only exposed for testing.
+  static bool PolicyAllowsNewUsers(
+      const enterprise_management::PolicyFetchResponse& policy);
 
   // Given the private half of the owner keypair, this call whitelists
   // |current_user| and sets a property indicating

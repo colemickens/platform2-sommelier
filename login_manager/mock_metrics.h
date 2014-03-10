@@ -18,6 +18,7 @@ class MockMetrics : public LoginMetrics {
   MockMetrics();
   virtual ~MockMetrics();
 
+  MOCK_METHOD1(SendConsumerAllowsNewUsers, void(bool));
   MOCK_METHOD3(SendLoginUserType, void(bool, bool, bool));
   MOCK_METHOD1(SendPolicyFilesStatus, bool(const PolicyFilesStatus&));
   MOCK_METHOD1(RecordStats, void(const char*));

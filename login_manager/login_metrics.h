@@ -12,6 +12,10 @@
 namespace login_manager {
 class LoginMetrics {
  public:
+  enum AllowedUsersState {
+    ANY_USER_ALLOWED = 0,
+    ONLY_WHITELISTED_ALLOWED = 1
+  };
   enum PolicyFileState {
     GOOD = 0,
     MALFORMED = 1,
@@ -62,6 +66,10 @@ class LoginMetrics {
   explicit LoginMetrics(const base::FilePath& per_boot_flag_dir);
   virtual ~LoginMetrics();
 
+  // Sends metric reporting whether the Owner of this non-enrolled device has
+  // chosen to allow arbitrary users to sign in or not.
+  virtual void SendConsumerAllowsNewUsers(bool allowed);
+
   // Sends the type of user that logs in (guest, owner or other) and the mode
   // (developer or normal) to UMA by using the metrics library.
   virtual void SendLoginUserType(bool dev_mode, bool guest, bool owner);
@@ -80,17 +88,6 @@ class LoginMetrics {
  private:
   friend class LoginMetricsTest;
   friend class UserTypeTest;
-
-  static const char kLoginUserTypeMetric[];
-  static const char kLoginPolicyFilesMetric[];
-  static const int kMaxPolicyFilesValue;
-
-  static const char kLoginMetricsFlagFile[];
-
-  // Uptime stats file created when session_manager executes Chrome.
-  // For any case of reload after crash no stats are recorded.
-  // For any signout stats are recorded.
-  static const char kChromeUptimeFile[];
 
   // Returns code to send to the metrics library based on the state of
   // several policy-related files on disk.
