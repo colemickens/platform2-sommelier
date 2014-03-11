@@ -91,7 +91,7 @@ TEST(PerfParserTest, Test1Cycle) {
     string output_perf_data = output_path + test_file + ".parse.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
-    EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
+    EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
     EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
   }
 }
@@ -115,7 +115,7 @@ TEST(PerfParserTest, TestNormalProcessing) {
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     // Remapped addresses should not match the original addresses.
-    EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
+    EXPECT_FALSE(ComparePerfReports(input_perf_data, output_perf_data));
 
     PerfParser remap_parser(GetTestOptions());
     ReadFileAndCheckInternals(output_perf_data, &remap_parser);
@@ -123,7 +123,7 @@ TEST(PerfParserTest, TestNormalProcessing) {
     ASSERT_TRUE(remap_parser.WriteFile(output_perf_data2));
 
     // Remapping again should produce the same addresses.
-    EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data2));
+    EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
     EXPECT_TRUE(ComparePerfBuildIDLists(output_perf_data, output_perf_data2));
   }
 }
