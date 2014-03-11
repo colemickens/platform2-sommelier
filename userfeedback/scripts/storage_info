@@ -13,7 +13,7 @@ STORAGE_INFO_FILE="/var/log/storage_info.txt"
 
 SSD_CMD_0="hdparm -I"
 SSD_CMD_1_NORMAL="smartctl -x"
-SSD_CMD_1_ALTERNATE="smartctl -a"
+SSD_CMD_1_ALTERNATE="smartctl -a -f brief"
 SSD_CMD_MAX=1
 
 # This match SanDisk SSD U100/i100 with any size with version *.xx.* when x < 54
