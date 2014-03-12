@@ -55,6 +55,7 @@ namespace switches {
     "unmount",
     "is_mounted",
     "test_auth",
+    "check_key_ex",
     "migrate_key",
     "add_key",
     "add_key_ex",
@@ -100,6 +101,7 @@ namespace switches {
     ACTION_UNMOUNT,
     ACTION_MOUNTED,
     ACTION_TEST_AUTH,
+    ACTION_CHECK_KEY_EX,
     ACTION_MIGRATE_KEY,
     ACTION_ADD_KEY,
     ACTION_ADD_KEY_EX,
@@ -316,6 +318,9 @@ void HandleReply(DBusGProxy* proxy, GArray* OUT_reply,
       exit(reply.error());
     }
     printf("%s\n", messages->at(1).c_str());
+    if (error && error->message) {
+      printf("Call error: %s", error->message);
+    }
     exit(-1);
 }
 
@@ -727,6 +732,57 @@ int main(int argc, char **argv) {
     } else {
       printf("Authentication succeeded.\n");
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
+                action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, &auth))
+      return -1;
+
+    cryptohome::CheckKeyRequest check_req;
+    // TODO(wad) Add a privileges cl interface
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(check_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return -1;
+
+    std::vector<std::string> messages;
+    messages.push_back("Key authenticated.");
+    messages.push_back("Key authentication failed.");
+
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      DBusGProxyCall* call =
+           org_chromium_CryptohomeInterface_check_key_ex_async(
+               proxy.gproxy(),
+               account_ary.get(),
+               auth_ary.get(),
+               req_ary.get(),
+               &HandleReply,
+               static_cast<gpointer>(&messages));
+      if (!call)
+        return -1;
+      g_main_loop_run(loop);
+      return -1;
+    }
+
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_check_key_ex(proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          req_ary.get(),
+          &out_reply,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("CheckKeyEx call failed: %s", error->message);
+      return -1;
+    }
+    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
+
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY],
                      action.c_str())) {
     std::string user, password, old_password;

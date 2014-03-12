@@ -43,6 +43,11 @@ gboolean cryptohome_async_check_key(Cryptohome* self,
                                     gchar* key,
                                     gint* OUT_async_id,
                                     GError** error);
+gboolean cryptohome_check_key_ex(Cryptohome* self,
+                                 GArray* identifier,
+                                 GArray* authorization,
+                                 GArray* request,
+                                 DBusGMethodInvocation* resp);
 gboolean cryptohome_migrate_key(Cryptohome* self,
                                 gchar* userid,
                                 gchar* from_key,

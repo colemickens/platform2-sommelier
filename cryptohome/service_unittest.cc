@@ -123,6 +123,153 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   EXPECT_TRUE(out);
 }
 
+class CheckKeyExInterfaceTest : public ::testing::Test {
+ public:
+  CheckKeyExInterfaceTest() { }
+  virtual ~CheckKeyExInterfaceTest() { }
+
+  void SetUp() {
+    mount_ = new MockMount();
+    EXPECT_CALL(homedirs_, Init())
+        .WillOnce(Return(true));
+    EXPECT_CALL(homedirs_, FreeDiskSpace())
+        .WillOnce(Return(true));
+
+    service_.set_reply_factory(&reply_factory_);
+    service_.set_homedirs(&homedirs_);
+    service_.set_mount_for_user("chromeos-user", mount_.get());
+    service_.set_install_attrs(&attrs_);
+    service_.set_attestation(&attest_);
+    service_.set_platform(&platform_);
+    service_.set_chaps_client(&chaps_);
+    service_.set_initialize_tpm(false);
+    service_.Initialize();
+  }
+  void TearDown() {
+  }
+
+ protected:
+  MockHomeDirs homedirs_;
+  MockDBusReplyFactory reply_factory_;
+  NiceMock<MockInstallAttributes> attrs_;
+  NiceMock<MockAttestation> attest_;
+  NiceMock<chaps::TokenManagerClientMock> chaps_;
+  NiceMock<MockPlatform> platform_;
+  scoped_refptr<MockMount> mount_;
+  Service service_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CheckKeyExInterfaceTest);
+};
+TEST_F(CheckKeyExInterfaceTest, CheckKeyExMountTest) {
+  static const char kUser[] = "chromeos-user";
+  static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+  scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
+  scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
+  id->set_email(kUser);
+  auth->mutable_key()->set_secret(kKey);
+
+  // event_source_ will delete reply on cleanup.
+  std::string* base_reply_ptr = NULL;
+  MockDBusReply* reply = new MockDBusReply();
+  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
+
+  EXPECT_CALL(*mount_, AreSameUser(_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, AreValid(_))
+       .WillOnce(Return(true));
+  // Run will never be called because we aren't running the event loop.
+  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
+
+  // Expect an empty reply as success.
+  BaseReply expected_reply;
+  std::string expected_reply_str;
+  expected_reply.SerializeToString(&expected_reply_str);
+  ASSERT_TRUE(base_reply_ptr);
+  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
+  delete base_reply_ptr;
+  base_reply_ptr = NULL;
+
+  // Rinse and repeat but fail.
+  EXPECT_CALL(*mount_, AreSameUser(_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, AreValid(_))
+      .WillOnce(Return(false));
+
+  // event_source_ will delete reply on cleanup.
+  reply = new MockDBusReply();
+  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
+
+  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
+
+  // Expect an empty reply as success.
+  expected_reply.Clear();
+  expected_reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+  expected_reply.SerializeToString(&expected_reply_str);
+  ASSERT_TRUE(base_reply_ptr);
+  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
+  delete base_reply_ptr;
+  base_reply_ptr = NULL;
+}
+
+TEST_F(CheckKeyExInterfaceTest, CheckKeyExHomedirsTest) {
+  static const char kUser[] = "chromeos-user";
+  static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+  scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
+  scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
+  // Expect an error about missing email.
+  // |error| will be cleaned up by event_source_
+  MockDBusReply* reply = new MockDBusReply();
+  std::string* base_reply_ptr = NULL;
+  id->set_email(kUser);
+  auth->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*mount_, AreSameUser(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillOnce(Return(true));
+
+  // Run will never be called because we aren't running the event loop.
+  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
+  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
+
+  // Expect an empty reply as success.
+  BaseReply expected_reply;
+  std::string expected_reply_str;
+  expected_reply.SerializeToString(&expected_reply_str);
+  ASSERT_TRUE(base_reply_ptr);
+  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
+  delete base_reply_ptr;
+  base_reply_ptr = NULL;
+
+  // Ensure failure
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillOnce(Return(false));
+
+  // event_source_ will delete reply on cleanup.
+  reply = new MockDBusReply();
+  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
+
+  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
+
+  // Expect an empty reply as success.
+  expected_reply.Clear();
+  expected_reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+  expected_reply.SerializeToString(&expected_reply_str);
+  ASSERT_TRUE(base_reply_ptr);
+  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
+  delete base_reply_ptr;
+  base_reply_ptr = NULL;
+}
+
 TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
@@ -561,10 +708,10 @@ TEST(Standalone, LoadEnrollmentState) {
   EXPECT_FALSE(success);
 }
 
-class MountExTest : public ::testing::Test {
+class ExTest : public ::testing::Test {
  public:
-  MountExTest() { }
-  virtual ~MountExTest() { }
+  ExTest() { }
+  virtual ~ExTest() { }
 
   void SetUp() {
     service_.set_attestation(&attest_);
@@ -581,136 +728,8 @@ class MountExTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
         .WillRepeatedly(Return(false));
-  }
 
-  void TearDown() { }
-
-  template<class ProtoBuf>
-  GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
-    guint len = pb.ByteSize();
-    GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
-    g_array_set_size(ary, len);
-    if (!pb.SerializeToArray(ary->data, len)) {
-      printf("Failed to serialize protocol buffer.\n");
-      return NULL;
-    }
-    return ary;
-  }
-
- protected:
-  NiceMock<MockAttestation> attest_;
-  NiceMock<MockHomeDirs> homedirs_;
-  NiceMock<MockInstallAttributes> attrs_;
-  MockDBusReplyFactory reply_factory_;
-
-  MockPlatform platform_;
-  chaps::TokenManagerClientMock chaps_client_;
-  Service service_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MountExTest);
-};
-
-
-TEST_F(MountExTest, InvalidArgsChecks) {
-  // Fast path through Initialize()
-  EXPECT_CALL(homedirs_, Init())
-    .WillOnce(Return(true));
-  // Skip the CleanUpStaleMounts bit.
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-    .WillRepeatedly(Return(false));
-  ASSERT_TRUE(service_.Initialize());
-
-  scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
-  scoped_ptr<MountRequest> req(new MountRequest);
-  // Expect an error about missing email.
-  GError* call_err = NULL;
-  // |error| will be cleaned up by event_source_
-  MockDBusErrorReply *error = new MockDBusErrorReply();
-  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
-  // Run will never be called because we aren't running the event loop.
-  // For the same reason, DoMountEx is called directly.
-  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
-  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No email supplied", call_err->message);
-  g_error_free(call_err);
-  call_err = NULL;
-
-  error = new MockDBusErrorReply();
-  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
-  id->set_email("foo@gmail.com");
-  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
-  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", call_err->message);
-  g_error_free(call_err);
-  call_err = NULL;
-
-  error = new MockDBusErrorReply();
-  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
-  id->set_email("foo@gmail.com");
-  auth->mutable_key()->set_secret("");
-  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
-  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", call_err->message);
-  g_error_free(call_err);
-  call_err = NULL;
-
-  error = new MockDBusErrorReply();
-  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
-  id->set_email("foo@gmail.com");
-  auth->mutable_key()->set_secret("blerg");
-  req->mutable_create();
-  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
-  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("CreateRequest supplied with no keys", call_err->message);
-  g_error_free(call_err);
-  call_err = NULL;
-
-  error = new MockDBusErrorReply();
-  EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&call_err), Return(error)));
-  id->set_email("foo@gmail.com");
-  auth->mutable_key()->set_secret("blerg");
-  // Empty key
-  // TODO(wad) Add remaining missing field tests and NULL tests
-  req->mutable_create()->add_keys();
-  service_.DoMountEx(id.get(), auth.get(), req.get(), NULL);
-  ASSERT_NE(call_err, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("CreateRequest Keys are not fully specified",
-               call_err->message);
-  g_error_free(call_err);
-  call_err = NULL;
-}
-
-class AddKeyExTest : public ::testing::Test {
- public:
-  AddKeyExTest() { }
-  virtual ~AddKeyExTest() { }
-
-  void SetUp() {
-    // Ensure service is cleanly mocked/faked.
-    service_.set_attestation(&attest_);
-    service_.set_homedirs(&homedirs_);
-    service_.set_install_attrs(&attrs_);
-    service_.set_initialize_tpm(false);
-    service_.set_use_tpm(false);
-    service_.set_platform(&platform_);
-    service_.set_chaps_client(&chaps_client_);
-    service_.set_reply_factory(&reply_factory_);
-    service_.set_crypto(&crypto_);
-    // Empty token list by default.  The effect is that there are no attempts
-    // to unload tokens unless a test explicitly sets up the token list.
-    EXPECT_CALL(chaps_client_, GetTokenList(_, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
-        .WillRepeatedly(Return(false));
     g_error_ = NULL;
-
     // Fast path through Initialize()
     EXPECT_CALL(homedirs_, Init())
       .WillOnce(Return(true));
@@ -727,6 +746,22 @@ class AddKeyExTest : public ::testing::Test {
     }
   }
 
+  void SetupErrorReply() {
+    g_error_ = NULL;
+    // |error| will be cleaned up by event_source_
+    MockDBusErrorReply *error = new MockDBusErrorReply();
+    EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
+      .WillOnce(DoAll(SaveArg<1>(&g_error_), Return(error)));
+  }
+
+  void PrepareArguments() {
+    id_.reset(new AccountIdentifier);
+    auth_.reset(new AuthorizationRequest);
+    add_req_.reset(new AddKeyRequest);
+    check_req_.reset(new CheckKeyRequest);
+    mount_req_.reset(new MountRequest);
+  }
+
   template<class ProtoBuf>
   GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
     guint len = pb.ByteSize();
@@ -739,94 +774,162 @@ class AddKeyExTest : public ::testing::Test {
     return ary;
   }
 
-  void SetupErrorReply() {
-    g_error_ = NULL;
-    // |error| will be cleaned up by event_source_
-    MockDBusErrorReply *error = new MockDBusErrorReply();
-    EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-      .WillOnce(DoAll(SaveArg<1>(&g_error_), Return(error)));
-  }
-
-  void PrepareArguments() {
-    id_.reset(new AccountIdentifier);
-    auth_.reset(new AuthorizationRequest);
-    req_.reset(new AddKeyRequest);
-  }
-
  protected:
   NiceMock<MockAttestation> attest_;
-  NiceMock<MockInstallAttributes> attrs_;
-  NiceMock<MockCrypto> crypto_;
   NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockInstallAttributes> attrs_;
   MockDBusReplyFactory reply_factory_;
 
   scoped_ptr<AccountIdentifier> id_;
   scoped_ptr<AuthorizationRequest> auth_;
-  scoped_ptr<AddKeyRequest> req_;
+  scoped_ptr<AddKeyRequest> add_req_;
+  scoped_ptr<CheckKeyRequest> check_req_;
+  scoped_ptr<MountRequest> mount_req_;
 
   GError* g_error_;
-
   MockPlatform platform_;
   chaps::TokenManagerClientMock chaps_client_;
   Service service_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(AddKeyExTest);
+  DISALLOW_COPY_AND_ASSIGN(ExTest);
 };
 
-
-TEST_F(AddKeyExTest, InvalidArgsNoEmail) {
+TEST_F(ExTest, MountInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
-  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  // TODO(wad) Look at using the ServiceSubclass.
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
-TEST_F(AddKeyExTest, InvalidArgsNoSecret) {
+TEST_F(ExTest, MountInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
-  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(AddKeyExTest, InvalidArgsNoNewKeySet) {
+TEST_F(ExTest, MountInvalidArgsEmptySecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("");
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(ExTest, MountInvalidArgsCreateWithNoKey) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
-  req_->clear_key();
-  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  mount_req_->mutable_create();
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("CreateRequest supplied with no keys", g_error_->message);
+}
+
+TEST_F(ExTest, MountInvalidArgsCreateWithEmptyKey) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  mount_req_->mutable_create()->add_keys();
+  // TODO(wad) Add remaining missing field tests and NULL tests
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("CreateRequest Keys are not fully specified",
+               g_error_->message);
+}
+
+TEST_F(ExTest, AddKeyInvalidArgsNoEmail) {
+  SetupErrorReply();
+  PrepareArguments();
+  // Run will never be called because we aren't running the event loop.
+  // For the same reason, DoMountEx is called directly.
+  service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", g_error_->message);
+}
+
+TEST_F(ExTest, AddKeyInvalidArgsNoSecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(ExTest, AddKeyInvalidArgsNoNewKeySet) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  add_req_->clear_key();
+  service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No new key supplied", g_error_->message);
 }
 
-TEST_F(AddKeyExTest, InvalidArgsNoKeyFilled) {
+TEST_F(ExTest, AddKeyInvalidArgsNoKeyFilled) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
-  req_->mutable_key();
-  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  add_req_->mutable_key();
+  service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No new key supplied", g_error_->message);
 }
 
-TEST_F(AddKeyExTest, InvalidArgsNoNewKeyLabel) {
+TEST_F(ExTest, AddKeyInvalidArgsNoNewKeyLabel) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
-  req_->mutable_key();
+  add_req_->mutable_key();
   // No label
-  req_->mutable_key()->set_secret("some secret");
-  service_.DoAddKeyEx(id_.get(), auth_.get(), req_.get(), NULL);
+  add_req_->mutable_key()->set_secret("some secret");
+  service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No new key label supplied", g_error_->message);
+}
+
+TEST_F(ExTest, CheckKeyInvalidArgsNoEmail) {
+  SetupErrorReply();
+  PrepareArguments();
+  // Run will never be called because we aren't running the event loop.
+  // For the same reason, DoMountEx is called directly.
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", g_error_->message);
+}
+
+TEST_F(ExTest, CheckKeyInvalidArgsNoSecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(ExTest, CheckKeyInvalidArgsEmptySecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("");
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
 }  // namespace cryptohome

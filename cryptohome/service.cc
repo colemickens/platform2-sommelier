@@ -820,6 +820,79 @@ gboolean Service::AsyncCheckKey(gchar *userid,
   return TRUE;
 }
 
+void Service::DoCheckKeyEx(AccountIdentifier* identifier,
+                           AuthorizationRequest* authorization,
+                           CheckKeyRequest* check_key_request,
+                           DBusGMethodInvocation* context) {
+  if (!identifier || !authorization || !check_key_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+
+  // An AuthorizationRequest key without a label will test against
+  // all VaultKeysets of a compatible key().data().type().
+  if (authorization->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+
+  UsernamePasskey credentials(identifier->email().c_str(),
+                            SecureBlob(authorization->key().secret().c_str(),
+                                       authorization->key().secret().length()));
+  credentials.set_key_data(authorization->key().data());
+
+  BaseReply reply;
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
+    if (it->second->AreSameUser(credentials)) {
+      if (!it->second->AreValid(credentials)) {
+        // Technically, this is authentication, not authorization.
+        reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+      }
+      SendReply(context, reply);
+      return;
+    }
+  }
+
+  if (!homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+  } else if (!homedirs_->AreCredentialsValid(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::CheckKeyEx(GArray* account_id,
+                             GArray* authorization_request,
+                             GArray* check_key_request,
+                             DBusGMethodInvocation *context) {
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<CheckKeyRequest> request(new CheckKeyRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  if (!request->ParseFromArray(check_key_request->data, check_key_request->len))
+    request.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoCheckKeyEx, base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 gboolean Service::MigrateKey(gchar *userid,
                              gchar *from_key,
                              gchar *to_key,
