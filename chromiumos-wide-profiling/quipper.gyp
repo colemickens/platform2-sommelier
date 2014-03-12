@@ -24,10 +24,12 @@
         'perf_serializer.cc',
         'utils.cc',
       ],
-      'hard_dependency': 1,
       'dependencies': [
         'perf_data_proto',
-      ]
+      ],
+      'export_dependent_settings': [
+        'perf_data_proto',
+      ],
     },
     {
       'target_name': 'conversion_utils',
@@ -35,10 +37,9 @@
       'sources': [
         'conversion_utils.cc',
       ],
-      'hard_dependency': 1,
       'dependencies': [
         'common',
-      ]
+      ],
     },
     {
       'target_name': 'common_test',
@@ -46,6 +47,12 @@
       'sources': [
         'test_utils.cc',
         'test_utils_defs.cc',
+      ],
+      'dependencies': [
+        'common',
+      ],
+      'export_dependent_settings': [
+        'common',
       ],
     },
     {
