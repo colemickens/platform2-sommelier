@@ -1100,10 +1100,6 @@ cmd_tpcontrol() (
   /opt/google/touchpad/tpcontrol "$@"
 )
 
-cmd_try_touch_experiment() (
-  /usr/sbin/try_touch_experiment "$@"
-)
-
 cmd_rlz() (
   local flag_file="$HOME/.rlz_disabled"
   local enabled=1
