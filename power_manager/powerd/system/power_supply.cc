@@ -37,7 +37,8 @@ const int kDefaultShortPollMs = 5000;
 
 // Default values for |battery_stabilized_after_*_delay_|, in milliseconds.
 const int kDefaultBatteryStabilizedAfterStartupDelayMs = 5000;
-const int kDefaultBatteryStabilizedAfterPowerSourceChangeDelayMs = 5000;
+const int kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs = 5000;
+const int kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs = 5000;
 const int kDefaultBatteryStabilizedAfterResumeDelayMs = 5000;
 
 // Different power supply types reported by the kernel.
@@ -153,7 +154,6 @@ PowerSupply::~PowerSupply() {
     udev_->RemoveObserver(kUdevSubsystem, this);
 }
 
-
 void PowerSupply::Init(const base::FilePath& power_supply_path,
                        PrefsInterface* prefs,
                        UdevInterface* udev) {
@@ -164,29 +164,22 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   power_supply_path_ = power_supply_path;
   GetPowerSupplyPaths();
 
-  int64 poll_ms = kDefaultPollMs;
-  prefs_->GetInt64(kBatteryPollIntervalPref, &poll_ms);
-  poll_delay_ = base::TimeDelta::FromMilliseconds(poll_ms);
+  poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
+  short_poll_delay_ = GetMsPref(
+      kBatteryPollShortIntervalPref, kDefaultShortPollMs);
 
-  int64 short_poll_ms = kDefaultShortPollMs;
-  prefs_->GetInt64(kBatteryPollShortIntervalPref, &short_poll_ms);
-  short_poll_delay_ = base::TimeDelta::FromMilliseconds(short_poll_ms);
-
-  int64 startup_ms = kDefaultBatteryStabilizedAfterStartupDelayMs;
-  prefs_->GetInt64(kBatteryStabilizedAfterStartupMsPref, &startup_ms);
-  battery_stabilized_after_startup_delay_ =
-      base::TimeDelta::FromMilliseconds(startup_ms);
-
-  int64 source_ms = kDefaultBatteryStabilizedAfterPowerSourceChangeDelayMs;
-  prefs_->GetInt64(kBatteryStabilizedAfterPowerSourceChangeMsPref,
-                   &source_ms);
-  battery_stabilized_after_power_source_change_delay_ =
-      base::TimeDelta::FromMilliseconds(source_ms);
-
-  int64 resume_ms = kDefaultBatteryStabilizedAfterResumeDelayMs;
-  prefs_->GetInt64(kBatteryStabilizedAfterResumeMsPref, &resume_ms);
-  battery_stabilized_after_resume_delay_ =
-      base::TimeDelta::FromMilliseconds(resume_ms);
+  battery_stabilized_after_startup_delay_ = GetMsPref(
+      kBatteryStabilizedAfterStartupMsPref,
+      kDefaultBatteryStabilizedAfterStartupDelayMs);
+  battery_stabilized_after_line_power_connected_delay_ = GetMsPref(
+      kBatteryStabilizedAfterLinePowerConnectedMsPref,
+      kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs);
+  battery_stabilized_after_line_power_disconnected_delay_ = GetMsPref(
+      kBatteryStabilizedAfterLinePowerDisconnectedMsPref,
+      kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs);
+  battery_stabilized_after_resume_delay_ = GetMsPref(
+      kBatteryStabilizedAfterResumeMsPref,
+      kDefaultBatteryStabilizedAfterResumeDelayMs);
 
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
@@ -260,6 +253,12 @@ void PowerSupply::OnUdevEvent(const std::string& subsystem,
   VLOG(1) << "Heard about udev event";
   if (!is_suspended_)
     RefreshImmediately();
+}
+
+base::TimeDelta PowerSupply::GetMsPref(const std::string& pref_name,
+                                       int64 default_duration_ms) const {
+  prefs_->GetInt64(pref_name, &default_duration_ms);
+  return base::TimeDelta::FromMilliseconds(default_duration_ms);
 }
 
 void PowerSupply::ResetBatterySamples(base::TimeDelta stabilized_delay) {
@@ -460,8 +459,11 @@ bool PowerSupply::UpdatePowerStatus() {
   }
 
   if (power_status_initialized_ &&
-      status.line_power_on != power_status_.line_power_on)
-    ResetBatterySamples(battery_stabilized_after_power_source_change_delay_);
+      status.line_power_on != power_status_.line_power_on) {
+    ResetBatterySamples(status.line_power_on ?
+        battery_stabilized_after_line_power_connected_delay_ :
+        battery_stabilized_after_line_power_disconnected_delay_);
+  }
 
   base::TimeTicks now = clock_->GetCurrentTime();
   if (now >= battery_stabilized_timestamp_) {

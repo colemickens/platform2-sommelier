@@ -48,8 +48,10 @@ const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
 const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
 const char kBatteryStabilizedAfterStartupMsPref[] =
     "battery_stabilized_after_startup_ms";
-const char kBatteryStabilizedAfterPowerSourceChangeMsPref[] =
-    "battery_stabilized_after_power_source_change_ms";
+const char kBatteryStabilizedAfterLinePowerConnectedMsPref[] =
+    "battery_stabilized_after_line_power_connected_ms";
+const char kBatteryStabilizedAfterLinePowerDisconnectedMsPref[] =
+    "battery_stabilized_after_line_power_disconnected_ms";
 const char kBatteryStabilizedAfterResumeMsPref[] =
     "battery_stabilized_after_resume_ms";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";

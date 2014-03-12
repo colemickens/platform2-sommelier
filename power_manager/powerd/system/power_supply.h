@@ -230,7 +230,11 @@ class PowerSupply : public UdevObserver {
                            UdevObserver::Action action) OVERRIDE;
 
  private:
-  friend class PowerSupplyTest;
+  // Returns the value of |pref_name|, an int64 pref containing a
+  // millisecond-based duration. |default_duration_ms| is returned if the pref
+  // is unset.
+  base::TimeDelta GetMsPref(const std::string& pref_name,
+                            int64 default_duration_ms) const;
 
   // Clears |current_samples_| and |charge_samples_| and sets
   // |battery_stabilized_timestamp_| so that the current and charge won't be
@@ -308,7 +312,8 @@ class PowerSupply : public UdevObserver {
   // resume event before assuming that the current can be used in battery
   // time estimates and the charge is accurate.
   base::TimeDelta battery_stabilized_after_startup_delay_;
-  base::TimeDelta battery_stabilized_after_power_source_change_delay_;
+  base::TimeDelta battery_stabilized_after_line_power_connected_delay_;
+  base::TimeDelta battery_stabilized_after_line_power_disconnected_delay_;
   base::TimeDelta battery_stabilized_after_resume_delay_;
 
   // Time at which the reported current and charge are expected to have

@@ -360,7 +360,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
   const base::TimeDelta kPollDelay = base::TimeDelta::FromSeconds(30);
   const base::TimeDelta kShortPollDelay = base::TimeDelta::FromSeconds(5);
   const base::TimeDelta kStartupDelay = base::TimeDelta::FromSeconds(6);
-  const base::TimeDelta kPowerSourceDelay = base::TimeDelta::FromSeconds(7);
+  const base::TimeDelta kACDelay = base::TimeDelta::FromSeconds(7);
+  const base::TimeDelta kBatteryDelay = base::TimeDelta::FromSeconds(8);
   const base::TimeDelta kResumeDelay = base::TimeDelta::FromSeconds(10);
   const base::TimeDelta kSlack = base::TimeDelta::FromMilliseconds(
       PowerSupply::kBatteryStabilizedSlackMs);
@@ -370,8 +371,10 @@ TEST_F(PowerSupplyTest, PollDelays) {
                   kShortPollDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref,
                   kStartupDelay.InMilliseconds());
-  prefs_.SetInt64(kBatteryStabilizedAfterPowerSourceChangeMsPref,
-                  kPowerSourceDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryStabilizedAfterLinePowerConnectedMsPref,
+                  kACDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryStabilizedAfterLinePowerDisconnectedMsPref,
+                  kBatteryDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterResumeMsPref,
                   kResumeDelay.InMilliseconds());
 
@@ -428,15 +431,33 @@ TEST_F(PowerSupplyTest, PollDelays) {
   status = power_supply_->power_status();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
-  EXPECT_EQ((kPowerSourceDelay + kSlack).InMilliseconds(),
+  EXPECT_EQ((kACDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
   // After the delay, estimates should be made again.
-  current_time += kPowerSourceDelay + kSlack;
+  current_time += kACDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->power_status();
   EXPECT_TRUE(status.line_power_on);
+  EXPECT_FALSE(status.is_calculating_battery_time);
+
+  // Now test the delay when going back to battery power.
+  WriteValue("ac/online", kOffline);
+  power_supply_->OnUdevEvent(
+      PowerSupply::kUdevSubsystem, "AC", UdevObserver::ACTION_CHANGE);
+  status = power_supply_->power_status();
+  EXPECT_FALSE(status.line_power_on);
+  EXPECT_TRUE(status.is_calculating_battery_time);
+  EXPECT_EQ((kBatteryDelay + kSlack).InMilliseconds(),
+            test_api_->current_poll_delay().InMilliseconds());
+
+  // After the delay, estimates should be made again.
+  current_time += kBatteryDelay + kSlack;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->power_status();
+  EXPECT_FALSE(status.line_power_on);
   EXPECT_FALSE(status.is_calculating_battery_time);
 }
 
