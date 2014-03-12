@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/basictypes.h"
+#include <base/basictypes.h>
 
 namespace power_manager {
 

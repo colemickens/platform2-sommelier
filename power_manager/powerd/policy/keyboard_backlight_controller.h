@@ -7,11 +7,12 @@
 
 #include <vector>
 
-#include "base/compiler_specific.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/observer_list.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/compiler_specific.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/observer_list.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
+
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"

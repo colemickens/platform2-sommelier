@@ -4,11 +4,11 @@
 
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 
-#include <gtest/gtest.h>
-
 #include <string>
 
-#include "base/memory/scoped_ptr.h"
+#include <base/memory/scoped_ptr.h>
+#include <gtest/gtest.h>
+
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"

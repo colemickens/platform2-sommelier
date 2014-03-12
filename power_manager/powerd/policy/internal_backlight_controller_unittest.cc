@@ -4,11 +4,11 @@
 
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"

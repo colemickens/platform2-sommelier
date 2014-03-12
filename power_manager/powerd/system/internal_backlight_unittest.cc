@@ -2,16 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/format_macros.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "base/file_util.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/format_macros.h"
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 

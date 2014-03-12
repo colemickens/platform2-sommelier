@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/scoped_temp_dir.h>
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
-#include "base/file_util.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/strings/string_number_conversions.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/test_main_loop_runner.h"

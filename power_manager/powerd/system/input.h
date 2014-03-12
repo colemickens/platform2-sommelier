@@ -9,13 +9,14 @@
 #include <string>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/callback.h"
-#include "base/files/file_path.h"
-#include "base/memory/linked_ptr.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/message_loop/message_loop.h"
-#include "base/observer_list.h"
+#include <base/basictypes.h>
+#include <base/callback.h>
+#include <base/files/file_path.h>
+#include <base/memory/linked_ptr.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/message_loop/message_loop.h>
+#include <base/observer_list.h>
+
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_interface.h"
 #include "power_manager/powerd/system/udev_observer.h"

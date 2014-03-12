@@ -4,14 +4,14 @@
 
 #include "power_manager/common/dbus_sender.h"
 
-#include <google/protobuf/message_lite.h>
 #include <unistd.h>
 
 #include <climits>
 
-#include "base/logging.h"
-#include "dbus/exported_object.h"
-#include "dbus/message.h"
+#include <base/logging.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
+#include <google/protobuf/message_lite.h>
 
 namespace power_manager {
 

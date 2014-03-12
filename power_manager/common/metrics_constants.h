@@ -4,9 +4,8 @@
 
 #ifndef POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 #define POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
-#pragma once
 
-#include <time.h>
+#include <ctime>
 
 namespace power_manager {
 

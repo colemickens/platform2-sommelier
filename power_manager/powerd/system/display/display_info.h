@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_INFO_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_INFO_H_
 
-#include "base/files/file_path.h"
+#include <base/files/file_path.h>
 
 namespace power_manager {
 namespace system {

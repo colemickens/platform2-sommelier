@@ -8,8 +8,9 @@
 #include <map>
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+
 #include "power_manager/common/prefs.h"
 
 namespace power_manager {

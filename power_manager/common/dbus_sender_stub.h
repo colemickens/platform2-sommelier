@@ -5,9 +5,9 @@
 #ifndef POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
 #define POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
 
+#include <base/memory/scoped_vector.h>
 #include <google/protobuf/message_lite.h>
 
-#include "base/memory/scoped_vector.h"
 #include "power_manager/common/dbus_sender.h"
 
 namespace power_manager {

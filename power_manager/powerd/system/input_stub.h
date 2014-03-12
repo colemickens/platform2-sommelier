@@ -5,7 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_INPUT_STUB_H_
 
-#include "base/observer_list.h"
+#include <base/observer_list.h>
+
 #include "power_manager/powerd/system/input_interface.h"
 
 namespace power_manager {

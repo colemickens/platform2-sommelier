@@ -7,10 +7,11 @@
 
 #include <map>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/memory/linked_ptr.h"
-#include "base/observer_list.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/memory/linked_ptr.h>
+#include <base/observer_list.h>
+
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
 

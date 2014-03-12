@@ -5,9 +5,9 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_
 
-#include "base/basictypes.h"
-#include "base/logging.h"
-#include "base/time/time.h"
+#include <base/basictypes.h>
+#include <base/logging.h>
+#include <base/time/time.h>
 
 namespace power_manager {
 namespace system {

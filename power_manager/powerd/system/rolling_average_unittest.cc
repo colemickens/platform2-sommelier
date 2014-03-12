@@ -4,9 +4,8 @@
 
 #include "power_manager/powerd/system/rolling_average.h"
 
+#include <base/basictypes.h>
 #include <gtest/gtest.h>
-
-#include "base/basictypes.h"
 
 namespace power_manager {
 namespace system {

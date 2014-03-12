@@ -4,7 +4,7 @@
 
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 
-#include "base/logging.h"
+#include <base/logging.h>
 
 namespace power_manager {
 namespace system {

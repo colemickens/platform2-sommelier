@@ -8,11 +8,12 @@
 #include <string>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/files/file_path.h"
-#include "base/memory/scoped_vector.h"
-#include "base/observer_list.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/files/file_path.h>
+#include <base/memory/scoped_vector.h>
+#include <base/observer_list.h>
+#include <base/timer/timer.h>
+
 #include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager {

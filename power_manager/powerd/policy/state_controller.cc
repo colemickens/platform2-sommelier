@@ -6,11 +6,12 @@
 
 #include <cmath>
 
-#include "base/bind.h"
-#include "base/callback.h"
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/stringprintf.h"
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
+
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"

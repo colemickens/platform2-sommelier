@@ -4,8 +4,8 @@
 
 #include "power_manager/common/metrics_sender.h"
 
-#include "base/logging.h"
-#include "metrics/metrics_library.h"
+#include <base/logging.h>
+#include <metrics/metrics_library.h>
 
 namespace power_manager {
 

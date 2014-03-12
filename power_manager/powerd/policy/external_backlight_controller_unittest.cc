@@ -4,9 +4,9 @@
 
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 
+#include <base/compiler_specific.h>
 #include <gtest/gtest.h>
 
-#include "base/compiler_specific.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"

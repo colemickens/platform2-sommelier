@@ -5,19 +5,20 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 
 #include <fcntl.h>
-#include <errno.h>
 
+#include <cerrno>
 #include <string>
 
-#include "base/bind.h"
-#include "base/file_util.h"
-#include "base/files/file_enumerator.h"
-#include "base/files/file_path.h"
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "chromeos/dbus/service_constants.h"
+#include <base/bind.h>
+#include <base/file_util.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"

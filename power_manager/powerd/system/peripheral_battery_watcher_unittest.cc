@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/file_util.h"
-#include "base/files/file_path.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/strings/string_number_conversions.h"
-#include "chromeos/dbus/service_constants.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/strings/string_number_conversions.h>
+#include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest.h>
+
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"

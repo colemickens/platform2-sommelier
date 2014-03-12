@@ -4,15 +4,15 @@
 
 #include "power_manager/powerd/policy/suspender.h"
 
+#include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/compiler_specific.h>
+#include <base/logging.h>
+#include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "base/basictypes.h"
-#include "base/bind.h"
-#include "base/callback.h"
-#include "base/compiler_specific.h"
-#include "base/logging.h"
-#include "base/strings/stringprintf.h"
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"

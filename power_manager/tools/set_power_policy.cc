@@ -7,15 +7,15 @@
 // fact, it will overwrite any policy set by Chrome.  To revert to powerd's
 // default policy, run it without any arguments.
 
+#include <base/at_exit.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 #include <gflags/gflags.h>
 
-#include "base/at_exit.h"
-#include "base/logging.h"
-#include "base/message_loop/message_loop.h"
-#include "chromeos/dbus/service_constants.h"
-#include "dbus/bus.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 // These mirror the fields from the PowerManagementPolicy protocol buffer.

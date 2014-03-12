@@ -9,11 +9,12 @@
 #include <cstdio>
 #include <vector>
 
-#include "base/at_exit.h"
-#include "base/files/file_path.h"
-#include "base/format_macros.h"
-#include "base/logging.h"
-#include "base/message_loop/message_loop.h"
+#include <base/at_exit.h>
+#include <base/files/file_path.h>
+#include <base/format_macros.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"

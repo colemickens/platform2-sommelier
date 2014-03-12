@@ -4,12 +4,14 @@
 
 #include "power_manager/powerd/system/async_file_reader.h"
 
-#include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <sys/stat.h>
 
-#include "base/logging.h"
+#include <cerrno>
+#include <cstdio>
+
+#include <base/logging.h>
+
 #include "power_manager/common/util.h"
 
 namespace power_manager {

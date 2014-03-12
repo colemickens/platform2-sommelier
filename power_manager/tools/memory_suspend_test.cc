@@ -15,10 +15,10 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "base/basictypes.h"
-#include "base/format_macros.h"
-#include "base/logging.h"
-#include "base/strings/stringprintf.h"
+#include <base/basictypes.h>
+#include <base/format_macros.h>
+#include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
 

@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gflags/gflags.h>
-
 #include <string>
 
-#include "base/at_exit.h"
-#include "base/command_line.h"
-#include "base/file_util.h"
-#include "base/files/file_path.h"
-#include "base/logging.h"
-#include "base/message_loop/message_loop.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
+#include <base/at_exit.h>
+#include <base/command_line.h>
+#include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <gflags/gflags.h>
+
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/daemon.h"

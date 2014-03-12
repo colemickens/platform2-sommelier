@@ -4,8 +4,9 @@
 
 #include "power_manager/powerd/system/audio_client.h"
 
-#include "chromeos/dbus/service_constants.h"
-#include "dbus/message.h"
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
+
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/audio_observer.h"
 

@@ -8,18 +8,18 @@
 // This tool will block and only exit after it has received a D-Bus
 // resume signal from powerd.
 
-#include <gflags/gflags.h>
 #include <unistd.h>
 
-#include "base/at_exit.h"
-#include "base/bind.h"
-#include "base/logging.h"
-#include "base/message_loop/message_loop.h"
-#include "base/time/time.h"
-#include "chromeos/dbus/service_constants.h"
-#include "dbus/bus.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
+#include <base/at_exit.h>
+#include <base/bind.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <gflags/gflags.h>
 
 DEFINE_int32(delay, 1, "Delay before suspending in seconds. Useful if running "
              "interactively to ensure that typing this command isn't "

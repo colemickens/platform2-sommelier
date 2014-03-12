@@ -4,18 +4,18 @@
 
 #include "power_manager/powerd/metrics_collector.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <cmath>
 #include <set>
 #include <string>
 
-#include "base/format_macros.h"
-#include "base/logging.h"
-#include "base/timer/timer.h"
-#include "chromeos/dbus/service_constants.h"
-#include "metrics/metrics_library_mock.h"
+#include <base/format_macros.h>
+#include <base/logging.h>
+#include <base/timer/timer.h>
+#include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
+
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"

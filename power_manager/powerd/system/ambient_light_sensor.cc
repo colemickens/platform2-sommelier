@@ -5,20 +5,21 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
 #include <fcntl.h>
-#include <errno.h>
-#include <string.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
+#include <cstring>
 
-#include "base/bind.h"
-#include "base/logging.h"
-#include "base/file_util.h"
-#include "base/files/file_enumerator.h"
-#include "base/files/file_path.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
+#include <base/bind.h>
+#include <base/logging.h>
+#include <base/file_util.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+
 #include "power_manager/common/util.h"
 
 namespace power_manager {

@@ -5,12 +5,13 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 #define POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 
-#include "base/compiler_specific.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
-#include "dbus/exported_object.h"
-#include "dbus/message.h"
+#include <base/compiler_specific.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
+
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 

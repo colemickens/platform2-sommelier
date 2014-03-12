@@ -4,20 +4,21 @@
 
 #include "power_manager/common/util.h"
 
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/file_util.h"
-#include "base/files/file_path.h"
-#include "base/format_macros.h"
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
+#include <base/basictypes.h>
+#include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <base/format_macros.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+
 #include "power_manager/common/power_constants.h"
 
 namespace power_manager {

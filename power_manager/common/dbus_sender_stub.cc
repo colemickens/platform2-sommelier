@@ -4,8 +4,8 @@
 
 #include "power_manager/common/dbus_sender_stub.h"
 
-#include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 
 namespace power_manager {
 

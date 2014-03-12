@@ -7,13 +7,14 @@
 
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/cancelable_callback.h"
-#include "base/files/file_path.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/observer_list.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/cancelable_callback.h>
+#include <base/files/file_path.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/observer_list.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
+
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
 #include "power_manager/powerd/system/udev_observer.h"

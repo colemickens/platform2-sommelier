@@ -4,20 +4,20 @@
 
 #ifndef POWER_MANAGER_POWERD_DAEMON_H_
 #define POWER_MANAGER_POWERD_DAEMON_H_
-#pragma once
 
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/files/file_path.h"
-#include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time/time.h"
-#include "dbus/bus.h"
-#include "dbus/exported_object.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <dbus/bus.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"

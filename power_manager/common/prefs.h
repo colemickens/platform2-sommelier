@@ -9,13 +9,13 @@
 #include <string>
 #include <vector>
 
-#include "base/compiler_specific.h"
-#include "base/files/file_path.h"
-#include "base/files/file_path_watcher.h"
-#include "base/memory/linked_ptr.h"
-#include "base/observer_list.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/compiler_specific.h>
+#include <base/files/file_path.h>
+#include <base/files/file_path_watcher.h>
+#include <base/memory/linked_ptr.h>
+#include <base/observer_list.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
 
 namespace power_manager {
 

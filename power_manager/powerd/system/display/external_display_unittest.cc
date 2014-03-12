@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
@@ -10,8 +9,10 @@
 #include <string>
 #include <utility>
 
-#include "base/compiler_specific.h"
-#include "base/strings/string_number_conversions.h"
+#include <base/compiler_specific.h>
+#include <base/strings/string_number_conversions.h>
+#include <gtest/gtest.h>
+
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender_stub.h"
 #include "power_manager/powerd/system/display/external_display.h"

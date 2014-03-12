@@ -4,16 +4,16 @@
 
 #include "power_manager/powerd/system/power_supply.h"
 
-#include <gtest/gtest.h>
-
 #include <cmath>
 #include <map>
 #include <string>
 
-#include "base/file_util.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/strings/string_number_conversions.h"
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/strings/string_number_conversions.h>
+#include <gtest/gtest.h>
+
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"

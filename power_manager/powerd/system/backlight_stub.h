@@ -5,9 +5,10 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_STUB_H_
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/time/time.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/time/time.h>
+
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {

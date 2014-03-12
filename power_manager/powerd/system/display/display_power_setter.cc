@@ -4,11 +4,12 @@
 
 #include "power_manager/powerd/system/display/display_power_setter.h"
 
-#include "base/bind.h"
-#include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
+#include <base/bind.h>
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+
 #include "power_manager/common/util.h"
 
 namespace power_manager {

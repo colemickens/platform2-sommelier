@@ -4,16 +4,15 @@
 
 #ifndef POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_CONTROLLER_H_
-#pragma once
 
 #include <map>
 #include <set>
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/observer_list.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/observer_list.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
 
 namespace power_manager {
 

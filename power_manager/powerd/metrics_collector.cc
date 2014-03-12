@@ -7,7 +7,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "base/logging.h"
+#include <base/logging.h>
+
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"

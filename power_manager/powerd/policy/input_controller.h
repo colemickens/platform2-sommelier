@@ -4,14 +4,14 @@
 
 #ifndef POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
-#pragma once
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/files/file_path.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/files/file_path.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
+
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_observer.h"
 

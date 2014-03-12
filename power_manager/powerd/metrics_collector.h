@@ -4,16 +4,15 @@
 
 #ifndef POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
 #define POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
-#pragma once
-
-#include <gtest/gtest_prod.h>
 
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/timer/timer.h>
+#include <base/time/time.h>
+#include <gtest/gtest_prod.h>
+
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/power_supply.h"

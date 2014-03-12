@@ -9,8 +9,9 @@
 #include <string>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/files/file_path.h"
+#include <base/basictypes.h>
+#include <base/files/file_path.h>
+
 #include "power_manager/powerd/system/power_supply.h"
 
 namespace power_manager {

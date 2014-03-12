@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/at_exit.h>
+#include <base/bind.h>
+#include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 #include <gflags/gflags.h>
 
-#include "base/at_exit.h"
-#include "base/bind.h"
-#include "base/logging.h"
-#include "base/memory/ref_counted.h"
-#include "base/message_loop/message_loop.h"
-#include "base/time/time.h"
-#include "chromeos/dbus/service_constants.h"
-#include "dbus/bus.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 DEFINE_int32(delay_ms, 5000,

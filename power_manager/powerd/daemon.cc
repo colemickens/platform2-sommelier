@@ -7,15 +7,16 @@
 #include <algorithm>
 #include <cmath>
 
-#include "base/bind.h"
-#include "base/file_util.h"
-#include "base/format_macros.h"
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "chromeos/dbus/service_constants.h"
-#include "metrics/metrics_library.h"
+#include <base/bind.h>
+#include <base/file_util.h>
+#include <base/format_macros.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+#include <metrics/metrics_library.h>
+
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"

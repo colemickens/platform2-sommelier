@@ -4,10 +4,10 @@
 
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
 #include <gtest/gtest.h>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"

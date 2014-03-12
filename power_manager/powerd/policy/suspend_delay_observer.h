@@ -4,7 +4,6 @@
 
 #ifndef POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_OBSERVER_H_
 #define POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_OBSERVER_H_
-#pragma once
 
 namespace power_manager {
 namespace policy {

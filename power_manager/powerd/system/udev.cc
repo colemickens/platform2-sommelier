@@ -8,7 +8,8 @@
 
 #include <utility>
 
-#include "base/logging.h"
+#include <base/logging.h>
+
 #include "power_manager/powerd/system/udev_observer.h"
 
 namespace power_manager {

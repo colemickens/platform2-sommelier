@@ -8,11 +8,12 @@
 #include <list>
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/files/file_path.h"
-#include "base/observer_list.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/files/file_path.h>
+#include <base/observer_list.h>
+#include <base/timer/timer.h>
+
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 #include "power_manager/powerd/system/async_file_reader.h"

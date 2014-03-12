@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-#include "base/logging.h"
+#include <base/logging.h>
 
 namespace power_manager {
 namespace system {

@@ -4,8 +4,8 @@
 
 #include "power_manager/common/metrics_sender_stub.h"
 
-#include "base/logging.h"
-#include "base/strings/stringprintf.h"
+#include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 namespace power_manager {
 

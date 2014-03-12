@@ -5,12 +5,13 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/observer_list.h"
-#include "base/time/time.h"
-#include "chromeos/dbus/service_constants.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/observer_list.h>
+#include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
+
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 

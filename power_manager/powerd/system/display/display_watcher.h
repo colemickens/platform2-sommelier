@@ -7,10 +7,11 @@
 
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
-#include "base/files/file_path.h"
-#include "base/observer_list.h"
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+#include <base/files/file_path.h>
+#include <base/observer_list.h>
+
 #include "power_manager/powerd/system/display/display_info.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
 #include "power_manager/powerd/system/udev_observer.h"

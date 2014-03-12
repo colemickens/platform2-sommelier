@@ -6,10 +6,11 @@
 
 #include <algorithm>
 
-#include "base/files/file_enumerator.h"
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "base/strings/string_util.h"
+#include <base/files/file_enumerator.h>
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/strings/string_util.h>
+
 #include "power_manager/powerd/system/udev.h"
 
 namespace power_manager {

@@ -5,9 +5,9 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_STUB_H_
 
-#include "power_manager/powerd/system/ambient_light_sensor.h"
+#include <base/observer_list.h>
 
-#include "base/observer_list.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 
 namespace power_manager {
 namespace system {

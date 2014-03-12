@@ -15,8 +15,9 @@
 #include <cstring>
 #include <vector>
 
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"

@@ -5,10 +5,10 @@
 #include <string>
 #include <vector>
 
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "base/file_util.h"
-#include "base/files/scoped_temp_dir.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/powerd/system/udev_stub.h"

@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gflags/gflags.h>
-#include <stdio.h>
+#include <cstdio>
 
-#include "base/at_exit.h"
-#include "base/logging.h"
-#include "base/message_loop/message_loop.h"
-#include "chromeos/dbus/service_constants.h"
-#include "dbus/bus.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
+#include <base/at_exit.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <gflags/gflags.h>
 
 DEFINE_bool(set, false, "Set the brightness to --percent");
 DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");

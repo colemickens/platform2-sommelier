@@ -4,13 +4,13 @@
 
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 
+#include <base/basictypes.h>
+#include <base/time/time.h>
+#include <base/compiler_specific.h>
+#include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "base/basictypes.h"
-#include "base/time/time.h"
-#include "base/compiler_specific.h"
-#include "base/memory/scoped_ptr.h"
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"

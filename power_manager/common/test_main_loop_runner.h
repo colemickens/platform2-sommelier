@@ -5,10 +5,10 @@
 #ifndef POWER_MANAGER_COMMON_TEST_MAIN_LOOP_RUNNER_H_
 #define POWER_MANAGER_COMMON_TEST_MAIN_LOOP_RUNNER_H_
 
-#include "base/basictypes.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
 
 namespace base {
 class RunLoop;

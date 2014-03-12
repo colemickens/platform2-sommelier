@@ -4,11 +4,11 @@
 
 #include "power_manager/powerd/policy/input_controller.h"
 
+#include <base/format_macros.h>
+#include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "base/format_macros.h"
-#include "base/strings/stringprintf.h"
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/dbus_sender_stub.h"

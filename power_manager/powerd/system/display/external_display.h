@@ -8,13 +8,14 @@
 #include <queue>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/callback.h"
-#include "base/compiler_specific.h"
-#include "base/files/file_path.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
+#include <base/basictypes.h>
+#include <base/callback.h>
+#include <base/compiler_specific.h>
+#include <base/files/file_path.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
+#include <base/timer/timer.h>
+
 #include "power_manager/common/clock.h"
 
 struct i2c_rdwr_ioctl_data;

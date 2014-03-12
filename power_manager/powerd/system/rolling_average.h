@@ -4,12 +4,11 @@
 
 #ifndef POWER_MANAGER_POWERD_SYSTEM_ROLLING_AVERAGE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_ROLLING_AVERAGE_H_
-#pragma once
-
-#include "base/basictypes.h"
-#include "base/time/time.h"
 
 #include <queue>
+
+#include <base/basictypes.h>
+#include <base/time/time.h>
 
 namespace power_manager {
 namespace system {

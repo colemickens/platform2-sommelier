@@ -4,8 +4,9 @@
 
 #include "power_manager/powerd/policy/input_controller.h"
 
-#include "base/logging.h"
-#include "chromeos/dbus/service_constants.h"
+#include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
+
 #include "power_manager/common/clock.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
