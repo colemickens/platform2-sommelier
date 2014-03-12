@@ -378,6 +378,25 @@ class Tpm {
                     const chromeos::SecureBlob& der_encoded_input,
                     chromeos::SecureBlob* signature);
 
+  // Creates an SRK-wrapped signing key that has both create attributes and
+  // usage policy bound to the given |pcr_index| and |pcr_value|.  On success
+  // returns true and populates |key_blob| with the TPM private key blob and
+  // |public_key_der| with the DER-encoded public key.
+  virtual bool CreatePCRBoundKey(int pcr_index,
+                                 const chromeos::SecureBlob& pcr_value,
+                                 chromeos::SecureBlob* key_blob,
+                                 chromeos::SecureBlob* public_key_der);
+
+  // Returns true iff the given |key_blob| represents a SRK-wrapped key which
+  // has both create attributes and usage policy bound to |pcr_value| for
+  // |pcr_index|.
+  virtual bool VerifyPCRBoundKey(int pcr_index,
+                                 const chromeos::SecureBlob& pcr_value,
+                                 const chromeos::SecureBlob& key_blob);
+
+  // Extends the PCR given by |pcr_index| using the data in |extension|.
+  virtual bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension);
+
  protected:
   // Default constructor
   Tpm();

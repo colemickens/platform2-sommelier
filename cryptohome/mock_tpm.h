@@ -86,6 +86,14 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(Sign, bool(const chromeos::SecureBlob&,
                           const chromeos::SecureBlob&,
                           chromeos::SecureBlob*));
+  MOCK_METHOD4(CreatePCRBoundKey, bool(int,
+                                       const chromeos::SecureBlob&,
+                                       chromeos::SecureBlob*,
+                                       chromeos::SecureBlob*));
+  MOCK_METHOD3(VerifyPCRBoundKey, bool(int,
+                                       const chromeos::SecureBlob&,
+                                       const chromeos::SecureBlob&));
+  MOCK_METHOD2(ExtendPCR, bool(int, const chromeos::SecureBlob&));
 
  private:
   bool Xor(const chromeos::SecureBlob& plaintext,

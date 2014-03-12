@@ -3156,4 +3156,27 @@ bool Tpm::Sign(const SecureBlob& key_blob,
   return true;
 }
 
+bool Tpm::CreatePCRBoundKey(int pcr_index,
+                            const chromeos::SecureBlob& pcr_value,
+                            chromeos::SecureBlob* key_blob,
+                            chromeos::SecureBlob* public_key_der) {
+  // TODO(dkrahn): crbug.com/351572 -- Finish implementing this.
+  LOG(ERROR) << "Not implemented.";
+  return false;
+}
+
+bool Tpm::VerifyPCRBoundKey(int pcr_index,
+                            const chromeos::SecureBlob& pcr_value,
+                            const chromeos::SecureBlob& key_blob) {
+  // TODO(dkrahn): crbug.com/351572 -- Finish implementing this.
+  LOG(ERROR) << "Not implemented.";
+  return false;
+}
+
+bool Tpm::ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) {
+  // TODO(dkrahn): crbug.com/351572 -- Finish implementing this.
+  LOG(ERROR) << "Not implemented.";
+  return false;
+}
+
 }  // namespace cryptohome

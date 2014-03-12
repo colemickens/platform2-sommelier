@@ -31,7 +31,8 @@ SHARED_PB_HDRS := $(patsubst %,%.pb.h,$(SHARED_PROTOS))
 SHARED_PB_SRCS := $(patsubst %,%.pb.cc,$(SHARED_PROTOS))
 SHARED_PB_OBJS := $(patsubst %,%.pb.o,$(SHARED_PROTOS))
 
-PROTOS := install_attributes tpm_status vault_keyset attestation
+PROTOS := install_attributes tpm_status vault_keyset attestation \
+          boot_lockbox_key
 PB_HDRS := $(patsubst %,%.pb.h,$(PROTOS))
 PB_SRCS := $(patsubst %,%.pb.cc,$(PROTOS))
 PB_OBJS := $(patsubst %.cc,%.o,$(PB_SRCS))
