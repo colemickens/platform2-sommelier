@@ -72,7 +72,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     driver_.args()->SetString(kOpenVPNTokenProperty, "toto");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" jojo\n");
-    ExpectSend("password \"Auth\" \"t:toto\"\n");
+    ExpectSend("password \"Auth\" \"toto\"\n");
   }
 
   void ExpectAuthenticationResponse() {

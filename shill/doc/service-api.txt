@@ -934,8 +934,13 @@ Properties	boolean AutoConnect [readwrite]
 		string OpenVPN.Token [writeonly]
 
 			(VPN services of type OpenVPN only) Specifies a
-			single-use token to be used during the authentication
-			phase instead of the the password or OTP parameters.
+			single-use token to be used during the static challenge
+			phase of authentication.  This will be used instead of
+			the standard OpenVPN "SCRV1:" response containing the
+			password and OTP parameters.  This is useful in
+			installations where the default base64 encoding may be
+			too large to fit in the buffer size available, and
+			server implementations have been changed to avoid this.
 			The connection manager only stores this value for the
 			duration of a connection attempt and will never persist
 			this to a stored profile.

@@ -274,7 +274,7 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
 
   string password_encoded;
   if (!token.empty()) {
-    password_encoded = StringPrintf("t:%s", token.c_str());
+    password_encoded = token;
     // Don't reuse token.
     driver_->args()->RemoveString(kOpenVPNTokenProperty);
   } else {
