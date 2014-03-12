@@ -41,6 +41,52 @@ class PlatformTest : public ::testing::Test {
   Platform platform_;
 };
 
+TEST_F(PlatformTest, GetRealPath) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath subdir_path;
+  ASSERT_TRUE(
+      base::CreateTemporaryDirInDir(temp_dir.path(), "test", &subdir_path));
+  FilePath file_path;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(subdir_path, &file_path));
+  FilePath file_symlink = temp_dir.path().Append("file_symlink");
+  ASSERT_TRUE(base::CreateSymbolicLink(file_path, file_symlink));
+  FilePath subdir_symlink = temp_dir.path().Append("subdir_symlink");
+  ASSERT_TRUE(base::CreateSymbolicLink(subdir_path, subdir_symlink));
+
+  string real_path;
+  EXPECT_FALSE(platform_.GetRealPath("", &real_path));
+  EXPECT_FALSE(platform_.GetRealPath("/nonexistent", &real_path));
+
+  EXPECT_TRUE(platform_.GetRealPath(temp_dir.path().value(), &real_path));
+  EXPECT_EQ(temp_dir.path().value(), real_path);
+
+  EXPECT_TRUE(platform_.GetRealPath(file_path.value(), &real_path));
+  EXPECT_EQ(file_path.value(), real_path);
+
+  EXPECT_TRUE(platform_.GetRealPath(file_symlink.value(), &real_path));
+  EXPECT_EQ(file_path.value(), real_path);
+
+  EXPECT_TRUE(platform_.GetRealPath(subdir_symlink.value(), &real_path));
+  EXPECT_EQ(subdir_path.value(), real_path);
+
+  FilePath relative_path = subdir_path.Append("..");
+  EXPECT_TRUE(platform_.GetRealPath(relative_path.value(), &real_path));
+  EXPECT_EQ(temp_dir.path().value(), real_path);
+
+  relative_path = subdir_path.Append("..")
+                      .Append(subdir_path.BaseName())
+                      .Append(file_path.BaseName());
+  EXPECT_TRUE(platform_.GetRealPath(relative_path.value(), &real_path));
+  EXPECT_EQ(file_path.value(), real_path);
+
+  relative_path = subdir_path.Append("..")
+                      .Append(subdir_symlink.BaseName())
+                      .Append(file_path.BaseName());
+  EXPECT_TRUE(platform_.GetRealPath(relative_path.value(), &real_path));
+  EXPECT_EQ(file_path.value(), real_path);
+}
+
 TEST_F(PlatformTest, CreateDirectory) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());

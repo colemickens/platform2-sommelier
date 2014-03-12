@@ -195,6 +195,14 @@ class MountManager {
   bool IsPathImmediateChildOfParent(const std::string& path,
                                     const std::string& parent) const;
 
+  // Returns true if |mount_path| is a valid mount path, which should be an
+  // immediate child of the mount root specified by |mount_root_|. The check
+  // performed by this method takes the simplest approach and does not first try
+  // to canonicalize |mount_path|, resolve symlinks or determine the absolute
+  // path of |mount_path|, so a legitimate mount path may be deemed as invalid.
+  // But we don't consider these cases as part of the use cases of cros-disks.
+  bool IsValidMountPath(const std::string& mount_path) const;
+
   // Returns the root directory under which mount directories are created.
   const std::string& mount_root() const { return mount_root_; }
 
@@ -228,6 +236,7 @@ class MountManager {
   FRIEND_TEST(MountManagerTest, ExtractSupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, ExtractUnsupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, IsPathImmediateChildOfParent);
+  FRIEND_TEST(MountManagerTest, IsValidMountPath);
 
   DISALLOW_COPY_AND_ASSIGN(MountManager);
 };

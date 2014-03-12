@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -30,7 +29,10 @@ using testing::_;
 
 namespace {
 
-const char kMountRootDirectory[] = "/test";
+const char kMountRootDirectory[] = "/media/removable";
+const char kTestSourcePath[] = "source";
+const char kTestMountPath[] = "/media/removable/test";
+const char kInvalidMountPath[] = "/media/removable/../test/doc";
 
 }  // namespace
 
@@ -161,7 +163,7 @@ TEST_F(MountManagerTest, MountFailedWithEmptySourcePath) {
 // Verifies that MountManager::Mount() returns an error when it is invoked
 // with a NULL mount path.
 TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
-  source_path_ = "source";
+  source_path_ = kTestSourcePath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -175,11 +177,76 @@ TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
             manager_.Mount(source_path_, filesystem_type_, options_, NULL));
 }
 
+// Verifies that MountManager::Mount() returns an error when it is invoked
+// with an invalid mount path.
+TEST_F(MountManagerTest, MountFailedWithInvalidMountPath) {
+  source_path_ = kTestSourcePath;
+  mount_path_ = kInvalidMountPath;
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
+  EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
+
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+}
+
+// Verifies that MountManager::Mount() returns an error when it is invoked
+// without a given mount path and the suggested mount path is invalid.
+TEST_F(MountManagerTest, MountFailedWithInvalidSuggestedMountPath) {
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kInvalidMountPath;
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
+  EXPECT_CALL(manager_, SuggestMountPath(_))
+      .WillRepeatedly(Return(suggested_mount_path));
+
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+
+  options_.push_back("mountlabel=custom_label");
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+}
+
+// Verifies that MountManager::Mount() returns an error when it is invoked
+// with an mount label that yields an invalid mount path.
+TEST_F(MountManagerTest, MountFailedWithInvalidMountLabel) {
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestSourcePath;
+  options_.push_back("mountlabel=../custom_label");
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
+  EXPECT_CALL(manager_, SuggestMountPath(_))
+      .WillOnce(Return(suggested_mount_path));
+
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+}
+
 // Verifies that MountManager::Mount() returns an error when it fails to
 // create the specified mount directory.
 TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(false));
@@ -193,15 +260,15 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
   EXPECT_EQ(MOUNT_ERROR_DIRECTORY_CREATION_FAILED,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() returns an error when it fails to
 // create a specified but already reserved mount directory.
 TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -218,7 +285,7 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
   EXPECT_EQ(MOUNT_ERROR_DIRECTORY_CREATION_FAILED,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
@@ -228,8 +295,8 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
 // Verifies that MountManager::Mount() returns an error when it fails to
 // create a mount directory after a number of trials.
 TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
-  source_path_ = "source";
-  string suggested_mount_path = "target";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -250,8 +317,8 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
 // Verifies that MountManager::Mount() returns an error when it fails to
 // set the ownership of the created mount directory.
 TEST_F(MountManagerTest, MountFailedInSetOwnership) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -269,15 +336,15 @@ TEST_F(MountManagerTest, MountFailedInSetOwnership) {
   EXPECT_EQ(MOUNT_ERROR_DIRECTORY_CREATION_FAILED,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() returns an error when it fails to
 // set the permissions of the created mount directory.
 TEST_F(MountManagerTest, MountFailedInSetPermissions) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -296,15 +363,15 @@ TEST_F(MountManagerTest, MountFailedInSetPermissions) {
   EXPECT_EQ(MOUNT_ERROR_DIRECTORY_CREATION_FAILED,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
 // Verifies that MountManager::Mount() returns no error when it successfully
 // mounts a source path to a specified mount path.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -326,7 +393,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_EQ(MOUNT_ERROR_NONE,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
@@ -335,8 +402,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
 // Verifies that MountManager::Mount() returns no error when it successfully
 // mounts a source path with no mount path specified.
 TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
-  source_path_ = "source";
-  string suggested_mount_path = "target";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -367,9 +434,9 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
 // Verifies that MountManager::Mount() returns no error when it successfully
 // mounts a source path with a given mount label in options.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
-  source_path_ = "source";
-  string suggested_mount_path = "parent_path/suggested";
-  string final_mount_path = "parent_path/custom_label";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
+  string final_mount_path = string(kMountRootDirectory) + "/custom_label";
   options_.push_back("mountlabel=custom_label");
   vector<string> updated_options;
 
@@ -402,8 +469,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
 // Verifies that MountManager::Mount() handles the mounting of an already
 // mounted source path properly.
 TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
-  source_path_ = "source";
-  string suggested_mount_path = "target";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -459,8 +526,8 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
 // Verifies that MountManager::Mount() successfully reserves a path for a given
 // type of error. A specific mount path is given in this case.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -484,7 +551,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_TRUE(manager_.UnmountAll());
@@ -495,8 +562,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
 // Verifies that MountManager::Mount() successfully reserves a path for a given
 // type of error. No specific mount path is given in this case.
 TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
-  source_path_ = "source";
-  string suggested_mount_path = "target";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -532,8 +599,8 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
 // type of error and returns the same error when it tries to mount the same path
 // again.
 TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
-  source_path_ = "source";
-  string suggested_mount_path = "target";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -578,8 +645,8 @@ TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
 // type of error and returns the same error when it tries to mount the same path
 // again.
 TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -603,7 +670,7 @@ TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
@@ -611,8 +678,8 @@ TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
 // Verifies that MountManager::Mount() fails to mount or reserve a path for
 // a type of error that is not enabled for reservation.
 TEST_F(MountManagerTest, MountFailedWithEmptyMountPathInReservedCase) {
-  source_path_ = "source";
-  string suggested_mount_path = "target";
+  source_path_ = kTestSourcePath;
+  string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -676,8 +743,8 @@ TEST_F(MountManagerTest, UnmountFailedWithPathNotMounted) {
 // Verifies that MountManager::Unmount() returns no error when it successfully
 // unmounts a source path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -699,7 +766,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   EXPECT_EQ(MOUNT_ERROR_NONE,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Unmount(source_path_, options_));
@@ -709,12 +776,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
 // Verifies that MountManager::Unmount() returns no error when it successfully
 // unmounts a mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string actual_mount_path = temp_dir.path().value();
-
-  source_path_ = "source";
-  mount_path_ = actual_mount_path;
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -736,7 +799,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   EXPECT_EQ(MOUNT_ERROR_NONE,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ(actual_mount_path, mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Unmount(mount_path_, options_));
@@ -746,8 +809,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
 // Verifies that MountManager::Unmount() returns no error when it is invoked
 // to unmount the source path of a reserved mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -771,7 +834,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ("target", mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
@@ -783,12 +846,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
 // Verifies that MountManager::Unmount() returns no error when it is invoked
 // to unmount a reserved mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string actual_mount_path = temp_dir.path().value();
-
-  source_path_ = "source";
-  mount_path_ = actual_mount_path;
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -812,7 +871,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
-  EXPECT_EQ(actual_mount_path, mount_path_);
+  EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
 
@@ -824,8 +883,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
 // Verifies that MountManager::AddMountPathToCache() works as expected.
 TEST_F(MountManagerTest, AddMountPathToCache) {
   string result;
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
   EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
@@ -841,8 +900,8 @@ TEST_F(MountManagerTest, AddMountPathToCache) {
 // Verifies that MountManager::GetSourcePathFromCache() works as expected.
 TEST_F(MountManagerTest, GetSourcePathFromCache) {
   string result;
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
   EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
@@ -855,8 +914,8 @@ TEST_F(MountManagerTest, GetSourcePathFromCache) {
 // Verifies that MountManager::GetMountPathFromCache() works as expected.
 TEST_F(MountManagerTest, GetMountPathFromCache) {
   string result;
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.GetMountPathFromCache(source_path_, &result));
   EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
@@ -868,8 +927,8 @@ TEST_F(MountManagerTest, GetMountPathFromCache) {
 
 // Verifies that MountManager::IsMountPathInCache() works as expected.
 TEST_F(MountManagerTest, IsMountPathInCache) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
@@ -880,8 +939,8 @@ TEST_F(MountManagerTest, IsMountPathInCache) {
 
 // Verifies that MountManager::RemoveMountPathFromCache() works as expected.
 TEST_F(MountManagerTest, RemoveMountPathFromCache) {
-  source_path_ = "source";
-  mount_path_ = "target";
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
@@ -923,7 +982,7 @@ TEST_F(MountManagerTest, GetReservedMountPaths) {
 // Verifies that MountManager::ReserveMountPath() and
 // MountManager::UnreserveMountPath() work as expected.
 TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
-  mount_path_ = "target";
+  mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_EQ(MOUNT_ERROR_NONE,
@@ -1059,6 +1118,26 @@ TEST_F(MountManagerTest, IsPathImmediateChildOfParent) {
       "/tmp/archive/test.zip", "/media/removable"));
   EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
       "/media", "/media/removable"));
+}
+
+// Verifies that MountManager::IsValidMountPath() correctly determines if a
+// mount path is an immediate child of the mount root.
+TEST_F(MountManagerTest, IsValidMountPath) {
+  manager_.mount_root_ = "/media/removable";
+  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test"));
+  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test/"));
+  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test/"));
+  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable//test"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/archive/test"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/doc"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/../test"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/../test/"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/.."));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/../"));
+
+  manager_.mount_root_ = "/media/archive";
+  EXPECT_TRUE(manager_.IsValidMountPath("/media/archive/test"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test"));
 }
 
 }  // namespace cros_disks

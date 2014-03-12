@@ -118,7 +118,6 @@ MountErrorType MountManager::Mount(const string& source_path,
   // the source path. If an error occurs, ShouldReserveMountPathOnError()
   // is not called to reserve the mount path as a reserved mount path still
   // requires a proper mount directory.
-  bool mount_path_created;
   if (mount_path->empty()) {
     actual_mount_path = SuggestMountPath(source_path);
     if (!mount_label.empty()) {
@@ -126,10 +125,20 @@ MountErrorType MountManager::Mount(const string& source_path,
       actual_mount_path =
           FilePath(actual_mount_path).DirName().Append(mount_label).value();
     }
+  } else {
+    actual_mount_path = *mount_path;
+  }
+
+  if (!IsValidMountPath(actual_mount_path)) {
+    LOG(ERROR) << "Mount path '" << actual_mount_path << "' is invalid";
+    return MOUNT_ERROR_INVALID_PATH;
+  }
+
+  bool mount_path_created;
+  if (mount_path->empty()) {
     mount_path_created = platform_->CreateOrReuseEmptyDirectoryWithFallback(
         &actual_mount_path, kMaxNumMountTrials, GetReservedMountPaths());
   } else {
-    actual_mount_path = *mount_path;
     mount_path_created = !IsMountPathReserved(actual_mount_path) &&
         platform_->CreateOrReuseEmptyDirectory(actual_mount_path);
   }
@@ -367,6 +376,10 @@ bool MountManager::IsPathImmediateChildOfParent(const string& path,
 
   return std::equal(parent_components.begin(), parent_components.end(),
                     path_components.begin());
+}
+
+bool MountManager::IsValidMountPath(const std::string& mount_path) const{
+  return IsPathImmediateChildOfParent(mount_path, mount_root_);
 }
 
 }  // namespace cros_disks

@@ -22,6 +22,11 @@ class Platform {
   Platform();
   virtual ~Platform();
 
+  // Gets the canonicalized absolute path of |path| using realpath() and returns
+  // that via |real_path|. Return true on success.
+  virtual bool GetRealPath(const std::string& path,
+                           std::string* real_path) const;
+
   // Creates a directory at |path| if it does not exist. Returns true on
   // success.
   virtual bool CreateDirectory(const std::string& path) const;

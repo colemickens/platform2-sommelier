@@ -84,15 +84,19 @@ void CrosDisksServer::Mount(const string& path,
                             DBus::Error& error) {  // NOLINT
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   MountSourceType source_type = MOUNT_SOURCE_INVALID;
+  string source_path;
   string mount_path;
 
-  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
-       manager_iter != mount_managers_.end(); ++manager_iter) {
-    MountManager* manager = *manager_iter;
-    if (manager->CanMount(path)) {
-      source_type = manager->GetMountSourceType();
-      error_type = manager->Mount(path, filesystem_type, options, &mount_path);
-      break;
+  if (platform_->GetRealPath(path, &source_path)) {
+    for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
+         manager_iter != mount_managers_.end(); ++manager_iter) {
+      MountManager* manager = *manager_iter;
+      if (manager->CanMount(source_path)) {
+        source_type = manager->GetMountSourceType();
+        error_type =
+            manager->Mount(source_path, filesystem_type, options, &mount_path);
+        break;
+      }
     }
   }
 
