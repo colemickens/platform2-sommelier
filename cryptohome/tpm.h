@@ -394,7 +394,7 @@ class Tpm {
                                  const chromeos::SecureBlob& pcr_value,
                                  const chromeos::SecureBlob& key_blob);
 
-  // Extends the PCR given by |pcr_index| using the data in |extension|.
+  // Extends the PCR given by |pcr_index| using a SHA-1 hash of |extension|.
   virtual bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension);
 
  protected:
@@ -669,6 +669,13 @@ class Tpm {
   bool UnobscureRSAMessage(const chromeos::SecureBlob& ciphertext,
                            const chromeos::SecureBlob& key,
                            chromeos::SecureBlob* plaintext);
+
+  // Wrapper for Tspi_GetAttribData.
+  bool GetDataAttribute(TSS_HCONTEXT context,
+                        TSS_HOBJECT object,
+                        TSS_FLAG flag,
+                        TSS_FLAG sub_flag,
+                        chromeos::SecureBlob* data);
 
   // Member variables
   bool initialized_;
