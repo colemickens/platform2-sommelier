@@ -7,6 +7,7 @@
 # UDEV event helper script that restarts a hung network device.
 
 POWER_DOWN_TIME_SECONDS=1
+WLAN_POWER_UP_TIME_SECONDS=1
 WLAN_REINITIALIZE_TIME_SECONDS=5
 
 set -e
@@ -63,6 +64,7 @@ if [ "${ID_BUS}" = "pci" ] ; then
 
   if [ "${DEVTYPE}" = "wlan" ] ; then
     ectool wireless 0xe  # Power up wireless lan.
+    sleep ${WLAN_POWER_UP_TIME_SECONDS}
     ectool wireless 0xf  # Enable wireless lan.
 
     sleep ${WLAN_REINITIALIZE_TIME_SECONDS}
