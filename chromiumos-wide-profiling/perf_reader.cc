@@ -1209,9 +1209,19 @@ bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
     }
   }
 
-  CHECK_EQ(event_types_.size(), attrs_.size());
-  if (event_types_.size() > 0)
+  // Event type events are optional in some newer versions of perf. They
+  // contain the same information that is already in |attrs_|. Make sure the
+  // number of event types matches the number of attrs, but only if there are
+  // event type events present.
+  if (event_types_.size() > 0) {
+    if (event_types_.size() != attrs_.size()) {
+      LOG(ERROR) << "Mismatch between number of event type events and attr "
+                 << "events: " << event_types_.size() << " vs "
+                 << attrs_.size();
+      return false;
+    }
     metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+  }
   return true;
 }
 
