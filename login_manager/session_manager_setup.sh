@@ -380,6 +380,10 @@ if use_flag_is_set gpu_sandbox_allow_sysv_shm; then
   GPU_FLAGS="$GPU_FLAGS --gpu-sandbox-allow-sysv-shm"
 fi
 
+if use_flag_is_set gpu_sandbox_start_after_initialization; then
+  GPU_FLAGS="$GPU_FLAGS --gpu-sandbox-start-after-initialization"
+fi
+
 VIDEO_FLAGS=
 if is_board peach_pit || is_board peach_pi; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
