@@ -42,6 +42,8 @@ class CryptoLib {
   static chromeos::SecureBlob Sha256(const chromeos::Blob& data);
   static chromeos::SecureBlob HmacSha512(const chromeos::SecureBlob& key,
                                          const chromeos::Blob& data);
+  static chromeos::SecureBlob HmacSha256(const chromeos::SecureBlob& key,
+                                         const chromeos::Blob& data);
 
   static size_t GetAesBlockSize();
   static bool PasskeyToAesKey(const chromeos::Blob& passkey,
@@ -117,6 +119,8 @@ class CryptoLib {
   static std::string ComputeEncryptedDataHMAC(
       const EncryptedData& encrypted_data,
       const chromeos::SecureBlob& hmac_key);
+
+  static std::string ConvertBlobToString(const chromeos::Blob& blob);
 };
 
 }  // namespace cryptohome

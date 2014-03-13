@@ -1090,6 +1090,35 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   EXPECT_EQ(index, 1);
 }
 
+TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
+  KeysetSetUp();
+
+  // No need to do PasswordToPasskey as that is the
+  // external callers job.
+  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
+  Key new_key;
+  new_key.set_secret("why not");
+  new_key.mutable_data()->set_label("new label");
+  // The injected keyset in the fixture handles the up_ validation.
+  SerializedVaultKeyset serialized;
+  serialized.mutable_key_data()->set_label("my_label");
+  std::string vk_path = "some/path/master.0";
+  EXPECT_CALL(*active_vk_, source_file())
+    .WillOnce(ReturnRef(vk_path));
+  EXPECT_CALL(*active_vk_, mutable_serialized())
+    .WillOnce(Return(&serialized));
+  EXPECT_CALL(*active_vk_, Encrypt(new_secret))
+    .WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_, Save(vk_path))
+    .WillOnce(Return(true));
+
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.UpdateKeyset(*up_,
+                                   const_cast<const Key *>(&new_key),
+                                   ""));
+  EXPECT_EQ(serialized.key_data().label(), new_key.data().label());
+}
+
 TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
   KeysetSetUp();
 

@@ -41,6 +41,7 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_METHOD1(Encrypt, bool(const chromeos::SecureBlob&));
   MOCK_CONST_METHOD0(serialized, const SerializedVaultKeyset&(void));
   MOCK_METHOD0(mutable_serialized, SerializedVaultKeyset*(void));
+  MOCK_CONST_METHOD0(source_file, const std::string&(void));
  private:
    const SerializedVaultKeyset& StubSerialized(void) {
      return serialized_;

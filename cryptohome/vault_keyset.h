@@ -54,6 +54,9 @@ class VaultKeyset {
   virtual SerializedVaultKeyset* mutable_serialized() {
     return &serialized_;
   }
+  virtual const std::string& source_file() const {
+    return source_file_;
+  }
 
  private:
   chromeos::SecureBlob fek_;
@@ -69,6 +72,7 @@ class VaultKeyset {
   SerializedVaultKeyset serialized_;
   bool loaded_;
   bool encrypted_;
+  std::string source_file_;
 
   DISALLOW_COPY_AND_ASSIGN(VaultKeyset);
 };

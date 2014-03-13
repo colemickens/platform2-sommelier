@@ -125,6 +125,17 @@ chromeos::SecureBlob CryptoLib::HmacSha512(const chromeos::SecureBlob& key,
   return chromeos::SecureBlob(mac, kSha512OutputSize);
 }
 
+chromeos::SecureBlob CryptoLib::HmacSha256(const chromeos::SecureBlob& key,
+                                           const chromeos::Blob& data) {
+  const int kSha256OutputSize = 32;
+  unsigned char mac[kSha256OutputSize];
+  HMAC(EVP_sha256(),
+       vector_as_array(&key), key.size(),
+       vector_as_array(&data), data.size(),
+       mac, NULL);
+  return chromeos::SecureBlob(mac, kSha256OutputSize);
+}
+
 size_t CryptoLib::GetAesBlockSize() {
   return EVP_CIPHER_block_size(EVP_aes_256_cbc());
 }
@@ -529,8 +540,12 @@ string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
   memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
 
   SecureBlob hmac = HmacSha512(hmac_key, result);
-  return string(reinterpret_cast<const char*>(vector_as_array(&hmac)),
-                hmac.size());
+  return ConvertBlobToString(hmac);
+}
+
+string CryptoLib::ConvertBlobToString(const chromeos::Blob& blob) {
+  return string(reinterpret_cast<const char*>(vector_as_array(&blob)),
+                blob.size());
 }
 
 }  // namespace cryptohome

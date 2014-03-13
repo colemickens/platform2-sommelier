@@ -194,10 +194,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
                             GArray* authorization_request,
                             GArray* add_key_request,
                             DBusGMethodInvocation* context);
-  virtual void DoUpdateKeyEx(GArray *account_id,
-                             GArray *authorization_request,
-                             GArray *update_key_request,
-                             DBusGMethodInvocation *context);
+  virtual void DoUpdateKeyEx(AccountIdentifier* account_id,
+                          AuthorizationRequest*  authorization_request,
+                          UpdateKeyRequest* update_key_request,
+                          DBusGMethodInvocation* context);
   virtual gboolean UpdateKeyEx(GArray *account_id,
                                GArray *authorization_request,
                                GArray *update_key_request,

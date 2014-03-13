@@ -6,12 +6,15 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 
 #include "credentials.h"
+#include "cryptolib.h"
 #include "homedirs.h"
+#include "key.pb.h"
 #include "mount.h"
 #include "platform.h"
 #include "username_passkey.h"
@@ -260,6 +263,153 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
   std::sort(keysets->begin(), keysets->end());
 
   return keysets->size() != 0;
+}
+
+bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
+                                           const Key& new_key,
+                                           const std::string& signature) {
+  const KeyAuthorizationSecret* secret;
+  // If the existing key doesn't require authorization, then there's no
+  // work to be done.
+  //
+  // Note, only the first authorizaton_data is honored at present.
+  if (!existing_key_data.authorization_data_size() ||
+      !existing_key_data.authorization_data(0).has_type())
+    return true;
+  switch (existing_key_data.authorization_data(0).type()) {
+  // The data is passed in the clear but authenticated with a shared
+  // symmetric secret.
+  case KeyAuthorizationData::KEY_AUTHORIZATION_TYPE_HMACSHA256:
+    // Ensure there is an accessible signing key. Only a single
+    // secret is allowed until there is a reason to support more.
+    if (existing_key_data.authorization_data(0).secrets_size() != 1) {
+      LOG(ERROR) << "Too many keys for KEY_AUTHORIZATION_TYPE_HMACSHA256";
+      return false;
+    }
+    secret = &existing_key_data.authorization_data(0).secrets(0);
+    if (!secret->usage().sign()) {
+      LOG(ERROR) << "Invalid key usage for KEY_AUTHORIZATION_TYPE_HMACSHA256";
+      return false;
+    }
+    if (secret->wrapped()) {
+      LOG(ERROR) << "Authorization secret was not unwrapped as expected";
+      return false;
+    }
+    break;
+  // The data is passed encrypted and authenticated with dedicated
+  // encrypting and signing symmetric keys.
+  case KeyAuthorizationData::KEY_AUTHORIZATION_TYPE_AES256CBC_HMACSHA256:
+    LOG(ERROR) << "KEY_AUTHORIZATION_TYPE_AES256CBC_HMACSHA256 not supported";
+    return false;
+  default:
+    LOG(ERROR) << "Unknown KeyAuthorizationType seen";
+    return false;
+  }
+  // Now we're only handling HMACSHA256.
+  // For the first pass, the signature is over a Key message.  This is
+  // the strongest path to avoid unauthorized Key changes, but it may not
+  // be convenient for server-side integration.
+  //
+  // Additionally, it may make sense to pass the signed, wrapped version
+  // all the way through rather than attempting to rebuild.  Serialization
+  // should be deterministic, but there's less risk if the serialized
+  // version is passed directly.
+  std::string changes_str;
+  if (!new_key.SerializeToString(&changes_str)) {
+    LOG(ERROR) << "Failed to serialized the new key";
+    return false;
+  }
+  // Compute the HMAC
+  chromeos::SecureBlob hmac_key(secret->symmetric_key());
+  chromeos::SecureBlob data(changes_str.c_str(), changes_str.size());
+  SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, data);
+  std::string hmac_str(reinterpret_cast<const char*>(vector_as_array(&hmac)),
+                                                     hmac.size());
+
+  // Check the HMAC
+  if (signature != hmac_str) {
+    LOG(ERROR) << "Supplied authorization signature was invalid.";
+    return false;
+  }
+
+  if (existing_key_data.revision() >= new_key.data().revision()) {
+    LOG(ERROR) << "The supplied key revision was too old.";
+    return false;
+  }
+
+  return true;
+}
+
+CryptohomeErrorCode HomeDirs::UpdateKeyset(
+    const Credentials& credentials,
+    const Key* key_changes,
+    const std::string& authorization_signature) {
+
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  if (!GetValidKeyset(credentials, vk.get())) {
+    LOG(WARNING) << "AddKeyset: authentication failed";
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  }
+
+  SerializedVaultKeyset *key = vk->mutable_serialized();
+
+  // Check the privileges to ensure Update is allowed.
+  // [In practice, Add/Remove could be used to override if present.]
+  bool authorized_update = false;
+  if (key->has_key_data()) {
+    authorized_update = key->key_data().privileges().authorized_update();
+    if (!key->key_data().privileges().update() && !authorized_update) {
+      LOG(WARNING) << "UpdateKeyset: no update() privilege";
+      return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
+    }
+  }
+
+  // Check the signature first so the rest of the function is untouched.
+  if (authorized_update) {
+    if (authorization_signature.empty() ||
+        !CheckAuthorizationSignature(key->key_data(),
+                                     *key_changes,
+                                     authorization_signature)) {
+      LOG(INFO) << "Unauthorized update attempted";
+      return CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID;
+    }
+  }
+
+  // Walk through each field and update the value.
+  KeyData* merged_data = key->mutable_key_data();
+  if (key_changes->data().has_type()) {
+    merged_data->set_type(key_changes->data().type());
+  }
+  if (key_changes->data().has_label()) {
+    merged_data->set_label(key_changes->data().label());
+  }
+  // Note! Revisions aren't tracked in general.
+  if (key_changes->data().has_revision()) {
+    merged_data->set_revision(key_changes->data().revision());
+  }
+  // Do not allow authorized_updates to change their keys unless we add
+  // a new signature type.  This can be done in the future by adding
+  // the authorization_data() to the new key_data, and changing the
+  // CheckAuthorizationSignature() to check for a compatible "upgrade".
+  if (!authorized_update && key_changes->data().authorization_data_size() > 0) {
+    // Only the first will be merged for now.
+    *(merged_data->add_authorization_data()) =
+        key_changes->data().authorization_data(0);
+  }
+
+  // TODO(wad,dkrahn): Should KeyPrivileges be update-able?
+  SecureBlob passkey;
+  credentials.GetPasskey(&passkey);
+  if (key_changes->has_secret()) {
+    SecureBlob new_passkey(key_changes->secret().c_str(),
+                           key_changes->secret().length());
+    passkey.swap(new_passkey);
+  }
+  if (!vk->Encrypt(passkey) || !vk->Save(vk->source_file())) {
+    LOG(ERROR) << "Failed to encrypt and write the updated keyset";
+    return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+  }
+  return CRYPTOHOME_ERROR_NOT_SET;
 }
 
 CryptohomeErrorCode HomeDirs::AddKeyset(

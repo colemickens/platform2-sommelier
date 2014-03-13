@@ -176,8 +176,11 @@ bool VaultKeyset::Load(const std::string& filename) {
   serialized_.Clear();  // Ensure a fresh start.
   loaded_ = serialized_.ParseFromArray(data, contents.size());
   // If it was parsed from file, consider it save-able too.
-  if (loaded_)
+  source_file_.clear();
+  if (loaded_) {
     encrypted_ = true;
+    source_file_ = filename;
+  }
   return loaded_;
 }
 

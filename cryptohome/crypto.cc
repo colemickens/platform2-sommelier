@@ -384,6 +384,34 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     return false;
   }
 
+  // Use the same key to unwrap the wrapped authorization data.
+  if (serialized.key_data().authorization_data_size() > 0) {
+    KeyData* key_data = keyset->mutable_serialized()->mutable_key_data();
+    for (int auth_data_i = 0;
+         auth_data_i < key_data->authorization_data_size();
+         ++auth_data_i) {
+      KeyAuthorizationData* auth_data =
+          key_data->mutable_authorization_data(auth_data_i);
+      for (int secret_i = 0; secret_i < auth_data->secrets_size(); ++secret_i) {
+        KeyAuthorizationSecret* secret = auth_data->mutable_secrets(secret_i);
+        if (!secret->wrapped() || !secret->has_symmetric_key())
+          continue;
+        SecureBlob encrypted_auth_key(secret->symmetric_key());
+        SecureBlob clear_key;
+        // Is it reasonable to use this key here as well?
+        if (!CryptoLib::AesDecrypt(encrypted_auth_key, aes_key, iv,
+                                   &clear_key)) {
+          LOG(ERROR) << "Failed to unwrap a symmetric authorization key:"
+                     << " (" << auth_data_i << "," << secret_i << ")";
+          // This does not force a failure to use the keyset.
+          continue;
+        }
+        secret->set_symmetric_key(CryptoLib::ConvertBlobToString(clear_key));
+        secret->set_wrapped(false);
+      }
+    }
+  }
+
   keyset->FromKeysBlob(plain_text);
   if (!serialized.has_tpm_public_key_hash() && error)
     *error = CE_NO_PUBLIC_KEY_HASH;
@@ -509,6 +537,39 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
   serialized->set_flags(flags | SerializedVaultKeyset::TPM_WRAPPED);
   serialized->set_tpm_key(tpm_key.const_data(), tpm_key.size());
   serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+
+  // Handle AuthorizationData secrets if provided.
+  if (serialized->key_data().authorization_data_size() > 0) {
+    KeyData* key_data = serialized->mutable_key_data();
+    for (int auth_data_i = 0;
+         auth_data_i < key_data->authorization_data_size();
+         ++auth_data_i) {
+      KeyAuthorizationData* auth_data =
+          key_data->mutable_authorization_data(auth_data_i);
+      for (int secret_i = 0; secret_i < auth_data->secrets_size(); ++secret_i) {
+        KeyAuthorizationSecret* secret = auth_data->mutable_secrets(secret_i);
+        // Secrets that are externally provided should not be wrapped when
+        // this is called.  However, calling Encrypt() again should be
+        // idempotent.  External callers should be filtered at the API layer.
+        if (secret->wrapped() || !secret->has_symmetric_key())
+          continue;
+        SecureBlob clear_auth_key(secret->symmetric_key());
+        SecureBlob encrypted_auth_key;
+
+        if (!CryptoLib::AesEncrypt(clear_auth_key, aes_key, iv,
+                                   &encrypted_auth_key)) {
+          LOG(ERROR) << "Failed to wrap a symmetric authorization key:"
+                     << " (" << auth_data_i << "," << secret_i << ")";
+          // This forces a failure.
+          return false;
+        }
+        secret->set_symmetric_key(
+          CryptoLib::ConvertBlobToString(encrypted_auth_key));
+        secret->set_wrapped(true);
+      }
+    }
+  }
+
   return true;
 }
 

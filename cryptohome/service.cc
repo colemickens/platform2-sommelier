@@ -1010,6 +1010,22 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
     return;
   }
 
+  // Ensure any new keys do not contain a wrapped authorization key.
+  for (int ad = 0;
+       ad < add_key_request->key().data().authorization_data_size();
+       ++ad) {
+    const KeyAuthorizationData auth_data =
+      add_key_request->key().data().authorization_data(ad);
+    for (int s = 0; s < auth_data.secrets_size(); ++s) {
+      if (auth_data.secrets(s).wrapped()) {
+        // If wrapping becomes richer in the future, this may change.
+        SendInvalidArgsReply(context,
+                             "KeyAuthorizationSecrets may not be wrapped");
+        return;
+      }
+    }
+  }
+
   UsernamePasskey credentials(
       identifier->email().c_str(),
       SecureBlob(authorization->key().secret().c_str(),
@@ -1063,24 +1079,98 @@ gboolean Service::AddKeyEx(GArray* account_id,
   return TRUE;
 }
 
-void Service::DoUpdateKeyEx(GArray *account_id,
-                            GArray *authorization_request,
-                            GArray *update_key_request,
-                            DBusGMethodInvocation *context) {
+void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
+                            AuthorizationRequest* authorization,
+                            UpdateKeyRequest* update_key_request,
+                            DBusGMethodInvocation* context) {
+  if (!identifier || !authorization || !update_key_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  // Setup a reply for use during error handling.
   BaseReply reply;
-  reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+
+  // An AuthorizationRequest key without a label will test against
+  // all VaultKeysets of a compatible key().data().type().
+  if (authorization->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+
+  // Any undefined field in changes() will be left as it is.
+  if (!update_key_request->has_changes()) {
+    SendInvalidArgsReply(context, "No updates requested");
+    return;
+  }
+
+  for (int ad = 0;
+       ad < update_key_request->changes().data().authorization_data_size();
+       ++ad) {
+    const KeyAuthorizationData auth_data =
+      update_key_request->changes().data().authorization_data(ad);
+    for (int s = 0; s < auth_data.secrets_size(); ++s) {
+      if (auth_data.secrets(s).wrapped()) {
+        // If wrapping becomes richer in the future, this may change.
+        SendInvalidArgsReply(context,
+                             "KeyAuthorizationSecrets may not be wrapped");
+        return;
+      }
+    }
+  }
+
+  UsernamePasskey credentials(identifier->email().c_str(),
+                            SecureBlob(authorization->key().secret().c_str(),
+                                       authorization->key().secret().length()));
+  credentials.set_key_data(authorization->key().data());
+
+  if (!homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
+  reply.set_error(homedirs_->UpdateKeyset(
+                      credentials,
+                      &update_key_request->changes(),
+                      update_key_request->authorization_signature()));
+  if (reply.error() == CRYPTOHOME_ERROR_NOT_SET) {
+    // Don't set the error if there wasn't one.
+    reply.clear_error();
+  }
   SendReply(context, reply);
 }
 
-gboolean Service::UpdateKeyEx(GArray *account_id,
-                              GArray *authorization_request,
-                              GArray *update_key_request,
-                              DBusGMethodInvocation *context) {
-  LOG(ERROR) << "UpdateKeyEx is not yet implemented.";
+gboolean Service::UpdateKeyEx(GArray* account_id,
+                           GArray* authorization_request,
+                           GArray* update_key_request,
+                           DBusGMethodInvocation *context) {
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<UpdateKeyRequest> request(new UpdateKeyRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  if (!request->ParseFromArray(update_key_request->data,
+                               update_key_request->len))
+    request.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoUpdateKeyEx, base::Unretained(this),
-                 account_id, authorization_request, update_key_request,
-                 context));
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
   return TRUE;
 }
 
@@ -1372,6 +1462,20 @@ void Service::DoMountEx(AccountIdentifier* identifier,
         SendInvalidArgsReply(context,
                              "CreateRequest Keys are not fully specified");
         return;
+      }
+      // TODO(wad): Refactor out this check and other incoming Key validations
+      //            in a helper.  crbug.com/353644
+      for (int ad = 0; ad < key.data().authorization_data_size(); ++ad) {
+        const KeyAuthorizationData auth_data =
+          key.data().authorization_data(ad);
+        for (int s = 0; s < auth_data.secrets_size(); ++s) {
+          if (auth_data.secrets(s).wrapped()) {
+          // If wrapping becomes richer in the future, this may change.
+          SendInvalidArgsReply(context,
+                               "KeyAuthorizationSecrets may not be wrapped");
+          return;
+          }
+        }
       }
     }
   }
