@@ -151,6 +151,43 @@ list_mmc_disks() {
   done
 }
 
+# Return the type of device.
+#
+# The type can be:
+# MMC, SD for device managed by the MMC stack
+# ATA for ATA disk
+# OTHER for other devices.
+get_device_type() {
+  local dev="$(basename "$1")"
+  local vdr
+  local type_file
+  local vendor_file
+  type_file="/sys/block/${dev}/device/type"
+  # To detect device managed by the MMC stack
+  case $(readlink -f "${type_file}") in
+    *mmc*)
+      cat "${type_file}"
+      ;;
+    *usb*)
+      # Now if it contains 'usb', it is managed through
+      # a USB controller.
+      echo "USB"
+      ;;
+    *target*)
+      # Other SCSI devices.
+      # Check if it is an ATA device.
+      vdr="$(cat "/sys/block/${dev}/device/vendor")"
+      if [ "${vdr%% *}" = "ATA" ]; then
+        echo "ATA"
+      else
+        echo "OTHER"
+      fi
+      ;;
+    *)
+      echo "OTHER"
+  esac
+}
+
 # ATA disk have ATA as vendor.
 # They may not contain ata in their device path if behind a SAS
 # controller.
