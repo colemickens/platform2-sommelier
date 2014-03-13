@@ -66,7 +66,12 @@ $(eval \
 $(eval $(call add_object_rules,$(MARSHAL_OBJS),CC,c))
 $(eval $(call add_object_rules,$(PB_OBJS),CXX,cc))
 $(eval $(call add_object_rules,$(SHARED_PB_OBJS),CXX,cc))
-SHARED_OBJS += $(MARSHAL_OBJS) $(PB_OBJS) $(SHARED_PB_OBJS)
+GEN_OBJS := $(MARSHAL_OBJS) $(PB_OBJS) $(SHARED_PB_OBJS)
+SHARED_OBJS += $(GEN_OBJS)
+$(eval \
+    $(foreach obj, \
+        $(GEN_OBJS), \
+        $(call add_gen_hdrs,$(obj))))
 
 all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
 all: CXX_BINARY(lockbox-cache) CC_BINARY(mount-encrypted)
@@ -75,18 +80,19 @@ tests: TEST(CXX_BINARY(cryptohome_testrunner))
 # Pull in any shared proto files so they can have their optimization changed.
 %.proto: $(SHARED_PROTO_PATH)/%.proto
 	sed -e 's/LITE_RUNTIME/CODE_SIZE/g' $< > $@
-$(SHARED_PB_SRCS): %.pb.cc: %.proto $(SHARED_PROTO_FILES)
-	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
-		--cpp_out=$(dir $@)
+
+$(SHARED_PB_SRCS): %.pb.cc: %.proto $(SHARED_PB_HDRS)
+	$(QUIET)# No work.
 $(SHARED_PB_HDRS): %.pb.h: %.proto $(SHARED_PROTO_FILES)
 	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
 		--cpp_out=$(dir $@)
-%.pb.cc: $(SRC)/%.proto $(SHARED_PROTO_FILES)
-	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
-		--cpp_out=$(dir $@)
+
+%.pb.cc: $(SRC)/%.proto $(PB_HDRS)
+	$(QUIET)# No work.
 %.pb.h: $(SRC)/%.proto $(SHARED_PROTO_FILES)
 	$(PROTOC) $< --proto_path=$(dir $<) --proto_path=$(PWD) \
 		--cpp_out=$(dir $@)
+
 %.glibmarshal.c: $(SRC)/%.list
 	$(GLIB_GENMARSHAL) --body --prefix=cryptohome $^ > $@
 %.glibmarshal.h: $(SRC)/%.list
