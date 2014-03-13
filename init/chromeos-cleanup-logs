@@ -163,7 +163,7 @@ metrics_client Platform.DiskUsageChronos \
 metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
 
 NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
-metrics_client -t Platform.DiskUsage.NumUserHomeDirectories \
+metrics_client Platform.DiskUsage.NumUserHomeDirectories \
                $NUMBER_OF_USERS 1 50 50
 
 # Report days since the least frequently used account signed in.
