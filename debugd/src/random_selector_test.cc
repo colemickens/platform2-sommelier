@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cmath>
 #include <gtest/gtest.h>
 #include <map>
 #include <string>
@@ -14,7 +15,7 @@ namespace {
 
 // A large number to do a lot of tests so the probability distribution of the
 // results is close to the expected distribution.
-const int kLargeNumber = 1000;
+const int kLargeNumber = 2000;
 
 // A small floating point number used to verify that the expected odds are equal
 // to the odds set.
@@ -40,7 +41,7 @@ void CheckResultsAgainstOdds(const std::map<std::string, float> odds,
     EXPECT_NE(result, results.end());
     float results_ratio = result->second / results_sum;
     float odds_ratio = odd->second / odds_sum;
-    float abs_diff = abs(results_ratio - odds_ratio);
+    float abs_diff = fabsf(results_ratio - odds_ratio);
     EXPECT_LT(abs_diff, kEpsilon);
   }
 }

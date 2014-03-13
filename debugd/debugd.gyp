@@ -150,6 +150,7 @@
           'type': 'executable',
           'dependencies': ['libdebugd'],
           'includes': ['../common-mk/common_test.gypi'],
+          'libraries': ['-lm',],
           'sources': [
             'src/anonymizer_tool_test.cc',
             'src/log_tool_test.cc',
