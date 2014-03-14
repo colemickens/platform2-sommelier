@@ -1114,9 +1114,9 @@ void WiFi::BSSAddedTask(
 void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
   EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
   if (i == endpoint_by_rpcid_.end()) {
-    LOG(WARNING) << "WiFi " << link_name()
-                 << " could not find BSS " << path
-                 << " to remove.";
+    SLOG(WiFi, 1) << "WiFi " << link_name()
+                  << " could not find BSS " << path
+                  << " to remove.";
     return;
   }
 
