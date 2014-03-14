@@ -77,6 +77,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       suspected_credential_failures_(0),
       ssid_(ssid),
       ieee80211w_required_(false),
+      expecting_disconnect_(false),
       nss_(NSS::GetInstance()),
       certificate_file_(new CertificateFile()),
       provider_(provider) {
@@ -330,6 +331,7 @@ bool WiFiService::Load(StoreInterface *storage) {
     }
   }
 
+  expecting_disconnect_ = false;
   return true;
 }
 
@@ -357,6 +359,7 @@ bool WiFiService::Unload() {
     wifi_->DestroyServiceLease(*this);
   }
   hidden_ssid_ = false;
+  expecting_disconnect_ = false;
   ResetSuspectedCredentialFailures();
   Error unused_error;
   ClearPassphrase(&unused_error);
@@ -534,6 +537,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
     ClearEAPCertification();
   }
 
+  expecting_disconnect_ = false;
   Service::Connect(error, reason);
   wifi->ConnectTo(this);
 }

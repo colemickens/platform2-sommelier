@@ -486,6 +486,8 @@ void WiFi::ConnectTo(WiFiService *service) {
     if (scan_method_ != kScanMethodNone) {
       SetScanState(kScanTransitionToConnecting, scan_method_, __func__);
     }
+    // Explicitly disconnect pending service.
+    pending_service_->set_expecting_disconnect(true);
     DisconnectFrom(pending_service_);
   }
 
@@ -559,7 +561,8 @@ void WiFi::DisconnectFrom(WiFiService *service) {
   if (pending_service_) {
     // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
     // on this to drive the service state back to idle.  Do that here.
-    pending_service_->SetState(Service::kStateIdle);
+    // Update service state for pending service.
+    ServiceDisconnected(pending_service_);
   }
 
   SetPendingService(NULL);
@@ -818,12 +821,27 @@ void WiFi::HandleDisconnect() {
   WiFiService *affected_service =
       current_service_.get() ? current_service_.get() : pending_service_.get();
 
-  current_service_ = NULL;
   if (!affected_service) {
     SLOG(WiFi, 2) << "WiFi " << link_name()
                   << " disconnected while not connected or connecting";
     return;
   }
+
+  SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
+                << " (or failed to connect to) service "
+                << affected_service->unique_name();
+
+  if (affected_service == current_service_.get() && pending_service_.get()) {
+    // Current service disconnected intentionally for network switching,
+    // set service state to idle.
+    affected_service->SetState(Service::kStateIdle);
+  } else {
+    // Perform necessary handling for disconnected service.
+    ServiceDisconnected(affected_service);
+  }
+
+  current_service_ = NULL;
+
   if (affected_service == selected_service()) {
     // If our selected service has disconnected, destroy IP configuration state.
     DropConnection();
@@ -842,19 +860,6 @@ void WiFi::HandleDisconnect() {
     }
   }
 
-  SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
-                << " (or failed to connect to) service "
-                << affected_service->unique_name();
-  Service::ConnectFailure failure;
-  if (SuspectCredentials(affected_service, &failure)) {
-    // If we suspect bad credentials, set failure, to trigger an error
-    // mole in Chrome.
-    affected_service->SetFailure(failure);
-    LOG(ERROR) << "Connection failure is due to suspect credentials: returning "
-               << Service::ConnectFailureToString(failure);
-  } else {
-    affected_service->SetFailureSilent(Service::kFailureUnknown);
-  }
   metrics()->NotifySignalAtDisconnect(*affected_service,
                                       affected_service->SignalLevel());
   affected_service->NotifyCurrentEndpoint(NULL);
@@ -885,6 +890,34 @@ void WiFi::HandleDisconnect() {
   // If we disconnect, initially scan at a faster frequency, to make sure
   // we've found all available APs.
   RestartFastScanAttempts();
+}
+
+void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service){
+  // Check if service was explicitly disconnected due to failure or
+  // is explicitly disconnected by user.
+  if (!affected_service->IsInFailState() &&
+      !affected_service->explicitly_disconnected() &&
+      !affected_service->expecting_disconnect()) {
+    // Determine disconnect failure reason.
+    Service::ConnectFailure failure;
+    if (SuspectCredentials(affected_service, &failure)) {
+      // If we suspect bad credentials, set failure, to trigger an error
+      // mole in Chrome.
+      affected_service->SetFailure(failure);
+      LOG(ERROR) << "Connection failure is due to suspect credentials: "
+                 << "returning "
+                 << Service::ConnectFailureToString(failure);
+    } else {
+      // Disconnected due to inability to connect to service, most likely
+      // due to roaming out of range.
+      LOG(ERROR) << "Disconnected due to inability to connect to the service.";
+      affected_service->SetFailure(Service::kFailureOutOfRange);
+    }
+  }
+
+  // Set service state back to idle, so this service can be used for
+  // future connections.
+  affected_service->SetState(Service::kStateIdle);
 }
 
 // We use the term "Roam" loosely. In particular, we include the case
@@ -1799,7 +1832,7 @@ void WiFi::ReconnectTimeoutHandler() {
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   reconnect_timeout_callback_.Cancel();
   CHECK(current_service_);
-  current_service_->SetFailureSilent(Service::kFailureConnect);
+  current_service_->SetFailure(Service::kFailureConnect);
   DisconnectFrom(current_service_);
 }
 

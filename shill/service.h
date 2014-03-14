@@ -194,6 +194,10 @@ class Service : public base::RefCounted<Service> {
     return state() == kStateFailure || failed_time_ > 0;
   }
 
+  virtual bool IsInFailState() const {
+    return state() == kStateFailure;
+  }
+
   // Returns true if the connection for |this| depends on service |b|.
   virtual bool IsDependentOn(const ServiceRefPtr &b) const;
 

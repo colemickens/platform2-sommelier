@@ -154,6 +154,9 @@ class WiFiService : public Service {
   // std::numeric_limits<int>::min().
   int16 SignalLevel() const;
 
+  void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
+  bool expecting_disconnect() const { return expecting_disconnect_; }
+
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
   virtual void SetEAPKeyManagement(const std::string &key_management);
@@ -294,6 +297,9 @@ class WiFiService : public Service {
   // Track whether IEEE 802.11w (Protected Management Frame) support is
   // mandated by one or more endpoints we have seen that provide this service.
   bool ieee80211w_required_;
+  // Flag indicating if service disconnect is initiated by user for
+  // connecting to other service.
+  bool expecting_disconnect_;
   NSS *nss_;
   scoped_ptr<CertificateFile> certificate_file_;
   // Bare pointer is safe because WiFi service instances are owned by

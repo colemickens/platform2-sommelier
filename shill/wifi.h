@@ -335,6 +335,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string FindNetworkRpcidForService(const WiFiService *service,
                                          Error *error);
   void HandleDisconnect();
+  // Update failure and state for disconnected service.
+  // Set failure for disconnected service if disconnect is not user-initiated
+  // and failure is not already set. Then set the state of the service back
+  // to idle, so it can be used for future connections.
+  void ServiceDisconnected(WiFiServiceRefPtr service);
   void HandleRoam(const ::DBus::Path &new_bssid);
   void BSSAddedTask(const ::DBus::Path &BSS,
                     const std::map<std::string, ::DBus::Variant> &properties);
