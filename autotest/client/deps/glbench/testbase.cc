@@ -34,19 +34,25 @@ uint64_t TimeTest(TestBase* test, uint64_t iterations) {
 
 // Target minimum iteration duration of 1s. This means the final/longest
 // iteration is between 1s and 2s and the machine is active for 2s to 4s.
+// Notice as of March 2014 the BVT suite has a hard limit per job of 20 minutes.
 #define MIN_ITERATION_DURATION_US 1000000
 
 // Benchmark some draw commands, by running it many times. We want to measure
 // the marginal cost, so we try more and more iterations until we reach the
 // minimum specified iteration time.
 double Bench(TestBase* test) {
-  // Conservatively let machine cool down. Our goal is to sleep at least three
-  // times as much (on average) as being active to dissipate heat.
-  // TODO(ihf): Investigate if it is necessary to idle even more in the future.
-  // In particular cooling down until reaching a temperature threshold.
-  const int cool_time = static_cast<int>((10*MIN_ITERATION_DURATION_US)/1.e6);
-  // TODO(ihf): Remove this sleep if we have better ways to handle burst/power.
-  sleep(cool_time);
+  // Try to wait a bit to let machine cool down for next test. We allow for a
+  // bit of hysteresis as it might take too long to do a perfect job, which is
+  // probably not required. But these parameters could be tuned.
+  double initial_temperature = GetInitialMachineTemperature();
+  double temperature = 0;
+  // Try to cool to initial + 5'C but don't wait longer than 30s.
+  double wait = WaitForCoolMachine(initial_temperature + 5.0, 30.0,
+                                   &temperature);
+  printf("Bench: Cooled down to %.1f'C (initial=%.1f'C) after waiting %.1fs.\n",
+         temperature, initial_temperature, wait);
+  if (temperature > initial_temperature + 10.0)
+    printf("Warning: Machine did not cool down enough for next test!");
 
   // Do two iterations because initial timings can vary wildly.
   TimeTest(test, 2);
@@ -121,10 +127,11 @@ void RunTest(TestBase* test, const char* testname,
     if (length > 45)
       printf("# Warning: adjust string formatting to length = %d\n",
              length);
+    // Results are marked using a leading '@RESULT: ' to allow parsing.
     if (value == 0.0)
-       printf("%-45s=          0   []\n", testname);
+      printf("@RESULT:  %-45s=          0   []\n", testname);
     else
-      printf("%-45s= %10.2f   [%s]\n", testname,
+      printf("@RESULT: %-45s= %10.2f   [%s]\n", testname,
              coefficient * (inverse ? 1.0 / value : value),
              name_png);
   } else {

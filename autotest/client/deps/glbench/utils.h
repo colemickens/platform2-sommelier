@@ -17,6 +17,16 @@ void SetBasePathFromArgv0(const char* argv0, const char* relative);
 void *MmapFile(const char *name, size_t *length);
 const FilePath& GetBasePath();
 
+// Returns temperature of system before testing started. It is used as a
+// reference for keeping the machine cool.
+const double GetInitialMachineTemperature();
+// For thermal monitoring of system.
+double GetMachineTemperature();
+// Wait for machine to cool with temperature in Celsius and timeout in seconds.
+// Returns the time spent waiting and sets the last observed temperature.
+double WaitForCoolMachine(double cold_temperature, double timeout,
+                          double *temperature);
+
 namespace glbench {
 
 GLuint SetupTexture(GLsizei size_log2);

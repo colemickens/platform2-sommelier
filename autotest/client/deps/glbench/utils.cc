@@ -21,6 +21,7 @@ const char* kGlesHeader =
     "#endif\n";
 
 FilePath *g_base_path = new FilePath();
+double g_initial_temperature = GetMachineTemperature();
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
 void SetBasePathFromArgv0(const char* argv0, const char* relative) {
@@ -56,6 +57,92 @@ void *MmapFile(const char* name, size_t* length) {
   return mmap_ptr;
 }
 
+bool read_int_from_file(FilePath filename, int *value) {
+  FILE *fd = fopen(filename.value().c_str(), "r");
+  if (!fd) {
+    printf("Error: could not open file for reading. (%s)\n",
+            filename.value().c_str());
+    return false;
+  }
+  int count = fscanf(fd, "%d", value);
+  if (count != 1) {
+    printf("Error: could not read integer from file. (%s)\n",
+                filename.value().c_str());
+    if(count != 1)
+      return false;
+  }
+  fclose(fd);
+  return true;
+}
+
+// Returns temperature at which CPU gets throttled.
+// TODO(ihf): update this based on the outcome of crbug.com/356422.
+double get_temperature_critical() {
+  FilePath filename = FilePath("/sys/class/hwmon/hwmon0/temp1_crit");
+  int temperature_mCelsius = 0;
+  if (!read_int_from_file(filename, &temperature_mCelsius)) {
+    // spring is special :-(.
+    filename = FilePath("/sys/devices/virtual/hwmon/hwmon1/temp1_crit");
+    if (!read_int_from_file(filename, &temperature_mCelsius))
+      return -1000.0;
+  }
+  double temperature_Celsius = 0.001 * temperature_mCelsius;
+  // Simple sanity check for reasonable critical temperatures.
+  assert(temperature_Celsius >= 60.0);
+  assert(temperature_Celsius <= 150.0);
+  return temperature_Celsius;
+}
+
+// Returns currently measured temperature.
+// TODO(ihf): update this based on the outcome of crbug.com/356422.
+double get_temperature_input() {
+  FilePath filename = FilePath("/sys/class/hwmon/hwmon0/temp1_input");
+  int temperature_mCelsius = 0;
+  if (!read_int_from_file(filename, &temperature_mCelsius)) {
+    // spring is special :-(.
+    filename = FilePath("/sys/devices/virtual/hwmon/hwmon1/temp1_input");
+    if (!read_int_from_file(filename, &temperature_mCelsius))
+      return -1000.0;
+  }
+  double temperature_Celsius = 0.001 * temperature_mCelsius;
+  // Simple sanity check for reasonable temperatures.
+  assert(temperature_Celsius >= 10.0);
+  assert(temperature_Celsius <= 150.0);
+  return temperature_Celsius;
+}
+
+const double GetInitialMachineTemperature() {
+  return g_initial_temperature;
+}
+
+// TODO(ihf): update this based on the outcome of crbug.com/356422.
+// In particular we should probably just have a system script that we can call
+// and read the output from.
+double GetMachineTemperature() {
+  double max_temperature = get_temperature_input();
+  return max_temperature;
+}
+
+// Waits up to timeout seconds to reach cold_temperature in Celsius.
+double WaitForCoolMachine(double cold_temperature, double timeout,
+                          double *temperature) {
+  // Integer times are in micro-seconds.
+  uint64_t time_start = GetUTime();
+  uint64_t time_now = time_start;
+  uint64_t time_end = time_now + 1e6 * timeout;
+  *temperature = GetMachineTemperature();
+  while (time_now < time_end) {
+    if (*temperature < cold_temperature)
+      break;
+    sleep(1.0);
+    time_now = GetUTime();
+    *temperature = GetMachineTemperature();
+  }
+  double wait_time = 1.0e-6 * (time_now - time_start);
+  assert(wait_time >= 0);
+  assert(wait_time < timeout + 5.0);
+  return wait_time;
+}
 
 namespace glbench {
 
