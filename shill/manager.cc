@@ -145,6 +145,9 @@ Manager::Manager(ControlInterface *control_interface,
       kDefaultServiceProperty, &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kDevicesProperty,
                                          &Manager::EnumerateDevices);
+  HelpRegisterDerivedBool(kDisableWiFiVHTProperty,
+                          &Manager::GetDisableWiFiVHT,
+                          &Manager::SetDisableWiFiVHT);
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
@@ -965,6 +968,18 @@ void Manager::EmitDeviceProperties() {
                                UninitializedTechnologies(&error));
 }
 
+bool Manager::SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error) {
+  if (disable_wifi_vht == wifi_provider_->disable_vht()) {
+    return false;
+  }
+  wifi_provider_->set_disable_vht(disable_wifi_vht);
+  return true;
+}
+
+bool Manager::GetDisableWiFiVHT(Error *error) {
+  return wifi_provider_->disable_vht();
+}
+
 bool Manager::HasService(const ServiceRefPtr &service) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
@@ -1349,6 +1364,15 @@ void Manager::HelpRegisterConstDerivedStrings(
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, NULL)));
+}
+
+void Manager::HelpRegisterDerivedBool(
+    const string &name,
+    bool(Manager::*get)(Error *),
+    bool(Manager::*set)(const bool&, Error *)) {
+  store_.RegisterDerivedBool(
+      name,
+      BoolAccessor(new CustomAccessor<Manager, bool>(this, get, set, NULL)));
 }
 
 void Manager::SortServices() {

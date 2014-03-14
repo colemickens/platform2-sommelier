@@ -2217,6 +2217,7 @@ TEST_F(WiFiMainTest, IsIdle) {
 
 MATCHER_P(WiFiAddedArgs, bgscan, "") {
   return ContainsKey(arg, WPASupplicant::kNetworkPropertyScanSSID) &&
+      ContainsKey(arg, WPASupplicant::kNetworkPropertyDisableVHT) &&
       ContainsKey(arg, WPASupplicant::kNetworkPropertyBgscan) == bgscan;
 }
 

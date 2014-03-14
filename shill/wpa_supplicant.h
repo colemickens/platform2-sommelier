@@ -79,6 +79,7 @@ class WPASupplicant {
   static const char kNetworkModeAccessPoint[];
   static const char kNetworkPropertyBgscan[];
   static const char kNetworkPropertyCaPath[];
+  static const char kNetworkPropertyDisableVHT[];
   static const char kNetworkPropertyEapKeyManagement[];
   static const char kNetworkPropertyEapIdentity[];
   static const char kNetworkPropertyEapEap[];

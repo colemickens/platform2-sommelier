@@ -501,6 +501,8 @@ void WiFi::ConnectTo(WiFiService *service) {
       service_params[WPASupplicant::kNetworkPropertyScanSSID].writer().
           append_uint32(scan_ssid);
       AppendBgscan(service, &service_params);
+      service_params[WPASupplicant::kNetworkPropertyDisableVHT].writer().
+          append_uint32(provider_->disable_vht());
       network_path = supplicant_interface_proxy_->AddNetwork(service_params);
       CHECK(!network_path.empty());  // No DBus path should be empty.
       rpcid_by_service_[service] = network_path;

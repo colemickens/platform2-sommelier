@@ -111,6 +111,9 @@ class WiFiProvider : public ProviderInterface {
   // connected.  This data is accumulated across multiple shill runs.
   virtual FrequencyCountList GetScanFrequencies() const;
 
+  bool disable_vht() { return disable_vht_; }
+  void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
+
  private:
   friend class WiFiProviderTest;
   FRIEND_TEST(WiFiProviderTest, FrequencyMapAgingIllegalDay);
@@ -217,6 +220,9 @@ class WiFiProvider : public ProviderInterface {
   int64_t total_frequency_connections_;
 
   Time *time_;
+
+  // Disable 802.11ac Very High Throughput (VHT) connections.
+  bool disable_vht_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiProvider);
 };

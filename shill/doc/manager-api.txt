@@ -528,6 +528,11 @@ Properties 	object ActiveProfile [readwrite]
 
 			List of device object paths.
 
+		bool DisableVHT [readwrite]
+
+			Disables 802.11ac Very High Throughput (VHT)
+			connections, reverting to 802.11n.
+
 		array{string} EnabledTechnologies [readonly]
 
 			The list of enabled technologies. The strings

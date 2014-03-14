@@ -447,6 +447,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                           Technology::Identifier tech) const;
   bool IsDefaultProfile(StoreInterface *storage);
   void EmitDeviceProperties();
+  bool SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error);
+  bool GetDisableWiFiVHT(Error *error);
 
   // Unload a service while iterating through |services_|.  Returns true if
   // service was erased (which means the caller loop should not increment
@@ -473,6 +475,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void HelpRegisterConstDerivedStrings(
       const std::string &name,
       Strings(Manager::*get)(Error *));
+  void HelpRegisterDerivedBool(
+      const std::string &name,
+      bool(Manager::*get)(Error *error),
+      bool(Manager::*set)(const bool &value, Error *error));
 
   bool HasProfile(const Profile::Identifier &ident);
   void PushProfileInternal(const Profile::Identifier &ident,

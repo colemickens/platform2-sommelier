@@ -91,6 +91,7 @@ const char WPASupplicant::kNetworkModeAdHoc[] = "ad-hoc";
 const char WPASupplicant::kNetworkModeAccessPoint[] = "ap";
 const char WPASupplicant::kNetworkPropertyBgscan[] = "bgscan";
 const char WPASupplicant::kNetworkPropertyCaPath[] = "ca_path";
+const char WPASupplicant::kNetworkPropertyDisableVHT[] = "disable_vht";
 const char WPASupplicant::kNetworkPropertyEapIdentity[] = "identity";
 const char WPASupplicant::kNetworkPropertyEapKeyManagement[] = "key_mgmt";
 const char WPASupplicant::kNetworkPropertyEapEap[] = "eap";

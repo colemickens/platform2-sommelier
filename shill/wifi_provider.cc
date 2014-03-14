@@ -70,7 +70,8 @@ WiFiProvider::WiFiProvider(ControlInterface *control_interface,
       manager_(manager),
       running_(false),
       total_frequency_connections_(-1L),
-      time_(Time::GetInstance()) {}
+      time_(Time::GetInstance()),
+      disable_vht_(false) {}
 
 WiFiProvider::~WiFiProvider() {}
 

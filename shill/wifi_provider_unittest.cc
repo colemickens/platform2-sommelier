@@ -372,6 +372,7 @@ TEST_F(WiFiProviderTest, Start) {
   EXPECT_TRUE(GetServices().empty());
   EXPECT_TRUE(GetRunning());
   EXPECT_TRUE(GetServiceByEndpoint().empty());
+  EXPECT_FALSE(provider_.disable_vht());
 }
 
 TEST_F(WiFiProviderTest, Stop) {
