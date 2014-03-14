@@ -78,7 +78,23 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   //     <decrease-lux-threshold>
   //     <increase-lux-threshold>
   //
-  // These values' meanings are described in BrightnessStep.
+  // These values' meanings are described in more detail in BrightnessStep.
+  //
+  // Steps should be listed in ascending order when sorted by their thresholds,
+  // and thresholds should overlap. For example, consider the following steps:
+  //
+  //    50.0   -1  100
+  //    75.0   80  220
+  //   100.0  200   -1
+  //
+  // A brightness level of 50% (corresponding to the bottom step) will be used
+  // in conjunction with a starting ALS level of 25. After the ALS increases
+  // above 100 (the bottom step's increase threshold), the brightness will
+  // increase to 75% (the middle step), and after it increases above 220 (the
+  // middle step's increase threshold), 100% (the top step) will be used. If the
+  // ALS later falls below 200 (the top step's decrease threshold), 75% will be
+  // used, and if it then falls below 80 (the middle step's decrease threshold),
+  // 50% will be used.
   void Init(PrefsInterface* prefs,
             const std::string& limits_pref_name,
             const std::string& steps_pref_name,
