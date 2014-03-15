@@ -27,7 +27,6 @@ use_flag_is_set() {
 }
 
 # Returns success if we were built for the board passed as the sole parameter.
-# Not all boards are handled; see the ebuild file.
 is_board() {
   use_flag_is_set "board_use_$1"
 }
@@ -302,6 +301,13 @@ if use_flag_is_set disable_login_animations; then
   ASH_FLAGS="$ASH_FLAGS --ash-copy-host-background-at-boot"
 elif use_flag_is_set fade_boot_splash_screen; then
   ASH_FLAGS="$ASH_FLAGS --ash-animate-from-boot-splash-screen"
+fi
+
+# TODO(derat): Enable brightness control globally and remove this flag after
+# powerd's brightness-controlling code has been verified to work with most
+# external displays: http://crbug.com/315371
+if is_board monroe; then
+  ASH_FLAGS="$ASH_FLAGS --ash-enable-brightness-control"
 fi
 
 if [ -e $(get_wallpaper_filename oem large) ] &&
