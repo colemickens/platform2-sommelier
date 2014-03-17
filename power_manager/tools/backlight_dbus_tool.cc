@@ -13,6 +13,8 @@
 #include <dbus/object_proxy.h>
 #include <gflags/gflags.h>
 
+DEFINE_bool(decrease, false, "Decrease the brightness by one step");
+DEFINE_bool(increase, false, "Increase the brightness by one step");
 DEFINE_bool(set, false, "Set the brightness to --percent");
 DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");
 DEFINE_bool(gradual, true, "Transition gradually");
@@ -57,6 +59,9 @@ int main(int argc, char* argv[]) {
       "Query or change the panel backlight brightness via powerd.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
+  CHECK_LE(FLAGS_decrease + FLAGS_increase + FLAGS_set, 1)
+      << "Exactly zero or one of --decrease, --increase, and --set may be set";
+
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
@@ -68,17 +73,30 @@ int main(int argc, char* argv[]) {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  double percent = 0.0;
-  CHECK(GetCurrentBrightness(powerd_proxy, &percent));
-  printf("Current percent = %f\n", percent);
-  if (FLAGS_set) {
-    const int style = FLAGS_gradual ?
-        power_manager::kBrightnessTransitionGradual :
-        power_manager::kBrightnessTransitionInstant;
-    CHECK(SetCurrentBrightness(powerd_proxy, FLAGS_percent, style));
-    printf("Set percent to %f\n", FLAGS_percent);
+  if (FLAGS_decrease || FLAGS_increase) {
+    dbus::MethodCall method_call(
+        power_manager::kPowerManagerInterface,
+        FLAGS_decrease ? power_manager::kDecreaseScreenBrightness :
+            power_manager::kIncreaseScreenBrightness);
+    if (FLAGS_decrease) {
+      dbus::MessageWriter writer(&method_call);
+      writer.AppendBool(true);  // allow_off
+    }
+    CHECK(powerd_proxy->CallMethodAndBlock(
+        &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  } else {
+    double percent = 0.0;
     CHECK(GetCurrentBrightness(powerd_proxy, &percent));
-    printf("Current percent now = %f\n", percent);
+    printf("Current percent = %f\n", percent);
+    if (FLAGS_set) {
+      const int style = FLAGS_gradual ?
+          power_manager::kBrightnessTransitionGradual :
+          power_manager::kBrightnessTransitionInstant;
+      CHECK(SetCurrentBrightness(powerd_proxy, FLAGS_percent, style));
+      printf("Set percent to %f\n", FLAGS_percent);
+      CHECK(GetCurrentBrightness(powerd_proxy, &percent));
+      printf("Current percent now = %f\n", percent);
+    }
   }
 
   return 0;
