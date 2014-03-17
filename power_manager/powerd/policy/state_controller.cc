@@ -162,7 +162,6 @@ StateController::StateController()
       saw_user_activity_soon_after_screen_dim_or_off_(false),
       saw_user_activity_during_current_session_(false),
       require_usb_input_device_to_suspend_(false),
-      keep_screen_on_for_audio_(false),
       avoid_suspend_when_headphone_jack_plugged_(false),
       disable_idle_suspend_(false),
       allow_docked_mode_(false),
@@ -592,7 +591,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
       waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
-  if (keep_screen_on_for_audio_ || delegate_->IsHdmiAudioActive())
+  if (delegate_->IsHdmiAudioActive())
     last_time = std::max(last_time, GetLastAudioActivityTime(now));
   return last_time;
 }
@@ -605,7 +604,6 @@ void StateController::UpdateLastUserActivityTime() {
 void StateController::LoadPrefs() {
   prefs_->GetBool(kRequireUsbInputDeviceToSuspendPref,
                   &require_usb_input_device_to_suspend_);
-  prefs_->GetBool(kKeepBacklightOnForAudioPref, &keep_screen_on_for_audio_);
   prefs_->GetBool(kAvoidSuspendWhenHeadphoneJackPluggedPref,
                   &avoid_suspend_when_headphone_jack_plugged_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
@@ -759,10 +757,16 @@ void StateController::UpdateState() {
   base::TimeDelta screen_off_duration =
       now - GetLastActivityTimeForScreenOff(now);
 
+  const bool screen_was_dimmed = screen_dimmed_;
   HandleDelay(delays_.screen_dim, screen_dim_or_lock_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
               "Dimming screen", "Undimming screen", &screen_dimmed_);
+  if (screen_dimmed_ && !screen_was_dimmed &&
+      audio_is_active_ && delegate_->IsHdmiAudioActive()) {
+    VLOG(1) << "Audio is currently being sent to display; screen will not be "
+            << "turned off for inactivity";
+  }
 
   const bool screen_was_turned_off = screen_turned_off_;
   HandleDelay(delays_.screen_off, screen_off_duration,

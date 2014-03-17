@@ -244,8 +244,8 @@ class StateController : public PrefsObserver {
 
   // Returns the last time at which activity occurred that should defer the
   // screen getting turned off.  This is generally the same as
-  // GetLastActivityTimeForScreenDimOrLock() but may differ if
-  // |keep_screen_on_for_audio_| is set.
+  // GetLastActivityTimeForScreenDimOrLock() but may differ if the screen needs
+  // to be kept on for audio playback.
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
 
   // Updates |last_user_activity_time_| to contain the current time and
@@ -348,11 +348,6 @@ class StateController : public PrefsObserver {
   // |kRequireUsbInputDeviceToSuspendPref| pref and set on hardware that
   // doesn't wake in response to Bluetooth input devices.
   bool require_usb_input_device_to_suspend_;
-
-  // Should the screen be kept on while audio is playing?  This is controlled
-  // by the |kKeepBacklightOnForAudioPref| pref and set for hardware that
-  // is unable to produce audio while the screen is turned off.
-  bool keep_screen_on_for_audio_;
 
   // Should the system avoid suspending when something is plugged in to the
   // headphone jack? This is controlled by the

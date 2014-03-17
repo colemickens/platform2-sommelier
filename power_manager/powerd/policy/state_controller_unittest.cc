@@ -140,7 +140,6 @@ class StateControllerTest : public testing::Test {
         default_battery_screen_dim_delay_(base::TimeDelta::FromSeconds(30)),
         default_disable_idle_suspend_(0),
         default_require_usb_input_device_to_suspend_(0),
-        default_keep_screen_on_for_audio_(0),
         default_avoid_suspend_when_headphone_jack_plugged_(0),
         default_ignore_external_policy_(0),
         default_allow_docked_mode_(1),
@@ -168,8 +167,6 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kDisableIdleSuspendPref, default_disable_idle_suspend_);
     prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
                     default_require_usb_input_device_to_suspend_);
-    prefs_.SetInt64(kKeepBacklightOnForAudioPref,
-                    default_keep_screen_on_for_audio_);
     prefs_.SetInt64(kAvoidSuspendWhenHeadphoneJackPluggedPref,
                     default_avoid_suspend_when_headphone_jack_plugged_);
     prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
@@ -263,7 +260,6 @@ class StateControllerTest : public testing::Test {
   base::TimeDelta default_battery_screen_dim_delay_;
   int64 default_disable_idle_suspend_;
   int64 default_require_usb_input_device_to_suspend_;
-  int64 default_keep_screen_on_for_audio_;
   int64 default_avoid_suspend_when_headphone_jack_plugged_;
   int64 default_ignore_external_policy_;
   int64 default_allow_docked_mode_;
@@ -705,43 +701,6 @@ TEST_F(StateControllerTest, SimultaneousIdleAndLidActions) {
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
   AdvanceTime(default_ac_suspend_delay_ - default_ac_screen_off_delay_);
   controller_.HandleLidStateChange(LID_CLOSED);
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-}
-
-// Tests that the screen stays on while audio is playing if
-// |kKeepBacklightOnForAudioPref| is set.
-TEST_F(StateControllerTest, KeepScreenOnForAudioPref) {
-  default_keep_screen_on_for_audio_ = 1;
-  Init();
-
-  // The screen should be dimmed as usual.
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-
-  // After audio is reported, screen-off should be deferred.
-  controller_.HandleAudioStateChange(true);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  // Continue reporting audio activity; the screen should stay on.
-  AdvanceTime(default_ac_screen_off_delay_);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  // After the audio activity stops, the screen should be turned off after
-  // the normal screen-off delay.
-  controller_.HandleAudioStateChange(false);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-
-  // Audio activity should turn the screen back on.
-  controller_.HandleAudioStateChange(true);
-  EXPECT_EQ(kScreenOn, delegate_.GetActions());
-
-  // Turn the screen off again and check that the next action is suspending.
-  controller_.HandleAudioStateChange(false);
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 

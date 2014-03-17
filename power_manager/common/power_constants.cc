@@ -26,7 +26,6 @@ const char kMinVisibleBacklightLevelPref[] = "min_visible_backlight_level";
 const char kInstantTransitionsBelowMinLevelPref[] =
     "instant_transitions_below_min_level";
 const char kDisableALSPref[] = "disable_als";
-const char kKeepBacklightOnForAudioPref[] = "keep_backlight_on_for_audio";
 const char kAvoidSuspendWhenHeadphoneJackPluggedPref[] =
     "avoid_suspend_when_headphone_jack_plugged";
 const char kWakeupInputPref[] = "wakeup_input_device_names";
