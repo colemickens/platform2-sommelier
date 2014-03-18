@@ -382,7 +382,7 @@ elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
   HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
 fi
 
-GPU_FLAGS="--gpu-sandbox-failures-fatal=no"
+GPU_FLAGS="--gpu-sandbox-failures-fatal=yes"
 if use_flag_is_set gpu_sandbox_allow_sysv_shm; then
   GPU_FLAGS="$GPU_FLAGS --gpu-sandbox-allow-sysv-shm"
 fi
