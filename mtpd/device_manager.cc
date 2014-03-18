@@ -408,7 +408,7 @@ bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
                                               &bytes_read);
 
   // Own |data| in a scoper so it gets freed when this function returns.
-  scoped_ptr_malloc<uint8_t> scoped_data(data);
+  scoped_ptr<uint8_t, base::FreeDeleter> scoped_data(data);
 
   if (transfer_status != 0 || bytes_read != count)
     return false;
@@ -607,7 +607,7 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
       new_device = mtp_device;
     }
     // Fetch fallback vendor / product info.
-    scoped_ptr_malloc<char> duplicated_string;
+    scoped_ptr<char, base::FreeDeleter> duplicated_string;
     duplicated_string.reset(LIBMTP_Get_Manufacturername(mtp_device));
     std::string fallback_vendor;
     if (duplicated_string.get())
