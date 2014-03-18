@@ -26,6 +26,7 @@ class KeyStore;
 class Pkcs11KeyStore;
 class Platform;
 class Tpm;
+class TpmInit;
 
 // This class performs tasks which enable attestation enrollment.  These tasks
 // include creating an AIK and recording all information about the AIK and EK
@@ -46,6 +47,7 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Must be called before any other method.
   virtual void Initialize(Tpm* tpm,
+                          TpmInit* tpm_init,
                           Platform* platform,
                           Crypto* crypto,
                           InstallAttributes* install_attributes);
@@ -379,6 +381,7 @@ class Attestation : public base::PlatformThread::Delegate,
   static const char kAlternatePCAKeyIDAttributeName[];
 
   Tpm* tpm_;
+  TpmInit* tpm_init_;
   Platform* platform_;
   Crypto* crypto_;
   // A lock to protect |database_pb_| because PrepareForEnrollment may happen on
@@ -557,6 +560,9 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Returns true if the TPM is ready.
   bool IsTPMReady();
+
+  // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
+  void set_tpm_init(TpmInit* value) { tpm_init_ = value; }
 
   friend class AttestationTest;
 

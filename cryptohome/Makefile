@@ -47,8 +47,8 @@ ME_OBJS := mount-encrypted.o mount-helpers.o
 TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o mock_%.o, \
                       $(CXX_OBJECTS))
 SHARED_OBJS := $(filter-out cryptohomed.o cryptohome.o cryptohome-path.o \
-                            lockbox-cache-main.o $(ME_OBJS) $(TEST_OBJS), \
-                            $(CXX_OBJECTS))
+                            lockbox-cache-main.o $(ME_OBJS) $(TEST_OBJS) \
+                            tpm.o cryptolib.o, $(CXX_OBJECTS))
 
 # Used to cause an object to depend on all the generated headers. Since the
 # headers are generated, there's no way for common.mk's dependency detection to
@@ -74,6 +74,7 @@ $(eval \
         $(GEN_OBJS), \
         $(call add_gen_hdrs,$(obj))))
 
+all: libcrostpm.a
 all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
 all: CXX_BINARY(lockbox-cache) CC_BINARY(mount-encrypted)
 tests: TEST(CXX_BINARY(cryptohome_testrunner))
@@ -107,17 +108,20 @@ bindings/server.h: $(SRC)/cryptohome.xml
 	mkdir -p $(dir $@)
 	$(DBUS_BINDING_TOOL) --mode=glib-server --prefix=cryptohome $^ > $@
 
-CXX_BINARY(cryptohomed): $(SHARED_OBJS) cryptohomed.o
-CXX_BINARY(cryptohome): $(SHARED_OBJS) cryptohome.o
-CXX_BINARY(cryptohome-path): $(SHARED_OBJS) cryptohome-path.o
+CXX_STATIC_LIBRARY(libcrostpm.pie.a): tpm.o cryptolib.o
+libcrostpm.a: CXX_STATIC_LIBRARY(libcrostpm.pie.a)
+	cp $(OUT)libcrostpm.pie.a $(OUT)libcrostpm.a
+CXX_BINARY(cryptohomed): $(SHARED_OBJS) cryptohomed.o libcrostpm.a
+CXX_BINARY(cryptohome): $(SHARED_OBJS) cryptohome.o libcrostpm.a
+CXX_BINARY(cryptohome-path): $(SHARED_OBJS) cryptohome-path.o libcrostpm.a
 CXX_BINARY(cryptohome_testrunner): LDLIBS += -lgtest -lgmock
-CXX_BINARY(cryptohome_testrunner): $(SHARED_OBJS) $(TEST_OBJS)
+CXX_BINARY(cryptohome_testrunner): $(SHARED_OBJS) $(TEST_OBJS) libcrostpm.a
 CC_BINARY(mount-encrypted): $(ME_OBJS)
-
-CXX_BINARY(lockbox-cache): tpm_status.pb.o cryptolib.o platform.o tpm.o \
-                           lockbox.o lockbox-cache.o lockbox-cache-tpm.o \
-                           lockbox-cache-main.o
+CXX_BINARY(lockbox-cache): tpm_status.pb.o lockbox.o lockbox-cache-tpm.o \
+                           lockbox-cache.o lockbox-cache-main.o platform.o \
+                           libcrostpm.a
 
 clean: CLEAN(*.pb.cc) CLEAN(*.pb.h) CLEAN(cryptohomed) CLEAN(lockbox-cache)
 clean: CLEAN(cryptohome) CLEAN(cryptohome-path) CLEAN(cryptohome_testrunner)
 clean: CLEAN(mount-encrypted) CLEAN($(SHARED_PROTO_FILES))
+clean: CLEAN(libcrostpm.pie.a) libcrostpm.a

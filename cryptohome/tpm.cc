@@ -21,8 +21,6 @@
 #include <trousers/trousers.h>
 
 #include "cryptolib.h"
-#include "platform.h"
-#include "tpm_init.h"
 
 using base::PlatformThread;
 using chromeos::SecureBlob;
@@ -57,27 +55,16 @@ const unsigned char kDefaultSrkAuth[] = { };
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
 const unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
-const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
-const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
-                                           {0, 9, 8, 1, 0, 3}};
+
 const char* kWellKnownSrkTmp = "1234567890";
-const int kOwnerPasswordLength = 12;
-const int kMaxTimeoutRetries = 5;
-const char* kTpmCheckEnabledFile = "/sys/class/misc/tpm0/device/enabled";
-const char* kTpmCheckOwnedFile = "/sys/class/misc/tpm0/device/owned";
-const char* kTpmOwnedFileOld = "/var/lib/.tpm_owned";
-const char* kTpmStatusFileOld = "/var/lib/.tpm_status";
-const char* kTpmOwnedFile = "/mnt/stateful_partition/.tpm_owned";
-const char* kTpmStatusFile = "/mnt/stateful_partition/.tpm_status";
-const char* kOpenCryptokiPath = "/var/lib/opencryptoki";
 const unsigned int kTpmConnectRetries = 10;
 const unsigned int kTpmConnectIntervalMs = 100;
-const char kTpmWellKnownPassword[] = TSS_WELL_KNOWN_SECRET;
 const unsigned int kTpmBootPCR = 0;
 const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
 const int kDelegateFamilyLabel = 1;
 const int kDelegateEntryLabel = 2;
+
 // This error is returned when an attempt is made to use the SRK but it does not
 // yet exist because the TPM has not been owned.
 const TSS_RESULT kKeyNotFoundError = (TSS_E_PS_KEY_NOTFOUND | TSS_LAYER_TCS);
@@ -97,149 +84,16 @@ Tpm* Tpm::GetSingleton() {
 Tpm::Tpm()
     : initialized_(false),
       srk_auth_(kDefaultSrkAuth, sizeof(kDefaultSrkAuth)),
-      context_handle_(0),
-      key_handle_(0),
       owner_password_(),
       password_sync_lock_(),
       is_disabled_(true),
       is_owned_(false),
-      is_being_owned_(false),
-      platform_(NULL) {
-}
-
-Tpm::~Tpm() {
-  Disconnect();
-}
-
-bool Tpm::Init(Platform* platform, bool open_key) {
-  if (initialized_) {
-    return false;
-  }
-  initialized_ = true;
-  DCHECK(platform);
-  platform_ = platform;
-
+      is_being_owned_(false) {
   metrics_.reset(new MetricsLibrary());
   metrics_->Init();
-
-  // Migrate any old status files from old location to new location.
-  if (!platform_->FileExists(kTpmOwnedFile) &&
-      platform_->FileExists(kTpmOwnedFileOld)) {
-    platform_->Move(kTpmOwnedFileOld, kTpmOwnedFile);
-  }
-  if (!platform_->FileExists(kTpmStatusFile) &&
-      platform_->FileExists(kTpmStatusFileOld)) {
-    platform_->Move(kTpmStatusFileOld, kTpmStatusFile);
-  }
-
-  // Checking disabled and owned either via sysfs or via TSS calls will block if
-  // ownership is being taken by another thread or process.  So for this to work
-  // well, Tpm::Init() needs to be called before InitializeTpm() is called.  At
-  // that point, the public API for Tpm only checks these booleans, so other
-  // threads can check without being blocked.  InitializeTpm() will reset the
-  // is_owned_ bit on success.
-  bool successful_check = false;
-  if (platform_->FileExists(kTpmCheckEnabledFile)) {
-    is_disabled_ = IsDisabledCheckViaSysfs();
-    is_owned_ = IsOwnedCheckViaSysfs();
-    successful_check = true;
-  } else {
-    TSS_HCONTEXT context_handle;
-    TSS_RESULT result;
-    if (OpenAndConnectTpm(&context_handle, &result)) {
-      bool enabled = false;
-      bool owned = false;
-      IsEnabledOwnedCheckViaContext(context_handle, &enabled, &owned);
-      DisconnectContext(context_handle);
-      is_disabled_ = !enabled;
-      is_owned_ = owned;
-      successful_check = true;
-    }
-  }
-  if (successful_check && !is_owned_) {
-    platform_->DeleteFile(kOpenCryptokiPath, true);
-    platform_->DeleteFile(kTpmOwnedFile, false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-  }
-  if (successful_check && is_owned_) {
-    if (!platform_->FileExists(kTpmOwnedFile)) {
-      chromeos::Blob empty_blob(0);
-      platform_->WriteFile(kTpmOwnedFile, empty_blob);
-    }
-  }
-  TpmStatus tpm_status;
-  if (LoadTpmStatus(&tpm_status)) {
-    if (tpm_status.has_owner_password()) {
-      SecureBlob local_owner_password;
-      if (LoadOwnerPassword(tpm_status, &local_owner_password)) {
-        password_sync_lock_.Acquire();
-        owner_password_.assign(local_owner_password.begin(),
-                               local_owner_password.end());
-        password_sync_lock_.Release();
-      }
-    }
-  }
-
-  if (open_key && key_handle_ == 0) {
-    Tpm::TpmRetryAction retry_action;
-    return Connect(&retry_action);
-  }
-
-  return true;
 }
 
-bool Tpm::Connect(TpmRetryAction* retry_action) {
-  // TODO(fes): Check the status of enabled, owned, being_owned first.
-  *retry_action = Tpm::RetryNone;
-  if (key_handle_ == 0) {
-    TSS_RESULT result;
-    TSS_HCONTEXT context_handle;
-    if (!OpenAndConnectTpm(&context_handle, &result)) {
-      context_handle_ = 0;
-      key_handle_ = 0;
-      *retry_action = HandleError(result);
-      TPM_LOG(ERROR, result) << "Error connecting to the TPM";
-      return false;
-    }
-
-    TSS_HKEY key_handle;
-    if (!LoadOrCreateCryptohomeKey(context_handle, false, &key_handle,
-                                   &result)) {
-      context_handle_ = 0;
-      key_handle_ = 0;
-      *retry_action = HandleError(result);
-      Tspi_Context_Close(context_handle);
-      if (result == kKeyNotFoundError) {
-        TPM_LOG(WARNING, result)
-            << "Cannot load / create the cryptohome TPM key. "
-            << "This is normal when the TPM is not owned.";
-      } else {
-        TPM_LOG(ERROR, result) << "Error loading the cryptohome TPM key";
-      }
-      return false;
-    }
-
-    key_handle_ = key_handle;
-    context_handle_ = context_handle;
-  }
-
-  return true;
-}
-
-bool Tpm::IsConnected() {
-  return (key_handle_ != 0);
-}
-
-void Tpm::Disconnect() {
-  if (key_handle_) {
-    Tspi_Context_CloseObject(context_handle_, key_handle_);
-    key_handle_ = 0;
-  }
-  if (context_handle_) {
-    Tspi_Context_Close(context_handle_);
-    context_handle_ = 0;
-  }
-}
+Tpm::~Tpm() { }
 
 TSS_HCONTEXT Tpm::ConnectContext() {
   TSS_RESULT result;
@@ -249,12 +103,6 @@ TSS_HCONTEXT Tpm::ConnectContext() {
   }
 
   return context_handle;
-}
-
-void Tpm::DisconnectContext(TSS_HCONTEXT context_handle) {
-  if (context_handle) {
-    Tspi_Context_Close(context_handle);
-  }
 }
 
 bool Tpm::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
@@ -330,10 +178,12 @@ bool Tpm::ConnectContextAsDelegate(const SecureBlob& delegate_blob,
 }
 
 
-void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
+void Tpm::GetStatus(TSS_HCONTEXT context,
+                    TSS_HKEY key_handle,
+                    Tpm::TpmStatusInfo* status) {
   memset(status, 0, sizeof(Tpm::TpmStatusInfo));
-  status->ThisInstanceHasContext = (context_handle_ != 0);
-  status->ThisInstanceHasKeyHandle = (key_handle_ != 0);
+  status->ThisInstanceHasContext = (context != 0);
+  status->ThisInstanceHasKeyHandle = (key_handle != 0);
   ScopedTssContext context_handle;
   // Check if we can connect
   TSS_RESULT result;
@@ -361,15 +211,10 @@ void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
   }
   status->CanLoadSrkPublicKey = true;
 
-  // Check the Cryptohome key
-  ScopedTssKey key_handle(context_handle);
-  if (!LoadCryptohomeKey(context_handle, key_handle.ptr(), &result)) {
-    status->LastTpmError = result;
-    return;
-  }
-  status->HasCryptohomeKey = true;
+  // Check the Cryptohome key by using what we have been told.
+  status->HasCryptohomeKey = (context != 0) && (key_handle != 0);
 
-  if (check_crypto) {
+  if (status->HasCryptohomeKey) {
     // Check encryption (we don't care about the contents, just whether or not
     // there was an error)
     SecureBlob data(16);
@@ -382,267 +227,19 @@ void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob key;
     CryptoLib::PasskeyToAesKey(password, salt, 13, &key, NULL);
-    if (!EncryptBlob(context_handle, key_handle, data, key, &data_out,
-                     &result)) {
-      status->LastTpmError = result;
+    TSS_RESULT result;
+    if (!EncryptBlob(context, key_handle, data, key, &data_out, &result)) {
       return;
     }
     status->CanEncrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (!DecryptBlob(context_handle, key_handle, data_out, key, &data,
-                     &result)) {
-      status->LastTpmError = result;
+    if (!DecryptBlob(context, key_handle, data_out, key, &data, &result)) {
       return;
     }
     status->CanDecrypt = true;
   }
-}
-
-bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
-                              TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
-  // Load the Storage Root Key
-  ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    if (*result != kKeyNotFoundError) {
-      TPM_LOG(INFO, *result) << "CreateCryptohomeKey: Cannot load SRK";
-    }
-    return false;
-  }
-
-  // Make sure we can get the public key for the SRK.  If not, then the TPM
-  // is not available.
-  unsigned int size_n;
-  ScopedTssMemory public_srk(context_handle);
-  if (TPM_ERROR(*result = Tspi_Key_GetPubKey(srk_handle, &size_n,
-                                             public_srk.ptr()))) {
-    TPM_LOG(INFO, *result) << "CreateCryptohomeKey: Cannot load SRK pub key";
-    return false;
-  }
-
-  // Create the key object
-  TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE;
-  if (!create_in_tpm) {
-    init_flags |= TSS_KEY_MIGRATABLE;
-    init_flags |= kDefaultTpmRsaKeyFlag;
-  }
-  ScopedTssKey local_key_handle(context_handle);
-  if (TPM_ERROR(*result = Tspi_Context_CreateObject(context_handle,
-                                                    TSS_OBJECT_TYPE_RSAKEY,
-                                                    init_flags,
-                                                    local_key_handle.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_CreateObject";
-    return false;
-  }
-
-  // Set the attributes
-  UINT32 sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
-  if (TPM_ERROR(*result = Tspi_SetAttribUint32(local_key_handle,
-                                               TSS_TSPATTRIB_KEY_INFO,
-                                               TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
-                                               sig_scheme))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_SetAttribUint32";
-    return false;
-  }
-
-  UINT32 enc_scheme = TSS_ES_RSAESPKCSV15;
-  if (TPM_ERROR(*result = Tspi_SetAttribUint32(local_key_handle,
-                                               TSS_TSPATTRIB_KEY_INFO,
-                                               TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
-                                               enc_scheme))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_SetAttribUint32";
-    return false;
-  }
-
-  // Create a new system-wide key for cryptohome
-  if (create_in_tpm) {
-    if (TPM_ERROR(*result = Tspi_Key_CreateKey(local_key_handle,
-                                               srk_handle,
-                                               0))) {
-      TPM_LOG(ERROR, *result) << "Error calling Tspi_Key_CreateKey";
-      return false;
-    }
-  } else {
-    ScopedTssPolicy policy_handle(context_handle);
-    if (TPM_ERROR(*result = Tspi_Context_CreateObject(context_handle,
-                                                      TSS_OBJECT_TYPE_POLICY,
-                                                      TSS_POLICY_MIGRATION,
-                                                      policy_handle.ptr()))) {
-      TPM_LOG(ERROR, *result) << "Error creating policy object";
-      return false;
-    }
-
-    // Set a random migration policy password, and discard it.  The key will not
-    // be migrated, but to create the key outside of the TPM, we have to do it
-    // this way.
-    SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
-    CryptoLib::GetSecureRandom(
-        static_cast<unsigned char*>(migration_password.data()),
-        migration_password.size());
-    if (TPM_ERROR(*result = Tspi_Policy_SetSecret(policy_handle,
-                            TSS_SECRET_MODE_PLAIN,
-                            migration_password.size(),
-                            static_cast<BYTE*>(migration_password.data())))) {
-      TPM_LOG(ERROR, *result) << "Error setting migration policy password";
-      return false;
-    }
-
-    if (TPM_ERROR(*result = Tspi_Policy_AssignToObject(policy_handle,
-                                                       local_key_handle))) {
-      TPM_LOG(ERROR, *result) << "Error assigning migration policy";
-      return false;
-    }
-
-    SecureBlob n;
-    SecureBlob p;
-    if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
-      LOG(ERROR) << "Error creating RSA key";
-      return false;
-    }
-
-    if (TPM_ERROR(*result = Tspi_SetAttribData(local_key_handle,
-                                             TSS_TSPATTRIB_RSAKEY_INFO,
-                                             TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
-                                             n.size(),
-                                             static_cast<BYTE *>(n.data())))) {
-      TPM_LOG(ERROR, *result) << "Error setting RSA modulus";
-      return false;
-    }
-
-    if (TPM_ERROR(*result = Tspi_SetAttribData(local_key_handle,
-                                             TSS_TSPATTRIB_KEY_BLOB,
-                                             TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
-                                             p.size(),
-                                             static_cast<BYTE *>(p.data())))) {
-      TPM_LOG(ERROR, *result) << "Error setting private key";
-      return false;
-    }
-
-    if (TPM_ERROR(*result = Tspi_Key_WrapKey(local_key_handle,
-                                             srk_handle,
-                                             0))) {
-      TPM_LOG(ERROR, *result) << "Error wrapping RSA key";
-      return false;
-    }
-  }
-
-  if (!SaveCryptohomeKey(context_handle, local_key_handle, result)) {
-    LOG(ERROR) << "Couldn't save cryptohome key";
-    return false;
-  }
-
-  LOG(INFO) << "Created new cryptohome key.";
-  return true;
-}
-
-bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
-                            TSS_HKEY* key_handle, TSS_RESULT* result) {
-  // Load the Storage Root Key
-  ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    if (*result != kKeyNotFoundError) {
-      TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load SRK";
-    }
-    return false;
-  }
-
-  // Make sure we can get the public key for the SRK.  If not, then the TPM
-  // is not available.
-  unsigned int size_n;
-  ScopedTssMemory public_srk(context_handle);
-  if (TPM_ERROR(*result = Tspi_Key_GetPubKey(srk_handle, &size_n,
-                                             public_srk.ptr()))) {
-    TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load SRK public key";
-    return false;
-  }
-
-  // First, try loading the key from the key file
-  SecureBlob raw_key;
-  if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
-    if (TPM_ERROR(*result = Tspi_Context_LoadKeyByBlob(
-                                    context_handle,
-                                    srk_handle,
-                                    raw_key.size(),
-                                    vector_as_array(&raw_key),
-                                    key_handle))) {
-      // If the error is expected to be transient, return now.
-      if (IsTransient(*result)) {
-        TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load key " \
-                                << "from blob";
-        return false;
-      }
-    } else {
-      SecureBlob pub_key;
-      // Make sure that we can get the public key
-      if (GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
-        return true;
-      }
-      // Otherwise, close the key and fall through
-      Tspi_Context_CloseObject(context_handle, *key_handle);
-      if (IsTransient(*result)) {
-        TPM_LOG(INFO, *result) << "LoadCryptohomeKey: closed object";
-        return false;
-      }
-    }
-  }
-
-  // Then try loading the key by the UUID (this is a legacy upgrade path)
-  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByUUID(context_handle,
-                                                     TSS_PS_TYPE_SYSTEM,
-                                                     kCryptohomeWellKnownUuid,
-                                                     key_handle))) {
-    // If the error is expected to be transient, return now.
-    if (IsTransient(*result)) {
-      TPM_LOG(INFO, *result) << "LoadCryptohomeKey: failed LoadKeyByUUID";
-      return false;
-    }
-  } else {
-    SecureBlob pub_key;
-    // Make sure that we can get the public key
-    if (GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
-      // Save the cryptohome key to the well-known location
-      if (!SaveCryptohomeKey(context_handle, *key_handle, result)) {
-        LOG(ERROR) << "Couldn't save cryptohome key";
-        Tspi_Context_CloseObject(context_handle, *key_handle);
-        return false;
-      }
-      return true;
-    }
-    Tspi_Context_CloseObject(context_handle, *key_handle);
-  }
-
-  TPM_LOG(INFO, *result) << "LoadCryptohomeKey: could not load key";
-  return false;
-}
-
-bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                    bool create_in_tpm,
-                                    TSS_HKEY* key_handle,
-                                    TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
-  // Try to load the cryptohome key.
-  if (LoadCryptohomeKey(context_handle, key_handle, result)) {
-    return true;
-  }
-
-  // If the error is expected to be transient, return now.
-  if (IsTransient(*result)) {
-    TPM_LOG(INFO, *result) << "Transient failure loading cryptohome key";
-    return false;
-  }
-
-  // Otherwise, the key couldn't be loaded, and it wasn't due to a transient
-  // error, so we must create the key.
-  if (CreateCryptohomeKey(context_handle, create_in_tpm, result)) {
-    if (LoadCryptohomeKey(context_handle, key_handle, result)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 bool Tpm::IsTransient(TSS_RESULT result) {
@@ -667,18 +264,15 @@ Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
   switch (ERROR_CODE(result)) {
     case ERROR_CODE(TSS_E_COMM_FAILURE):
       LOG(ERROR) << "Communications failure with the TPM.";
-      Disconnect();
       status = Tpm::RetryCommFailure;
       break;
     case ERROR_CODE(TSS_E_INVALID_HANDLE):
       LOG(ERROR) << "Invalid handle to the TPM.";
-      Disconnect();
       status = Tpm::RetryCommFailure;
       break;
     // TODO(fes): We're considering this a communication failure for now.
     case ERROR_CODE(TCS_E_KM_LOADFAILED):
       LOG(ERROR) << "Key load failed; problem with parent key authorization.";
-      Disconnect();
       status = Tpm::RetryCommFailure;
       break;
     case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
@@ -700,23 +294,6 @@ Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
       break;
   }
   return status;
-}
-
-bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                            TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
-  SecureBlob raw_key;
-  if (!GetKeyBlob(context_handle, key_handle, &raw_key, result)) {
-    LOG(ERROR) << "Error getting key blob";
-    return false;
-  }
-  int previous_mask = platform_->SetMask(cryptohome::kDefaultUmask);
-  bool ok = platform_->WriteFile(kDefaultCryptohomeKeyFile, raw_key);
-  platform_->SetMask(previous_mask);
-  if (!ok)
-    LOG(ERROR) << "Error writing key file of desired size: " << raw_key.size();
-  return ok;
 }
 
 bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
@@ -762,54 +339,12 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
   return (*context_handle != 0);
 }
 
-bool Tpm::Encrypt(const SecureBlob& plaintext,
-                  const SecureBlob& key,
-                  SecureBlob* ciphertext,
-                  Tpm::TpmRetryAction* retry_action) {
-  *retry_action = Tpm::RetryNone;
-  if (!IsConnected()) {
-    if (!Connect(retry_action)) {
-      return false;
-    }
-  }
-
-  TSS_RESULT result = TSS_SUCCESS;
-  if (!EncryptBlob(context_handle_, key_handle_, plaintext, key, ciphertext,
-                   &result)) {
-    *retry_action = HandleError(result);
-    return false;
-  }
-  return true;
-}
-
-bool Tpm::Decrypt(const SecureBlob& ciphertext,
-                  const SecureBlob& key,
-                  SecureBlob* plaintext,
-                  Tpm::TpmRetryAction* retry_action) {
-  *retry_action = Tpm::RetryNone;
-  if (!IsConnected()) {
-    if (!Connect(retry_action)) {
-      return false;
-    }
-  }
-
-  TSS_RESULT result = TSS_SUCCESS;
-  if (!DecryptBlob(context_handle_, key_handle_, ciphertext, key, plaintext,
-                   &result)) {
-    *retry_action = HandleError(result);
-    return false;
-  }
-  return true;
-}
-
-Tpm::TpmRetryAction Tpm::GetPublicKeyHash(SecureBlob* hash) {
-  TpmRetryAction ret = Tpm::RetryNone;
-  if (!IsConnected() && !Connect(&ret))
-    return ret;
-
+Tpm::TpmRetryAction Tpm::GetPublicKeyHash(TSS_HCONTEXT context_handle,
+                                          TSS_HKEY key_handle,
+                                          SecureBlob* hash) {
   TSS_RESULT result = TSS_SUCCESS;
   SecureBlob pubkey;
-  if (!GetPublicKeyBlob(context_handle_, key_handle_, &pubkey, &result)) {
+  if (!GetPublicKeyBlob(context_handle, key_handle, &pubkey, &result)) {
     return HandleError(result);
   }
 
@@ -978,28 +513,8 @@ bool Tpm::UnobscureRSAMessage(const SecureBlob& ciphertext,
   return true;
 }
 
-bool Tpm::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                     SecureBlob* data_out, TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
-  ScopedTssMemory blob(context_handle);
-  UINT32 blob_size;
-  if (TPM_ERROR(*result = Tspi_GetAttribData(key_handle, TSS_TSPATTRIB_KEY_BLOB,
-                                   TSS_TSPATTRIB_KEYBLOB_BLOB,
-                                   &blob_size, blob.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Couldn't get key blob";
-    return false;
-  }
-
-  SecureBlob local_data(blob_size);
-  memcpy(local_data.data(), blob.value(), blob_size);
-  chromeos::SecureMemset(blob.value(), 0, blob_size);
-  data_out->swap(local_data);
-  return true;
-}
-
 bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                           SecureBlob* data_out, TSS_RESULT* result) {
+                           SecureBlob* data_out, TSS_RESULT* result) const {
   *result = TSS_SUCCESS;
 
   ScopedTssMemory blob(context_handle);
@@ -1018,7 +533,7 @@ bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
 }
 
 bool Tpm::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
-                  TSS_RESULT* result) {
+                  TSS_RESULT* result) const {
   *result = TSS_SUCCESS;
 
   // Load the Storage Root Key
@@ -1049,10 +564,8 @@ bool Tpm::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
       return false;
     }
 
-    *result = Tspi_Policy_SetSecret(srk_usage_policy,
-                                    TSS_SECRET_MODE_PLAIN,
-                                    srk_auth_.size(),
-                                    vector_as_array(&srk_auth_));
+    *result = Tspi_Policy_SetSecret(srk_usage_policy, TSS_SECRET_MODE_PLAIN,
+        srk_auth_.size(), const_cast<BYTE*>(vector_as_array(&srk_auth_)));
     if (TPM_ERROR(*result)) {
       return false;
     }
@@ -1060,55 +573,6 @@ bool Tpm::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
 
   *srk_handle = local_srk_handle.release();
   return true;
-}
-
-bool Tpm::IsDisabledCheckViaSysfs() {
-  std::string contents;
-  if (!platform_->ReadFileToString(kTpmCheckEnabledFile, &contents)) {
-    return false;
-  }
-  if (contents.size() < 1) {
-    return false;
-  }
-  return (contents[0] == '0');
-}
-
-bool Tpm::IsOwnedCheckViaSysfs() {
-  std::string contents;
-  if (!platform_->ReadFileToString(kTpmCheckOwnedFile, &contents)) {
-    return false;
-  }
-  if (contents.size() < 1) {
-    return false;
-  }
-  return (contents[0] != '0');
-}
-
-void Tpm::IsEnabledOwnedCheckViaContext(TSS_HCONTEXT context_handle,
-                                        bool* enabled, bool* owned) {
-  *enabled = false;
-  *owned = false;
-
-  TSS_RESULT result;
-  TSS_HTPM tpm_handle;
-  if (!GetTpm(context_handle, &tpm_handle)) {
-    return;
-  }
-
-  UINT32 sub_cap = TSS_TPMCAP_PROP_OWNER;
-  UINT32 cap_length = 0;
-  ScopedTssMemory cap(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle, TSS_TPMCAP_PROPERTY,
-                                       sizeof(sub_cap),
-                                       reinterpret_cast<BYTE*>(&sub_cap),
-                                       &cap_length, cap.ptr())) == 0) {
-    if (cap_length >= (sizeof(TSS_BOOL))) {
-      *enabled = true;
-      *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
-    }
-  } else if (ERROR_CODE(result) == TPM_E_DISABLED) {
-    *enabled = false;
-  }
 }
 
 bool Tpm::CreateEndorsementKey(TSS_HCONTEXT context_handle) {
@@ -1153,19 +617,6 @@ bool Tpm::IsEndorsementKeyAvailable(TSS_HCONTEXT context_handle) {
   }
 
   return true;
-}
-
-void Tpm::CreateOwnerPassword(SecureBlob* password) {
-  // Generate a random owner password.  The default is a 12-character,
-  // hex-encoded password created from 6 bytes of random data.
-  SecureBlob random(kOwnerPasswordLength / 2);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(random.data()),
-                             random.size());
-  SecureBlob tpm_password(kOwnerPasswordLength);
-  CryptoLib::AsciiEncodeToBuffer(random,
-                                 static_cast<char*>(tpm_password.data()),
-                                 tpm_password.size());
-  password->swap(tpm_password);
 }
 
 bool Tpm::TakeOwnership(TSS_HCONTEXT context_handle, int max_timeout_tries,
@@ -1328,49 +779,6 @@ bool Tpm::ChangeOwnerPassword(TSS_HCONTEXT context_handle,
   return true;
 }
 
-bool Tpm::LoadOwnerPassword(const TpmStatus& tpm_status,
-                            chromeos::Blob* owner_password) {
-  if (!(tpm_status.flags() & TpmStatus::OWNED_BY_THIS_INSTALL)) {
-    return false;
-  }
-  if ((tpm_status.flags() & TpmStatus::USES_WELL_KNOWN_OWNER)) {
-    SecureBlob default_owner_password(sizeof(kTpmWellKnownPassword));
-    memcpy(default_owner_password.data(), kTpmWellKnownPassword,
-           sizeof(kTpmWellKnownPassword));
-    owner_password->swap(default_owner_password);
-    return true;
-  }
-  if (!(tpm_status.flags() & TpmStatus::USES_RANDOM_OWNER) ||
-      !tpm_status.has_owner_password()) {
-    return false;
-  }
-
-  SecureBlob local_owner_password(tpm_status.owner_password().length());
-  tpm_status.owner_password().copy(
-      static_cast<char*>(local_owner_password.data()),
-      tpm_status.owner_password().length(), 0);
-  if (!Unseal(local_owner_password, owner_password)) {
-    LOG(ERROR) << "Failed to unseal the owner password.";
-    return false;
-  }
-  return true;
-}
-
-bool Tpm::StoreOwnerPassword(const chromeos::Blob& owner_password,
-                             TpmStatus* tpm_status) {
-  // Use PCR0 when sealing the data so that the owner password is only
-  // available in the current boot mode.  This helps protect the password from
-  // offline attacks until it has been presented and cleared.
-  SecureBlob sealed_password;
-  if (!SealToPCR0(owner_password, &sealed_password)) {
-    LOG(ERROR) << "StoreOwnerPassword: Failed to seal owner password.";
-    return false;
-  }
-  tpm_status->set_owner_password(sealed_password.data(),
-                                 sealed_password.size());
-  return true;
-}
-
 bool Tpm::GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle) {
   TSS_RESULT result;
   TSS_HTPM local_tpm_handle;
@@ -1477,140 +885,6 @@ bool Tpm::GetOwnerPassword(chromeos::Blob* owner_password) {
     password_sync_lock_.Release();
   }
   return result;
-}
-
-bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
-  TpmStatus tpm_status;
-
-  if (!LoadTpmStatus(&tpm_status)) {
-    tpm_status.Clear();
-    tpm_status.set_flags(TpmStatus::NONE);
-  }
-
-  if (OUT_took_ownership) {
-    *OUT_took_ownership = false;
-  }
-
-  if (is_disabled_) {
-    return false;
-  }
-
-  ScopedTssContext context_handle;
-  if (!(*(context_handle.ptr()) = ConnectContext())) {
-    LOG(ERROR) << "Failed to connect to TPM";
-    return false;
-  }
-
-  SecureBlob default_owner_password(sizeof(kTpmWellKnownPassword));
-  memcpy(default_owner_password.data(), kTpmWellKnownPassword,
-         sizeof(kTpmWellKnownPassword));
-
-  bool took_ownership = false;
-  if (!is_owned_) {
-    is_being_owned_ = true;
-    platform_->DeleteFile(kOpenCryptokiPath, true);
-    platform_->DeleteFile(kTpmOwnedFile, false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-
-    if (!IsEndorsementKeyAvailable(context_handle)) {
-      if (!CreateEndorsementKey(context_handle)) {
-        LOG(ERROR) << "Failed to create endorsement key";
-        is_being_owned_ = false;
-        return false;
-      }
-    }
-
-    if (!IsEndorsementKeyAvailable(context_handle)) {
-      LOG(ERROR) << "Endorsement key is not available";
-      is_being_owned_ = false;
-      return false;
-    }
-
-    if (!TakeOwnership(context_handle, kMaxTimeoutRetries,
-                       default_owner_password)) {
-      LOG(ERROR) << "Take Ownership failed";
-      is_being_owned_ = false;
-      return false;
-    }
-
-    is_owned_ = true;
-    took_ownership = true;
-
-    tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_WELL_KNOWN_OWNER |
-                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::ATTESTATION_NEEDS_OWNER);
-    tpm_status.clear_owner_password();
-    StoreTpmStatus(tpm_status);
-  }
-
-  if (OUT_took_ownership) {
-    *OUT_took_ownership = took_ownership;
-  }
-
-  // Ensure the SRK is available
-  TSS_RESULT result;
-  TSS_HKEY srk_handle;
-  TSS_UUID SRK_UUID = TSS_UUID_SRK;
-  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(context_handle,
-                                                    TSS_PS_TYPE_SYSTEM,
-                                                    SRK_UUID,
-                                                    &srk_handle))) {
-  } else {
-    Tspi_Context_CloseObject(context_handle, srk_handle);
-  }
-
-  // If we can open the TPM with the default password, then we still need to
-  // zero the SRK password and unrestrict it, then change the owner password.
-  TSS_HTPM tpm_handle;
-  if (!platform_->FileExists(kTpmOwnedFile) &&
-      GetTpmWithAuth(context_handle, default_owner_password, &tpm_handle) &&
-      TestTpmAuth(tpm_handle)) {
-    if (!ZeroSrkPassword(context_handle, default_owner_password)) {
-      LOG(ERROR) << "Couldn't zero SRK password";
-      is_being_owned_ = false;
-      return false;
-    }
-
-    if (!UnrestrictSrk(context_handle, default_owner_password)) {
-      LOG(ERROR) << "Couldn't unrestrict the SRK";
-      is_being_owned_ = false;
-      return false;
-    }
-
-    SecureBlob owner_password;
-    CreateOwnerPassword(&owner_password);
-
-    tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_RANDOM_OWNER |
-                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::ATTESTATION_NEEDS_OWNER);
-    if (!StoreOwnerPassword(owner_password, &tpm_status)) {
-      tpm_status.clear_owner_password();
-    }
-    StoreTpmStatus(tpm_status);
-
-    if ((result = ChangeOwnerPassword(context_handle, default_owner_password,
-                                      owner_password))) {
-      password_sync_lock_.Acquire();
-      owner_password_.assign(owner_password.begin(), owner_password.end());
-      password_sync_lock_.Release();
-    }
-    chromeos::Blob empty_blob(0);
-    platform_->WriteFile(kTpmOwnedFile, empty_blob);
-  } else {
-    // If we fall through here, then the TPM owned file doesn't exist, but we
-    // couldn't auth with the well-known password.  In this case, we must assume
-    // that the TPM has already been owned and set to a random password, so
-    // touch the TPM owned file.
-    if (!platform_->FileExists(kTpmOwnedFile)) {
-      chromeos::Blob empty_blob(0);
-      platform_->WriteFile(kTpmOwnedFile, empty_blob);
-    }
-  }
-
-  is_being_owned_ = false;
-  return true;
 }
 
 bool Tpm::GetRandomData(size_t length, chromeos::Blob* data) {
@@ -2006,114 +1280,41 @@ bool Tpm::WriteNvram(uint32_t index, const SecureBlob& blob) {
   return true;
 }
 
-void Tpm::ClearStoredOwnerPassword() {
-  TpmStatus tpm_status;
-  if (LoadTpmStatus(&tpm_status)) {
-    int32 dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                             TpmStatus::ATTESTATION_NEEDS_OWNER;
-    if (tpm_status.flags() & dependency_flags) {
-      // The password is still needed, do not clear.
-      return;
-    }
-    if (tpm_status.has_owner_password()) {
-      tpm_status.clear_owner_password();
-      StoreTpmStatus(tpm_status);
-    }
-  }
-  password_sync_lock_.Acquire();
-  owner_password_.resize(0);
-  password_sync_lock_.Release();
-}
+bool Tpm::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
+  *enabled = false;
+  *owned = false;
 
-void Tpm::RemoveOwnerDependency(TpmOwnerDependency dependency) {
-  int32 flag_to_clear = TpmStatus::NONE;
-  switch (dependency) {
-    case kInstallAttributes:
-      flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
-      break;
-    case kAttestation:
-      flag_to_clear = TpmStatus::ATTESTATION_NEEDS_OWNER;
-      break;
-    default:
-      CHECK(false);
+  trousers::ScopedTssContext context(ConnectContext());
+  if (!context) {
+    return false;
   }
-  TpmStatus tpm_status;
-  if (!LoadTpmStatus(&tpm_status))
-    return;
-  tpm_status.set_flags(tpm_status.flags() & ~flag_to_clear);
-  StoreTpmStatus(tpm_status);
-}
 
-bool Tpm::LoadTpmStatus(TpmStatus* serialized) {
-  if (!platform_->FileExists(kTpmStatusFile)) {
+  TSS_HCONTEXT context_handle = context.context();
+  TSS_RESULT result;
+  TSS_HTPM tpm_handle;
+
+  if (TPM_ERROR(result = Tspi_Context_GetTpmObject(context_handle,
+                                                   &tpm_handle))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_GetTpmObject";
     return false;
   }
-  SecureBlob file_data;
-  if (!platform_->ReadFile(kTpmStatusFile, &file_data)) {
-    return false;
+
+  UINT32 sub_cap = TSS_TPMCAP_PROP_OWNER;
+  UINT32 cap_length = 0;
+  trousers::ScopedTssMemory cap(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle, TSS_TPMCAP_PROPERTY,
+                                       sizeof(sub_cap),
+                                       reinterpret_cast<BYTE*>(&sub_cap),
+                                       &cap_length, cap.ptr())) == 0) {
+    if (cap_length >= (sizeof(TSS_BOOL))) {
+      *enabled = true;
+      *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
+    }
+  } else if (ERROR_CODE(result) == TPM_E_DISABLED) {
+    *enabled = false;
   }
-  if (!serialized->ParseFromArray(
-           static_cast<const unsigned char*>(file_data.data()),
-           file_data.size())) {
-    return false;
-  }
+
   return true;
-}
-
-bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
-  int old_mask = platform_->SetMask(kDefaultUmask);
-  if (platform_->FileExists(kTpmStatusFile)) {
-    do {
-      int64 file_size;
-      if (!platform_->GetFileSize(kTpmStatusFile, &file_size)) {
-        break;
-      }
-      SecureBlob random;
-      if (!GetRandomData(file_size, &random)) {
-        break;
-      }
-      FILE* file = platform_->OpenFile(kTpmStatusFile, "wb+");
-      if (!file) {
-        break;
-      }
-      if (!platform_->WriteOpenFile(file, random)) {
-        platform_->CloseFile(file);
-        break;
-      }
-      platform_->CloseFile(file);
-    } while (false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-  }
-  SecureBlob final_blob(serialized.ByteSize());
-  serialized.SerializeWithCachedSizesToArray(
-      static_cast<google::protobuf::uint8*>(final_blob.data()));
-  bool ok = platform_->WriteFile(kTpmStatusFile, final_blob);
-  platform_->SetMask(old_mask);
-  return ok;
-}
-
-Value* Tpm::GetStatusValue(TpmInit* init) {
-  base::DictionaryValue* dv = new base::DictionaryValue();
-  TpmStatusInfo status;
-  GetStatus(true, &status);
-
-  dv->SetBoolean("can_connect", status.CanConnect);
-  dv->SetBoolean("can_load_srk", status.CanLoadSrk);
-  dv->SetBoolean("can_load_srk_pubkey", status.CanLoadSrkPublicKey);
-  dv->SetBoolean("has_cryptohome_key", status.HasCryptohomeKey);
-  dv->SetBoolean("can_encrypt", status.CanEncrypt);
-  dv->SetBoolean("can_decrypt", status.CanDecrypt);
-  dv->SetBoolean("has_context", status.ThisInstanceHasContext);
-  dv->SetBoolean("has_key_handle", status.ThisInstanceHasKeyHandle);
-  dv->SetInteger("last_error", status.LastTpmError);
-
-  if (init) {
-    dv->SetBoolean("enabled", init->IsTpmEnabled());
-    dv->SetBoolean("owned", init->IsTpmOwned());
-    dv->SetBoolean("being_owned", init->IsTpmBeingOwned());
-  }
-
-  return dv;
 }
 
 bool Tpm::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
@@ -3362,7 +2563,7 @@ bool Tpm::GetDataAttribute(TSS_HCONTEXT context,
                            TSS_HOBJECT object,
                            TSS_FLAG flag,
                            TSS_FLAG sub_flag,
-                           SecureBlob* data) {
+                           SecureBlob* data) const {
   UINT32 length = 0;
   ScopedTssMemory buf(context);
   TSS_RESULT result = Tspi_GetAttribData(object, flag, sub_flag, &length,
@@ -3375,6 +2576,217 @@ bool Tpm::GetDataAttribute(TSS_HCONTEXT context,
   chromeos::SecureMemset(buf.value(), 0, length);
   data->swap(tmp);
   return true;
+}
+
+void Tpm::SetOwnerPassword(const chromeos::SecureBlob& owner_password) {
+  base::AutoLock lock(password_sync_lock_);
+  owner_password_.assign(owner_password.begin(), owner_password.end());
+}
+
+bool Tpm::CreateWrappedRsaKey(TSS_HCONTEXT context_handle,
+                              SecureBlob* wrapped_key) {
+  TSS_RESULT result;
+
+  // Load the Storage Root Key
+  trousers::ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    if (result != kKeyNotFoundError) {
+      TPM_LOG(INFO, result) << "CreateWrappedRsaKey: Cannot load SRK";
+    }
+    return false;
+  }
+
+  // Make sure we can get the public key for the SRK.  If not, then the TPM
+  // is not available.
+  unsigned int size_n;
+  trousers::ScopedTssMemory public_srk(context_handle);
+  if (TPM_ERROR(result = Tspi_Key_GetPubKey(srk_handle, &size_n,
+                                            public_srk.ptr()))) {
+    TPM_LOG(INFO, result) << "CreateWrappedRsaKey: Cannot load SRK pub key";
+    return false;
+  }
+
+  // Create the key object
+  TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE | \
+                        TSS_KEY_MIGRATABLE | kDefaultTpmRsaKeyFlag;
+  trousers::ScopedTssKey local_key_handle(context_handle);
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_RSAKEY,
+                                                   init_flags,
+                                                   local_key_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
+    return false;
+  }
+
+  // Set the attributes
+  UINT32 sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
+  if (TPM_ERROR(result = Tspi_SetAttribUint32(local_key_handle,
+                                              TSS_TSPATTRIB_KEY_INFO,
+                                              TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
+                                              sig_scheme))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribUint32";
+    return false;
+  }
+
+  UINT32 enc_scheme = TSS_ES_RSAESPKCSV15;
+  if (TPM_ERROR(result = Tspi_SetAttribUint32(local_key_handle,
+                                              TSS_TSPATTRIB_KEY_INFO,
+                                              TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                                              enc_scheme))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribUint32";
+    return false;
+  }
+
+  trousers::ScopedTssPolicy policy_handle(context_handle);
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_POLICY,
+                                                   TSS_POLICY_MIGRATION,
+                                                   policy_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error creating policy object";
+    return false;
+  }
+
+  // Set a random migration policy password, and discard it.  The key will not
+  // be migrated, but to create the key outside of the TPM, we have to do it
+  // this way.
+  SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
+  CryptoLib::GetSecureRandom(
+      static_cast<unsigned char*>(migration_password.data()),
+      migration_password.size());
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(policy_handle,
+                         TSS_SECRET_MODE_PLAIN,
+                         migration_password.size(),
+                         static_cast<BYTE*>(migration_password.data())))) {
+    TPM_LOG(ERROR, result) << "Error setting migration policy password";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_Policy_AssignToObject(policy_handle,
+                                                    local_key_handle))) {
+    TPM_LOG(ERROR, result) << "Error assigning migration policy";
+    return false;
+  }
+
+  SecureBlob n;
+  SecureBlob p;
+  if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
+    LOG(ERROR) << "Error creating RSA key";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,
+                                            TSS_TSPATTRIB_RSAKEY_INFO,
+                                            TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+                                            n.size(),
+                                            static_cast<BYTE *>(n.data())))) {
+    TPM_LOG(ERROR, result) << "Error setting RSA modulus";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,
+                                            TSS_TSPATTRIB_KEY_BLOB,
+                                            TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
+                                            p.size(),
+                                            static_cast<BYTE *>(p.data())))) {
+    TPM_LOG(ERROR, result) << "Error setting private key";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_Key_WrapKey(local_key_handle,
+                                          srk_handle,
+                                          0))) {
+    TPM_LOG(ERROR, result) << "Error wrapping RSA key";
+    return false;
+  }
+
+  if (!GetKeyBlob(context_handle, local_key_handle, wrapped_key, &result)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Tpm::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+                     SecureBlob* data_out, TSS_RESULT* result) const {
+  *result = TSS_SUCCESS;
+
+  if (!GetDataAttribute(context_handle, key_handle, TSS_TSPATTRIB_KEY_BLOB,
+      TSS_TSPATTRIB_KEYBLOB_BLOB, data_out)) {
+    LOG(ERROR) << __func__ << ": Failed to get key blob.";
+    return false;
+  }
+
+  return true;
+}
+
+bool Tpm::LoadWrappedKey(TSS_HCONTEXT context_handle,
+                         const chromeos::SecureBlob& wrapped_key,
+                         TSS_HKEY* key_handle,
+                         TSS_RESULT* result) const {
+  // Load the Storage Root Key
+  trousers::ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
+    if (*result != kKeyNotFoundError) {
+      TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load SRK";
+    }
+    return false;
+  }
+
+  // Make sure we can get the public key for the SRK.  If not, then the TPM
+  // is not available.
+  {
+    SecureBlob pubkey;
+    if (!GetPublicKeyBlob(context_handle, srk_handle, &pubkey, result)) {
+      TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load SRK public key";
+      return false;
+    }
+  }
+
+  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByBlob(
+                                  context_handle,
+                                  srk_handle,
+                                  wrapped_key.size(),
+                                  const_cast<BYTE*>(static_cast<const BYTE*>(
+                                    wrapped_key.const_data())),
+                                  key_handle))) {
+    TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load key " \
+                           << "from blob";
+    return false;
+  }
+
+  SecureBlob pub_key;
+  // Make sure that we can get the public key
+  if (!GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
+    Tspi_Context_CloseObject(context_handle, *key_handle);
+    return false;
+  }
+
+  return true;
+}
+
+bool Tpm::LoadKeyByUuid(TSS_HCONTEXT context_handle,
+                        TSS_UUID key_uuid,
+                        TSS_HKEY* key_handle,
+                        chromeos::SecureBlob* key_blob,
+                        TSS_RESULT* result) const {
+  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByUUID(context_handle,
+                                                     TSS_PS_TYPE_SYSTEM,
+                                                     key_uuid,
+                                                     key_handle))) {
+    TPM_LOG(INFO, *result) << "LoadKeyByUuid: failed LoadKeyByUUID";
+    return false;
+  }
+
+  if (key_blob && !GetKeyBlob(context_handle, *key_handle, key_blob, result)) {
+    Tspi_Context_CloseObject(context_handle, *key_handle);
+    return false;
+  }
+
+  return true;
+}
+
+void Tpm::CloseContext(TSS_HCONTEXT context) const {
+  Tspi_Context_Close(context);
 }
 
 }  // namespace cryptohome
