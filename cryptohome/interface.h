@@ -396,7 +396,6 @@ gboolean cryptohome_load_enrollment_state(
     GArray** OUT_enrollment_state,
     gboolean* OUT_success,
     GError** error);
-
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

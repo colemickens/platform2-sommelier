@@ -34,6 +34,7 @@
 #include "mock_homedirs.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_tpm_init.h"
 #include "mock_user_session.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
@@ -78,14 +79,16 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 }
 
 // Straight pass through.
-bool TpmPassthroughEncrypt(const chromeos::SecureBlob &plaintext, Unused,
+bool TpmPassthroughEncrypt(TSS_HCONTEXT _context, TSS_HKEY _key,
+                           const chromeos::SecureBlob &plaintext, Unused,
                            chromeos::SecureBlob *ciphertext, Unused) {
   ciphertext->resize(plaintext.size());
   memcpy(ciphertext->data(), plaintext.const_data(), plaintext.size());
   return true;
 }
 
-bool TpmPassthroughDecrypt(const chromeos::SecureBlob &ciphertext, Unused,
+bool TpmPassthroughDecrypt(TSS_HCONTEXT _context, TSS_HKEY _key,
+                           const chromeos::SecureBlob &ciphertext, Unused,
                            chromeos::SecureBlob *plaintext, Unused) {
   plaintext->resize(ciphertext.size());
   memcpy(plaintext->data(), ciphertext.const_data(), ciphertext.size());
@@ -116,6 +119,7 @@ class MountTest : public ::testing::Test {
     mount_->set_skel_source(kSkelDir);
     mount_->crypto()->set_platform(&platform_);
     mount_->crypto()->set_tpm(&tpm_);
+    mount_->crypto()->set_tpm_init(&tpm_init_);
     mount_->set_chaps_client_factory(&chaps_client_factory_);
     homedirs_.set_crypto(mount_->crypto());
     homedirs_.set_platform(&platform_);
@@ -187,6 +191,7 @@ class MountTest : public ::testing::Test {
   gid_t shared_gid_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockTpmInit> tpm_init_;
   NiceMock<MockHomeDirs> homedirs_;
   MockChapsClientFactory chaps_client_factory_;
   scoped_refptr<Mount> mount_;
@@ -669,13 +674,15 @@ TEST_F(MountTest, GoodReDecryptTest) {
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  EXPECT_CALL(tpm_, Init(_, _))
+  EXPECT_CALL(tpm_init_, HasCryptohomeKey())
+    .WillOnce(Return(false))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_init_, SetupTpm(true))
+    .WillOnce(Return(true))  // This is by crypto.Init() and
+    .WillOnce(Return(true)); // because we forced HasCryptohomeKey to false once
   EXPECT_CALL(tpm_, IsEnabled())
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, IsConnected())
     .WillRepeatedly(Return(true));
 
   EXPECT_TRUE(DoMountInit());
@@ -728,11 +735,11 @@ TEST_F(MountTest, GoodReDecryptTest) {
     .WillOnce(Return(true));
 
   // Create the "TPM-wrapped" value by letting it save the plaintext.
-  EXPECT_CALL(tpm_, Encrypt(_, _, _, _))
+  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
   chromeos::SecureBlob fake_pub_key("A", 1);
-  EXPECT_CALL(tpm_, GetPublicKeyHash(_))
-    .WillRepeatedly(DoAll(SetArgumentPointee<0>(fake_pub_key),
+  EXPECT_CALL(tpm_, GetPublicKeyHash(_, _, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(fake_pub_key),
                           Return(Tpm::RetryNone)));
 
   chromeos::Blob migrated_keyset;
@@ -771,7 +778,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->user_salt),
                           Return(true)));
-  EXPECT_CALL(tpm_, Decrypt(_, _, _, _))
+  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
     MockFileEnumerator* files = new MockFileEnumerator();
