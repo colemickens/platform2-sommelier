@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include "crypto.h"
+#include "mock_crypto.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "mount.h"
@@ -178,13 +179,10 @@ void TestUser::GenerateCredentials() {
   memcpy(&salt.at(0), system_salt->c_str(), system_salt->size());
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
-  //MockPlatform platform;
+  NiceMock<MockCrypto> crypto;
+  crypto.set_platform(&platform);
+
   scoped_refptr<Mount> mount = new cryptohome::Mount();
-  mount->set_platform(&platform);
-  mount->crypto()->set_tpm(&tpm);
-  mount->crypto()->set_platform(&platform);
-  mount->homedirs()->set_platform(&platform);
-  mount->homedirs()->crypto()->set_platform(&platform);
   mount->set_shadow_root(shadow_root);
   mount->set_skel_source(skel_dir);
   mount->set_use_tpm(false);
@@ -203,7 +201,7 @@ void TestUser::GenerateCredentials() {
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
-   mount->Init();
+  mount->Init(&platform, &crypto);
 
   cryptohome::Crypto::PasswordToPasskey(password,
                                         salt,

@@ -40,7 +40,7 @@ class HomeDirs {
   virtual ~HomeDirs();
 
   // Initializes this HomeDirs object. Returns true for success.
-  virtual bool Init();
+  virtual bool Init(Platform* platform, Crypto* crypto);
 
   // Frees disk space for unused cryptohomes. If less than kMinFreeSpace is
   // available, frees space until kEnoughFreeSpace is available. Returns true if
@@ -229,7 +229,6 @@ class HomeDirs {
   bool enterprise_owned_;
   scoped_ptr<policy::PolicyProvider> default_policy_provider_;
   policy::PolicyProvider* policy_provider_;
-  scoped_ptr<Crypto> default_crypto_;
   Crypto* crypto_;
   scoped_ptr<MountFactory> default_mount_factory_;
   MountFactory* mount_factory_;

@@ -39,8 +39,7 @@ HomeDirs::HomeDirs()
       enterprise_owned_(false),
       default_policy_provider_(new policy::PolicyProvider()),
       policy_provider_(default_policy_provider_.get()),
-      default_crypto_(new Crypto(platform_)),
-      crypto_(default_crypto_.get()),
+      crypto_(NULL),
       default_mount_factory_(new MountFactory()),
       mount_factory_(default_mount_factory_.get()),
       default_vault_keyset_factory_(new VaultKeysetFactory()),
@@ -48,7 +47,10 @@ HomeDirs::HomeDirs()
 
 HomeDirs::~HomeDirs() { }
 
-bool HomeDirs::Init() {
+bool HomeDirs::Init(Platform* platform, Crypto* crypto) {
+  platform_ = platform;
+  crypto_ = crypto;
+
   LoadDevicePolicy();
   if (!platform_->DirectoryExists(shadow_root_))
     platform_->CreateDirectory(shadow_root_);
@@ -812,9 +814,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   newcreds.GetPasskey(&newkey);
   UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
   scoped_refptr<Mount> mount = mount_factory_->New();
-  mount->set_platform(platform_);
-  mount->set_crypto(crypto_);
-  mount->Init();
+  mount->Init(platform_, crypto_);
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
     LOG(ERROR) << "Migrate: Mount failed";

@@ -19,6 +19,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "attestation.h"
 #include "cryptohome_event_source.h"
 #include "dbus_transition.h"
 #include "install_attributes.h"

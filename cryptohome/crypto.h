@@ -15,6 +15,7 @@
 #include <chromeos/secure_blob.h>
 
 #include "tpm.h"
+#include "tpm_init.h"
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
@@ -41,7 +42,7 @@ class Crypto {
   virtual ~Crypto();
 
   // Initializes Crypto
-  bool Init();
+  bool Init(TpmInit* tpm_init);
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -118,7 +119,7 @@ class Crypto {
                                 chromeos::SecureBlob* passkey);
 
   // Ensures that the TPM is connected
-  CryptoError EnsureTpm(bool disconnect_first) const;
+  CryptoError EnsureTpm(bool reload_key) const;
 
   // Seals arbitrary-length data to the TPM's PCR0.
   // Parameters
@@ -185,13 +186,8 @@ class Crypto {
     return tpm_;
   }
 
-  // Checks if the TPM is connected
-  bool is_tpm_connected() {
-    if (tpm_ == NULL) {
-      return false;
-    }
-    return tpm_->IsConnected();
-  }
+  // Checks if the cryptohome key is loaded in TPM
+  bool is_cryptohome_key_loaded() const;
 
   // Sets the Platform implementation
   // Does NOT take ownership of the pointer.
@@ -248,6 +244,9 @@ class Crypto {
 
   // Platform abstraction
   Platform* platform_;
+
+  // The TpmInit object used to reload Cryptohome key
+  TpmInit* tpm_init_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

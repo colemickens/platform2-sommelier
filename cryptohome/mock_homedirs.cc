@@ -4,12 +4,13 @@
 
 #include "mock_homedirs.h"
 
+using testing::_;
 using testing::Return;
 
 namespace cryptohome {
 
 MockHomeDirs::MockHomeDirs() {
-  ON_CALL(*this, Init()).WillByDefault(Return(true));
+  ON_CALL(*this, Init(_, _)).WillByDefault(Return(true));
 }
 MockHomeDirs::~MockHomeDirs() {}
 

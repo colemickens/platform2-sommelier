@@ -14,6 +14,7 @@
 
 #include "lockbox.h"
 #include "tpm.h"
+#include "tpm_init.h"
 
 namespace cryptohome {
 
@@ -26,7 +27,7 @@ class MockInstallAttributes : public InstallAttributes {
 
   MOCK_METHOD1(SetTpm, void(Tpm*));
 
-  MOCK_METHOD0(Init, bool());
+  MOCK_METHOD1(Init, bool(TpmInit*));
 
   MOCK_CONST_METHOD0(IsReady, bool());
 

@@ -11,6 +11,7 @@
 
 #include "lockbox.h"
 #include "install_attributes.pb.h"
+#include "tpm_init.h"
 
 namespace cryptohome {
 
@@ -78,7 +79,7 @@ void InstallAttributes::SetTpm(Tpm* tpm) {
   lockbox_->set_tpm(tpm);
 }
 
-bool InstallAttributes::Init() {
+bool InstallAttributes::Init(TpmInit* tpm_init) {
   Lockbox::ErrorId error_id;
 
   // Insure that if Init() was called and it failed, we can retry cleanly.
@@ -100,7 +101,7 @@ bool InstallAttributes::Init() {
     }
 
     set_is_initialized(true);
-    lockbox_->tpm()->RemoveOwnerDependency(Tpm::kInstallAttributes);
+    tpm_init->RemoveTpmOwnerDependency(TpmInit::kInstallAttributes);
     return true;
   }
 

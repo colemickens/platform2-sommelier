@@ -93,8 +93,6 @@ class ServiceSubclass : public Service {
 TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   MockHomeDirs homedirs;
   scoped_refptr<MockMount> mount = new MockMount();
-  EXPECT_CALL(homedirs, Init())
-      .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .WillOnce(Return(true));
   EXPECT_CALL(*mount, AreSameUser(_))
@@ -114,6 +112,9 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   service.set_platform(&platform);
   service.set_chaps_client(&chaps);
   service.set_initialize_tpm(false);
+  EXPECT_CALL(homedirs, Init(&platform, service.crypto()))
+    .WillOnce(Return(true));
+
   service.Initialize();
   gboolean out = FALSE;
   GError *error = NULL;
@@ -131,8 +132,6 @@ class CheckKeyExInterfaceTest : public ::testing::Test {
 
   void SetUp() {
     mount_ = new MockMount();
-    EXPECT_CALL(homedirs_, Init())
-        .WillOnce(Return(true));
     EXPECT_CALL(homedirs_, FreeDiskSpace())
         .WillOnce(Return(true));
 
@@ -144,6 +143,8 @@ class CheckKeyExInterfaceTest : public ::testing::Test {
     service_.set_platform(&platform_);
     service_.set_chaps_client(&chaps_);
     service_.set_initialize_tpm(false);
+    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto()))
+        .WillOnce(Return(true));
     service_.Initialize();
   }
   void TearDown() {
@@ -285,9 +286,6 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   user->InjectKeyset(&platform);
 
   HomeDirs homedirs;
-  homedirs.crypto()->set_tpm(&tpm);
-  homedirs.crypto()->set_use_tpm(false);
-  homedirs.crypto()->set_platform(&platform);
   homedirs.set_shadow_root(kImageDir);
   homedirs.set_platform(&platform);
   homedirs.set_policy_provider(new policy::PolicyProvider(
@@ -405,13 +403,15 @@ TEST(Standalone, CheckAutoCleanupCallback) {
   MockHomeDirs homedirs;
   Service service;
   service.set_homedirs(&homedirs);
+  NiceMock<MockPlatform> platform;
+  service.set_platform(&platform);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
 
   // Service will schedule periodic clean-ups. Wait a bit and make
   // sure that we had at least 3 executed.
-  EXPECT_CALL(homedirs, Init())
+  EXPECT_CALL(homedirs, Init(&platform, service.crypto()))
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(::testing::AtLeast(3));
@@ -441,9 +441,11 @@ TEST(Standalone, CheckAutoCleanupCallbackFirst) {
   service.set_initialize_tpm(false);
   NiceMock<MockAttestation> attest;
   service.set_attestation(&attest);
+  NiceMock<MockPlatform> platform;
+  service.set_platform(&platform);
 
   // Service will schedule first cleanup right after its init.
-  EXPECT_CALL(homedirs, Init())
+  EXPECT_CALL(homedirs, Init(&platform, service.crypto()))
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(1);
@@ -563,7 +565,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
 
   service_.set_mount_factory(&f);
 
-  EXPECT_CALL(homedirs_, Init())
+  EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto()))
     .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
@@ -572,7 +574,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
 
   ASSERT_TRUE(service_.Initialize());
 
-  EXPECT_CALL(*m, Init())
+  EXPECT_CALL(*m, Init(&platform_, service_.crypto()))
     .WillOnce(Return(true));
   EXPECT_CALL(*m, MountCryptohome(_, _, _))
     .WillOnce(Return(true));
@@ -741,7 +743,7 @@ class ExTest : public ::testing::Test {
 
     g_error_ = NULL;
     // Fast path through Initialize()
-    EXPECT_CALL(homedirs_, Init())
+    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto()))
         .WillOnce(Return(true));
     // Skip the CleanUpStaleMounts bit.
     EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))

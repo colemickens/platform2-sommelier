@@ -18,6 +18,7 @@
 #include "lockbox.h"
 #include "platform.h"
 #include "tpm.h"
+#include "tpm_init.h"
 
 namespace cryptohome {
 
@@ -38,7 +39,7 @@ class InstallAttributes {
 
   // Creates an instance of install attributes that will use the |tpm|. If |tpm|
   // is NULL, InstallAttributes will proceed insecurely (unless it is set with
-  // set_tpm at a later time).
+  // SetTpm at a later time).
   explicit InstallAttributes(Tpm* tpm);
   virtual ~InstallAttributes();
 
@@ -52,8 +53,9 @@ class InstallAttributes {
   virtual void SetTpm(Tpm* tpm);
 
   // Prepares the class for use including instantiating a new environment
-  // if needed.
-  virtual bool Init();
+  // if needed. If initialization completes, |tpm_init| will be used to remove
+  // this instance's dependency on the TPM ownership.
+  virtual bool Init(TpmInit* tpm_init);
 
   // Determines if the instance can provide consistent responses to Get*(),
   // Set(), Finalize(), and Count().  Repeated calls to Init() may change this.

@@ -22,12 +22,14 @@
 #include "cryptolib.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_tpm_init.h"
 
 using base::FilePath;
 using chromeos::Blob;
 using chromeos::SecureBlob;
 using std::string;
 using ::testing::_;
+using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -310,18 +312,20 @@ TEST_F(CryptoTest, TpmStepTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
 
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, Init(_, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
-  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
-  EXPECT_CALL(tpm, IsConnected())
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _, _, _));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _, _));
+  EXPECT_CALL(tpm_init, HasCryptohomeKey())
+      .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_init, SetupTpm(true))
+      .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
 
-  crypto.Init();
+  crypto.Init(&tpm_init);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -364,7 +368,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
 
-  crypto.Init();
+  crypto.Init(NULL);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform, &crypto);
@@ -408,15 +412,15 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
 
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, Init(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
-  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _, _, _));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _, _));
 
-  crypto.Init();
+  crypto.Init(&tpm_init);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -517,11 +521,10 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   Crypto crypto(&platform);
 
   NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
-  EXPECT_CALL(tpm, Init(_, _))
-      .WillOnce(Return(true));
-  crypto.Init();
+  crypto.Init(&tpm_init);
 
   string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data.data(), data.size());
@@ -561,11 +564,10 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   Crypto crypto(&platform);
 
   NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
-  EXPECT_CALL(tpm, Init(_, _))
-      .WillOnce(Return(true));
-  crypto.Init();
+  crypto.Init(&tpm_init);
 
   string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data.data(), data.size());

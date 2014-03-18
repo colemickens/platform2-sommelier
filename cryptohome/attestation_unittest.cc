@@ -21,6 +21,7 @@
 #include "mock_keystore.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_tpm_init.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -62,7 +63,8 @@ class AttestationTest : public testing::Test {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsBeingOwned()).WillByDefault(Return(false));
-    attestation_.Initialize(&tpm_, &platform_, &crypto_, &install_attributes_);
+    attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+        &install_attributes_);
   }
 
   virtual bool WriteDB(const string& path, const string& db) {
@@ -77,6 +79,7 @@ class AttestationTest : public testing::Test {
  protected:
   string serialized_db_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockTpmInit> tpm_init_;
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
   NiceMock<MockKeyStore> key_store_;
@@ -291,8 +294,8 @@ class AttestationTest : public testing::Test {
 
 TEST(AttestationTest_, NullTpm) {
   Attestation without_tpm;
-  without_tpm.Initialize(NULL, NULL, new Crypto(NULL),
-                          new InstallAttributes(NULL));
+  without_tpm.Initialize(NULL, NULL, NULL, new Crypto(NULL),
+                         new InstallAttributes(NULL));
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify());
@@ -606,7 +609,8 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
               db.credentials().has_endorsement_credential());
 
   // Simulate second login.
-  attestation_.Initialize(&tpm_, &platform_, &crypto_, &install_attributes_);
+  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+      &install_attributes_);
   // Expect endorsement data to be no longer available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&

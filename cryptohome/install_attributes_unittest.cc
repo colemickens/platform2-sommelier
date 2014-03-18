@@ -17,6 +17,7 @@
 #include "mock_lockbox.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_tpm_init.h"
 
 namespace cryptohome {
 using std::string;
@@ -78,10 +79,12 @@ class InstallAttributesTest : public ::testing::Test {
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Create(_))
         .WillOnce(Return(true));
-      EXPECT_CALL(tpm_, RemoveOwnerDependency(Tpm::kInstallAttributes))
+      EXPECT_CALL(tpm_init_,
+                  RemoveTpmOwnerDependency(
+                      TpmInit::kInstallAttributes))
         .Times(1);
     }
-    EXPECT_TRUE(install_attrs->Init());
+    EXPECT_TRUE(install_attrs->Init(&tpm_init_));
 
     chromeos::Blob data;
     data.assign(kTestData, kTestData + strlen(kTestData));
@@ -127,6 +130,7 @@ class InstallAttributesTest : public ::testing::Test {
   InstallAttributes install_attrs_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockTpmInit> tpm_init_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(InstallAttributesTest);
@@ -152,8 +156,7 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
   EXPECT_CALL(platform_, ReadFile(_, _))
     .Times(1)
     .WillOnce(Return(false));
-
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
 }
 
@@ -167,7 +170,7 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
     .WillRepeatedly(Return(&tpm_));
   EXPECT_CALL(lockbox_, Create(_))
     .WillOnce(Return(true));
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
   chromeos::Blob data;
   data.assign(kTestData, kTestData + strlen(kTestData));
@@ -204,7 +207,7 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
   EXPECT_CALL(lockbox_, Verify(_, _))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
@@ -231,7 +234,7 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
 
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
@@ -263,7 +266,7 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
@@ -294,7 +297,7 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
@@ -313,7 +316,7 @@ TEST_F(InstallAttributesTest, NormalBootLoadError) {
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
-  EXPECT_FALSE(install_attrs_.Init());
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
   EXPECT_FALSE(install_attrs_.is_initialized());
@@ -334,7 +337,7 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_CALL(platform_, ReadFile(_, _))
     .Times(1)
     .WillOnce(Return(false));
-  EXPECT_FALSE(install_attrs_.Init());
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
   EXPECT_FALSE(install_attrs_.is_initialized());
@@ -362,7 +365,7 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<1>(error_id), Return(false)));
 
-  EXPECT_FALSE(install_attrs_.Init());
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
   EXPECT_FALSE(install_attrs_.is_initialized());
@@ -385,7 +388,7 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<0>(create_error_id), Return(false)));
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
@@ -410,7 +413,7 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<0>(create_error_id), Return(false)));
-  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());

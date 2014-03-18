@@ -108,8 +108,7 @@ Mount::Mount()
       system_salt_(),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
-      default_crypto_(new Crypto(platform_)),
-      crypto_(default_crypto_.get()),
+      crypto_(NULL),
       default_homedirs_(new HomeDirs()),
       homedirs_(default_homedirs_.get()),
       use_tpm_(true),
@@ -131,7 +130,10 @@ Mount::~Mount() {
     UnmountCryptohome();
 }
 
-bool Mount::Init() {
+bool Mount::Init(Platform* platform, Crypto* crypto) {
+  platform_ = platform;
+  crypto_ = crypto;
+
   bool result = true;
 
   homedirs_->set_platform(platform_);
@@ -142,8 +144,7 @@ bool Mount::Init() {
   // Make sure both we and |homedirs_| have a proper device policy object.
   EnsureDevicePolicyLoaded(false);
   homedirs_->set_policy_provider(policy_provider_.get());
-  homedirs_->set_crypto(crypto_);
-  if (!homedirs_->Init())
+  if (!homedirs_->Init(platform, crypto))
     result = false;
 
   // Get the user id and group id of the default user
@@ -164,17 +165,10 @@ bool Mount::Init() {
     result = false;
   }
 
-  crypto_->set_use_tpm(use_tpm_);
-
   int original_mask = platform_->SetMask(kDefaultUmask);
   // Create the shadow root if it doesn't exist
   if (!platform_->DirectoryExists(shadow_root_)) {
     platform_->CreateDirectory(shadow_root_);
-  }
-
-  if (!crypto_->Init()) {
-    LOG(ERROR) << "Failed to initialize a Crypto instance";
-    result = false;
   }
 
   // One-time load of the global system salt (used in generating username
@@ -1111,7 +1105,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   bool scrypt_wrapped =
       (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
   bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
-                     crypto_->is_tpm_connected());
+                     crypto_->is_cryptohome_key_loaded());
   bool should_scrypt = true;
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,

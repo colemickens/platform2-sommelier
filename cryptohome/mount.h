@@ -86,7 +86,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual ~Mount();
 
   // Gets the uid/gid of the default user and loads the system salt
-  virtual bool Init();
+  virtual bool Init(Platform* platform, Crypto* crypto);
 
   // Attempts to mount the cryptohome for the given credentials
   //
@@ -723,7 +723,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   Platform *platform_;
 
   // The crypto implementation
-  scoped_ptr<Crypto> default_crypto_;
   Crypto *crypto_;
 
   // TODO(wad,ellyjones) Require HomeDirs at Init().

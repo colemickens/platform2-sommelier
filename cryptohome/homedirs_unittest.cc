@@ -15,6 +15,7 @@
 
 #include "cryptolib.h"
 #include "make_tests.h"
+#include "mock_crypto.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "mock_user_oldest_activity_timestamp_cache.h"
@@ -104,8 +105,7 @@ class HomeDirsTest : public ::testing::Test {
     test_helper_.SetUpSystemSalt();
     // TODO(wad) Only generate the user data we need. This is time consuming.
     test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount);
-    homedirs_.set_platform(&platform_);
-    homedirs_.crypto()->set_platform(&platform_);
+    crypto_.set_platform(&platform_);
     homedirs_.set_shadow_root(kTestRoot);
     test_helper_.InjectSystemSalt(&platform_,
                                   StringPrintf("%s/salt", kTestRoot));
@@ -114,7 +114,7 @@ class HomeDirsTest : public ::testing::Test {
     // Mount() normally sets this.
     homedirs_.set_timestamp_cache(&timestamp_cache_);
 
-    homedirs_.Init();
+    homedirs_.Init(&platform_, &crypto_);
     FilePath fp = FilePath(kTestRoot);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
       const struct homedir *hd = &kHomedirs[i];
@@ -150,6 +150,7 @@ class HomeDirsTest : public ::testing::Test {
 
  protected:
   HomeDirs homedirs_;
+  NiceMock<MockCrypto> crypto_;
   NiceMock<MockPlatform> platform_;
   std::vector<std::string> homedir_paths_;
   MakeTests test_helper_;

@@ -12,7 +12,6 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
-#include <base/values.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <metrics/metrics_library.h>
@@ -20,17 +19,12 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
 
-#include "platform.h"
 #include "tpm_status.pb.h"
 
 #ifndef CRYPTOHOME_TPM_H_
 #define CRYPTOHOME_TPM_H_
 
 namespace cryptohome {
-
-class TpmInit;
-
-extern const TSS_UUID kCryptohomeWellKnownUuid;
 
 class Tpm {
  public:
@@ -40,11 +34,6 @@ class Tpm {
     RetryDefendLock,
     Fatal,
     RetryReboot
-  };
-
-  enum TpmOwnerDependency {
-    kInstallAttributes,
-    kAttestation
   };
 
   struct TpmStatusInfo {
@@ -63,53 +52,42 @@ class Tpm {
 
   virtual ~Tpm();
 
-  // Initializes the Tpm instance
+  // Encrypts a data blob using the provided RSA key
   //
   // Parameters
-  //   crypto - The Crypto instance to use (for generating an RSA key, entropy,
-  //            etc.)
-  //   open_key - Whether or not to open (load) the cryptohome TPM key
-  virtual bool Init(Platform* platform, bool open_key);
-
-  // Tries to connect to the TPM
-  virtual bool Connect(TpmRetryAction* retry_action);
-
-  // Returns true if this instance is connected to the TPM
-  virtual bool IsConnected();
-
-  // Disconnects from the TPM
-  virtual void Disconnect();
-
-  // Encrypts a data blob using the TPM cryptohome RSA key
-  //
-  // Parameters
+  //   context_handle - The TPM context
+  //   key_handle - The loaded TPM key handle
   //   plaintext - One RSA message to encrypt
   //   key - AES key to encrypt with
-  //   ciphertext
-  virtual bool Encrypt(const chromeos::SecureBlob& plaintext,
-                       const chromeos::SecureBlob& key,
-                       chromeos::SecureBlob* ciphertext,
-                       TpmRetryAction* retry_action);
+  //   ciphertext (OUT) - Encrypted blob
+  //   result (OUT) - TPM error code
+  virtual bool EncryptBlob(TSS_HCONTEXT context_handle,
+                           TSS_HKEY key_handle,
+                           const chromeos::SecureBlob& plaintext,
+                           const chromeos::SecureBlob& key,
+                           chromeos::SecureBlob* ciphertext,
+                           TSS_RESULT* result);
 
-  // Decrypts a data blob using the TPM cryptohome RSA key
+  // Decrypts a data blob using the provided RSA key
   //
   // Parameters
-  //   ciphertext - One RSA message to decrypt
-  //   key - AES key to decrypt with
-  //   plaintext
-  virtual bool Decrypt(const chromeos::SecureBlob& ciphertext,
-                       const chromeos::SecureBlob& key,
-                       chromeos::SecureBlob* plaintext,
-                       TpmRetryAction* retry_action);
+  //   context_handle - The TPM context
+  //   key_handle - The loaded TPM key handle
+  //   ciphertext - One RSA message to encrypt
+  //   key - AES key to encrypt with
+  //   plaintext (OUT) - Decrypted blob
+  //   result (OUT) - TPM error code
+  virtual bool DecryptBlob(TSS_HCONTEXT context_handle,
+                           TSS_HKEY key_handle,
+                           const chromeos::SecureBlob& ciphertext,
+                           const chromeos::SecureBlob& key,
+                           chromeos::SecureBlob* plaintext,
+                           TSS_RESULT* result);
 
-  // Retrieves the sha1sum of the public key component of the cryptohome RSA key
-  virtual TpmRetryAction GetPublicKeyHash(chromeos::SecureBlob* hash);
-
-  // Gets the TPM status information as a Value.
-  //
-  // Parameters
-  //   init - If non-NULL, overrides some of the status values
-  base::Value* GetStatusValue(TpmInit* init);
+  // Retrieves the sha1sum of the public key component of the RSA key
+  virtual TpmRetryAction GetPublicKeyHash(TSS_HCONTEXT context_handle,
+                                          TSS_HKEY key_handle,
+                                          chromeos::SecureBlob* hash);
 
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE
@@ -118,25 +96,40 @@ class Tpm {
   //   owner_password (OUT) - The random owner password used
   virtual bool GetOwnerPassword(chromeos::Blob* owner_password);
 
-  // Clears the owner password from storage if no dependencies exist.
-  void ClearStoredOwnerPassword();
-
-  // Removes the given owner dependency. When all dependencies have been removed
-  // the owner password can be cleared.
-  virtual void RemoveOwnerDependency(TpmOwnerDependency dependency);
 
   // Returns whether or not the TPM is enabled.  This method call returns a
   // cached result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
   virtual bool IsEnabled() const { return !is_disabled_; }
+  virtual void SetIsEnabled(bool enabled) { is_disabled_ = !enabled; }
 
   // Returns whether or not the TPM is owned.  This method call returns a cached
   // result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
   virtual bool IsOwned() const { return is_owned_; }
+  virtual void SetIsOwned(bool owned) { is_owned_ = owned; }
+
+  // Returns whether or not the TPM is enabled and owned using a call to
+  // Tspi_TPM_GetCapability.
+  //
+  // Unlike former functions, this function performs the check (which could take
+  // some time) every time it is invoked. It does not use cached value.
+  //
+  // Parameters
+  //   enabled (OUT) - Whether the TPM is enabled
+  //   owned (OUT) - Whether the TPM is owned
+  //
+  // Returns true if the check was successfully carried out.
+  bool PerformEnabledOwnedCheck(bool* enabled, bool* owned);
+
+  // Returns whether or not this instance has been setup'd by an external
+  // entity (such as cryptohome::TpmInit).
+  virtual bool IsInitialized() const { return initialized_; }
+  virtual void SetIsInitialized(bool done) { initialized_ = done; }
 
   // Returns whether or not the TPM is being owned
   virtual bool IsBeingOwned() const { return is_being_owned_; }
+  virtual void SetIsBeingOwned(bool value) { is_being_owned_ = value; }
 
   // Runs the TPM initialization sequence.  This may take a long time due to the
   // call to Tspi_TPM_TakeOwnership.
@@ -397,148 +390,14 @@ class Tpm {
   // Extends the PCR given by |pcr_index| using a SHA-1 hash of |extension|.
   virtual bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension);
 
- protected:
-  // Default constructor
-  Tpm();
-
- private:
-  // Gets the TPM status information
-  //
-  // Parameters
-  //   check_crypto - Whether to check if encrypt/decrypt works (may take
-  //                  longer)
-  //   status (OUT) - The TpmStatusInfo structure containing the results
-  void GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status);
-
-  bool IsTransient(TSS_RESULT result);
-
-  TpmRetryAction HandleError(TSS_RESULT result);
-
-  bool SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                         TSS_RESULT* result);
-
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
-
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object iff the owner password is available and
-  // authorization is successfully acquired.
-  bool ConnectContextAsOwner(TSS_HCONTEXT* context_handle,
-                             TSS_HTPM* tpm_handle);
-
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object authorized by the given delegation.
-  bool ConnectContextAsDelegate(const chromeos::SecureBlob& delegate_blob,
-                                const chromeos::SecureBlob& delegate_secret,
-                                TSS_HCONTEXT* context, TSS_HTPM* tpm);
-
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object iff the context can be created and a TPM object
-  // exists in the TSS.
-  bool ConnectContextAsUser(TSS_HCONTEXT* context_handle,
-                            TSS_HTPM* tpm_handle);
-
-  bool CreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                           bool create_in_tpm, TSS_RESULT* result);
-
-  bool LoadCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY* key_handle,
-                         TSS_RESULT* result);
-
-  bool LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                 bool create_in_tpm,
-                                 TSS_HKEY* key_handle,
-                                 TSS_RESULT* result);
-
-  bool EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                   const chromeos::SecureBlob& plaintext,
-                   const chromeos::SecureBlob& key,
-                   chromeos::SecureBlob* ciphertext, TSS_RESULT* result);
-
-  bool DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                   const chromeos::SecureBlob& ciphertext,
-                   const chromeos::SecureBlob& key,
-                   chromeos::SecureBlob* plaintext, TSS_RESULT* result);
-
-  bool GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                  chromeos::SecureBlob* data_out, TSS_RESULT* result);
-
-  bool GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                        chromeos::SecureBlob* data_out, TSS_RESULT* result);
 
   // Tries to connect to the TPM
   virtual TSS_HCONTEXT ConnectContext();
 
-  // Disconnects from the TPM
-  virtual void DisconnectContext(TSS_HCONTEXT context_handle);
-
-  // Gets a handle to the SRK
-  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
-               TSS_RESULT* result);
-
-  // Stores the TPM owner password to the TpmStatus object
-  bool StoreOwnerPassword(const chromeos::Blob& owner_password,
-                          TpmStatus* tpm_status);
-
-  // Retrieves the TPM owner password
-  bool LoadOwnerPassword(const TpmStatus& tpm_status,
-                         chromeos::Blob* owner_password);
-
-  // Loads the TpmStatus object
-  bool LoadTpmStatus(TpmStatus* serialized);
-
-  // Saves the TpmStatus object
-  bool StoreTpmStatus(const TpmStatus& serialized);
-
-  // Returns the size of the specified NVRAM space.
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  //   index - NVRAM Space index
-  // Returns -1 if the index, handle, or space is invalid.
-  unsigned int GetNvramSizeForContext(TSS_HCONTEXT context_handle,
-                                      TSS_HTPM tpm_handle,
-                                      uint32_t index);
-
-  // Returns if an Nvram space exists using the given context.
-  bool IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
-                                TSS_HTPM tpm_handle,
-                                uint32_t index);
-
-  // Returns if bWriteDefine is true for a given NVRAM space using the given
-  // context.
-  bool IsNvramLockedForContext(TSS_HCONTEXT context_handle,
-                               TSS_HTPM tpm_handle,
-                               uint32_t index);
-
-  // Reads an NVRAM space using the given context.
-  bool ReadNvramForContext(TSS_HCONTEXT context_handle,
-                           TSS_HTPM tpm_handle,
-                           TSS_HPOLICY policy_handle,
-                           uint32_t index,
-                           chromeos::SecureBlob* blob);
-
-  // Returns whether or not the TPM is disabled by checking a flag in the TPM's
-  // entry in /sys/class/misc
-  bool IsDisabledCheckViaSysfs();
-
-  // Returns whether or not the TPM is owned by checking a flag in the TPM's
-  // entry in /sys/class/misc
-  bool IsOwnedCheckViaSysfs();
-
-  // Returns whether or not the TPM is enabled and owned using a call to
-  // Tspi_TPM_GetCapability
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  //   enabled (OUT) - Whether the TPM is enabled
-  //   owned (OUT) - Whether the TPM is owned
-  void IsEnabledOwnedCheckViaContext(TSS_HCONTEXT context_handle,
-                                     bool* enabled, bool* owned);
-
-  // Attempts to create the endorsement key in the TPM
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  bool CreateEndorsementKey(TSS_HCONTEXT context_handle);
+  // Frees up the context. This is different from Disconnect() method. This
+  // version does not touch on resources owned by this TPM instance.
+  virtual void CloseContext(TSS_HCONTEXT context_handle) const;
 
   // Checks to see if the endorsement key is available by attempting to get its
   // public key
@@ -547,11 +406,11 @@ class Tpm {
   //   context_handle - The context handle for the TPM session
   bool IsEndorsementKeyAvailable(TSS_HCONTEXT context_handle);
 
-  // Creates a random owner password
+  // Attempts to create the endorsement key in the TPM
   //
   // Parameters
-  //   password (OUT) - the generated password
-  void CreateOwnerPassword(chromeos::SecureBlob* password);
+  //   context_handle - The context handle for the TPM session
+  bool CreateEndorsementKey(TSS_HCONTEXT context_handle);
 
   // Attempts to take ownership of the TPM
   //
@@ -588,13 +447,6 @@ class Tpm {
                            const chromeos::SecureBlob& previous_owner_password,
                            const chromeos::SecureBlob& owner_password);
 
-  // Gets a handle to the TPM from the specified context
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  //   tpm_handle (OUT) - The handle for the TPM on success
-  bool GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle);
-
   // Gets a handle to the TPM from the specified context with the given owner
   // password
   //
@@ -605,6 +457,137 @@ class Tpm {
   bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
                       const chromeos::SecureBlob& owner_password,
                       TSS_HTPM* tpm_handle);
+
+  // Test the TPM auth by calling Tspi_TPM_GetStatus
+  //
+  // Parameters
+  //   tpm_handle = The TPM handle
+  bool TestTpmAuth(TSS_HTPM tpm_handle);
+
+  // Sets the TPM owner password to be used in subsequent commands
+  //
+  // Parameters
+  //   owner_password - The owner password for the TPM
+  void SetOwnerPassword(const chromeos::SecureBlob& owner_password);
+
+  // Gets a handle to the SRK
+  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
+               TSS_RESULT* result) const;
+
+  bool IsTransient(TSS_RESULT result);
+
+  bool GetPublicKeyBlob(TSS_HCONTEXT context_handle,
+                        TSS_HKEY key_handle,
+                        chromeos::SecureBlob* data_out,
+                        TSS_RESULT* result) const;
+
+  bool GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+                  chromeos::SecureBlob* data_out, TSS_RESULT* result) const;
+
+  // Creates an RSA key wrapped by the TPM's Storage Root Key. The key is
+  // created by OpenSSL, and not by the TPM.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   wrapped_key (OUT) - A blob representing the wrapped key
+  bool CreateWrappedRsaKey(TSS_HCONTEXT context_handle,
+                           chromeos::SecureBlob* wrapped_key);
+
+  // Loads an SRK-wrapped key into the TPM.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session.
+  //   wrapped_key - The blob (as produced by CreateWrappedRsaKey).
+  //   key_handle (OUT) - A handle to the key loaded into the TPM.
+  bool LoadWrappedKey(TSS_HCONTEXT context_handle,
+                      const chromeos::SecureBlob& wrapped_key,
+                      TSS_HKEY* key_handle,
+                      TSS_RESULT* result) const;
+
+  // Loads a key by well-known UUID.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session.
+  //   key_uuid - The well-known UUID identifying the TPM key.
+  //   key_handle (OUT) - A handle to the key loaded into the TPM.
+  //   key_blob (OUT) - If non-null, the blob representing this loaded key.
+  bool LoadKeyByUuid(TSS_HCONTEXT context_handle,
+                     TSS_UUID key_uuid,
+                     TSS_HKEY* key_handle,
+                     chromeos::SecureBlob* key_blob,
+                     TSS_RESULT* result) const;
+
+  TpmRetryAction HandleError(TSS_RESULT result);
+
+  // Gets the TPM status information. If there |context| and |key| are supplied,
+  // they will be used in encryption/decryption test. They can be 0 to bypass
+  // the test.
+  //
+  // Parameters
+  //   context - The TPM context to check for encryption/decryption
+  //   key - The key to check for encryption/decryption
+  //   status (OUT) - The TpmStatusInfo structure containing the results
+  void GetStatus(TSS_HCONTEXT context,
+                 TSS_HKEY key,
+                 Tpm::TpmStatusInfo* status);
+
+ protected:
+  // Default constructor
+  Tpm();
+
+ private:
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object iff the owner password is available and
+  // authorization is successfully acquired.
+  bool ConnectContextAsOwner(TSS_HCONTEXT* context_handle,
+                             TSS_HTPM* tpm_handle);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object authorized by the given delegation.
+  bool ConnectContextAsDelegate(const chromeos::SecureBlob& delegate_blob,
+                                const chromeos::SecureBlob& delegate_secret,
+                                TSS_HCONTEXT* context, TSS_HTPM* tpm);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object iff the context can be created and a TPM object
+  // exists in the TSS.
+  bool ConnectContextAsUser(TSS_HCONTEXT* context_handle,
+                            TSS_HTPM* tpm_handle);
+
+  // Returns the size of the specified NVRAM space.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   index - NVRAM Space index
+  // Returns -1 if the index, handle, or space is invalid.
+  unsigned int GetNvramSizeForContext(TSS_HCONTEXT context_handle,
+                                      TSS_HTPM tpm_handle,
+                                      uint32_t index);
+
+  // Returns if an Nvram space exists using the given context.
+  bool IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
+                                TSS_HTPM tpm_handle,
+                                uint32_t index);
+
+  // Returns if bWriteDefine is true for a given NVRAM space using the given
+  // context.
+  bool IsNvramLockedForContext(TSS_HCONTEXT context_handle,
+                               TSS_HTPM tpm_handle,
+                               uint32_t index);
+
+  // Reads an NVRAM space using the given context.
+  bool ReadNvramForContext(TSS_HCONTEXT context_handle,
+                           TSS_HTPM tpm_handle,
+                           TSS_HPOLICY policy_handle,
+                           uint32_t index,
+                           chromeos::SecureBlob* blob);
+
+  // Gets a handle to the TPM from the specified context
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   tpm_handle (OUT) - The handle for the TPM on success
+  bool GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle);
 
   // Gets a handle to the TPM from the specified context with the given
   // delegation.
@@ -618,12 +601,6 @@ class Tpm {
                             const chromeos::SecureBlob& delegate_blob,
                             const chromeos::SecureBlob& delegate_secret,
                             TSS_HTPM* tpm_handle);
-
-  // Test the TPM auth by calling Tspi_TPM_GetStatus
-  //
-  // Parameters
-  //   tpm_handle = The TPM handle
-  bool TestTpmAuth(TSS_HTPM tpm_handle);
 
   // Decrypts and parses an identity request.
   //
@@ -675,13 +652,11 @@ class Tpm {
                         TSS_HOBJECT object,
                         TSS_FLAG flag,
                         TSS_FLAG sub_flag,
-                        chromeos::SecureBlob* data);
+                        chromeos::SecureBlob* data) const;
 
   // Member variables
   bool initialized_;
   chromeos::SecureBlob srk_auth_;
-  TSS_HCONTEXT context_handle_;
-  TSS_HKEY key_handle_;
 
   // If TPM ownership is taken, owner_password_ contains the password used
   chromeos::SecureBlob owner_password_;
@@ -702,7 +677,6 @@ class Tpm {
   static Tpm* singleton_;
   static base::Lock singleton_lock_;
 
-  Platform* platform_;
   scoped_ptr<MetricsLibraryInterface> metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);

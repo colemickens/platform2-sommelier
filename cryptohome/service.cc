@@ -245,7 +245,7 @@ Service::Service()
       platform_(default_platform_.get()),
       crypto_(new Crypto(platform_)),
       tpm_(Tpm::GetSingleton()),
-      default_tpm_init_(new TpmInit(platform_)),
+      default_tpm_init_(new TpmInit(tpm_, platform_)),
       tpm_init_(default_tpm_init_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
@@ -446,11 +446,10 @@ bool Service::Initialize() {
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
 
   crypto_->set_use_tpm(use_tpm_);
-  if (!crypto_->Init())
+  if (!crypto_->Init(tpm_init_))
     return false;
 
-  homedirs_->set_crypto(crypto_);
-  if (!homedirs_->Init())
+  if (!homedirs_->Init(platform_, crypto_))
     return false;
 
   // If the TPM is unowned or doesn't exist, it's safe for
@@ -464,12 +463,11 @@ bool Service::Initialize() {
   // Pass in all the shared dependencies here rather than
   // needing to always get the Attestation object to set them
   // during testing.
-  attestation_->Initialize(tpm_, platform_, crypto_, install_attrs_);
+  attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_);
 
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
   if (tpm_ && initialize_tpm_) {
-    tpm_init_->set_tpm(tpm_);
     tpm_init_->Init(this);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
@@ -568,7 +566,7 @@ void Service::InitializeInstallAttributes(bool first_time) {
   }
 
   // Init can fail without making the interface inconsistent so we're okay here.
-  install_attrs_->Init();
+  install_attrs_->Init(tpm_init_);
 
   // Check if the machine is enterprise owned and report to mount_ then.
   DetectEnterpriseOwnership();
@@ -612,7 +610,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
 
 bool Service::SeedUrandom() {
   SecureBlob random;
-  if (!tpm_init_->GetRandomData(kDefaultRandomSeedLength, &random)) {
+  if (!tpm_->GetRandomData(kDefaultRandomSeedLength, &random)) {
     LOG(ERROR) << "Could not get random data from the TPM";
     return false;
   }
@@ -2059,7 +2057,7 @@ gboolean Service::TpmCanAttemptOwnership(GError** error) {
   if (!tpm_init_->HasInitializeBeenCalled()) {
     timer_collection_->UpdateTimer(TimerCollection::kTpmTakeOwnershipTimer,
                                    true);
-    tpm_init_->StartInitializeTpm();
+    tpm_init_->AsyncInitializeTpm();
   }
   return TRUE;
 }
@@ -2666,7 +2664,26 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++)
     mounts->Append(it->second->GetStatus());
   base::Value* attrs = install_attrs_->GetStatus();
-  base::Value* tpm = tpm_->GetStatusValue(tpm_init_);
+
+  Tpm::TpmStatusInfo tpm_status_info;
+  tpm_->GetStatus(tpm_init_->GetCryptohomeContext(),
+                  tpm_init_->GetCryptohomeKey(),
+                  &tpm_status_info);
+  base::DictionaryValue* tpm = new base::DictionaryValue();
+  tpm->SetBoolean("can_connect", tpm_status_info.CanConnect);
+  tpm->SetBoolean("can_load_srk", tpm_status_info.CanLoadSrk);
+  tpm->SetBoolean("can_load_srk_pubkey", tpm_status_info.CanLoadSrkPublicKey);
+  tpm->SetBoolean("has_cryptohome_key", tpm_status_info.HasCryptohomeKey);
+  tpm->SetBoolean("can_encrypt", tpm_status_info.CanEncrypt);
+  tpm->SetBoolean("can_decrypt", tpm_status_info.CanDecrypt);
+  tpm->SetBoolean("has_context", tpm_status_info.ThisInstanceHasContext);
+  tpm->SetBoolean("has_key_handle", tpm_status_info.ThisInstanceHasKeyHandle);
+  tpm->SetInteger("last_error", tpm_status_info.LastTpmError);
+
+  tpm->SetBoolean("enabled", tpm_->IsEnabled());
+  tpm->SetBoolean("owned", tpm_->IsOwned());
+  tpm->SetBoolean("being_owned", tpm_->IsBeingOwned());
+
   dv.Set("mounts", mounts);
   dv.Set("installattrs", attrs);
   dv.Set("tpm", tpm);
@@ -2720,7 +2737,7 @@ scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
   mounts_lock_.Acquire();
   if (mounts_.count(username) == 0U) {
     m = mount_factory_->New();
-    m->Init();
+    m->Init(platform_, crypto_);
     m->set_enterprise_owned(enterprise_owned_);
     m->set_legacy_mount(legacy_mount_);
     mounts_[username] = m;

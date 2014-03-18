@@ -31,9 +31,11 @@
 #include "homedirs.h"
 #include "make_tests.h"
 #include "mock_chaps_client_factory.h"
+#include "mock_crypto.h"
 #include "mock_homedirs.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_tpm_init.h"
 #include "mock_user_session.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
@@ -78,14 +80,16 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 }
 
 // Straight pass through.
-bool TpmPassthroughEncrypt(const chromeos::SecureBlob &plaintext, Unused,
+bool TpmPassthroughEncrypt(TSS_HCONTEXT _context, TSS_HKEY _key,
+                           const chromeos::SecureBlob &plaintext, Unused,
                            chromeos::SecureBlob *ciphertext, Unused) {
   ciphertext->resize(plaintext.size());
   memcpy(ciphertext->data(), plaintext.const_data(), plaintext.size());
   return true;
 }
 
-bool TpmPassthroughDecrypt(const chromeos::SecureBlob &ciphertext, Unused,
+bool TpmPassthroughDecrypt(TSS_HCONTEXT _context, TSS_HKEY _key,
+                           const chromeos::SecureBlob &ciphertext, Unused,
                            chromeos::SecureBlob *plaintext, Unused) {
   plaintext->resize(ciphertext.size());
   memcpy(plaintext->data(), ciphertext.const_data(), ciphertext.size());
@@ -108,16 +112,17 @@ class MountTest : public ::testing::Test {
     shared_gid_ = 1001;
     chaps_uid_ = 223;
 
+    crypto_.set_tpm(&tpm_);
+    crypto_.set_platform(&platform_);
+    crypto_.set_use_tpm(false);
+
     mount_ = new Mount();
-    mount_->set_platform(&platform_);
     mount_->set_homedirs(&homedirs_);
     mount_->set_use_tpm(false);
     mount_->set_shadow_root(kImageDir);
     mount_->set_skel_source(kSkelDir);
-    mount_->crypto()->set_platform(&platform_);
-    mount_->crypto()->set_tpm(&tpm_);
     mount_->set_chaps_client_factory(&chaps_client_factory_);
-    homedirs_.set_crypto(mount_->crypto());
+    homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
     homedirs_.set_shadow_root(kImageDir);
     set_policy(false, "", false);
@@ -145,7 +150,7 @@ class MountTest : public ::testing::Test {
     EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
       .WillOnce(DoAll(SetArgumentPointee<1>(shared_gid_),
                       Return(true)));
-    return mount_->Init();
+    return mount_->Init(&platform_, &crypto_);
   }
 
   bool LoadSerializedKeyset(const chromeos::Blob& contents,
@@ -187,7 +192,9 @@ class MountTest : public ::testing::Test {
   gid_t shared_gid_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockTpmInit> tpm_init_;
   NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockCrypto> crypto_;
   MockChapsClientFactory chaps_client_factory_;
   scoped_refptr<Mount> mount_;
 
@@ -222,7 +229,7 @@ TEST_F(MountTest, BadInitTest) {
                     Return(true)));
   EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
     .WillOnce(DoAll(SetArgumentPointee<1>(1002), Return(true)));
-  EXPECT_FALSE(mount_->Init());
+  EXPECT_FALSE(mount_->Init(&platform_, &crypto_));
   ASSERT_FALSE(mount_->AreValid(up));
 }
 
@@ -384,8 +391,8 @@ class ChapsDirectoryTest : public ::testing::Test {
         kLegacyDir("/legacy"),
         kRootUID(0), kRootGID(0), kChapsUID(1), kSharedGID(2),
         mount_(new Mount()) {
-    mount_->crypto()->set_platform(&platform_);
-    mount_->set_platform(&platform_);
+    crypto_.set_platform(&platform_);
+    mount_->Init(&platform_, &crypto_);
     mount_->chaps_user_ = kChapsUID;
     mount_->default_access_group_ = kSharedGID;
     // By default, set stats to the expected values.
@@ -438,6 +445,7 @@ class ChapsDirectoryTest : public ::testing::Test {
 
   scoped_refptr<Mount> mount_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockCrypto> crypto_;
 
  private:
   void InitStat(struct stat* s, mode_t mode, uid_t uid, gid_t gid) {
@@ -542,6 +550,9 @@ TEST_F(ChapsDirectoryTest, FixBadOwnershipFailure) {
 }
 
 TEST_F(MountTest, CheckChapsDirectoryMigration) {
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+
   // Configure stub methods.
   EXPECT_CALL(platform_, Copy(_, _))
       .WillRepeatedly(Return(true));
@@ -586,6 +597,7 @@ TEST_F(MountTest, CheckChapsDirectoryMigration) {
   EXPECT_CALL(platform_, SetOwnership("/fake", 1, 2)).Times(1);
   EXPECT_CALL(platform_, SetPermissions("/fake", 0123)).Times(1);
 
+  DoMountInit();
   EXPECT_TRUE(mount_->CheckChapsDirectory("/fake", "/fake_legacy"));
 }
 
@@ -594,14 +606,12 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   // Creates a cryptohome and tests credentials.
   HomeDirs homedirs;
   homedirs.set_shadow_root(kImageDir);
-  homedirs.set_platform(&platform_);
-  homedirs.set_crypto(mount_->crypto());
 
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
   EXPECT_TRUE(DoMountInit());
-  EXPECT_TRUE(homedirs.Init());
+  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto()));
 
   // TODO(wad) Make this into a UserDoesntExist() helper.
   EXPECT_CALL(platform_, FileExists(user->image_path))
@@ -659,31 +669,34 @@ TEST_F(MountTest, GoodReDecryptTest) {
   // Create a Mount instance that points to a good shadow root, test that it
   // properly re-authenticates against the first key.
   mount_->set_use_tpm(true);
-  mount_->crypto()->set_use_tpm(true);
+  crypto_.set_use_tpm(true);
 
   HomeDirs homedirs;
   homedirs.set_shadow_root(kImageDir);
-  homedirs.set_platform(&platform_);
-  homedirs.set_crypto(mount_->crypto());
 
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  EXPECT_CALL(tpm_, Init(_, _))
+  EXPECT_CALL(tpm_init_, HasCryptohomeKey())
+    .WillOnce(Return(false))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_init_, SetupTpm(true))
+    .WillOnce(Return(true))  // This is by crypto.Init() and
+    .WillOnce(Return(true)); // because we forced HasCryptohomeKey to false once
+  crypto_.Init(&tpm_init_);
+
   EXPECT_CALL(tpm_, IsEnabled())
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, IsConnected())
-    .WillRepeatedly(Return(true));
 
   EXPECT_TRUE(DoMountInit());
-  EXPECT_TRUE(homedirs.Init());
+  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto()));
 
   // Load the pre-generated keyset
   std::string key_path = mount_->GetUserLegacyKeyFileForUser(
       up.GetObfuscatedUsername(helper_.system_salt), 0);
+  EXPECT_TRUE(key_path.size() > 0);
   cryptohome::SerializedVaultKeyset serialized;
   EXPECT_TRUE(serialized.ParseFromArray(
                   static_cast<const unsigned char*>(&user->credentials[0]),
@@ -728,11 +741,11 @@ TEST_F(MountTest, GoodReDecryptTest) {
     .WillOnce(Return(true));
 
   // Create the "TPM-wrapped" value by letting it save the plaintext.
-  EXPECT_CALL(tpm_, Encrypt(_, _, _, _))
+  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
   chromeos::SecureBlob fake_pub_key("A", 1);
-  EXPECT_CALL(tpm_, GetPublicKeyHash(_))
-    .WillRepeatedly(DoAll(SetArgumentPointee<0>(fake_pub_key),
+  EXPECT_CALL(tpm_, GetPublicKeyHash(_, _, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(fake_pub_key),
                           Return(Tpm::RetryNone)));
 
   chromeos::Blob migrated_keyset;
@@ -771,7 +784,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->user_salt),
                           Return(true)));
-  EXPECT_CALL(tpm_, Decrypt(_, _, _, _))
+  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
     MockFileEnumerator* files = new MockFileEnumerator();
