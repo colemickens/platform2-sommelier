@@ -276,6 +276,12 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
   if (!existing_key_data.authorization_data_size() ||
       !existing_key_data.authorization_data(0).has_type())
     return true;
+
+  if (!new_key.data().has_revision()) {
+    LOG(INFO) << "CheckAuthorizationSignature called with no revision";
+    return false;
+  }
+
   switch (existing_key_data.authorization_data(0).type()) {
   // The data is passed in the clear but authenticated with a shared
   // symmetric secret.
@@ -332,7 +338,8 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
     return false;
   }
 
-  if (existing_key_data.revision() >= new_key.data().revision()) {
+  if (existing_key_data.has_revision() &&
+      existing_key_data.revision() >= new_key.data().revision()) {
     LOG(ERROR) << "The supplied key revision was too old.";
     return false;
   }
@@ -347,7 +354,15 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
 
   scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   if (!GetValidKeyset(credentials, vk.get())) {
-    LOG(WARNING) << "AddKeyset: authentication failed";
+    // Differentiate between failure and non-existent.
+    if (!credentials.key_data().label().empty()) {
+      vk.reset(GetVaultKeyset(credentials));
+      if (!vk.get()) {
+        LOG(WARNING) << "UpdateKeyset: key not found";
+        return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
+      }
+    }
+    LOG(WARNING) << "UpdateKeyset: invalid authentication provided";
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   }
 
@@ -397,7 +412,7 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
         key_changes->data().authorization_data(0);
   }
 
-  // TODO(wad,dkrahn): Should KeyPrivileges be update-able?
+  // TODO(wad,dkrahn): Add privilege dropping.
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
   if (key_changes->has_secret()) {
@@ -424,7 +439,15 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
 
   scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   if (!GetValidKeyset(existing_credentials, vk.get())) {
-    LOG(WARNING) << "AddKeyset: authentication failed";
+    // Differentiate between failure and non-existent.
+    if (!existing_credentials.key_data().label().empty()) {
+      vk.reset(GetVaultKeyset(existing_credentials));
+      if (!vk.get()) {
+        LOG(WARNING) << "AddKeyset: key not found";
+        return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
+      }
+    }
+    LOG(WARNING) << "AddKeyset: invalid authentication provided";
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   }
 

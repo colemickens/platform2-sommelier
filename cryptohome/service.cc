@@ -861,6 +861,7 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
   if (!homedirs_->Exists(credentials)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   } else if (!homedirs_->AreCredentialsValid(credentials)) {
+    // TODO(wad) Should this pass along KEY_NOT_FOUND too?
     reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
   SendReply(context, reply);
