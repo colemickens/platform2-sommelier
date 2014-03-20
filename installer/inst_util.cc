@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -301,7 +302,9 @@ bool VersionLess(const string& left,
   return false;
 }
 
-const std::string mmcblk_dev = "/dev/mmcblk";
+// This is an array of device names that are allowed in end in a digit, and
+// which use the 'p' notation to denote partitions.
+const char *numbered_devices[] = {"/dev/mmcblk", "/dev/loop"};
 
 string GetBlockDevFromPartitionDev(const string& partition_dev) {
   size_t i = partition_dev.length();
@@ -309,14 +312,21 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
   while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
 
-  // mmcblk devices are of the form "/dev/mmcblk12p34"
-  if (partition_dev.compare(0, mmcblk_dev.size(), mmcblk_dev) == 0) {
-    // If it ends with a p, strip off the p. If it doesn't there was
-    // no partition at the end (/dev/mmcblk12) return unmodified.
-    if (partition_dev[i-1] == 'p')
-      i--;
-    else
-      return partition_dev;
+  for (const char **nd = begin(numbered_devices);
+       nd != end(numbered_devices); nd++) {
+
+    size_t nd_len = strlen(*nd);
+    // numbered_devices are of the form "/dev/mmcblk12p34"
+    if (partition_dev.compare(0, nd_len, *nd) == 0) {
+      if ((i == nd_len) || (partition_dev[i-1] != 'p')) {
+        // If there was no partition at the end (/dev/mmcblk12) return
+        // unmodified.
+        return partition_dev;
+      } else {
+        // If it ends with a p, strip off the p.
+        i--;
+      }
+    }
   }
 
   return partition_dev.substr(0, i);
@@ -328,11 +338,15 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
   while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
 
-  // mmcblk devices are of the form "/dev/mmcblk12p34"
-  // If there is no ending p, There was no partition at the end (/dev/mmcblk12)
-  if ((partition_dev.compare(0, mmcblk_dev.size(), mmcblk_dev) == 0) &&
-      (partition_dev[i-1] != 'p')) {
-    return 0;
+  for (const char **nd = begin(numbered_devices);
+       nd != end(numbered_devices); nd++) {
+    size_t nd_len = strlen(*nd);
+    // numbered_devices are of the form "/dev/mmcblk12p34"
+    // If there is no ending p, there is no partition at the end (/dev/mmcblk12)
+    if ((partition_dev.compare(0, nd_len, *nd) == 0) &&
+        ((i == nd_len) || (partition_dev[i-1] != 'p'))) {
+      return 0;
+    }
   }
 
   string partition_str = partition_dev.substr(i, i+1);
@@ -346,8 +360,13 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
 }
 
 string MakePartitionDev(const string& block_dev, int partition) {
-  if (block_dev.compare(0, mmcblk_dev.size(), mmcblk_dev) == 0)
-    return StringPrintf("%sp%d", block_dev.c_str(), partition);
+
+  for (const char **nd = begin(numbered_devices);
+       nd != end(numbered_devices); nd++) {
+    size_t nd_len = strlen(*nd);
+    if (block_dev.compare(0, nd_len, *nd) == 0)
+      return StringPrintf("%sp%d", block_dev.c_str(), partition);
+  }
 
   return StringPrintf("%s%d", block_dev.c_str(), partition);
 }

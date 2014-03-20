@@ -13,6 +13,18 @@
     if (RunCommand(_x) != 0) return false;                      \
   } while (0)
 
+// Find a pointer to the first element of a statically sized array.
+template<typename T, size_t N>
+T * begin(T (&ra)[N]) {
+    return ra + 0;
+}
+
+// Find a pointer to the element after the end of a statically sized array.
+template<typename T, size_t N>
+T * end(T (&ra)[N]) {
+    return ra + N;
+}
+
 // Start a timer (there can only be one active).
 void LoggingTimerStart();
 

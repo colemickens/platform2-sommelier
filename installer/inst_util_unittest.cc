@@ -234,7 +234,8 @@ TEST(UtilTest, GetBlockDevFromPartitionDev) {
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk0p3"), "/dev/mmcblk0");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk12p321"), "/dev/mmcblk12");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk0"), "/dev/mmcblk0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev(""), "");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/loop0"), "/dev/loop0");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/loop32p12"), "/dev/loop32");
 }
 
 TEST(UtilTest, GetPartitionDevTest) {
@@ -245,7 +246,8 @@ TEST(UtilTest, GetPartitionDevTest) {
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mmcblk12p321"), 321);
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mmcblk1"), 0);
   EXPECT_EQ(GetPartitionFromPartitionDev("3"), 3);
-  EXPECT_EQ(GetPartitionFromPartitionDev(""), 0);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/loop1"), 0);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/loop1p12"), 12);
 }
 
 TEST(UtilTest, MakePartitionDevTest) {
@@ -253,6 +255,7 @@ TEST(UtilTest, MakePartitionDevTest) {
   EXPECT_EQ(MakePartitionDev("/dev/sda", 321), "/dev/sda321");
   EXPECT_EQ(MakePartitionDev("/dev/mmcblk0", 3), "/dev/mmcblk0p3");
   EXPECT_EQ(MakePartitionDev("/dev/mmcblk12", 321), "/dev/mmcblk12p321");
+  EXPECT_EQ(MakePartitionDev("/dev/loop16", 321), "/dev/loop16p321");
   EXPECT_EQ(MakePartitionDev("", 0), "0");
 }
 
