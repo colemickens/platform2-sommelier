@@ -27,6 +27,9 @@
     {
       'target_name': 'libutil',
       'type': 'static_library',
+      'dependencies': [
+        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
+      ],
       'sources': [
         'common/clock.cc',
         'common/dbus_sender.cc',
@@ -105,7 +108,6 @@
       'target_name': 'libpowerd',
       'type': 'static_library',
       'dependencies': [
-        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
         'libpolicy',
         'libsystem',
         'libutil',
