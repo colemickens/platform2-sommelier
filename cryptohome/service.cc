@@ -894,6 +894,83 @@ gboolean Service::CheckKeyEx(GArray* account_id,
   return TRUE;
 }
 
+void Service::DoRemoveKeyEx(AccountIdentifier* identifier,
+                            AuthorizationRequest* authorization,
+                            RemoveKeyRequest* remove_key_request,
+                            DBusGMethodInvocation* context) {
+  if (!identifier || !authorization || !remove_key_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+
+  // An AuthorizationRequest key without a label will test against
+  // all VaultKeysets of a compatible key().data().type().
+  if (authorization->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+
+  if (remove_key_request->key().data().label().empty()) {
+    SendInvalidArgsReply(context, "No label provided for target key");
+    return;
+  }
+
+  BaseReply reply;
+  UsernamePasskey credentials(
+      identifier->email().c_str(),
+      SecureBlob(authorization->key().secret().c_str(),
+                 authorization->key().secret().length()));
+  credentials.set_key_data(authorization->key().data());
+
+  if (!homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
+  reply.set_error(homedirs_->RemoveKeyset(credentials,
+                                          remove_key_request->key().data()));
+  if (reply.error() == CRYPTOHOME_ERROR_NOT_SET) {
+    // Don't set the error if there wasn't one.
+    reply.clear_error();
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::RemoveKeyEx(GArray* account_id,
+                             GArray* authorization_request,
+                             GArray* remove_key_request,
+                             DBusGMethodInvocation *context) {
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<RemoveKeyRequest> request(new RemoveKeyRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  if (!request->ParseFromArray(remove_key_request->data,
+                               remove_key_request->len))
+    request.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoRemoveKeyEx, base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+
 gboolean Service::MigrateKey(gchar *userid,
                              gchar *from_key,
                              gchar *to_key,

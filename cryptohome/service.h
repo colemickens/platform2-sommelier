@@ -210,6 +210,14 @@ class Service : public chromeos::dbus::AbstractDbusService,
                               GArray *authorization_request,
                               GArray *check_key_request,
                               DBusGMethodInvocation *context);
+  virtual void DoRemoveKeyEx(AccountIdentifier* account_id,
+                            AuthorizationRequest*  authorization_request,
+                            RemoveKeyRequest* remove_key_request,
+                            DBusGMethodInvocation* context);
+  virtual gboolean RemoveKeyEx(GArray *account_id,
+                              GArray *authorization_request,
+                              GArray *remove_key_request,
+                              DBusGMethodInvocation *context);
   virtual gboolean Remove(gchar *user,
                           gboolean *OUT_result,
                           GError **error);

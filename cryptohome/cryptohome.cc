@@ -56,6 +56,7 @@ namespace switches {
     "is_mounted",
     "test_auth",
     "check_key_ex",
+    "remove_key_ex",
     "migrate_key",
     "add_key",
     "add_key_ex",
@@ -102,6 +103,7 @@ namespace switches {
     ACTION_MOUNTED,
     ACTION_TEST_AUTH,
     ACTION_CHECK_KEY_EX,
+    ACTION_REMOVE_KEY_EX,
     ACTION_MIGRATE_KEY,
     ACTION_ADD_KEY,
     ACTION_ADD_KEY_EX,
@@ -143,6 +145,7 @@ namespace switches {
   static const char kPasswordSwitch[] = "password";
   static const char kKeyLabelSwitch[] = "key_label";
   static const char kNewKeyLabelSwitch[] = "new_key_label";
+  static const char kRemoveKeyLabelSwitch[] = "remove_key_label";
   static const char kOldPasswordSwitch[] = "old_password";
   static const char kNewPasswordSwitch[] = "new_password";
   static const char kForceSwitch[] = "force";
@@ -732,6 +735,58 @@ int main(int argc, char **argv) {
     } else {
       printf("Authentication succeeded.\n");
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_KEY_EX],
+                action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, &auth))
+      return -1;
+
+    cryptohome::RemoveKeyRequest remove_req;
+    cryptohome::KeyData* data = remove_req.mutable_key()->mutable_data();
+    data->set_label(cl->GetSwitchValueASCII(switches::kRemoveKeyLabelSwitch));
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(remove_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return -1;
+
+    std::vector<std::string> messages;
+    messages.push_back("Key removed.");
+    messages.push_back("Key removal failed.");
+
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      DBusGProxyCall* call =
+           org_chromium_CryptohomeInterface_remove_key_ex_async(
+               proxy.gproxy(),
+               account_ary.get(),
+               auth_ary.get(),
+               req_ary.get(),
+               &HandleReply,
+               static_cast<gpointer>(&messages));
+      if (!call)
+        return -1;
+      g_main_loop_run(loop);
+      return -1;
+    }
+
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_remove_key_ex(proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          req_ary.get(),
+          &out_reply,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("RemoveKeyEx call failed: %s", error->message);
+      return -1;
+    }
+    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
+
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
                 action.c_str())) {
     cryptohome::AccountIdentifier id;

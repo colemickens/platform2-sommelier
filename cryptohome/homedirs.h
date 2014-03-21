@@ -109,6 +109,13 @@ class HomeDirs {
                          bool clobber,
                          int* index);
 
+
+  // Removes the keyset identified by |key_data| if |credentials|
+  // has the remove() KeyPrivilege.  The VaultKeyset backing
+  // |credentials| may be the same that |key_data| identifies.
+  virtual CryptohomeErrorCode RemoveKeyset(const Credentials& credentials,
+                                           const KeyData& key_data);
+
   // Finds and updates the keyset authenticated by |credentials| and
   // applies |changed_data| to the keyset conditionally on if
   // |authorization_signature| is needed and is valid.

@@ -760,6 +760,7 @@ class ExTest : public ::testing::Test {
     add_req_.reset(new AddKeyRequest);
     check_req_.reset(new CheckKeyRequest);
     mount_req_.reset(new MountRequest);
+    remove_req_.reset(new RemoveKeyRequest);
   }
 
   template<class ProtoBuf>
@@ -785,6 +786,7 @@ class ExTest : public ::testing::Test {
   scoped_ptr<AddKeyRequest> add_req_;
   scoped_ptr<CheckKeyRequest> check_req_;
   scoped_ptr<MountRequest> mount_req_;
+  scoped_ptr<RemoveKeyRequest> remove_req_;
 
   GError* g_error_;
   MockPlatform platform_;
@@ -930,6 +932,46 @@ TEST_F(ExTest, CheckKeyInvalidArgsEmptySecret) {
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(ExTest, RemoveKeyInvalidArgsNoEmail) {
+  SetupErrorReply();
+  PrepareArguments();
+  // Run will never be called because we aren't running the event loop.
+  // For the same reason, DoMountEx is called directly.
+  service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", g_error_->message);
+}
+
+TEST_F(ExTest, RemoveKeyInvalidArgsNoSecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(ExTest, RemoveKeyInvalidArgsEmptySecret) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("");
+  service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No key secret supplied", g_error_->message);
+}
+
+TEST_F(ExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
+  SetupErrorReply();
+  PrepareArguments();
+  id_->set_email("foo@gmail.com");
+  auth_->mutable_key()->set_secret("some secret");
+  remove_req_->mutable_key()->mutable_data();
+  service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No label provided for target key", g_error_->message);
 }
 
 }  // namespace cryptohome

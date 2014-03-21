@@ -34,6 +34,8 @@ class MockHomeDirs : public HomeDirs {
                                               const KeyData*,
                                               bool,
                                               int*));
+  MOCK_METHOD2(RemoveKeyset, CryptohomeErrorCode(const Credentials&,
+                                                 const KeyData&));
   MOCK_METHOD2(ForceRemoveKeyset, bool(const std::string&, int));
   MOCK_METHOD3(MoveKeyset, bool(const std::string&, int, int));
 };

@@ -1446,6 +1446,37 @@ TEST_F(KeysetManagementTest, UpdateKeysetNotFoundWithLabel) {
                                    ""));
 }
 
+TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
+  KeysetSetUp();
+
+  Key remove_key;
+  remove_key.mutable_data()->set_label("remove me");
+  // Expect the 0 slot since it'll match all the fake keys.
+  EXPECT_CALL(*active_vks_[1], set_legacy_index(0));
+  // Return a different slot to make sure the code is using the right object.
+  EXPECT_CALL(*active_vks_[1], legacy_index())
+    .WillOnce(Return(1));
+  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+    .WillOnce(Return(true));
+
+  serialized_.mutable_key_data()->mutable_privileges()->set_remove(true);
+  serialized_.mutable_key_data()->set_label("remove me");
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.RemoveKeyset(*up_, remove_key.data()));
+}
+
+TEST_F(KeysetManagementTest, RemoveKeysetNotFound) {
+  KeysetSetUp();
+
+  Key remove_key;
+  remove_key.mutable_data()->set_label("remove me please");
+
+  serialized_.mutable_key_data()->mutable_privileges()->set_remove(true);
+  serialized_.mutable_key_data()->set_label("the only key in town");
+  EXPECT_EQ(CRYPTOHOME_ERROR_KEY_NOT_FOUND,
+            homedirs_.RemoveKeyset(*up_, remove_key.data()));
+}
+
 TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
   KeysetSetUp();
 

@@ -537,6 +537,51 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   return added;
 }
 
+CryptohomeErrorCode HomeDirs::RemoveKeyset(
+  const Credentials& credentials,
+  const KeyData& key_data) {
+  // This error condition should be caught by the caller.
+  if (key_data.label().empty())
+    return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  if (!GetValidKeyset(credentials, vk.get())) {
+    // Differentiate between failure and non-existent.
+    if (!credentials.key_data().label().empty()) {
+      vk.reset(GetVaultKeyset(credentials));
+      if (!vk.get()) {
+        LOG(WARNING) << "RemoveKeyset: key not found";
+        return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
+      }
+    }
+    LOG(WARNING) << "RemoveKeyset: invalid authentication provided";
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  }
+
+  // Keys without KeyData cannot use this call.
+  if (!vk->serialized().has_key_data() ||
+      !vk->serialized().key_data().privileges().remove()) {
+    LOG(WARNING) << "RemoveKeyset: no remove() privilege";
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
+  }
+
+  UsernamePasskey removal_creds(credentials.username().c_str(), SecureBlob());
+  removal_creds.set_key_data(key_data);
+  scoped_ptr<VaultKeyset> remove_vk(GetVaultKeyset(removal_creds));
+  if (!remove_vk.get()) {
+    LOG(WARNING) << "RemoveKeyset: key to remove not found";
+    return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+  }
+
+  std::string obfuscated = credentials.GetObfuscatedUsername(
+    system_salt_);
+  if (!ForceRemoveKeyset(obfuscated, remove_vk->legacy_index())) {
+    LOG(ERROR) << "RemoveKeyset: failed to remove keyset file";
+    return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+  }
+  return  CRYPTOHOME_ERROR_NOT_SET;
+}
+
 bool HomeDirs::ForceRemoveKeyset(const std::string& obfuscated, int index) {
   // Note, external callers should check credentials.
   if (index < 0 || index >= kKeyFileMax)
