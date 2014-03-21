@@ -100,10 +100,13 @@ class HomeDirs {
   // |new_data|, when provided, is copied to the key_data of the new keyset.
   // If |new_data| is provided, a best-effort attempt will be made at ensuring
   // key_data().label() is unique.
+  // If |clobber| is true and there are no matching, labeled keys, then it does
+  // nothing.  If there is an identically labeled key, it will overwrite it.
   virtual CryptohomeErrorCode AddKeyset(
                          const Credentials& existing_credentials,
                          const chromeos::SecureBlob& new_passkey,
                          const KeyData* new_data,
+                         bool clobber,
                          int* index);
 
   // Finds and updates the keyset authenticated by |credentials| and

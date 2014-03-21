@@ -57,6 +57,12 @@ class VaultKeyset {
   virtual const std::string& source_file() const {
     return source_file_;
   }
+  virtual void set_legacy_index(int index) {
+    legacy_index_ = index;
+  }
+  virtual const int legacy_index() const {
+    return legacy_index_;
+  }
 
  private:
   chromeos::SecureBlob fek_;
@@ -73,6 +79,7 @@ class VaultKeyset {
   bool loaded_;
   bool encrypted_;
   std::string source_file_;
+  int legacy_index_;
 
   DISALLOW_COPY_AND_ASSIGN(VaultKeyset);
 };

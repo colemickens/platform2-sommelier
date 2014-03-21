@@ -224,8 +224,10 @@ VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
     std::string label = (vk->serialized().has_key_data() ?
                          vk->serialized().key_data().label() :
                          StringPrintf("%s%d", kKeyLegacyPrefix, *iter));
-    if (label == credentials.key_data().label())
+    if (label == credentials.key_data().label()) {
+      vk->set_legacy_index(*iter);
       return vk.release();
+    }
   }
   return NULL;
 }
@@ -441,6 +443,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
                          const Credentials& existing_credentials,
                          const SecureBlob& new_passkey,
                          const KeyData* new_data,  // NULLable
+                         bool clobber,
                          int* index) {
   // TODO(wad) Determine how to best bubble up the failures MOUNT_ERROR
   //           encapsulate wrt the TPM behavior.
@@ -495,23 +498,28 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   // Once the file has been claimed, we can release the handle.
   platform_->CloseFile(vk_file);
 
-  // Since we're reusing the same VaultKeyset, be careful with the
+  // Before persisting, check, in a racy-way, if there is
+  // an existing labeled credential.
+  if (new_data) {
+    UsernamePasskey search_cred(existing_credentials.username().c_str(),
+                                SecureBlob("", 0));
+    search_cred.set_key_data(*new_data);
+    scoped_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
+    if (match.get()) {
+      LOG(INFO) << "Label already exists.";
+      platform_->DeleteFile(vk_path, false);
+      if (!clobber) {
+       return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
+      }
+      new_index = match->legacy_index();
+      vk_path = match->source_file();
+    }
+  }
+  // Since we're reusing the authorizing VaultKeyset, be careful with the
   // metadata.
   vk->mutable_serialized()->clear_key_data();
   if (new_data) {
     *(vk->mutable_serialized()->mutable_key_data()) = *new_data;
-  }
-
-  // Before persisting, check, in a racy-way, if there is
-  // an existing labeled credential.
-  UsernamePasskey search_cred(existing_credentials.username().c_str(),
-                              SecureBlob("", 0));
-  search_cred.set_key_data(vk->serialized().key_data());
-  scoped_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
-  if (match.get()) {
-    LOG(INFO) << "Label already exists.";
-    platform_->DeleteFile(vk_path, false);
-    return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
   }
 
   // Repersist the VK with the new creds.
@@ -519,7 +527,10 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   if (!vk->Encrypt(new_passkey) || !vk->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
     added = CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
-    platform_->DeleteFile(vk_path, false);
+    // If we're clobbering, don't delete on error.
+    if (!clobber) {
+      platform_->DeleteFile(vk_path, false);
+    }
   } else {
     *index = new_index;
   }
@@ -801,23 +812,14 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     }
   }
 
-  int new_key_index = -1;
-  // Note, this will fail if the new keyset uses the same label.
-  // TODO(wad) Add clobber support here. crbug.com/342804
-  if (AddKeyset(oldcreds, newkey, key_data, &new_key_index) !=
-      CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "Migrate: failed to add the new keyset";
-    return false;
-  }
-
   SecureBlob old_auth_data;
   SecureBlob auth_data;
   std::string username = newcreds.username();
   FilePath salt_file = GetChapsTokenSaltPath(username);
   if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data) ||
       !crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data)) {
-    // On failure, drop the newly added keyset so the user can try again.
-    ForceRemoveKeyset(obfuscated, new_key_index);
+    // On failure, token data may be partially migrated. Ideally, the user
+    // will re-attempt with the same passphrase.
     return false;
   }
   chaps_client_.ChangeTokenAuthData(
@@ -825,18 +827,30 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
       old_auth_data,
       auth_data);
 
-  // Drop the old keyset
-  if (!ForceRemoveKeyset(obfuscated, key_index)) {
-    LOG(ERROR) << "Migrate: unable to delete the old keyset: " << key_index;
-    // TODO(wad) Should we zero it or move it into space?
-    // Fallthrough
+  int new_key_index = -1;
+  // For a labeled key with the same label as the old key,
+  //  this will overwrite the existing keyset file.
+  if (AddKeyset(oldcreds, newkey, key_data, true, &new_key_index) !=
+      CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Migrate: failed to add the new keyset";
+    return false;
   }
 
-  // Put the new one in its slot.
-  if (!MoveKeyset(obfuscated, new_key_index, key_index)) {
-    LOG(ERROR) << "Migrate: failed to move the new key to the old slot";
-    // This is bad, but non-terminal since we have a valid, migrated key.
-    key_index = new_key_index;
+  // For existing unlabeled keys, we need to remove the old key and swap
+  // the slot.  If the key was labeled and clobbered, the key indices will
+  // match.
+  if (new_key_index != key_index) {
+    if (!ForceRemoveKeyset(obfuscated, key_index)) {
+      LOG(ERROR) << "Migrate: unable to delete the old keyset: " << key_index;
+      // TODO(wad) Should we zero it or move it into space?
+      // Fallthrough
+    }
+    // Put the new one in its slot.
+    if (!MoveKeyset(obfuscated, new_key_index, key_index)) {
+      // This is bad, but non-terminal since we have a valid, migrated key.
+      LOG(ERROR) << "Migrate: failed to move the new key to the old slot";
+      key_index = new_key_index;
+    }
   }
 
   // Remove all other keysets during a "migration".

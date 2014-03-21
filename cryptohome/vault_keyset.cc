@@ -16,7 +16,8 @@ using chromeos::SecureBlob;
 namespace cryptohome {
 
 VaultKeyset::VaultKeyset()
-    : platform_(NULL), crypto_(NULL), loaded_(false), encrypted_(false) {
+    : platform_(NULL), crypto_(NULL), loaded_(false), encrypted_(false),
+      legacy_index_(-1) {
 }
 
 VaultKeyset::~VaultKeyset() {

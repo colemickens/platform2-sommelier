@@ -994,13 +994,6 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  // TODO(wad) Label-based clobbering isn't done yet.
-  if (add_key_request->clobber_if_exists()) {
-    reply.set_error(CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-    SendReply(context, reply);
-    return;
-  }
-
   if (!add_key_request->has_key() || add_key_request->key().secret().empty()) {
     SendInvalidArgsReply(context, "No new key supplied");
     return;
@@ -1045,6 +1038,7 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
   reply.set_error(homedirs_->AddKeyset(credentials,
                                        new_secret,
                                        &add_key_request->key().data(),
+                                       add_key_request->clobber_if_exists(),
                                        &index));
   if (reply.error() == CRYPTOHOME_ERROR_NOT_SET) {
     // Don't set the error if there wasn't one.

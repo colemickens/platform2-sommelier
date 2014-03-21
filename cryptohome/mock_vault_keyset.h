@@ -42,6 +42,8 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_CONST_METHOD0(serialized, const SerializedVaultKeyset&(void));
   MOCK_METHOD0(mutable_serialized, SerializedVaultKeyset*(void));
   MOCK_CONST_METHOD0(source_file, const std::string&(void));
+  MOCK_METHOD1(set_legacy_index, void(int));
+  MOCK_CONST_METHOD0(legacy_index, const int(void));
  private:
    const SerializedVaultKeyset& StubSerialized(void) {
      return serialized_;
