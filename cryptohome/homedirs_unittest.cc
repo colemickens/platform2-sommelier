@@ -20,6 +20,7 @@
 #include "mock_user_oldest_activity_timestamp_cache.h"
 #include "mock_vault_keyset.h"
 #include "mock_vault_keyset_factory.h"
+#include "signed_secret.pb.h"
 #include "username_passkey.h"
 
 namespace cryptohome {
@@ -1164,7 +1165,6 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoSignature) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1194,7 +1194,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
+  cryptohome::SecureBlob new_pass("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1215,13 +1215,17 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   std::string vk_path = "some/path/master.0";
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
-  EXPECT_CALL(*active_vk_, Encrypt(new_secret))
+  EXPECT_CALL(*active_vk_, Encrypt(new_pass))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_, Save(vk_path))
     .WillOnce(Return(true));
 
   std::string changes_str;
-  ASSERT_TRUE(new_key.SerializeToString(&changes_str));
+  ac::chrome::managedaccounts::account::Secret new_secret;
+  new_secret.set_revision(new_key.data().revision());
+  new_secret.set_secret(new_key.secret());
+  ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
+
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
   chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
@@ -1231,7 +1235,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
                                    hmac_str));
-  EXPECT_EQ(serialized_.key_data().label(), new_key.data().label());
+  EXPECT_EQ(serialized_.key_data().revision(), new_key.data().revision());
 }
 
 TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
@@ -1239,7 +1243,6 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1258,7 +1261,10 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   auth_secret->set_symmetric_key(kSomeHMACKey);
 
   std::string changes_str;
-  ASSERT_TRUE(new_key.SerializeToString(&changes_str));
+  ac::chrome::managedaccounts::account::Secret new_secret;
+  new_secret.set_revision(new_key.data().revision());
+  new_secret.set_secret(new_key.secret());
+  ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
   chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
@@ -1277,7 +1283,6 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1296,7 +1301,11 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   auth_secret->set_symmetric_key(kSomeHMACKey);
 
   std::string changes_str;
-  ASSERT_TRUE(new_key.SerializeToString(&changes_str));
+  ac::chrome::managedaccounts::account::Secret new_secret;
+  new_secret.set_revision(new_key.data().revision());
+  new_secret.set_secret(new_key.secret());
+  ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
+
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
   chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
@@ -1314,7 +1323,6 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1332,9 +1340,11 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   auth_secret->set_symmetric_key(kSomeHMACKey);
 
   std::string changes_str;
-  Key bad_key = new_key;
-  bad_key.mutable_data()->set_label("some other key");
-  ASSERT_TRUE(bad_key.SerializeToString(&changes_str));
+  ac::chrome::managedaccounts::account::Secret bad_secret;
+  bad_secret.set_revision(new_key.data().revision());
+  bad_secret.set_secret("something else");
+  ASSERT_TRUE(bad_secret.SerializeToString(&changes_str));
+
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
   chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
@@ -1346,8 +1356,6 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
                                    hmac_str));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
-
-
 
 TEST_F(KeysetManagementTest, UpdateKeysetBadSecret) {
   KeysetSetUp();

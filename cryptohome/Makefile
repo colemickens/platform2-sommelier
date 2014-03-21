@@ -24,7 +24,7 @@ LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
 	-lpthread -lscrypt -ltspi -lvboot_host -lm
 
-SHARED_PROTOS := key rpc
+SHARED_PROTOS := key rpc signed_secret
 SHARED_PROTO_FILES := $(patsubst %,%.proto,$(SHARED_PROTOS))
 SHARED_PROTO_PATH := $(SYSROOT)/usr/include/chromeos/dbus/cryptohome
 SHARED_PB_HDRS := $(patsubst %,%.pb.h,$(SHARED_PROTOS))

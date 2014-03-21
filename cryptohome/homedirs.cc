@@ -17,6 +17,7 @@
 #include "key.pb.h"
 #include "mount.h"
 #include "platform.h"
+#include "signed_secret.pb.h"
 #include "username_passkey.h"
 #include "user_oldest_activity_timestamp_cache.h"
 #include "vault_keyset.h"
@@ -312,16 +313,17 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
     return false;
   }
   // Now we're only handling HMACSHA256.
-  // For the first pass, the signature is over a Key message.  This is
-  // the strongest path to avoid unauthorized Key changes, but it may not
-  // be convenient for server-side integration.
-  //
-  // Additionally, it may make sense to pass the signed, wrapped version
-  // all the way through rather than attempting to rebuild.  Serialization
-  // should be deterministic, but there's less risk if the serialized
-  // version is passed directly.
+  // Specifically, HMACSHA256 is meant for interoperating with a server-side
+  // signed password change operation which only specifies the revision and
+  // new passphrase.  That means that change fields must be filtered to limit
+  // silent updates to fields.  At present, this is done after this call. If
+  // the signed fields vary by KeyAuthorizationType in the future, it should
+  // be done here.
   std::string changes_str;
-  if (!new_key.SerializeToString(&changes_str)) {
+  ac::chrome::managedaccounts::account::Secret new_secret;
+  new_secret.set_revision(new_key.data().revision());
+  new_secret.set_secret(new_key.secret());
+  if (!new_secret.SerializeToString(&changes_str)) {
     LOG(ERROR) << "Failed to serialized the new key";
     return false;
   }
@@ -333,7 +335,9 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
                                                      hmac.size());
 
   // Check the HMAC
-  if (signature != hmac_str) {
+  if (signature.length() != hmac_str.length() ||
+      chromeos::SafeMemcmp(signature.data(), hmac_str.data(),
+                           std::min(signature.size(), hmac_str.size()))) {
     LOG(ERROR) << "Supplied authorization signature was invalid.";
     return false;
   }
@@ -392,24 +396,10 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
 
   // Walk through each field and update the value.
   KeyData* merged_data = key->mutable_key_data();
-  if (key_changes->data().has_type()) {
-    merged_data->set_type(key_changes->data().type());
-  }
-  if (key_changes->data().has_label()) {
-    merged_data->set_label(key_changes->data().label());
-  }
+
   // Note! Revisions aren't tracked in general.
   if (key_changes->data().has_revision()) {
     merged_data->set_revision(key_changes->data().revision());
-  }
-  // Do not allow authorized_updates to change their keys unless we add
-  // a new signature type.  This can be done in the future by adding
-  // the authorization_data() to the new key_data, and changing the
-  // CheckAuthorizationSignature() to check for a compatible "upgrade".
-  if (!authorized_update && key_changes->data().authorization_data_size() > 0) {
-    // Only the first will be merged for now.
-    *(merged_data->add_authorization_data()) =
-        key_changes->data().authorization_data(0);
   }
 
   // TODO(wad,dkrahn): Add privilege dropping.
@@ -420,6 +410,26 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
                            key_changes->secret().length());
     passkey.swap(new_passkey);
   }
+
+  // Only merge additional KeyData if the update is not restricted.
+  if (!authorized_update) {
+    if (key_changes->data().has_type()) {
+      merged_data->set_type(key_changes->data().type());
+    }
+    if (key_changes->data().has_label()) {
+      merged_data->set_label(key_changes->data().label());
+    }
+    // Do not allow authorized_updates to change their keys unless we add
+    // a new signature type.  This can be done in the future by adding
+    // the authorization_data() to the new key_data, and changing the
+    // CheckAuthorizationSignature() to check for a compatible "upgrade".
+    if (key_changes->data().authorization_data_size() > 0) {
+      // Only the first will be merged for now.
+      *(merged_data->add_authorization_data()) =
+          key_changes->data().authorization_data(0);
+    }
+  }
+
   if (!vk->Encrypt(passkey) || !vk->Save(vk->source_file())) {
     LOG(ERROR) << "Failed to encrypt and write the updated keyset";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
