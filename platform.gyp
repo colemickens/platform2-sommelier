@@ -17,6 +17,11 @@
       'conditions': [
         ['USE_cros_host == 0', {
           'conditions': [
+            ['USE_buffet == 1', {
+              'dependencies': [
+                '<(DEPTH)/platform2/buffet/buffet.gyp:*',
+              ],
+            }],
             ['USE_cellular == 1', {
               'dependencies': [
                 '<(DEPTH)/cromo/cromo.gyp:*',
