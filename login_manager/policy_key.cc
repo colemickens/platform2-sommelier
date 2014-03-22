@@ -117,8 +117,7 @@ bool PolicyKey::Persist() {
   }
 
   if (!utils_->AtomicFileWrite(key_file_,
-                               reinterpret_cast<char*>(&key_[0]),
-                               key_.size())) {
+                               std::string(key_.begin(), key_.end()))) {
     PLOG(ERROR) << "Could not write data to " << key_file_.value();
     return false;
   }

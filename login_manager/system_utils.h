@@ -81,8 +81,7 @@ class SystemUtils {
   // data that was previously there.  Returns true upon success, false
   // otherwise.
   virtual bool AtomicFileWrite(const base::FilePath& filename,
-                               const char* data,
-                               int size) = 0;
+                               const std::string& data) = 0;
 
   // Makes a best-effort attempt to append |msg| to the system log that is
   // persisted across stateful partition wipes.

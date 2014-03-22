@@ -49,8 +49,8 @@ void UserPolicyService::PersistKeyCopy() {
 
     const std::vector<uint8>& key = scoped_policy_key_->public_key_der();
     system_utils_->AtomicFileWrite(key_copy_path_,
-                                   reinterpret_cast<const char*>(&key[0]),
-                                   key.size());
+                                   std::string(key.begin(),
+                                               key.end()));
     mode = S_IRUSR | S_IRGRP | S_IROTH;
     chmod(key_copy_path_.value().c_str(), mode);
   } else {

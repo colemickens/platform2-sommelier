@@ -25,9 +25,7 @@ TEST(SystemUtilsTest, CorrectFileWrite) {
             file_util::WriteFile(scratch, old_data.c_str(), old_data.length()));
 
   SystemUtilsImpl utils;
-  ASSERT_TRUE(utils.AtomicFileWrite(scratch,
-                                    new_data.c_str(),
-                                    new_data.length()));
+  ASSERT_TRUE(utils.AtomicFileWrite(scratch, new_data));
   std::string written_data;
   ASSERT_TRUE(base::ReadFileToString(scratch, &written_data));
   ASSERT_EQ(new_data, written_data);

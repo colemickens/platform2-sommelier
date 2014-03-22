@@ -46,8 +46,7 @@ class SystemUtilsImpl : public SystemUtils {
       base::FilePath* temp_file_path) OVERRIDE;
   virtual bool RemoveFile(const base::FilePath& filename) OVERRIDE;
   virtual bool AtomicFileWrite(const base::FilePath& filename,
-                               const char* data,
-                               int size) OVERRIDE;
+                               const std::string& data) OVERRIDE;
   virtual void AppendToClobberLog(const char* msg) const OVERRIDE;
 
  private:

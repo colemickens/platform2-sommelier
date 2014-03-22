@@ -53,7 +53,7 @@ bool PolicyStore::Persist() {
     LOG(ERROR) << "Could not serialize policy!";
     return false;
   }
-  return utils.AtomicFileWrite(policy_path_, polstr.c_str(), polstr.length());
+  return utils.AtomicFileWrite(policy_path_, polstr);
 }
 
 void PolicyStore::Set(

@@ -682,7 +682,7 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(utils_.Exists(logged_in_path));
-  ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1", 1));
+  ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
   impl_.StartDeviceWipe(&error_);
   EXPECT_EQ(error_.name(), dbus_error::kSessionExists);
 }

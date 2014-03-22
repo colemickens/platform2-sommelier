@@ -18,8 +18,9 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <base/files/important_file_writer.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -174,17 +175,10 @@ bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
 }
 
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
-                                      const char* data,
-                                      int size) {
-  base::FilePath scratch_file;
-  if (!base::CreateTemporaryFileInDir(filename.DirName(), &scratch_file))
-    return false;
-  if (file_util::WriteFile(scratch_file, data, size) != size)
-    return false;
-
-  return (base::ReplaceFile(scratch_file, filename, NULL) &&
+                                      const std::string& data) {
+  return (base::ImportantFileWriter::WriteFileAtomically(filename, data) &&
           base::SetPosixFilePermissions(filename,
-                                             (S_IRUSR | S_IWUSR | S_IROTH)));
+                                        (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
 void SystemUtilsImpl::AppendToClobberLog(const char* msg) const {

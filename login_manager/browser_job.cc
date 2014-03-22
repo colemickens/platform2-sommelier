@@ -114,7 +114,7 @@ void BrowserJob::KillEverything(int signal, const std::string& message) {
     return;
 
   LOG(INFO) << "Sending termination message: " << message;
-  system_->AtomicFileWrite(term_file_, message.c_str(), message.size());
+  system_->AtomicFileWrite(term_file_, message);
   subprocess_.KillEverything(signal);
 }
 
@@ -123,7 +123,7 @@ void BrowserJob::Kill(int signal, const std::string& message) {
     return;
 
   LOG(INFO) << "Sending termination message: " << message;
-  system_->AtomicFileWrite(term_file_, message.c_str(), message.size());
+  system_->AtomicFileWrite(term_file_, message);
   subprocess_.Kill(signal);
 }
 

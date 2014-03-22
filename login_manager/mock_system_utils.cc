@@ -20,8 +20,7 @@ bool MockSystemUtils::Exists(const base::FilePath& file) {
 }
 
 bool MockSystemUtils::AtomicFileWrite(const base::FilePath& file,
-                                      const char* data,
-                                      int size) {
+                                      const std::string& data) {
   if (!EnsureTempDir())
     return false;
   base::FilePath to_write(PutInsideTempdir(file));
@@ -30,7 +29,7 @@ bool MockSystemUtils::AtomicFileWrite(const base::FilePath& file,
                 << to_write.DirName().value();
     return false;
   }
-  return real_utils_.AtomicFileWrite(to_write, data, size);
+  return real_utils_.AtomicFileWrite(to_write, data);
 }
 
 bool MockSystemUtils::ReadFileToString(const base::FilePath& file,

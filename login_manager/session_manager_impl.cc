@@ -329,7 +329,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
   }
 
   // Record that a login has successfully completed on this boot.
-  system_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1", 1);
+  system_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1");
   return true;
 }
 
@@ -555,9 +555,8 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
 }
 
 void SessionManagerImpl::InitiateDeviceWipe() {
-  const char *contents = "fast safe";
   const base::FilePath reset_path(kResetFile);
-  system_->AtomicFileWrite(reset_path, contents, strlen(contents));
+  system_->AtomicFileWrite(reset_path, "fast safe");
   restart_device_closure_.Run();
 }
 

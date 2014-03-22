@@ -36,8 +36,7 @@ class MockSystemUtils : public SystemUtils {
   // this class.
   bool Exists(const base::FilePath& file) OVERRIDE;
   bool AtomicFileWrite(const base::FilePath& file,
-                       const char* data,
-                       int size) OVERRIDE;
+                       const std::string& data) OVERRIDE;
   bool ReadFileToString(const base::FilePath& file, std::string* out);
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                    int32* file_size_32) OVERRIDE;
