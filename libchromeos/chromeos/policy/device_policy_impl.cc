@@ -442,19 +442,6 @@ bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
   return true;
 }
 
-bool DevicePolicyImpl::GetCleanUpStrategy(std::string* clean_up_strategy) const {
-  if (!device_policy_.has_auto_clean_up_settings())
-    return false;
-
-  const enterprise_management::AutoCleanupSettigsProto& proto =
-      device_policy_.auto_clean_up_settings();
-  if (!proto.has_clean_up_strategy())
-    return false;
-
-  *clean_up_strategy = proto.clean_up_strategy();
-  return true;
-}
-
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!PathExists(policy_path_) || !PathExists(keyfile_path_)) {
