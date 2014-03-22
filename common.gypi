@@ -11,6 +11,7 @@
 
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
+    'USE_buffet%': 0,
     'USE_cellular%': 0,
     'USE_crash_reporting%': 0,
     'USE_cros_disks%': 0,
