@@ -16,6 +16,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
@@ -31,12 +32,14 @@
 #include "attestation.h"
 #include "attestation.pb.h"
 #include "crypto.h"
+#include "cryptolib.h"
 #include "key.pb.h"
 #include "marshal.glibmarshal.h"
 #include "mount.h"
 #include "pkcs11_init.h"
 #include "platform.h"
 #include "rpc.pb.h"
+#include "signed_secret.pb.h"
 #include "tpm.h"
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
@@ -144,6 +147,8 @@ namespace switches {
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kKeyLabelSwitch[] = "key_label";
+  static const char kKeyRevisionSwitch[] = "key_revision";
+  static const char kHmacSigningKeySwitch[] = "hmac_signing_key";
   static const char kNewKeyLabelSwitch[] = "new_key_label";
   static const char kRemoveKeyLabelSwitch[] = "remove_key_label";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -951,10 +956,32 @@ int main(int argc, char **argv) {
       return -1;
 
     cryptohome::AddKeyRequest key_req;
+    key_req.set_clobber_if_exists(cl->HasSwitch(switches::kForceSwitch));
+
     cryptohome::Key* key = key_req.mutable_key();
     key->set_secret(new_password);
     cryptohome::KeyData* data = key->mutable_data();
     data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
+
+    if (cl->HasSwitch(switches::kHmacSigningKeySwitch)) {
+      cryptohome::KeyAuthorizationData* auth_data =
+          data->add_authorization_data();
+      auth_data->set_type(
+          cryptohome::KeyAuthorizationData::KEY_AUTHORIZATION_TYPE_HMACSHA256);
+      cryptohome::KeyAuthorizationSecret* auth_secret =
+          auth_data->add_secrets();
+      auth_secret->mutable_usage()->set_sign(true);
+      auth_secret->set_symmetric_key(cl->GetSwitchValueASCII(
+          switches::kHmacSigningKeySwitch));
+
+      LOG(INFO) << "Adding restricted key";
+      cryptohome::KeyPrivileges* privs = data->mutable_privileges();
+      privs->set_mount(true);
+      privs->set_authorized_update(true);
+      privs->set_update(false);
+      privs->set_add(false);
+      privs->set_remove(false);
+    }
 
     // TODO(wad) Add a privileges cl interface
 
@@ -1015,7 +1042,31 @@ int main(int argc, char **argv) {
     if (cl->HasSwitch(switches::kNewKeyLabelSwitch))
       data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
 
-    // TODO(wad) Add a privileges cl interface
+    if (cl->HasSwitch(switches::kKeyRevisionSwitch)) {
+      int int_value = 0;
+      if (!base::StringToInt(
+            cl->GetSwitchValueASCII(switches::kKeyRevisionSwitch), &int_value))
+        LOG(FATAL) << "Cannot parse --key_revision";
+      data->set_revision(int_value);
+    }
+
+    if (cl->HasSwitch(switches::kHmacSigningKeySwitch)) {
+      ac::chrome::managedaccounts::account::Secret new_secret;
+      new_secret.set_revision(data->revision());
+      new_secret.set_secret(key->secret());
+      std::string changes_str;
+      if (!new_secret.SerializeToString(&changes_str)) {
+        LOG(FATAL) << "Failed to serialize Secret";
+      }
+      chromeos::SecureBlob hmac_key(
+          cl->GetSwitchValueASCII(switches::kHmacSigningKeySwitch));
+      chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
+      SecureBlob hmac = cryptohome::CryptoLib::HmacSha256(hmac_key, hmac_data);
+      std::string hmac_str(
+          reinterpret_cast<const char*>(vector_as_array(&hmac)),
+          hmac.size());
+      key_req.set_authorization_signature(hmac_str);
+    }
 
     chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));

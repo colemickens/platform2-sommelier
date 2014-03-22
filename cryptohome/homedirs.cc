@@ -509,7 +509,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
       LOG(INFO) << "Label already exists.";
       platform_->DeleteFile(vk_path, false);
       if (!clobber) {
-       return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
+        return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
       }
       new_index = match->legacy_index();
       vk_path = match->source_file();
