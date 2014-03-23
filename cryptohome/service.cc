@@ -850,8 +850,8 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     if (it->second->AreSameUser(credentials)) {
       if (!it->second->AreValid(credentials)) {
-        // Technically, this is authentication, not authorization.
-        reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+        // Fallthrough to HomeDirs to cover different keys for the same user.
+        break;
       }
       SendReply(context, reply);
       return;

@@ -197,6 +197,10 @@ TEST_F(CheckKeyExInterfaceTest, CheckKeyExMountTest) {
       .WillOnce(Return(true));
   EXPECT_CALL(*mount_, AreValid(_))
       .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillOnce(Return(false));
 
   // event_source_ will delete reply on cleanup.
   reply = new MockDBusReply();
