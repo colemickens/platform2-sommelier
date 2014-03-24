@@ -1,0 +1,154 @@
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "buffet/mime_utils.h"
+
+#include <algorithm>
+#include <base/strings/string_util.h>
+
+#include "buffet/string_utils.h"
+
+using namespace chromeos;
+
+//***************************************************************************
+//******************************* MIME types ********************************
+//***************************************************************************
+const char mime::types::kApplication[]             = "application";
+const char mime::types::kAudio[]                   = "audio";
+const char mime::types::kImage[]                   = "image";
+const char mime::types::kMessage[]                 = "message";
+const char mime::types::kMultipart[]               = "multipart";
+const char mime::types::kText[]                    = "text";
+const char mime::types::kVideo[]                   = "video";
+
+const char mime::parameters::kCharset[]            = "charset";
+
+const char mime::image::kJpeg[]                    = "image/jpeg";
+const char mime::image::kPng[]                     = "image/png";
+const char mime::image::kBmp[]                     = "image/bmp";
+const char mime::image::kTiff[]                    = "image/tiff";
+const char mime::image::kGif[]                     = "image/gif";
+
+const char mime::text::kPlain[]                    = "text/plain";
+const char mime::text::kHtml[]                     = "text/html";
+const char mime::text::kXml[]                      = "text/xml";
+
+const char mime::application::kOctet_stream[]      = "application/octet-stream";
+const char mime::application::kJson[]              = "application/json";
+const char mime::application::kWwwFormUrlEncoded[] =
+    "application/x-www-form-urlencoded";
+
+//***************************************************************************
+//**************************** Utility Functions ****************************
+//***************************************************************************
+static std::string EncodeParam(std::string const& param) {
+  // If the string contains one of "tspecials" characters as
+  // specified in RFC 1521, enclose it in quotes.
+  if (param.find_first_of("()<>@,;:\\\"/[]?=") != std::string::npos) {
+    return '"' + param + '"';
+  }
+  return param;
+}
+
+static std::string DecodeParam(std::string const& param) {
+  if (param.size() > 1 && param.front() == '"' && param.back() == '"') {
+    return param.substr(1, param.size() - 2);
+  }
+  return param;
+}
+
+//***************************************************************************
+//******************** Main MIME manipulation functions *********************
+//***************************************************************************
+
+bool mime::Split(std::string const& mime_string,
+                 std::string* type, std::string* subtype,
+                 mime::Parameters* parameters) {
+  std::vector<std::string> parts = string_utils::Split(mime_string, ';');
+  if (parts.empty())
+    return false;
+
+  if (!mime::Split(parts.front(), type, subtype))
+    return false;
+
+  if(parameters) {
+    parameters->clear();
+    parameters->reserve(parts.size() - 1);
+    for (size_t i = 1; i < parts.size(); i++) {
+      auto pair = string_utils::SplitAtFirst(parts[i], '=');
+      pair.second = DecodeParam(pair.second);
+      parameters->push_back(pair);
+    }
+  }
+  return true;
+}
+
+bool mime::Split(std::string const& mime_string,
+                 std::string* type, std::string* subtype) {
+  std::string mime = mime::RemoveParameters(mime_string);
+  auto types = string_utils::SplitAtFirst(mime, '/');
+
+  if(type)
+    *type = types.first;
+
+  if(subtype)
+    *subtype = types.second;
+
+  return !types.first.empty() && !types.second.empty();
+}
+
+std::string mime::Combine(std::string const& type, std::string const& subtype,
+                          mime::Parameters const& parameters) {
+  std::vector<std::string> parts;
+  parts.push_back(string_utils::Join('/', type, subtype));
+  for (std::pair<std::string, std::string> const& pair : parameters) {
+    parts.push_back(string_utils::Join('=', pair.first,
+                                       EncodeParam(pair.second)));
+  }
+  return string_utils::Join("; ", parts);
+}
+
+std::string mime::GetType(std::string const& mime_string) {
+  std::string mime = mime::RemoveParameters(mime_string);
+  return string_utils::SplitAtFirst(mime, '/').first;
+}
+
+std::string mime::GetSubtype(std::string const& mime_string) {
+  std::string mime = mime::RemoveParameters(mime_string);
+  return string_utils::SplitAtFirst(mime, '/').second;
+}
+
+mime::Parameters mime::GetParameters(std::string const& mime_string) {
+  std::string type;
+  std::string subtype;
+  mime::Parameters parameters;
+
+  if (mime::Split(mime_string, &type, &subtype, &parameters))
+    return std::move(parameters);
+
+  return mime::Parameters();
+}
+
+std::string mime::RemoveParameters(std::string const& mime_string) {
+  return string_utils::SplitAtFirst(mime_string, ';').first;
+}
+
+std::string mime::AppendParameter(std::string const& mime_string,
+                                  std::string const& paramName,
+                                  std::string const& paramValue) {
+  std::string mime(mime_string);
+  mime += "; ";
+  mime += string_utils::Join('=', paramName, EncodeParam(paramValue));
+  return mime;
+}
+
+std::string mime::GetParameterValue(std::string const& mime_string,
+                                    std::string const& paramName) {
+  mime::Parameters params = mime::GetParameters(mime_string);
+  for(auto const& pair : params) {
+    if (base::strcasecmp(pair.first.c_str(), paramName.c_str()) == 0)
+      return pair.second;
+  }
+  return std::string();
+}
