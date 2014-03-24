@@ -316,13 +316,19 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   CHECK(signing_key);
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData poldata;
-  if (policy.has_policy_data())
+  if (policy.has_policy_data()) {
     poldata.ParseFromString(policy.policy_data());
+    // TODO(cmasone): remove once http://crbug.com/355664 is fixed.
+    LOG(INFO) << "Loading existing policy.";
+  }
   em::ChromeDeviceSettingsProto polval;
   if (poldata.has_policy_type() &&
       poldata.policy_type() == kDevicePolicyType) {
-    if (poldata.has_policy_value())
+    if (poldata.has_policy_value()) {
       polval.ParseFromString(poldata.policy_value());
+      // TODO(cmasone): remove once http://crbug.com/355664 is fixed.
+      LOG(INFO) << "Loading existing settings from policy.";
+    }
   } else {
     poldata.set_policy_type(kDevicePolicyType);
   }
@@ -340,9 +346,19 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
       break;
     }
   }
+
   if (poldata.has_username() && poldata.username() == current_user &&
       on_list &&
       key()->Equals(policy.new_public_key())) {
+    // TODO(cmasone): remove once http://crbug.com/355664 is fixed.
+    LOG(INFO) << "Leaving settings unchanged; user is owner and on whitelist.";
+    if (!polval.has_allow_new_users()) {
+      LOG(INFO) << "No allow_new_users setting!";
+    } else {
+      LOG(INFO) << "Allow new users is "
+                << polval.allow_new_users().allow_new_users();
+    }
+
     return true;  // No changes are needed.
   }
   if (!on_list) {
@@ -353,6 +369,17 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
       polval.mutable_allow_new_users()->set_allow_new_users(true);
   }
   poldata.set_username(current_user);
+
+  // TODO(cmasone): remove once http://crbug.com/355664 is fixed.
+  LOG(INFO) << "Settings updated. User " << (on_list ? "was" : "wasn't")
+            << " on the whitelist.";
+  if (!polval.has_allow_new_users()) {
+    LOG(INFO) << "No allow_new_users setting!";
+  } else {
+    LOG(INFO) << "Allow new users is "
+              << polval.allow_new_users().allow_new_users();
+  }
+
 
   // We have now updated the whitelist and owner setting in |polval|.
   // We need to put it into |poldata|, serialize that, sign it, and
