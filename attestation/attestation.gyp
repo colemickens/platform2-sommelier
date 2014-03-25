@@ -2,13 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# export BOARD=wolf
-# export AR=`portageq-$BOARD envvar AR`
-# export CC=`portageq-$BOARD envvar CC`
-# export CXX=`portageq-$BOARD envvar CXX`
-# gyp -fmake --depth=. -DUSE_test=0 -Dplatform_root=$HOME/trunk/src/platform -Dsysroot=/build/$BOARD --include=../../platform/common-mk/common.gypi -Dpkg-config=pkg-config-$BOARD attestation.gyp
-# make
-
 {
   'variables': {
     'libbase_ver': 242728,
@@ -28,6 +21,9 @@
         '-lprotobuf',
       ],
     },
+    'include_dirs': [
+      '..'  # To access all src/platform2 directories
+    ],
     'cflags_cc': [ '-std=gnu++11' ],
   },
   'targets': [
@@ -62,7 +58,7 @@
       'sources': [
         '<(proto_in_dir)/dbus_interface.proto'
       ],
-      'includes': ['../common-mk/protoc.gypi'],
+      'includes': ['../../common-mk/protoc.gypi'],
     },
   ],
 }
