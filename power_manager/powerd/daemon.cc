@@ -812,17 +812,17 @@ void Daemon::InitDBus() {
                    &Daemon::HandleRequestRestartMethod);
   ExportDBusMethod(kRequestSuspendMethod,
                    &Daemon::HandleRequestSuspendMethod);
-  ExportDBusMethod(kDecreaseScreenBrightness,
+  ExportDBusMethod(kDecreaseScreenBrightnessMethod,
                    &Daemon::HandleDecreaseScreenBrightnessMethod);
-  ExportDBusMethod(kIncreaseScreenBrightness,
+  ExportDBusMethod(kIncreaseScreenBrightnessMethod,
                    &Daemon::HandleIncreaseScreenBrightnessMethod);
-  ExportDBusMethod(kGetScreenBrightnessPercent,
+  ExportDBusMethod(kGetScreenBrightnessPercentMethod,
                    &Daemon::HandleGetScreenBrightnessMethod);
-  ExportDBusMethod(kSetScreenBrightnessPercent,
+  ExportDBusMethod(kSetScreenBrightnessPercentMethod,
                    &Daemon::HandleSetScreenBrightnessMethod);
-  ExportDBusMethod(kDecreaseKeyboardBrightness,
+  ExportDBusMethod(kDecreaseKeyboardBrightnessMethod,
                    &Daemon::HandleDecreaseKeyboardBrightnessMethod);
-  ExportDBusMethod(kIncreaseKeyboardBrightness,
+  ExportDBusMethod(kIncreaseKeyboardBrightnessMethod,
                    &Daemon::HandleIncreaseKeyboardBrightnessMethod);
   ExportDBusMethod(kGetPowerSupplyPropertiesMethod,
                    &Daemon::HandleGetPowerSupplyPropertiesMethod);
@@ -1056,7 +1056,7 @@ scoped_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
   bool allow_off = false;
   dbus::MessageReader reader(method_call);
   if (!reader.PopBool(&allow_off))
-    LOG(ERROR) << "Unable to read " << kDecreaseScreenBrightness << " args";
+    LOG(ERROR) << "Missing " << kDecreaseScreenBrightnessMethod << " arg";
   bool changed =
       display_backlight_controller_->DecreaseUserBrightness(allow_off);
   double percent = 0.0;
@@ -1094,7 +1094,7 @@ scoped_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
   int dbus_style = 0;
   dbus::MessageReader reader(method_call);
   if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_style)) {
-    LOG(ERROR) << "Unable to read " << kSetScreenBrightnessPercent << " args";
+    LOG(ERROR) << "Missing " << kSetScreenBrightnessPercentMethod << " args";
     return CreateInvalidArgsError(method_call, "Expected percent and style");
   }
 

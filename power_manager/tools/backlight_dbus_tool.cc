@@ -26,7 +26,7 @@ namespace {
 bool GetCurrentBrightness(dbus::ObjectProxy* proxy, double* percent) {
   dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
-      power_manager::kGetScreenBrightnessPercent);
+      power_manager::kGetScreenBrightnessPercentMethod);
   scoped_ptr<dbus::Response> response(
       proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
@@ -41,7 +41,7 @@ bool GetCurrentBrightness(dbus::ObjectProxy* proxy, double* percent) {
 bool SetCurrentBrightness(dbus::ObjectProxy* proxy, double percent, int style) {
   dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
-      power_manager::kSetScreenBrightnessPercent);
+      power_manager::kSetScreenBrightnessPercentMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(percent);
   writer.AppendInt32(style);
@@ -76,8 +76,8 @@ int main(int argc, char* argv[]) {
   if (FLAGS_decrease || FLAGS_increase) {
     dbus::MethodCall method_call(
         power_manager::kPowerManagerInterface,
-        FLAGS_decrease ? power_manager::kDecreaseScreenBrightness :
-            power_manager::kIncreaseScreenBrightness);
+        FLAGS_decrease ? power_manager::kDecreaseScreenBrightnessMethod :
+            power_manager::kIncreaseScreenBrightnessMethod);
     if (FLAGS_decrease) {
       dbus::MessageWriter writer(&method_call);
       writer.AppendBool(true);  // allow_off
