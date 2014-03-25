@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/process.h>
 #include <chromeos/utility.h>
 

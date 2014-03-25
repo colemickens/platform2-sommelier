@@ -7,7 +7,7 @@
 #include <limits.h>
 
 #include <base/logging.h>
-#include <base/time.h>
+#include <base/time/time.h>
 
 #include "lockbox.h"
 #include "install_attributes.pb.h"
@@ -304,7 +304,7 @@ bool InstallAttributes::SerializeAttributes(chromeos::Blob* out_bytes) {
 }
 
 Value* InstallAttributes::GetStatus() {
-  DictionaryValue* dv = new DictionaryValue();
+  base::DictionaryValue* dv = new base::DictionaryValue();
   dv->SetBoolean("initialized", is_initialized());
   dv->SetInteger("version", version());
   dv->SetInteger("lockbox_index", lockbox()->nvram_index());
@@ -314,7 +314,7 @@ Value* InstallAttributes::GetStatus() {
   dv->SetBoolean("first_install", is_first_install());
   dv->SetInteger("size", Count());
   if (Count()) {
-    DictionaryValue* attrs = new DictionaryValue();
+    base::DictionaryValue* attrs = new base::DictionaryValue();
     std::string key;
     chromeos::Blob value;
     for (int i = 0; i < Count(); i++) {

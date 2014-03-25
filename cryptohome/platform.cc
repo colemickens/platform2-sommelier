@@ -28,12 +28,12 @@
 #include <base/callback.h>
 #include <base/file_util.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/sys_info.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
@@ -43,7 +43,9 @@ extern "C" {
 #include <vboot/crossystem.h>
 }
 
+using base::FilePath;
 using base::SplitString;
+using base::StringPrintf;
 using std::string;
 
 namespace {
@@ -64,6 +66,10 @@ class ScopedPath {
   cryptohome::Platform* platform_;
   string dir_;
 };
+
+bool IsDirectory(const struct stat& file_info) {
+ return !!S_ISDIR(file_info.st_mode);
+}
 
 }  // namespace
 
@@ -87,7 +93,7 @@ Platform::~Platform() {
 bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
                  std::multimap<const std::string, const std::string>* mounts) {
   std::string contents;
-  if (!file_util::ReadFileToString(FilePath(mtab_path_), &contents))
+  if (!base::ReadFileToString(FilePath(mtab_path_), &contents))
     return false;
 
   std::vector<std::string> lines;
@@ -116,7 +122,7 @@ bool Platform::IsDirectoryMounted(const std::string& directory) {
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   string contents;
-  if (file_util::ReadFileToString(FilePath(mtab_path_), &contents)) {
+  if (base::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if (contents.find(StringPrintf(" %s ", directory.c_str()))
         != string::npos) {
       return true;
@@ -131,7 +137,7 @@ bool Platform::IsDirectoryMountedWith(const std::string& directory,
   // and the user's vault path are present.  Assumes this user is mounted if it
   // finds both.  This will need to change if simultaneous login is implemented.
   string contents;
-  if (file_util::ReadFileToString(FilePath(mtab_path_), &contents)) {
+  if (base::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if ((contents.find(StringPrintf(" %s ", directory.c_str()))
          != string::npos)
         && (contents.find(StringPrintf("%s ",
@@ -212,14 +218,14 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   FilePath cmdline_file = pid_path.Append("cmdline");
   string contents;
   std::vector<std::string> cmd_line;
-  if (file_util::ReadFileToString(cmdline_file, &contents)) {
+  if (base::ReadFileToString(cmdline_file, &contents)) {
     SplitString(contents, '\0', &cmd_line);
   }
   process_info->set_cmd_line(&cmd_line);
 
   // Make sure that if we get a directory, it has a trailing separator
   FilePath file_path(path_in);
-  file_util::EnsureEndsWithSeparator(&file_path);
+  file_path = file_path.AsEndingWithSeparator();
   std::string path = file_path.value();
 
   FilePath cwd_path = pid_path.Append("cwd");
@@ -234,8 +240,8 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   // Open /proc/<pid>/fd
   FilePath fd_dirpath = pid_path.Append("fd");
 
-  file_util::FileEnumerator fd_dir_enum(fd_dirpath, false,
-                                        file_util::FileEnumerator::FILES);
+  base::FileEnumerator fd_dir_enum(fd_dirpath, false,
+                                        base::FileEnumerator::FILES);
 
   std::set<std::string> open_files;
   // List open file descriptors
@@ -254,12 +260,12 @@ void Platform::LookForOpenFiles(const std::string& path_in,
                                 std::vector<pid_t>* pids) {
   // Make sure that if we get a directory, it has a trailing separator
   FilePath file_path(path_in);
-  file_util::EnsureEndsWithSeparator(&file_path);
+  file_path = file_path.AsEndingWithSeparator();
   std::string path = file_path.value();
 
   // Open /proc
-  file_util::FileEnumerator proc_dir_enum(FilePath(kProcDir), false,
-      file_util::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator proc_dir_enum(FilePath(kProcDir), false,
+      base::FileEnumerator::DIRECTORIES);
 
   int linkbuf_length = path.length();
   std::vector<char> linkbuf(linkbuf_length);
@@ -289,8 +295,8 @@ void Platform::LookForOpenFiles(const std::string& path_in,
     // Open /proc/<pid>/fd
     FilePath fd_dirpath = pid_path.Append("fd");
 
-    file_util::FileEnumerator fd_dir_enum(fd_dirpath, false,
-                                          file_util::FileEnumerator::FILES);
+    base::FileEnumerator fd_dir_enum(fd_dirpath, false,
+                                          base::FileEnumerator::FILES);
 
     // List open file descriptors
     for (FilePath fd_path = fd_dir_enum.Next();
@@ -427,20 +433,20 @@ int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
 }
 
 bool Platform::FileExists(const std::string& path) {
-  return file_util::PathExists(FilePath(path));
+  return base::PathExists(FilePath(path));
 }
 
 bool Platform::DirectoryExists(const std::string& path) {
-  return file_util::DirectoryExists(FilePath(path));
+  return base::DirectoryExists(FilePath(path));
 }
 
 bool Platform::GetFileSize(const std::string& path, int64* size) {
-  return file_util::GetFileSize(FilePath(path), size);
+  return base::GetFileSize(FilePath(path), size);
 }
 
 FILE* Platform::CreateAndOpenTemporaryFile(std::string* path) {
   FilePath created_path;
-  FILE* f = file_util::CreateAndOpenTemporaryFile(&created_path);
+  FILE* f = base::CreateAndOpenTemporaryFile(&created_path);
   if (f)
     path->assign(created_path.value());
 
@@ -448,11 +454,11 @@ FILE* Platform::CreateAndOpenTemporaryFile(std::string* path) {
 }
 
 FILE* Platform::OpenFile(const std::string& path, const char* mode) {
-  return file_util::OpenFile(FilePath(path), mode);
+  return base::OpenFile(FilePath(path), mode);
 }
 
 bool Platform::CloseFile(FILE* fp) {
-  return file_util::CloseFile(fp);
+  return base::CloseFile(fp);
 }
 
 bool Platform::WriteOpenFile(FILE* fp, const chromeos::Blob& blob) {
@@ -475,8 +481,8 @@ bool Platform::WriteStringToFile(const std::string& path,
 bool Platform::WriteArrayToFile(const std::string& path, const char* data,
                                 size_t size) {
   FilePath file_path(path);
-  if (!file_util::DirectoryExists(file_path.DirName())) {
-    if (!file_util::CreateDirectory(file_path.DirName())) {
+  if (!base::DirectoryExists(file_path.DirName())) {
+    if (!base::CreateDirectory(file_path.DirName())) {
       LOG(ERROR) << "Cannot create directory: " << file_path.DirName().value();
       return false;
     }
@@ -495,10 +501,10 @@ bool Platform::WriteArrayToFile(const std::string& path, const char* data,
 bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
   int64 file_size;
   FilePath file_path(path);
-  if (!file_util::PathExists(file_path)) {
+  if (!base::PathExists(file_path)) {
     return false;
   }
-  if (!file_util::GetFileSize(file_path, &file_size)) {
+  if (!base::GetFileSize(file_path, &file_size)) {
     LOG(ERROR) << "Could not get size of " << path;
     return false;
   }
@@ -509,9 +515,9 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
     return false;
   }
   chromeos::Blob buf(file_size);
-  int data_read = file_util::ReadFile(file_path,
-                                      reinterpret_cast<char*>(&buf[0]),
-                                      file_size);
+  int data_read = base::ReadFile(file_path,
+                                 reinterpret_cast<char*>(&buf[0]),
+                                 file_size);
   // Cast is okay because of comparison to INT_MAX above.
   if (data_read != static_cast<int>(file_size)) {
     LOG(ERROR) << "Only read " << data_read << " of " << file_size << " bytes.";
@@ -522,28 +528,28 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
 }
 
 bool Platform::ReadFileToString(const std::string& path, std::string* string) {
-  return file_util::ReadFileToString(FilePath(path), string);
+  return base::ReadFileToString(FilePath(path), string);
 }
 
 bool Platform::CreateDirectory(const std::string& path) {
-  return file_util::CreateDirectory(FilePath(path));
+  return base::CreateDirectory(FilePath(path));
 }
 
 bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
-  return file_util::Delete(FilePath(path), is_recursive);
+  return base::DeleteFile(FilePath(path), is_recursive);
 }
 
 bool Platform::Move(const std::string& from, const std::string& to) {
-  return file_util::Move(FilePath(from), FilePath(to));
+  return base::Move(FilePath(from), FilePath(to));
 }
 
 bool Platform::EnumerateDirectoryEntries(const std::string& path,
                                          bool recursive,
                                          std::vector<std::string>* ent_list) {
-  file_util::FileEnumerator::FileType ft = static_cast<typeof(ft)>(
-    file_util::FileEnumerator::FILES | file_util::FileEnumerator::DIRECTORIES |
-    file_util::FileEnumerator::SHOW_SYM_LINKS);
-  file_util::FileEnumerator ent_enum(FilePath(path), recursive, ft);
+  base::FileEnumerator::FileType ft = static_cast<typeof(ft)>(
+    base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
+    base::FileEnumerator::SHOW_SYM_LINKS);
+  base::FileEnumerator ent_enum(FilePath(path), recursive, ft);
   for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next())
     ent_list->push_back(path.value());
   return true;
@@ -564,17 +570,18 @@ bool Platform::Rename(const std::string& from, const std::string& to) {
 bool Platform::Copy(const std::string& from, const std::string& to) {
   FilePath from_path(from);
   FilePath to_path(to);
-  return file_util::CopyDirectory(from_path, to_path, true);
+  return base::CopyDirectory(from_path, to_path, true);
 }
 
 bool Platform::CopyPermissionsCallback(
     const std::string& old_base,
     const std::string& new_base,
-    const FileEnumerator::FindInfo& file_info) {
+    const std::string& file_path,
+    const struct stat& file_info) {
   const FilePath old_base_path(old_base);
   const FilePath new_base_path(new_base);
   // Find the new path that corresponds with the old path given by file_info.
-  FilePath old_path(file_info.filename);
+  FilePath old_path(file_path);
   FilePath new_path(new_base_path);
   if (old_path != old_base_path) {
     if (old_path.IsAbsolute()) {
@@ -588,14 +595,14 @@ bool Platform::CopyPermissionsCallback(
     }
   }
   if (!SetOwnership(new_path.value(),
-                    file_info.stat.st_uid,
-                    file_info.stat.st_gid)) {
+                    file_info.st_uid,
+                    file_info.st_gid)) {
     PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
     return false;
   }
   const mode_t permissions_mask = 07777;
   if (!SetPermissions(new_path.value(),
-                      file_info.stat.st_mode & permissions_mask)) {
+                      file_info.st_mode & permissions_mask)) {
     PLOG(ERROR) << "Failed to set permissions for " << new_path.value();
     return false;
   }
@@ -631,36 +638,37 @@ bool Platform::ApplyPermissionsCallback(
     const Permissions& default_file_info,
     const Permissions& default_dir_info,
     const std::map<std::string, Permissions>& special_cases,
-    const FileEnumerator::FindInfo& file_info) {
+    const std::string& file_path,
+    const struct stat& file_info) {
   Permissions expected;
   std::map<std::string, Permissions>::const_iterator it =
-      special_cases.find(file_info.filename);
+      special_cases.find(file_path);
   if (it != special_cases.end()) {
     expected = it->second;
-  } else if (FileEnumerator::IsDirectory(file_info)) {
+  } else if (IsDirectory(file_info)) {
     expected = default_dir_info;
   } else {
     expected = default_file_info;
   }
-  if (expected.user != file_info.stat.st_uid ||
-      expected.group != file_info.stat.st_gid) {
-    LOG(WARNING) << "Unexpected user/group for " << file_info.filename;
-    if (!SetOwnership(file_info.filename,
+  if (expected.user != file_info.st_uid ||
+      expected.group != file_info.st_gid) {
+    LOG(WARNING) << "Unexpected user/group for " << file_path;
+    if (!SetOwnership(file_path,
                       expected.user,
                       expected.group)) {
       PLOG(ERROR) << "Failed to fix user/group for "
-                  << file_info.filename;
+                  << file_path;
       return false;
     }
   }
   const mode_t permissions_mask = 07777;
   if ((expected.mode & permissions_mask) !=
-      (file_info.stat.st_mode & permissions_mask)) {
-    LOG(WARNING) << "Unexpected permissions for " << file_info.filename;
-    if (!SetPermissions(file_info.filename,
+      (file_info.st_mode & permissions_mask)) {
+    LOG(WARNING) << "Unexpected permissions for " << file_path;
+    if (!SetPermissions(file_path,
                         expected.mode & permissions_mask)) {
       PLOG(ERROR) << "Failed to set permissions for "
-                  << file_info.filename;
+                  << file_path;
       return false;
     }
   }
@@ -750,7 +758,7 @@ bool Platform::SyncFile(const std::string& path) {
 bool Platform::SyncPath(const std::string& path) {
   int fd = -1;
   DIR* dir = NULL;
-  if (file_util::DirectoryExists(FilePath(path))) {
+  if (base::DirectoryExists(FilePath(path))) {
     dir = opendir(path.c_str());
     if (!dir) {
       PLOG(WARNING) << "Could not open directory " << path << " for syncing";
@@ -829,87 +837,130 @@ FileEnumerator* Platform::GetFileEnumerator(const std::string& root_path,
 
 bool Platform::WalkPath(const std::string& path,
                         const FileEnumeratorCallback& callback) {
-  FileEnumerator::FindInfo base_entry_info;
-  base_entry_info.filename = path;
-  if (!Stat(path, &base_entry_info.stat)) {
+  struct stat base_entry_info;
+  if (!Stat(path, &base_entry_info)) {
     PLOG(ERROR) << "Failed to stat " << path;
     return false;
   }
-  if (!callback.Run(base_entry_info))
+  if (!callback.Run(path, base_entry_info))
     return false;
-  if (FileEnumerator::IsDirectory(base_entry_info)) {
-    int file_types = file_util::FileEnumerator::FILES |
-                     file_util::FileEnumerator::DIRECTORIES;
+  if (IsDirectory(base_entry_info)) {
+    int file_types = base::FileEnumerator::FILES |
+                     base::FileEnumerator::DIRECTORIES;
     scoped_ptr<FileEnumerator> file_enumerator(
         GetFileEnumerator(path, true, file_types));
     std::string entry_path;
     while (!(entry_path = file_enumerator->Next()).empty()) {
-      FileEnumerator::FindInfo entry_info;
-      file_enumerator->GetFindInfo(&entry_info);
-      // Keep the full path.
-      entry_info.filename = entry_path;
-      if (!callback.Run(entry_info))
+      if (!callback.Run(entry_path, file_enumerator->GetInfo().stat()))
         return false;
     }
   }
   return true;
 }
 
+FileEnumerator::FileInfo::FileInfo(
+    const base::FileEnumerator::FileInfo& file_info) {
+  Assign(file_info);
+}
+
+FileEnumerator::FileInfo::FileInfo(const std::string& name,
+                                   const struct stat& stat)
+    : name_(name), stat_(stat) {
+}
+
+FileEnumerator::FileInfo::FileInfo(const FileEnumerator::FileInfo& other) {
+  if (other.info_.get()) {
+    Assign(*other.info_);
+  } else {
+    info_.reset();
+    name_ = other.name_;
+    stat_ = other.stat_;
+  }
+}
+
+FileEnumerator::FileInfo::FileInfo() {
+  Assign(base::FileEnumerator::FileInfo());
+}
+
+FileEnumerator::FileInfo::~FileInfo() {}
+
+FileEnumerator::FileInfo& FileEnumerator::FileInfo::operator=(
+    const FileEnumerator::FileInfo& other) {
+  if (other.info_.get()) {
+    Assign(*other.info_);
+  } else {
+    info_.reset();
+    name_ = other.name_;
+    stat_ = other.stat_;
+  }
+  return *this;
+}
+
+bool FileEnumerator::FileInfo::IsDirectory() const {
+  if (info_.get())
+    return info_->IsDirectory();
+  return ::IsDirectory(stat_);
+}
+
+std::string FileEnumerator::FileInfo::GetName() const {
+  if (info_.get())
+    return info_->GetName().value();
+  return name_;
+}
+
+int64 FileEnumerator::FileInfo::GetSize() const {
+  if (info_.get())
+    return info_->GetSize();
+  return stat_.st_size;
+}
+
+base::Time FileEnumerator::FileInfo::GetLastModifiedTime() const {
+  if (info_.get())
+    return info_->GetLastModifiedTime();
+  return base::Time::FromTimeT(stat_.st_mtime);
+}
+
+const struct stat& FileEnumerator::FileInfo::stat() const {
+  if (info_.get())
+    return info_->stat();
+  return stat_;
+}
+
+void FileEnumerator::FileInfo::Assign(
+  const base::FileEnumerator::FileInfo& file_info) {
+  info_.reset(new base::FileEnumerator::FileInfo(file_info));
+  memset(&stat_, 0, sizeof(stat_));
+}
+
 FileEnumerator::FileEnumerator(const std::string& root_path,
                                bool recursive,
                                int file_type) {
-  enumerator_ = new file_util::FileEnumerator(
-      FilePath(root_path),
-      recursive,
-      static_cast<file_util::FileEnumerator::FileType>(file_type));
+  enumerator_.reset(new base::FileEnumerator(FilePath(root_path),
+                                             recursive,
+                                             file_type));
 }
 
 FileEnumerator::FileEnumerator(const std::string& root_path,
                                bool recursive,
                                int file_type,
                                const std::string& pattern) {
-  enumerator_ = new file_util::FileEnumerator(
-      FilePath(root_path),
-      recursive,
-      static_cast<file_util::FileEnumerator::FileType>(file_type),
-      pattern);
+  enumerator_.reset(new base::FileEnumerator(FilePath(root_path),
+                                             recursive,
+                                             file_type,
+                                             pattern));
 }
 
-FileEnumerator::~FileEnumerator() {
-  if (enumerator_)
-    delete enumerator_;
-}
+FileEnumerator::FileEnumerator() {}
+FileEnumerator::~FileEnumerator() {}
 
 std::string FileEnumerator::Next() {
-  if (!enumerator_)
-    return "";
+  if (!enumerator_.get())
+    return std::string();
   return enumerator_->Next().value();
 }
 
-void FileEnumerator::GetFindInfo(FindInfo* info) {
-  DCHECK(info);
-  enumerator_->GetFindInfo(info);
+FileEnumerator::FileInfo FileEnumerator::GetInfo() {
+  return FileInfo(enumerator_->GetInfo());
 }
-
-// static
-bool FileEnumerator::IsDirectory(const FindInfo& info) {
- return !!S_ISDIR(info.stat.st_mode);
-}
-
-//static
-std::string FileEnumerator::GetFilename(const FindInfo& find_info) {
-  return find_info.filename;
-}
-
-// static
-int64 FileEnumerator::GetFilesize(const FindInfo& info) {
-  return file_util::FileEnumerator::GetFilesize(info);
-}
-
-// static
-base::Time FileEnumerator::GetLastModifiedTime(const FindInfo& info) {
-  return file_util::FileEnumerator::GetLastModifiedTime(info);
-}
-
 
 }  // namespace cryptohome

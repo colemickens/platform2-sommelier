@@ -9,12 +9,12 @@
 #include <openssl/evp.h>
 
 #include <algorithm>
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
@@ -30,7 +30,7 @@
 #include "username_passkey.h"
 #include "vault_keyset.h"
 
-namespace cryptohome {
+using base::StringPrintf;
 using chromeos::SecureBlob;
 using ::testing::AnyOf;
 using ::testing::DoAll;
@@ -42,6 +42,8 @@ using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 using ::testing::_;
+
+namespace cryptohome {
 
 // struct TestUserInfo {
 //   const char* username;

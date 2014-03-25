@@ -5,7 +5,7 @@
 #include "homedirs.h"
 
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
@@ -23,7 +23,8 @@
 #include "signed_secret.pb.h"
 #include "username_passkey.h"
 
-namespace cryptohome {
+using base::FilePath;
+using base::StringPrintf;
 using chromeos::SecureBlob;
 using std::string;
 using ::testing::DoAll;
@@ -38,8 +39,9 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
-
 using ::testing::_;
+
+namespace cryptohome {
 
 extern const char kKeyFile[];
 extern const int kKeyFileMax;
@@ -723,7 +725,7 @@ TEST_F(HomeDirsTest, GoodDecryptTest) {
   set_policy(false, "", false, "");
 
   test_helper_.users[1].InjectKeyset(&platform_);
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                         system_salt, &passkey);
   UsernamePasskey up(test_helper_.users[1].username, passkey);
@@ -742,7 +744,7 @@ TEST_F(HomeDirsTest, BadDecryptTest) {
 
   test_helper_.users[4].InjectKeyset(&platform_);
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt, &passkey);
   UsernamePasskey up(test_helper_.users[4].username, passkey);
 
@@ -847,7 +849,7 @@ class KeysetManagementTest : public HomeDirsTest {
     EXPECT_CALL(vault_keyset_factory_, New(_, _))
       .WillRepeatedly(
           InvokeWithoutArgs(this, &KeysetManagementTest::NewActiveVaultKeyset));
-    cryptohome::SecureBlob passkey;
+    SecureBlob passkey;
     cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                           system_salt_, &passkey);
     up_.reset(new UsernamePasskey(test_helper_.users[1].username, passkey));
@@ -866,7 +868,7 @@ class KeysetManagementTest : public HomeDirsTest {
 TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   KeysetSetUp();
 
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
@@ -889,7 +891,7 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
 TEST_F(KeysetManagementTest, AddKeysetClobber) {
   KeysetSetUp();
 
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   serialized_.mutable_key_data()->set_label("current label");
   KeyData key_data;
@@ -923,7 +925,7 @@ TEST_F(KeysetManagementTest, AddKeysetClobber) {
 TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   KeysetSetUp();
 
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   serialized_.mutable_key_data()->set_label("current label");
@@ -946,7 +948,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
+  SecureBlob new_secret("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1001,7 +1003,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_pass("why not", strlen("why not"));
+  SecureBlob new_pass("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1169,14 +1171,14 @@ TEST_F(KeysetManagementTest, UpdateKeysetBadSecret) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  cryptohome::SecureBlob new_secret("why not", strlen("why not"));
+  SecureBlob new_secret("why not", strlen("why not"));
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
   // The injected keyset in the fixture handles the up_ validation.
   serialized_.mutable_key_data()->set_label("current label");
 
-  cryptohome::SecureBlob bad_pass("not it", strlen("not it"));
+  SecureBlob bad_pass("not it", strlen("not it"));
   up_.reset(new UsernamePasskey(test_helper_.users[1].username, bad_pass));
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             homedirs_.UpdateKeyset(*up_,
@@ -1232,7 +1234,7 @@ TEST_F(KeysetManagementTest, RemoveKeysetNotFound) {
 TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
   KeysetSetUp();
 
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
 
@@ -1250,7 +1252,7 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidPrivileges) {
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
   serialized_.mutable_key_data()->mutable_privileges()->set_add(false);
@@ -1271,7 +1273,7 @@ TEST_F(KeysetManagementTest, AddKeyset0Available) {
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
   EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
@@ -1294,7 +1296,7 @@ TEST_F(KeysetManagementTest, AddKeyset10Available) {
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
   EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..$"), StrEq("wx")))
@@ -1319,7 +1321,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
   EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..*$"), StrEq("wx")))
@@ -1337,7 +1339,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
 TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
   KeysetSetUp();
 
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
@@ -1357,7 +1359,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   KeysetSetUp();
 
-  cryptohome::SecureBlob newkey;
+  SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.

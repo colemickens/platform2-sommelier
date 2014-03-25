@@ -9,7 +9,7 @@
 #include <sys/reboot.h>
 
 #include <base/json/json_writer.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 #include <string>
@@ -50,7 +50,7 @@ bool StatefulRecovery::CopyPartitionInfo() {
   if (!platform_->StatVFS(kRecoverSource, &vfs))
     return false;
 
-  DictionaryValue dv;
+  base::DictionaryValue dv;
   dv.SetString("filesystem", kRecoverSource);
   dv.SetInteger("blocks-total", vfs.f_blocks);
   dv.SetInteger("blocks-free", vfs.f_bfree);

@@ -6,7 +6,7 @@
 #define CRYPTOHOME_MOCK_PLATFORM_H_
 
 #include <base/file_util.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "platform.h"
@@ -23,35 +23,31 @@ class MockFileEnumerator : public FileEnumerator {
   MockFileEnumerator() {
     ON_CALL(*this, Next())
       .WillByDefault(Invoke(this, &MockFileEnumerator::MockNext));
-    ON_CALL(*this, GetFindInfo(_))
-      .WillByDefault(Invoke(this, &MockFileEnumerator::MockGetFindInfo));
+    ON_CALL(*this, GetInfo())
+      .WillByDefault(Invoke(this, &MockFileEnumerator::MockGetInfo));
   }
   virtual ~MockFileEnumerator() {}
 
   MOCK_METHOD0(Next, std::string(void));
-  MOCK_METHOD1(GetFindInfo, void(FindInfo* info));
+  MOCK_METHOD0(GetInfo, FileInfo(void));
 
-  std::vector<std::string> entries_;
-  std::vector<FindInfo> find_info_;
+  std::vector<FileInfo> entries_;
  protected:
   virtual std::string MockNext() {
     if (entries_.empty())
-      return "";
-    std::string entry = entries_.at(0);
+      return std::string();
+    current_ = entries_.at(0);
     entries_.erase(entries_.begin(), entries_.begin()+1);
-    return entry;
+    return current_.GetName();
   }
-  virtual void MockGetFindInfo(FindInfo* info) {
-    if (find_info_.empty())
-      return;
-    *info = find_info_.at(0);
-    find_info_.erase(find_info_.begin(), find_info_.begin()+1);
+  virtual const FileInfo& MockGetInfo() {
+    return current_;
   }
+  FileInfo current_;
 };
 
-
 // TODO(wad) Migrate to an in-memory-only mock filesystem.
-ACTION(CallDeleteFile) { return file_util::Delete(FilePath(arg0), arg1); }
+ACTION(CallDeleteFile) { return base::DeleteFile(base::FilePath(arg0), arg1); }
 ACTION(CallEnumerateDirectoryEntries) {
   // Pass a call to EnumerateDirectoryEntries through to a real Platform if it's
   // not mocked.
@@ -59,13 +55,13 @@ ACTION(CallEnumerateDirectoryEntries) {
   return p.EnumerateDirectoryEntries(arg0, arg1, arg2);
 }
 ACTION(CallDirectoryExists) {
-  return file_util::DirectoryExists(FilePath(arg0));
+  return base::DirectoryExists(base::FilePath(arg0));
 }
 ACTION(CallPathExists) {
-  return file_util::PathExists(FilePath(arg0));
+  return base::PathExists(base::FilePath(arg0));
 }
 ACTION(CallCreateDirectory) {
-  return file_util::CreateDirectory(FilePath(arg0));
+  return base::CreateDirectory(base::FilePath(arg0));
 }
 ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallReadFileToString) { return Platform().ReadFileToString(arg0, arg1); }

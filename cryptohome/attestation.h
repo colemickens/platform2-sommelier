@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/scoped_observer.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
@@ -314,7 +314,7 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
-    database_path_ = FilePath(path);
+    database_path_ = base::FilePath(path);
   }
 
   // Sets an alternate key store.
@@ -386,7 +386,7 @@ class Attestation : public base::PlatformThread::Delegate,
   base::Lock lock_;
   chromeos::SecureBlob database_key_;
   chromeos::SecureBlob sealed_database_key_;
-  FilePath database_path_;
+  base::FilePath database_path_;
   AttestationDatabase database_pb_;
   base::PlatformThreadHandle thread_;
   CertRequestMap pending_cert_requests_;

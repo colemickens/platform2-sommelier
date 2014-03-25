@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+using base::FilePath;
+
 namespace cryptohome {
 
 void UserOldestActivityTimestampCache::Initialize() {

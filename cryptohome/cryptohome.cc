@@ -17,9 +17,9 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
@@ -44,6 +44,8 @@
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
 
+using base::FilePath;
+using base::StringPrintf;
 using chromeos::SecureBlob;
 using std::string;
 
@@ -242,7 +244,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
   }
 
   std::string trimmed_password;
-  TrimString(password, "\r\n", &trimmed_password);
+  base::TrimString(password, "\r\n", &trimmed_password);
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(trimmed_password.c_str(),
                                         GetSystemSalt(proxy), &passkey);
@@ -1259,7 +1261,7 @@ int main(int argc, char **argv) {
       // TODO(wad): change it so that it uses GetVaultKeysets().
       scoped_ptr<cryptohome::FileEnumerator> file_enumerator(
           platform.GetFileEnumerator(path.value(), false,
-                                     file_util::FileEnumerator::FILES));
+                                     base::FileEnumerator::FILES));
       base::Time max_activity = base::Time::UnixEpoch();
       std::string next_path;
       while (!(next_path = file_enumerator->Next()).empty()) {
@@ -1685,7 +1687,7 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
       action.c_str())) {
     string contents;
-    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+    if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file.\n");
       return 1;
     }
@@ -1774,7 +1776,7 @@ int main(int argc, char **argv) {
       return 1;
     }
     string contents;
-    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+    if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file.\n");
       return 1;
     }
@@ -1923,7 +1925,7 @@ int main(int argc, char **argv) {
     }
     gboolean is_user_specific = (key_name != "attest-ent-machine");
     string contents;
-    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+    if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
     }
@@ -2037,7 +2039,7 @@ int main(int argc, char **argv) {
           switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
       action.c_str())) {
     string contents;
-    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+    if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
     }

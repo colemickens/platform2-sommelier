@@ -374,7 +374,7 @@ TEST(StatefulRecovery, FilesystemDetailsFailure) {
 
 TEST(StatefulRecovery, MountsParseOk) {
   Platform platform;
-  FilePath mtab;
+  base::FilePath mtab;
   FILE *fp;
   std::string filesystem, device_in, device_out, mtab_path, mtab_contents;
 
@@ -386,7 +386,7 @@ TEST(StatefulRecovery, MountsParseOk) {
   mtab_contents.append(filesystem);
   mtab_contents.append(" pixie default 0 0\n");
 
-  fp = file_util::CreateAndOpenTemporaryFile(&mtab);
+  fp = base::CreateAndOpenTemporaryFile(&mtab);
   ASSERT_TRUE(fp != NULL);
   EXPECT_TRUE(fwrite(mtab_contents.c_str(), mtab_contents.length(), 1,
                      fp) == 1);
@@ -410,7 +410,7 @@ TEST(StatefulRecovery, MountsParseOk) {
   EXPECT_TRUE(device_out == device_in);
 
   /* Clean up. */
-  EXPECT_TRUE(file_util::Delete(mtab, false));
+  EXPECT_TRUE(base::DeleteFile(mtab, false));
 }
 
 TEST(StatefulRecovery, UsageReportOk) {

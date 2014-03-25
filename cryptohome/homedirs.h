@@ -9,10 +9,10 @@
 #define HOMEDIRS_H_
 
 #include <base/callback.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/secure_blob.h>
 #include <policy/device_policy.h>
@@ -145,13 +145,15 @@ class HomeDirs {
                        const chromeos::SecureBlob& oldkey);
 
   // Returns the path to the user's chaps token directory.
-  virtual FilePath GetChapsTokenDir(const std::string& username) const;
+  virtual base::FilePath GetChapsTokenDir(const std::string& username) const;
 
   // Returns the path to the user's legacy chaps token directory.
-  virtual FilePath GetLegacyChapsTokenDir(const std::string& username) const;
+  virtual base::FilePath GetLegacyChapsTokenDir(
+      const std::string& username) const;
 
   // Returns the path to the user's token salt.
-  virtual FilePath GetChapsTokenSaltPath(const std::string& username) const;
+  virtual base::FilePath GetChapsTokenSaltPath(
+      const std::string& username) const;
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
@@ -189,23 +191,23 @@ class HomeDirs {
   // Loads the device policy, either by initializing it or reloading the
   // existing one.
   void LoadDevicePolicy();
-  typedef base::Callback<void(const FilePath&)> CryptohomeCallback;
+  typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
   // Runs the supplied callback for every unmounted cryptohome.
   void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
   // Callback used during RemoveNonOwnerCryptohomes()
-  void RemoveNonOwnerCryptohomesCallback(const FilePath& vault);
+  void RemoveNonOwnerCryptohomesCallback(const base::FilePath& vault);
   // Callback used during FreeDiskSpace().
-  void DeleteCacheCallback(const FilePath& vault);
+  void DeleteCacheCallback(const base::FilePath& vault);
   // Callback used during FreeDiskSpace().
-  void DeleteGCacheTmpCallback(const FilePath& vault);
+  void DeleteGCacheTmpCallback(const base::FilePath& vault);
   // Recursively deletes all contents of a directory while leaving the directory
   // itself intact.
-  void DeleteDirectoryContents(const FilePath& dir);
+  void DeleteDirectoryContents(const base::FilePath& dir);
   // Deletes all directories under the supplied directory whose basename is not
   // the same as the obfuscated owner name.
-  void RemoveNonOwnerDirectories(const FilePath& prefix);
+  void RemoveNonOwnerDirectories(const base::FilePath& prefix);
   // Callback used during FreeDiskSpace()
-  void AddUserTimestampToCacheCallback(const FilePath& vault);
+  void AddUserTimestampToCacheCallback(const base::FilePath& vault);
   // Loads the serialized vault keyset for the supplied obfuscated username.
   // Returns true for success, false for failure.
   bool LoadVaultKeysetForUser(const std::string& obfuscated_user,

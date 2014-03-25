@@ -12,9 +12,9 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/sha1.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/values.h>
 #include <chaps/isolate.h>
@@ -34,6 +34,8 @@
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
+using base::FilePath;
+using base::StringPrintf;
 using chaps::IsolateCredentialManager;
 using chromeos::SecureBlob;
 using std::string;
@@ -1555,7 +1557,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
                           const FilePath& source) const {
   scoped_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source.value(), false,
-                                   file_util::FileEnumerator::FILES));
+                                   base::FileEnumerator::FILES));
   std::string next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     FilePath file_name = FilePath(next_path).BaseName();
@@ -1570,7 +1572,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
   }
   scoped_ptr<FileEnumerator> dir_enumerator(
       platform_->GetFileEnumerator(source.value(), false,
-                                   file_util::FileEnumerator::DIRECTORIES));
+                                   base::FileEnumerator::DIRECTORIES));
   while (!(next_path = dir_enumerator->Next()).empty()) {
     FilePath dir_name = FilePath(next_path).BaseName();
     FilePath destination_dir = destination.Append(dir_name);
@@ -1712,14 +1714,14 @@ bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
 Value* Mount::GetStatus() {
   std::string user;
   SerializedVaultKeyset keyset;
-  DictionaryValue* dv = new DictionaryValue();
+  base::DictionaryValue* dv = new base::DictionaryValue();
   current_user_->GetObfuscatedUsername(&user);
-  ListValue* keysets = new ListValue();
+  base::ListValue* keysets = new base::ListValue();
   std::vector<int> key_indices;
   if (user.length() && homedirs_->GetVaultKeysets(user, &key_indices)) {
     std::vector<int>::const_iterator iter = key_indices.begin();
     for ( ;iter != key_indices.end(); ++iter) {
-      DictionaryValue* keyset_dict = new DictionaryValue();
+      base::DictionaryValue* keyset_dict = new base::DictionaryValue();
       if (LoadVaultKeysetForUser(user, *iter, &keyset)) {
         bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;
         bool scrypt = keyset.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED;

@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
-#include <base/file_util.h>
+#include <base/files/file_enumerator.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <map>
@@ -19,7 +19,6 @@
 #include <vector>
 
 namespace base { class Time; }
-namespace file_util { class FileEnumerator; }
 
 namespace cryptohome {
 
@@ -34,11 +33,32 @@ class ProcessInformation;
 // DO NOT USE FROM THE MAIN THREAD of your application unless it is a test
 // program where latency does not matter. This class is blocking.
 //
-// See file_util::FileEnumerator for details.  This is merely a mockable
-// wrapper.
+// See base::FileEnumerator for details.  This is merely a mockable wrapper.
 class FileEnumerator {
  public:
-  typedef file_util::FileEnumerator::FindInfo FindInfo;
+  // Copy and assign enabled.
+  class FileInfo {
+   public:
+    explicit FileInfo(const base::FileEnumerator::FileInfo& file_info);
+    FileInfo(const std::string& name, const struct stat& stat);
+    FileInfo(const FileInfo& other);
+    FileInfo();
+    virtual ~FileInfo();
+    FileInfo& operator=(const FileInfo& other);
+
+    bool IsDirectory() const;
+    std::string GetName() const;
+    int64 GetSize() const;
+    base::Time GetLastModifiedTime() const;
+    const struct stat& stat() const;
+
+   private:
+    void Assign(const base::FileEnumerator::FileInfo& file_info);
+
+    scoped_ptr<base::FileEnumerator::FileInfo> info_;
+    std::string name_;
+    struct stat stat_;
+  };
 
   FileEnumerator(const std::string& root_path,
                  bool recursive,
@@ -48,22 +68,17 @@ class FileEnumerator {
                  int file_type,
                  const std::string& pattern);
   // Meant for testing only.
-  FileEnumerator() : enumerator_(NULL) { }
+  FileEnumerator();
   virtual ~FileEnumerator();
 
   // Returns an empty string if there are no more results.
   virtual std::string Next();
 
   // Write the file info into |info|.
-  virtual void GetFindInfo(FindInfo* info);
+  virtual FileInfo GetInfo();
 
-  // The static methods are exclusively helpers for interpreting FindInfo.
-  static bool IsDirectory(const FindInfo& info);
-  static std::string GetFilename(const FindInfo& find_info);
-  static int64 GetFilesize(const FindInfo& find_info);
-  static base::Time GetLastModifiedTime(const FindInfo& find_info);
  private:
-   file_util::FileEnumerator* enumerator_;
+   scoped_ptr<base::FileEnumerator> enumerator_;
 };
 
 // Platform specific routines abstraction layer.
@@ -76,7 +91,7 @@ class Platform {
     mode_t mode;
   };
 
-  typedef base::Callback<bool(const FileEnumerator::FindInfo&)>
+  typedef base::Callback<bool(const std::string&, const struct stat&)>
       FileEnumeratorCallback;
 
   Platform();
@@ -464,11 +479,12 @@ class Platform {
   bool WalkPath(const std::string& path,
                 const FileEnumeratorCallback& callback);
 
-  // Copies permissions from a file specified by |file_info| to another file
-  // with the same name but a child of |new_base|, not |old_base|.
+  // Copies permissions from a file specified by |file_path| and |file_info| to
+  // another file with the same name but a child of |new_base|, not |old_base|.
   bool CopyPermissionsCallback(const std::string& old_base,
                                const std::string& new_base,
-                               const FileEnumerator::FindInfo& file_info);
+                               const std::string& file_path,
+                               const struct stat& file_info);
 
   // Applies ownership and permissions to a single file or directory.
   //
@@ -481,7 +497,8 @@ class Platform {
       const Permissions& default_file_info,
       const Permissions& default_dir_info,
       const std::map<std::string, Permissions>& special_cases,
-      const FileEnumerator::FindInfo& file_info);
+      const std::string& file_path,
+      const struct stat& file_info);
 
   std::string mtab_path_;
 

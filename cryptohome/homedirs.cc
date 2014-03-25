@@ -7,7 +7,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 
@@ -22,6 +22,7 @@
 #include "user_oldest_activity_timestamp_cache.h"
 #include "vault_keyset.h"
 
+using base::FilePath;
 using chromeos::SecureBlob;
 
 namespace cryptohome {
@@ -179,7 +180,7 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
     if (!creds.key_data().label().empty() &&
         creds.key_data().label() != vk->serialized().key_data().label() &&
         creds.key_data().label() !=
-          StringPrintf("%s%d", kKeyLegacyPrefix, *iter))
+          base::StringPrintf("%s%d", kKeyLegacyPrefix, *iter))
       continue;
     if (vk->Decrypt(passkey))
       return true;
@@ -213,7 +214,7 @@ VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
     // automatically from the index number.
     std::string label = (vk->serialized().has_key_data() ?
                          vk->serialized().key_data().label() :
-                         StringPrintf("%s%d", kKeyLegacyPrefix, *iter));
+                         base::StringPrintf("%s%d", kKeyLegacyPrefix, *iter));
     if (label == credentials.key_data().label()) {
       vk->set_legacy_index(*iter);
       return vk.release();
@@ -230,7 +231,7 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
 
   scoped_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false,
-                                   file_util::FileEnumerator::FILES));
+                                   base::FileEnumerator::FILES));
   std::string next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     std::string file_name = FilePath(next_path).BaseName().value();
@@ -611,11 +612,11 @@ bool HomeDirs::MoveKeyset(const std::string& obfuscated, int src, int dst) {
 
 std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
                                          int index) const {
-  return StringPrintf("%s/%s/%s%d",
-                      shadow_root_.c_str(),
-                      obfuscated.c_str(),
-                      kKeyFile,
-                      index);
+  return base::StringPrintf("%s/%s/%s%d",
+                            shadow_root_.c_str(),
+                            obfuscated.c_str(),
+                            kKeyFile,
+                            index);
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
@@ -672,9 +673,9 @@ void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
   scoped_ptr<FileEnumerator> subdir_enumerator(platform_->GetFileEnumerator(
       dir.value(),
       false,
-      file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::DIRECTORIES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS));
+      base::FileEnumerator::FILES |
+          base::FileEnumerator::DIRECTORIES |
+          base::FileEnumerator::SHOW_SYM_LINKS));
   for (std::string subdir_path = subdir_enumerator->Next();
        !subdir_path.empty();
        subdir_path = subdir_enumerator->Next()) {

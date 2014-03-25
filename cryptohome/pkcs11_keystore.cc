@@ -332,7 +332,7 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
 
 bool Pkcs11KeyStore::GetUserSlot(const string& username, CK_SLOT_ID_PTR slot) {
   const char *kChapsDaemonName = "chaps";
-  FilePath token_path =
+  base::FilePath token_path =
       chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName);
   return pkcs11_init_->GetTpmTokenSlotForPath(token_path, slot);
 }

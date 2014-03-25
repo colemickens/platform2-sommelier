@@ -23,7 +23,7 @@
 #include "mock_platform.h"
 #include "mock_tpm.h"
 
-namespace cryptohome {
+using base::FilePath;
 using chromeos::Blob;
 using chromeos::SecureBlob;
 using std::string;
@@ -33,6 +33,8 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::NiceMock;
+
+namespace cryptohome {
 
 const char kImageDir[] = "test_image_dir";
 

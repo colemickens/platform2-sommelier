@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
 #include <chromeos/secure_blob.h>

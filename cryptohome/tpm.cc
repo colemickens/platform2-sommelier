@@ -10,7 +10,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/threading/platform_thread.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <openssl/rsa.h>
 #include <stdio.h>
@@ -2093,7 +2093,7 @@ bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
 }
 
 Value* Tpm::GetStatusValue(TpmInit* init) {
-  DictionaryValue* dv = new DictionaryValue();
+  base::DictionaryValue* dv = new base::DictionaryValue();
   TpmStatusInfo status;
   GetStatus(true, &status);
 

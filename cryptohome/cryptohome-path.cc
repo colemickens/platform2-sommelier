@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/cryptohome.h>
 
 int main(int argc, char **argv) {
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     printf("Usage: %s <system|user> <username>\n", argv[0]);
     return 1;
   }
-  FilePath fp;
+  base::FilePath fp;
   if (!strcmp(argv[1], "system"))
     fp = chromeos::cryptohome::home::GetRootPath(argv[2]);
   else

@@ -8,8 +8,8 @@
 #include <map>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
-#include <base/time.h>
+#include <base/files/file_path.h>
+#include <base/time/time.h>
 
 namespace cryptohome {
 
@@ -31,14 +31,16 @@ class UserOldestActivityTimestampCache {
   }
 
   // Adds a user to the cache with specified oldest activity timestamp.
-  virtual void AddExistingUser(const FilePath& vault, base::Time timestamp);
+  virtual void AddExistingUser(const base::FilePath& vault,
+                               base::Time timestamp);
 
   // Updates a user in the cache with specified oldest activity timestamp.
-  virtual void UpdateExistingUser(const FilePath& vault, base::Time timestamp);
+  virtual void UpdateExistingUser(const base::FilePath& vault,
+                                  base::Time timestamp);
 
   // Adds a user to the cache without oldest activity timestamp. Such
   // users are considered older than any existing user with timestamp.
-  virtual void AddExistingUserNotime(const FilePath& vault);
+  virtual void AddExistingUserNotime(const base::FilePath& vault);
 
   // Timestamp of the oldest user in the cache. May be null (check for
   // is_null) if there is no user with definite timestamp.
@@ -53,14 +55,14 @@ class UserOldestActivityTimestampCache {
 
   // Removes the oldest user stored in the cache. Users without
   // a timestamp are removed first.
-  virtual FilePath RemoveOldestUser();
+  virtual base::FilePath RemoveOldestUser();
 
  private:
   // Updates oldest known timestamp after the user with |timestamp|
   // has been removed from cache.
   void UpdateTimestampAfterRemoval(base::Time timestamp);
 
-  typedef std::multimap<base::Time, FilePath> UsersTimestamp;
+  typedef std::multimap<base::Time, base::FilePath> UsersTimestamp;
   UsersTimestamp users_timestamp_;
   base::Time oldest_known_timestamp_;
   bool initialized_;

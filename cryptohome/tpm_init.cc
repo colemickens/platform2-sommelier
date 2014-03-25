@@ -8,12 +8,12 @@
 
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
-#include <base/time.h>
+#include <base/time/time.h>
 
 #include "attestation.h"
 
-using base::kNullThreadHandle;
 using base::PlatformThread;
+using base::PlatformThreadHandle;
 
 namespace cryptohome {
 
@@ -58,7 +58,6 @@ class TpmInitTask : public PlatformThread::Delegate {
 
 TpmInit::TpmInit(Platform* platform)
     : tpm_init_task_(new TpmInitTask(platform)),
-      init_thread_(kNullThreadHandle),
       notify_callback_(NULL),
       initialize_called_(false),
       initialize_took_ownership_(false),
@@ -67,11 +66,11 @@ TpmInit::TpmInit(Platform* platform)
 }
 
 TpmInit::~TpmInit() {
-  if (init_thread_ != kNullThreadHandle) {
+  if (!init_thread_.is_null()) {
     // Must wait for tpm init thread to complete, because when the main thread
     // exits some libtspi data structures are freed.
     PlatformThread::Join(init_thread_);
-    init_thread_ = kNullThreadHandle;
+    init_thread_ = PlatformThreadHandle();
   }
 }
 

@@ -9,7 +9,7 @@
 #include <base/at_exit.h>
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chaps/token_manager_client_mock.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
@@ -611,7 +611,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
                             Return(true)));
 
   EXPECT_CALL(chaps_client_,
-              UnloadToken(_, FilePath("/home/chronos/user/token")))
+              UnloadToken(_, base::FilePath("/home/chronos/user/token")))
       .Times(1);
 
   // Expect that CleanUpStaleMounts() tells us it skipped no mounts.

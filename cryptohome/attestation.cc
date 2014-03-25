@@ -9,9 +9,9 @@
 
 #include <arpa/inet.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
-#include <base/stringprintf.h>
-#include <base/time.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
 #include <openssl/evp.h>
@@ -208,7 +208,6 @@ const char Attestation::kAlternatePCAKeyIDAttributeName[] =
 
 Attestation::Attestation()
     : database_path_(kDefaultDatabasePath),
-      thread_(base::kNullThreadHandle),
       pkcs11_key_store_(new Pkcs11KeyStore()),
       user_key_store_(pkcs11_key_store_.get()),
       enterprise_test_key_(NULL),
@@ -219,7 +218,7 @@ Attestation::Attestation()
 }
 
 Attestation::~Attestation() {
-  if (thread_ != base::kNullThreadHandle)
+  if (!thread_.is_null())
     base::PlatformThread::Join(thread_);
   ClearDatabase();
 }
@@ -484,7 +483,7 @@ void Attestation::PrepareForEnrollment() {
 
 void Attestation::PrepareForEnrollmentAsync() {
   base::AutoLock lock(lock_);
-  if (thread_ != base::kNullThreadHandle) {
+  if (!thread_.is_null()) {
     LOG(WARNING) << "PrepareForEnrollmentAsync called multiple times.";
     return;
   }

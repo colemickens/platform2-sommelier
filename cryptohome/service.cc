@@ -16,8 +16,8 @@
 #include <base/logging.h>
 #include <base/platform_file.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/string_util.h>
-#include <base/time.h>
+#include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
@@ -46,6 +46,7 @@
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
 
+using base::FilePath;
 using chromeos::SecureBlob;
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
@@ -2525,8 +2526,8 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
 }
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
-  DictionaryValue dv;
-  ListValue* mounts = new ListValue();
+  base::DictionaryValue dv;
+  base::ListValue* mounts = new base::ListValue();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++)
     mounts->Append(it->second->GetStatus());
   Value* attrs = install_attrs_->GetStatus();

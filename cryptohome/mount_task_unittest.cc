@@ -12,7 +12,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 

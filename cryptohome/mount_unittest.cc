@@ -14,11 +14,11 @@
 #include <sys/types.h>
 #include <vector>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/time.h>
-#include <base/stringprintf.h>
+#include <base/time/time.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
@@ -39,7 +39,7 @@
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
-namespace cryptohome {
+using base::StringPrintf;
 using chromeos::SecureBlob;
 using std::string;
 using ::testing::AllOf;
@@ -58,6 +58,8 @@ using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 using ::testing::Unused;
 using ::testing::_;
+
+namespace cryptohome {
 
 const char kImageDir[] = "test_image_dir";
 const char kImageSaltFile[] = "test_image_dir/salt";
@@ -404,18 +406,14 @@ class ChapsDirectoryTest : public ::testing::Test {
 
     // Configure a fake enumerator.
     MockFileEnumerator* enumerator = platform_.mock_enumerator();
-    enumerator->entries_.push_back(kBaseDir);
-    enumerator->entries_.push_back(kSaltFile);
-    enumerator->entries_.push_back(kDatabaseDir);
-    enumerator->entries_.push_back(kDatabaseFile);
-    FileEnumerator::FindInfo find_info1 = {base_stat_, kBaseDir};
-    FileEnumerator::FindInfo find_info2 = {salt_stat_, kSaltFile};
-    FileEnumerator::FindInfo find_info3 = {database_dir_stat_, kDatabaseDir};
-    FileEnumerator::FindInfo find_info4 = {database_file_stat_, kDatabaseFile};
-    enumerator->find_info_.push_back(find_info1);
-    enumerator->find_info_.push_back(find_info2);
-    enumerator->find_info_.push_back(find_info3);
-    enumerator->find_info_.push_back(find_info4);
+    enumerator->entries_.push_back(
+        FileEnumerator::FileInfo(kBaseDir, base_stat_));
+    enumerator->entries_.push_back(
+        FileEnumerator::FileInfo(kSaltFile, salt_stat_));
+    enumerator->entries_.push_back(
+        FileEnumerator::FileInfo(kDatabaseDir, database_dir_stat_));
+    enumerator->entries_.push_back(
+        FileEnumerator::FileInfo(kDatabaseFile, database_file_stat_));
   }
 
   bool RunCheck() {
@@ -566,18 +564,18 @@ TEST_F(MountTest, CheckChapsDirectoryMigration) {
 
   // Configure a fake enumerator.
   MockFileEnumerator* enumerator = platform_.mock_enumerator();
-  enumerator->entries_.push_back("/fake_legacy/test_file1");
-  enumerator->entries_.push_back("test_file2");
-  FileEnumerator::FindInfo find_info1 = {{0}, "/fake_legacy/test_file1"};
-  find_info1.stat.st_mode = 0555;
-  find_info1.stat.st_uid = 3;
-  find_info1.stat.st_gid = 4;
-  FileEnumerator::FindInfo find_info2 = {{0}, "test_file2"};
-  find_info2.stat.st_mode = 0777;
-  find_info2.stat.st_uid = 5;
-  find_info2.stat.st_gid = 6;
-  enumerator->find_info_.push_back(find_info1);
-  enumerator->find_info_.push_back(find_info2);
+  struct stat file_info1 = {0};
+  file_info1.st_mode = 0555;
+  file_info1.st_uid = 3;
+  file_info1.st_gid = 4;
+  struct stat file_info2 = {0};
+  file_info2.st_mode = 0777;
+  file_info2.st_uid = 5;
+  file_info2.st_gid = 6;
+  enumerator->entries_.push_back(
+      FileEnumerator::FileInfo("/fake_legacy/test_file1", file_info1));
+  enumerator->entries_.push_back(
+      FileEnumerator::FileInfo("test_file2", file_info2));
 
   // These expectations will ensure the ownership and permissions are being
   // correctly applied after the directory has been moved.

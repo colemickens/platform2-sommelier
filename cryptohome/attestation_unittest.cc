@@ -7,7 +7,7 @@
 #include <string>
 
 #include <base/stl_util.h>
-#include <base/string_util.h>
+#include <base/strings/string_util.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

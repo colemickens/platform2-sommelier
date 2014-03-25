@@ -6,7 +6,7 @@
 #define CRYPTOHOME_CRYPTOLIB_H_
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 #include "attestation.pb.h"

@@ -14,10 +14,10 @@
 
 #include <base/basictypes.h>
 #include <base/callback.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/ref_counted.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
@@ -329,7 +329,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Changes the group ownership and permissions on those directories inside
   // the cryptohome that need to be accessible by other system daemons
-  virtual bool SetupGroupAccess(const FilePath& home_dir) const;
+  virtual bool SetupGroupAccess(const base::FilePath& home_dir) const;
 
 
   virtual bool LoadVaultKeyset(const Credentials& credentials,
@@ -537,7 +537,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   callback - Routine to invoke.
-  typedef base::Callback<void(const FilePath&)> CryptohomeCallback;
+  typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
   void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
 
   // Same as MountCryptohome but specifies if the cryptohome directory should be
@@ -578,7 +578,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   destination - Where to copy files to
   //   source - Where to copy files from
-  void RecursiveCopy(const FilePath& destination, const FilePath& source) const;
+  void RecursiveCopy(const base::FilePath& destination,
+                     const base::FilePath& source) const;
 
   // Copies the skeleton directory to the user's cryptohome if that user is
   // currently mounted
@@ -597,7 +598,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Ensures that the numth component of path is owned by uid/gid and is a
   // directory.
-  bool EnsurePathComponent(const FilePath& fp, size_t num, uid_t uid,
+  bool EnsurePathComponent(const base::FilePath& fp, size_t num, uid_t uid,
                            gid_t gid) const;
 
 
@@ -607,7 +608,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // it exists.
   // NewUserDir looks like: /home/chronos/u-$hash
   // /home needs to be root:root, /home/chronos needs to be uid:gid.
-  bool EnsureNewUserDirExists(const FilePath& fp, uid_t uid, gid_t gid) const;
+  bool EnsureNewUserDirExists(const base::FilePath& fp, uid_t uid,
+                              gid_t gid) const;
 
   // Ensures that a specified directory exists, with all path components but the
   // last one owned by kMountOwnerUid:kMountOwnerGid and the last component
@@ -617,7 +619,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   fp - Directory to check
   //   final_uid - uid that must own the directory
   //   final_gid - gid that muts own the directory
-  bool EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
+  bool EnsureDirHasOwner(const base::FilePath& fp, uid_t final_uid,
                          gid_t final_gid) const;
 
   // Ensures that root and user mountpoints for the specified user are present.

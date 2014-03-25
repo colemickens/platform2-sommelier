@@ -10,6 +10,8 @@
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
+using base::FilePath;
+
 namespace {
 const base::Time::Exploded jan1st2011_exploded = { 2011, 1, 6, 1 };
 const base::Time time_jan1 = base::Time::FromUTCExploded(jan1st2011_exploded);

@@ -11,7 +11,7 @@
 #define CRYPTOHOME_CRYPTO_H_
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 #include "tpm.h"
@@ -77,7 +77,7 @@ class Crypto {
   //   salt - The salt file used in deriving the authorization data.
   //   auth_data (OUT) - The token authorization data.
   bool PasskeyToTokenAuthData(const chromeos::Blob& passkey,
-                              const FilePath& salt_file,
+                              const base::FilePath& salt_file,
                               chromeos::SecureBlob* auth_data) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
@@ -87,8 +87,8 @@ class Crypto {
   //   length - The length of the new salt if it needs to be created
   //   force - If true, forces creation of a new salt even if the file exists
   //   salt (OUT) - The salt
-  bool GetOrCreateSalt(const FilePath& path, unsigned int length, bool force,
-                       chromeos::SecureBlob* salt) const;
+  bool GetOrCreateSalt(const base::FilePath& path, unsigned int length,
+                       bool force, chromeos::SecureBlob* salt) const;
 
   // Adds the specified key to the ecryptfs keyring so that the cryptohome can
   // be mounted.  Clears the user keyring first.

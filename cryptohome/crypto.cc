@@ -116,7 +116,7 @@ Crypto::CryptoError Crypto::EnsureTpm(bool disconnect_first) const {
 }
 
 bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
-                                    const FilePath& salt_file,
+                                    const base::FilePath& salt_file,
                                     SecureBlob* auth_data) const {
   // Use the scrypt algorithm to derive auth data from the passkey.
   const size_t kAuthDataSizeBytes = 32;
@@ -151,7 +151,7 @@ bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
   return true;
 }
 
-bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
+bool Crypto::GetOrCreateSalt(const base::FilePath& path, unsigned int length,
                              bool force, SecureBlob* salt) const {
   int64 file_len = 0;
   if (platform_->FileExists(path.value())) {

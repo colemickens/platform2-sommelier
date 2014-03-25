@@ -9,14 +9,15 @@
 #include <string.h>
 
 #include <base/logging.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/cryptohome.h>
 #include <errno.h>
 #include <glib.h>
 
+using base::FilePath;
 
 namespace cryptohome {
 
