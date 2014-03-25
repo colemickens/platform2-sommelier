@@ -777,6 +777,10 @@ bool Platform::SyncPath(const std::string& path) {
   return true;
 }
 
+void Platform::Sync() {
+  sync();
+}
+
 // Encapsulate these helpers to avoid include conflicts.
 namespace ecryptfs {
 extern "C" {

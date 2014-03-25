@@ -23,6 +23,7 @@
 #include <chromeos/utility.h>
 #include <set>
 
+#include "chaps_client_factory.h"
 #include "crypto.h"
 #include "cryptohome_common.h"
 #include "cryptolib.h"
@@ -120,7 +121,9 @@ Mount::Mount()
       pkcs11_state_(kUninitialized),
       is_pkcs11_passkey_migration_required_(false),
       legacy_mount_(true),
-      ephemeral_mount_(false) {
+      ephemeral_mount_(false),
+      default_chaps_client_factory_(new ChapsClientFactory()),
+      chaps_client_factory_(default_chaps_client_factory_.get()) {
 }
 
 Mount::~Mount() {
@@ -686,11 +689,11 @@ void Mount::ForceUnmount(const std::string& mount_point) {
                      << (*file_itr);
         }
       }
-      sync();
+      platform_->Sync();
     }
     // Failed to unmount immediately, do a lazy unmount
     platform_->Unmount(mount_point, true, NULL);
-    sync();
+    platform_->Sync();
   }
 }
 
@@ -1394,7 +1397,8 @@ bool Mount::InsertPkcs11Token() {
   SecureBlob auth_data;
   if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
     return false;
-  chaps::TokenManagerClient chaps_client;
+  scoped_ptr<chaps::TokenManagerClient> chaps_client(
+      chaps_client_factory_->New());
   // If migration is required, send it before the login event.
   if (is_pkcs11_passkey_migration_required_) {
     LOG(INFO) << "Migrating authorization data.";
@@ -1403,7 +1407,7 @@ bool Mount::InsertPkcs11Token() {
                                          salt_file,
                                          &old_auth_data))
       return false;
-    chaps_client.ChangeTokenAuthData(
+    chaps_client->ChangeTokenAuthData(
         token_dir,
         old_auth_data,
         auth_data);
@@ -1412,7 +1416,7 @@ bool Mount::InsertPkcs11Token() {
   }
   Pkcs11Init pkcs11init;
   int slot_id = 0;
-  if (!chaps_client.LoadToken(
+  if (!chaps_client->LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir,
       auth_data,
@@ -1427,8 +1431,9 @@ bool Mount::InsertPkcs11Token() {
 void Mount::RemovePkcs11Token() {
   std::string username = current_user_->username();
   FilePath token_dir = homedirs_->GetChapsTokenDir(username);
-  chaps::TokenManagerClient chaps_client;
-  chaps_client.UnloadToken(
+  scoped_ptr<chaps::TokenManagerClient> chaps_client(
+      chaps_client_factory_->New());
+  chaps_client->UnloadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir);
 }

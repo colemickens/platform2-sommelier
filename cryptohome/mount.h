@@ -62,6 +62,8 @@ extern const char kGuestMountPath[];
 // Time delta of last user's activity to be considered as old.
 extern const base::TimeDelta kOldUserLastActivityTime;
 
+class ChapsClientFactory;
+
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
 // the directory's crypto key.
@@ -274,6 +276,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   std::string GetNewUserPath(const std::string& username) const;
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
+
+  // Does not take ownership.
+  void set_chaps_client_factory(ChapsClientFactory* factory) {
+    chaps_client_factory_ = factory;
+  }
 
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
@@ -775,6 +782,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Indicates if the current mount is ephemeral.
   // This is only valid when IsMounted() is true.
   bool ephemeral_mount_;
+
+  scoped_ptr<ChapsClientFactory> default_chaps_client_factory_;
+  ChapsClientFactory* chaps_client_factory_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);

@@ -425,6 +425,10 @@ class Platform {
   // expensive and synchronous, use with care.  Returns true on success.
   virtual bool SyncFile(const std::string& path);
 
+  // Syncs everything to disk.  This method is synchronous and very, very
+  // expensive, use with even more care than SyncFile.
+  virtual void Sync();
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path

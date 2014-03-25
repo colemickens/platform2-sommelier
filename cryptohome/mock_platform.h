@@ -79,7 +79,6 @@ ACTION(CallFindFilesystemDevice) {
   return Platform().FindFilesystemDevice(arg0, arg1);
 }
 
-
 class MockPlatform : public Platform {
  public:
   MockPlatform();
@@ -143,6 +142,7 @@ class MockPlatform : public Platform {
                                                   int));
   MOCK_METHOD0(FirmwareWriteProtected, bool(void));
   MOCK_METHOD1(SyncFile, bool(const std::string&));
+  MOCK_METHOD0(Sync, void());
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

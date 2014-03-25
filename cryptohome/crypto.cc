@@ -172,7 +172,10 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
       LOG(ERROR) << "Could not write user salt";
       return false;
     }
-    sync();
+    if (!platform_->SyncFile(path.value())) {
+      LOG(ERROR) << "Could not sync user salt.";
+      return false;
+    }
   } else {
     local_salt.resize(file_len);
     if (!platform_->ReadFile(path.value(), &local_salt)) {

@@ -180,7 +180,7 @@ void StatefulRecovery::PerformReboot() {
   if (system("/usr/bin/crossystem recovery_request=1") != 0) {
     LOG(ERROR) << "Failed to set recovery request!";
   }
-  sync();
+  platform_->Sync();
   reboot(LINUX_REBOOT_CMD_RESTART);
 }
 
