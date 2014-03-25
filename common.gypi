@@ -18,6 +18,7 @@
     'USE_cros_host%': 0,
     'USE_debugd%': 0,
     'USE_gdmwimax%': 0,
+    'USE_lorgnette%': 0,
     'USE_passive_metrics%': 0,
     'USE_profile%': 0,
     'USE_shill%': 0,
