@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
-#include <base/stringprintf.h>
-#include <base/string_split.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #define MAX_RETRIES 5
 #define MAX_ALLOWABLE_DIFFERENCE 0.0001

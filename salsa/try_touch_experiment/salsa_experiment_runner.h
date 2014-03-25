@@ -6,8 +6,8 @@
 #define GESTURES_SALSA_TRY_TOUCH_EXPERIMENT_RUNNER_H_
 
 #include <string>
-#include <base/stringprintf.h>
-#include <base/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <ncurses.h>
 #include "experiment.h"
 

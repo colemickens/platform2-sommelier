@@ -7,7 +7,7 @@
 
 #include <string>
 #include <vector>
-#include <base/string_split.h>
+#include <base/strings/string_split.h>
 #include "treatment.h"
 
 class Experiment {
