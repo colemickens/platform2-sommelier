@@ -15,7 +15,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
-#include "lorgnette/dbus_bindings/lorgnette-manager.h"
+#include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 namespace chromeos {
   class Process;
 }  // namespace chromeos

@@ -36,8 +36,11 @@ class ManagerTest : public testing::Test {
   virtual void TearDown() {
     // The fds that we have handed to these ScopedFD are not real, so we
     // must prevent our scoped fds from calling close() on them.
-    input_scoped_fd_.release();
-    output_scoped_fd_.release();
+    int *fd_ptr;
+    fd_ptr = input_scoped_fd_.release();
+    CHECK(fd_ptr == NULL || fd_ptr == &input_pipe_fd_);
+    fd_ptr = output_scoped_fd_.release();
+    CHECK(fd_ptr == NULL || fd_ptr == &output_pipe_fd_);
   }
  protected:
   static const char kDeviceName[];
