@@ -18,7 +18,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 using std::cerr;
 using std::cout;
@@ -47,11 +47,11 @@ int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
 
-  logging::InitLogging(NULL,
-                       logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
-                       logging::LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  logging::LoggingSettings logging_settings;
+  logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  logging_settings.lock_log = logging::LOCK_LOG_FILE;
+  logging_settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
+  logging::InitLogging(logging_settings);
   p2p::util::SetupSyslog(p2p::constants::kHttpServerBinaryName,
                          false /* include_pid */);
 

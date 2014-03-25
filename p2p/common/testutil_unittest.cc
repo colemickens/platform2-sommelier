@@ -59,8 +59,7 @@ TEST(TestUtil, ExpectCommandSideEffects) {
       0, "echo -n xyz > %s", testdir.Append("file.txt").value().c_str());
 
   string contents;
-  EXPECT_TRUE(
-      file_util::ReadFileToString(testdir.Append("file.txt"), &contents));
+  EXPECT_TRUE(base::ReadFileToString(testdir.Append("file.txt"), &contents));
   EXPECT_EQ(contents, "xyz");
 
   TeardownTestDir(testdir);

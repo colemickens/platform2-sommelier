@@ -5,7 +5,7 @@
 #ifndef P2P_COMMON_UTIL_H__
 #define P2P_COMMON_UTIL_H__
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 namespace p2p {
 

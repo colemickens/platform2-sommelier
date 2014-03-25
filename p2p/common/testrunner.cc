@@ -19,11 +19,11 @@ int main(int argc, char** argv) {
 
   CommandLine::Init(argc, argv);
 
-  logging::InitLogging(NULL,
-                       logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
-                       logging::LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  logging::LoggingSettings logging_settings;
+  logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  logging_settings.lock_log = logging::LOCK_LOG_FILE;
+  logging_settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
+  logging::InitLogging(logging_settings);
 
   LOG(INFO) << "initializing gmock and gtest";
   ::testing::InitGoogleMock(&argc, argv);

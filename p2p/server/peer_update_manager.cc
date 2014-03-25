@@ -14,8 +14,8 @@
 
 #include <string>
 
-#include <base/logging.h>
 #include <base/bind.h>
+#include <base/logging.h>
 
 using std::string;
 

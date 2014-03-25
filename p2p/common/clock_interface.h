@@ -5,7 +5,7 @@
 #ifndef P2P_COMMON_CLOCK_INTERFACE_H__
 #define P2P_COMMON_CLOCK_INTERFACE_H__
 
-#include <base/time.h>
+#include <base/time/time.h>
 
 namespace p2p {
 

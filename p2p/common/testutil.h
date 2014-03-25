@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/file_path.h>
-#include <base/stringprintf.h>
+#include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 namespace p2p {

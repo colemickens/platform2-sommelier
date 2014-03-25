@@ -31,9 +31,9 @@
 #include <vector>
 #include <iomanip>
 
-#include <base/time.h>
 #include <base/logging.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
+#include <base/time/time.h>
 
 using std::string;
 

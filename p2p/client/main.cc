@@ -24,7 +24,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/rand_util.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <metrics/metrics_library.h>
 
 using std::cout;
@@ -90,11 +90,11 @@ int main(int argc, char* argv[]) {
 
   g_type_init();
   CommandLine::Init(argc, argv);
-  logging::InitLogging(NULL,
-                       logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
-                       logging::LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  logging::LoggingSettings logging_settings;
+  logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  logging_settings.lock_log = logging::LOCK_LOG_FILE;
+  logging_settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
+  logging::InitLogging(logging_settings);
   p2p::util::SetupSyslog("p2p-client", true /* include_pid */);
 
   CommandLine* cl = CommandLine::ForCurrentProcess();

@@ -18,7 +18,7 @@
 
 #include <base/bind.h>
 #include <base/threading/simple_thread.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <metrics/metrics_library_mock.h>
 
 using testing::_;
@@ -109,7 +109,7 @@ class ClientThread : public base::SimpleThread {
                    port_);
     EXPECT_COMMAND(0, "cmp -l -b %s/file.p2p %s/dl_%d", dir, dir, num_);
 
-    string name = StringPrintf("dl_%d", num_);
+    string name = base::StringPrintf("dl_%d", num_);
     ExpectFileSize(testdir_path_, name.c_str(), 2000);
   }
 
