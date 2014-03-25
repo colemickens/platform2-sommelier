@@ -76,18 +76,18 @@ class SlotManagerImpl : public SlotManager,
                            bool* new_isolate_created);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
-                         const FilePath& path,
+                         const base::FilePath& path,
                          const chromeos::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
-                           const FilePath& path);
-  virtual void ChangeTokenAuthData(const FilePath& path,
+                           const base::FilePath& path);
+  virtual void ChangeTokenAuthData(const base::FilePath& path,
                                    const chromeos::SecureBlob& old_auth_data,
                                    const chromeos::SecureBlob& new_auth_data);
   virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
                             int slot_id,
-                            FilePath* path);
+                            base::FilePath* path);
 
   // HandleGenerator methods.
   virtual int CreateHandle();
@@ -150,7 +150,7 @@ class SlotManagerImpl : public SlotManager,
   void DestroyIsolate(const Isolate& isolate);
 
   // Get the path of the token loaded in the given slot.
-  bool PathFromSlotId(int slot_id, FilePath* path) const;
+  bool PathFromSlotId(int slot_id, base::FilePath* path) const;
 
   // Performs initialization tasks that depend on the TPM SRK.  If the TPM is
   // not owned this cannot succeed.  These tasks include seeding the software
@@ -159,7 +159,7 @@ class SlotManagerImpl : public SlotManager,
 
   // LoadToken for internal callers.
   bool LoadTokenInternal(const chromeos::SecureBlob& isolate_credential,
-                         const FilePath& path,
+                         const base::FilePath& path,
                          const chromeos::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id);
@@ -169,7 +169,7 @@ class SlotManagerImpl : public SlotManager,
   MechanismMap mechanism_info_;
   // Key: A path to a token's storage directory.
   // Value: The identifier of the associated slot.
-  std::map<FilePath, int> path_slot_map_;
+  std::map<base::FilePath, int> path_slot_map_;
   std::vector<Slot> slot_list_;
   // Key: A session identifier.
   // Value: The identifier of the associated slot.

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 
 #include "pkcs11/cryptoki.h"
 
@@ -36,12 +36,12 @@ class ChapsFactory {
   virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
                                        ObjectStore* store,
                                        ObjectImporter* importer) = 0;
-  virtual ObjectStore* CreateObjectStore(const FilePath& file_name) = 0;
+  virtual ObjectStore* CreateObjectStore(const base::FilePath& file_name) = 0;
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
   // Returns NULL if no importer is available.
   virtual ObjectImporter* CreateObjectImporter(int slot_id,
-                                               const FilePath& path,
+                                               const base::FilePath& path,
                                                TPMUtility* tpm_utility) = 0;
 };
 

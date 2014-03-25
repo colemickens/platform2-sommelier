@@ -11,8 +11,8 @@
 
 #include <string>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 using std::string;
@@ -53,8 +53,8 @@ bool IsolateCredentialManager::GetUserIsolateCredential(
 
   string credential_string;
   const FilePath credential_file = FilePath(kIsolateFilePath).Append(user);
-  if (!file_util::PathExists(credential_file) ||
-      !file_util::ReadFileToString(credential_file, &credential_string)) {
+  if (!base::PathExists(credential_file) ||
+      !base::ReadFileToString(credential_file, &credential_string)) {
     LOG(INFO) << "Failed to find or read isolate credential for user "
                << user;
     return false;

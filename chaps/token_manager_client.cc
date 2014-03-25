@@ -11,6 +11,7 @@
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 
+using base::FilePath;
 using chromeos::SecureBlob;
 using std::vector;
 using std::string;

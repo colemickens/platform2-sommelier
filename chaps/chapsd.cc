@@ -12,7 +12,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/string_number_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>

@@ -12,6 +12,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+using base::FilePath;
 using chromeos::SecureBlob;
 using std::map;
 using std::string;

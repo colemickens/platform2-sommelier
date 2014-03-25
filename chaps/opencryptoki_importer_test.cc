@@ -12,7 +12,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -21,6 +21,7 @@
 #include "chaps/object_pool_mock.h"
 #include "chaps/tpm_utility_mock.h"
 
+using base::FilePath;
 using std::map;
 using std::string;
 using std::vector;

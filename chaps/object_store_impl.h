@@ -11,7 +11,7 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
@@ -29,7 +29,7 @@ class ObjectStoreImpl : public ObjectStore {
   // Initializes the object store with the given database path. The magic file
   // name ":memory:" will cause the store to create a memory-only database which
   // is suitable for testing.
-  bool Init(const FilePath& database_path);
+  bool Init(const base::FilePath& database_path);
 
   // ObjectStore methods.
   virtual bool GetInternalBlob(int blob_id, std::string* blob);

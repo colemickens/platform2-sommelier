@@ -11,7 +11,7 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -13,8 +13,8 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
-#include <base/time.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 #include <chromeos/syslog_logging.h>
 
 #include "chaps/chaps_proxy.h"
@@ -22,10 +22,11 @@
 #include "chaps/isolate.h"
 #include "chaps/token_manager_client.h"
 
-using std::string;
-using std::vector;
+using base::FilePath;
 using chaps::IsolateCredentialManager;
 using chromeos::SecureBlob;
+using std::string;
+using std::vector;
 
 namespace {
 

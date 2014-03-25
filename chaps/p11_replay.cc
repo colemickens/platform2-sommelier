@@ -14,13 +14,13 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
-#include <base/time.h>
+#include <base/time/time.h>
 #include <chromeos/syslog_logging.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -367,9 +367,9 @@ void ReadInObject(CK_SESSION_HANDLE session,
                   const string& input_path,
                   const vector<uint8_t>& object_id,
                   CryptoObjectType type) {
-  const FilePath path(input_path);
+  const base::FilePath path(input_path);
   string object_data;
-  if (!file_util::ReadFileToString(path, &object_data)) {
+  if (!base::ReadFileToString(path, &object_data)) {
     LOG(ERROR) << "Failed to read object from file.";
     exit(-1);
   }

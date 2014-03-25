@@ -4,7 +4,7 @@
 
 #include "chaps/chaps_adaptor.h"
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 
@@ -14,6 +14,7 @@
 #include "chaps/token_manager_interface.h"
 
 using base::AutoLock;
+using base::FilePath;
 using base::Lock;
 using chromeos::SecureBlob;
 using std::string;

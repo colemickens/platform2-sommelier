@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 #include "chaps/chaps_utility.h"
@@ -18,8 +18,9 @@
 #include "chaps/token_file_manager.h"
 #include "chaps/token_manager_client.h"
 
-using std::string;
+using base::FilePath;
 using chromeos::SecureBlob;
+using std::string;
 
 namespace chaps {
 

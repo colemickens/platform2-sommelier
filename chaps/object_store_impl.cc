@@ -10,10 +10,10 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
-#include <base/string_piece.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/utility.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>
@@ -27,6 +27,7 @@
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using base::FilePath;
 using chromeos::SecureBlob;
 using std::map;
 using std::string;
@@ -123,8 +124,8 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
     LOG(WARNING) << "Recreating database from scratch. Moving current database "
                  << "to " << kCorruptDatabaseDirectory;
     FilePath corrupt_db_path = database_path.Append(kCorruptDatabaseDirectory);
-    file_util::Delete(corrupt_db_path, true);
-    if (!file_util::Move(database_name, corrupt_db_path)) {
+    base::DeleteFile(corrupt_db_path, true);
+    if (!base::Move(database_name, corrupt_db_path)) {
       LOG(ERROR) << "Failed to move database." << status.ToString();
       return false;
     }

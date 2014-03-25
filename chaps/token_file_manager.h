@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 namespace chaps {

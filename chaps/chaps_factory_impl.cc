@@ -21,6 +21,7 @@
 #include "chaps/opencryptoki_importer.h"
 #include "chaps/session_impl.h"
 
+using base::FilePath;
 using std::string;
 
 namespace chaps {

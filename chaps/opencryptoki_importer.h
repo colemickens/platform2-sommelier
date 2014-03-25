@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 #include "chaps/object.h"
@@ -25,7 +25,7 @@ class TPMUtility;
 class OpencryptokiImporter : public ObjectImporter {
  public:
   OpencryptokiImporter(int slot,
-                       const FilePath& path,
+                       const base::FilePath& path,
                        TPMUtility* tpm,
                        ChapsFactory* factory);
   virtual ~OpencryptokiImporter();
@@ -88,7 +88,7 @@ class OpencryptokiImporter : public ObjectImporter {
 
   // The token slot id. We need this to associate with our key handles.
   int slot_;
-  FilePath path_;
+  base::FilePath path_;
   TPMUtility* tpm_;
   ChapsFactory* factory_;
   // Opencrytoki hierarchy key handles.
@@ -102,7 +102,7 @@ class OpencryptokiImporter : public ObjectImporter {
   std::string public_root_blob_;
   std::string public_leaf_blob_;
   // The path to the encrypted master key file.
-  FilePath master_key_path_;
+  base::FilePath master_key_path_;
   // Stores encrypted objects to be imported pending decryption.
   std::map<std::string, std::string> encrypted_objects_;
   // Stores decrypted, unflattened objects ready for import.

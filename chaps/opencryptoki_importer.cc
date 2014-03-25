@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/string_split.h>
+#include <base/strings/string_split.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"
@@ -20,6 +20,7 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using base::FilePath;
 using chromeos::SecureBlob;
 using std::map;
 using std::string;
@@ -62,12 +63,12 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
   FilePath object_path = base_path.Append(kOpencryptokiObjectDir);
   FilePath index_path = object_path.Append(kOpencryptokiObjectIndex);
   master_key_path_ = base_path.Append(kOpencryptokiMasterKey);
-  if (!file_util::PathExists(index_path)) {
+  if (!base::PathExists(index_path)) {
     LOG(WARNING) << "Did not find any opencryptoki objects to import.";
     return true;
   }
   string index;
-  if (!file_util::ReadFileToString(index_path, &index)) {
+  if (!base::ReadFileToString(index_path, &index)) {
     LOG(ERROR) << "Failed to read object index.";
     return false;
   }
@@ -79,7 +80,7 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
   // occurs just move on the next one.
   for (size_t i = 0; i < object_files.size(); ++i) {
     string object_file_content;
-    if (!file_util::ReadFileToString(object_path.Append(object_files[i]),
+    if (!base::ReadFileToString(object_path.Append(object_files[i]),
                                      &object_file_content)) {
       LOG(WARNING) << "Failed to read object file: " << object_files[i];
       continue;
@@ -444,8 +445,8 @@ bool OpencryptokiImporter::IsPrivateKey(const AttributeMap& attributes) {
 bool OpencryptokiImporter::DecryptPendingObjects() {
   if (encrypted_objects_.size() > 0) {
     string encrypted_master_key;
-    if (!file_util::PathExists(master_key_path_) ||
-        !file_util::ReadFileToString(master_key_path_, &encrypted_master_key)) {
+    if (!base::PathExists(master_key_path_) ||
+        !base::ReadFileToString(master_key_path_, &encrypted_master_key)) {
       LOG(ERROR) << "Failed to read encrypted master key.";
       return false;
     }

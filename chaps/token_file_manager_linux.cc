@@ -13,8 +13,8 @@
 
 #include <string>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -52,11 +52,11 @@ bool TokenFileManager::GetUserTokenPath(const string& user,
                                         FilePath* token_path) {
   CHECK(token_path);
   *token_path = FilePath(kTokenFilePath).Append(user);
-  return file_util::DirectoryExists(*token_path);
+  return base::DirectoryExists(*token_path);
 }
 
 bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
-  if (file_util::DirectoryExists(token_path)) {
+  if (base::DirectoryExists(token_path)) {
     LOG(ERROR) << "Tried to create " << token_path.value()
                << " which already exists";
     return false;
@@ -130,7 +130,7 @@ bool TokenFileManager::SaltAuthData(const FilePath& token_path,
                                     SecureBlob* salted_auth_data) {
   string salt_string;
   FilePath salt_file = token_path.Append(kSaltFileName);
-  if (!file_util::ReadFileToString(salt_file, &salt_string)) {
+  if (!base::ReadFileToString(salt_file, &salt_string)) {
     LOG(ERROR) << "Failed to read salt file in token directory "
                << token_path.value();
     return false;

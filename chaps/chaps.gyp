@@ -1,6 +1,7 @@
 {
   'variables': {
     'build_chaps_live_tests': 0,
+    'libbase_ver': 242728,
   },
   'target_defaults': {
     'dependencies': [

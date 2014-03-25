@@ -39,18 +39,18 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
                            bool* new_isolate_created);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
-                         const FilePath& path,
+                         const base::FilePath& path,
                          const chromeos::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
-                           const FilePath& path);
-  virtual void ChangeTokenAuthData(const FilePath& path,
+                           const base::FilePath& path);
+  virtual void ChangeTokenAuthData(const base::FilePath& path,
                                    const chromeos::SecureBlob& old_auth_data,
                                    const chromeos::SecureBlob& new_auth_data);
   virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
                             int slot_id,
-                            FilePath* path);
+                            base::FilePath* path);
 
   // Convenience method, not on TokenManagerInterface.
   // Returns true on success, false on failure. If it succeeds, stores a list of

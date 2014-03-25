@@ -13,8 +13,8 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
@@ -30,6 +30,7 @@
 #include "pkcs11/cryptoki.h"
 
 using base::AutoLock;
+using base::FilePath;
 using chromeos::SecureBlob;
 using std::map;
 using std::string;
@@ -321,7 +322,7 @@ bool SlotManagerImpl::InitStage2() {
   RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
 
   if (auto_load_system_token_) {
-    if (file_util::DirectoryExists(FilePath(kSystemTokenPath))) {
+    if (base::DirectoryExists(FilePath(kSystemTokenPath))) {
       // Setup the system token.
       int system_slot_id = 0;
       if (!LoadTokenInternal(

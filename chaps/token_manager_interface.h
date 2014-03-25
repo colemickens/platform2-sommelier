@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/file_path.h>
+#include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
 namespace chaps {
@@ -53,7 +53,7 @@ class TokenManagerInterface {
   //  auth_data - Authorization data to unlock the token.
   //  slot_id - On success, will be set to the loaded token's slot ID.
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
-                         const FilePath& path,
+                         const base::FilePath& path,
                          const chromeos::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id) = 0;
@@ -63,7 +63,7 @@ class TokenManagerInterface {
   //  isolate_credential - The isolate from which the token should be unloaded.
   //  path - The path to the token directory.
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
-                           const FilePath& path) = 0;
+                           const base::FilePath& path) = 0;
 
   // Changes authorization data for a token.
   //
@@ -71,7 +71,7 @@ class TokenManagerInterface {
   //  old_auth_data - The current authorization data.
   //  new_auth_data - The new authorization data.
   virtual void ChangeTokenAuthData(
-      const FilePath& path,
+      const base::FilePath& path,
       const chromeos::SecureBlob& old_auth_data,
       const chromeos::SecureBlob& new_auth_data) = 0;
 
@@ -84,7 +84,7 @@ class TokenManagerInterface {
   // path - On success, will be set to the token path for the slot.
   virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
                             int slot_id,
-                            FilePath* path) = 0;
+                            base::FilePath* path) = 0;
 };
 
 }  // namespace

@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <base/file_path.h>
 #include <chromeos/secure_blob.h>
+#include <base/files/file_path.h>
 
 #include "chaps/isolate.h"
 #include "chaps/token_file_manager.h"

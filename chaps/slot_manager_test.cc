@@ -7,7 +7,7 @@
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
-#include <base/stringprintf.h>
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
@@ -21,6 +21,7 @@
 #include "session_mock.h"
 #include "tpm_utility_mock.h"
 
+using base::FilePath;
 using chromeos::SecureBlob;
 using std::string;
 using ::testing::_;

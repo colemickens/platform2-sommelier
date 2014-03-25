@@ -20,18 +20,18 @@ class TokenManagerClientMock : public TokenManagerClient {
   MOCK_METHOD2(OpenIsolate, bool (chromeos::SecureBlob*, bool*));
   MOCK_METHOD1(CloseIsolate, void (const chromeos::SecureBlob&));
   MOCK_METHOD5(LoadToken, bool (const chromeos::SecureBlob&,
-                                const FilePath&,
+                                const base::FilePath&,
                                 const chromeos::SecureBlob&,
                                 const std::string&,
                                 int*));
   MOCK_METHOD2(UnloadToken, void (const chromeos::SecureBlob&,
-                                  const FilePath&));
-  MOCK_METHOD3(ChangeTokenAuthData, void (const FilePath&,
+                                  const base::FilePath&));
+  MOCK_METHOD3(ChangeTokenAuthData, void (const base::FilePath&,
                                           const chromeos::SecureBlob&,
                                           const chromeos::SecureBlob&));
   MOCK_METHOD3(GetTokenPath, bool(const chromeos::SecureBlob&,
                                   int,
-                                  FilePath*));
+                                  base::FilePath*));
   MOCK_METHOD2(GetTokenList, bool(const chromeos::SecureBlob&,
                                   std::vector<std::string>*));
 };
