@@ -465,5 +465,51 @@ TEST_F(ExternalDisplayTest, MinimumAndMaximumBrightness) {
   EXPECT_EQ("", delegate_->PopSentMessage());
 }
 
+TEST_F(ExternalDisplayTest, Rounding) {
+  // 5.3% should be sent to the display as 5/100.
+  display_.AdjustBrightnessByPercent(5.3);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  delegate_->set_reply_message(GetBrightnessReply(0, 100));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(5), delegate_->PopSentMessage());
+
+  // A 4.4% increase goes to 9.7%, which is rounded to 10/100.
+  display_.AdjustBrightnessByPercent(4.4);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(10), delegate_->PopSentMessage());
+
+  // A 0.3% decrease goes to 9.4%, which is rounded to 9/100.
+  display_.AdjustBrightnessByPercent(-0.3);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(9), delegate_->PopSentMessage());
+
+  // A 0.6% decrease goes to 8.8%, which is still rounded to 9 and shouldn't
+  // trigger an update.
+  display_.AdjustBrightnessByPercent(-0.6);
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ("", delegate_->PopSentMessage());
+}
+
+TEST_F(ExternalDisplayTest, ZeroMax) {
+  // Make the display return a maximum value of zero.
+  display_.AdjustBrightnessByPercent(5.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessRequestResultName,
+                ExternalDisplay::SEND_SUCCESS,
+                kMetricExternalDisplayResultMax).ToString(),
+            PopMetric());
+
+  // ExternalDisplay should report a failure and avoid writing an updated level.
+  delegate_->set_reply_message(GetBrightnessReply(0, 0));
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                kMetricExternalBrightnessReadResultName,
+                ExternalDisplay::RECEIVE_ZERO_MAX_VALUE,
+                kMetricExternalDisplayResultMax).ToString(),
+            PopMetric());
+  EXPECT_FALSE(test_api_.TriggerTimeout());
+}
+
 }  // namespace system
 }  // namespace power_manager

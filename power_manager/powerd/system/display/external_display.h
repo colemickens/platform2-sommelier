@@ -83,7 +83,7 @@ class ExternalDisplay {
   static const int kDdcGetDelayMs;
 
   // Amount of time that the brightness value last read from or written to the
-  // display should be honored before a new brighness value is read.
+  // display should be honored before a new brightness value is read.
   static const int kCachedBrightnessValidMs;
 
   // Possible outcomes when sending a message to the display. These values are
@@ -114,6 +114,8 @@ class ExternalDisplay {
     RECEIVE_BAD_RESULT = 6,
     // The message body contained an unexpected feature index.
     RECEIVE_BAD_INDEX = 7,
+    // The message body contained an unexpected maximum value of zero.
+    RECEIVE_ZERO_MAX_VALUE = 8,
   };
 
   // Interface that abstracts the portion of ExternalDisplay that needs to
@@ -207,8 +209,12 @@ class ExternalDisplay {
     STATE_WAITING_FOR_REPLY,
   };
 
-  // Returns true if |current_brightness_| and |max_brightness_| were updated
-  // recently enough to be trusted.
+  // Returns the monitor-specific brightness level corresponding to |percent|, a
+  // percentage in the range [0.0, 100.0].
+  uint16 BrightnessPercentToLevel(double percent) const;
+
+  // Returns true if |current_brightness_percent_| and |max_brightness_level_|
+  // were updated recently enough to be trusted.
   bool HaveCachedBrightness();
 
   // Returns true if an adjustment (in |pending_brightness_adjustment_percent_|)
@@ -248,16 +254,18 @@ class ExternalDisplay {
   // Current state of the object.
   State state_;
 
-  // Brightness believed to be currently used by the display. Note that the
-  // actual brightness may change in the background, e.g. in response to the
-  // user hitting physical buttons on the display.
-  uint16 current_brightness_;
+  // Brightness believed to be currently used by the display, as a percentage in
+  // the range [0.0, 100.0]. Note that the actual brightness may change in the
+  // background, e.g. in response to the user hitting physical buttons on the
+  // display.
+  double current_brightness_percent_;
 
-  // Maximum brightness value supported by the display.
-  uint16 max_brightness_;
+  // Maximum brightness value supported by the display, in display-specific
+  // units.
+  uint16 max_brightness_level_;
 
-  // Last time at which |current_brightness_| and |max_brightness_| were
-  // updated.
+  // Last time at which |current_brightness_percent_| and
+  // |max_brightness_level_| were updated.
   base::TimeTicks last_brightness_update_time_;
 
   // Amount by which the brightness should be offset, as a percentage in the

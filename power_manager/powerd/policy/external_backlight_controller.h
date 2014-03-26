@@ -31,10 +31,6 @@ namespace policy {
 class ExternalBacklightController : public BacklightController,
                                     public system::DisplayWatcherObserver {
  public:
-  // Amount the brightness will be adjusted up or down in response to a user
-  // request, as a linearly-calculated percent in the range [0.0, 100.0].
-  const static double kBrightnessAdjustmentPercent;
-
   ExternalBacklightController();
   virtual ~ExternalBacklightController();
 

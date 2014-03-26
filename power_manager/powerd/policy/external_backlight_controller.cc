@@ -16,7 +16,13 @@
 namespace power_manager {
 namespace policy {
 
-const double ExternalBacklightController::kBrightnessAdjustmentPercent = 6.25;
+namespace {
+
+// Amount the brightness will be adjusted up or down in response to a user
+// request, as a linearly-calculated percent in the range [0.0, 100.0].
+const double kBrightnessAdjustmentPercent = 5.0;
+
+}  // namespace
 
 ExternalBacklightController::ExternalBacklightController()
     : display_watcher_(NULL),

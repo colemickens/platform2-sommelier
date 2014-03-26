@@ -133,8 +133,8 @@ bool ExternalDisplay::TestApi::TriggerTimeout() {
 ExternalDisplay::ExternalDisplay(scoped_ptr<Delegate> delegate)
     : delegate_(delegate.Pass()),
       state_(STATE_IDLE),
-      current_brightness_(0),
-      max_brightness_(0),
+      current_brightness_percent_(0.0),
+      max_brightness_level_(0),
       pending_brightness_adjustment_percent_(0.0) {
 }
 
@@ -148,8 +148,12 @@ void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
   }
 }
 
+uint16 ExternalDisplay::BrightnessPercentToLevel(double percent) const {
+  return static_cast<uint16>(lround(percent * max_brightness_level_ / 100.0));
+}
+
 bool ExternalDisplay::HaveCachedBrightness() {
-  return max_brightness_ > 0 &&
+  return max_brightness_level_ > 0 &&
       !last_brightness_update_time_.is_null() &&
       (clock_.GetCurrentTime() -
        last_brightness_update_time_).InMilliseconds() <=
@@ -212,19 +216,30 @@ bool ExternalDisplay::ReadBrightness() {
   }
   // Don't bother checking the "VCP type code" in the fourth byte.
 
-  const uint16 new_max = (static_cast<uint16>(message[4]) << 8) + message[5];
-  if (new_max == 0) {
+  const uint16 max_level = (static_cast<uint16>(message[4]) << 8) + message[5];
+  if (max_level == 0) {
     LOG(WARNING) << "Received maximum brightness of 0 from "
                  << delegate_->GetName();
-  } else if (max_brightness_ > 0 && new_max != max_brightness_) {
-    LOG(WARNING) << "Maximum brightness from " << delegate_->GetName()
-                 << " changed from " << max_brightness_ << " to " << new_max;
+    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+                   RECEIVE_ZERO_MAX_VALUE, kMetricExternalDisplayResultMax);
+    return false;
   }
-  max_brightness_ = new_max;
-  current_brightness_ = (static_cast<uint16>(message[6]) << 8) + message[7];
-  VLOG(1) << "Received current brightness " << current_brightness_
-          << " and maximum brightness " << max_brightness_ << " from "
-          << delegate_->GetName();
+
+  if (max_brightness_level_ > 0 && max_level != max_brightness_level_) {
+    LOG(WARNING) << "Maximum brightness from " << delegate_->GetName()
+                 << " changed from " << max_brightness_level_
+                 << " to " << max_level;
+  }
+  max_brightness_level_ = max_level;
+
+  const uint64 current_level =
+      (static_cast<uint16>(message[6]) << 8) + message[7];
+  current_brightness_percent_ = util::ClampPercent(
+      static_cast<double>(current_level) / max_brightness_level_ * 100.0);
+
+  VLOG(1) << "Received current brightness " << current_level
+          << " (" << current_brightness_percent_ << "%) and maximum brightness "
+          << max_level << " from " << delegate_->GetName();
   last_brightness_update_time_ = clock_.GetCurrentTime();
   SendEnumMetric(kMetricExternalBrightnessReadResultName,
                  RECEIVE_SUCCESS, kMetricExternalDisplayResultMax);
@@ -232,28 +247,26 @@ bool ExternalDisplay::ReadBrightness() {
 }
 
 bool ExternalDisplay::WriteBrightness() {
-  const double current_percent = 100.0 * current_brightness_ / max_brightness_;
   const double new_percent = util::ClampPercent(
-      current_percent + pending_brightness_adjustment_percent_);
-  const uint16 new_brightness =
-      static_cast<uint16>(lround(new_percent * max_brightness_ / 100.0));
+      current_brightness_percent_ + pending_brightness_adjustment_percent_);
+  const uint16 new_level = BrightnessPercentToLevel(new_percent);
 
   // Don't send anything if the brightness isn't changing, but update the
   // timestamp to indicate that what we have is still current: if the user is
   // mashing on a brightness key, they're probably not simultaneously hitting
   // the display's physical buttons.
-  if (new_brightness == current_brightness_) {
+  if (new_level == BrightnessPercentToLevel(current_brightness_percent_)) {
     last_brightness_update_time_ = clock_.GetCurrentTime();
     return false;
   }
 
-  VLOG(1) << "Writing brightness " << new_brightness
+  VLOG(1) << "Writing brightness " << new_level
           << " (" << new_percent << "%) to " << delegate_->GetName();
   std::vector<uint8> message;
   message.push_back(kDdcSetCommand);
   message.push_back(kDdcBrightnessIndex);
-  message.push_back(new_brightness >> 8);    // High byte.
-  message.push_back(new_brightness & 0xff);  // Low byte.
+  message.push_back(new_level >> 8);    // High byte.
+  message.push_back(new_level & 0xff);  // Low byte.
   const SendResult result = SendMessage(message);
   if (result != SEND_SUCCESS) {
     SendEnumMetric(kMetricExternalBrightnessWriteResultName,
@@ -261,7 +274,7 @@ bool ExternalDisplay::WriteBrightness() {
     return false;
   }
 
-  current_brightness_ = new_brightness;
+  current_brightness_percent_ = new_percent;
   last_brightness_update_time_ = clock_.GetCurrentTime();
   SendEnumMetric(kMetricExternalBrightnessWriteResultName,
                  SEND_SUCCESS, kMetricExternalDisplayResultMax);
