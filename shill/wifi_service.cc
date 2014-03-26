@@ -354,12 +354,18 @@ bool WiFiService::Save(StoreInterface *storage) {
 }
 
 bool WiFiService::Unload() {
+  // Expect the service to be disconnected if is currently connected or
+  // in the process of connecting.
+  if (IsConnected() || IsConnecting()) {
+    expecting_disconnect_ = true;
+  } else {
+    expecting_disconnect_ = false;
+  }
   Service::Unload();
   if (wifi_) {
     wifi_->DestroyServiceLease(*this);
   }
   hidden_ssid_ = false;
-  expecting_disconnect_ = false;
   ResetSuspectedCredentialFailures();
   Error unused_error;
   ClearPassphrase(&unused_error);
