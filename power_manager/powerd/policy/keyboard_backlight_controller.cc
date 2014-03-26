@@ -82,7 +82,6 @@ KeyboardBacklightController::KeyboardBacklightController()
       user_percent_min_(kUserPercentMin),
       user_step_index_(-1),
       percent_for_ambient_light_(100.0),
-      ignore_ambient_light_(false),
       num_als_adjustments_(0),
       num_user_adjustments_(0),
       display_brightness_is_zero_(false) {
@@ -113,7 +112,42 @@ void KeyboardBacklightController::Init(
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
 
-  ReadPrefs();
+  // Read the minimum, dim, and maximum limits (one per line).
+  std::string input_str;
+  if (!prefs_->GetString(kKeyboardBacklightUserLimitsPref, &input_str))
+    LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserLimitsPref;
+  std::vector<std::string> lines;
+  base::SplitString(input_str, '\n', &lines);
+  if (lines.size() != 3 ||
+      !base::StringToDouble(lines[0], &user_percent_min_) ||
+      !base::StringToDouble(lines[1], &user_percent_dim_) ||
+      !base::StringToDouble(lines[2], &user_percent_max_)) {
+    LOG(FATAL) << "Failed to parse pref " << kKeyboardBacklightUserLimitsPref
+               << " with contents \"" << input_str << "\"";
+  }
+  user_percent_min_ = util::ClampPercent(user_percent_min_);
+  user_percent_dim_ = util::ClampPercent(user_percent_dim_);
+  user_percent_max_ = util::ClampPercent(user_percent_max_);
+
+  // Read the user-settable brightness steps (one per line).
+  if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str))
+    LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserStepsPref;
+  lines.clear();
+  base::SplitString(input_str, '\n', &lines);
+  for (std::vector<std::string>::iterator iter = lines.begin();
+       iter != lines.end(); ++iter) {
+    double new_step = 0.0;
+    if (!base::StringToDouble(*iter, &new_step))
+      LOG(FATAL) << "Invalid line in pref " << kKeyboardBacklightUserStepsPref
+                 << ": \"" << *iter << "\"";
+    user_steps_.push_back(util::ClampPercent(new_step));
+  }
+  if (user_steps_.empty()) {
+    VLOG(1) << "No user steps read; inserting default steps";
+    user_steps_.push_back(user_percent_min_);
+    user_steps_.push_back(user_percent_dim_);
+    user_steps_.push_back(user_percent_max_);
+  }
 
   if (ambient_light_handler_.get()) {
     ambient_light_handler_->Init(prefs_, kKeyboardBacklightAlsLimitsPref,
@@ -257,8 +291,6 @@ int KeyboardBacklightController::GetNumUserAdjustments() const {
 void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     double brightness_percent,
     AmbientLightHandler::BrightnessChangeCause cause) {
-  if (ignore_ambient_light_)
-    return;
   percent_for_ambient_light_ = brightness_percent;
   TransitionStyle transition =
       cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
@@ -278,65 +310,6 @@ void KeyboardBacklightController::OnBrightnessChanged(
   if (zero != display_brightness_is_zero_) {
     display_brightness_is_zero_ = zero;
     UpdateState();
-  }
-}
-
-void KeyboardBacklightController::ReadPrefs() {
-  ReadLimitsPrefs(kKeyboardBacklightUserLimitsPref,
-                  &user_percent_min_, &user_percent_dim_, &user_percent_max_);
-  ReadUserStepsPref();
-  prefs_->GetBool(kDisableALSPref, &ignore_ambient_light_);
-}
-
-void KeyboardBacklightController::ReadLimitsPrefs(const std::string& pref_name,
-                                                  double* min,
-                                                  double* dim,
-                                                  double* max) {
-  std::string input_str;
-  if (prefs_->GetString(pref_name, &input_str)) {
-    std::vector<std::string> inputs;
-    base::SplitString(input_str, '\n', &inputs);
-    double temp_min, temp_dim, temp_max;
-    if (inputs.size() == 3 &&
-        base::StringToDouble(inputs[0], &temp_min) &&
-        base::StringToDouble(inputs[1], &temp_dim) &&
-        base::StringToDouble(inputs[2], &temp_max)) {
-      *min = temp_min;
-      *dim = temp_dim;
-      *max = temp_max;
-    } else {
-      ReplaceSubstringsAfterOffset(&input_str, 0, "\n", "\\n");
-      LOG(ERROR) << "Failed to parse pref " << pref_name
-                 << " with contents: \"" << input_str << "\"";
-    }
-  } else {
-    LOG(ERROR) << "Failed to read pref " << pref_name;
-  }
-}
-
-void KeyboardBacklightController::ReadUserStepsPref() {
-  std::string input_str;
-  user_steps_.clear();
-  if (prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str)) {
-    std::vector<std::string> lines;
-    base::SplitString(input_str, '\n', &lines);
-    for (std::vector<std::string>::iterator iter = lines.begin();
-         iter != lines.end(); ++iter) {
-      double new_step = 0.0;
-      if (!base::StringToDouble(*iter, &new_step))
-        LOG(ERROR) << "Skipping line in user step pref: \"" << *iter << "\"";
-      else
-        user_steps_.push_back(new_step);
-    }
-  } else {
-    LOG(ERROR) << "Failed to read user steps file";
-  }
-
-  if (user_steps_.empty()) {
-    VLOG(1) << "No user steps read; inserting default steps";
-    user_steps_.push_back(user_percent_min_);
-    user_steps_.push_back(user_percent_dim_);
-    user_steps_.push_back(user_percent_max_);
   }
 }
 

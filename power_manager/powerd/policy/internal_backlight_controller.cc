@@ -124,11 +124,6 @@ void InternalBacklightController::Init(
   prefs_ = prefs;
   display_power_setter_ = display_power_setter;
 
-  if (sensor) {
-    ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
-    ambient_light_handler_->set_name("panel");
-  }
-
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
 
@@ -153,9 +148,9 @@ void InternalBacklightController::Init(
   prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
                   &instant_transitions_below_min_level_);
 
-  bool disable_als = false;
-  prefs_->GetBool(kDisableALSPref, &disable_als);
-  if (ambient_light_handler_ && !disable_als) {
+  if (sensor) {
+    ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
+    ambient_light_handler_->set_name("panel");
     ambient_light_handler_->Init(prefs_, kInternalBacklightAlsLimitsPref,
         kInternalBacklightAlsStepsPref, initial_percent);
   } else {

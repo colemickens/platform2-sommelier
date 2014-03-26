@@ -67,11 +67,11 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
       max_brightness_percent_ = temp_max;
     } else {
       ReplaceSubstringsAfterOffset(&input_str, 0, "\n", "\\n");
-      LOG(ERROR) << "Failed to parse limits pref " << limits_pref_name
-                 << " with contents: \"" << input_str << "\"";
+      LOG(FATAL) << "Failed to parse limits pref " << limits_pref_name
+                 << " with contents \"" << input_str << "\"";
     }
   } else {
-    LOG(ERROR) << "Failed to read limits pref " << limits_pref_name;
+    LOG(FATAL) << "Failed to read limits pref " << limits_pref_name;
   }
 
   if (prefs->GetString(steps_pref_name, &input_str)) {
@@ -95,14 +95,13 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
           base::StringToInt(segments[3], &new_step.increase_lux_threshold)) {
         // Okay, we've read all the fields.
       } else {
-        LOG(ERROR) << "Skipping line in steps pref " << steps_pref_name
-                   << ": \"" << *iter << "\"";
-        continue;
+        LOG(FATAL) << "Steps pref " << steps_pref_name
+                   << " has invalid line \"" << *iter << "\"";
       }
       steps_.push_back(new_step);
     }
   } else {
-    LOG(ERROR) << "Failed to read steps pref " << steps_pref_name;
+    LOG(FATAL) << "Failed to read steps pref " << steps_pref_name;
   }
 
   // If we don't have any values in |steps_|, insert a default value.
@@ -115,6 +114,11 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
     steps_.push_back(default_step);
   }
 
+  // The bottom and top steps should have infinite ranges to ensure that we
+  // don't fall off either end.
+  CHECK_EQ(steps_.front().decrease_lux_threshold, -1);
+  CHECK_EQ(steps_.back().increase_lux_threshold, -1);
+
   // Start at the step nearest to the initial backlight level.
   double percent_delta = std::numeric_limits<double>::max();
   for (size_t i = 0; i < steps_.size(); i++) {
@@ -125,8 +129,7 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
       step_index_ = i;
     }
   }
-  CHECK(step_index_ >= 0);
-  CHECK(step_index_ < steps_.size());
+  CHECK_LT(step_index_, steps_.size());
 
   // Create a synthetic lux value that is in line with |step_index_|.
   // If one or both of the thresholds are unbounded, just do the best we
@@ -202,8 +205,8 @@ void AmbientLightHandler::OnAmbientLightUpdated(
         break;
     }
   }
-  DCHECK_GE(new_step_index, 0);
-  DCHECK_LT(new_step_index, num_steps);
+  CHECK_GE(new_step_index, 0);
+  CHECK_LT(new_step_index, num_steps);
 
   if (hysteresis_state_ == HYSTERESIS_IMMEDIATE) {
     step_index_ = new_step_index;
@@ -241,7 +244,7 @@ void AmbientLightHandler::OnAmbientLightUpdated(
 }
 
 double AmbientLightHandler::GetTargetPercent() const {
-  DCHECK_LT(step_index_, steps_.size());
+  CHECK_LT(step_index_, steps_.size());
   return power_source_ == POWER_AC ?
       steps_[step_index_].ac_target_percent :
       steps_[step_index_].battery_target_percent;

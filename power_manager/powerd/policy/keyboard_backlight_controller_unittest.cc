@@ -51,7 +51,6 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetString(kKeyboardBacklightAlsStepsPref, als_steps_pref_);
     prefs_.SetString(kKeyboardBacklightUserLimitsPref, user_limits_pref_);
     prefs_.SetString(kKeyboardBacklightUserStepsPref, user_steps_pref_);
-    prefs_.SetInt64(kDisableALSPref, 0);
 
     controller_.Init(&backlight_, &prefs_, &light_sensor_,
                      &display_backlight_controller_);
@@ -199,43 +198,6 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 
-TEST_F(KeyboardBacklightControllerTest, TwoValueLimitsPref) {
-  // We should use reasonable limits if the user limits pref only has two
-  // values instead of the expected three.
-  user_limits_pref_ = "0.0\n50.0";
-  Init();
-  controller_.IncreaseUserBrightness();
-  controller_.IncreaseUserBrightness();
-  controller_.IncreaseUserBrightness();
-  EXPECT_EQ(100, backlight_.current_level());
-}
-
-TEST_F(KeyboardBacklightControllerTest, UnparseableLimitsPref) {
-  // We should use reasonable limits if the user limits pref contains a
-  // non-numeric value.
-  user_limits_pref_ = "0.0\n50.0\nfoo";
-  Init();
-  controller_.IncreaseUserBrightness();
-  controller_.IncreaseUserBrightness();
-  controller_.IncreaseUserBrightness();
-  EXPECT_EQ(100, backlight_.current_level());
-}
-
-TEST_F(KeyboardBacklightControllerTest, SkipBogusUserStep) {
-  user_steps_pref_ = "0.0\n10.0\nfoo\n60.0\n100.0";
-  initial_backlight_level_ = 0;
-  Init();
-  ASSERT_EQ(0, backlight_.current_level());
-
-  // The invalid value should be skipped over.
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
-  EXPECT_EQ(10, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
-  EXPECT_EQ(60, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
-  EXPECT_EQ(100, backlight_.current_level());
-}
-
 TEST_F(KeyboardBacklightControllerTest, EmptyUserStepsPref) {
   // If the user steps pref file is empty, the controller should use steps
   // representing the minimum, dimmed, and maximum levels.
@@ -249,31 +211,6 @@ TEST_F(KeyboardBacklightControllerTest, EmptyUserStepsPref) {
   EXPECT_EQ(63, backlight_.current_level());
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(87, backlight_.current_level());
-}
-
-TEST_F(KeyboardBacklightControllerTest, SkipBogusAlsStep) {
-  // Set a pref with only two values in the middle step instead of three.
-  als_steps_pref_ = "20.0 -1 50\n50.0 75\n75.0 60 -1";
-  initial_backlight_level_ = 20;
-  Init();
-
-  // After two readings above the bottom step's increase threshold, the
-  // backlight should go to the top step.
-  light_sensor_.set_lux(55);
-  light_sensor_.NotifyObservers();
-  light_sensor_.NotifyObservers();
-  EXPECT_EQ(75, backlight_.current_level());
-}
-
-TEST_F(KeyboardBacklightControllerTest, EmptyAlsStepsPref) {
-  als_steps_pref_ = "";
-  als_limits_pref_ = "20.0\n50.0\n90.0";
-  initial_backlight_level_ = 0;
-  Init();
-
-  light_sensor_.set_lux(20);
-  light_sensor_.NotifyObservers();
-  EXPECT_EQ(90, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, ChangeStates) {

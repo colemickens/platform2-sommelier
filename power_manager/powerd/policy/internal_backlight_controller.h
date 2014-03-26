@@ -218,9 +218,9 @@ class InternalBacklightController : public BacklightController,
   // levels.
   bool instant_transitions_below_min_level_;
 
-  // If true, then suggestions from |ambient_light_handler_| are used.
-  // False if |ambient_light_handler_| is NULL, kDisableALSPref was set, or
-  // the user has manually set the brightness.
+  // If true, then suggestions from |ambient_light_handler_| are used. False if
+  // |ambient_light_handler_| is NULL or the user has manually set the
+  // brightness.
   bool use_ambient_light_;
 
   // Percentage by which we offset the brightness in response to increase and

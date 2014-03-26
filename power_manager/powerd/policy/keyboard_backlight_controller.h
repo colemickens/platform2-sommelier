@@ -99,23 +99,6 @@ class KeyboardBacklightController
       BacklightController* source) OVERRIDE;
 
  private:
-  void ReadPrefs();
-
-  // Reads in the percentage limits for either the user control or the ALS
-  // control. Takes in the contents of the pref file to a string of the
-  // format "[<min percent percent>\n<dim percent>\n<max percent>\n]" and
-  // parses it into corresponding arguments. If this fails the values of
-  // |min|, |dim|, and |max| are preserved.
-  void ReadLimitsPrefs(const std::string& pref_name,
-                       double* min,
-                       double* dim,
-                       double* max);
-
-  // Takes in the contents of the pref file to a string of the format "[<target
-  // percent>\n]+" and parses it into a vector of doubles to be used as steps
-  // that user commands change the keyboard brightness by.
-  void ReadUserStepsPref();
-
   // Handles |video_timer_| firing, indicating that video activity has stopped.
   void HandleVideoTimeout();
 
@@ -198,10 +181,6 @@ class KeyboardBacklightController
   // light sensor is controlling the brightness.  This is set by
   // |ambient_light_handler_|.
   double percent_for_ambient_light_;
-
-  // If true, we ignore readings from the ambient light sensor.  Controlled by
-  // kDisableALSPref.
-  bool ignore_ambient_light_;
 
   // Runs HandleVideoTimeout().
   base::OneShotTimer<KeyboardBacklightController> video_timer_;

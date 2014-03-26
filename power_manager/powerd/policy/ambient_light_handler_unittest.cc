@@ -59,10 +59,8 @@ class AmbientLightHandlerTest : public ::testing::Test {
  protected:
   // Initializes |handler_|.
   void Init() {
-    if (!limits_pref_.empty())
-      prefs_.SetString(kLimitsPref, limits_pref_);
-    if (!steps_pref_.empty())
-      prefs_.SetString(kStepsPref, steps_pref_);
+    prefs_.SetString(kLimitsPref, limits_pref_);
+    prefs_.SetString(kStepsPref, steps_pref_);
     light_sensor_.set_lux(initial_lux_);
     handler_.Init(&prefs_, kLimitsPref, kStepsPref,
                   initial_brightness_percent_);
