@@ -6,6 +6,7 @@
 
 #include <map>
 
+#include <base/files/important_file_writer.h>
 #include <base/file_util.h>
 #include <base/string_number_conversions.h>
 #include <fcntl.h>
@@ -93,22 +94,16 @@ bool KeyFileStore::Flush() {
     success = false;
   }
   if (success) {
-    // The profile file must be accessible by the owner only.
-    int fd = creat(path_.value().c_str(), S_IRUSR | S_IWUSR);
-    if (fd < 0) {
-      LOG(ERROR) << "Failed to create key file " << path_.value();
-      success = false;
-    } else {
-      int written = file_util::WriteFileDescriptor(fd, data, length);
-      if (written < 0 || (static_cast<gsize>(written) != length)) {
-        LOG(ERROR) << "Failed to store key file: " << path_.value();
-        success = false;
-      }
-      // Call fsync() on this fd so that this file is completely written out,
-      // since it is pivotal to our connectivity that these files remain
-      // intact.
-      fsync(fd);
-      close(fd);
+    // Explicitly set the file creation umask temporarily, so that the file
+    // created here will be accessible by the owner only. Save the current
+    // umask as well, so it can be restored once the file write is completed.
+    mode_t cur_mode = umask(~(S_IRUSR | S_IWUSR));
+    // Atomically write out the file.
+    success = base::ImportantFileWriter::WriteFileAtomically(path_, data);
+    // Restore previous file creation umask.
+    umask(cur_mode);
+    if (!success) {
+      LOG(ERROR) << "Failed to store key file: " << path_.value();
     }
   }
   glib_->Free(data);
