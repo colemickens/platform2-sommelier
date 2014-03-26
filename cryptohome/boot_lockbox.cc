@@ -121,7 +121,7 @@ bool BootLockbox::GetKeyBlob(chromeos::SecureBlob* key_blob) {
 }
 
 bool BootLockbox::GetPublicKey(chromeos::SecureBlob* public_key) {
-  if (!key_.has_public_key_der() && !LoadKey(&key_) && !CreateKey(&key_)) {
+  if (!key_.has_public_key_der() && !LoadKey(&key_)) {
     return false;
   }
   CHECK(key_.has_public_key_der());
