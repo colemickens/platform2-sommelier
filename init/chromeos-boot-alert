@@ -70,6 +70,9 @@ show_assets_message_image() {
 
   # Build locale list
   locale="$(find_current_locale)" || locale=""
+  # Starting from R34, the initial_locale from VPD may have multiple values,
+  # separated by ',' -- and we only want to try the primary one.
+  locale="${locale%%,*}"
   locale_list="$locale"
   while [ "${locale%[-_]*}" != "$locale" ]; do
     locale="${locale%[-_]*}"
