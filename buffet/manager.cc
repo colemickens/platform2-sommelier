@@ -28,9 +28,16 @@ Manager::Manager(DBusManager* dbus_manager) : dbus_manager_(dbus_manager) {
                                   dbus_constants::kManagerUpdateStateMethod,
                                   base::Bind(&Manager::HandleUpdateState,
                                              base::Unretained(this)));
+  properties_.reset(new Properties(exported_object));
+  // TODO(wiley): Initialize all properties appropriately before claiming
+  //              the properties interface.
+  properties_->state_.SetValue("{}");
+  properties_->ClaimPropertiesInterface();
 }
 
 Manager::~Manager() {
+  // Prevent the properties object from making calls to the exported object.
+  properties_.reset(nullptr);
   // Unregister ourselves from the Bus.  This prevents the bus from calling
   // our callbacks in between the Manager's death and the bus unregistering
   // our exported object on shutdown.  Unretained makes no promises of memory
@@ -89,7 +96,8 @@ scoped_ptr<dbus::Response> Manager::HandleUpdateState(
   }
 
   LOG(INFO) << "Received call to Manager.UpdateState()";
-  // TODO(wiley): Do something with these parameters to update state.
+  // TODO(wiley): Merge json state blobs intelligently.
+  properties_->state_.SetValue(json_state_fragment);
 
   // Send back our response.
   return dbus::Response::FromMethodCall(method_call);

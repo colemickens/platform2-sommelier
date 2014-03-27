@@ -9,6 +9,9 @@
 #include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
 
+#include "buffet/dbus_constants.h"
+#include "buffet/exported_property_set.h"
+
 namespace buffet {
 
 class DBusManager;
@@ -22,6 +25,16 @@ class Manager {
   ~Manager();
 
  private:
+  struct Properties: public dbus_utils::ExportedPropertySet {
+   public:
+    dbus_utils::ExportedProperty<std::string> state_;
+    Properties(dbus::ExportedObject *manager_object)
+        : dbus_utils::ExportedPropertySet(manager_object) {
+      RegisterProperty(dbus_constants::kManagerInterface, "State", &state_);
+    }
+    virtual ~Properties() {}
+  };
+
   // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
   scoped_ptr<dbus::Response> HandleRegisterDevice(
       dbus::MethodCall* method_call);
@@ -30,6 +43,7 @@ class Manager {
       dbus::MethodCall* method_call);
 
   DBusManager* dbus_manager_;  // Weak;  DBusManager should outlive Manager.
+  scoped_ptr<Properties> properties_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
