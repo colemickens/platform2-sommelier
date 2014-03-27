@@ -15,6 +15,12 @@ const char kRootServicePath[] = "/org/chromium/Buffet";
 
 const char kRootTestMethod[] = "TestMethod";
 
+const char kManagerInterface[] = "org.chromium.Buffet.Manager";
+const char kManagerServicePath[] = "/org/chromium/Buffet/Manager";
+
+const char kManagerUpdateStateMethod[] = "UpdateState";
+const char kManagerRegisterDeviceMethod[] = "RegisterDevice";
+
 }  // namespace dbus_constants
 
 }  // namespace buffet

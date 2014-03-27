@@ -19,6 +19,14 @@ extern const char kRootServicePath[];
 // Methods exposed as part of kRootInterface.
 extern const char kRootTestMethod[];
 
+// Interface implemented by the object at kManagerServicePath.
+extern const char kManagerInterface[];
+extern const char kManagerServicePath[];
+
+// Methods exposed as part of kManagerInterface.
+extern const char kManagerUpdateStateMethod[];
+extern const char kManagerRegisterDeviceMethod[];
+
 }  // namespace dbus_constants
 
 }  // namespace buffet

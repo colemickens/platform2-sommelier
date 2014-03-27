@@ -15,6 +15,7 @@
 #include <gflags/gflags.h>
 
 #include "buffet/dbus_manager.h"
+#include "buffet/manager.h"
 
 DEFINE_string(logsroot, "/var/log", "Root directory for buffet logs.");
 
@@ -79,8 +80,11 @@ int main(int argc, char* argv[]) {
   // Initialize the dbus_manager.
   buffet::DBusManager dbus_manager;
   dbus_manager.Init();
-
-  message_loop.Run();
+  {
+    // The Manager needs the dbus_manager to remain in scope for its lifetime.
+    buffet::Manager manager(&dbus_manager);
+    message_loop.Run();
+  }
 
   dbus_manager.Finalize();
   return 0;
