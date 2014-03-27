@@ -303,13 +303,6 @@ elif use_flag_is_set fade_boot_splash_screen; then
   ASH_FLAGS="$ASH_FLAGS --ash-animate-from-boot-splash-screen"
 fi
 
-# TODO(derat): Enable brightness control globally and remove this flag after
-# powerd's brightness-controlling code has been verified to work with most
-# external displays: http://crbug.com/315371
-if is_board monroe; then
-  ASH_FLAGS="$ASH_FLAGS --ash-enable-brightness-control"
-fi
-
 if [ -e $(get_wallpaper_filename oem large) ] &&
    [ -e $(get_wallpaper_filename oem small) ]; then
   add_wallpaper_flag default large $(get_wallpaper_filename oem large)
