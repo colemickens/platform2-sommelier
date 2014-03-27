@@ -34,9 +34,10 @@
       'type': 'static_library',
       'sources': [
         'data_encoding.cc',
-        'dbus_manager.cc',
         'dbus_constants.cc',
+        'dbus_manager.cc',
         'dbus_utils.cc',
+        'exported_property_set.cc',
         'http_request.cc',
         'http_transport_curl.cc',
         'http_utils.cc',
@@ -73,6 +74,7 @@
       'sources': [
         'buffet_testrunner.cc',
         'data_encoding_unittest.cc',
+        'exported_property_set_unittest.cc',
         'mime_utils_unittest.cc',
         'string_utils_unittest.cc',
       ],
