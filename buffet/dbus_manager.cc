@@ -8,6 +8,10 @@
 
 #include <base/bind.h>
 
+#include "buffet/dbus_constants.h"
+
+using ::std::string;
+
 namespace buffet {
 
 namespace {
@@ -29,8 +33,7 @@ void HandleSynchronousDBusMethodCall(
 }  // namespace
 
 DBusManager::DBusManager()
-    : bus_(nullptr),
-      buffet_dbus_object_(nullptr) {}
+    : bus_(nullptr) {}
 
 DBusManager::~DBusManager() {}
 
@@ -49,26 +52,36 @@ void DBusManager::InitDBus() {
   bus_ = new dbus::Bus(options);
   CHECK(bus_->Connect());
 
-  buffet_dbus_object_ = bus_->GetExportedObject(
-      dbus::ObjectPath(kBuffetServicePath));
-  ExportDBusMethod(kTestMethod, &DBusManager::HandleTestMethod);
+  // buffet_dbus_object is owned by the Bus.
+  auto buffet_dbus_object = GetExportedObject(dbus_constants::kRootServicePath);
+  ExportDBusMethod(
+      buffet_dbus_object,
+      dbus_constants::kRootInterface, dbus_constants::kRootTestMethod,
+      base::Bind(&DBusManager::HandleTestMethod, base::Unretained(this)));
 
-  CHECK(bus_->RequestOwnershipAndBlock(kBuffetServiceName,
+  CHECK(bus_->RequestOwnershipAndBlock(dbus_constants::kServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY))
-      << "Unable to take ownership of " << kBuffetServiceName;
+      << "Unable to take ownership of " << dbus_constants::kServiceName;
 }
 
 void DBusManager::ShutDownDBus() {
   bus_->ShutdownAndBlock();
 }
 
-void DBusManager::ExportDBusMethod(const std::string& method_name,
-                              DBusMethodCallMemberFunction member) {
-  DCHECK(buffet_dbus_object_);
-  CHECK(buffet_dbus_object_->ExportMethodAndBlock(
-      kBuffetInterface, method_name,
-      base::Bind(&HandleSynchronousDBusMethodCall,
-                 base::Bind(member, base::Unretained(this)))));
+dbus::ExportedObject* DBusManager::GetExportedObject(
+    const string& object_path) {
+  return bus_->GetExportedObject(dbus::ObjectPath(object_path));
+}
+
+void DBusManager::ExportDBusMethod(
+    dbus::ExportedObject* exported_object,
+    const string& interface_name,
+    const string& method_name,
+    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler) {
+  DCHECK(exported_object);
+  CHECK(exported_object->ExportMethodAndBlock(
+      interface_name, method_name,
+      base::Bind(&HandleSynchronousDBusMethodCall, handler)));
 }
 
 scoped_ptr<dbus::Response> DBusManager::HandleTestMethod(

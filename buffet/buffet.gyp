@@ -35,6 +35,7 @@
       'sources': [
         'data_encoding.cc',
         'dbus_manager.cc',
+        'dbus_constants.cc',
         'http_request.cc',
         'http_transport_curl.cc',
         'http_utils.cc',
@@ -57,6 +58,7 @@
       'type': 'executable',
       'sources': [
         'buffet_client.cc',
+        'dbus_constants.cc',
       ],
     },
     {

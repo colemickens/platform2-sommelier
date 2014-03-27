@@ -10,6 +10,7 @@
 #include <dbus/object_proxy.h>
 #include <gflags/gflags.h>
 
+#include "buffet/dbus_constants.h"
 #include "buffet/dbus_manager.h"
 
 DEFINE_bool(testmethod, false, "Call the Buffet Test Method.");
@@ -18,14 +19,14 @@ namespace {
 
 dbus::ObjectProxy* GetBuffetDBusProxy(dbus::Bus *bus) {
   return bus->GetObjectProxy(
-      buffet::kBuffetServiceName,
-      dbus::ObjectPath(buffet::kBuffetServicePath));
+      buffet::dbus_constants::kServiceName,
+      dbus::ObjectPath(buffet::dbus_constants::kRootServicePath));
 }
 
 void CallTestMethod(dbus::ObjectProxy* proxy) {
   int timeout_ms = 1000;
-  dbus::MethodCall method_call(buffet::kBuffetInterface,
-                               buffet::kTestMethod);
+  dbus::MethodCall method_call(buffet::dbus_constants::kRootInterface,
+                               buffet::dbus_constants::kRootTestMethod);
   scoped_ptr<dbus::Response> response(proxy->CallMethodAndBlock(&method_call,
                                                                 timeout_ms));
   if (!response) {
