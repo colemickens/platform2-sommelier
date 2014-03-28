@@ -9,11 +9,12 @@
 
 namespace power_manager {
 
+// Prefs.
 const char kLowBatteryShutdownTimePref[] = "low_battery_shutdown_time_s";
 const char kLowBatteryShutdownPercentPref[] = "low_battery_shutdown_percent";
-const char kCleanShutdownTimeoutMsPref[] = "clean_shutdown_timeout_ms";
 const char kPluggedDimMsPref[] = "plugged_dim_ms";
 const char kPluggedOffMsPref[] = "plugged_off_ms";
+const char kPluggedSuspendMsPref[] = "plugged_suspend_ms";
 const char kUnpluggedDimMsPref[] = "unplugged_dim_ms";
 const char kUnpluggedOffMsPref[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMsPref[] = "unplugged_suspend_ms";
@@ -21,7 +22,6 @@ const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
 const char kUseLidPref[] = "use_lid";
 const char kRetrySuspendMsPref[] = "retry_suspend_ms";
 const char kRetrySuspendAttemptsPref[] = "retry_suspend_attempts";
-const char kPluggedSuspendMsPref[] = "plugged_suspend_ms";
 const char kMinVisibleBacklightLevelPref[] = "min_visible_backlight_level";
 const char kInstantTransitionsBelowMinLevelPref[] =
     "instant_transitions_below_min_level";
@@ -35,13 +35,10 @@ const char kInternalBacklightNoAlsAcBrightnessPref[] =
 const char kInternalBacklightNoAlsBatteryBrightnessPref[] =
     "internal_backlight_no_als_battery_brightness";
 const char kKeyboardBacklightAlsStepsPref[] = "keyboard_backlight_als_steps";
-const char kKeyboardBacklightUserLimitsPref[] =
-    "keyboard_backlight_user_limits";
 const char kKeyboardBacklightUserStepsPref[] = "keyboard_backlight_user_steps";
 const char kRequireUsbInputDeviceToSuspendPref[] =
     "require_usb_input_device_to_suspend";
 const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
-const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
 const char kBatteryStabilizedAfterStartupMsPref[] =
     "battery_stabilized_after_startup_ms";
 const char kBatteryStabilizedAfterLinePowerConnectedMsPref[] =
@@ -75,12 +72,7 @@ const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
 const char kPowerStatusPath[] = "/sys/class/power_supply";
-
-// Broadcast signals.
-const char kPowerStateChanged[] = "PowerStateChanged";
-
 const double kEpsilon = 0.001;
-
 const int64 kFastBacklightTransitionMs = 200;
 const int64 kSlowBacklightTransitionMs = 2000;
 

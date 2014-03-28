@@ -269,7 +269,7 @@ class PowerSupply : public UdevObserver {
   bool IsBatteryBelowShutdownThreshold(const PowerStatus& status) const;
 
   // Schedules |poll_timer_| to call HandlePollTimeout().
-  void SchedulePoll(bool last_poll_succeeded);
+  void SchedulePoll();
 
   // Handles |poll_timer_| firing. Updates |power_status_| and reschedules the
   // timer.
@@ -337,13 +337,9 @@ class PowerSupply : public UdevObserver {
   // the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.
   double full_factor_;
 
-  // Amount of time to wait before updating |power_status_| after a
-  // successful update.
+  // Amount of time to wait before updating |power_status_| again after an
+  // update.
   base::TimeDelta poll_delay_;
-
-  // Amount of time to wait before updating |power_status_| after an
-  // unsuccessful update and to wait before recalculating battery times.
-  base::TimeDelta short_poll_delay_;
 
   // Calls HandlePollTimeout().
   base::OneShotTimer<PowerSupply> poll_timer_;

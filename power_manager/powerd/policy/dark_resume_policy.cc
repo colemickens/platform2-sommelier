@@ -225,7 +225,6 @@ void DarkResumePolicy::SetStates(const std::vector<base::FilePath>& files,
   }
 }
 
-
 void DarkResumePolicy::SetThresholds() {
   double battery = power_status_.battery_percentage;
   MarginMap::iterator margin = battery_margins_.upper_bound(battery);

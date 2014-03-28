@@ -33,9 +33,6 @@ const double kDoubleScaleFactor = 0.000001;
 // Default time interval between polls, in milliseconds.
 const int kDefaultPollMs = 30000;
 
-// Default shorter time interval used after a failed poll, in milliseconds.
-const int kDefaultShortPollMs = 5000;
-
 // Default values for |battery_stabilized_after_*_delay_|, in milliseconds.
 const int kDefaultBatteryStabilizedAfterStartupDelayMs = 5000;
 const int kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs = 5000;
@@ -166,9 +163,6 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   GetPowerSupplyPaths();
 
   poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
-  short_poll_delay_ = GetMsPref(
-      kBatteryPollShortIntervalPref, kDefaultShortPollMs);
-
   battery_stabilized_after_startup_delay_ = GetMsPref(
       kBatteryStabilizedAfterStartupMsPref,
       kDefaultBatteryStabilizedAfterStartupDelayMs);
@@ -207,7 +201,7 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   // This defers the initial recording of samples until the current has
   // stabilized.
   ResetBatterySamples(battery_stabilized_after_startup_delay_);
-  SchedulePoll(false);
+  SchedulePoll();
 }
 
 void PowerSupply::AddObserver(PowerSupplyObserver* observer) {
@@ -221,9 +215,9 @@ void PowerSupply::RemoveObserver(PowerSupplyObserver* observer) {
 }
 
 bool PowerSupply::RefreshImmediately() {
-  bool success = UpdatePowerStatus();
+  const bool success = UpdatePowerStatus();
   if (!is_suspended_)
-    SchedulePoll(success);
+    SchedulePoll();
   if (success) {
     notify_observers_task_.Reset(
         base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
@@ -616,8 +610,8 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
   return below_threshold;
 }
 
-void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
-  base::TimeDelta delay = last_poll_succeeded ? poll_delay_ : short_poll_delay_;
+void PowerSupply::SchedulePoll() {
+  base::TimeDelta delay = poll_delay_;
   base::TimeTicks now = clock_->GetCurrentTime();
   if (battery_stabilized_timestamp_ > now) {
     delay = std::min(delay,
@@ -632,8 +626,8 @@ void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
 
 void PowerSupply::HandlePollTimeout() {
   current_poll_delay_for_testing_ = base::TimeDelta();
-  bool success = UpdatePowerStatus();
-  SchedulePoll(success);
+  const bool success = UpdatePowerStatus();
+  SchedulePoll();
   if (success)
     NotifyObservers();
 }

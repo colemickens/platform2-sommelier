@@ -358,7 +358,6 @@ TEST_F(PowerSupplyTest, PollDelays) {
   WriteDefaultValues(POWER_AC, REPORT_CHARGE);
 
   const base::TimeDelta kPollDelay = base::TimeDelta::FromSeconds(30);
-  const base::TimeDelta kShortPollDelay = base::TimeDelta::FromSeconds(5);
   const base::TimeDelta kStartupDelay = base::TimeDelta::FromSeconds(6);
   const base::TimeDelta kACDelay = base::TimeDelta::FromSeconds(7);
   const base::TimeDelta kBatteryDelay = base::TimeDelta::FromSeconds(8);
@@ -367,8 +366,6 @@ TEST_F(PowerSupplyTest, PollDelays) {
       PowerSupply::kBatteryStabilizedSlackMs);
 
   prefs_.SetInt64(kBatteryPollIntervalPref, kPollDelay.InMilliseconds());
-  prefs_.SetInt64(kBatteryPollShortIntervalPref,
-                  kShortPollDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref,
                   kStartupDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterLinePowerConnectedMsPref,
@@ -1003,7 +1000,6 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
   // background during the test.
   const base::TimeDelta kDelay = base::TimeDelta::FromSeconds(60);
   prefs_.SetInt64(kBatteryPollIntervalPref, kDelay.InMilliseconds());
-  prefs_.SetInt64(kBatteryPollShortIntervalPref, kDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref,
                   kDelay.InMilliseconds());
 

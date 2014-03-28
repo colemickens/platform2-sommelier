@@ -423,7 +423,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
  private:
   // TODO(derat): Remove this: http://crbug.com/359619.
   void SendPowerStateChangedSignal(const std::string& power_state) {
-    dbus::Signal signal(kPowerManagerInterface, kPowerStateChanged);
+    dbus::Signal signal(kPowerManagerInterface, kPowerStateChangedSignal);
     dbus::MessageWriter writer(&signal);
     writer.AppendString(power_state);
     daemon_->powerd_dbus_object_->SendSignal(&signal);

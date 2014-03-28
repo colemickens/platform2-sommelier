@@ -2,9 +2,9 @@ The power manager makes power-related policy decisions via C++ code running
 in userspace. This repository contains the following directories:
 
   common:         Code shared between powerd and tools.
-  default_prefs:  Default pref files installed to /usr/share/power_manager.
   dbus:           D-Bus policy configuration files.
-  init:           Upstart config files installed to /usr/init.
+  default_prefs:  Default pref files installed to /usr/share/power_manager.
+  init:           Upstart config files installed to /etc/init.
   optional_prefs: Pref files conditionally installed based on USE flags.
   powerd:         Power manager daemon running as the "power" user.
   powerd/policy:  High-level parts of powerd that make policy decisions.
