@@ -98,6 +98,10 @@ HELP_ADVANCED='
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags.
 
+ inputcontrol
+  Manually adjust advanced touchpad and mouse settings. Run
+  "inputcontrol -h" for full list of options.
+
  memory_test
   Performs extensive memory testing on the available free memory.
 
@@ -179,10 +183,6 @@ HELP_ADVANCED='
 
  time_info
   Returns the current synchronization state for the time service.
-
- tpcontrol {status|taptoclick [on|off]|sensitivity [1-5]|set <property> <value>}
- tpcontrol {syntp [on|off]}
-  Manually adjust advanced touchpad settings.
 
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
@@ -1097,7 +1097,11 @@ cmd_upload_crashes() (
 )
 
 cmd_tpcontrol() (
-  /opt/google/touchpad/tpcontrol "$@"
+  echo "tpcontrol is deprecated. Please use inputcontrol instead."
+)
+
+cmd_inputcontrol() (
+  /opt/google/input/inputcontrol "$@"
 )
 
 cmd_rlz() (
