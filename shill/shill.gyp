@@ -50,6 +50,43 @@
   },
   'targets': [
     {
+      'target_name': 'mobile_operator_db-protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': 'mobile_operator_db',
+        'proto_out_dir':
+            'include/shill/proto_bindings/mobile_operator_db'
+      },
+      'sources': [
+        '<(proto_in_dir)/mobile_operator_db.proto'
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
+      'target_name': 'mobile_operator_db-db',
+      'type': 'none',
+      'variables' : {
+        'protoc_proto_dir': 'mobile_operator_db',
+        'protoc_proto_def': 'mobile_operator_db.proto',
+        'protoc_text_dir': 'mobile_operator_db',
+        'protoc_bin_dir': '<(PRODUCT_DIR)',
+        'protoc_message_name': 'shill.mobile_operator_db.MobileOperatorDB',
+      },
+      'sources': [
+        '<(protoc_text_dir)/serviceproviders.prototxt',
+        '<(protoc_text_dir)/additional_providers.prototxt',
+      ],
+      'includes': ['../common-mk/protoctxt.gypi'],
+    },
+    {
+      'target_name': 'mobile_operator_db',
+      'type': 'static_library',
+      'dependencies': [
+        'mobile_operator_db-protos',
+        'mobile_operator_db-db',
+      ],
+    },
+    {
       'target_name': 'shill-proxies',
       'type': 'none',
       'variables': {
@@ -127,6 +164,7 @@
       'dependencies': [
         '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
         '../system_api/system_api.gyp:system_api-power_manager-protos',
+        'mobile_operator_db',
         'shill-adaptors',
         'shill-proxies',
         'shim-protos',
