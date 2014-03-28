@@ -622,6 +622,8 @@ void CellularCapabilityUniversalCDMA::OnCDMARegistrationChanged(
   cdma_evdo_registration_state_ = state_evdo;
   sid_ = sid;
   nid_ = nid;
+  modem_info()->serving_operator_info()->UpdateSID(UintToString(sid));
+  modem_info()->serving_operator_info()->UpdateNID(UintToString(nid));
   UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }

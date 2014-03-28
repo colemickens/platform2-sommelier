@@ -33,6 +33,7 @@
 #include "shill/external_task.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/mobile_operator_info.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/profile.h"
@@ -55,6 +56,8 @@ namespace shill {
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const int64 Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
+const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
+unsigned int Cellular::friendly_service_name_id_ = 0;
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -116,6 +119,8 @@ Cellular::Cellular(ModemInfo *modem_info,
       weak_ptr_factory_(this),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
+      mobile_operator_info_observer_(
+          new Cellular::MobileOperatorInfoObserver(this, modem_info)),
       dbus_owner_(owner),
       dbus_service_(service),
       dbus_path_(path),
@@ -134,6 +139,10 @@ Cellular::Cellular(ModemInfo *modem_info,
       is_ppp_authenticating_(false),
       scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
+  modem_info_->home_provider_info()->AddObserver(
+      mobile_operator_info_observer_.get());
+  modem_info_->serving_operator_info()->AddObserver(
+      mobile_operator_info_observer_.get());
   InitCapability(type);
   SLOG(Cellular, 2) << "Cellular device " << this->link_name()
                     << " initialized.";
@@ -148,6 +157,11 @@ Cellular::~Cellular() {
   // In that case, the termination action associated with this cellular object
   // may not have been removed.
   manager()->RemoveTerminationAction(FriendlyName());
+
+  modem_info_->home_provider_info()->RemoveObserver(
+      mobile_operator_info_observer_.get());
+  modem_info_->serving_operator_info()->RemoveObserver(
+      mobile_operator_info_observer_.get());
 }
 
 bool Cellular::Load(StoreInterface *storage) {
@@ -608,6 +622,7 @@ void Cellular::CreateService() {
   // We might have missed a property update because the service wasn't created
   // ealier.
   UpdateScanning();
+  mobile_operator_info_observer_->OnOperatorChanged();
 }
 
 void Cellular::DestroyService() {
@@ -1180,11 +1195,13 @@ void Cellular::RegisterProperties() {
                           &Cellular::SetAllowRoaming);
 }
 
-void Cellular::set_home_provider(const Operator &oper) {
-  if (home_provider_.Equals(oper))
+void Cellular::set_home_provider(const Cellular::Operator &home_provider) {
+  if (home_provider_.Equals(home_provider)) {
     return;
+  }
 
-  home_provider_.CopyFrom(oper);
+  home_provider_.CopyFrom(home_provider);
+
   adaptor()->EmitStringmapChanged(kHomeProviderProperty,
                                   home_provider_.ToDict());
 }
@@ -1396,6 +1413,142 @@ void Cellular::set_prl_version(uint16 prl_version) {
 
   prl_version_ = prl_version;
   adaptor()->EmitUint16Changed(kPRLVersionProperty, prl_version_);
+}
+
+void Cellular::UpdateHomeProvider(const MobileOperatorInfo *operator_info) {
+  // TODO(pprabhu) Change |set_home_provider| to take Stringmap argument and
+  // update this.
+  Operator oper;
+  if (!operator_info->mccmnc().empty()) {
+    oper.SetCode(operator_info->mccmnc());
+  }
+  if (!operator_info->operator_name().empty()) {
+    oper.SetName(operator_info->operator_name());
+  }
+  if (!operator_info->country().empty()) {
+    oper.SetCountry(operator_info->country());
+  }
+  set_home_provider(oper);
+
+  // Update the APN list.
+  const ScopedVector<MobileOperatorInfo::MobileAPN> &apn_list =
+      operator_info->apn_list();
+  Stringmaps apn_list_dict;
+
+  for (const auto &mobile_apn : apn_list) {
+    Stringmap props;
+    if (!mobile_apn->apn.empty()) {
+      props[kApnProperty] = mobile_apn->apn;
+    }
+    if (!mobile_apn->username.empty()) {
+      props[kApnUsernameProperty] = mobile_apn->username;
+    }
+    if (!mobile_apn->password.empty()) {
+      props[kApnPasswordProperty] = mobile_apn->password;
+    }
+
+    // Find the first localized and non-localized name, if any.
+    if (!mobile_apn->operator_name_list.empty()) {
+      props[kApnNameProperty] = mobile_apn->operator_name_list[0].name;
+    }
+    for (const auto &lname : mobile_apn->operator_name_list) {
+      if (!lname.language.empty()) {
+        props[kApnLocalizedNameProperty] = lname.name;
+      }
+    }
+
+    apn_list_dict.push_back(props);
+  }
+  set_apn_list(apn_list_dict);
+
+  set_provider_requires_roaming(operator_info->requires_roaming());
+}
+
+void Cellular::UpdateServingOperator(
+    const MobileOperatorInfo *operator_info,
+    const MobileOperatorInfo *home_provider_info) {
+  if (!service()) {
+    return;
+  }
+
+  // TODO(pprabhu) Update |CellularService::SetServingOperator| to take
+  // Stringmap argument and update this.
+  Operator oper;
+  if (!operator_info->mccmnc().empty()) {
+    oper.SetCode(operator_info->mccmnc());
+  }
+  if (!operator_info->operator_name().empty()) {
+    oper.SetName(operator_info->operator_name());
+  }
+  if (!operator_info->country().empty()) {
+    oper.SetCountry(operator_info->country());
+  }
+  service()->SetServingOperator(oper);
+
+  // Set friendly name of service.
+  string service_name;
+  if (!operator_info->operator_name().empty()) {
+    service_name = operator_info->operator_name();
+    // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
+    // rules (TS 31.102 and annex A of 122.101).
+    if (service()->roaming_state() == kRoamingStateRoaming &&
+        home_provider_info &&
+        !home_provider_info->operator_name().empty()) {
+      service_name += " | " + home_provider_info->operator_name();
+    }
+  } else if(!operator_info->mccmnc().empty()){
+    // We could not get a name for the operator, just use the code.
+    service_name = "cellular_" + operator_info->mccmnc();
+  } else {
+    // TODO(pprabhu) Make the generic prefix more specific based on the type of
+    // device (GSM/CDMA).
+    service_name = base::StringPrintf("%s %u",
+                                      kGenericServiceNamePrefix,
+                                      friendly_service_name_id_++);
+  }
+  service()->SetFriendlyName(service_name);
+}
+
+// /////////////////////////////////////////////////////////////////////////////
+// MobileOperatorInfoObserver implementation.
+Cellular::MobileOperatorInfoObserver::MobileOperatorInfoObserver(
+    Cellular *cellular,
+    ModemInfo *modem_info)
+  : cellular_(cellular),
+    modem_info_(modem_info) {}
+
+Cellular::MobileOperatorInfoObserver::~MobileOperatorInfoObserver() {}
+
+void Cellular::MobileOperatorInfoObserver::OnOperatorChanged() {
+  SLOG(Cellular, 3) << __func__;
+
+  const MobileOperatorInfo *home_provider_info =
+      modem_info_->home_provider_info();
+  const MobileOperatorInfo *serving_operator_info =
+      modem_info_->serving_operator_info();
+
+  const bool home_provider_known =
+      home_provider_info->IsMobileNetworkOperatorKnown();
+  const bool serving_operator_known =
+      serving_operator_info->IsMobileNetworkOperatorKnown();
+
+  if (home_provider_known) {
+    cellular_->UpdateHomeProvider(home_provider_info);
+  } else if (serving_operator_known) {
+    SLOG(Cellular, 2) << "Serving provider proxying in for home provider.";
+    cellular_->UpdateHomeProvider(serving_operator_info);
+  }
+
+  if (serving_operator_known) {
+    if (home_provider_known) {
+      cellular_->UpdateServingOperator(serving_operator_info,
+                                       home_provider_info);
+    } else {
+      cellular_->UpdateServingOperator(serving_operator_info, NULL);
+    }
+  } else if (home_provider_known) {
+    cellular_->UpdateServingOperator(home_provider_info, home_provider_info);
+  }
 }
 
 }  // namespace shill

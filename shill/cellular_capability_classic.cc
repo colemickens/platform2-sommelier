@@ -279,22 +279,32 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
   SLOG(Cellular, 2) << __func__ << " " << props.size() << " props. error "
                     << error;
   if (error.IsSuccess()) {
-    if (DBusProperties::GetString(props, "carrier", &prop_value))
+    if (DBusProperties::GetString(props, "carrier", &prop_value)) {
       cellular()->set_carrier(prop_value);
-    if (DBusProperties::GetString(props, "meid", &prop_value))
+      modem_info()->home_provider_info()->UpdateOperatorName(prop_value);
+    }
+    if (DBusProperties::GetString(props, "meid", &prop_value)) {
       cellular()->set_meid(prop_value);
-    if (DBusProperties::GetString(props, "imei", &prop_value))
+    }
+    if (DBusProperties::GetString(props, "imei", &prop_value)) {
      cellular()->set_imei(prop_value);
-    if (DBusProperties::GetString(props, kModemPropertyIMSI, &prop_value))
+    }
+    if (DBusProperties::GetString(props, kModemPropertyIMSI, &prop_value)) {
       cellular()->set_imsi(prop_value);
-    if (DBusProperties::GetString(props, "esn", &prop_value))
+      modem_info()->home_provider_info()->UpdateIMSI(prop_value);
+    }
+    if (DBusProperties::GetString(props, "esn", &prop_value)) {
       cellular()->set_esn(prop_value);
-    if (DBusProperties::GetString(props, "mdn", &prop_value))
+    }
+    if (DBusProperties::GetString(props, "mdn", &prop_value)) {
       cellular()->set_mdn(prop_value);
-    if (DBusProperties::GetString(props, "min", &prop_value))
+    }
+    if (DBusProperties::GetString(props, "min", &prop_value)) {
       cellular()->set_min(prop_value);
-    if (DBusProperties::GetString(props, "firmware_revision", &prop_value))
+    }
+    if (DBusProperties::GetString(props, "firmware_revision", &prop_value)) {
       cellular()->set_firmware_revision(prop_value);
+    }
     UpdateStatus(props);
   }
   callback.Run(error);

@@ -16,6 +16,7 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
+#include "shill/mobile_operator_info.h"
 #include "shill/modem_info.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
@@ -149,6 +150,14 @@ class Cellular : public Device, public RPCTaskDelegate {
   static std::string GetModemStateString(ModemState modem_state);
 
   std::string CreateFriendlyServiceName();
+  // Update the home provider from the information in |operator_info|. This
+  // information may be from the SIM / received OTA.
+  void UpdateHomeProvider(const MobileOperatorInfo *operator_info);
+  // Update the serving operator using information in |operator_info|.
+  // Additionally, if |home_provider_info| is not NULL, use it to come up with a
+  // better name.
+  void UpdateServingOperator(const MobileOperatorInfo *operator_info,
+                             const MobileOperatorInfo *home_provider_info);
 
   State state() const { return state_; }
 
@@ -268,7 +277,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   uint16 prl_version() const { return prl_version_; }
 
   // setters
-  void set_home_provider(const Operator &oper);
+  void set_home_provider(const Operator &home_provider);
   void set_carrier(const std::string &carrier);
   void set_scanning_supported(bool scanning_supported);
   void set_esn(const std::string &esn);
@@ -399,6 +408,24 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, UpdateScanning);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
 
+  class MobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
+   public:
+    // Both |cellular| and |modem_info| must have lifespan longer than this
+    // object.
+    // In practice, this is enforced:
+    //   (1) |cellular| owns this object.
+    //   (2) |modem_info| is guaranteed to outlive |cellular|.
+    MobileOperatorInfoObserver(Cellular *cellular, ModemInfo *modem_info);
+    virtual ~MobileOperatorInfoObserver();
+    virtual void OnOperatorChanged() override;
+
+   private:
+    Cellular *const cellular_;
+    ModemInfo *const modem_info_;
+
+    DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserver);
+  };
+
   // Names of properties in storage
   static const char kAllowRoaming[];
 
@@ -406,6 +433,11 @@ class Cellular : public Device, public RPCTaskDelegate {
   // time it is set to true, it must be reset to false after a time equal to
   // this constant.
   static const int64 kDefaultScanningTimeoutMilliseconds;
+
+  // Generic service name prefix, shown when the correct carrier name is
+  // unknown.
+  static const char kGenericServiceNamePrefix[];
+  static unsigned int friendly_service_name_id_;
 
   void SetState(State state);
 
@@ -472,6 +504,10 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   scoped_ptr<CellularCapability> capability_;
 
+  // Observer object to listen to updates from the operator info objects.
+  scoped_ptr<MobileOperatorInfoObserver> mobile_operator_info_observer_;
+
+  // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.
   // Properties common to GSM and CDMA modems.
   const std::string dbus_owner_;  // :x.y
@@ -509,6 +545,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   // This property is specific to Gobi modems.
   Strings supported_carriers_;
   // End of DBus properties.
+  // ///////////////////////////////////////////////////////////////////////////
 
   ModemInfo *modem_info_;
   ProxyFactory *proxy_factory_;

@@ -21,6 +21,7 @@
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/mobile_operator_info.h"
 #include "shill/pending_activation_store.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -1614,6 +1615,7 @@ void CellularCapabilityUniversal::OnSimPathChanged(
     cellular()->set_sim_present(false);
     OnSimIdentifierChanged("");
     OnOperatorIdChanged("");
+    modem_info()->home_provider_info()->Reset();
   } else {
     cellular()->set_sim_present(true);
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
@@ -1879,6 +1881,9 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
   registration_state_ = updated_state;
   serving_operator_.SetCode(updated_operator_code);
   serving_operator_.SetName(updated_operator_name);
+  modem_info()->serving_operator_info()->UpdateMCCMNC(updated_operator_code);
+  modem_info()->serving_operator_info()->UpdateOperatorName(
+      updated_operator_name);
 
   // Update the carrier name for |serving_operator_|.
   UpdateOperatorInfo();
@@ -1964,17 +1969,21 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
     OnOperatorIdChanged(value);
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value))
     OnSpnChanged(value);
-  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value))
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value)) {
     cellular()->set_imsi(value);
+    modem_info()->home_provider_info()->UpdateIMSI(value);
+  }
   SetHomeProvider();
 }
 
 void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
   spn_ = spn;
+  modem_info()->home_provider_info()->UpdateOperatorName(spn);
 }
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
   cellular()->set_sim_identifier(id);
+  modem_info()->home_provider_info()->UpdateICCID(id);
   UpdatePendingActivationState();
 }
 
@@ -1982,6 +1991,7 @@ void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string &operator_id) {
   SLOG(Cellular, 2) << "Operator ID = '" << operator_id << "'";
   operator_id_ = operator_id;
+  modem_info()->home_provider_info()->UpdateMCCMNC(operator_id);
 }
 
 OutOfCreditsDetector::OOCType

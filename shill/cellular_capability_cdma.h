@@ -105,6 +105,9 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
+  // Helper method to extract the online portal information from properties.
+  void UpdateOnlinePortal(const DBusPropertiesMap &properties);
+
   bool activation_starting_;
   ResultCallback pending_activation_callback_;
   std::string pending_activation_carrier_;

@@ -115,6 +115,7 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
   uint16 prl_version;
   DBusProperties::GetUint32(
       properties, "activation_state", &activation_state_);
+  UpdateOnlinePortal(properties);
   if (DBusProperties::GetUint16(properties, "prl_version", &prl_version))
     cellular()->set_prl_version(prl_version);
   // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
@@ -384,6 +385,8 @@ void CellularCapabilityCDMA::OnActivationStateChangedSignal(
   if (cellular()->service().get()) {
     cellular()->service()->SetOLP(olp_);
   }
+
+  UpdateOnlinePortal(status_changes);
   activation_state_ = activation_state;
   HandleNewActivationState(activation_error);
 }
@@ -398,6 +401,23 @@ void CellularCapabilityCDMA::OnRegistrationStateChangedSignal(
 
 void CellularCapabilityCDMA::OnSignalQualitySignal(uint32 strength) {
   cellular()->HandleNewSignalQuality(strength);
+}
+
+void CellularCapabilityCDMA::UpdateOnlinePortal(
+    const DBusPropertiesMap &properties) {
+  // Treat the three updates atomically: Only update the serving operator when
+  // all three are known:
+  string olp_url, olp_method, olp_post_data;
+  if (DBusProperties::GetString(properties, "payment_url", &olp_url) &&
+      DBusProperties::GetString(properties,
+                                "payment_url_method", &olp_method) &&
+      DBusProperties::GetString(properties,
+                                "payment_url_postdata",
+                                &olp_post_data)) {
+    modem_info()->serving_operator_info()->UpdateOnlinePortal(olp_url,
+                                                              olp_method,
+                                                              olp_post_data);
+  }
 }
 
 }  // namespace shill
