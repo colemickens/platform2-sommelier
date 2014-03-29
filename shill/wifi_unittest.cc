@@ -1947,6 +1947,18 @@ TEST_F(WiFiMainTest, ScanWiFiDisabledAfterResume) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(WiFiMainTest, ScanRejected) {
+  StartWiFi();
+  ReportScanDone();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_))
+      .WillOnce(Throw(DBus::Error("don't care", "don't care")));
+  TriggerScan(WiFi::kScanMethodFull);
+  dispatcher_.DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+}
+
 TEST_F(WiFiMainTest, ProgressiveScanFound) {
   // Set min & max scan frequency count to 1 so each scan will be of a single
   // frequency.

@@ -1329,6 +1329,7 @@ void WiFi::ScanTask() {
   }
 
   try {
+    supplicant_interface_proxy_->Scan(scan_args);
     // Only set the scan state/method if we are starting a full scan from
     // scratch.  Keep the existing method if this is a failover from a
     // progressive scan.
@@ -1336,7 +1337,6 @@ void WiFi::ScanTask() {
       SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
                    kScanMethodFull, __func__);
     }
-    supplicant_interface_proxy_->Scan(scan_args);
   } catch (const DBus::Error &e) {  // NOLINT
     // A scan may fail if, for example, the wpa_supplicant vanishing
     // notification is posted after this task has already started running.

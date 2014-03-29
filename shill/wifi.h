@@ -259,6 +259,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ProgressiveScanError);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ProgressiveScanFound);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ProgressiveScanNotFound);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, ScanRejected);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
