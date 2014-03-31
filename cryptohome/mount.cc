@@ -1558,7 +1558,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
                           const FilePath& source) const {
   scoped_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source.value(), false,
-                                   FileEnumerator::FILES));
+                                   file_util::FileEnumerator::FILES));
   std::string next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     FilePath file_name = FilePath(next_path).BaseName();
@@ -1573,7 +1573,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
   }
   scoped_ptr<FileEnumerator> dir_enumerator(
       platform_->GetFileEnumerator(source.value(), false,
-                                   FileEnumerator::DIRECTORIES));
+                                   file_util::FileEnumerator::DIRECTORIES));
   while (!(next_path = dir_enumerator->Next()).empty()) {
     FilePath dir_name = FilePath(next_path).BaseName();
     FilePath destination_dir = destination.Append(dir_name);

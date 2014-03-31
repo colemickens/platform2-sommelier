@@ -1202,7 +1202,7 @@ int main(int argc, char **argv) {
       // TODO(wad): change it so that it uses GetVaultKeysets().
       scoped_ptr<cryptohome::FileEnumerator> file_enumerator(
           platform.GetFileEnumerator(path.value(), false,
-                                     cryptohome::FileEnumerator::FILES));
+                                     file_util::FileEnumerator::FILES));
       base::Time max_activity = base::Time::UnixEpoch();
       std::string next_path;
       while (!(next_path = file_enumerator->Next()).empty()) {

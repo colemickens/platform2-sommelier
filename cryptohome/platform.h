@@ -10,6 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
+#include <base/file_util.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <map>
@@ -37,16 +38,7 @@ class ProcessInformation;
 // wrapper.
 class FileEnumerator {
  public:
-  typedef struct {
-    struct stat stat;
-    std::string filename;
-  } FindInfo;
-  enum FileType {
-    FILES                 = 1 << 0,
-    DIRECTORIES           = 1 << 1,
-    INCLUDE_DOT_DOT       = 1 << 2,
-    SHOW_SYM_LINKS        = 1 << 4,
-  };
+  typedef file_util::FileEnumerator::FindInfo FindInfo;
 
   FileEnumerator(const std::string& root_path,
                  bool recursive,

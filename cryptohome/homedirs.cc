@@ -240,7 +240,7 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
 
   scoped_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false,
-                                   FileEnumerator::FILES));
+                                   file_util::FileEnumerator::FILES));
   std::string next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     std::string file_name = FilePath(next_path).BaseName().value();
@@ -682,10 +682,9 @@ void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
   scoped_ptr<FileEnumerator> subdir_enumerator(platform_->GetFileEnumerator(
       dir.value(),
       false,
-      static_cast<FileEnumerator::FileType>(
-          FileEnumerator::FILES |
-          FileEnumerator::DIRECTORIES |
-          FileEnumerator::SHOW_SYM_LINKS)));
+      file_util::FileEnumerator::FILES |
+          file_util::FileEnumerator::DIRECTORIES |
+          file_util::FileEnumerator::SHOW_SYM_LINKS));
   for (std::string subdir_path = subdir_enumerator->Next();
        !subdir_path.empty();
        subdir_path = subdir_enumerator->Next()) {

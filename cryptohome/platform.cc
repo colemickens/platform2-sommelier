@@ -838,7 +838,8 @@ bool Platform::WalkPath(const std::string& path,
   if (!callback.Run(base_entry_info))
     return false;
   if (FileEnumerator::IsDirectory(base_entry_info)) {
-    int file_types = FileEnumerator::FILES | FileEnumerator::DIRECTORIES;
+    int file_types = file_util::FileEnumerator::FILES |
+                     file_util::FileEnumerator::DIRECTORIES;
     scoped_ptr<FileEnumerator> file_enumerator(
         GetFileEnumerator(path, true, file_types));
     std::string entry_path;
@@ -887,8 +888,7 @@ std::string FileEnumerator::Next() {
 
 void FileEnumerator::GetFindInfo(FindInfo* info) {
   DCHECK(info);
-  enumerator_->GetFindInfo(
-      reinterpret_cast<file_util::FileEnumerator::FindInfo*>(info));
+  enumerator_->GetFindInfo(info);
 }
 
 // static
@@ -903,14 +903,12 @@ std::string FileEnumerator::GetFilename(const FindInfo& find_info) {
 
 // static
 int64 FileEnumerator::GetFilesize(const FindInfo& info) {
-  return file_util::FileEnumerator::GetFilesize(
-    *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
+  return file_util::FileEnumerator::GetFilesize(info);
 }
 
 // static
 base::Time FileEnumerator::GetLastModifiedTime(const FindInfo& info) {
-  return file_util::FileEnumerator::GetLastModifiedTime(
-    *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
+  return file_util::FileEnumerator::GetLastModifiedTime(info);
 }
 
 
