@@ -29,9 +29,6 @@ namespace cryptohome {
 const char *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 
-const char *kRemoveLRU = "remove-lru";;
-const char *kRemoveLRUIfDormant = "remove-lru-if-dormant";
-
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
       platform_(default_platform_.get()),
@@ -96,24 +93,33 @@ bool HomeDirs::FreeDiskSpace() {
 
   // Delete old users, the oldest first.
   // Don't delete anyone if we don't know who the owner is.
+  // For consumer devices, don't delete the device owner. Enterprise-enrolled
+  // devices have no owner, so don't delete the last user.
   std::string owner;
   if (enterprise_owned_ || GetOwner(&owner)) {
-    const base::Time timestamp_threshold =
-        base::Time::Now() - GetUserInactivityThresholdForRemoval();
-    while (!timestamp_cache_->oldest_known_timestamp().is_null() &&
-           timestamp_cache_->oldest_known_timestamp() <= timestamp_threshold) {
+    while (!timestamp_cache_->empty()) {
       FilePath deleted_user_dir = timestamp_cache_->RemoveOldestUser();
-      if (!enterprise_owned_) {
+
+      if (enterprise_owned_) {
+        if (timestamp_cache_->empty()) {
+          LOG(INFO) << "Skipped deletion of the most recent device user.";
+          return true;
+        }
+      } else {
         std::string obfuscated_username = deleted_user_dir.BaseName().value();
-        if (obfuscated_username == owner)
+        if (obfuscated_username == owner) {
+          LOG(INFO) << "Skipped deletion of the device owner.";
           continue;
+        }
       }
+
       std::string mountdir = deleted_user_dir.Append(kMountDir).value();
       std::string vaultdir = deleted_user_dir.Append(kVaultDir).value();
       if (platform_->IsDirectoryMountedWith(mountdir, vaultdir)) {
         LOG(INFO) << "Attempt to delete currently logged user. Skipped...";
       } else {
-        LOG(INFO) << "Deleting old user " << deleted_user_dir.value();
+        LOG(INFO) << "Freeing disk space by deleting user "
+                  << deleted_user_dir.value();
         platform_->DeleteFile(deleted_user_dir.value(), true);
         if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
           return true;
@@ -137,22 +143,6 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
     policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
         &ephemeral_users_enabled);
   return ephemeral_users_enabled;
-}
-
-base::TimeDelta HomeDirs::GetUserInactivityThresholdForRemoval() {
-  LoadDevicePolicy();
-  // If the policy cannot be loaded, default to LRU-if-dormant strategy.
-  std::string strategy = kRemoveLRUIfDormant;
-  if (policy_provider_->device_policy_is_loaded()) {
-    policy_provider_->GetDevicePolicy().GetCleanUpStrategy(&strategy);
-  }
-  if (strategy == kRemoveLRUIfDormant)
-    return old_user_last_activity_time_;
-  else if (strategy == kRemoveLRU)
-    return base::TimeDelta();
-  else
-    LOG(ERROR) << "Unknown strategy : " << strategy;
-  return old_user_last_activity_time_;
 }
 
 bool HomeDirs::AreCredentialsValid(const Credentials& creds) {

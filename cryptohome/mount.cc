@@ -69,7 +69,6 @@ const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kGuestMountPath[] = "guestfs";
 const char kEphemeralMountPerms[] = "mode=0700";
-const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 const gid_t kDaemonStoreGid = 400;
@@ -117,7 +116,6 @@ Mount::Mount()
       default_user_timestamp_(new UserOldestActivityTimestampCache()),
       user_timestamp_(default_user_timestamp_.get()),
       enterprise_owned_(false),
-      old_user_last_activity_time_(kOldUserLastActivityTime),
       pkcs11_state_(kUninitialized),
       is_pkcs11_passkey_migration_required_(false),
       legacy_mount_(true),
@@ -138,7 +136,6 @@ bool Mount::Init() {
   homedirs_->set_shadow_root(shadow_root_);
   homedirs_->set_timestamp_cache(user_timestamp_);
   homedirs_->set_enterprise_owned(enterprise_owned_);
-  homedirs_->set_old_user_last_activity_time(old_user_last_activity_time_);
 
   // Make sure both we and |homedirs_| have a proper device policy object.
   EnsureDevicePolicyLoaded(false);

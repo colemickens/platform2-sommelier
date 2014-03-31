@@ -47,6 +47,12 @@
 using chromeos::SecureBlob;
 using std::string;
 
+namespace {
+// Number of days that the set_current_user_old action uses when updating the
+// home directory timestamp.  ~3 months should be old enough for test purposes.
+const int kSetCurrentUserOldOffsetInDays = 92;
+}
+
 namespace switches {
   static const char kSyslogSwitch[] = "syslog";
   static const char kActionSwitch[] = "action";
@@ -1346,7 +1352,8 @@ int main(int argc, char **argv) {
     client_loop.Initialize(&proxy);
     if (!org_chromium_CryptohomeInterface_update_current_user_activity_timestamp(
             proxy.gproxy(),
-            cryptohome::kOldUserLastActivityTime.InSeconds(),
+            base::TimeDelta::FromDays(
+                kSetCurrentUserOldOffsetInDays).InSeconds(),
             &chromeos::Resetter(&error).lvalue())) {
       printf("UpdateCurrentUserActivityTimestamp call failed: %s.\n",
              error->message);

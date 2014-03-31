@@ -59,8 +59,6 @@ extern const int kKeyFileMax;
 extern const char kEphemeralMountType[];
 extern const char kEphemeralDir[];
 extern const char kGuestMountPath[];
-// Time delta of last user's activity to be considered as old.
-extern const base::TimeDelta kOldUserLastActivityTime;
 
 class ChapsClientFactory;
 
@@ -223,12 +221,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void set_enterprise_owned(bool value) {
     enterprise_owned_ = value;
     homedirs_->set_enterprise_owned(value);
-  }
-
-  // Set/get time delta of last user's activity to be considered as old.
-  void set_old_user_last_activity_time(base::TimeDelta value) {
-    old_user_last_activity_time_ = value;
-    homedirs_->set_old_user_last_activity_time(value);
   }
 
   // Flag indicating if PKCS#11 is ready.
@@ -754,9 +746,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // True if the machine is enterprise owned, false if not or we have
   // not discovered it in this session.
   bool enterprise_owned_;
-
-  // Time delta of last user's activity to be considered as old.
-  base::TimeDelta old_user_last_activity_time_;
 
   Pkcs11State pkcs11_state_;
 

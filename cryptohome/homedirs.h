@@ -29,8 +29,6 @@ namespace cryptohome {
 
 const int64 kEnoughFreeSpace = 1LL << 30;
 
-extern const base::TimeDelta kOldUserLastActivityTime;
-
 class Credentials;
 class Platform;
 class UserOldestActivityTimestampCache;
@@ -170,12 +168,6 @@ class HomeDirs {
   }
   void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
   bool enterprise_owned() const { return enterprise_owned_; }
-  void set_old_user_last_activity_time(base::TimeDelta value) {
-    old_user_last_activity_time_ = value;
-  }
-  const base::TimeDelta &old_user_last_activity_time() const {
-    return old_user_last_activity_time_;
-  }
   void set_policy_provider(policy::PolicyProvider* value) {
     policy_provider_ = value;
   }
@@ -243,7 +235,6 @@ class HomeDirs {
   //           some pointers.
   scoped_ptr<VaultKeysetFactory> default_vault_keyset_factory_;
   VaultKeysetFactory* vault_keyset_factory_;
-  base::TimeDelta old_user_last_activity_time_;
   chromeos::SecureBlob system_salt_;
   chaps::TokenManagerClient chaps_client_;
 

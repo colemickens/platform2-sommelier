@@ -24,6 +24,7 @@ class MockUserOldestActivityTimestampCache :
   MOCK_METHOD2(UpdateExistingUser, void(const FilePath&, base::Time));
   MOCK_METHOD1(AddExistingUserNotime, void(const FilePath&));
   MOCK_CONST_METHOD0(oldest_known_timestamp, base::Time(void));
+  MOCK_CONST_METHOD0(empty, bool(void));
   MOCK_METHOD0(RemoveOldestUser, FilePath(void));
 
  private:

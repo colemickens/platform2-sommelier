@@ -46,6 +46,11 @@ class UserOldestActivityTimestampCache {
     return oldest_known_timestamp_;
   }
 
+  // Returns true if there are no users in the cache.
+  virtual bool empty() const {
+    return users_timestamp_.empty();
+  }
+
   // Removes the oldest user stored in the cache. Users without
   // a timestamp are removed first.
   virtual FilePath RemoveOldestUser();
