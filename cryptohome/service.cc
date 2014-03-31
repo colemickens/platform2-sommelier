@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/platform_file.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <base/values.h>
@@ -31,6 +32,7 @@
 #include <vector>
 
 #include "attestation_task.h"
+#include "boot_lockbox.h"
 #include "cryptohome_event_source.h"
 #include "crypto.h"
 #include "dbus_transition.h"
@@ -273,7 +275,9 @@ Service::Service()
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
       default_attestation_(new Attestation()),
-      attestation_(default_attestation_.get()) {
+      attestation_(default_attestation_.get()),
+      default_boot_lockbox_(new BootLockbox(tpm_, platform_, crypto_)),
+      boot_lockbox_(default_boot_lockbox_.get()) {
 }
 
 Service::~Service() {
@@ -1222,9 +1226,9 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
 }
 
 gboolean Service::UpdateKeyEx(GArray* account_id,
-                           GArray* authorization_request,
-                           GArray* update_key_request,
-                           DBusGMethodInvocation *context) {
+                              GArray* authorization_request,
+                              GArray* update_key_request,
+                              DBusGMethodInvocation *context) {
   scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
   scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
   scoped_ptr<UpdateKeyRequest> request(new UpdateKeyRequest);
@@ -2575,6 +2579,84 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
                       reinterpret_cast<const char*>(&secure_data[0]),
                       secure_data.size());
   *OUT_success = true;
+  return TRUE;
+}
+
+void Service::DoSignBootLockbox(const chromeos::SecureBlob& request,
+                                DBusGMethodInvocation* context) {
+  SignBootLockboxRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size()) ||
+      !request_pb.has_data()) {
+    SendInvalidArgsReply(context, "Bad SignBootLockboxRequest");
+    return;
+  }
+  BaseReply reply;
+  SecureBlob signature;
+  if (!boot_lockbox_->Sign(SecureBlob(request_pb.data()), &signature)) {
+    reply.set_error(CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN);
+  } else {
+    reply.MutableExtension(SignBootLockboxReply::reply)->set_signature(
+        std::string(reinterpret_cast<const char*>(vector_as_array(&signature)),
+                    signature.size()));
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::SignBootLockbox(const GArray* request,
+                                  DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoSignBootLockbox, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoVerifyBootLockbox(const chromeos::SecureBlob& request,
+                                  DBusGMethodInvocation* context) {
+  VerifyBootLockboxRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size()) ||
+      !request_pb.has_data() ||
+      !request_pb.has_signature()) {
+    SendInvalidArgsReply(context, "Bad VerifyBootLockboxRequest");
+    return;
+  }
+  BaseReply reply;
+  if (!boot_lockbox_->Verify(SecureBlob(request_pb.data()),
+                             SecureBlob(request_pb.signature()))) {
+    reply.set_error(CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::VerifyBootLockbox(const GArray* request,
+                                    DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoVerifyBootLockbox, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoFinalizeBootLockbox(const chromeos::SecureBlob& request,
+                                    DBusGMethodInvocation* context) {
+  FinalizeBootLockboxRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad FinalizeBootLockboxRequest");
+    return;
+  }
+  BaseReply reply;
+  if (!boot_lockbox_->FinalizeBoot()) {
+    reply.set_error(CRYPTOHOME_ERROR_TPM_COMM_ERROR);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::FinalizeBootLockbox(const GArray* request,
+                                      DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
   return TRUE;
 }
 

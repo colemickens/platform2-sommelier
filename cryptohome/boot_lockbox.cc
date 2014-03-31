@@ -63,7 +63,6 @@ namespace cryptohome {
 
 BootLockbox::BootLockbox(Tpm* tpm, Platform* platform, Crypto* crypto)
     : tpm_(tpm), platform_(platform), crypto_(crypto) {
-  CHECK(tpm_ && platform_ && crypto_);
 }
 
 BootLockbox::~BootLockbox() {}

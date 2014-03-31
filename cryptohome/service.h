@@ -39,6 +39,7 @@ namespace gobject {
 struct Cryptohome;
 }  // namespace gobject
 
+class BootLockbox;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
 
@@ -155,6 +156,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
     attestation_ = attestation;
   }
 
+  virtual void set_boot_lockbox(BootLockbox* boot_lockbox) {
+    boot_lockbox_ = boot_lockbox;
+  }
+
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
   virtual gboolean CheckKey(gchar *user,
@@ -176,16 +181,16 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                    gint *OUT_async_id,
                                    GError **error);
   virtual gboolean AddKey(gchar *user,
-                              gchar *key,
-                              gchar *new_key,
-                              gint *OUT_key_id,
-                              gboolean *OUT_result,
-                              GError **error);
+                          gchar *key,
+                          gchar *new_key,
+                          gint *OUT_key_id,
+                          gboolean *OUT_result,
+                          GError **error);
   virtual gboolean AsyncAddKey(gchar *user,
-                                   gchar *key,
-                                   gchar *new_key,
-                                   gint *OUT_async_id,
-                                   GError **error);
+                               gchar *key,
+                               gchar *new_key,
+                               gint *OUT_async_id,
+                               GError **error);
   virtual void DoAddKeyEx(AccountIdentifier* account_id,
                           AuthorizationRequest*  authorization_request,
                           AddKeyRequest* add_key_request,
@@ -195,9 +200,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                             GArray* add_key_request,
                             DBusGMethodInvocation* context);
   virtual void DoUpdateKeyEx(AccountIdentifier* account_id,
-                          AuthorizationRequest*  authorization_request,
-                          UpdateKeyRequest* update_key_request,
-                          DBusGMethodInvocation* context);
+                             AuthorizationRequest*  authorization_request,
+                             UpdateKeyRequest* update_key_request,
+                             DBusGMethodInvocation* context);
   virtual gboolean UpdateKeyEx(GArray *account_id,
                                GArray *authorization_request,
                                GArray *update_key_request,
@@ -211,13 +216,13 @@ class Service : public chromeos::dbus::AbstractDbusService,
                               GArray *check_key_request,
                               DBusGMethodInvocation *context);
   virtual void DoRemoveKeyEx(AccountIdentifier* account_id,
-                            AuthorizationRequest*  authorization_request,
-                            RemoveKeyRequest* remove_key_request,
-                            DBusGMethodInvocation* context);
+                             AuthorizationRequest*  authorization_request,
+                             RemoveKeyRequest* remove_key_request,
+                             DBusGMethodInvocation* context);
   virtual gboolean RemoveKeyEx(GArray *account_id,
-                              GArray *authorization_request,
-                              GArray *remove_key_request,
-                              DBusGMethodInvocation *context);
+                               GArray *authorization_request,
+                               GArray *remove_key_request,
+                               DBusGMethodInvocation *context);
   virtual gboolean Remove(gchar *user,
                           gboolean *OUT_result,
                           GError **error);
@@ -456,6 +461,21 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean LoadEnrollmentState(GArray** OUT_enrollment_state,
                                        gboolean* OUT_success,
                                        GError** error);
+  // Runs on the mount thread.
+  virtual void DoSignBootLockbox(const chromeos::SecureBlob& request,
+                                 DBusGMethodInvocation* context);
+  virtual gboolean SignBootLockbox(const GArray* request,
+                                   DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoVerifyBootLockbox(const chromeos::SecureBlob& request,
+                                   DBusGMethodInvocation* context);
+  virtual gboolean VerifyBootLockbox(const GArray* request,
+                                     DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoFinalizeBootLockbox(const chromeos::SecureBlob& request,
+                                     DBusGMethodInvocation* context);
+  virtual gboolean FinalizeBootLockbox(const GArray* request,
+                                       DBusGMethodInvocation* context);
 
  protected:
   FRIEND_TEST(Standalone, StoreEnrollmentState);
@@ -606,6 +626,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   chaps::TokenManagerClient* chaps_client_;
   scoped_ptr<Attestation> default_attestation_;
   Attestation* attestation_;
+  scoped_ptr<BootLockbox> default_boot_lockbox_;
+  // After construction, this should only be used on the mount thread.
+  BootLockbox* boot_lockbox_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

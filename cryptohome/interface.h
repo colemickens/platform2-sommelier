@@ -396,6 +396,15 @@ gboolean cryptohome_load_enrollment_state(
     GArray** OUT_enrollment_state,
     gboolean* OUT_success,
     GError** error);
+gboolean cryptohome_sign_boot_lockbox(Cryptohome* self,
+                                      GArray* request,
+                                      DBusGMethodInvocation* resp);
+gboolean cryptohome_verify_boot_lockbox(Cryptohome* self,
+                                        GArray* request,
+                                        DBusGMethodInvocation* resp);
+gboolean cryptohome_finalize_boot_lockbox(Cryptohome* self,
+                                          GArray* request,
+                                          DBusGMethodInvocation* resp);
 
 }  // namespace gobject
 }  // namespace cryptohome

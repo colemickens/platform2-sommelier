@@ -104,6 +104,9 @@ namespace switches {
     "tpm_attestation_get_ek",
     "tpm_attestation_reset_identity",
     "tpm_attestation_reset_identity_result",
+    "sign_lockbox",
+    "verify_lockbox",
+    "finalize_lockbox",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -151,6 +154,9 @@ namespace switches {
     ACTION_TPM_ATTESTATION_GET_EK,
     ACTION_TPM_ATTESTATION_RESET_IDENTITY,
     ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT,
+    ACTION_SIGN_LOCKBOX,
+    ACTION_VERIFY_LOCKBOX,
+    ACTION_FINALIZE_LOCKBOX
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -318,26 +324,14 @@ bool BuildAuthorization(CommandLine* cl,
   return true;
 }
 
-void HandleReply(DBusGProxy* proxy, GArray* OUT_reply,
-                 GError* error, gpointer userdata) {
-    cryptohome::BaseReply reply;
-    std::vector<std::string>* messages =
-        static_cast<std::vector<std::string>*>(userdata);
-    if (OUT_reply &&
-        reply.ParseFromArray(OUT_reply->data, OUT_reply->len)) {
-      reply.PrintDebugString();
-      if (!reply.has_error()) {
-        printf("%s\n", messages->at(0).c_str());
-        exit(0);
-      }
-      printf("%s\n", messages->at(1).c_str());
-      exit(reply.error());
-    }
-    printf("%s\n", messages->at(1).c_str());
-    if (error && error->message) {
-      printf("Call error: %s", error->message);
-    }
+void ParseBaseReply(GArray* reply_ary, cryptohome::BaseReply* reply) {
+  if (!reply)
+    return;
+  if (!reply->ParseFromArray(reply_ary->data, reply_ary->len)) {
+    printf("Failed to parse reply.\n");
     exit(-1);
+  }
+  reply->PrintDebugString();
 }
 
 class ClientLoop {
@@ -387,6 +381,19 @@ class ClientLoop {
     g_main_loop_run(loop_);
   }
 
+  void Run() {
+    Run(0);
+  }
+
+  // This callback can be used with a ClientLoop instance as the |userdata| to
+  // handle an asynchronous reply which emits a serialized BaseReply.
+  static void ParseReplyThunk(DBusGProxy* proxy,
+                              GArray* data,
+                              GError* error,
+                              gpointer userdata) {
+    reinterpret_cast<ClientLoop*>(userdata)->ParseReply(data, error);
+  }
+
   bool get_return_status() {
     return return_status_;
   }
@@ -397,6 +404,10 @@ class ClientLoop {
 
   string get_return_data() {
     return return_data_;
+  }
+
+  cryptohome::BaseReply reply() {
+    return reply_;
   }
 
  private:
@@ -414,6 +425,16 @@ class ClientLoop {
       return_data_ = string(static_cast<char*>(data->data), data->len);
       g_main_loop_quit(loop_);
     }
+  }
+
+  void ParseReply(GArray* reply_ary,
+                  GError* error) {
+    if (error && error->message) {
+      printf("Call error: %s\n", error->message);
+      exit(-1);
+    }
+    ParseBaseReply(reply_ary, &reply_);
+    g_main_loop_quit(loop_);
   }
 
   static void CallbackThunk(DBusGProxy* proxy,
@@ -439,6 +460,7 @@ class ClientLoop {
   bool return_status_;
   int return_code_;
   string return_data_;
+  cryptohome::BaseReply reply_;
 };
 
 class TpmWaitLoop {
@@ -596,37 +618,40 @@ int main(int argc, char **argv) {
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
-    std::vector<std::string> messages;
-    messages.push_back("Mount succeeded.");
-    messages.push_back("Mount failed.");
-
+    cryptohome::BaseReply reply;
     chromeos::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      ClientLoop loop;
+      loop.Initialize(&proxy);
       DBusGProxyCall* call = org_chromium_CryptohomeInterface_mount_ex_async(
                                  proxy.gproxy(),
                                  account_ary.get(),
                                  auth_ary.get(),
                                  req_ary.get(),
-                                 &HandleReply,
-                                 static_cast<gpointer>(&messages));
+                                 &ClientLoop::ParseReplyThunk,
+                                 static_cast<gpointer>(&loop));
       if (!call)
         return -1;
-      g_main_loop_run(loop);
-      return -1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_mount_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("MountEx call failed: %s", error->message);
+        return -1;
+      }
+      ParseBaseReply(out_reply, &reply);
     }
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_mount_ex(proxy.gproxy(),
-          account_ary.get(),
-          auth_ary.get(),
-          req_ary.get(),
-          &out_reply,
-          &chromeos::Resetter(&error).lvalue())) {
-      printf("MountEx call failed: %s", error->message);
-      return -1;
+    if (reply.has_error()) {
+      printf("Mount failed.\n");
+      return reply.error();
     }
-    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
+    printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST],
                 action.c_str())) {
     gboolean done = false;
@@ -767,39 +792,41 @@ int main(int argc, char **argv) {
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
-    std::vector<std::string> messages;
-    messages.push_back("Key removed.");
-    messages.push_back("Key removal failed.");
-
+    cryptohome::BaseReply reply;
     chromeos::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      ClientLoop loop;
+      loop.Initialize(&proxy);
       DBusGProxyCall* call =
            org_chromium_CryptohomeInterface_remove_key_ex_async(
                proxy.gproxy(),
                account_ary.get(),
                auth_ary.get(),
                req_ary.get(),
-               &HandleReply,
-               static_cast<gpointer>(&messages));
+               &ClientLoop::ParseReplyThunk,
+               static_cast<gpointer>(&loop));
       if (!call)
         return -1;
-      g_main_loop_run(loop);
-      return -1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_remove_key_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("RemoveKeyEx call failed: %s", error->message);
+        return -1;
+      }
+      ParseBaseReply(out_reply, &reply);
     }
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_remove_key_ex(proxy.gproxy(),
-          account_ary.get(),
-          auth_ary.get(),
-          req_ary.get(),
-          &out_reply,
-          &chromeos::Resetter(&error).lvalue())) {
-      printf("RemoveKeyEx call failed: %s", error->message);
-      return -1;
+    if (reply.has_error()) {
+      printf("Key removal failed.\n");
+      return reply.error();
     }
-    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
-
+    printf("Key removed.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
                 action.c_str())) {
     cryptohome::AccountIdentifier id;
@@ -818,39 +845,41 @@ int main(int argc, char **argv) {
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
-    std::vector<std::string> messages;
-    messages.push_back("Key authenticated.");
-    messages.push_back("Key authentication failed.");
-
+    cryptohome::BaseReply reply;
     chromeos::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      ClientLoop loop;
+      loop.Initialize(&proxy);
       DBusGProxyCall* call =
            org_chromium_CryptohomeInterface_check_key_ex_async(
                proxy.gproxy(),
                account_ary.get(),
                auth_ary.get(),
                req_ary.get(),
-               &HandleReply,
-               static_cast<gpointer>(&messages));
+               &ClientLoop::ParseReplyThunk,
+               static_cast<gpointer>(&loop));
       if (!call)
         return -1;
-      g_main_loop_run(loop);
-      return -1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_check_key_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("CheckKeyEx call failed: %s", error->message);
+        return -1;
+      }
+      ParseBaseReply(out_reply, &reply);
     }
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_check_key_ex(proxy.gproxy(),
-          account_ary.get(),
-          auth_ary.get(),
-          req_ary.get(),
-          &out_reply,
-          &chromeos::Resetter(&error).lvalue())) {
-      printf("CheckKeyEx call failed: %s", error->message);
-      return -1;
+    if (reply.has_error()) {
+      printf("Key authentication failed.\n");
+      return reply.error();
     }
-    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
-
+    printf("Key authenticated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY],
                      action.c_str())) {
     std::string user, password, old_password;
@@ -999,37 +1028,40 @@ int main(int argc, char **argv) {
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
-    std::vector<std::string> messages;
-    messages.push_back("Key added.");
-    messages.push_back("Key addition failed.");
-
+    cryptohome::BaseReply reply;
     chromeos::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      ClientLoop loop;
+      loop.Initialize(&proxy);
       DBusGProxyCall* call = org_chromium_CryptohomeInterface_add_key_ex_async(
                                  proxy.gproxy(),
                                  account_ary.get(),
                                  auth_ary.get(),
                                  req_ary.get(),
-                                 &HandleReply,
-                                 static_cast<gpointer>(&messages));
+                                 &ClientLoop::ParseReplyThunk,
+                                 static_cast<gpointer>(&loop));
       if (!call)
         return -1;
-      g_main_loop_run(loop);
-      return -1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_add_key_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("AddKeyEx call failed: %s", error->message);
+        return -1;
+      }
+      ParseBaseReply(out_reply, &reply);
     }
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_add_key_ex(proxy.gproxy(),
-          account_ary.get(),
-          auth_ary.get(),
-          req_ary.get(),
-          &out_reply,
-          &chromeos::Resetter(&error).lvalue())) {
-      printf("AddKeyEx call failed: %s", error->message);
-      return -1;
+    if (reply.has_error()) {
+      printf("Key addition failed.\n");
+      return reply.error();
     }
-    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
+    printf("Key added.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_KEY_EX],
                 action.c_str())) {
     std::string new_password;
@@ -1082,37 +1114,40 @@ int main(int argc, char **argv) {
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
-    std::vector<std::string> messages;
-    messages.push_back("Key updated.");
-    messages.push_back("Key update failed.");
-
+    cryptohome::BaseReply reply;
     chromeos::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      GMainLoop* loop = g_main_loop_new(NULL, TRUE);
+      ClientLoop loop;
+      loop.Initialize(&proxy);
       DBusGProxyCall* call =
           org_chromium_CryptohomeInterface_update_key_ex_async(
               proxy.gproxy(),
               account_ary.get(),
               auth_ary.get(),
               req_ary.get(),
-              &HandleReply,
-              static_cast<gpointer>(&messages));
+              &ClientLoop::ParseReplyThunk,
+              static_cast<gpointer>(&loop));
       if (!call)
         return -1;
-      g_main_loop_run(loop);
-      return -1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_update_key_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("Failed to call UpdateKeyEx!\n");
+      }
+      ParseBaseReply(out_reply, &reply);
     }
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_update_key_ex(proxy.gproxy(),
-          account_ary.get(),
-          auth_ary.get(),
-          req_ary.get(),
-          &out_reply,
-          &chromeos::Resetter(&error).lvalue())) {
-      printf("Failed to call UpdateKeyEx!\n");
+    if (reply.has_error()) {
+      printf("Key update failed.\n");
+      return reply.error();
     }
-    HandleReply(NULL, out_reply, NULL, static_cast<gpointer>(&messages));
+    printf("Key updated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
     std::string user;
@@ -2069,6 +2104,148 @@ int main(int argc, char **argv) {
       default:
         printf("Identity reset unknown error: %s\n", response.detail().c_str());
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
+                     action.c_str())) {
+    string data;
+    if (!base::ReadFileToString(GetFile(cl), &data)) {
+      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+      return 1;
+    }
+    cryptohome::SignBootLockboxRequest request;
+    request.set_data(data);
+    chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+    cryptohome::BaseReply reply;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+          org_chromium_CryptohomeInterface_sign_boot_lockbox_async(
+              proxy.gproxy(),
+              request_ary.get(),
+              &ClientLoop::ParseReplyThunk,
+              static_cast<gpointer>(&loop));
+      if (!call) {
+        printf("Failed to call SignBootLockbox!\n");
+        return -1;
+      }
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      chromeos::glib::ScopedError error;
+      chromeos::glib::ScopedArray reply_ary;
+      if (!org_chromium_CryptohomeInterface_sign_boot_lockbox(
+            proxy.gproxy(),
+            request_ary.get(),
+            &chromeos::Resetter(&reply_ary).lvalue(),
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("Failed to call SignBootLockbox!\n");
+        return -1;
+      }
+      ParseBaseReply(reply_ary.get(), &reply);
+    }
+    if (reply.has_error()) {
+      printf("SignBootLockbox error: %d\n", reply.error());
+      return reply.error();
+    }
+    if (!reply.HasExtension(cryptohome::SignBootLockboxReply::reply)) {
+      printf("SignBootLockboxReply missing.\n");
+      return -1;
+    }
+    std::string signature =
+        reply.GetExtension(cryptohome::SignBootLockboxReply::reply).signature();
+    file_util::WriteFile(GetFile(cl).AddExtension("signature"),
+                         signature.data(),
+                         signature.size());
+    printf("SignBootLockbox success.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_VERIFY_LOCKBOX],
+                     action.c_str())) {
+    string data;
+    if (!base::ReadFileToString(GetFile(cl), &data)) {
+      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+      return 1;
+    }
+    string signature;
+    FilePath signature_file = GetFile(cl).AddExtension("signature");
+    if (!base::ReadFileToString(signature_file, &signature)) {
+      printf("Failed to read input file: %s\n", signature_file.value().c_str());
+      return 1;
+    }
+    cryptohome::VerifyBootLockboxRequest request;
+    request.set_data(data);
+    request.set_signature(signature);
+    chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+    cryptohome::BaseReply reply;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+          org_chromium_CryptohomeInterface_verify_boot_lockbox_async(
+              proxy.gproxy(),
+              request_ary.get(),
+              &ClientLoop::ParseReplyThunk,
+              static_cast<gpointer>(&loop));
+      if (!call) {
+        printf("Failed to call VerifyBootLockbox!\n");
+        return -1;
+      }
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      chromeos::glib::ScopedError error;
+      chromeos::glib::ScopedArray reply_ary;
+      if (!org_chromium_CryptohomeInterface_verify_boot_lockbox(
+            proxy.gproxy(),
+            request_ary.get(),
+            &chromeos::Resetter(&reply_ary).lvalue(),
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("Failed to call VerifyBootLockbox!\n");
+        return -1;
+      }
+      ParseBaseReply(reply_ary.get(), &reply);
+    }
+    if (reply.has_error()) {
+      printf("VerifyBootLockbox error: %d\n", reply.error());
+      return reply.error();
+    }
+    printf("VerifyBootLockbox success.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_FINALIZE_LOCKBOX],
+                     action.c_str())) {
+    cryptohome::FinalizeBootLockboxRequest request;
+    chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+    cryptohome::BaseReply reply;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+          org_chromium_CryptohomeInterface_finalize_boot_lockbox_async(
+              proxy.gproxy(),
+              request_ary.get(),
+              &ClientLoop::ParseReplyThunk,
+              static_cast<gpointer>(&loop));
+      if (!call) {
+        printf("Failed to call FinalizeBootLockbox!\n");
+        return -1;
+      }
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      chromeos::glib::ScopedError error;
+      chromeos::glib::ScopedArray reply_ary;
+      if (!org_chromium_CryptohomeInterface_finalize_boot_lockbox(
+            proxy.gproxy(),
+            request_ary.get(),
+            &chromeos::Resetter(&reply_ary).lvalue(),
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("Failed to call FinalizeBootLockbox!\n");
+        return -1;
+      }
+      ParseBaseReply(reply_ary.get(), &reply);
+    }
+    if (reply.has_error()) {
+      printf("FinalizeBootLockbox error: %d\n", reply.error());
+      return reply.error();
+    }
+    printf("FinalizeBootLockbox success.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

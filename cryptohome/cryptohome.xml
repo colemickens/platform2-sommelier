@@ -375,6 +375,33 @@
       <arg type="ay" name="enrollment_state" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: SignBootLockboxRequest
+         reply: BaseReply with a SignBootLockboxReply extension on success
+    -->
+    <method name="SignBootLockbox">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: VerifyBootLockboxRequest
+         reply: BaseReply
+    -->
+    <method name="VerifyBootLockbox">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: FinalizeBootLockboxRequest
+         reply: BaseReply
+    -->
+    <method name="FinalizeBootLockbox">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
       <arg type="b" name="owned" />

@@ -21,6 +21,7 @@
 #include "crypto.h"
 #include "make_tests.h"
 #include "mock_attestation.h"
+#include "mock_boot_lockbox.h"
 #include "mock_crypto.h"
 #include "mock_dbus_transition.h"
 #include "mock_homedirs.h"
@@ -729,6 +730,7 @@ class ExTest : public ::testing::Test {
     service_.set_use_tpm(false);
     service_.set_platform(&platform_);
     service_.set_chaps_client(&chaps_client_);
+    service_.set_boot_lockbox(&lockbox_);
     service_.set_reply_factory(&reply_factory_);
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
@@ -740,10 +742,10 @@ class ExTest : public ::testing::Test {
     g_error_ = NULL;
     // Fast path through Initialize()
     EXPECT_CALL(homedirs_, Init())
-      .WillOnce(Return(true));
+        .WillOnce(Return(true));
     // Skip the CleanUpStaleMounts bit.
     EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-      .WillRepeatedly(Return(false));
+        .WillRepeatedly(Return(false));
     ASSERT_TRUE(service_.Initialize());
   }
 
@@ -759,7 +761,21 @@ class ExTest : public ::testing::Test {
     // |error| will be cleaned up by event_source_
     MockDBusErrorReply *error = new MockDBusErrorReply();
     EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-      .WillOnce(DoAll(SaveArg<1>(&g_error_), Return(error)));
+        .WillOnce(DoAll(SaveArg<1>(&g_error_), Return(error)));
+  }
+
+  void SetupReply() {
+    EXPECT_CALL(reply_factory_, NewReply(NULL, _))
+        .WillOnce(DoAll(SaveArg<1>(&reply_), Return(new MockDBusReply())));
+  }
+
+  BaseReply GetLastReply() {
+    BaseReply reply;
+    CHECK(reply_);
+    CHECK(reply.ParseFromString(*reply_));
+    free(reply_);
+    reply_ = NULL;
+    return reply;
   }
 
   void PrepareArguments() {
@@ -783,10 +799,18 @@ class ExTest : public ::testing::Test {
     return ary;
   }
 
+  template<class ProtoBuf>
+  chromeos::SecureBlob BlobFromProtobuf(const ProtoBuf& pb) {
+    std::string serialized;
+    CHECK(pb.SerializeToString(&serialized));
+    return chromeos::SecureBlob(serialized);
+  }
+
  protected:
   NiceMock<MockAttestation> attest_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockInstallAttributes> attrs_;
+  NiceMock<MockBootLockbox> lockbox_;
   MockDBusReplyFactory reply_factory_;
 
   scoped_ptr<AccountIdentifier> id_;
@@ -797,6 +821,7 @@ class ExTest : public ::testing::Test {
   scoped_ptr<RemoveKeyRequest> remove_req_;
 
   GError* g_error_;
+  std::string* reply_;
   MockPlatform platform_;
   chaps::TokenManagerClientMock chaps_client_;
   Service service_;
@@ -980,6 +1005,133 @@ TEST_F(ExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No label provided for target key", g_error_->message);
+}
+
+TEST_F(ExTest, BootLockboxSignSuccess) {
+  SetupReply();
+  SecureBlob test_signature("test");
+  EXPECT_CALL(lockbox_, Sign(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(test_signature),
+                            Return(true)));
+
+  SignBootLockboxRequest request;
+  request.set_data("test_data");
+  service_.DoSignBootLockbox(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_TRUE(reply.HasExtension(SignBootLockboxReply::reply));
+  EXPECT_EQ("test",
+            reply.GetExtension(SignBootLockboxReply::reply).signature());
+}
+
+TEST_F(ExTest, BootLockboxSignBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoSignBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+  // Try with |data| not set.
+  SetupErrorReply();
+  SignBootLockboxRequest request;
+  service_.DoSignBootLockbox(BlobFromProtobuf(request), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
+TEST_F(ExTest, BootLockboxSignError) {
+  SetupReply();
+  EXPECT_CALL(lockbox_, Sign(_, _))
+      .WillRepeatedly(Return(false));
+
+  SignBootLockboxRequest request;
+  request.set_data("test_data");
+  service_.DoSignBootLockbox(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN, reply.error());
+  EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
+}
+
+TEST_F(ExTest, BootLockboxVerifySuccess) {
+  SetupReply();
+  EXPECT_CALL(lockbox_, Verify(_, _))
+      .WillRepeatedly(Return(true));
+
+  VerifyBootLockboxRequest request;
+  request.set_data("test_data");
+  request.set_signature("test_signature");
+  service_.DoVerifyBootLockbox(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
+}
+
+TEST_F(ExTest, BootLockboxVerifyBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+  // Try with |signature| not set.
+  SetupErrorReply();
+  VerifyBootLockboxRequest request;
+  request.set_data("test_data");
+  service_.DoVerifyBootLockbox(BlobFromProtobuf(request), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+  // Try with |data| not set.
+  SetupErrorReply();
+  VerifyBootLockboxRequest request2;
+  request2.set_signature("test_data");
+  service_.DoVerifyBootLockbox(BlobFromProtobuf(request2), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
+TEST_F(ExTest, BootLockboxVerifyError) {
+  SetupReply();
+  EXPECT_CALL(lockbox_, Verify(_, _))
+      .WillRepeatedly(Return(false));
+
+  VerifyBootLockboxRequest request;
+  request.set_data("test_data");
+  request.set_signature("test_signature");
+  service_.DoVerifyBootLockbox(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID, reply.error());
+}
+
+TEST_F(ExTest, BootLockboxFinalizeSuccess) {
+  SetupReply();
+  EXPECT_CALL(lockbox_, FinalizeBoot())
+      .WillRepeatedly(Return(true));
+
+  FinalizeBootLockboxRequest request;
+  service_.DoFinalizeBootLockbox(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
+}
+
+TEST_F(ExTest, BootLockboxFinalizeBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoFinalizeBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
+TEST_F(ExTest, BootLockboxFinalizeError) {
+  SetupReply();
+  EXPECT_CALL(lockbox_, FinalizeBoot())
+      .WillRepeatedly(Return(false));
+
+  FinalizeBootLockboxRequest request;
+  service_.DoFinalizeBootLockbox(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_TPM_COMM_ERROR, reply.error());
 }
 
 }  // namespace cryptohome
