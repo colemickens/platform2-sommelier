@@ -672,13 +672,15 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
       LOG(INFO) << "An asynchronous mount request with sequence id: "
                 << result->sequence_id()
                 << " finished; doing PKCS11 init...";
-      // We only report successful mounts.
-      if (result->return_status() && !result->return_code()) {
-        timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer,
-                                       false);
+      // We only report and init PKCS#11 for successful mounts.
+      if (result->return_status()) {
+        if (!result->return_code()) {
+          timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer,
+                                         false);
+        }
+        // A return code of MOUNT_RECREATED will still need PKCS#11 init.
+        InitializePkcs11(result->mount());
       }
-      // Time to push the task for PKCS#11 initialization.
-      InitializePkcs11(result->mount());
     } else if (result->guest()) {
       if (!result->return_status()) {
         DLOG(INFO) << "Dropping MountMap entry for failed Guest mount.";
@@ -1464,7 +1466,11 @@ gboolean Service::Mount(const gchar *userid,
     timer_collection_->UpdateTimer(TimerCollection::kSyncMountTimer, false);
 
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-  InitializePkcs11(user_mount.get());
+  if (result.return_status()) {
+    InitializePkcs11(result.mount());
+  } else {
+    RemoveMount(result.mount());
+  }
 
   *OUT_error_code = result.return_code();
   *OUT_result = result.return_status();
@@ -1685,72 +1691,97 @@ gboolean Service::MountEx(const GArray *account_id,
   return TRUE;
 }
 
-gboolean Service::AsyncMount(const gchar *userid,
-                             const gchar *key,
-                             gboolean create_if_missing,
-                             gboolean ensure_ephemeral,
-                             gint *OUT_async_id,
-                             GError **error) {
-  // See ::Mount for detailed commentary.
-  if (mounts_.size() == 0)
-    CleanUpStaleMounts(false);
+void Service::SendLegacyAsyncReply(MountTaskMount* mount_task,
+                                   MountError return_code,
+                                   bool return_status) {
+    MountTaskResult *result = new MountTaskResult(*mount_task->result());
+    result->set_mount(mount_task->mount());
+    result->set_return_code(return_code);
+    result->set_return_status(return_status);
+    event_source_.AddEvent(result);
+    return;
+}
 
-  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+// This function implements the _old_ style Mounts.  It should be removed
+// once MountEx is used everywhere.
+// Pass in the MountTaskMount so the async_id stays consistent.
+void Service::DoAsyncMount(const std::string& userid,
+                           SecureBlob *key,
+                           bool public_mount,
+                           MountTaskMount* mount_task) {
+  // Clean up stale mounts if this is the only mount.
+  if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
+    // Don't proceed if there is any existing mount or stale mount.
+    if (public_mount) {
+      LOG(ERROR) << "Public mount requested with other mounts active.";
+      PostAsyncCallResultForUser(userid, mount_task,
+                                 MOUNT_ERROR_MOUNT_POINT_BUSY, false);
+      return;
+    }
+  }
+
+  if (public_mount) {
+    std::string public_mount_passkey;
+    if (!GetPublicMountPassKey(userid, &public_mount_passkey)) {
+      LOG(ERROR) << "Could not get public mount passkey.";
+      PostAsyncCallResultForUser(userid, mount_task,
+                                 MOUNT_ERROR_KEY_FAILURE, false);
+      return;
+    }
+    SecureBlob public_key(public_mount_passkey);
+    key->swap(public_key);
+    // Override the mount_task credentials with the public key.
+    UsernamePasskey credentials(userid.c_str(), *key);
+    mount_task->set_credentials(credentials);
+  }
 
   scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
+  mount_task->set_mount(guest_mount);
   bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
   // TODO(wad,ellyjones) Change this behavior to return failure even
   // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
   if (guest_mounted && !guest_mount->UnmountCryptohome()) {
     LOG(ERROR) << "Could not unmount cryptohome from Guest session";
-    MountTaskObserverBridge* bridge =
-        new MountTaskObserverBridge(guest_mount.get(), &event_source_);
-    *OUT_async_id = PostAsyncCallResult(bridge,
-                                        MOUNT_ERROR_MOUNT_POINT_BUSY,
-                                        false);
-    return TRUE;
+    SendLegacyAsyncReply(mount_task, MOUNT_ERROR_MOUNT_POINT_BUSY, false);
+    return;
   }
 
+  scoped_refptr<cryptohome::Mount> user_mount =
+      GetOrCreateMountForUser(userid.c_str());
+  // Any work from here will use the user_mount.
+  mount_task->set_mount(user_mount);
+
   // Don't overlay an ephemeral mount over a file-backed one.
-  scoped_refptr<cryptohome::Mount> user_mount = GetOrCreateMountForUser(userid);
-  if (ensure_ephemeral && user_mount->IsVaultMounted()) {
+  const Mount::MountArgs mount_args = mount_task->mount_args();
+  if (mount_args.ensure_ephemeral && user_mount->IsVaultMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_mount->UnmountCryptohome()) {
       LOG(ERROR) << "Could not unmount vault before an ephemeral mount.";
-      MountTaskObserverBridge* bridge =
-           new MountTaskObserverBridge(user_mount.get(), &event_source_);
-      *OUT_async_id = PostAsyncCallResult(bridge,
-                                          MOUNT_ERROR_MOUNT_POINT_BUSY,
-                                          false);
-      return TRUE;
+      SendLegacyAsyncReply(mount_task, MOUNT_ERROR_MOUNT_POINT_BUSY, false);
+      return;
     }
   }
 
+  UsernamePasskey credentials(userid.c_str(), *key);
   if (user_mount->IsMounted()) {
     LOG(INFO) << "Mount exists. Rechecking credentials.";
-    MountTaskObserverBridge* bridge =
-        new MountTaskObserverBridge(user_mount.get(), &event_source_);
     // Attempt a short-circuited credential test.
     if (user_mount->AreSameUser(credentials) &&
         user_mount->AreValid(credentials)) {
-      *OUT_async_id = PostAsyncCallResult(bridge, MOUNT_ERROR_NONE, true);
-      return TRUE;
+      SendLegacyAsyncReply(mount_task, MOUNT_ERROR_NONE, true);
+      return;
     }
-    // TODO(wad) This should really hang off of the MountTaskTestCredentials
-    //           below I believe.
-    // See comment in Service::Mount() above on why this is needed here.
-    InitializePkcs11(user_mount.get());
 
     // If the Mount has invalid credentials (repopulated from system state)
     // this will ensure a user can still sign-in with the right ones.
     // TODO(wad) Should we unmount on a failed re-mount attempt?
-    scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(bridge, NULL, homedirs_, credentials);
-    *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.message_loop()->PostTask(FROM_HERE,
-        base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
-    return TRUE;
+    bool return_status = homedirs_->AreCredentialsValid(credentials);
+    SendLegacyAsyncReply(mount_task, MOUNT_ERROR_NONE, return_status);
+
+    // See comment in Service::Mount() above on why this is needed here.
+    InitializePkcs11(user_mount.get());
+    return;
   }
 
   // See Mount for a relevant comment.
@@ -1762,25 +1793,48 @@ gboolean Service::AsyncMount(const gchar *userid,
   }
 
   timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer, true);
+  mount_task->result()->set_pkcs11_init(true);
+  user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
+  mount_task->Run();
+  MountTaskResult *result = new MountTaskResult(*mount_task->result());
+  event_source_.AddEvent(result);
+  return;
+}
+
+gboolean Service::AsyncMount(const gchar *userid,
+                             const gchar *key,
+                             gboolean create_if_missing,
+                             gboolean ensure_ephemeral,
+                             DBusGMethodInvocation *context) {
+
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  MountTaskObserverBridge *bridge =
-      new MountTaskObserverBridge(user_mount, &event_source_);
+  scoped_ptr<SecureBlob> key_blob(new SecureBlob(key, strlen(key)));
+  UsernamePasskey credentials(userid, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
-                                                            bridge,
-                                                            user_mount.get(),
+                                                            NULL,
+                                                            NULL,
                                                             credentials,
                                                             mount_args);
-  mount_task->result()->set_pkcs11_init(true);
-  user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-  *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskMount::Run, mount_task.get()));
 
-  LOG(INFO) << "Asynced Mount() requested. Tracking request sequence id"
+  // Send the async_id before we do any real work.
+  dbus_g_method_return(context, mount_task->sequence_id());
+
+  LOG(INFO) << "Asynced Mount() requested. Tracking request sequence id "
+            << mount_task->sequence_id()
             << " for later PKCS#11 initialization.";
-  return TRUE;
+
+  // Just pass the task and the args.
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoAsyncMount, base::Unretained(this),
+                 std::string(userid),
+                 base::Owned(key_blob.release()),
+                 false,
+                 mount_task));
+
+
+   return TRUE;
 }
 
 gboolean Service::MountGuest(gint *OUT_error_code,
@@ -1888,32 +1942,31 @@ gboolean Service::MountPublic(const gchar* public_mount_id,
 gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
                                    gboolean create_if_missing,
                                    gboolean ensure_ephemeral,
-                                   gint* OUT_async_id,
-                                   GError** error) {
-  // Don't proceed if there is any existing mount or stale mount.
-  if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
-    LOG(ERROR) << "Public mount requested with other mounts active.";
+                                   DBusGMethodInvocation *context) {
 
-    *OUT_async_id = PostAsyncCallResultForUser(
-        public_mount_id, MOUNT_ERROR_MOUNT_POINT_BUSY, false);
-    return TRUE;
-  }
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = create_if_missing;
+  mount_args.ensure_ephemeral = ensure_ephemeral;
+  scoped_ptr<SecureBlob> key_blob(new SecureBlob());
+  UsernamePasskey credentials(public_mount_id, *key_blob);
+  scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
+                                                            NULL,
+                                                            NULL,
+                                                            credentials,
+                                                            mount_args);
 
-  std::string public_mount_passkey;
-  if (!GetPublicMountPassKey(public_mount_id, &public_mount_passkey)) {
-    LOG(ERROR) << "Could not get public mount passkey.";
+  // Send the async_id before we do any real work.
+  dbus_g_method_return(context, mount_task->sequence_id());
 
-    *OUT_async_id = PostAsyncCallResultForUser(
-        public_mount_id, MOUNT_ERROR_KEY_FAILURE, false);
-    return TRUE;
-  }
 
-  return AsyncMount(public_mount_id,
-                    public_mount_passkey.c_str(),
-                    create_if_missing,
-                    ensure_ephemeral,
-                    OUT_async_id,
-                    error);
+  // This should really call DoAsyncMount
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoAsyncMount, base::Unretained(this),
+                 std::string(public_mount_id),
+                 base::Owned(key_blob.release()),
+                 true,
+                 mount_task));
+  return TRUE;
 }
 
 // Unmount all mounted cryptohomes.
@@ -2709,18 +2762,18 @@ int Service::PostAsyncCallResult(MountTaskObserver* bridge,
   return mount_task->sequence_id();
 }
 
-int Service::PostAsyncCallResultForUser(const std::string& user_id,
-                                        MountError return_code,
-                                        bool return_status) {
+void Service::PostAsyncCallResultForUser(const std::string& user_id,
+                                         MountTaskMount* mount_task,
+                                         MountError return_code,
+                                         bool return_status) {
   // Create a ref-counted mount for async use and then throw it away.
   scoped_refptr<cryptohome::Mount> mount = GetOrCreateMountForUser(user_id);
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount.get(), &event_source_);
+  mount_task->set_mount(GetOrCreateMountForUser(user_id));
   // Drop it from the map now that the MountTask has a ref.
   if (!RemoveMountForUser(user_id))
     LOG(ERROR) << "Unexpectedly cannot drop unused mount from map.";
 
-  return PostAsyncCallResult(bridge, return_code, return_status);
+  SendLegacyAsyncReply(mount_task, return_code, return_status);
 }
 
 void Service::DispatchEvents() {

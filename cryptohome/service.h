@@ -240,13 +240,20 @@ class Service : public chromeos::dbus::AbstractDbusService,
                          gint *OUT_error_code,
                          gboolean *OUT_result,
                          GError **error);
+
+  // mount_thread_ executed handler for AsyncMount DBus calls.
+  // All real work is done here, while the DBus thread merely generates
+  // an async_id in |mount_task| and returns it to the caller.
+  virtual void  DoAsyncMount(const std::string& userid,
+                             SecureBlob *key,
+                             bool public_mount,
+                             MountTaskMount* mount_task);
   virtual gboolean AsyncMount(
       const gchar *user,
       const gchar *key,
       gboolean create_if_missing,
       gboolean ensure_ephemeral,
-      gint *OUT_async_id,
-      GError **error);
+      DBusGMethodInvocation *context);
   virtual void DoMountEx(
       AccountIdentifier* identifier,
       AuthorizationRequest* authorization,
@@ -271,8 +278,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncMountPublic(const gchar* public_mount_id,
                                     gboolean create_if_missing,
                                     gboolean ensure_ephemeral,
-                                    gint* OUT_async_id,
-                                    GError** error);
+                                    DBusGMethodInvocation* context);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
   virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
                                   GError **error);
@@ -507,6 +513,14 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual CryptohomeErrorCode MountErrorToCryptohomeError(
       const MountError code) const;
 
+  // Posts a message back from the mount_thread_ to the main thread to
+  // reply to a DBus message that still uses async_id-based responses.
+  // Only call from mount_thread_ and do not add new DBus methods using
+  // async_ids.
+  virtual void SendLegacyAsyncReply(MountTaskMount* mount_task,
+                                    MountError return_code,
+                                    bool return_status);
+
  private:
   FRIEND_TEST_ALL_PREFIXES(ServiceInterfaceTest, GetPublicMountPassKey);
 
@@ -525,11 +539,12 @@ class Service : public chromeos::dbus::AbstractDbusService,
                           MountError return_code,
                           bool return_status);
 
-  // Creates a MountTaskObserverBridge for |user_id| and calls
-  // PostAsyncCallResult above to post async call result.
-  int PostAsyncCallResultForUser(const std::string& user_id,
-                                 MountError return_code,
-                                 bool return_status);
+  // Posts the mount_task and failure code back to the main
+  // thread for migrated legacy calls.
+  void PostAsyncCallResultForUser(const std::string& user_id,
+                                  MountTaskMount* mount_task,
+                                  MountError return_code,
+                                  bool return_status);
 
   bool use_tpm_;
 

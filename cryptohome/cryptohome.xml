@@ -112,6 +112,7 @@
       <arg type="b" name="done" direction="out" />
     </method>
     <method name="AsyncMount">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key" direction="in" />
       <arg type="b" name="create_if_missing" direction="in" />
@@ -142,6 +143,7 @@
       <arg type="b" name="done" direction="out" />
     </method>
     <method name="AsyncMountPublic">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="s" name="public_mount_id" direction="in" />
       <arg type="b" name="create_if_missing" direction="in" />
       <arg type="b" name="ensure_ephemeral" direction="in" />

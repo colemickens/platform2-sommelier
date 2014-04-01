@@ -187,10 +187,9 @@ gboolean cryptohome_async_mount(Cryptohome* self,
                                 gboolean create_if_missing,
                                 gboolean ensure_ephemeral,
                                 gchar** tracked_directories,
-                                gint* OUT_async_id,
-                                GError** error) {
+                                DBusGMethodInvocation* error) {
   CRYPTOHOME_WRAP_METHOD(AsyncMount, userid, key, create_if_missing,
-                         ensure_ephemeral, OUT_async_id);
+                         ensure_ephemeral);
 }
 gboolean cryptohome_mount_ex(Cryptohome* self,
                              GArray* id,
@@ -225,10 +224,9 @@ gboolean cryptohome_async_mount_public(Cryptohome* self,
                                        gchar* public_mount_id,
                                        gboolean create_if_missing,
                                        gboolean ensure_ephemeral,
-                                       gint* OUT_async_id,
-                                       GError** error) {
+                                       DBusGMethodInvocation* error) {
   CRYPTOHOME_WRAP_METHOD(AsyncMountPublic, public_mount_id, create_if_missing,
-                         ensure_ephemeral, OUT_async_id);
+                         ensure_ephemeral);
 }
 gboolean cryptohome_unmount(Cryptohome* self,
                             gboolean* OUT_result,

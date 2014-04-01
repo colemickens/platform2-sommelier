@@ -120,7 +120,7 @@ class MountTaskResult : public CryptohomeEventBase {
     return mount_;
   }
 
-  void set_mount(Mount* value) {
+  void set_mount(const scoped_refptr<Mount>& value) {
     mount_ = value;
   }
 
@@ -223,6 +223,15 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
     return mount_;
   }
 
+  void set_mount(const scoped_refptr<Mount>& mount) {
+    mount_ = mount;
+    result_->set_mount(mount_);
+  }
+
+  void set_credentials(const UsernamePasskey& credentials) {
+    credentials_.Assign(credentials);
+  }
+
   // Gets the MountTaskResult for this task
   MountTaskResult* result() {
     return result_;
@@ -311,6 +320,8 @@ class MountTaskMount : public MountTask {
   virtual ~MountTaskMount() { }
 
   virtual void Run();
+
+  virtual const Mount::MountArgs& mount_args() { return mount_args_; }
 
  private:
   Mount::MountArgs mount_args_;

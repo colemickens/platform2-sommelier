@@ -73,6 +73,8 @@ void MountTaskMount::Run() {
     bool status = mount_->MountCryptohome(credentials_,
                                           mount_args_,
                                           &code);
+    // Ensure result() is not mismatched.
+    result()->set_mount(mount_);
     result()->set_return_status(status);
     result()->set_return_code(code);
   }

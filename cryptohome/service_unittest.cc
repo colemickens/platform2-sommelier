@@ -573,6 +573,10 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
 
   EXPECT_CALL(*m, Init())
     .WillOnce(Return(true));
+  EXPECT_CALL(*m, MountCryptohome(_, _, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(*m, UpdateCurrentUserActivityTimestamp(_))
+    .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
@@ -582,7 +586,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
   gboolean result = FALSE;
   ASSERT_TRUE(service_.Mount("foo@bar.net", "key", true, false,
                              &error_code, &result, NULL));
-
+  ASSERT_EQ(TRUE, result);
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
     .WillRepeatedly(Invoke(StaleShadowMounts));
