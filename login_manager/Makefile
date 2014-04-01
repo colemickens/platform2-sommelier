@@ -15,7 +15,8 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/.. -I$(OUT) -DOS_CHROMEOS -DUSE_NSS -D__STDC_FORMAT_MACROS
 CPPFLAGS += $(PC_CFLAGS)
-LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite -lmetrics
+LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite \
+	-lmetrics-$(BASE_VER)
 
 # Special logic for generating protobuffer bindings.
 PROTO_PATH = $(SYSROOT)/usr/include/proto
