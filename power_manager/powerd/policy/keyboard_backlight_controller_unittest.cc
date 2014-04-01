@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 
+#include <cmath>
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
@@ -27,9 +28,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
       : max_backlight_level_(100),
         initial_backlight_level_(50),
         initial_als_lux_(0),
-        als_limits_pref_("0.0\n20.0\n75.0"),
         als_steps_pref_("20.0 -1 50\n50.0 35 75\n75.0 60 -1"),
-        user_limits_pref_("0.0\n10.0\n100.0"),
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_),
@@ -47,9 +46,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     backlight_.set_current_level(initial_backlight_level_);
     light_sensor_.set_lux(initial_als_lux_);
 
-    prefs_.SetString(kKeyboardBacklightAlsLimitsPref, als_limits_pref_);
     prefs_.SetString(kKeyboardBacklightAlsStepsPref, als_steps_pref_);
-    prefs_.SetString(kKeyboardBacklightUserLimitsPref, user_limits_pref_);
     prefs_.SetString(kKeyboardBacklightUserStepsPref, user_steps_pref_);
 
     controller_.Init(&backlight_, &prefs_, &light_sensor_,
@@ -57,6 +54,13 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   }
 
  protected:
+  // Returns the hardware-specific brightness level that should be used when the
+  // display is dimmed.
+  int64 GetDimmedLevel() {
+    return static_cast<int64>(lround(
+        KeyboardBacklightController::kDimPercent / 100 * max_backlight_level_));
+  }
+
   BacklightControllerStub display_backlight_controller_;
 
   // Max and initial brightness levels for |backlight_|.
@@ -68,9 +72,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
 
   // Values for various preferences.  These can be changed by tests before
   // Init() is called.
-  std::string als_limits_pref_;
   std::string als_steps_pref_;
-  std::string user_limits_pref_;
   std::string user_steps_pref_;
 
   FakePrefs prefs_;
@@ -98,9 +100,7 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
-  als_limits_pref_ = "0.0\n20.0\n75.0";
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
-  user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n100.0";
   Init();
   controller_.HandleSessionStateChange(SESSION_STARTED);
@@ -151,7 +151,6 @@ TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
 
 TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   initial_backlight_level_ = 20;
-  als_limits_pref_ = "0.0\n20.0\n75.0";
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   Init();
   ASSERT_EQ(20, backlight_.current_level());
@@ -198,26 +197,9 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 
-TEST_F(KeyboardBacklightControllerTest, EmptyUserStepsPref) {
-  // If the user steps pref file is empty, the controller should use steps
-  // representing the minimum, dimmed, and maximum levels.
-  user_steps_pref_ = "";
-  user_limits_pref_ = "15.0\n63.0\n87.0";
-  initial_backlight_level_ = 0;
-  Init();
-  ASSERT_EQ(0, backlight_.current_level());
-
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
-  EXPECT_EQ(63, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
-  EXPECT_EQ(87, backlight_.current_level());
-}
-
 TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   // Configure a single step for ALS and three steps for user control.
-  als_limits_pref_ = "0.0\n20.0\n100.0";
   als_steps_pref_ = "50.0 -1 -1";
-  user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n60.0\n100.0";
   initial_backlight_level_ = 50;
   Init();
@@ -227,7 +209,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   // Requests to dim the backlight and turn it off should be honored, as
   // should changes to turn it back on and undim.
   controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(20, backlight_.current_level());
+  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   controller_.SetOffForInactivity(true);
@@ -235,7 +217,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   controller_.SetOffForInactivity(false);
-  EXPECT_EQ(20, backlight_.current_level());
+  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   controller_.SetDimmedForInactivity(false);
@@ -252,7 +234,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   // Go through the same sequence of state changes and check that the
   // user-control dimming level is used.
   controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(10, backlight_.current_level());
+  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   controller_.SetOffForInactivity(true);
@@ -260,7 +242,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   controller_.SetOffForInactivity(false);
-  EXPECT_EQ(10, backlight_.current_level());
+  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   controller_.SetDimmedForInactivity(false);
@@ -270,37 +252,36 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, DontBrightenToDim) {
-  // Set the bottom ALS step to 20%, but request dimming to 30%.
-  als_limits_pref_ = "0.0\n30.0\n100.0";
-  als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
-  initial_als_lux_ = 20;
+  // Set the bottom ALS step to 2%.
+  als_steps_pref_ = "2.0 -1 60\n80.0 40 -1";
+  initial_als_lux_ = 2;
   Init();
+  ASSERT_LT(initial_als_lux_, GetDimmedLevel());
 
   light_sensor_.NotifyObservers();
-  ASSERT_EQ(20, backlight_.current_level());
+  ASSERT_EQ(initial_als_lux_, backlight_.current_level());
 
   // The controller should never increase the brightness level when dimming.
   controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(20, backlight_.current_level());
+  EXPECT_EQ(initial_als_lux_, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
-  als_limits_pref_ = "0.0\n10.0\n100.0";
   als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
   initial_als_lux_ = 20;
   Init();
 
   light_sensor_.NotifyObservers();
-  ASSERT_EQ(20, backlight_.current_level());
+  ASSERT_EQ(initial_als_lux_, backlight_.current_level());
 
   controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(10, backlight_.current_level());
+  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
 
   // ALS-driven changes shouldn't be applied while the screen is dimmed.
   light_sensor_.set_lux(80);
   light_sensor_.NotifyObservers();
   light_sensor_.NotifyObservers();
-  EXPECT_EQ(10, backlight_.current_level());
+  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
 
   // The new ALS level should be used immediately after undimming, though.
   controller_.SetDimmedForInactivity(false);
@@ -312,7 +293,6 @@ TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
 TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
   // Set user steps at 0, 10, 40, 60, and 100.  The backlight should remain
   // at its starting level when Init() is called.
-  user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 15;
   Init();
@@ -330,7 +310,6 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
 TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
   // Set an initial backlight level that's closest to the 60% step and
   // within its lux range of [50, 90].
-  als_limits_pref_ = "0.0\n10.0\n100.0";
   als_steps_pref_ = "0.0 -1 30\n30.0 20 60\n60.0 50 90\n100.0 80 -1";
   initial_backlight_level_ = 55;
   initial_als_lux_ = 85;
@@ -346,7 +325,6 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
-  user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 0;
   Init();
@@ -381,7 +359,6 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, DecreaseUserBrightness) {
-  user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 100;
   Init();
@@ -430,9 +407,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
-  als_limits_pref_ = "0.0\n20.0\n100.0";
   als_steps_pref_ = "50.0 -1 -1";
-  user_limits_pref_ = "0.0\n10.0\n100.0";
   user_steps_pref_ = "0.0\n100.0";
   initial_backlight_level_ = 50;
   Init();

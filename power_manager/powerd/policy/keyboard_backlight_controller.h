@@ -51,6 +51,9 @@ class KeyboardBacklightController
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
+  // Backlight brightness percent to use when the screen is dimmed.
+  static const double kDimPercent;
+
   KeyboardBacklightController();
   virtual ~KeyboardBacklightController();
 
@@ -161,20 +164,12 @@ class KeyboardBacklightController
   // of transitioning to).
   int64 current_level_;
 
-  // Control values used for defining the range that user control will set the
-  // target brightness percent and a special value for dimming the backlight
-  // when the device idles.
-  double user_percent_dim_;
-  double user_percent_max_;
-  double user_percent_min_;
-
   // Current brightness step within |user_steps_| set by user, or -1 if
   // |percent_for_ambient_light_| should be used.
   ssize_t user_step_index_;
 
   // Set of percentages that the user can select from for setting the
-  // brightness. This is populated by either reading from a config value or
-  // dropping in target_percent [min, dim, max] in.
+  // brightness. This is populated from a preference.
   std::vector<double> user_steps_;
 
   // Backlight brightness in the range [0.0, 100.0] to use when the ambient

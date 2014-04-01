@@ -16,8 +16,6 @@
 
 namespace power_manager {
 
-class PrefsInterface;
-
 namespace system {
 class AmbientLightSensorInterface;
 }  // namespace system
@@ -51,28 +49,15 @@ class AmbientLightHandler : public system::AmbientLightObserver {
                       Delegate* delegate);
   virtual ~AmbientLightHandler();
 
-  double min_brightness_percent() const { return min_brightness_percent_; }
-  double dimmed_brightness_percent() const {
-    return dimmed_brightness_percent_;
-  }
-
   void set_name(const std::string& name) { name_ = name; }
 
-  // Initializes the object based on the data in the preferences
-  // |limits_pref_name| and |steps_pref_name| stored within |prefs|.
+  // Initializes the object based on the data in |steps_pref_value|.
   // |lux_level_| is initialized to a synthetic value based on
   // |initial_brightness_percent|, the backlight brightness at the time of
   // initialization.
   //
-  // |limits_pref_name|'s value should contain three lines:
-  //
-  //   <min-percentage>
-  //   <dimmed-percentage>
-  //   <max-percentage>
-  //
-  // |steps_pref_name|'s value should contain one or more newline-separated
-  // brightness steps, each containing three or four space-separated
-  // values:
+  // |steps_pref_value| should contain one or more newline-separated brightness
+  // steps, each containing three or four space-separated values:
   //
   //   <ac-backlight-percentage>
   //     <battery-backlight-percentage> (optional)
@@ -96,9 +81,7 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // ALS later falls below 200 (the top step's decrease threshold), 75% will be
   // used, and if it then falls below 80 (the middle step's decrease threshold),
   // 50% will be used.
-  void Init(PrefsInterface* prefs,
-            const std::string& limits_pref_name,
-            const std::string& steps_pref_name,
+  void Init(const std::string& steps_pref_value,
             double initial_brightness_percent);
 
   // Should be called when the power source changes.
@@ -145,12 +128,6 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   Delegate* delegate_;  // weak
 
   PowerSource power_source_;
-
-  // Minimum, dimmed, and maximum brightness percentages that the backlight
-  // should be set to.
-  double min_brightness_percent_;
-  double dimmed_brightness_percent_;
-  double max_brightness_percent_;
 
   // Value from |sensor_| at the time of the last brightness adjustment.
   int lux_level_;

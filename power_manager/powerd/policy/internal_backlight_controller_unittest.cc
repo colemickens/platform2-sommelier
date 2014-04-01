@@ -39,7 +39,6 @@ class InternalBacklightControllerTest : public ::testing::Test {
         report_initial_als_reading_(true),
         report_initial_power_source_(true),
         default_min_visible_level_(1),
-        default_als_limits_("0.0\n30.0\n100.0"),
         default_als_steps_("50.0 -1 400\n90.0 100 -1"),
         default_no_als_ac_brightness_(80.0),
         default_no_als_battery_brightness_(60.0),
@@ -52,7 +51,6 @@ class InternalBacklightControllerTest : public ::testing::Test {
   // brightness.
   virtual void Init(PowerSource power_source) {
     prefs_.SetInt64(kMinVisibleBacklightLevelPref, default_min_visible_level_);
-    prefs_.SetString(kInternalBacklightAlsLimitsPref, default_als_limits_);
     prefs_.SetString(kInternalBacklightAlsStepsPref, default_als_steps_);
     prefs_.SetDouble(kInternalBacklightNoAlsAcBrightnessPref,
                      default_no_als_ac_brightness_);
@@ -103,7 +101,6 @@ class InternalBacklightControllerTest : public ::testing::Test {
 
   // Default values for prefs.  Applied when Init() is called.
   int64 default_min_visible_level_;
-  std::string default_als_limits_;
   std::string default_als_steps_;
   double default_no_als_ac_brightness_;
   double default_no_als_battery_brightness_;

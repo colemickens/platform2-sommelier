@@ -29,13 +29,11 @@ const char kAvoidSuspendWhenHeadphoneJackPluggedPref[] =
     "avoid_suspend_when_headphone_jack_plugged";
 const char kWakeupInputPref[] = "wakeup_input_device_names";
 const char kPowerSupplyFullFactorPref[] = "power_supply_full_factor";
-const char kInternalBacklightAlsLimitsPref[] = "internal_backlight_als_limits";
 const char kInternalBacklightAlsStepsPref[] = "internal_backlight_als_steps";
 const char kInternalBacklightNoAlsAcBrightnessPref[] =
     "internal_backlight_no_als_ac_brightness";
 const char kInternalBacklightNoAlsBatteryBrightnessPref[] =
     "internal_backlight_no_als_battery_brightness";
-const char kKeyboardBacklightAlsLimitsPref[] = "keyboard_backlight_als_limits";
 const char kKeyboardBacklightAlsStepsPref[] = "keyboard_backlight_als_steps";
 const char kKeyboardBacklightUserLimitsPref[] =
     "keyboard_backlight_user_limits";

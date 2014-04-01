@@ -8,18 +8,12 @@
 #include <base/compiler_specific.h>
 #include <gtest/gtest.h>
 
-#include "power_manager/common/fake_prefs.h"
-#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 
 namespace power_manager {
 namespace policy {
 
 namespace {
-
-// Pref names.
-const char kLimitsPref[] = "limits";
-const char kStepsPref[] = "steps";
 
 // AmbientLightHandler::Delegate implementation that records the latest
 // brightness percent that was passed to it.
@@ -59,11 +53,8 @@ class AmbientLightHandlerTest : public ::testing::Test {
  protected:
   // Initializes |handler_|.
   void Init() {
-    prefs_.SetString(kLimitsPref, limits_pref_);
-    prefs_.SetString(kStepsPref, steps_pref_);
     light_sensor_.set_lux(initial_lux_);
-    handler_.Init(&prefs_, kLimitsPref, kStepsPref,
-                  initial_brightness_percent_);
+    handler_.Init(steps_pref_, initial_brightness_percent_);
   }
 
   // Updates the lux level returned by |light_sensor_| and notifies
@@ -73,14 +64,11 @@ class AmbientLightHandlerTest : public ::testing::Test {
     handler_.OnAmbientLightUpdated(&light_sensor_);
   }
 
-  FakePrefs prefs_;
   system::AmbientLightSensorStub light_sensor_;
   TestDelegate delegate_;
   AmbientLightHandler handler_;
 
-  // Initial values for prefs read by AmbientLightHandler::Init().  Not set
-  // in |prefs_| if empty.
-  std::string limits_pref_;
+  // Initial value for pref passed to AmbientLightHandler::Init().
   std::string steps_pref_;
 
   // Initial light level reported by |light_sensor_|.
@@ -96,7 +84,6 @@ class AmbientLightHandlerTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(AmbientLightHandlerTest, UpdatePercent) {
-  limits_pref_ = "20.0\n30.0\n100.0";
   steps_pref_ = "20.0 -1 40\n50.0 20 80\n100.0 60 -1";
   initial_lux_ = 50;
   initial_brightness_percent_ = 60.0;
@@ -128,7 +115,6 @@ TEST_F(AmbientLightHandlerTest, UpdatePercent) {
 TEST_F(AmbientLightHandlerTest, PowerSources) {
   // Define a single target percent in the bottom step and separate AC and
   // battery targets for the middle and top steps.
-  limits_pref_ = "20.0\n30.0\n100.0";
   steps_pref_ = "20.0 -1 40\n50.0 40.0 20 80\n100.0 90.0 60 -1";
   initial_lux_ = 0;
   initial_brightness_percent_ = 10.0;
@@ -162,23 +148,7 @@ TEST_F(AmbientLightHandlerTest, PowerSources) {
   EXPECT_EQ(AmbientLightHandler::CAUSED_BY_POWER_SOURCE, delegate_.cause());
 }
 
-TEST_F(AmbientLightHandlerTest, NoSteps) {
-  // If no steps are defined, the max target percent should be used.
-  limits_pref_ = "10.0\n30.0\n80.0";
-  initial_lux_ = 0;
-  initial_brightness_percent_ = 50.0;
-  Init();
-  EXPECT_LT(delegate_.percent(), 0.0);
-
-  UpdateSensor(0);
-  EXPECT_DOUBLE_EQ(80.0, delegate_.percent());
-  UpdateSensor(100);
-  UpdateSensor(100);
-  EXPECT_DOUBLE_EQ(80.0, delegate_.percent());
-}
-
 TEST_F(AmbientLightHandlerTest, DeferInitialChange) {
-  limits_pref_ = "20.0\n30.0\n100.0";
   steps_pref_ = "80.0 30.0 -1 400\n100.0 100 -1";
   initial_lux_ = 0;
   initial_brightness_percent_ = 60.0;

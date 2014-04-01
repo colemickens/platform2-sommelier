@@ -151,8 +151,10 @@ void InternalBacklightController::Init(
   if (sensor) {
     ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
     ambient_light_handler_->set_name("panel");
-    ambient_light_handler_->Init(prefs_, kInternalBacklightAlsLimitsPref,
-        kInternalBacklightAlsStepsPref, initial_percent);
+    std::string pref_value;
+    CHECK(prefs_->GetString(kInternalBacklightAlsStepsPref, &pref_value))
+        << "Failed to read pref " << kInternalBacklightAlsStepsPref;
+    ambient_light_handler_->Init(pref_value, initial_percent);
   } else {
     use_ambient_light_ = false;
   }

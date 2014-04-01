@@ -23,11 +23,6 @@ namespace policy {
 
 namespace {
 
-// Default control values for the user percent.
-const double kUserPercentDim = 10.0;
-const double kUserPercentMax = 100.0;
-const double kUserPercentMin = 0.0;
-
 // This is how long after a video playing message is received we should wait
 // until reverting to the not playing state. If another message is received in
 // this interval the timeout is reset. The browser should be sending these
@@ -65,6 +60,8 @@ void KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
   controller_->HandleVideoTimeout();
 }
 
+const double KeyboardBacklightController::kDimPercent = 10.0;
+
 KeyboardBacklightController::KeyboardBacklightController()
     : backlight_(NULL),
       prefs_(NULL),
@@ -77,9 +74,6 @@ KeyboardBacklightController::KeyboardBacklightController()
       fullscreen_video_playing_(false),
       max_level_(0),
       current_level_(0),
-      user_percent_dim_(kUserPercentDim),
-      user_percent_max_(kUserPercentMax),
-      user_percent_min_(kUserPercentMin),
       user_step_index_(-1),
       percent_for_ambient_light_(100.0),
       num_als_adjustments_(0),
@@ -112,27 +106,11 @@ void KeyboardBacklightController::Init(
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
 
-  // Read the minimum, dim, and maximum limits (one per line).
-  std::string input_str;
-  if (!prefs_->GetString(kKeyboardBacklightUserLimitsPref, &input_str))
-    LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserLimitsPref;
-  std::vector<std::string> lines;
-  base::SplitString(input_str, '\n', &lines);
-  if (lines.size() != 3 ||
-      !base::StringToDouble(lines[0], &user_percent_min_) ||
-      !base::StringToDouble(lines[1], &user_percent_dim_) ||
-      !base::StringToDouble(lines[2], &user_percent_max_)) {
-    LOG(FATAL) << "Failed to parse pref " << kKeyboardBacklightUserLimitsPref
-               << " with contents \"" << input_str << "\"";
-  }
-  user_percent_min_ = util::ClampPercent(user_percent_min_);
-  user_percent_dim_ = util::ClampPercent(user_percent_dim_);
-  user_percent_max_ = util::ClampPercent(user_percent_max_);
-
   // Read the user-settable brightness steps (one per line).
+  std::string input_str;
   if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str))
     LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserStepsPref;
-  lines.clear();
+  std::vector<std::string> lines;
   base::SplitString(input_str, '\n', &lines);
   for (std::vector<std::string>::iterator iter = lines.begin();
        iter != lines.end(); ++iter) {
@@ -142,17 +120,15 @@ void KeyboardBacklightController::Init(
                  << ": \"" << *iter << "\"";
     user_steps_.push_back(util::ClampPercent(new_step));
   }
-  if (user_steps_.empty()) {
-    VLOG(1) << "No user steps read; inserting default steps";
-    user_steps_.push_back(user_percent_min_);
-    user_steps_.push_back(user_percent_dim_);
-    user_steps_.push_back(user_percent_max_);
-  }
+  CHECK(!user_steps_.empty())
+      << "No user brightness steps defined in "
+      << kKeyboardBacklightUserStepsPref;
 
   if (ambient_light_handler_.get()) {
-    ambient_light_handler_->Init(prefs_, kKeyboardBacklightAlsLimitsPref,
-                                 kKeyboardBacklightAlsStepsPref,
-                                 LevelToPercent(current_level_));
+    std::string pref_value;
+    CHECK(prefs_->GetString(kKeyboardBacklightAlsStepsPref, &pref_value))
+        << "Unable to read pref " << kKeyboardBacklightAlsStepsPref;
+    ambient_light_handler_->Init(pref_value, LevelToPercent(current_level_));
   }
 
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with initial "
@@ -338,21 +314,18 @@ void KeyboardBacklightController::InitUserStepIndex() {
   if (user_step_index_ != -1)
     return;
 
-  // Capping in case we are still using the firmware set value, which can be
-  // larger then our expected range.
-  double percent = std::min(LevelToPercent(current_level_), user_percent_max_);
-  // Select the nearest step to the current backlight level and adjust the
-  // target percent in line with it.
-  double percent_delta = 2 * user_percent_max_;
-  size_t i;
-  for (i = 0; i < user_steps_.size(); i++) {
+  // Find the step nearest to the current backlight level.
+  double percent = LevelToPercent(current_level_);
+  double percent_delta = std::numeric_limits<double>::max();
+  for (size_t i = 0; i < user_steps_.size(); i++) {
     double temp_delta = fabs(percent - user_steps_[i]);
     if (temp_delta < percent_delta) {
       percent_delta = temp_delta;
       user_step_index_ = i;
     }
   }
-  CHECK(percent_delta < 2 * user_percent_max_);
+  CHECK(user_step_index_ != -1)
+      << "Failed to find brightness step for level " << current_level_;
 }
 
 double KeyboardBacklightController::GetUndimmedPercent() const {
@@ -381,12 +354,9 @@ bool KeyboardBacklightController::UpdateState() {
   } else if ((!use_user && fullscreen_video_playing_) ||
              (!use_user && display_brightness_is_zero_) ||
              off_for_inactivity_) {
-    percent = use_user ? user_percent_min_ :
-        ambient_light_handler_->min_brightness_percent();
+    percent = 0.0;
   } else if (dimmed_for_inactivity_) {
-    double dimmed_percent = use_user ? user_percent_dim_ :
-        ambient_light_handler_->dimmed_brightness_percent();
-    percent = std::min(dimmed_percent, GetUndimmedPercent());
+    percent = std::min(kDimPercent, GetUndimmedPercent());
   } else {
     percent = GetUndimmedPercent();
   }

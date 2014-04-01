@@ -11,7 +11,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
 namespace power_manager {
@@ -30,9 +29,6 @@ AmbientLightHandler::AmbientLightHandler(
     : sensor_(sensor),
       delegate_(delegate),
       power_source_(POWER_AC),
-      min_brightness_percent_(0.0),
-      dimmed_brightness_percent_(10.0),
-      max_brightness_percent_(60.0),
       lux_level_(0),
       hysteresis_state_(HYSTERESIS_IMMEDIATE),
       hysteresis_count_(0),
@@ -47,75 +43,36 @@ AmbientLightHandler::~AmbientLightHandler() {
   sensor_->RemoveObserver(this);
 }
 
-void AmbientLightHandler::Init(PrefsInterface* prefs,
-                               const std::string& limits_pref_name,
-                               const std::string& steps_pref_name,
+void AmbientLightHandler::Init(const std::string& steps_pref_value,
                                double initial_brightness_percent) {
-  DCHECK(prefs);
-
-  std::string input_str;
-  if (prefs->GetString(limits_pref_name, &input_str)) {
-    std::vector<std::string> inputs;
-    base::SplitString(input_str, '\n', &inputs);
-    double temp_min, temp_dim, temp_max;
-    if (inputs.size() == 3 &&
-        base::StringToDouble(inputs[0], &temp_min) &&
-        base::StringToDouble(inputs[1], &temp_dim) &&
-        base::StringToDouble(inputs[2], &temp_max)) {
-      min_brightness_percent_ = temp_min;
-      dimmed_brightness_percent_ = temp_dim;
-      max_brightness_percent_ = temp_max;
+  std::vector<std::string> lines;
+  base::SplitString(steps_pref_value, '\n', &lines);
+  for (std::vector<std::string>::iterator iter = lines.begin();
+       iter != lines.end(); ++iter) {
+    std::vector<std::string> segments;
+    base::SplitString(*iter, ' ', &segments);
+    BrightnessStep new_step;
+    if (segments.size() == 3 &&
+        base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
+        base::StringToInt(segments[1], &new_step.decrease_lux_threshold) &&
+        base::StringToInt(segments[2], &new_step.increase_lux_threshold)) {
+      new_step.battery_target_percent = new_step.ac_target_percent;
+    } else if (
+        segments.size() == 4 &&
+        base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
+        base::StringToDouble(segments[1], &new_step.battery_target_percent) &&
+        base::StringToInt(segments[2], &new_step.decrease_lux_threshold) &&
+        base::StringToInt(segments[3], &new_step.increase_lux_threshold)) {
+      // Okay, we've read all the fields.
     } else {
-      ReplaceSubstringsAfterOffset(&input_str, 0, "\n", "\\n");
-      LOG(FATAL) << "Failed to parse limits pref " << limits_pref_name
-                 << " with contents \"" << input_str << "\"";
+      LOG(FATAL) << "Steps pref has invalid line \"" << *iter << "\"";
     }
-  } else {
-    LOG(FATAL) << "Failed to read limits pref " << limits_pref_name;
-  }
-
-  if (prefs->GetString(steps_pref_name, &input_str)) {
-    std::vector<std::string> lines;
-    base::SplitString(input_str, '\n', &lines);
-    for (std::vector<std::string>::iterator iter = lines.begin();
-         iter != lines.end(); ++iter) {
-      std::vector<std::string> segments;
-      base::SplitString(*iter, ' ', &segments);
-      BrightnessStep new_step;
-      if (segments.size() == 3 &&
-          base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
-          base::StringToInt(segments[1], &new_step.decrease_lux_threshold) &&
-          base::StringToInt(segments[2], &new_step.increase_lux_threshold)) {
-        new_step.battery_target_percent = new_step.ac_target_percent;
-      } else if (
-          segments.size() == 4 &&
-          base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
-          base::StringToDouble(segments[1], &new_step.battery_target_percent) &&
-          base::StringToInt(segments[2], &new_step.decrease_lux_threshold) &&
-          base::StringToInt(segments[3], &new_step.increase_lux_threshold)) {
-        // Okay, we've read all the fields.
-      } else {
-        LOG(FATAL) << "Steps pref " << steps_pref_name
-                   << " has invalid line \"" << *iter << "\"";
-      }
-      steps_.push_back(new_step);
-    }
-  } else {
-    LOG(FATAL) << "Failed to read steps pref " << steps_pref_name;
-  }
-
-  // If we don't have any values in |steps_|, insert a default value.
-  if (steps_.empty()) {
-    BrightnessStep default_step;
-    default_step.ac_target_percent = max_brightness_percent_;
-    default_step.battery_target_percent = max_brightness_percent_;
-    default_step.decrease_lux_threshold = -1;
-    default_step.increase_lux_threshold = -1;
-    steps_.push_back(default_step);
+    steps_.push_back(new_step);
   }
 
   // The bottom and top steps should have infinite ranges to ensure that we
   // don't fall off either end.
+  CHECK(!steps_.empty()) << "No brightness steps defined in pref";
   CHECK_EQ(steps_.front().decrease_lux_threshold, -1);
   CHECK_EQ(steps_.back().increase_lux_threshold, -1);
 
