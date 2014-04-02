@@ -60,6 +60,11 @@ add_wallpaper_flag() {
   ASH_FLAGS="$ASH_FLAGS --ash-${NAME}-wallpaper-${SIZE}=${FILE}"
 }
 
+# Returns success if we're running on Chrome OS hardware.
+is_chromeos_hardware() {
+  [ "$(crossystem mainfw_type)" != "nonchrome" ]
+}
+
 export USER=chronos
 export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
@@ -375,7 +380,15 @@ elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
   HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
 fi
 
-GPU_FLAGS="--gpu-sandbox-failures-fatal=yes"
+GPU_SANDBOX_FAILURES_FATAL=
+if is_chromeos_hardware; then
+  GPU_SANDBOX_FAILURES_FATAL="yes"
+else
+  GPU_SANDBOX_FAILURES_FATAL="no"
+fi
+
+GPU_FLAGS="--gpu-sandbox-failures-fatal=$GPU_SANDBOX_FAILURES_FATAL"
+
 if use_flag_is_set gpu_sandbox_allow_sysv_shm; then
   GPU_FLAGS="$GPU_FLAGS --gpu-sandbox-allow-sysv-shm"
 fi
