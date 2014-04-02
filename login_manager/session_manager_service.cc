@@ -14,8 +14,8 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -50,6 +50,7 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 namespace {
+
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
 
@@ -108,6 +109,7 @@ SessionManagerService::SessionManagerService(
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(uid, utils),
+      state_key_generator_(utils),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       child_exit_handler_(utils),
@@ -163,6 +165,7 @@ bool SessionManagerService::Initialize() {
                  power_manager::kPowerManagerInterface,
                  power_manager::kRequestRestartMethod),
       &key_gen_,
+      &state_key_generator_,
       this,
       login_metrics_,
       nss_.get(),

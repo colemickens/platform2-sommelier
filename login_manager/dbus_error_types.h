@@ -10,6 +10,7 @@ namespace dbus_error {
 #define INTERFACE "org.chromium.SessionManagerInterface"
 
 static const char kEmitFailed[] = INTERFACE ".EmitFailed";
+static const char kInitMachineInfoFail[] = INTERFACE ".InitMachineInfoFail";
 static const char kInvalidAccount[] = INTERFACE ".InvalidAccount";
 static const char kNoOwnerKey[] = INTERFACE ".NoOwnerKey";
 static const char kNoUserNssDb[] = INTERFACE ".NoUserNssDb";
@@ -17,8 +18,8 @@ static const char kPolicyInitFail[] = INTERFACE ".PolicyInitFail";
 static const char kPubkeySetIllegal[] = INTERFACE ".PubkeySetIllegal";
 static const char kSessionDoesNotExist[] = INTERFACE ".SessionDoesNotExist";
 static const char kSessionExists[] = INTERFACE ".SessionExists";
-static const char kSigEncodeFail[] = INTERFACE ".SigEncodeFail";
 static const char kSigDecodeFail[] = INTERFACE ".SigDecodeFail";
+static const char kSigEncodeFail[] = INTERFACE ".SigEncodeFail";
 static const char kTestingChannelError[] = INTERFACE ".TestingChannelError";
 static const char kUnknownPid[] = INTERFACE ".UnknownPid";
 static const char kVerifyFail[] = INTERFACE ".VerifyFail";

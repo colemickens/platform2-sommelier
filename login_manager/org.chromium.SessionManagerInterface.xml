@@ -306,6 +306,37 @@
       <arg type="s" name="user_email" direction="in" />
       <arg type="as" name="flags" direction="in" />
     </method>
+
+    <!--
+        GetServerBackedStateKeys:
+        @state_keys: The array of currently valid state keys.
+
+        Requests server-backed state keys to be computed and returned. A
+        server-backed state key is an opaque client-determined identifier
+        that's used to stage state in a server to be retrieved after device
+        recovery. These are used to figure out device state such as previous
+        enrollment domain and whether the device got marked as stolen by its
+        owner. The keys are time-dependent, with each key being valid only for
+        a window of time, and this call returns the currently valid state key
+        plus a number of subsequent state keys that span a year of time in
+        coverage.
+    -->
+    <method name="GetServerBackedStateKeys">
+      <arg type="aay" name="state_keys" direction="out" />
+    </method>
+
+    <!--
+        InitMachineInfo:
+        @data: A string containing newline-separated key=value pairs.
+
+        Initializes supplemental machine information for use by session manager
+        that has be asynchronously determined in the boot process after
+        starting session_manager. This method gets invoked by the ui-init-late
+        init job; nothing else should call this method.
+    -->
+    <method name="InitMachineInfo">
+      <arg type="s" name="data" direction="in" />
+    </method>
   </interface>
   <!-- ********************************************************************* -->
 </node>

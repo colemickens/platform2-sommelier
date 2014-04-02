@@ -14,11 +14,12 @@
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
-#include "login_manager/session_manager_impl.h"
 #include "login_manager/policy_service.h"
+#include "login_manager/session_manager_impl.h"
 
 namespace login_manager {
 namespace {
@@ -103,6 +104,26 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
   }
   return response.Pass();
 }
+
+// Handles completion of a server-backed state key retrieval operation and
+// passes the response back to the waiting DBus invocation context.
+void HandleGetServerBackedStateKeysCompletion(
+    dbus::MethodCall* call,
+    const dbus::ExportedObject::ResponseSender& sender,
+    const std::vector<std::vector<uint8> >& state_keys) {
+  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  dbus::MessageWriter writer(response.get());
+  dbus::MessageWriter array_writer(NULL);
+  writer.OpenArray("ay", &array_writer);
+  for (std::vector<std::vector<uint8> >::const_iterator
+           state_key(state_keys.begin());
+       state_key != state_keys.end(); ++state_key) {
+    array_writer.AppendArrayOfBytes(state_key->data(), state_key->size());
+  }
+  writer.CloseContainer(&array_writer);
+  sender.Run(response.Pass());
+}
+
 }  // namespace
 
 // PolicyService::Completion implementation that forwards the result to a DBus
@@ -211,6 +232,11 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        &SessionManagerDBusAdaptor::StartDeviceWipe);
   ExportSyncDBusMethod(object, kSessionManagerSetFlagsForUser,
                        &SessionManagerDBusAdaptor::SetFlagsForUser);
+
+  ExportAsyncDBusMethod(object, kSessionManagerGetServerBackedStateKeys,
+                        &SessionManagerDBusAdaptor::GetServerBackedStateKeys);
+  ExportSyncDBusMethod(object, kSessionManagerInitMachineInfo,
+                       &SessionManagerDBusAdaptor::InitMachineInfo);
 
   CHECK(object->ExportMethodAndBlock(
       kDBusIntrospectableInterface, kDBusIntrospectMethod,
@@ -437,6 +463,28 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
     return CreateInvalidArgsError(call, call->GetSignature());
   }
   impl_->SetFlagsForUser(user_email, session_user_flags);
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+void SessionManagerDBusAdaptor::GetServerBackedStateKeys(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender) {
+  std::vector<std::vector<uint8> > state_keys;
+  impl_->RequestServerBackedStateKeys(
+      base::Bind(&HandleGetServerBackedStateKeysCompletion, call, sender));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
+    dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  std::string data;
+  if (!reader.PopString(&data))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
+  SessionManagerImpl::Error error;
+  impl_->InitMachineInfo(data, &error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 

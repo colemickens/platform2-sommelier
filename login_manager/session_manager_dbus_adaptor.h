@@ -71,6 +71,11 @@ class SessionManagerDBusAdaptor {
   scoped_ptr<dbus::Response> StartDeviceWipe(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> SetFlagsForUser(dbus::MethodCall* call);
 
+  // Asynchronous.
+  void GetServerBackedStateKeys(dbus::MethodCall* call,
+                                dbus::ExportedObject::ResponseSender sender);
+  scoped_ptr<dbus::Response> InitMachineInfo(dbus::MethodCall* call);
+
   scoped_ptr<dbus::Response> Introspect(dbus::MethodCall* call);
 
  private:

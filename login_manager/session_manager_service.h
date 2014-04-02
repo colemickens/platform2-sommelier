@@ -22,6 +22,7 @@
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/process_manager_service_interface.h"
+#include "login_manager/server_backed_state_key_generator.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/termination_handler.h"
 
@@ -232,6 +233,7 @@ class SessionManagerService
 
   scoped_ptr<NssUtil> nss_;
   KeyGenerator key_gen_;
+  ServerBackedStateKeyGenerator state_key_generator_;
   scoped_ptr<DBusSignalEmitterInterface> dbus_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;

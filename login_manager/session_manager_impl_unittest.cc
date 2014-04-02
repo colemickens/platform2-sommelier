@@ -16,6 +16,7 @@
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
@@ -42,6 +43,7 @@
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
+#include "login_manager/server_backed_state_key_generator.h"
 #include "login_manager/stub_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
@@ -57,9 +59,9 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
 
-using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::cryptohome::home::SanitizeUserName;
 using chromeos::cryptohome::home::SetSystemSalt;
+using chromeos::cryptohome::home::kGuestUserName;
 
 using std::map;
 using std::string;
@@ -71,6 +73,7 @@ class SessionManagerImplTest : public ::testing::Test {
  public:
   SessionManagerImplTest()
       : device_policy_service_(new MockDevicePolicyService),
+        state_key_generator_(&utils_),
         impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter),
               &dbus_emitter_,
               base::Bind(&SessionManagerImplTest::FakeLockScreen,
@@ -78,6 +81,7 @@ class SessionManagerImplTest : public ::testing::Test {
               base::Bind(&SessionManagerImplTest::FakeRestartDevice,
                          base::Unretained(this)),
               &key_gen_,
+              &state_key_generator_,
               &manager_,
               &metrics_,
               &nss_,
@@ -86,8 +90,7 @@ class SessionManagerImplTest : public ::testing::Test {
         actual_locks_(0),
         expected_locks_(0),
         actual_restarts_(0),
-        expected_restarts_(0) {
-  }
+        expected_restarts_(0) {}
 
   virtual ~SessionManagerImplTest() {}
 
@@ -190,6 +193,7 @@ class SessionManagerImplTest : public ::testing::Test {
 
   MockDBusSignalEmitter dbus_emitter_;
   MockKeyGenerator key_gen_;
+  ServerBackedStateKeyGenerator state_key_generator_;
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;

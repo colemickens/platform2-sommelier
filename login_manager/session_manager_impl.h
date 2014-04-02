@@ -21,6 +21,7 @@
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
+#include "login_manager/server_backed_state_key_generator.h"
 
 namespace login_manager {
 class DBusSignalEmitterInterface;
@@ -79,6 +80,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
                      KeyGenerator* key_gen,
+                     ServerBackedStateKeyGenerator* state_key_generator,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
                      NssUtil* nss,
@@ -152,6 +154,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   void SetFlagsForUser(const std::string&user_email,
                        const std::vector<std::string>& session_user_flags);
 
+  void RequestServerBackedStateKeys(
+      const ServerBackedStateKeyGenerator::StateKeyCallback& callback);
+  void InitMachineInfo(const std::string& data, Error* error);
+
   // PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success) OVERRIDE;
   virtual void OnKeyPersisted(bool success) OVERRIDE;
@@ -199,6 +205,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   DBusSignalEmitterInterface* dbus_emitter_;  // Owned by the caller.
   KeyGenerator* key_gen_;  // Owned by the caller.
+  ServerBackedStateKeyGenerator* state_key_generator_;  // Owned by the caller.
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   LoginMetrics* login_metrics_;  // Owned by the caller.
   NssUtil* nss_;  // Owned by the caller.

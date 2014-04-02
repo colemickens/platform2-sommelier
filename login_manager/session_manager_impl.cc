@@ -39,9 +39,9 @@
 #include "login_manager/user_policy_service_factory.h"
 
 using base::FilePath;
-using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::cryptohome::home::GetUserPath;
 using chromeos::cryptohome::home::SanitizeUserName;
+using chromeos::cryptohome::home::kGuestUserName;
 
 namespace login_manager {  // NOLINT
 
@@ -119,6 +119,7 @@ SessionManagerImpl::SessionManagerImpl(
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
     KeyGenerator* key_gen,
+    ServerBackedStateKeyGenerator* state_key_generator,
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
     NssUtil* nss,
@@ -131,13 +132,13 @@ SessionManagerImpl::SessionManagerImpl(
       restart_device_closure_(restart_device_closure),
       dbus_emitter_(dbus_emitter),
       key_gen_(key_gen),
+      state_key_generator_(state_key_generator),
       manager_(manager),
       login_metrics_(metrics),
       nss_(nss),
       system_(utils),
       owner_key_(nss->GetOwnerKeyFilePath(), nss),
-      mitigator_(key_gen) {
-}
+      mitigator_(key_gen) {}
 
 SessionManagerImpl::~SessionManagerImpl() {
   STLDeleteValues(&user_sessions_);
@@ -522,6 +523,21 @@ void SessionManagerImpl::SetFlagsForUser(
     const std::string& user_email,
     const std::vector<std::string>& session_user_flags) {
   manager_->SetFlagsForUser(user_email, session_user_flags);
+}
+
+void SessionManagerImpl::RequestServerBackedStateKeys(
+    const ServerBackedStateKeyGenerator::StateKeyCallback& callback) {
+  state_key_generator_->RequestStateKeys(callback);
+}
+
+void SessionManagerImpl::InitMachineInfo(const std::string& data,
+                                         Error* error) {
+  std::map<std::string, std::string> params;
+  if (!ServerBackedStateKeyGenerator::ParseMachineInfo(data, &params))
+    error->Set(dbus_error::kInitMachineInfoFail, "Parse failure.");
+
+  if (!state_key_generator_->InitMachineInfo(params))
+    error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
