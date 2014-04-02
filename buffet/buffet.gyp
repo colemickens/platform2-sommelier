@@ -15,6 +15,7 @@
     'link_settings': {
       'libraries': [
         '-lgflags',
+        '-lbase-dbus_test_support-<(libbase_ver)',
       ],
     },
     # TODO(sosa): Remove no-strict-aliasing: crbug.com/356745.

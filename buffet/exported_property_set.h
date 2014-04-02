@@ -94,13 +94,17 @@ class ExportedPropertyBase {
 
 class ExportedPropertySet {
  public:
-  ExportedPropertySet(dbus::ExportedObject* exported_object);
-  ~ExportedPropertySet();
+  typedef base::Callback<void(bool success)> OnInitFinish;
 
-  // Claims the org.freedesktop.DBus.Properties interface.  This
-  // needs to be done after all properties are initialized to
-  // appropriate values.
-  void ClaimPropertiesInterface();
+  ExportedPropertySet(dbus::Bus* bus, const dbus::ObjectPath& path);
+  virtual ~ExportedPropertySet();
+
+  // Claims the method associated with the org.freedesktop.DBus.Properties
+  // interface.  This needs to be done after all properties are initialized to
+  // appropriate values.  This method will call |cb| when all methods
+  // are exported to the DBus object.  |cb| will be called on the origin
+  // thread.
+  void Init(const OnInitFinish& cb);
 
  protected:
   void RegisterProperty(const std::string& interface_name,
@@ -118,16 +122,11 @@ class ExportedPropertySet {
   // Instead, use setters in exposed interfaces.
   void HandleSet(dbus::MethodCall* method_call,
                  dbus::ExportedObject::ResponseSender response_sender);
+  void HandlePropertyUpdated(const std::string& interface,
+                             const std::string& name,
+                             const ExportedPropertyBase* property);
 
-  virtual void HandlePropertyUpdated(const std::string& interface,
-                                     const std::string& name,
-                                     const ExportedPropertyBase* property);
-
-  void WriteSignalForPropertyUpdate(const std::string& interface,
-                                    const std::string& name,
-                                    const ExportedPropertyBase* property,
-                                    dbus::Signal* signal) const;
-
+  dbus::Bus* bus_;
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
   // This is a map from interface name -> property name -> pointer to property.
   std::map<std::string,

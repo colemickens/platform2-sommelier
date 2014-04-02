@@ -17,10 +17,12 @@ namespace buffet {
 // Class that manages dbus interactions in buffet.
 class DBusManager {
  public:
-  DBusManager();
+  typedef base::Callback<void(bool success)> OnInitFinish;
+
+  DBusManager(dbus::Bus* bus);
   virtual ~DBusManager();
 
-  void Init();
+  void Init(const OnInitFinish& cb);
   void Finalize();
 
   // Get an object owned by the ::dbus::Bus object.  This object
@@ -46,7 +48,8 @@ class DBusManager {
   scoped_ptr<::dbus::Response> HandleTestMethod(
       ::dbus::MethodCall* method_call);
 
-  scoped_refptr<::dbus::Bus> bus_;
+  scoped_refptr<::dbus::Bus> bus_;  // Must outlive this object.
+  dbus::ExportedObject* exported_object_;  // Owned by the bus.
 
   DISALLOW_COPY_AND_ASSIGN(DBusManager);
 };

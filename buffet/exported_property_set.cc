@@ -5,30 +5,50 @@
 #include "buffet/exported_property_set.h"
 
 #include <base/bind.h>
+#include <dbus/bus.h>  // For kPropertyInterface
 #include <dbus/property.h>  // For kPropertyInterface
 
+#include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_utils.h"
 
 namespace buffet {
 
 namespace dbus_utils {
 
-ExportedPropertySet::ExportedPropertySet(dbus::ExportedObject* exported_object)
-    : exported_object_(exported_object), weak_ptr_factory_(this) { }
+namespace {
+const char kExportFailedMessage[] = "Failed to register DBus method.";
+}  // namespace
 
-void ExportedPropertySet::ClaimPropertiesInterface() {
-  exported_object_->ExportMethodAndBlock(
+ExportedPropertySet::ExportedPropertySet(dbus::Bus* bus,
+                                         const dbus::ObjectPath& path)
+    : bus_(bus), exported_object_(bus->GetExportedObject(path)),
+      weak_ptr_factory_(this) { }
+
+void ExportedPropertySet::Init(const OnInitFinish& cb) {
+  bus_->AssertOnOriginThread();
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  exported_object_->ExportMethod(
       dbus::kPropertiesInterface, dbus::kPropertiesGetAll,
       base::Bind(&ExportedPropertySet::HandleGetAll,
-                 weak_ptr_factory_.GetWeakPtr()));
-  exported_object_->ExportMethodAndBlock(
+                 weak_ptr_factory_.GetWeakPtr()),
+      sequencer->GetExportHandler(
+          dbus::kPropertiesInterface, dbus::kPropertiesGetAll,
+          kExportFailedMessage, false));
+  exported_object_->ExportMethod(
       dbus::kPropertiesInterface, dbus::kPropertiesGet,
       base::Bind(&ExportedPropertySet::HandleGet,
-                 weak_ptr_factory_.GetWeakPtr()));
-  exported_object_->ExportMethodAndBlock(
+                 weak_ptr_factory_.GetWeakPtr()),
+      sequencer->GetExportHandler(
+          dbus::kPropertiesInterface, dbus::kPropertiesGet,
+          kExportFailedMessage, false));
+  exported_object_->ExportMethod(
       dbus::kPropertiesInterface, dbus::kPropertiesSet,
       base::Bind(&ExportedPropertySet::HandleSet,
-                 weak_ptr_factory_.GetWeakPtr()));
+                 weak_ptr_factory_.GetWeakPtr()),
+      sequencer->GetExportHandler(
+          dbus::kPropertiesInterface, dbus::kPropertiesSet,
+          kExportFailedMessage, false));
+  sequencer->OnAllTasksCompletedCall({cb});
 }
 
 ExportedPropertySet::~ExportedPropertySet() { }
@@ -37,6 +57,7 @@ void ExportedPropertySet::RegisterProperty(
     const std::string& interface_name,
     const std::string& property_name,
     ExportedPropertyBase* exported_property) {
+  bus_->AssertOnOriginThread();
   properties_[interface_name][property_name] = exported_property;
   // Technically, the property set exists longer than the properties themselves,
   // so we could use Unretained here rather than a weak pointer.
@@ -50,6 +71,7 @@ void ExportedPropertySet::RegisterProperty(
 void ExportedPropertySet::HandleGetAll(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  bus_->AssertOnOriginThread();
   dbus::MessageReader reader(method_call);
   std::string interface_name;
   if (!reader.PopString(&interface_name)) {
@@ -87,6 +109,7 @@ void ExportedPropertySet::HandleGetAll(
 void ExportedPropertySet::HandleGet(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  bus_->AssertOnOriginThread();
   dbus::MessageReader reader(method_call);
   std::string interface_name, property_name;
   if (!reader.PopString(&interface_name)) {
@@ -127,6 +150,7 @@ void ExportedPropertySet::HandleGet(
 void ExportedPropertySet::HandleSet(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  bus_->AssertOnOriginThread();
   scoped_ptr<dbus::ErrorResponse> error_resp(
       dbus::ErrorResponse::FromMethodCall(
           method_call, "org.freedesktop.DBus.Error.NotSupported", ""));
@@ -138,20 +162,9 @@ void ExportedPropertySet::HandlePropertyUpdated(
     const std::string& interface,
     const std::string& name,
     const ExportedPropertyBase* property) {
+  bus_->AssertOnOriginThread();
   dbus::Signal signal(dbus::kPropertiesInterface, dbus::kPropertiesChanged);
-  WriteSignalForPropertyUpdate(interface, name, property, &signal);
-  // This sends the signal asyncronously.  However, the raw message inside
-  // the signal object is ref-counted, so we're fine to allocate the Signal
-  // object on our local stack.
-  exported_object_->SendSignal(&signal);
-}
-
-void ExportedPropertySet::WriteSignalForPropertyUpdate(
-    const std::string& interface,
-    const std::string& name,
-    const ExportedPropertyBase* property,
-    dbus::Signal* signal) const {
-  dbus::MessageWriter writer(signal);
+  dbus::MessageWriter writer(&signal);
   dbus::MessageWriter array_writer(nullptr);
   dbus::MessageWriter dict_writer(nullptr);
   writer.AppendString(interface);
@@ -164,8 +177,12 @@ void ExportedPropertySet::WriteSignalForPropertyUpdate(
   // The interface specification tells us to include this list of properties
   // which have changed, but for whom no value is conveyed.  Currently, we
   // don't do anything interesting here.
-  std::vector<std::string> invalidated_properties;
-  writer.AppendArrayOfStrings(invalidated_properties);
+  writer.OpenArray("s", &array_writer);
+  writer.CloseContainer(&array_writer);
+  // This sends the signal asyncronously.  However, the raw message inside
+  // the signal object is ref-counted, so we're fine to allocate the Signal
+  // object on our local stack.
+  exported_object_->SendSignal(&signal);
 }
 
 template <typename T>

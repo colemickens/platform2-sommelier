@@ -12,8 +12,15 @@
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/object_path.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+using ::testing::AnyNumber;
+using ::testing::Return;
+using ::testing::Invoke;
+using ::testing::_;
 
 namespace buffet {
 
@@ -41,6 +48,7 @@ const char kTestInterface2[] = "org.chromium.TestInterface2";
 const char kTestInterface3[] = "org.chromium.TestInterface3";
 
 const std::string kTestString("lies");
+const dbus::ObjectPath kMethodsExportedOnPath(std::string("/export"));
 const dbus::ObjectPath kTestObjectPathInit(std::string("/path_init"));
 const dbus::ObjectPath kTestObjectPathUpdate(std::string("/path_update"));
 
@@ -48,7 +56,6 @@ const dbus::ObjectPath kTestObjectPathUpdate(std::string("/path_update"));
 
 class ExportedPropertySetTest : public ::testing::Test {
  public:
-  ExportedPropertySetTest() {}
   struct Properties : public ExportedPropertySet {
    public:
     ExportedProperty<bool> bool_prop_;
@@ -66,7 +73,8 @@ class ExportedPropertySetTest : public ::testing::Test {
     ExportedProperty<std::vector<dbus::ObjectPath>> pathlist_prop_;
     ExportedProperty<std::vector<uint8>> uint8list_prop_;
 
-    Properties() : ExportedPropertySet(nullptr) {
+    Properties(dbus::Bus* bus, const dbus::ObjectPath& path)
+        : ExportedPropertySet(bus, path) {
       // The empty string is not a valid value for an ObjectPath.
       path_prop_.SetValue(kTestObjectPathInit);
       RegisterProperty(kTestInterface1, kBoolPropName, &bool_prop_);
@@ -103,25 +111,22 @@ class ExportedPropertySetTest : public ::testing::Test {
                        dbus::ExportedObject::ResponseSender response_sender) {
       HandleSet(method_call, response_sender);
     }
-
-    void CallWriteSignalForPropertyUpdate(const std::string& interface,
-                                          const std::string& name,
-                                          const ExportedPropertyBase* property,
-                                          dbus::Signal* signal) {
-      WriteSignalForPropertyUpdate(interface, name, property, signal);
-    }
-
-    MOCK_METHOD3(PropertyUpdated, void(const std::string&, const std::string&,
-                                       const ExportedPropertyBase*));
-
-   private:
-    virtual void HandlePropertyUpdated(
-        const std::string& interface,
-        const std::string& name,
-        const ExportedPropertyBase* property) override {
-      PropertyUpdated(interface, name, property);
-    }
   };
+
+  virtual void SetUp() {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::MockBus(options);
+    // By default, don't worry about threading assertions.
+    EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
+    EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
+    // Use a mock exported object.
+    mock_exported_object_ = new dbus::MockExportedObject(
+        bus_.get(), kMethodsExportedOnPath);
+    EXPECT_CALL(*bus_, GetExportedObject(kMethodsExportedOnPath))
+        .Times(1).WillOnce(Return(mock_exported_object_.get()));
+    p_.reset(new Properties(bus_.get(), kMethodsExportedOnPath));
+  }
 
   void StoreResponse(scoped_ptr<dbus::Response> method_response) {
     last_response_.reset(method_response.release());
@@ -131,7 +136,7 @@ class ExportedPropertySetTest : public ::testing::Test {
     auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
                                       base::Unretained(this));
     method_call->SetSerial(123);
-    p_.CallHandleGetAll(method_call, response_sender);
+    p_->CallHandleGetAll(method_call, response_sender);
     ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(last_response_.get()),
               nullptr);
   }
@@ -140,7 +145,7 @@ class ExportedPropertySetTest : public ::testing::Test {
     auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
                                       base::Unretained(this));
     method_call->SetSerial(123);
-    p_.CallHandleGet(method_call, response_sender);
+    p_->CallHandleGet(method_call, response_sender);
     ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(last_response_.get()),
               nullptr);
   }
@@ -155,65 +160,38 @@ class ExportedPropertySetTest : public ::testing::Test {
     writer.AppendString(property_name);
     auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
                                       base::Unretained(this));
-    p_.CallHandleGet(&method_call, response_sender);
+    p_->CallHandleGet(&method_call, response_sender);
     return last_response_.Pass();
   }
 
   scoped_ptr<dbus::Response> last_response_;
-  Properties p_;
+  scoped_refptr<dbus::MockBus> bus_;
+  scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
+  scoped_ptr<Properties> p_;
 };
 
 TEST_F(ExportedPropertySetTest, UpdateNotifications) {
-  ::testing::InSequence dummy;
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface1, kBoolPropName,
-                                  &p_.bool_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface1, kUint8PropName,
-                                  &p_.uint8_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface1, kInt16PropName,
-                                  &p_.int16_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface2, kUint16PropName,
-                                  &p_.uint16_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface2, kInt32PropName,
-                                  &p_.int32_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kUint32PropName,
-                                  &p_.uint32_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kInt64PropName,
-                                  &p_.int64_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kUint64PropName,
-                                  &p_.uint64_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kDoublePropName,
-                                  &p_.double_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kStringPropName,
-                                  &p_.string_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kPathPropName,
-                                  &p_.path_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kStringListPropName,
-                                  &p_.stringlist_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kPathListPropName,
-                                  &p_.pathlist_prop_));
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface3, kUint8ListPropName,
-                                  &p_.uint8list_prop_));
-  p_.bool_prop_.SetValue(true);
-  p_.uint8_prop_.SetValue(1);
-  p_.int16_prop_.SetValue(1);
-  p_.uint16_prop_.SetValue(1);
-  p_.int32_prop_.SetValue(1);
-  p_.uint32_prop_.SetValue(1);
-  p_.int64_prop_.SetValue(1);
-  p_.uint64_prop_.SetValue(1);
-  p_.double_prop_.SetValue(1.0);
-  p_.string_prop_.SetValue(kTestString);
-  p_.path_prop_.SetValue(kTestObjectPathUpdate);
-  p_.stringlist_prop_.SetValue({kTestString});
-  p_.pathlist_prop_.SetValue({kTestObjectPathUpdate});
-  p_.uint8list_prop_.SetValue({1});
+  EXPECT_CALL(*mock_exported_object_, SendSignal(_)).Times(14);
+  p_->bool_prop_.SetValue(true);
+  p_->uint8_prop_.SetValue(1);
+  p_->int16_prop_.SetValue(1);
+  p_->uint16_prop_.SetValue(1);
+  p_->int32_prop_.SetValue(1);
+  p_->uint32_prop_.SetValue(1);
+  p_->int64_prop_.SetValue(1);
+  p_->uint64_prop_.SetValue(1);
+  p_->double_prop_.SetValue(1.0);
+  p_->string_prop_.SetValue(kTestString);
+  p_->path_prop_.SetValue(kTestObjectPathUpdate);
+  p_->stringlist_prop_.SetValue({kTestString});
+  p_->pathlist_prop_.SetValue({kTestObjectPathUpdate});
+  p_->uint8list_prop_.SetValue({1});
 }
 
 TEST_F(ExportedPropertySetTest, UpdateToSameValue) {
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface1, kBoolPropName,
-                                  &p_.bool_prop_)).Times(1);
-  p_.bool_prop_.SetValue(true);
-  p_.bool_prop_.SetValue(true);
+  EXPECT_CALL(*mock_exported_object_, SendSignal(_)).Times(1);
+  p_->bool_prop_.SetValue(true);
+  p_->bool_prop_.SetValue(true);
 }
 
 TEST_F(ExportedPropertySetTest, GetAllNoArgs) {
@@ -247,7 +225,7 @@ TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
   writer.AppendString(kTestInterface2);
   auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
                                     base::Unretained(this));
-  p_.CallHandleGetAll(&method_call, response_sender);
+  p_->CallHandleGetAll(&method_call, response_sender);
   dbus::MessageReader response_reader(last_response_.get());
   dbus::MessageReader dict_reader(nullptr);
   dbus::MessageReader entry_reader(nullptr);
@@ -472,24 +450,21 @@ TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
   method_call.SetSerial(123);
   auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
                                     base::Unretained(this));
-  p_.CallHandleSet(&method_call, response_sender);
+  p_->CallHandleSet(&method_call, response_sender);
   ASSERT_TRUE(
       dynamic_cast<dbus::ErrorResponse*>(last_response_.get()) != nullptr);
 }
 
-TEST_F(ExportedPropertySetTest, SignalsAreParsable) {
-  EXPECT_CALL(p_, PropertyUpdated(kTestInterface1, kUint8PropName,
-                                  &p_.uint8_prop_)).Times(1);
-  p_.uint8_prop_.SetValue(57);
-  dbus::Signal signal(dbus::kPropertiesInterface, dbus::kPropertiesChanged);
-  p_.CallWriteSignalForPropertyUpdate(kTestInterface1, kUint8PropName,
-                                      &p_.uint8_prop_, &signal);
+namespace {
+
+void VerifySignal(dbus::Signal* signal) {
+  ASSERT_NE(signal, nullptr);
   std::string interface_name;
   std::string property_name;
   uint8 value;
-  dbus::MessageReader reader(&signal);
-  dbus::MessageReader array_reader(nullptr);
-  dbus::MessageReader dict_reader(nullptr);
+  dbus::MessageReader reader(signal);
+  dbus::MessageReader array_reader(signal);
+  dbus::MessageReader dict_reader(signal);
   ASSERT_TRUE(reader.PopString(&interface_name));
   ASSERT_TRUE(reader.PopArray(&array_reader));
   ASSERT_TRUE(array_reader.PopDictEntry(&dict_reader));
@@ -497,13 +472,22 @@ TEST_F(ExportedPropertySetTest, SignalsAreParsable) {
   ASSERT_TRUE(dict_reader.PopVariantOfByte(&value));
   ASSERT_FALSE(dict_reader.HasMoreData());
   ASSERT_FALSE(array_reader.HasMoreData());
+  ASSERT_TRUE(reader.HasMoreData());
   // Read the (empty) list of invalidated property names.
-  std::vector<std::string> invalidated_properties;
-  ASSERT_TRUE(reader.PopArrayOfStrings(&invalidated_properties));
+  ASSERT_TRUE(reader.PopArray(&array_reader));
+  ASSERT_FALSE(array_reader.HasMoreData());
   ASSERT_FALSE(reader.HasMoreData());
   ASSERT_EQ(value, 57);
   ASSERT_EQ(property_name, std::string(kUint8PropName));
   ASSERT_EQ(interface_name, std::string(kTestInterface1));
+}
+
+}  // namespace
+
+TEST_F(ExportedPropertySetTest, SignalsAreParsable) {
+  EXPECT_CALL(*mock_exported_object_, SendSignal(_))
+      .Times(1).WillOnce(Invoke(&VerifySignal));
+  p_->uint8_prop_.SetValue(57);
 }
 
 }  // namespace dbus_utils

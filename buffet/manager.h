@@ -8,6 +8,7 @@
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
+#include <dbus/object_path.h>
 
 #include "buffet/dbus_constants.h"
 #include "buffet/exported_property_set.h"
@@ -21,15 +22,19 @@ class DBusManager;
 // device state.
 class Manager {
  public:
-  Manager(DBusManager* dbus_manager);
+  typedef base::Callback<void(bool success)> OnInitFinish;
+
+  Manager(dbus::Bus* bus);
   ~Manager();
+  void Init(const OnInitFinish& cb);
 
  private:
   struct Properties: public dbus_utils::ExportedPropertySet {
    public:
     dbus_utils::ExportedProperty<std::string> state_;
-    Properties(dbus::ExportedObject *manager_object)
-        : dbus_utils::ExportedPropertySet(manager_object) {
+    Properties(dbus::Bus* bus)
+        : dbus_utils::ExportedPropertySet(
+              bus, dbus::ObjectPath(dbus_constants::kManagerServicePath)) {
       RegisterProperty(dbus_constants::kManagerInterface, "State", &state_);
     }
     virtual ~Properties() {}
@@ -42,7 +47,8 @@ class Manager {
   scoped_ptr<dbus::Response> HandleUpdateState(
       dbus::MethodCall* method_call);
 
-  DBusManager* dbus_manager_;  // Weak;  DBusManager should outlive Manager.
+  dbus::Bus* bus_;
+  dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
   scoped_ptr<Properties> properties_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

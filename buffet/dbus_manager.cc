@@ -7,81 +7,42 @@
 #include <string>
 
 #include <base/bind.h>
+#include <dbus/object_path.h>
 
+#include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_constants.h"
+#include "buffet/dbus_utils.h"
 
 using ::std::string;
 
 namespace buffet {
 
-namespace {
+DBusManager::DBusManager(dbus::Bus* bus)
+    : bus_(bus),
+      exported_object_(bus->GetExportedObject(
+          dbus::ObjectPath(dbus_constants::kRootServicePath))) { }
 
-// Passes |method_call| to |handler| and passes the response to
-// |response_sender|. If |handler| returns NULL, an empty response is created
-// and sent.
-void HandleSynchronousDBusMethodCall(
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  auto response = handler.Run(method_call);
-  if (!response)
-    response = dbus::Response::FromMethodCall(method_call);
-
-  response_sender.Run(response.Pass());
+DBusManager::~DBusManager() {
+  // Unregister ourselves from the Bus.  This prevents the bus from calling
+  // our callbacks in between the Manager's death and the bus unregistering
+  // our exported object on shutdown.  Unretained makes no promises of memory
+  // management.
+  exported_object_->Unregister();
+  exported_object_ = nullptr;
 }
 
-}  // namespace
-
-DBusManager::DBusManager()
-    : bus_(nullptr) {}
-
-DBusManager::~DBusManager() {}
-
-void DBusManager::Init() {
-  InitDBus();
-}
-
-void DBusManager::Finalize() {
-  ShutDownDBus();
-}
-
-void DBusManager::InitDBus() {
-  dbus::Bus::Options options;
-  // TODO(sosa): Should this be on the system bus?
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  CHECK(bus_->Connect());
-
-  // buffet_dbus_object is owned by the Bus.
-  auto buffet_dbus_object = GetExportedObject(dbus_constants::kRootServicePath);
-  ExportDBusMethod(
-      buffet_dbus_object,
+void DBusManager::Init(const OnInitFinish& cb) {
+  scoped_refptr<dbus_utils::AsyncEventSequencer> sequencer(
+      new dbus_utils::AsyncEventSequencer());
+  exported_object_->ExportMethod(
       dbus_constants::kRootInterface, dbus_constants::kRootTestMethod,
-      base::Bind(&DBusManager::HandleTestMethod, base::Unretained(this)));
-
-  CHECK(bus_->RequestOwnershipAndBlock(dbus_constants::kServiceName,
-                                       dbus::Bus::REQUIRE_PRIMARY))
-      << "Unable to take ownership of " << dbus_constants::kServiceName;
-}
-
-void DBusManager::ShutDownDBus() {
-  bus_->ShutdownAndBlock();
-}
-
-dbus::ExportedObject* DBusManager::GetExportedObject(
-    const string& object_path) {
-  return bus_->GetExportedObject(dbus::ObjectPath(object_path));
-}
-
-void DBusManager::ExportDBusMethod(
-    dbus::ExportedObject* exported_object,
-    const string& interface_name,
-    const string& method_name,
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler) {
-  DCHECK(exported_object);
-  CHECK(exported_object->ExportMethodAndBlock(
-      interface_name, method_name,
-      base::Bind(&HandleSynchronousDBusMethodCall, handler)));
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&DBusManager::HandleTestMethod, base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kRootInterface, dbus_constants::kRootTestMethod,
+          "Failed exporting DBusManager's test method",
+          true));
+  sequencer->OnAllTasksCompletedCall({cb});
 }
 
 scoped_ptr<dbus::Response> DBusManager::HandleTestMethod(

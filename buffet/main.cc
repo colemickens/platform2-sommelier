@@ -14,8 +14,11 @@
 #include <base/strings/stringprintf.h>
 #include <sysexits.h>
 
+#include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_manager.h"
 #include "buffet/manager.h"
+
+using buffet::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
@@ -72,6 +75,31 @@ void SetupLogging(const std::string& log_root) {
   logging::InitLogging(settings);
 }
 
+void TakeServiceOwnership(scoped_refptr<dbus::Bus> bus, bool success) {
+  // Success should always be true since we've said that failures are
+  // fatal.
+  CHECK(success) << "Init of one or more objects has failed.";
+  CHECK(bus->RequestOwnershipAndBlock(buffet::dbus_constants::kServiceName,
+                                      dbus::Bus::REQUIRE_PRIMARY))
+      << "Unable to take ownership of " << buffet::dbus_constants::kServiceName;
+}
+
+void EnterMainLoop(base::MessageLoopForIO* message_loop,
+                   scoped_refptr<dbus::Bus> bus) {
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  buffet::DBusManager dbus_manager(bus.get());
+  dbus_manager.Init(sequencer->GetHandler("DBusManager.Init() failed.", true));
+  buffet::Manager manager(bus.get());
+  manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));
+  sequencer->OnAllTasksCompletedCall(
+      {base::Bind(&TakeServiceOwnership, bus)});
+  // Release our handle on the sequencer so that it gets deleted after
+  // both callbacks return.
+  sequencer = nullptr;
+  LOG(INFO) << "Entering mainloop.";
+  message_loop->Run();
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -94,15 +122,15 @@ int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
-  // Initialize the dbus_manager.
-  buffet::DBusManager dbus_manager;
-  dbus_manager.Init();
-  {
-    // The Manager needs the dbus_manager to remain in scope for its lifetime.
-    buffet::Manager manager(&dbus_manager);
-    message_loop.Run();
-  }
+  dbus::Bus::Options options;
+  // TODO(sosa): Should this be on the system bus?
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  CHECK(bus->Connect());
+  // Our top level objects expect the bus to exist in a connected state for
+  // the duration of their lifetimes.
+  EnterMainLoop(&message_loop, bus);
+  bus->ShutdownAndBlock();
 
-  dbus_manager.Finalize();
   return EX_OK;
 }

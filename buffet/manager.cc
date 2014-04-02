@@ -6,7 +6,9 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <dbus/object_path.h>
 
+#include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_manager.h"
 #include "buffet/dbus_utils.h"
@@ -15,25 +17,10 @@ using buffet::dbus_utils::GetBadArgsError;
 
 namespace buffet {
 
-Manager::Manager(DBusManager* dbus_manager) : dbus_manager_(dbus_manager) {
-  dbus::ExportedObject* exported_object = dbus_manager_->GetExportedObject(
-      dbus_constants::kManagerServicePath);
-  dbus_manager_->ExportDBusMethod(exported_object,
-                                  dbus_constants::kManagerInterface,
-                                  dbus_constants::kManagerRegisterDeviceMethod,
-                                  base::Bind(&Manager::HandleRegisterDevice,
-                                             base::Unretained(this)));
-  dbus_manager_->ExportDBusMethod(exported_object,
-                                  dbus_constants::kManagerInterface,
-                                  dbus_constants::kManagerUpdateStateMethod,
-                                  base::Bind(&Manager::HandleUpdateState,
-                                             base::Unretained(this)));
-  properties_.reset(new Properties(exported_object));
-  // TODO(wiley): Initialize all properties appropriately before claiming
-  //              the properties interface.
-  properties_->state_.SetValue("{}");
-  properties_->ClaimPropertiesInterface();
-}
+Manager::Manager(dbus::Bus* bus)
+    : bus_(bus),
+      exported_object_(bus->GetExportedObject(
+          dbus::ObjectPath(dbus_constants::kManagerServicePath))) { }
 
 Manager::~Manager() {
   // Prevent the properties object from making calls to the exported object.
@@ -42,9 +29,42 @@ Manager::~Manager() {
   // our callbacks in between the Manager's death and the bus unregistering
   // our exported object on shutdown.  Unretained makes no promises of memory
   // management.
-  auto exported_object = dbus_manager_->GetExportedObject(
-      dbus_constants::kManagerServicePath);
-  exported_object->Unregister();
+  exported_object_->Unregister();
+  exported_object_ = nullptr;
+}
+
+void Manager::Init(const OnInitFinish& cb) {
+  scoped_refptr<dbus_utils::AsyncEventSequencer> sequencer(
+      new dbus_utils::AsyncEventSequencer());
+  exported_object_->ExportMethod(
+      dbus_constants::kManagerInterface,
+      dbus_constants::kManagerRegisterDeviceMethod,
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&Manager::HandleRegisterDevice,
+          base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kManagerInterface,
+          dbus_constants::kManagerRegisterDeviceMethod,
+          "Failed exporting RegisterDevice method",
+          true));
+  exported_object_->ExportMethod(
+      dbus_constants::kManagerInterface,
+      dbus_constants::kManagerUpdateStateMethod,
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&Manager::HandleUpdateState,
+          base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kManagerInterface,
+          dbus_constants::kManagerUpdateStateMethod,
+          "Failed exporting UpdateState method",
+          true));
+  properties_.reset(new Properties(bus_));
+  // TODO(wiley): Initialize all properties appropriately before claiming
+  //              the properties interface.
+  properties_->state_.SetValue("{}");
+  properties_->Init(
+      sequencer->GetHandler("Manager properties export failed.", true));
+  sequencer->OnAllTasksCompletedCall({cb});
 }
 
 scoped_ptr<dbus::Response> Manager::HandleRegisterDevice(
