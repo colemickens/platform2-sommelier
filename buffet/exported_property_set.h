@@ -89,7 +89,7 @@ class ExportedPropertyBase {
   // needed to write out properties to Get and GetAll methods implemented
   // by the ExportedPropertySet since it doesn't actually know the type
   // of each property.
-  virtual void AppendValueToWriter(dbus::MessageWriter* writer) = 0;
+  virtual void AppendValueToWriter(dbus::MessageWriter* writer) const = 0;
 };
 
 class ExportedPropertySet {
@@ -123,6 +123,11 @@ class ExportedPropertySet {
                                      const std::string& name,
                                      const ExportedPropertyBase* property);
 
+  void WriteSignalForPropertyUpdate(const std::string& interface,
+                                    const std::string& name,
+                                    const ExportedPropertyBase* property,
+                                    dbus::Signal* signal) const;
+
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
   // This is a map from interface name -> property name -> pointer to property.
   std::map<std::string,
@@ -154,7 +159,7 @@ class ExportedProperty : public ExportedPropertyBase {
   virtual void SetUpdateCallback(const OnUpdateCallback& cb) override;
 
   // Implementation provided by specialization.
-  virtual void AppendValueToWriter(dbus::MessageWriter* writer) override;
+  virtual void AppendValueToWriter(dbus::MessageWriter* writer) const override;
 
  private:
   OnUpdateCallback on_update_;

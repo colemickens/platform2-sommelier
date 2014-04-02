@@ -104,6 +104,13 @@ class ExportedPropertySetTest : public ::testing::Test {
       HandleSet(method_call, response_sender);
     }
 
+    void CallWriteSignalForPropertyUpdate(const std::string& interface,
+                                          const std::string& name,
+                                          const ExportedPropertyBase* property,
+                                          dbus::Signal* signal) {
+      WriteSignalForPropertyUpdate(interface, name, property, signal);
+    }
+
     MOCK_METHOD3(PropertyUpdated, void(const std::string&, const std::string&,
                                        const ExportedPropertyBase*));
 
@@ -468,6 +475,35 @@ TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
   p_.CallHandleSet(&method_call, response_sender);
   ASSERT_TRUE(
       dynamic_cast<dbus::ErrorResponse*>(last_response_.get()) != nullptr);
+}
+
+TEST_F(ExportedPropertySetTest, SignalsAreParsable) {
+  EXPECT_CALL(p_, PropertyUpdated(kTestInterface1, kUint8PropName,
+                                  &p_.uint8_prop_)).Times(1);
+  p_.uint8_prop_.SetValue(57);
+  dbus::Signal signal(dbus::kPropertiesInterface, dbus::kPropertiesChanged);
+  p_.CallWriteSignalForPropertyUpdate(kTestInterface1, kUint8PropName,
+                                      &p_.uint8_prop_, &signal);
+  std::string interface_name;
+  std::string property_name;
+  uint8 value;
+  dbus::MessageReader reader(&signal);
+  dbus::MessageReader array_reader(nullptr);
+  dbus::MessageReader dict_reader(nullptr);
+  ASSERT_TRUE(reader.PopString(&interface_name));
+  ASSERT_TRUE(reader.PopArray(&array_reader));
+  ASSERT_TRUE(array_reader.PopDictEntry(&dict_reader));
+  ASSERT_TRUE(dict_reader.PopString(&property_name));
+  ASSERT_TRUE(dict_reader.PopVariantOfByte(&value));
+  ASSERT_FALSE(dict_reader.HasMoreData());
+  ASSERT_FALSE(array_reader.HasMoreData());
+  // Read the (empty) list of invalidated property names.
+  std::vector<std::string> invalidated_properties;
+  ASSERT_TRUE(reader.PopArrayOfStrings(&invalidated_properties));
+  ASSERT_FALSE(reader.HasMoreData());
+  ASSERT_EQ(value, 57);
+  ASSERT_EQ(property_name, std::string(kUint8PropName));
+  ASSERT_EQ(interface_name, std::string(kTestInterface1));
 }
 
 }  // namespace dbus_utils

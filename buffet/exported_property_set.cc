@@ -138,7 +138,34 @@ void ExportedPropertySet::HandlePropertyUpdated(
     const std::string& interface,
     const std::string& name,
     const ExportedPropertyBase* property) {
-  // TODO(wiley): Send a signal from the exported object here.
+  dbus::Signal signal(dbus::kPropertiesInterface, dbus::kPropertiesChanged);
+  WriteSignalForPropertyUpdate(interface, name, property, &signal);
+  // This sends the signal asyncronously.  However, the raw message inside
+  // the signal object is ref-counted, so we're fine to allocate the Signal
+  // object on our local stack.
+  exported_object_->SendSignal(&signal);
+}
+
+void ExportedPropertySet::WriteSignalForPropertyUpdate(
+    const std::string& interface,
+    const std::string& name,
+    const ExportedPropertyBase* property,
+    dbus::Signal* signal) const {
+  dbus::MessageWriter writer(signal);
+  dbus::MessageWriter array_writer(nullptr);
+  dbus::MessageWriter dict_writer(nullptr);
+  writer.AppendString(interface);
+  writer.OpenArray("{sv}", &array_writer);
+  array_writer.OpenDictEntry(&dict_writer);
+  dict_writer.AppendString(name);
+  property->AppendValueToWriter(&dict_writer);
+  array_writer.CloseContainer(&dict_writer);
+  writer.CloseContainer(&array_writer);
+  // The interface specification tells us to include this list of properties
+  // which have changed, but for whom no value is conveyed.  Currently, we
+  // don't do anything interesting here.
+  std::vector<std::string> invalidated_properties;
+  writer.AppendArrayOfStrings(invalidated_properties);
 }
 
 template <typename T>
@@ -259,7 +286,8 @@ void ExportedProperty<T>::SetUpdateCallback(const OnUpdateCallback& cb) {
 }
 
 template <typename T>
-void ExportedProperty<T>::AppendValueToWriter(dbus::MessageWriter* writer) {
+void ExportedProperty<T>::AppendValueToWriter(
+    dbus::MessageWriter* writer) const {
   AppendPropertyToWriter(writer, value_);
 }
 
