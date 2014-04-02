@@ -15,6 +15,7 @@
 #include <base/string_split.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos/process.h>
 
 #include "lorgnette/daemon.h"
@@ -27,25 +28,14 @@ using std::vector;
 namespace lorgnette {
 
 // static
-const char Manager::DBusAdaptor::kObjectPath[] =
-    "/org/chromium/lorgnette/Manager";
-const char Manager::kDBusErrorName[] = "org.chromium.lorgnette.Error";
 const char Manager::kScanConverterPath[] = "/usr/bin/pnm2png";
 const char Manager::kScanImageFormattedDeviceListCmd[] =
     "--formatted-device-list=%d%%%v%%%m%%%t%n";
 const char Manager::kScanImagePath[] = "/usr/bin/scanimage";
-const char Manager::kScannerPropertyManufacturer[] = "Manufacturer";
-const char Manager::kScannerPropertyModel[] = "Model";
-const char Manager::kScannerPropertyType[] = "Type";
-const char Manager::kScanPropertyMode[] = "Mode";
-const char Manager::kScanPropertyModeColor[] = "Color";
-const char Manager::kScanPropertyModeGray[] = "Gray";
-const char Manager::kScanPropertyModeLineart[] = "Lineart";
-const char Manager::kScanPropertyResolution[] = "Resolution";
 const int Manager::kTimeoutAfterKillSeconds = 1;
 
 Manager::DBusAdaptor::DBusAdaptor(Manager *manager, DBus::Connection *conn)
-    : DBus::ObjectAdaptor(*conn, kObjectPath),
+    : DBus::ObjectAdaptor(*conn, kManagerServicePath),
       manager_(manager) {}
 
 Manager::DBusAdaptor::~DBusAdaptor() {}
@@ -233,7 +223,7 @@ Manager::ScannerInfo Manager::ScannerInfoFromString(
 void Manager::SetError(const string &method,
                        const string &message,
                        ::DBus::Error *error) {
-  error->set(kDBusErrorName, message.c_str());
+  error->set(kManagerServiceError, message.c_str());
   LOG(ERROR) << method << ": " << message;
 }
 

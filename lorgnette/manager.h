@@ -62,24 +62,13 @@ class Manager {
         ::DBus::Error &error);
 
    private:
-    static const char kObjectPath[];
-
     // Bare pointer is okay since this object is owned by this Manager instance.
     Manager *manager_;
   };
 
-  static const char kDBusErrorName[];
   static const char kScanConverterPath[];
   static const char kScanImageFormattedDeviceListCmd[];
   static const char kScanImagePath[];
-  static const char kScannerPropertyManufacturer[];
-  static const char kScannerPropertyModel[];
-  static const char kScannerPropertyType[];
-  static const char kScanPropertyMode[];
-  static const char kScanPropertyModeColor[];
-  static const char kScanPropertyModeGray[];
-  static const char kScanPropertyModeLineart[];
-  static const char kScanPropertyResolution[];
   static const int kTimeoutAfterKillSeconds;
 
   // Sets arguments to scan listing |process|, and runs it, returning its
