@@ -4,8 +4,11 @@
 
 #include "shill/ethernet.h"
 
+#include <linux/ethtool.h>
 #include <netinet/ether.h>
+#include <netinet/in.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/sockios.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -62,6 +65,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
       eap_listener_(new EapListener(dispatcher, interface_index)),
       nss_(NSS::GetInstance()),
       proxy_factory_(ProxyFactory::GetInstance()),
+      sockets_(new Sockets()),
       weak_ptr_factory_(this) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kEapAuthenticationCompletedProperty,
@@ -106,6 +110,10 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   Device::LinkEvent(flags, change);
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
     link_up_ = true;
+    // We EnableWakeOnLan() here, instead of in Start(), because with
+    // r8139, "ethtool -s eth0 wol g" fails when no cable is plugged
+    // in.
+    EnableWakeOnLan();
     if (service_) {
       LOG(INFO) << "Registering " << link_name() << " with manager.";
       // Manager will bring up L3 for us.
@@ -372,6 +380,42 @@ void Ethernet::TryEapAuthenticationTask() {
     return;
   }
   StartEapAuthentication();
+}
+
+void Ethernet::EnableWakeOnLan() {
+  int sock;
+  struct ifreq interface_command;
+  struct ethtool_wolinfo wake_on_lan_command;
+
+  if (link_name().length() >= sizeof(interface_command.ifr_name)) {
+    LOG(WARNING) << "Interface name " << link_name() << " too long: "
+                 << link_name().size() << " >= "
+                 << sizeof(interface_command.ifr_name);
+    return;
+  }
+
+  sock = sockets_->Socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+  if (sock < 0) {
+    LOG(WARNING) << "Failed to allocate socket: "
+                 << sockets_->ErrorString() << ".";
+    return;
+  }
+  ScopedSocketCloser socket_closer(sockets_.get(), sock);
+
+  memset(&interface_command, 0, sizeof(interface_command));
+  memset(&wake_on_lan_command, 0, sizeof(wake_on_lan_command));
+  wake_on_lan_command.cmd = ETHTOOL_SWOL;
+  wake_on_lan_command.wolopts = WAKE_MAGIC;
+  interface_command.ifr_data = &wake_on_lan_command;
+  memcpy(interface_command.ifr_name,
+         link_name().data(), link_name().length());
+
+  int res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
+  if (res < 0) {
+    LOG(WARNING) << "Failed to enable wake-on-lan: "
+                 << sockets_->ErrorString() << ".";
+    return;
+  }
 }
 
 }  // namespace shill

@@ -6,6 +6,7 @@
 
 #include <netinet/ether.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/sockios.h>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -25,6 +26,7 @@
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
+#include "shill/mock_sockets.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/nice_mock_control.h"
@@ -49,7 +51,7 @@ namespace shill {
 class EthernetTest : public testing::Test {
  public:
   EthernetTest()
-      : metrics_(NULL),
+      : metrics_(nullptr),
         manager_(&control_interface_, NULL, &metrics_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         ethernet_(new Ethernet(&control_interface_,
@@ -62,6 +64,7 @@ class EthernetTest : public testing::Test {
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         kDeviceName)),
         eap_listener_(new MockEapListener()),
+        mock_sockets_(new StrictMock<MockSockets>()),
         mock_service_(new MockEthernetService(&control_interface_, &metrics_)),
         mock_eap_service_(new MockService(&control_interface_,
                                           &dispatcher_,
@@ -74,8 +77,8 @@ class EthernetTest : public testing::Test {
   virtual void SetUp() {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
     ethernet_->proxy_factory_ = &proxy_factory_;
-    // Transfers ownership.
-    ethernet_->eap_listener_.reset(eap_listener_);
+    ethernet_->eap_listener_.reset(eap_listener_);  // Transfers ownership.
+    ethernet_->sockets_.reset(mock_sockets_);  // Transfers ownership.
 
     ethernet_->set_dhcp_provider(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
@@ -89,6 +92,7 @@ class EthernetTest : public testing::Test {
     ethernet_eap_provider_.set_service(NULL);
     ethernet_->set_dhcp_provider(NULL);
     ethernet_->eap_listener_.reset();
+    ethernet_->sockets_.reset();
   }
 
  protected:
@@ -181,7 +185,7 @@ class EthernetTest : public testing::Test {
   StrictMock<MockEventDispatcher> dispatcher_;
   MockGLib glib_;
   NiceMockControl control_interface_;
-  MockMetrics metrics_;
+  NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;
   EthernetRefPtr ethernet_;
@@ -191,6 +195,7 @@ class EthernetTest : public testing::Test {
 
   // Owned by Ethernet instance, but tracked here for expectations.
   MockEapListener *eap_listener_;
+  MockSockets *mock_sockets_;
 
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
@@ -238,8 +243,12 @@ TEST_F(EthernetTest, LinkEvent) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Link-up event while down.
+  int kFakeFd = 789;
   EXPECT_CALL(manager_, RegisterService(GetService()));
   EXPECT_CALL(*eap_listener_, Start());
+  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
+  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
   EXPECT_FALSE(GetIsEapDetected());

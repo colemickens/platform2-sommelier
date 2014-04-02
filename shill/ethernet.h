@@ -25,6 +25,7 @@ class EapListener;
 class EthernetEapProvider;
 class NSS;
 class ProxyFactory;
+class Sockets;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
@@ -97,6 +98,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Callback task run as a result of TryEapAuthentication().
   void TryEapAuthenticationTask();
 
+  void EnableWakeOnLan();
+
   EthernetServiceRefPtr service_;
   bool link_up_;
 
@@ -127,6 +130,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   // Store cached copy of proxy factory singleton for speed/ease of testing.
   ProxyFactory *proxy_factory_;
+
+  scoped_ptr<Sockets> sockets_;
 
   base::WeakPtrFactory<Ethernet> weak_ptr_factory_;
 
