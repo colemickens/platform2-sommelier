@@ -27,12 +27,14 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/file_util.h>
+#include <base/location.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/sys_info.h>
+#include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
@@ -49,6 +51,8 @@ using base::StringPrintf;
 using std::string;
 
 namespace {
+
+const char kWorkerThreadName[] = "platform_worker";
 
 class ScopedPath {
  public:
@@ -69,6 +73,18 @@ class ScopedPath {
 
 bool IsDirectory(const struct stat& file_info) {
  return !!S_ISDIR(file_info.st_mode);
+}
+
+void LazyUnmountAndSyncTask(const std::string& path, bool sync_first) {
+  if (sync_first) {
+    sync();
+  }
+  if (umount2(path.c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
+    if (errno != EBUSY) {
+      PLOG(ERROR) << "Lazy unmount failed!";
+    }
+  }
+  sync();
 }
 
 }  // namespace
@@ -186,6 +202,10 @@ bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
     *was_busy = false;
   }
   return true;
+}
+
+void Platform::LazyUnmountAndSync(const std::string& path, bool sync_first) {
+  PostWorkerTask(base::Bind(LazyUnmountAndSyncTask, path, sync_first));
 }
 
 void Platform::GetProcessesWithOpenFiles(
@@ -856,6 +876,14 @@ bool Platform::WalkPath(const std::string& path,
     }
   }
   return true;
+}
+
+void Platform::PostWorkerTask(const base::Closure& task) {
+  if (!worker_thread_.get()) {
+    worker_thread_.reset(new base::Thread(kWorkerThreadName));
+    worker_thread_->Start();
+  }
+  worker_thread_->message_loop()->PostTask(FROM_HERE, task);
 }
 
 FileEnumerator::FileInfo::FileInfo(

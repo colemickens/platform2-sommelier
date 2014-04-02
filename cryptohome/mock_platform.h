@@ -83,6 +83,7 @@ class MockPlatform : public Platform {
                            const std::string&, const std::string&));
   MOCK_METHOD2(Bind, bool(const std::string&, const std::string&));
   MOCK_METHOD3(Unmount, bool(const std::string&, bool, bool*));
+  MOCK_METHOD2(LazyUnmountAndSync, void(const std::string&, bool));
   MOCK_METHOD2(GetMountsBySourcePrefix, bool(const std::string&,
                   std::multimap<const std::string, const std::string>*));
   MOCK_METHOD1(IsDirectoryMounted, bool(const std::string&));

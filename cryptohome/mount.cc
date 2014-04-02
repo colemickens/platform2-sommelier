@@ -688,11 +688,10 @@ void Mount::ForceUnmount(const std::string& mount_point) {
                      << (*file_itr);
         }
       }
-      platform_->Sync();
     }
-    // Failed to unmount immediately, do a lazy unmount
-    platform_->Unmount(mount_point, true, NULL);
-    platform_->Sync();
+    // Failed to unmount immediately, do a lazy unmount.  If |was_busy| we also
+    // want to sync before the unmount to help prevent data loss.
+    platform_->LazyUnmountAndSync(mount_point, was_busy);
   }
 }
 

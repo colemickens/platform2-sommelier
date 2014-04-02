@@ -18,7 +18,10 @@
 #include <string>
 #include <vector>
 
-namespace base { class Time; }
+namespace base {
+class Thread;
+class Time;
+}
 
 namespace cryptohome {
 
@@ -123,6 +126,13 @@ class Platform {
   //   was_busy (OUT) - Set to true on return if the mount point was busy
   virtual bool Unmount(const std::string& path, bool lazy, bool* was_busy);
 
+  // Lazy unmounts |path| asynchronously and then calls sync().  If |sync_first|
+  // is true then it also calls sync() before unmount.
+  //
+  // Parameters
+  //   path - The path to unmount
+  //   sync_first - Whether to call sync() before unmount.
+  virtual void LazyUnmountAndSync(const std::string& path, bool sync_first);
 
   // Returns true if any mounts match. Populates |mounts| if
   // any mount sources have a matching prefix (|from_prefix|).
@@ -500,7 +510,10 @@ class Platform {
       const std::string& file_path,
       const struct stat& file_info);
 
+  void PostWorkerTask(const base::Closure& task);
+
   std::string mtab_path_;
+  scoped_ptr<base::Thread> worker_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };
