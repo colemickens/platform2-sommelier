@@ -29,8 +29,8 @@ DEFINE_uint64(wakeup_count, 0, "Wakeup count to pass to powerd or 0 if unset.");
 
 namespace {
 
-// Exits when notice that the system has resumed is received.
-void OnPowerStateChanged(dbus::Signal* signal) {
+// Exits when powerd announces that the suspend attempt has completed.
+void OnSuspendDone(dbus::Signal* signal) {
   base::MessageLoop::current()->QuitNow();
 }
 
@@ -41,10 +41,11 @@ void OnDBusSignalConnected(const std::string& interface,
   CHECK(success) << "Unable to connect to " << interface << "." << signal;
 }
 
-// Invoked if a PowerStateChanged signal announcing resume isn't received before
+// Invoked if a SuspendDone signal announcing resume isn't received before
 // FLAGS_timeout.
 void OnTimeout() {
-  LOG(FATAL) << "Did not receive a resume message within the timeout.";
+  LOG(FATAL) << "Did not receive a " << power_manager::kSuspendDoneSignal
+             << " signal within the timeout.";
 }
 
 }  // namespace
@@ -68,8 +69,8 @@ int main(int argc, char* argv[]) {
 
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,
-      power_manager::kPowerStateChangedSignal,
-      base::Bind(&OnPowerStateChanged),
+      power_manager::kSuspendDoneSignal,
+      base::Bind(&OnSuspendDone),
       base::Bind(&OnDBusSignalConnected));
 
   // Send a suspend request.

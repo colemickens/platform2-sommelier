@@ -76,6 +76,9 @@ class SuspendDelayController {
     std::string description;
   };
 
+  // Returns the human-readable description of |delay_id|.
+  std::string GetDelayDescription(int delay_id) const;
+
   // Removes |delay_id| from |registered_delays_| and calls
   // RemoveDelayFromWaitList().
   void UnregisterDelayInternal(int delay_id);

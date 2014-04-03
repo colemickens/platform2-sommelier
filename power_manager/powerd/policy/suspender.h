@@ -34,20 +34,20 @@ class SuspendDelayController;
 // as follows:
 //
 // - RequestSuspend() is called when suspending is desired.
-// - SuspendDelayController announces the new suspend request to processes that
-//   have previously registered suspend delays via RegisterSuspendDelay().
+// - SuspendDelayController emits a SuspendImminent signal to announce the new
+//   suspend request to processes that have previously registered suspend delays
+//   via RegisterSuspendDelay().
 // - OnReadyForSuspend() is called to announce that all processes have announced
-//   readiness via HandleSuspendReadiness(). It calls Suspend(), which emits a
-//   PowerStateChanged D-Bus signal with a "mem" argument and runs the
+//   readiness via HandleSuspendReadiness(). It calls Suspend(), which runs the
 //   powerd_suspend script to perform the actual suspend/resume cycle.
-// - After powerd_suspend returns, a PowerStateChanged signal with an "on"
-//   argument is emitted. If powerd_suspend reported failure, a timeout is
-//   created to retry the suspend attempt.
+// - After powerd_suspend returns, a SuspendDone signal is emitted. If
+//   powerd_suspend reported failure, a timeout is created to retry the suspend
+//   attempt.
 //
-// At any point before Suspend() has been called, user activity can cancel
-// the current suspend attempt. A synthetic PowerStateChanged "on" signal
-// is emitted so that other processes can undo any setup that they did in
-// response to suspend delays.
+// At any point before Suspend() has been called, user activity can cancel the
+// current suspend attempt. A synthetic SuspendDone signal is emitted so that
+// other processes can undo any setup that they did in response to suspend
+// delays.
 class Suspender : public SuspendDelayObserver {
  public:
   // Interface for classes responsible for performing actions on behalf of
@@ -101,12 +101,9 @@ class Suspender : public SuspendDelayObserver {
     virtual void HandleCanceledSuspendAnnouncement() = 0;
 
     // Handles putting the system into the correct state before suspending such
-    // as suspending the backlight, audio, and sending out the PowerStateChanged
-    // "mem" signal. This is separate from Suspend() since for the purpose of a
-    // dark resume (which can call suspend again), we don't want to touch the
-    // state of the backlight or audio. We also don't want to send out another
-    // PowerStateChanged "mem" signal since those are not sent out during a dark
-    // resume.
+    // as suspending the backlight and muting audio. This is separate from
+    // Suspend() since for the purpose of a dark resume (which can call suspend
+    // again), we don't want to touch the state of the backlight or audio.
     virtual void PrepareForSuspend() = 0;
 
     // Synchronously runs the powerd_suspend script to suspend the system.
@@ -122,8 +119,7 @@ class Suspender : public SuspendDelayObserver {
     // attempt. |num_suspend_attempts| contains the number of suspend attempts
     // that have been made so far (i.e. the initial attempt plus any retries).
     // This method should undo any work done by both
-    // PrepareForSuspendAnnouncement() and PrepareForSuspend() (i.e. it should
-    // set a PowerStateChanged "on" signal).
+    // PrepareForSuspendAnnouncement() and PrepareForSuspend().
     virtual void HandleSuspendAttemptCompletion(bool suspend_was_successful,
                                                 int num_suspend_attempts) = 0;
 
@@ -232,8 +228,13 @@ class Suspender : public SuspendDelayObserver {
   // Cancels an outstanding suspend request.
   void CancelSuspend();
 
+  // Emits a D-Bus signal announcing that suspend attempt |suspend_id_| is
+  // complete and that the system was suspended for |suspend_duration|.
+  void SendSuspendDoneSignal(const base::TimeDelta& suspend_duration);
+
   // Emits a D-Bus signal informing other processes that we've suspended or
   // resumed at |wall_time|.
+  // TODO(derat): Remove this: http://crbug.com/359619.
   void SendSuspendStateChangedSignal(SuspendState_Type type,
                                      const base::Time& wall_time);
 

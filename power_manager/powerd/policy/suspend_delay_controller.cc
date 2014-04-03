@@ -59,9 +59,10 @@ void SuspendDelayController::RegisterSuspendDelay(
   info.timeout = base::TimeDelta::FromInternalValue(request.timeout());
   info.dbus_client = dbus_client;
   info.description = request.description();
-  LOG(INFO) << "Registering suspend delay " << delay_id
-            << " of " << info.timeout.InMilliseconds() << " ms on behalf of "
-            << dbus_client << " (" << info.description << ")";
+  LOG(INFO) << "Registering suspend delay " << delay_id << " ("
+            << info.description << ")" << " of "
+            << info.timeout.InMilliseconds() << " ms on behalf of "
+            << dbus_client;
   registered_delays_.insert(std::make_pair(delay_id, info));
 
   reply->Clear();
@@ -72,6 +73,7 @@ void SuspendDelayController::UnregisterSuspendDelay(
     const UnregisterSuspendDelayRequest& request,
     const std::string& dbus_client) {
   LOG(INFO) << "Unregistering suspend delay " << request.delay_id()
+            << " (" << GetDelayDescription(request.delay_id()) << ")"
             << " on behalf of " << dbus_client;
   UnregisterDelayInternal(request.delay_id());
 }
@@ -81,9 +83,9 @@ void SuspendDelayController::HandleSuspendReadiness(
     const std::string& dbus_client) {
   int delay_id = info.delay_id();
   int suspend_id = info.suspend_id();
-  LOG(INFO) << "Got notification that client with delay " << delay_id
-            << " is ready for suspend attempt " << suspend_id << " from "
-            << dbus_client;
+  LOG(INFO) << "Got notification that delay " << delay_id
+            << " (" << GetDelayDescription(delay_id) << ") is ready for "
+            << "suspend attempt " << suspend_id << " from " << dbus_client;
 
   if (suspend_id != current_suspend_id_) {
     LOG(WARNING) << "Ignoring readiness notification for wrong suspend attempt "
@@ -112,7 +114,8 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   for (std::vector<int>::const_iterator it = delay_ids_to_remove.begin();
        it != delay_ids_to_remove.end(); ++it) {
     LOG(INFO) << "Unregistering suspend delay " << *it
-              << " due to D-Bus client " << client << " going away";
+              << " (" << GetDelayDescription(*it) << ") due to D-Bus client "
+              << client << " going away";
     UnregisterDelayInternal(*it);
   }
 }
@@ -149,6 +152,11 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
+std::string SuspendDelayController::GetDelayDescription(int delay_id) const {
+  DelayInfoMap::const_iterator it = registered_delays_.find(delay_id);
+  return it != registered_delays_.end() ? it->second.description : "unknown";
+}
+
 void SuspendDelayController::UnregisterDelayInternal(int delay_id) {
   if (!registered_delays_.count(delay_id)) {
     LOG(WARNING) << "Ignoring request to remove unknown suspend delay "
@@ -180,9 +188,9 @@ void SuspendDelayController::OnDelayExpiration() {
     tardy_delays += base::IntToString(*it) + " (" + delay.dbus_client + ": " +
         delay.description + ")";
   }
-  LOG(WARNING) << "Timed out while waiting for suspend readiness confirmations "
-               << "for " << delay_ids_being_waited_on_.size() << " delay(s): "
-               << tardy_delays;
+  LOG(WARNING) << "Timed out while waiting for suspend readiness "
+               << "confirmation(s) for " << delay_ids_being_waited_on_.size()
+               << " delay(s): " << tardy_delays;
 
   delay_ids_being_waited_on_.clear();
   PostNotifyObserversTask(current_suspend_id_);

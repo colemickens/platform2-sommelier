@@ -207,6 +207,7 @@ void Suspender::Suspend() {
   bool dark_resume = false;
   Delegate::SuspendResult result = Delegate::SUSPEND_SUCCESSFUL;
   bool success = false;
+  const base::Time start_wall_time = clock_->GetCurrentWallTime();
 
   SendSuspendStateChangedSignal(
       SuspendState_Type_SUSPEND_TO_MEMORY, clock_->GetCurrentWallTime());
@@ -261,7 +262,10 @@ void Suspender::Suspend() {
   // never wake up.
   const bool done = success ||
       (got_external_wakeup_count_ && result == Delegate::SUSPEND_CANCELED);
+  const int old_suspend_id = suspend_id_;
+  const int old_num_attempts = num_attempts_;
   if (done) {
+    num_attempts_ = 0;
     if (success) {
       LOG(INFO) << "Resumed successfully from suspend attempt " << suspend_id_;
     } else {
@@ -278,9 +282,21 @@ void Suspender::Suspend() {
   }
 
   dark_resume_policy_->HandleResume();
-  delegate_->HandleSuspendAttemptCompletion(success, num_attempts_);
-  if (done)
-    num_attempts_ = 0;
+
+  // Protect against the system clock having gone backwards.
+  base::TimeDelta elapsed_time = std::max(base::TimeDelta(),
+      clock_->GetCurrentWallTime() - start_wall_time);
+  SendSuspendDoneSignal(elapsed_time);
+
+  // Check for bugs where another suspend attempt is started before the previous
+  // one is fully cleaned up.
+  DCHECK_EQ(suspend_id_, old_suspend_id)
+      << "Started new suspend attempt " << suspend_id_
+      << " while still cleaning up attempt " << old_suspend_id;
+
+  // Notify the delegate after all other cleanup is done; it may synchronously
+  // trigger another suspend attempt.
+  delegate_->HandleSuspendAttemptCompletion(success, old_num_attempts);
 }
 
 bool Suspender::ShutDownIfRetryLimitReached() {
@@ -306,6 +322,7 @@ void Suspender::CancelSuspend() {
     LOG(INFO) << "Canceling suspend before running powerd_suspend";
     waiting_for_readiness_ = false;
     DCHECK(!retry_suspend_timer_.IsRunning());
+    SendSuspendDoneSignal(base::TimeDelta());
     delegate_->HandleCanceledSuspendAnnouncement();
   } else if (retry_suspend_timer_.IsRunning()) {
     LOG(INFO) << "Canceling suspend between retries";
@@ -316,6 +333,13 @@ void Suspender::CancelSuspend() {
     delegate_->HandleCanceledSuspendRequest(num_attempts_);
     num_attempts_ = 0;
   }
+}
+
+void Suspender::SendSuspendDoneSignal(const base::TimeDelta& suspend_duration) {
+  SuspendDone proto;
+  proto.set_suspend_id(suspend_id_);
+  proto.set_suspend_duration(suspend_duration.ToInternalValue());
+  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
 }
 
 void Suspender::SendSuspendStateChangedSignal(SuspendState_Type type,

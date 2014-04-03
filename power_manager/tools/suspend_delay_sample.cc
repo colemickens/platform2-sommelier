@@ -64,7 +64,7 @@ int RegisterSuspendDelay(dbus::ObjectProxy* powerd_proxy) {
   power_manager::RegisterSuspendDelayReply reply;
   CHECK(CallMethod(powerd_proxy, power_manager::kRegisterSuspendDelayMethod,
                    request, &reply));
-  LOG(INFO) << "Registered delay with ID " << reply.delay_id();
+  LOG(INFO) << "Registered delay " << reply.delay_id();
   return reply.delay_id();
 }
 
@@ -72,6 +72,8 @@ int RegisterSuspendDelay(dbus::ObjectProxy* powerd_proxy) {
 void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
                       int delay_id,
                       int suspend_id) {
+  LOG(INFO) << "Announcing readiness of delay " << delay_id
+            << " for suspend attempt " << suspend_id;
   power_manager::SuspendReadinessInfo request;
   request.set_delay_id(delay_id);
   request.set_suspend_id(suspend_id);
@@ -79,21 +81,33 @@ void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
              request, NULL);
 }
 
-// Handles an announcement of a suspend attempt. Posts a task to run
+// Handles the start of a suspend attempt. Posts a task to run
 // SendSuspendReady() after a delay.
-void SuspendDelaySignaled(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
-                          int delay_id,
-                          dbus::Signal* signal) {
+void HandleSuspendImminent(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
+                           int delay_id,
+                           dbus::Signal* signal) {
   power_manager::SuspendImminent info;
   dbus::MessageReader reader(signal);
   CHECK(reader.PopArrayOfBytesAsProto(&info));
   int suspend_id = info.suspend_id();
 
-  LOG(INFO) << "Got notification about suspend with ID " << suspend_id;
+  LOG(INFO) << "Got notification about suspend attempt " << suspend_id;
   LOG(INFO) << "Sleeping " << FLAGS_delay_ms << " ms before responding";
   base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
       base::Bind(&SendSuspendReady, powerd_proxy, delay_id, suspend_id),
       base::TimeDelta::FromMilliseconds(FLAGS_delay_ms));
+}
+
+// Handles the completion of a suspend attempt.
+void HandleSuspendDone(dbus::Signal* signal) {
+  power_manager::SuspendDone info;
+  dbus::MessageReader reader(signal);
+  CHECK(reader.PopArrayOfBytesAsProto(&info));
+  const base::TimeDelta duration =
+      base::TimeDelta::FromInternalValue(info.suspend_duration());
+  LOG(INFO) << "Suspend attempt " << info.suspend_id() << " is complete; "
+            << "system was suspended for " << duration.InMilliseconds()
+            << " ms";
 }
 
 // Handles the result of an attempt to connect to a D-Bus signal.
@@ -123,10 +137,18 @@ int main(int argc, char* argv[]) {
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
-      base::Bind(&SuspendDelaySignaled, make_scoped_refptr(powerd_proxy),
+      base::Bind(&HandleSuspendImminent, make_scoped_refptr(powerd_proxy),
                  delay_id),
+      base::Bind(&DBusSignalConnected));
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendDoneSignal,
+      base::Bind(&HandleSuspendDone),
       base::Bind(&DBusSignalConnected));
 
   message_loop.Run();
+
+  // powerd will automatically unregister this process's suspend delay when the
+  // process disconnects from D-Bus.
   return 0;
 }

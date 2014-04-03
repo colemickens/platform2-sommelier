@@ -416,6 +416,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   }
 
  private:
+  // TODO(derat): Remove this: http://crbug.com/359619.
   void SendPowerStateChangedSignal(const std::string& power_state) {
     dbus::Signal signal(kPowerManagerInterface, kPowerStateChanged);
     dbus::MessageWriter writer(&signal);
@@ -644,7 +645,6 @@ void Daemon::HandleSuspendAttemptCompletion(bool suspend_was_successful,
   SetBacklightsSuspended(false);
   audio_client_->RestoreMutedState();
   power_supply_->SetSuspended(false);
-  state_controller_->HandleResume();
 
   // Allow virtual terminal switching again.
   if (lock_vt_before_suspend_)
@@ -662,6 +662,11 @@ void Daemon::HandleSuspendAttemptCompletion(bool suspend_was_successful,
   // http://crosbug.com/p/16132
   if (log_suspend_with_mosys_eventlog_)
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
+
+  // StateController may synchronously trigger another suspend attempt if the
+  // lid is still closed. Notify it last to ensure that all other cleanup is
+  // already done.
+  state_controller_->HandleResume();
 }
 
 void Daemon::HandleLidClosed() {
