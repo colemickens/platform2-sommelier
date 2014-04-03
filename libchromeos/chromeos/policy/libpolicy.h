@@ -5,7 +5,6 @@
 #ifndef POLICY_LIBPOLICY_H_
 #define POLICY_LIBPOLICY_H_
 
-#include <gtest/gtest_prod.h>
 #include <string>
 
 #include <base/basictypes.h>
