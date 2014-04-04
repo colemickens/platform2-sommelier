@@ -1488,6 +1488,13 @@ void Manager::AutoConnect() {
     }
   }
 
+  // Report the number of auto-connectable wifi services available when wifi is
+  // idle (no active or pending connection), which will trigger auto connect
+  // for wifi services.
+  if (IsWifiIdle()) {
+    wifi_provider_->ReportAutoConnectableServices();
+  }
+
   // Perform auto-connect.
   for (vector<ServiceRefPtr>::iterator it = services_.begin();
        it != services_.end(); ++it) {
@@ -2027,6 +2034,22 @@ void Manager::SetTechnologyOrder(const string &order, Error *error) {
 
   technology_order_ = new_order;
   SortServices();
+}
+
+bool Manager::IsWifiIdle() {
+  bool ret = false;
+
+  // Since services are sorted by connection state, status of the wifi device
+  // can be determine by examing the connection state of the first wifi service.
+  for (const auto &service : services_) {
+    if (service->technology() == Technology::kWifi) {
+      if (!service->IsConnecting() && !service->IsConnected()) {
+        ret = true;
+      }
+      break;
+    }
+  }
+  return ret;
 }
 
 void Manager::UpdateProviderMapping() {

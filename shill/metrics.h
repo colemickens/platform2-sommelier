@@ -436,6 +436,19 @@ class Metrics {
   static const int kMetricExpiredLeaseLengthSecondsMin;
   static const int kMetricExpiredLeaseLengthSecondsNumBuckets;
 
+  // Number of wifi services available when auto-connect is initiated.
+  static const char kMetricWifiAutoConnectableServices[];
+  static const int kMetricWifiAutoConnectableServicesMax;
+  static const int kMetricWifiAutoConnectableServicesMin;
+  static const int kMetricWifiAutoConnectableServicesNumBuckets;
+
+  // Number of BSSes available for a wifi service when we attempt to connect
+  // to that service.
+  static const char kMetricWifiAvailableBSSes[];
+  static const int kMetricWifiAvailableBSSesMax;
+  static const int kMetricWifiAvailableBSSesMin;
+  static const int kMetricWifiAvailableBSSesNumBuckets;
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -592,6 +605,14 @@ class Metrics {
   // Notifies this object that a cellular service has been marked as
   // out-of-credits.
   void NotifyCellularOutOfCredits(Metrics::CellularOutOfCreditsReason reason);
+
+  // Notifies this object about number of wifi services available for auto
+  // connect when auto-connect is initiated.
+  virtual void NotifyWifiAutoConnectableServices(int num_services);
+
+  // Notifies this object about number of BSSes available for a wifi service
+  // when attempt to connect to that service.
+  virtual void NotifyWifiAvailableBSSes(int num_services);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();

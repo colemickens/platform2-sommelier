@@ -277,6 +277,20 @@ const int Metrics::kMetricExpiredLeaseLengthSecondsMin = 1;
 const int Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets =
     Metrics::kMetricExpiredLeaseLengthSecondsMax;
 
+// static
+const char Metrics::kMetricWifiAutoConnectableServices[] =
+    "Network.Shill.wifi.AutoConnectableServices";
+const int Metrics::kMetricWifiAutoConnectableServicesMax = 50;
+const int Metrics::kMetricWifiAutoConnectableServicesMin = 1;
+const int Metrics::kMetricWifiAutoConnectableServicesNumBuckets = 10;
+
+// static
+const char Metrics::kMetricWifiAvailableBSSes[] =
+    "Network.Shill.wifi.AvailableBSSesAtConnect";
+const int Metrics::kMetricWifiAvailableBSSesMax = 50;
+const int Metrics::kMetricWifiAvailableBSSesMin = 1;
+const int Metrics::kMetricWifiAvailableBSSesNumBuckets = 10;
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1035,6 +1049,22 @@ void Metrics::NotifyDHCPOptionFailure(const Service &service) {
   SendEnumToUMA(histogram,
                 kDHCPOptionFailure,
                 kDHCPOptionFailureMax);
+}
+
+void Metrics::NotifyWifiAutoConnectableServices(int num_services) {
+  SendToUMA(kMetricWifiAutoConnectableServices,
+            num_services,
+            kMetricWifiAutoConnectableServicesMin,
+            kMetricWifiAutoConnectableServicesMax,
+            kMetricWifiAutoConnectableServicesNumBuckets);
+}
+
+void Metrics::NotifyWifiAvailableBSSes(int num_bss) {
+  SendToUMA(kMetricWifiAvailableBSSes,
+            num_bss,
+            kMetricWifiAvailableBSSesMin,
+            kMetricWifiAvailableBSSesMax,
+            kMetricWifiAvailableBSSesNumBuckets);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

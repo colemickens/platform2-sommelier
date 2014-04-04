@@ -42,6 +42,8 @@ class MockMetrics : public Metrics {
                                    int max));
   MOCK_METHOD5(SendToUMA, bool(const std::string &name, int sample, int min,
                                int max, int num_buckets));
+  MOCK_METHOD1(NotifyWifiAutoConnectableServices, void(int num_service));
+  MOCK_METHOD1(NotifyWifiAvailableBSSes, void(int num_bss));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

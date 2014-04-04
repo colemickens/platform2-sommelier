@@ -416,6 +416,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
+  FRIEND_TEST(ManagerTest, IsWifiIdle);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
@@ -520,6 +521,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error &error,
                            bool success);
+
+  // Return true if wifi device is enabled with no existing connection (pending
+  // or connected).
+  bool IsWifiIdle();
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }

@@ -536,6 +536,9 @@ void WiFiService::Connect(Error *error, const char *reason) {
     return;
   }
 
+  // Report number of BSSes available for this service.
+  metrics()->NotifyWifiAvailableBSSes(endpoints_.size());
+
   if (Is8021x()) {
     // If EAP key management is not set, set to a default.
     if (GetEAPKeyManagement().empty())

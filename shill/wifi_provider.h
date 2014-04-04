@@ -111,6 +111,10 @@ class WiFiProvider : public ProviderInterface {
   // connected.  This data is accumulated across multiple shill runs.
   virtual FrequencyCountList GetScanFrequencies() const;
 
+  // Report the number of auto connectable services available to uma
+  // metrics.
+  void ReportAutoConnectableServices();
+
   bool disable_vht() { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
 

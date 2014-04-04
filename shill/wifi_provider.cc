@@ -647,4 +647,22 @@ WiFiProvider::FrequencyCountList WiFiProvider::GetScanFrequencies() const {
   return freq_connects_list;
 }
 
+void WiFiProvider::ReportAutoConnectableServices() {
+  const char *reason = NULL;
+  int num_services = 0;
+
+  // Determine the number of services available for auto-connect.
+  for (const auto &service : services_) {
+    // Service is available for auto connect if it is configured for auto
+    // connect, and is auto-connectable.
+    if (service->auto_connect() && service->IsAutoConnectable(&reason)) {
+      num_services++;
+    }
+  }
+
+  // Only report stats when there are wifi services available.
+  if (num_services) {
+    metrics_->NotifyWifiAutoConnectableServices(num_services);
+  }
+}
 }  // namespace shill

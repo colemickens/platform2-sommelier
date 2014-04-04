@@ -451,6 +451,19 @@ MATCHER_P(FrequencyArg, has_arg, "") {
       ContainsKey(arg, WPASupplicant::kNetworkPropertyFrequency);
 }
 
+TEST_F(WiFiServiceTest, ConnectReportBSSes) {
+  WiFiEndpointRefPtr endpoint1 =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint2 =
+      MakeOpenEndpoint("a", "00:00:00:00:00:02", 0, 0);
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
+  wifi_service->AddEndpoint(endpoint1);
+  wifi_service->AddEndpoint(endpoint2);
+  EXPECT_CALL(*metrics(), NotifyWifiAvailableBSSes(2));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
+  wifi_service->Connect(NULL, "in test");
+}
+
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWpa);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));

@@ -4275,4 +4275,62 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_TRUE(ContainsKey(location_infos, kGeoCellTowersProperty));
 }
 
+TEST_F(ManagerTest, IsWifiIdle) {
+  // No registered service.
+  EXPECT_FALSE(manager()->IsWifiIdle());
+
+  scoped_refptr<MockService> wifi_service(new MockService(control_interface(),
+                                                          dispatcher(),
+                                                          metrics(),
+                                                          manager()));
+
+  scoped_refptr<MockService> cell_service(new MockService(control_interface(),
+                                                          dispatcher(),
+                                                          metrics(),
+                                                          manager()));
+
+  manager()->RegisterService(wifi_service);
+  manager()->RegisterService(cell_service);
+
+  EXPECT_CALL(*wifi_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*cell_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kCellular));
+
+  // Cellular is connected.
+  EXPECT_CALL(*cell_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  manager()->UpdateService(cell_service);
+
+  // No wifi connection attempt.
+  EXPECT_CALL(*wifi_service.get(), IsConnecting())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  manager()->UpdateService(wifi_service);
+  EXPECT_TRUE(manager()->IsWifiIdle());
+
+  // Attempt wifi connection.
+  Mock::VerifyAndClearExpectations(wifi_service);
+  EXPECT_CALL(*wifi_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service.get(), IsConnecting())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  manager()->UpdateService(wifi_service);
+  EXPECT_FALSE(manager()->IsWifiIdle());
+
+  // wifi connected.
+  Mock::VerifyAndClearExpectations(wifi_service);
+  EXPECT_CALL(*wifi_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service.get(), IsConnecting())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  manager()->UpdateService(wifi_service);
+  EXPECT_FALSE(manager()->IsWifiIdle());
+}
+
 }  // namespace shill

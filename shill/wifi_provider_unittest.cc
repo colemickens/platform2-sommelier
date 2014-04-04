@@ -1483,4 +1483,33 @@ TEST_F(WiFiProviderTest, IncrementConnectCountCreateNew) {
                           this_week));
 }
 
+TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {
+  MockWiFiServiceRefPtr service0 = AddMockService(vector<uint8_t>(1, '0'),
+                                                  kModeManaged,
+                                                  kSecurityNone,
+                                                  false);
+  MockWiFiServiceRefPtr service1 = AddMockService(vector<uint8_t>(1, '1'),
+                                                  kModeManaged,
+                                                  kSecurityNone,
+                                                  false);
+  service0->EnableAndRetainAutoConnect();
+  service0->SetConnectable(true);
+  service1->EnableAndRetainAutoConnect();
+  service1->SetConnectable(true);
+
+  EXPECT_CALL(*service0, IsAutoConnectable(_))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service1, IsAutoConnectable(_))
+      .WillRepeatedly(Return(false));
+
+  // With 1 auto connectable service.
+  EXPECT_CALL(metrics_, NotifyWifiAutoConnectableServices(1));
+  provider_.ReportAutoConnectableServices();
+
+  // With no auto connectable service.
+  EXPECT_CALL(metrics_, NotifyWifiAutoConnectableServices(_)).Times(0);
+  provider_.ReportAutoConnectableServices();
+}
+
 }  // namespace shill
