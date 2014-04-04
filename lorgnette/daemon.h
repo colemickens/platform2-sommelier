@@ -23,9 +23,6 @@ class Manager;
 
 class Daemon {
  public:
-  // DBus interface to occupy.
-  static const char kInterfaceName[];
-
   // User and group to run the lorgnette process.
   static const char kScanGroupName[];
   static const char kScanUserName[];

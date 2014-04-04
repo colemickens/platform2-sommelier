@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 #include <base/run_loop.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "lorgnette/manager.cc"
 
@@ -20,7 +21,6 @@ using std::vector;
 namespace lorgnette {
 
 // static
-const char Daemon::kInterfaceName[] = "org.chromium.lorgnette";
 const char Daemon::kScanGroupName[] = "scanner";
 const char Daemon::kScanUserName[] = "saned";
 const int Daemon::kShutdownTimeoutMilliseconds = 20000;
@@ -48,7 +48,7 @@ void Daemon::Start() {
   DBus::default_dispatcher = dispatcher_.get();
   dispatcher_->attach(NULL);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-  connection_->request_name(kInterfaceName);
+  connection_->request_name(kManagerServiceName);
   manager_.reset(new Manager(
       base::Bind(&Daemon::PostponeShutdown, base::Unretained(this))));
   manager_->InitDBus(connection_.get());
