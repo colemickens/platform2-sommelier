@@ -145,7 +145,7 @@ Cellular::~Cellular() {
   // is disabled, not giving shill enough time to complete the disable
   // operation.
   // In that case, the termination action associated with this cellular object
-  // may not have been removed yet.
+  // may not have been removed.
   manager()->RemoveTerminationAction(FriendlyName());
 }
 
