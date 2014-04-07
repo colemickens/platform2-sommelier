@@ -9,6 +9,13 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+
+#include <X11/Xatom.h>
+#include <X11/extensions/XInput.h>
+#include <X11/Xlib.h>
+#include <X11/Xresource.h>
+#include <X11/Xutil.h>
+
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -28,16 +35,17 @@ class Property {
 
   private:
     double GetCurrentValue() const;
-    int GetPropertyNumber() const;
     int GetDeviceNumber() const;
-    std::string RunCommand(std::string const &command) const;
     bool SetValue(double new_value) const;
+
+    Display* GetX11Display() const;
+    XDevice* GetX11TouchpadDevice(Display *display) const;
+    double GetPropertyValue(Display *display, XDevice *device,
+                            const char* name) const;
 
     std::string name_;
     double value_;
     double old_value_;
-    int device_;
-    int property_number_;
 
     bool is_valid_;
 };

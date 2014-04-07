@@ -43,7 +43,9 @@ CPPFLAGS += $(PC_CFLAGS)
 
 LDLIBS=\
 	$(PC_LIBS) \
-	-lcurses
+	-lcurses \
+	-lX11 \
+	-lXi
 
 define auto_mkdir
   $(if $(wildcard $(dir $1)),$2,$(QUIET)mkdir -p "$(dir $1)")

@@ -15,22 +15,25 @@ bool Property::valid() const {
   return is_valid_;
 }
 
-Property::Property(string const &property_string) {
+Property::Property(string const &property_string) : is_valid_(false) {
   vector<string> parts;
   SplitString(property_string, ':', &parts);
 
   name_ = "";
   if (parts.size() == 2) {
-    name_ = parts[0];
-    value_ = atof(parts[1].c_str());
-    device_ = GetDeviceNumber();
-    property_number_ = GetPropertyNumber();
-    old_value_ = GetCurrentValue();
-    is_valid_ = true;
-  }
+    // Check that the property name contains only legal characters
+    is_valid_ = (parts[0].length() > 0);
+    for (size_t i = 0; i < parts[0].length(); i++) {
+      is_valid_ &= (IsAsciiAlpha(parts[0][i]) || IsAsciiDigit(parts[0][i]) ||
+                    parts[0][i] == ' ' || parts[0][i] == '-');
+    }
 
-  if (name_.length() == 0)
-    is_valid_ = false;
+    if (is_valid_) {
+      name_ = parts[0];
+      value_ = atof(parts[1].c_str());
+      old_value_ = GetCurrentValue();
+    }
+  }
 }
 
 bool Property::Reset() const {
@@ -42,56 +45,131 @@ bool Property::Apply() const {
 }
 
 bool Property::SetValue(double new_value) const {
-  string command = StringPrintf("DISPLAY=:0 xinput set-prop %d %d %f",
-                                device_, property_number_, new_value);
+  // Connect to the X display and device we need
+  Display *display = GetX11Display();
+  XDevice *device = GetX11TouchpadDevice(display);
+  if (!display || !device)
+    return false;
 
-  double current_value = GetCurrentValue();
-  for (int i = 0; i < MAX_RETRIES && current_value != new_value; i++) {
-    RunCommand(command);
-    current_value = GetCurrentValue();
+  // Find the id of the property we want
+  Atom this_prop = XInternAtom(display, name_.c_str(), true);
+
+  // Select the property and see what format it is in
+  Atom type;
+  int format;
+  unsigned long nitems, bytes_after;
+  unsigned char *data;
+  unsigned char *new_data = NULL;
+  if (XGetDeviceProperty(display, device, this_prop, 0, 1000, False,
+                         AnyPropertyType, &type, &format,
+                         &nitems, &bytes_after, &data) == Success) {
+    if (nitems == 1) {
+      // Re-format the value into the type X is expecting
+      int8_t int8_t_val = (int8_t)new_value;
+      int16_t int16_t_val = (int16_t)new_value;
+      int32_t int32_t_val = (int32_t)new_value;
+      float float_val = (float)new_value;
+      Atom float_atom = XInternAtom(display, "FLOAT", True);
+      if (type == XA_INTEGER) {
+        switch(format) {
+          case 8: new_data = (unsigned char*)&int8_t_val; break;
+          case 16: new_data = (unsigned char*)&int16_t_val; break;
+          case 32: new_data = (unsigned char*)&int32_t_val; break;
+        }
+      } else if (float_atom != None && type == float_atom) {
+        new_data = (unsigned char*)&float_val;
+      }
+
+      // If everything went okay, apply the change
+      if (new_data) {
+        XChangeDeviceProperty(display, device, this_prop, type, format,
+                              PropModeReplace, new_data, 1);
+      }
+    }
   }
 
-  return (abs(static_cast<int>(current_value - new_value))
-          <= MAX_ALLOWABLE_DIFFERENCE);
+  // Clean up
+  XCloseDevice(display, device);
+  XCloseDisplay(display);
+
+  return (new_data != NULL);
 }
 
-int Property::GetDeviceNumber() const {
-  return atoi(RunCommand("/opt/google/touchpad/tpcontrol listdev").c_str());
+Display* Property::GetX11Display() const {
+  return XOpenDisplay(NULL);
 }
 
-int Property::GetPropertyNumber() const {
-  string command = StringPrintf("DISPLAY=:0 xinput list-props %d"
-                                " | grep '%s'"
-                                " | sed -e 's/[^(]*(\\([0-9]*\\)):.*/\\1/'",
-                                device_,
-                                name_.c_str());
-  return atoi(RunCommand(command).c_str());
+XDevice* Property::GetX11TouchpadDevice(Display *display) const {
+  if (!display)
+    return NULL;
+
+  // Get a list of the details of all the X devices availible
+  int num_device_infos;
+  XDeviceInfo *device_infos = XListInputDevices(display, &num_device_infos);
+
+  // Go through the list and find our touchpad
+  XDevice *touchpad_device = NULL;
+  for(int i = 0; i < num_device_infos; i++) {
+    if (device_infos[i].use != IsXExtensionPointer)
+      continue;
+
+    XDevice *tmp_device = XOpenDevice(display, device_infos[i].id);
+    if (!tmp_device)
+      continue;
+
+    // The touchpad will have a "Device Touchpad" Property set to 1.0
+    double val = GetPropertyValue(display, tmp_device, "Device Touchpad");
+    if (val == 1.0) {
+      touchpad_device = tmp_device;
+      break;
+    } else {
+      XCloseDevice(display, tmp_device);
+    }
+  }
+
+  return touchpad_device;
+}
+
+double Property::GetPropertyValue(Display *display, XDevice *device,
+                                  const char* name) const {
+  // Find the id of the property we want
+  Atom this_prop = XInternAtom(display, name, true);
+
+  // Parse the value of this property
+  Atom type;
+  int format;
+  unsigned long nitems, bytes_after;
+  unsigned char *data;
+  double val = -1;
+  if (XGetDeviceProperty(display, device, this_prop, 0, 1000, False,
+                         AnyPropertyType, &type, &format,
+                         &nitems, &bytes_after, &data) == Success) {
+    if (nitems == 1) {
+      Atom float_atom = XInternAtom(display, "FLOAT", True);
+      if (type == XA_INTEGER) {
+        switch(format) {
+          case 8: val = *((int8_t*)data); break;
+          case 16: val = *((int16_t*)data); break;
+          case 32: val = *((int32_t*)data); break;
+        }
+      } else if (float_atom != None && type == float_atom) {
+        val = *((float*)data);
+      }
+    }
+  }
+
+  return val;
 }
 
 double Property::GetCurrentValue() const {
-  string command = StringPrintf("DISPLAY=:0 xinput list-props %d"
-                                " | grep '%s'"
-                                " | sed -e 's/[^:]*:\\s*\\([-0-9.]*\\)$/\\1/'",
-                                device_,
-                                name_.c_str());
-  return atoi(RunCommand(command).c_str());
-}
+  Display *display = GetX11Display();
+  XDevice *device = GetX11TouchpadDevice(display);
+  if (!display || !device)
+    return -1.0;
 
-string Property::RunCommand(string const &command) const {
-  // Run a command from a shell and return the contents of stdout
-  FILE* pipe = popen(command.c_str(), "r");
-  if (!pipe)
-    return "";
+  double val = GetPropertyValue(display, device, name_.c_str());
 
-  char buffer[256];
-  string result = "";
-  while (!feof(pipe)) {
-    if (fgets(buffer, 256, pipe) != NULL)
-      result += buffer;
-  }
-
-  pclose(pipe);
-
-  TrimWhitespaceASCII(result, TRIM_ALL, &result);
-  return result;
+  XCloseDevice(display, device);
+  XCloseDisplay(display);
+  return val;
 }

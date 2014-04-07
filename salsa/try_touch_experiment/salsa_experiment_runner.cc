@@ -25,12 +25,26 @@ string SalsaExperimentRunner::Decode(string const &exp_string) const {
   string decoded_string = "";
   for (string::const_iterator it = exp_string.begin();
        it != exp_string.end(); ++it) {
-    int val1 = HexDigitToInt(*it);
-    int val2 = HexDigitToInt(*++it);
-    if (val1 < 0 || val2 < 0)
+    char c1 = *it;
+    char c2 = *++it;
+
+    if (IsHexDigit(c1) && IsHexDigit(c2)) {
+      int val1 = HexDigitToInt(c1);
+      int val2 = HexDigitToInt(c2);
+      char converted_char = static_cast<char>(val1 * 16 + val2);
+
+      // After decoding, these should be the only characters in the string
+      if (IsAsciiAlpha(converted_char) || IsAsciiDigit(converted_char) ||
+          converted_char == '+' || converted_char == ',' ||
+          converted_char == ':' || converted_char == '-' ||
+          converted_char == ' ' || converted_char == '.') {
+        decoded_string.push_back(converted_char);
+      } else {
+        return "";
+      }
+    } else {
       return "";
-    else
-      decoded_string.push_back(static_cast<char>(val1 * 16 + val2));
+    }
   }
 
   return decoded_string;
