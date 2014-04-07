@@ -664,13 +664,27 @@ load_base_vars
 # and partition information.
 STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
 
-# Find our destination device.
-# If the user hasn't selected a destination,
-# we expect that the disk layout declares it for us.
-DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
-if [ -z "${DST}" ]; then
-  echo "Error: can not determine destination device. Specify --dst yourself."
-  exit 1
+# Find our destination device.  If the user hasn't selected one, and the
+# disk layout doesn't declare it for us, do some historical autoprobing.
+: ${FLAGS_dst:=${DEFAULT_ROOTDEV}}
+if [ -z "${FLAGS_dst}" ]; then
+  if [ "${ARCH}" = "INTEL" ]; then
+    # This finds the first ATA device listed by parted.
+    SD_INFO=$(parted -l -s -m 2> /dev/null)
+    DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ " || :)
+    if [ -z "$DST" ]; then
+      # See if we found a MMC device instead.
+      DST=$(expr "${SD_INFO}" : ".*\(/dev/mmcblk[^:]*\)[^;]*:MMC\ " || :)
+      if [ -z "${DST}" ]; then
+        # As a backup, install to /dev/sda
+        DST=/dev/sda
+      fi
+    fi
+  else
+    DST=/dev/mmcblk0
+  fi
+else
+  DST="${FLAGS_dst}"
 fi
 
 if [ "${DST}" = "/dev/ubi" ]; then
