@@ -402,6 +402,13 @@ if is_board peach_pit || is_board peach_pi; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
 fi
 
+# On developer systems, set a flag to let the browser know that it is on
+# one.
+DEVELOPER_MODE_FLAG=
+if is_developer_end_user; then
+  DEVELOPER_MODE_FLAG="--system-developer-mode"
+fi
+
 # There has been a steady supply of bug reports about screen locking. These
 # messages are useful for determining what happened within feedback reports.
 add_vmodule_pattern "screen_locker=1"
@@ -489,4 +496,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${PPAPI_OOP_FLAG} \
             ${VMODULE_FLAG} \
             ${GPU_FLAGS} \
-            ${VIDEO_FLAGS}
+            ${VIDEO_FLAGS} \
+            ${DEVELOPER_MODE_FLAG}
