@@ -7,7 +7,7 @@
 # This script can be called during startup to trash the stateful partition
 # and possibly reset the other root filesystem
 
-. /usr/sbin/chromeos-common.sh
+. /usr/share/misc/chromeos-common.sh
 SCRIPT="$0"
 
 # stateful partition isn't around for logging, so dump to the screen:
