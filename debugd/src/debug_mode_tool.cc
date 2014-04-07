@@ -8,14 +8,13 @@
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"
+
+#if USE_CELLULAR
 #include "dbus_proxies/org.freedesktop.ModemManager.h"
 #include "dbus_proxies/org.freedesktop.ModemManager1.h"
+#endif  // USE_CELLULAR
 
 namespace debugd {
-
-const char* const kDBusPath = "/org/freedesktop/DBus";
-const char* const kDBusInterface = "org.freedesktop.DBus";
-const char* const kDBusListNames = "ListNames";
 
 const char* const kFlimflamPath = "/";
 const char* const kFlimflamService = "org.chromium.flimflam";
@@ -23,14 +22,6 @@ const char* const kFlimflamService = "org.chromium.flimflam";
 const char* const kSupplicantPath = "/fi/w1/wpa_supplicant1";
 const char* const kSupplicantService = "fi.w1.wpa_supplicant1";
 const char* const kSupplicantIface = "fi.w1.wpa_supplicant1";
-
-const char* const kModemManager = "ModemManager";
-
-const char* const kCromoModemManagerPath = "/org/chromium/ModemManager";
-const char* const kCromoModemManagerService = "org.chromium.ModemManager";
-
-const char* const kModemManager1Path = "/org/freedesktop/ModemManager1";
-const char* const kModemManager1Service = "org.freedesktop.ModemManager1";
 
 class ManagerProxy
     : public org::chromium::flimflam::Manager_proxy,
@@ -43,6 +34,20 @@ class ManagerProxy
     virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
     virtual void StateChanged(const std::string&) { }
 };
+
+#if USE_CELLULAR
+
+const char* const kDBusPath = "/org/freedesktop/DBus";
+const char* const kDBusInterface = "org.freedesktop.DBus";
+const char* const kDBusListNames = "ListNames";
+
+const char* const kModemManager = "ModemManager";
+
+const char* const kCromoModemManagerPath = "/org/chromium/ModemManager";
+const char* const kCromoModemManagerService = "org.chromium.ModemManager";
+
+const char* const kModemManager1Path = "/org/freedesktop/ModemManager1";
+const char* const kModemManager1Service = "org.freedesktop.ModemManager1";
 
 class ModemManagerProxy
     : public org::freedesktop::ModemManager_proxy,
@@ -67,6 +72,8 @@ class ModemManager1Proxy
     virtual void DeviceAdded(const DBus::Path&) { }
     virtual void DeviceRemoved(const DBus::Path&) { }
 };
+
+#endif  // USE_CELLULAR
 
 class PropertiesProxy
     : public org::freedesktop::DBus::Properties_proxy,
@@ -110,6 +117,7 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem,
 }
 
 void DebugModeTool::GetAllModemManagers(std::vector<std::string>* managers) {
+#if USE_CELLULAR
   managers->clear();
 
   DBus::CallMessage msg;
@@ -127,9 +135,11 @@ void DebugModeTool::GetAllModemManagers(std::vector<std::string>* managers) {
       managers->push_back(name);
     ++iter;
   }
+#endif  // USE_CELLULAR
 }
 
 void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
+#if USE_CELLULAR
   std::vector<std::string> managers;
   GetAllModemManagers(&managers);
   for (size_t i = 0; i < managers.size(); ++i) {
@@ -144,6 +154,7 @@ void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
       modemmanager.SetLogging(level);
     }
   }
+#endif  // USE_CELLULAR
 }
 
-};  // namespace debugd
+}  // namespace debugd
