@@ -39,6 +39,38 @@ numsectors() {
   fi
 }
 
+# Round a number of 512-byte sectors up to an integral number of 2Mb
+# blocks. Divisor is 2 * 1024 * 1024 / 512 == 4096.
+# Invoke as: subshell
+# Args: SECTORS
+# Return: Next largest multiple-of-8 sectors (ex: 4->8, 33->40, 32->32)
+roundup() {
+  local num=$1
+  local div=${2:-4096}
+  local rem=$(( $num % $div ))
+
+  if [ $rem -ne 0 ]; then
+    num=$(($num + $div - $rem))
+  fi
+  echo $num
+}
+
+# Truncate a number of 512-byte sectors down to an integral number of 2Mb
+# blocks. Divisor is 2 * 1024 * 1024 / 512 == 4096.
+# Invoke as: subshell
+# Args: SECTORS
+# Return: Next smallest multiple-of-8 sectors (ex: 4->0, 33->32, 32->32)
+rounddown() {
+  local num=$1
+  local div=${2:-4096}
+  local rem=$(( $num % $div ))
+
+  if [ $rem -ne 0 ]; then
+    num=$(($num - $rem))
+  fi
+  echo $num
+}
+
 # Locate the cgpt tool. It should already be installed in the build chroot,
 # but some of these functions may be invoked outside the chroot (by
 # image_to_usb or similar), so we need to find it.
@@ -121,98 +153,44 @@ make_partition_dev() {
   fi
 }
 
-# List target devices functions.
+# Find the uuid for a (disk, partnum) pair (e.g., ("/dev/sda", 3))
+part_index_to_uuid() {
+  local dev="$1"
+  local idx="$2"
+
+  sudo $GPT show -i "$idx" -u "$dev"
+}
+
 list_usb_disks() {
   local sd
-  local remo
-  local size
-
   for sd in /sys/block/sd*; do
-    if [ ! -r "${sd}/size" ]; then
-      continue
-    fi
-    size=$(cat "${sd}/size")
-    remo=$(cat "${sd}/removable")
     if readlink -f ${sd}/device | grep -q usb &&
-      [ ${remo:-0} -eq 1 -a ${size:-0} -gt 0 ]; then
-      echo "${sd##*/}"
+      [ "$(cat ${sd}/removable)" = 1 -a "$(cat ${sd}/size)" != 0 ]; then
+      echo ${sd##*/}
     fi
   done
 }
 
-# list mmc devices, including sd cards (for installation support candidates).
 list_mmc_disks() {
   local mmc
   for mmc in /sys/block/mmcblk*; do
-    # We only select deivce that are 1GB or larger.
-    if [ "$(cat "${mmc}/size")" -ge 2097152 ]; then
-      echo "${mmc##*/}"
+    if readlink -f ${mmc}/device | grep -q mmc; then
+      echo ${mmc##*/}
     fi
   done
 }
 
-# ATA disk have ATA as vendor.
-# They may not contain ata in their device path if behind a SAS
-# controller.
-# Exclude disks with size 0, it means they did not spin up properly.
-list_fixed_ata_disks() {
-  local sd
-  local remo
-  local vdr
-  local size
-
-  for sd in /sys/block/sd*; do
-    if [ ! -r "${sd}/size" ]; then
-      continue
+get_disk_info() {
+  # look for a "given" file somewhere in the path upwards from the device
+  local dev_path=/sys/block/${1}/device
+  while [ -d "${dev_path}" -a "${dev_path}" != "/sys" ]; do
+    if [ -f "${dev_path}/${2}" ]; then
+      cat "${dev_path}/${2}"
+      return
     fi
-    size=$(cat "${sd}/size")
-    remo=$(cat "${sd}/removable")
-    vdr=$(cat "${sd}/device/vendor")
-    if [ "${vdr%% *}" = "ATA" -a ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
-      echo "${sd##*/}"
-    fi
+    dev_path=$(readlink -f ${dev_path}/..)
   done
-}
-
-# We assume we only have eMMC devices, not removable MMC devices.
-# also, do not consider special hardware partitions non the eMMC, like boot.
-# These devices are built on top of the eMMC sysfs path:
-# /sys/block/mmcblk0 -> .../mmc_host/.../mmc0:0001/.../mmcblk0
-# /sys/block/mmcblk0boot0 -> .../mmc_host/.../mmc0:0001/.../mmcblk0/mmcblk0boot0
-# /sys/block/mmcblk0boot1 -> .../mmc_host/.../mmc0:0001/.../mmcblk0/mmcblk0boot1
-# /sys/block/mmcblk0rpmb -> .../mmc_host/.../mmc0:0001/.../mmcblk0/mmcblk0rpmb
-#
-# Their device link points back to mmcblk0, not to the hardware
-# device (mmc0:0001). Therefore there is no type in their device link.
-# (it should be /device/device/type)
-list_fixed_mmc_disks() {
-  local mmc
-  local type_file
-  for mmc in /sys/block/mmcblk*; do
-    type_file="${mmc}/device/type"
-    if [ -r "${type_file}" ]; then
-      if [ "$(cat "${type_file}")" = "MMC" ]; then
-        echo "${mmc##*/}"
-      fi
-    fi
-  done
-}
-
-# Find the drive to install based on the build write_cgpt.sh
-# script. If not found, return ""
-get_fixed_dst_drive() {
-  local dev
-  if [ -z "${DEFAULT_ROOTDEV}" ]; then
-    dev=""
-  else
-    # No " here, the variable may contain wildcards.
-    dev="/dev/$(basename ${DEFAULT_ROOTDEV})"
-    if [ ! -b "${dev}" ]; then
-      # The device is not found
-      dev=""
-    fi
-  fi
-  echo "${dev}"
+  echo '[Unknown]'
 }
 
 legacy_offset_size_export() {
