@@ -224,8 +224,8 @@ load_extra_crosh() {
 
   crosh_dir=$(dirname "$0")
 
-  if [ -e /usr/share/misc/chromeos-common.sh ]; then
-    . "/usr/share/misc/chromeos-common.sh" || exit 1
+  if [ -e /usr/sbin/chromeos-common.sh ]; then
+    . "/usr/sbin/chromeos-common.sh" || exit 1
 
     src=$(get_block_dev_from_partition_dev $(rootdev -s))
     if [ "$(cat /sys/block/${src#/dev/}/removable)" = "1" ]; then
