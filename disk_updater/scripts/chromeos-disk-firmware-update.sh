@@ -9,6 +9,7 @@
 #
 
 . /usr/share/misc/shflags
+. /usr/share/misc/chromeos-common.sh
 
 # Temperaray directory to put device information
 DEFINE_string 'tmp_dir' '' "Use existing temporary directory."
@@ -37,33 +38,6 @@ die() {
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
-
-# disk_get_sata_devices
-#
-# look for the name of the SATA devices to update
-# We expect no devices [emmc machines] or one [sda or
-# maybe sdb if a usb stick is present].
-# Multiple entries is unexecpted.
-#
-# returns a list of devices "sda sdb ..."
-#
-disk_get_sata_devices() {
-  for device in /sys/block/sd*; do
-    if [ ! -e "${device}" ]; then
-      break
-    fi
-    removable=$(cat "${device}/removable")
-    vendor=$(cat "${device}/device/vendor")
-    if [ "${vendor%% *}" = "ATA" -a ${removable} -eq 0 ]; then
-      echo "$(basename "${device}")"
-    fi
-  done
-}
-
-# TODO(gwendal): not implemented.
-disk_get_emmc_devices() {
-  echo ""
-}
 
 # disk_fw_select - Select the proper disk firmware to use.
 #
@@ -327,7 +301,7 @@ main() {
   # remove unnecessary lines
   sed '/^#/d;/^[[:space:]]*$/d' "${disk_rules_raw}" > "${disk_rules}"
 
-  disk_upgrade_devices "${disk_rules}" $(disk_get_sata_devices)
+  disk_upgrade_devices "${disk_rules}" $(list_fixed_ata_disks)
   rc=$?
 
   if [ ${erase_tmp_dir} -eq ${FLAGS_TRUE} ]; then
