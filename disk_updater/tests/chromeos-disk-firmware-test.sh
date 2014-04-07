@@ -30,8 +30,8 @@ declare -a hdparm_rc
 declare -i id_idx
 declare -i hdparm_fw_rc=0
 
-unset list_fixed_ata_disks
-list_fixed_ata_disks() {
+unset disk_get_sata_devices
+disk_get_sata_devices() {
   echo "sda"
 }
 
