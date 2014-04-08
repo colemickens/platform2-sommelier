@@ -29,7 +29,7 @@ double WaitForCoolMachine(double cold_temperature, double timeout,
 
 namespace glbench {
 
-GLuint SetupTexture(GLsizei size_log2);
+GLuint SetupTexture(GLsizei size_log2, int max_level);
 GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data);
 void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
                    GLfloat size_x, GLfloat size_y, int width, int height);

@@ -22,10 +22,17 @@
 using std::string;
 using std::vector;
 
-DEFINE_int32(duration, 0, "run tests in a loop for at least this many seconds");
-DEFINE_string(tests, "", "colon-separated list of tests to run; "
-              "all tests if omitted");
+DEFINE_int32(duration, 0,
+             "Run all tests again and again in a loop for at least this many seconds.");
+DEFINE_string(tests, "",
+              "Colon-separated list of tests to run; all tests if omitted.");
 DEFINE_string(blacklist, "", "colon-separated list of tests to disable");
+DEFINE_bool(hasty, false,
+            "Run a smaller set of tests with less accurate results. "
+            "Useful for running in BVT or debugging a failure.");
+
+GLint g_max_texture_size;
+bool g_hasty;
 
 bool test_is_enabled(glbench::TestBase* test,
                      const vector<string>& enabled_tests) {
@@ -71,14 +78,23 @@ void printDateTime(void) {
 }
 
 bool PassesSanityCheck(void) {
-  GLint viewport[2];
-  glGetIntegerv(GL_MAX_VIEWPORT_DIMS, viewport);
-  printf("# MAX_VIEWPORT_DIMS=(%d, %d)\n", viewport[0], viewport[1]);
-  if (viewport[0] < g_width || viewport[1] < g_height) {
+  GLint size[2];
+  glGetIntegerv(GL_MAX_VIEWPORT_DIMS, size);
+  printf("# MAX_VIEWPORT_DIMS=(%d, %d)\n", size[0], size[1]);
+  if (size[0] < g_width || size[1] < g_height) {
     printf("# Error: MAX_VIEWPORT_DIMS=(%d, %d) are too small.\n",
-           viewport[0], viewport[1]);
+           size[0], size[1]);
     return false;
   }
+  glGetIntegerv(GL_MAX_TEXTURE_SIZE, size);
+  printf("# GL_MAX_TEXTURE_SIZE=%d\n", size[0]);
+  if (size[0] < g_width || size[0] < g_height) {
+    printf("# Error: MAX_TEXTURE_SIZE=%d is too small.\n",
+           size[0]);
+    return false;
+  }
+  g_max_texture_size = size[0];
+
   return true;
 }
 
@@ -107,24 +123,27 @@ int main(int argc, char *argv[]) {
   }
   printDateTime();
 
+  g_hasty = FLAGS_hasty;
   vector<string> enabled_tests, disabled_tests;
   base::SplitString(FLAGS_tests, ':', &enabled_tests);
   base::SplitString(FLAGS_blacklist, ':', &disabled_tests);
+
   glbench::TestBase* tests[] = {
-    glbench::GetSwapTest(),
-    glbench::GetContextTest(),
-    glbench::GetClearTest(),
-    glbench::GetFillRateTest(),
-    glbench::GetWindowManagerCompositingTest(false),
-    glbench::GetWindowManagerCompositingTest(true),
-    glbench::GetTriangleSetupTest(),
-    glbench::GetYuvToRgbTest(),
-    glbench::GetReadPixelTest(),
     glbench::GetAttributeFetchShaderTest(),
-    glbench::GetVaryingsAndDdxyShaderTest(),
+    glbench::GetClearTest(),
+    glbench::GetContextTest(),
+    glbench::GetFboFillRateTest(),
+    glbench::GetFillRateTest(),
+    glbench::GetReadPixelTest(),
+    glbench::GetSwapTest(),
     glbench::GetTextureReuseTest(),
     glbench::GetTextureUpdateTest(),
     glbench::GetTextureUploadTest(),
+    glbench::GetTriangleSetupTest(),
+    glbench::GetVaryingsAndDdxyShaderTest(),
+    glbench::GetWindowManagerCompositingTest(false),
+    glbench::GetWindowManagerCompositingTest(true),
+    glbench::GetYuvToRgbTest(),
   };
 
   uint64_t done = GetUTime() + 1000000ULL * FLAGS_duration;

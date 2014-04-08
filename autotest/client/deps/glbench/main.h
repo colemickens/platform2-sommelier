@@ -11,6 +11,7 @@
 #if defined(USE_OPENGLES)
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
+#include <GLES2/gl2ext.h>
 #elif defined(USE_OPENGL)
 #include <GL/gl.h>
 #include <GL/glx.h>
@@ -50,22 +51,32 @@
 #define LIST_PROC_FUNCTIONS(F) \
     F(glAttachShader, PFNGLATTACHSHADERPROC) \
     F(glBindBuffer, PFNGLBINDBUFFERPROC) \
+    F(glBindFramebuffer, PFNGLBINDFRAMEBUFFERPROC) \
+    F(glBindRenderbuffer, PFNGLBINDRENDERBUFFERPROC) \
     F(glBufferData, PFNGLBUFFERDATAPROC) \
+    F(glCheckFramebufferStatus, PFNGLCHECKFRAMEBUFFERSTATUSPROC) \
     F(glCompileShader, PFNGLCOMPILESHADERPROC) \
     F(glCreateProgram, PFNGLCREATEPROGRAMPROC) \
     F(glCreateShader, PFNGLCREATESHADERPROC) \
     F(glDeleteBuffers, PFNGLDELETEBUFFERSPROC) \
+    F(glDeleteFramebuffers, PFNGLDELETEFRAMEBUFFERSPROC) \
     F(glDeleteProgram, PFNGLDELETEPROGRAMPROC) \
+    F(glDeleteRenderbuffers, PFNGLDELETERENDERBUFFERSPROC) \
     F(glDeleteShader, PFNGLDELETESHADERPROC) \
     F(glDisableVertexAttribArray, PFNGLDISABLEVERTEXATTRIBARRAYPROC) \
     F(glEnableVertexAttribArray, PFNGLENABLEVERTEXATTRIBARRAYPROC) \
+    F(glFramebufferRenderbuffer, PFNGLFRAMEBUFFERRENDERBUFFERPROC) \
+    F(glFramebufferTexture2D, PFNGLFRAMEBUFFERTEXTURE2DPROC) \
     F(glGenBuffers, PFNGLGENBUFFERSPROC) \
+    F(glGenFramebuffers, PFNGLGENFRAMEBUFFERSPROC) \
+    F(glGenRenderbuffers, PFNGLGENRENDERBUFFERSPROC) \
     F(glGetAttribLocation, PFNGLGETATTRIBLOCATIONPROC) \
     F(glGetInfoLogARB, PFNGLGETPROGRAMINFOLOGPROC) \
     F(glGetProgramInfoLog, PFNGLGETPROGRAMINFOLOGPROC) \
     F(glGetShaderInfoLog, PFNGLGETSHADERINFOLOGPROC) \
     F(glGetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC) \
     F(glLinkProgram, PFNGLLINKPROGRAMPROC) \
+    F(glRenderbufferStorage, PFNGLRENDERBUFFERSTORAGEPROC) \
     F(glShaderSource, PFNGLSHADERSOURCEPROC) \
     F(glUniform1f, PFNGLUNIFORM1FPROC) \
     F(glUniform1i, PFNGLUNIFORM1IPROC) \
@@ -73,9 +84,9 @@
     F(glUniformMatrix4fv, PFNGLUNIFORMMATRIX4FVPROC) \
     F(glUseProgram, PFNGLUSEPROGRAMPROC) \
     F(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC) \
-    F(glXSwapIntervalSGI, PFNGLXSWAPINTERVALSGIPROC) \
     F(glXBindTexImageEXT, PFNGLXBINDTEXIMAGEEXTPROC) \
-    F(glXReleaseTexImageEXT, PFNGLXRELEASETEXIMAGEEXTPROC)
+    F(glXReleaseTexImageEXT, PFNGLXRELEASETEXIMAGEEXTPROC) \
+    F(glXSwapIntervalSGI, PFNGLXSWAPINTERVALSGIPROC)
 #endif
 
 namespace gl {
@@ -96,8 +107,11 @@ inline uint64_t GetUTime() {
     1000000ULL*static_cast<uint64_t>(tv.tv_sec);
 }
 
+extern bool g_hasty;
 extern GLint g_width;
 extern GLint g_height;
+extern GLint g_max_texture_size;
+
 DECLARE_bool(override_redirect);
 
 // This size is for a window that is very large but will fit on all

@@ -5,19 +5,20 @@ namespace glbench {
 
 class TestBase;
 
-TestBase* GetSwapTest();
-TestBase* GetContextTest();
-TestBase* GetClearTest();
-TestBase* GetFillRateTest();
-TestBase* GetYuvToRgbTest();
-TestBase* GetReadPixelTest();
-TestBase* GetTriangleSetupTest();
 TestBase* GetAttributeFetchShaderTest();
-TestBase* GetVaryingsAndDdxyShaderTest();
-TestBase* GetWindowManagerCompositingTest(bool scissor);
+TestBase* GetClearTest();
+TestBase* GetContextTest();
+TestBase* GetFboFillRateTest();
+TestBase* GetFillRateTest();
+TestBase* GetReadPixelTest();
+TestBase* GetSwapTest();
 TestBase* GetTextureReuseTest();
 TestBase* GetTextureUpdateTest();
 TestBase* GetTextureUploadTest();
+TestBase* GetTriangleSetupTest();
+TestBase* GetVaryingsAndDdxyShaderTest();
+TestBase* GetWindowManagerCompositingTest(bool scissor);
+TestBase* GetYuvToRgbTest();
 
 } // namespace glbench
 
