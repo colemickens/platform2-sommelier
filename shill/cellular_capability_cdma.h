@@ -40,7 +40,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual bool IsRegistered() const override;
   virtual void SetUnregistered(bool searching) override;
   virtual void OnServiceCreated() override;
-  virtual std::string CreateFriendlyServiceName() override;
   virtual std::string GetNetworkTechnologyString() const override;
   virtual std::string GetRoamingStateString() const override;
   virtual bool AllowRoaming() override;
@@ -69,7 +68,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityCDMATest, Activate);
   FRIEND_TEST(CellularCapabilityCDMATest, ActivateError);
-  FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationStateString);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationErrorString);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
@@ -116,8 +114,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   uint32 registration_state_1x_;
   CellularService::OLP olp_;
   std::string usage_url_;
-
-  static unsigned int friendly_service_name_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);
 };

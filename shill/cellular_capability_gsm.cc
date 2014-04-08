@@ -29,8 +29,6 @@ using std::vector;
 namespace shill {
 
 // static
-unsigned int CellularCapabilityGSM::friendly_service_name_id_ = 0;
-
 const char CellularCapabilityGSM::kNetworkPropertyAccessTechnology[] =
     "access-tech";
 const char CellularCapabilityGSM::kNetworkPropertyID[] = "operator-num";
@@ -430,33 +428,6 @@ void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
   SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;
 
   callback.Run(Error());
-}
-
-string CellularCapabilityGSM::CreateFriendlyServiceName() {
-  SLOG(Cellular, 2) << __func__ << ": " << GetRoamingStateString();
-  string name = serving_operator_.GetName();
-  string home_provider_name = cellular()->home_provider().GetName();
-  if (!name.empty()) {
-    // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
-    // rules (TS 31.102 and annex A of 122.101).
-    if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING &&
-        !home_provider_name.empty()) {
-      return home_provider_name + " | " + name;
-    }
-    return name;
-  }
-  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME &&
-      !home_provider_name.empty()) {
-    return home_provider_name;
-  }
-  if (!cellular()->carrier().empty()) {
-    return cellular()->carrier();
-  }
-  string serving_operator_code = serving_operator_.GetCode();
-  if (!serving_operator_code.empty()) {
-    return "cellular_" + serving_operator_code;
-  }
-  return base::StringPrintf("GSMNetwork%u", friendly_service_name_id_++);
 }
 
 void CellularCapabilityGSM::SetHomeProvider() {

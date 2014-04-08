@@ -133,8 +133,6 @@ class CellularOperatorInfo {
     friend class CellularCapabilityUniversalCDMATest;
     friend class MobileOperatorTest;
     FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
-                CreateFriendlyServiceName);
-    FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
                 OnCDMARegistrationChanged);
     FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOLP);
     FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo);

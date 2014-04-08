@@ -182,10 +182,6 @@ class CellularCapability {
   // Invoked by the parent Cellular device when a new service is created.
   virtual void OnServiceCreated() = 0;
 
-  // Returns a user-friendly service name of the network that the modem
-  // currently registers on.
-  virtual std::string CreateFriendlyServiceName() = 0;
-
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;
 

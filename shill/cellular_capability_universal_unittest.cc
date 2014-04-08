@@ -937,56 +937,6 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
                                        vector<string>());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
-  ::DBus::Struct<uint32_t, bool> data;
-  data._1 = 100;
-  data._2 = true;
-  ::DBus::Variant v;
-  ::DBus::MessageIter writer = v.writer();
-  writer << data;
-  EXPECT_CALL(*properties_proxy_, Get(_, MM_MODEM_PROPERTY_SIGNALQUALITY))
-      .WillRepeatedly(Return(v));
-
-  InitProviderDB();
-  capability_->InitProxies();
-
-  SetService();
-
-  size_t len = strlen(CellularCapabilityUniversal::kGenericServiceNamePrefix);
-  EXPECT_EQ(CellularCapabilityUniversal::kGenericServiceNamePrefix,
-            cellular_->service_->friendly_name().substr(0, len));
-
-  cellular_->set_imsi("310240123456789");
-  capability_->SetHomeProvider();
-  EXPECT_EQ("", capability_->spn_);
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
-  EXPECT_EQ(CellularCapabilityUniversal::kGenericServiceNamePrefix,
-            cellular_->service_->friendly_name().substr(0, len));
-
-  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
-  capability_->SetHomeProvider();
-  EXPECT_EQ("", capability_->spn_);
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
-  EXPECT_EQ("T-Mobile", cellular_->service_->friendly_name());
-
-  capability_->spn_ = "Test Home Provider";
-  capability_->SetHomeProvider();
-  EXPECT_EQ("Test Home Provider", cellular_->home_provider().GetName());
-  EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
-
-  capability_->On3GPPRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "", "OTA Name");
-  EXPECT_EQ("OTA Name", cellular_->service_->friendly_name());
-
-  capability_->On3GPPRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "123", "OTA Name 2");
-  EXPECT_EQ("OTA Name 2", cellular_->service_->friendly_name());
-
-  capability_->On3GPPRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "123", "");
-  EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   InitProviderDB();
   capability_->InitProxies();
@@ -1626,17 +1576,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
   EXPECT_TRUE(cellular_->service().get());
 
   const string prefix = "cellular_" + string(kMachineAddress) + "_";
-  string default_identifier_pattern =
-      prefix + string(CellularCapabilityUniversal::kGenericServiceNamePrefix);
-  std::replace_if(default_identifier_pattern.begin(),
-                  default_identifier_pattern.end(),
-                  &Service::IllegalChar, '_');
-  default_identifier_pattern += "*";
 
   // |capability_->operator_id_| is "".
   capability_->UpdateStorageIdentifier();
-  EXPECT_TRUE(::MatchPattern(cellular_->service()->storage_identifier_,
-                             default_identifier_pattern));
+  EXPECT_EQ(prefix + cellular_->service()->friendly_name(),
+            cellular_->service()->GetStorageIdentifier());
 
   // GetCellularOperatorByMCCMNC returns NULL.
   capability_->operator_id_ = "1";
@@ -1645,8 +1589,8 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
       .WillOnce(Return(nullptr));
 
   capability_->UpdateStorageIdentifier();
-  EXPECT_TRUE(::MatchPattern(cellular_->service()->storage_identifier_,
-                             default_identifier_pattern));
+  EXPECT_EQ(prefix + cellular_->service()->friendly_name(),
+            cellular_->service()->GetStorageIdentifier());
   Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
 
   // |cellular_->imsi_| is not ""
@@ -2140,33 +2084,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOperatorInfoViaOperatorId) {
   EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
   EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
   EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
-}
-
-TEST_F(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName) {
-  CellularCapabilityUniversal::friendly_service_name_id_ = 0;
-  EXPECT_EQ("Mobile Network 0", capability_->CreateFriendlyServiceName());
-  EXPECT_EQ("Mobile Network 1", capability_->CreateFriendlyServiceName());
-
-  capability_->operator_id_ = "0123";
-  EXPECT_EQ("cellular_0123", capability_->CreateFriendlyServiceName());
-  EXPECT_EQ("0123", capability_->serving_operator_.GetCode());
-
-  capability_->serving_operator_.SetCode("1234");
-  EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
-
-  static const char kHomeProvider[] = "The GSM Home Provider";
-  cellular_->home_provider_.SetName(kHomeProvider);
-  EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
-  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
-  EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
-
-  static const char kTestOperator[] = "A GSM Operator";
-  capability_->serving_operator_.SetName(kTestOperator);
-  EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
-
-  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING;
-  EXPECT_EQ(StringPrintf("%s | %s", kHomeProvider, kTestOperator),
-            capability_->CreateFriendlyServiceName());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {

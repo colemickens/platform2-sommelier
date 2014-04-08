@@ -328,7 +328,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
   EXPECT_EQ("1", cellular_->service()->serving_operator().GetCode());
   EXPECT_EQ("Test", cellular_->service()->serving_operator().GetName());
   EXPECT_EQ("us", cellular_->service()->serving_operator().GetCountry());
-  EXPECT_EQ("Test", cellular_->service()->friendly_name());
 
   capability_->sid_ = 1;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
@@ -341,31 +340,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
   EXPECT_EQ("", capability_->provider_.GetCountry());
   EXPECT_TRUE(capability_->activation_code_.empty());
 
-}
-
-TEST_F(CellularCapabilityUniversalCDMAMainTest, CreateFriendlyServiceName) {
-  CellularCapabilityUniversalCDMA::friendly_service_name_id_cdma_ = 0;
-  EXPECT_EQ(0, capability_->sid_);
-  EXPECT_EQ("CDMANetwork0", capability_->CreateFriendlyServiceName());
-  EXPECT_EQ("CDMANetwork1", capability_->CreateFriendlyServiceName());
-
-  capability_->provider_.SetCode("0123");
-  EXPECT_EQ("cellular_sid_0123", capability_->CreateFriendlyServiceName());
-
-  CellularOperatorInfo::CellularOperator *provider =
-      new CellularOperatorInfo::CellularOperator();
-
-  capability_->sid_ = 1;
-  provider->name_list_.push_back(
-      CellularOperatorInfo::LocalizedName("Test", ""));
-  capability_->provider_.SetCode("");
-
-  scoped_ptr<const CellularOperatorInfo::CellularOperator> ptr(provider);
-
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(_))
-      .WillOnce(Return(ptr.get()));
-  EXPECT_EQ("Test", capability_->CreateFriendlyServiceName());
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOLP) {
@@ -615,15 +589,14 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateStorageIdentifier) {
 
   const string kPrefix =
       string(shill::kTypeCellular) + "_" + string(kMachineAddress) + "_";
-  const string kDefaultIdentifierPattern = kPrefix + "CDMANetwork*";
 
   // GetCellularOperatorBySID returns NULL.
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
               GetCellularOperatorBySID(_))
       .WillOnce(Return(nullptr));
   capability_->UpdateStorageIdentifier();
-  EXPECT_TRUE(::MatchPattern(cellular_->service()->GetStorageIdentifier(),
-                             kDefaultIdentifierPattern));
+  EXPECT_EQ(kPrefix + cellular_->service()->friendly_name(),
+            cellular_->service()->GetStorageIdentifier());
   Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
 
   CellularOperatorInfo::CellularOperator provider;
@@ -634,8 +607,8 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateStorageIdentifier) {
 
   // |provider.identifier_| is empty.
   capability_->UpdateStorageIdentifier();
-  EXPECT_TRUE(::MatchPattern(cellular_->service()->GetStorageIdentifier(),
-                             kDefaultIdentifierPattern));
+  EXPECT_EQ(kPrefix + cellular_->service()->friendly_name(),
+            cellular_->service()->GetStorageIdentifier());
 
   // Success.
   provider.identifier_ = "testidentifier";

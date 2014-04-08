@@ -84,7 +84,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual bool IsRegistered() const override;
   virtual void SetUnregistered(bool searching) override;
   virtual void OnServiceCreated() override;
-  virtual std::string CreateFriendlyServiceName() override;
   virtual std::string GetNetworkTechnologyString() const override;
   virtual std::string GetRoamingStateString() const override;
   virtual bool AllowRoaming() override;
@@ -166,10 +165,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kALT3100ModelId[];
   static const char kE362ModelId[];
 
-  // Generic service name prefix, shown when the correct carrier name is
-  // unknown.
-  static const char kGenericServiceNamePrefix[];
-
   static const int64 kActivationRegistrationTimeoutMilliseconds;
   static const int64 kEnterPinTimeoutMilliseconds;
   static const int64 kRegistrationDroppedUpdateTimeoutMilliseconds;
@@ -193,7 +188,6 @@ class CellularCapabilityUniversal : public CellularCapability {
               ActivationWaitForRegisterTimeout);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               DisconnectWithDeferredCallback);
@@ -247,7 +241,6 @@ class CellularCapabilityUniversal : public CellularCapability {
               UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOperatorInfo);
@@ -301,9 +294,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_PowerDown(const ResultCallback &callback);
   void Stop_PowerDownCompleted(const ResultCallback &callback,
                                const Error &error);
-
-  // Updates the name property that is exposed by the service to Chrome.
-  void UpdateServiceName();
 
   // Methods used in acquiring information related to the carrier;
 
@@ -419,8 +409,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // and removing other non-digit characters.
   std::string NormalizeMdn(const std::string &mdn) const;
 
-  static std::string GenerateNewGenericServiceName();
-
   // Post-payment activation handlers.
   void ResetAfterActivation();
   void UpdateServiceActivationState();
@@ -480,8 +468,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // a little to smooth over temporary registration loss.
   base::CancelableClosure registration_dropped_update_callback_;
   int64 registration_dropped_update_timeout_milliseconds_;
-
-  static unsigned int friendly_service_name_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversal);
 };

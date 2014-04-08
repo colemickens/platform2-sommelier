@@ -154,13 +154,6 @@ TEST_F(CellularServiceTest, SetRoamingState) {
   service_->SetRoamingState(kRoamingStateHome);
 }
 
-TEST_F(CellularServiceTest, FriendlyName) {
-  static const char kCarrier[] = "Cellular Carrier";
-  device_->set_carrier(kCarrier);
-  service_ = new CellularService(&modem_info_, device_);
-  EXPECT_EQ(kCarrier, GetFriendlyName());
-}
-
 TEST_F(CellularServiceTest, SetStorageIdentifier) {
   EXPECT_EQ(string(kTypeCellular) + "_" +
             kAddress + "_" + GetFriendlyName(),

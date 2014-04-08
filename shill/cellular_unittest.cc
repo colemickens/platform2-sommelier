@@ -29,6 +29,7 @@
 #include "shill/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/mock_mm1_modem_proxy.h"
 #include "shill/mock_mm1_modem_simple_proxy.h"
+#include "shill/mock_mobile_operator_info.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
@@ -59,6 +60,7 @@ using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::SaveArg;
 using testing::SetArgumentPointee;
 using testing::Unused;
@@ -136,6 +138,8 @@ class CellularTest : public testing::Test {
                                         kTestDeviceName)),
         create_gsm_card_proxy_from_factory_(false),
         proxy_factory_(this),
+        mock_home_provider_info_(NULL),
+        mock_serving_operator_info_(NULL),
         device_(new Cellular(&modem_info_,
                              kTestDeviceName,
                              kTestDeviceAddress,
@@ -179,6 +183,16 @@ class CellularTest : public testing::Test {
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
     mm1_proxy_.reset(new mm1::MockModemProxy());
     mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
+  }
+
+  void SetMockMobileOperatorInfoObjects() {
+    mock_home_provider_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    // Takes ownership.
+    device_->set_home_provider_info(mock_home_provider_info_);
+
+    mock_serving_operator_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    // Takes ownership.
+    device_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
   void InitProviderDB() {
@@ -562,6 +576,8 @@ class CellularTest : public testing::Test {
   scoped_ptr<mm1::MockModemProxy> mm1_proxy_;
   scoped_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   TestProxyFactory proxy_factory_;
+  MockMobileOperatorInfo *mock_home_provider_info_;
+  MockMobileOperatorInfo *mock_serving_operator_info_;
   CellularRefPtr device_;
 };
 
@@ -748,6 +764,131 @@ TEST_F(CellularTest, CreateService) {
   EXPECT_EQ(kUsageURL, device_->service_->usage_url());
   EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
   ASSERT_FALSE(device_->service_->activate_over_non_cellular_network());
+}
+
+TEST_F(CellularTest, ServiceFriendlyName) {
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_home_provider_info_);
+  CHECK(mock_serving_operator_info_);
+
+  // Test that the name created for the service is sensible under different
+  // scenarios w.r.t. information about the mobile network operator.
+  const string home_provider_name {"HomeProviderName"};
+  const string serving_operator_name {"ServingOperatorName"};
+  SetCellularType(Cellular::kTypeCDMA);
+
+  // (1) Service created, MNO not known => Default name.
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false));
+  device_->CreateService();
+  // Compare substrings explicitly using EXPECT_EQ for better error message.
+  size_t prefix_len = strlen(Cellular::kGenericServiceNamePrefix);
+  EXPECT_EQ(Cellular::kGenericServiceNamePrefix,
+            device_->service_->friendly_name().substr(0, prefix_len));
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (2) Service created, then home provider determined => Name provided by
+  //     home provider.
+  mock_home_provider_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+      .WillRepeatedly(ReturnRef(home_provider_name));
+  device_->CreateService();
+  // Now emulate an event for updated home provider information.
+  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  EXPECT_EQ(home_provider_name, device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (3) Service created, then serving operator determined => Name provided by
+  //     serving operator.
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+      .WillRepeatedly(ReturnRef(serving_operator_name));
+  device_->CreateService();
+  // Now emulate an event for updated serving operator information.
+  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  EXPECT_EQ(serving_operator_name, device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (4) Service created, then home provider determined, then serving operator
+  // determined => final name is serving operator.
+  mock_home_provider_info_->SetEmptyDefaultsForProperties();
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+      .WillRepeatedly(ReturnRef(home_provider_name));
+  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+      .WillRepeatedly(ReturnRef(serving_operator_name));
+  device_->CreateService();
+  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  EXPECT_EQ(serving_operator_name, device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (5) Service created, then serving operator determined, then home provider
+  // determined => final name is serving operator.
+  mock_home_provider_info_->SetEmptyDefaultsForProperties();
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+      .WillRepeatedly(ReturnRef(home_provider_name));
+  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+      .WillRepeatedly(ReturnRef(serving_operator_name));
+  device_->CreateService();
+  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  device_->mobile_operator_info_observer_->OnOperatorChanged();
+  EXPECT_EQ(serving_operator_name, device_->service_->friendly_name());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  device_->DestroyService();
+
+  // (6) Serving operator known, home provider known, and then service created
+  //     => Name is serving operator.
+  mock_home_provider_info_->SetEmptyDefaultsForProperties();
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+      .WillRepeatedly(ReturnRef(home_provider_name));
+  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+      .WillRepeatedly(ReturnRef(serving_operator_name));
+  device_->CreateService();
+  EXPECT_EQ(serving_operator_name, device_->service_->friendly_name());
 }
 
 namespace {

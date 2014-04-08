@@ -724,6 +724,7 @@
                 'mock_mm1_modem_simple_proxy.cc',
                 'mock_mm1_modem_time_proxy.cc',
                 'mock_mm1_sim_proxy.cc',
+                'mock_mobile_operator_info.cc',
                 'mock_modem.cc',
                 'mock_modem_cdma_proxy.cc',
                 'mock_modem_gobi_proxy.cc',

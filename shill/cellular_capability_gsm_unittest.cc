@@ -712,33 +712,6 @@ TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
 }
 
-TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
-  CellularCapabilityGSM::friendly_service_name_id_ = 0;
-  EXPECT_EQ("GSMNetwork0", capability_->CreateFriendlyServiceName());
-  EXPECT_EQ("GSMNetwork1", capability_->CreateFriendlyServiceName());
-
-  capability_->serving_operator_.SetCode("1234");
-  EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
-
-  static const char kTestCarrier[] = "A GSM Carrier";
-  cellular_->set_carrier(kTestCarrier);
-  EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
-
-  static const char kHomeProvider[] = "The GSM Home Provider";
-  cellular_->home_provider_.SetName(kHomeProvider);
-  EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
-  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
-  EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
-
-  static const char kTestOperator[] = "A GSM Operator";
-  capability_->serving_operator_.SetName(kTestOperator);
-  EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
-
-  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
-  EXPECT_EQ(StringPrintf("%s | %s", kHomeProvider, kTestOperator),
-            capability_->CreateFriendlyServiceName());
-}
-
 TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
   SetService();
   capability_->OnServiceCreated();

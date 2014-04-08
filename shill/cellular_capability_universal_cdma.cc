@@ -39,10 +39,6 @@ string FormattedSID(const string &sid) {
 
 }  // namespace
 
-// static
-unsigned int
-CellularCapabilityUniversalCDMA::friendly_service_name_id_cdma_ = 0;
-
 CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
     Cellular *cellular,
     ProxyFactory *proxy_factory,
@@ -274,28 +270,6 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   OnModemCDMAPropertiesChanged(properties, vector<string>());
 }
 
-string CellularCapabilityUniversalCDMA::CreateFriendlyServiceName() {
-  SLOG(Cellular, 2) << __func__ << ": " << GetRoamingStateString();
-
-  if (provider_.GetCode().empty()) {
-    UpdateOperatorInfo();
-  }
-
-  string name = provider_.GetName();
-  if (!name.empty()) {
-    // TODO(armansito): We may need to show the provider name in a
-    // specific way if roaming.
-    return name;
-  }
-
-  string code = provider_.GetCode();
-  if (!code.empty()) {
-    return "cellular_sid_" + code;
-  }
-
-  return base::StringPrintf("CDMANetwork%u", friendly_service_name_id_cdma_++);
-}
-
 void CellularCapabilityUniversalCDMA::UpdateOperatorInfo() {
   SLOG(Cellular, 2) << __func__;
 
@@ -341,7 +315,6 @@ void CellularCapabilityUniversalCDMA::UpdateServingOperator() {
   SLOG(Cellular, 2) << __func__;
   if (cellular()->service().get()) {
     cellular()->service()->SetServingOperator(cellular()->home_provider());
-    cellular()->service()->SetFriendlyName(CreateFriendlyServiceName());
   }
 }
 

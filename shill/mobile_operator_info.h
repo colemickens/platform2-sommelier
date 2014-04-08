@@ -67,7 +67,7 @@ class MobileOperatorInfo {
   // This object does not take ownership of dispatcher, and |dispatcher| is
   // expected to outlive this object.
   explicit MobileOperatorInfo(EventDispatcher *dispatcher);
-  ~MobileOperatorInfo();
+  virtual ~MobileOperatorInfo();
 
   // These functions can be called before Init to read non default database
   // file(s).
@@ -133,7 +133,7 @@ class MobileOperatorInfo {
   // values are undefined otherwise.
 
   // Query whether a mobile network operator has been successfully determined.
-  bool IsMobileNetworkOperatorKnown() const;
+  virtual bool IsMobileNetworkOperatorKnown() const;
   // Query whether a mobile network operator has been successfully
   // determined.
   bool IsMobileVirtualNetworkOperatorKnown() const;
@@ -144,9 +144,9 @@ class MobileOperatorInfo {
   // access technology agnostic and should be the same across 3GPP and CDMA.
   const std::string &uuid() const;
 
-  const std::string &operator_name() const;
+  virtual const std::string &operator_name() const;
   const std::string &country() const;
-  const std::string &mccmnc() const;
+  virtual const std::string &mccmnc() const;
   const std::string &sid() const;
   const std::string &nid() const;
 

@@ -382,13 +382,4 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
   EXPECT_TRUE(cellular_->service().get());
 }
 
-TEST_F(CellularCapabilityCDMATest, CreateFriendlyServiceName) {
-  CellularCapabilityCDMA::friendly_service_name_id_ = 0;
-  EXPECT_EQ("CDMANetwork0", capability_->CreateFriendlyServiceName());
-  EXPECT_EQ("CDMANetwork1", capability_->CreateFriendlyServiceName());
-  static const char kTestCarrier[] = "A Carrier";
-  cellular_->set_carrier(kTestCarrier);
-  EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
-}
-
 }  // namespace shill

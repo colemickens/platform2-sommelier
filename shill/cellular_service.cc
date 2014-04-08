@@ -129,11 +129,9 @@ CellularService::CellularService(ModemInfo *modem_info,
   store->RegisterString(kCellularPPPUsernameProperty, &ppp_username_);
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
 
-  string name = device->CreateFriendlyServiceName();
-  set_friendly_name(name);
+  set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetStorageIdentifier(string(kTypeCellular) + "_" +
-                       device->address() + "_" + name);
-
+                       cellular_->address() + "_" +  friendly_name());
   // Assume we are not performing any out-of-credits detection.
   // The capability can reinitialize with the appropriate type later.
   InitOutOfCreditsDetection(OutOfCreditsDetector::OOCTypeNone);

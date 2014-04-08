@@ -50,7 +50,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual bool IsRegistered() const override;
   virtual void SetUnregistered(bool searching) override;
   virtual void OnServiceCreated() override;
-  virtual std::string CreateFriendlyServiceName() override;
   virtual std::string GetNetworkTechnologyString() const override;
   virtual std::string GetRoamingStateString() const override;
   virtual bool AllowRoaming() override;
@@ -103,7 +102,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   friend class CellularCapabilityTest;
   FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
-  FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSIFails);
@@ -243,8 +241,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // Properties.
   std::deque<Stringmap> apn_try_list_;
   SimLockStatus sim_lock_status_;
-
-  static unsigned int friendly_service_name_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGSM);
 };

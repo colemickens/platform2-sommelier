@@ -42,7 +42,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   virtual bool IsRegistered() const override;
   virtual void SetUnregistered(bool searching) override;
   virtual void OnServiceCreated() override;
-  virtual std::string CreateFriendlyServiceName() override;
   virtual std::string GetRoamingStateString() const override;
   virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
 
@@ -82,8 +81,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   FRIEND_TEST(CellularCapabilityUniversalCDMADispatcherTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
-              CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsActivating);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsRegistered);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
@@ -143,10 +140,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   Cellular::Operator provider_;
   uint32_t nid_;
   uint32_t sid_;
-
-  // TODO(armansito): Use the common name |friendly_service_name_id_| once
-  // CellularCapabilityUniversal gets broken up for 3GPP.
-  static unsigned int friendly_service_name_id_cdma_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversalCDMA);
 };

@@ -156,7 +156,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   static std::string GetStateString(State state);
   static std::string GetModemStateString(ModemState modem_state);
 
-  std::string CreateFriendlyServiceName();
+  std::string CreateDefaultFriendlyServiceName();
+  bool IsDefaultFriendlyServiceName(const std::string &service_name) const;
+
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.
   void UpdateHomeProvider(const MobileOperatorInfo *operator_info);
@@ -326,22 +328,18 @@ class Cellular : public Device, public RPCTaskDelegate {
   friend class CellularServiceTest;
   friend class ModemTest;
   friend class SubscriptionStateOutOfCreditsDetectorTest;
-  FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
   FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
   FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
   FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
@@ -403,6 +401,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);
+  FRIEND_TEST(CellularTest, ServiceFriendlyName);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);

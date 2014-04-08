@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
@@ -57,7 +58,7 @@ namespace shill {
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const int64 Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
-unsigned int Cellular::friendly_service_name_id_ = 0;
+unsigned int Cellular::friendly_service_name_id_ = 1;
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -859,9 +860,15 @@ void Cellular::OnDBusPropertiesChanged(
                                        invalidated_properties);
 }
 
-string Cellular::CreateFriendlyServiceName() {
+string Cellular::CreateDefaultFriendlyServiceName() {
   SLOG(Cellular, 2) << __func__;
-  return capability_.get() ? capability_->CreateFriendlyServiceName() : "";
+  return base::StringPrintf("%s_%u",
+                            kGenericServiceNamePrefix,
+                            friendly_service_name_id_++);
+}
+
+bool Cellular::IsDefaultFriendlyServiceName(const string &service_name) const {
+  return StartsWithASCII(service_name, kGenericServiceNamePrefix, true);
 }
 
 void Cellular::OnModemStateChanged(ModemState new_state) {
@@ -1514,11 +1521,13 @@ void Cellular::UpdateServingOperator(
     // We could not get a name for the operator, just use the code.
     service_name = "cellular_" + operator_info->mccmnc();
   } else {
-    // TODO(pprabhu) Make the generic prefix more specific based on the type of
-    // device (GSM/CDMA).
-    service_name = base::StringPrintf("%s %u",
-                                      kGenericServiceNamePrefix,
-                                      friendly_service_name_id_++);
+    // We do not have any information, so must fallback to default service name.
+    // Only assign a new default name if the service doesn't already have one,
+    // because we we generate a new name each time.
+    service_name = service()->friendly_name();
+    if (!IsDefaultFriendlyServiceName(service_name)) {
+      service_name = CreateDefaultFriendlyServiceName();
+    }
   }
   service()->SetFriendlyName(service_name);
 }

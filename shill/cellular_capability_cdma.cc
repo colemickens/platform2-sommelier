@@ -24,8 +24,6 @@ using std::vector;
 namespace shill {
 
 // static
-unsigned int CellularCapabilityCDMA::friendly_service_name_id_ = 0;
-
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
@@ -311,14 +309,6 @@ void CellularCapabilityCDMA::GetRegistrationState() {
       Bind(&CellularCapabilityCDMA::OnGetRegistrationStateReply,
            weak_ptr_factory_.GetWeakPtr());
   proxy_->GetRegistrationState(NULL, callback, kTimeoutDefault);
-}
-
-string CellularCapabilityCDMA::CreateFriendlyServiceName() {
-  SLOG(Cellular, 2) << __func__;
-  if (!cellular()->carrier().empty()) {
-    return cellular()->carrier();
-  }
-  return base::StringPrintf("CDMANetwork%u", friendly_service_name_id_++);
 }
 
 void CellularCapabilityCDMA::UpdateServingOperator() {

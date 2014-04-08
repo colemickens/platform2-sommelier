@@ -55,8 +55,6 @@ const int64 CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
     15000;
-const char CellularCapabilityUniversal::kGenericServiceNamePrefix[] =
-    "Mobile Network";
 const char CellularCapabilityUniversal::kRootPath[] = "/";
 const char CellularCapabilityUniversal::kStatusProperty[] = "status";
 const char CellularCapabilityUniversal::kOperatorLongProperty[] =
@@ -71,7 +69,6 @@ const char CellularCapabilityUniversal::kALT3100ModelId[] = "ALT3100";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
-unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
 
 namespace {
 
@@ -849,43 +846,6 @@ void CellularCapabilityUniversal::GetProperties() {
   OnModem3GPPPropertiesChanged(properties, vector<string>());
 }
 
-// static
-string CellularCapabilityUniversal::GenerateNewGenericServiceName() {
-  return base::StringPrintf("%s %u",
-                            kGenericServiceNamePrefix,
-                            friendly_service_name_id_++);
-}
-
-string CellularCapabilityUniversal::CreateFriendlyServiceName() {
-  SLOG(Cellular, 3) << __func__ << ": " << GetRoamingStateString();
-
-  // If |serving_operator_| does not have an operator ID, call
-  // UpdateOperatorInfo() to use |operator_id_| as a fallback when appropriate.
-  if (serving_operator_.GetCode().empty()) {
-    UpdateOperatorInfo();
-  }
-
-  string name = serving_operator_.GetName();
-  string home_provider_name = cellular()->home_provider().GetName();
-  if (!name.empty()) {
-    // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
-    // rules (TS 31.102 and annex A of 122.101).
-    if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING &&
-        !home_provider_name.empty()) {
-      return home_provider_name + " | " + name;
-    }
-    return name;
-  }
-  if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME &&
-      !home_provider_name.empty()) {
-    return home_provider_name;
-  }
-  if (!serving_operator_.GetCode().empty()) {
-    return "cellular_" + serving_operator_.GetCode();
-  }
-  return GenerateNewGenericServiceName();
-}
-
 void CellularCapabilityUniversal::SetHomeProvider() {
   const string &imsi = cellular()->imsi();
   SLOG(Cellular, 3) << __func__ << "(IMSI: " << imsi
@@ -936,7 +896,6 @@ void CellularCapabilityUniversal::SetHomeProvider() {
                     << oper.GetName() << ", " << oper.GetCountry()
                     << (roaming_required ? ", roaming required" : "");
   InitAPNList();
-  UpdateServiceName();
 }
 
 void CellularCapabilityUniversal::UpdateOLP() {
@@ -975,12 +934,6 @@ void CellularCapabilityUniversal::UpdateOLP() {
   ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", oem_id);
   olp.SetPostData(post_data);
   cellular()->service()->SetOLP(olp);
-}
-
-void CellularCapabilityUniversal::UpdateServiceName() {
-  if (cellular()->service()) {
-    cellular()->service()->SetFriendlyName(CreateFriendlyServiceName());
-  }
 }
 
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
@@ -1890,9 +1843,6 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
   UpdateOperatorInfo();
 
   cellular()->HandleNewRegistrationState();
-
-  // Update the user facing name of the cellular service.
-  UpdateServiceName();
 
   // If the modem registered with the network and the current ICCID is pending
   // activation, then reset the modem.
