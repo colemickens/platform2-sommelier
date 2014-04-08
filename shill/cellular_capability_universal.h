@@ -17,6 +17,7 @@
 
 #include "shill/accessor_interface.h"
 #include "shill/cellular.h"
+#include "shill/cellular_bearer.h"
 #include "shill/cellular_capability.h"
 #include "shill/cellular_operator_info.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
@@ -29,7 +30,6 @@ struct mobile_provider;
 
 namespace shill {
 
-class CellularBearer;
 class ModemInfo;
 
 // CellularCapabilityUniversal handles modems using the
@@ -229,6 +229,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemALT3100);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -287,6 +288,9 @@ class CellularCapabilityUniversal : public CellularCapability {
                             const Error &error);
 
   // Methods used in stopping a modem
+  void Stop_DeleteActiveBearer(const ResultCallback &callback);
+  void Stop_DeleteActiveBearerCompleted(const ResultCallback &callback,
+                                        const Error &error);
   void Stop_Disable(const ResultCallback &callback);
   void Stop_DisableCompleted(const ResultCallback &callback,
                              const Error &error);
@@ -422,6 +426,11 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Returns the out-of-credits detection algorithm to be used on this modem.
   OutOfCreditsDetector::OOCType GetOutOfCreditsDetectionType() const;
+
+  // For unit tests.
+  void set_active_bearer(CellularBearer *bearer) {
+    active_bearer_.reset(bearer);  // Takes ownership
+  }
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemProxyInterface> modem_proxy_;
