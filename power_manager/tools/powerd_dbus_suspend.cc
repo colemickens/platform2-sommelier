@@ -12,8 +12,10 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -24,10 +26,17 @@
 DEFINE_int32(delay, 1, "Delay before suspending in seconds. Useful if running "
              "interactively to ensure that typing this command isn't "
              "recognized as user activity that cancels the suspend request.");
-DEFINE_int32(timeout, 0, "Timeout in seconds.");
+DEFINE_int32(timeout, 0, "How long to wait for a resume signal in seconds.");
 DEFINE_uint64(wakeup_count, 0, "Wakeup count to pass to powerd or 0 if unset.");
+DEFINE_int32(wakeup_timeout, 0, "RTC alarm timeout in seconds.  Sets an RTC "
+             "alarm that fires after the given interval.  Useful "
+             "to ensure that device resumes while testing remotely.");
 
 namespace {
+
+// The sysfs entry that controls RTC wake alarms.  To set an alarm, write
+// into this file the time of the alarm in seconds since the epoch.
+const char kRtcWakeAlarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
 
 // Exits when powerd announces that the suspend attempt has completed.
 void OnSuspendDone(dbus::Signal* signal) {
@@ -66,6 +75,15 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_delay)
     sleep(FLAGS_delay);
+
+  // Set an RTC alarm to wake up the system.
+  if (FLAGS_wakeup_timeout) {
+    std::string alarm_string =
+        base::IntToString(time(NULL) + FLAGS_wakeup_timeout);
+    CHECK(file_util::WriteFile(base::FilePath(kRtcWakeAlarmPath),
+                               alarm_string.c_str(),
+                               alarm_string.length()));
+  }
 
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,
