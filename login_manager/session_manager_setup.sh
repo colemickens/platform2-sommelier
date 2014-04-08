@@ -331,9 +331,7 @@ if use_flag_is_set egl; then
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
-PPAPI_OOP_FLAG=
 if use_flag_is_set exynos; then
-  PPAPI_OOP_FLAG="--ppapi-out-of-process"
   # On boards with ARM NEON support, force libvpx to use the NEON-optimized
   # code paths. Remove once http://crbug.com/161834 is fixed.
   # This is needed because libvpx cannot check cpuinfo within the sandbox.
@@ -461,12 +459,9 @@ export PATH=/bin:/usr/bin:/usr/bin/X11
 
 exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
     ${HANG_DETECTION_FLAG} -- \
-    $CHROME --allow-webui-compositing \
-            --device-management-url="$DMSERVER" \
-            --enable-chrome-audio-switching \
+    $CHROME --device-management-url="$DMSERVER" \
             --enable-fixed-position-compositing \
             --enable-logging \
-            --enable-partial-swap \
             --enable-impl-side-painting \
             --max-tiles-for-interest-area=512 \
             --enterprise-enable-forced-re-enrollment \
@@ -476,10 +471,8 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --login-manager \
             --login-profile=user \
             --max-unused-resource-memory-usage-percentage=5 \
-            --no-protector \
             --ui-enable-per-tile-painting \
             --ui-prioritize-in-gpu-process \
-            --ui-max-frames-pending=1 \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
@@ -493,7 +486,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${ASAN_FLAGS} \
             ${DMPROF_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
-            ${PPAPI_OOP_FLAG} \
             ${VMODULE_FLAG} \
             ${GPU_FLAGS} \
             ${VIDEO_FLAGS} \
