@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/basictypes.h>
 #include <base/cancelable_callback.h>
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
@@ -457,7 +458,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool UnloadService(std::vector<ServiceRefPtr>::iterator *service_iterator);
 
   // Load Manager default properties from |profile|.
-  bool LoadProperties(const scoped_refptr<DefaultProfile> &profile);
+  void LoadProperties(const scoped_refptr<DefaultProfile> &profile);
 
   // Configure the device with profile data from all current profiles.
   void LoadDeviceFromProfiles(const DeviceRefPtr &device);
@@ -618,6 +619,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Stores the state of the highest ranked connected service.
   std::string connection_state_;
+
+  DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 
 }  // namespace shill

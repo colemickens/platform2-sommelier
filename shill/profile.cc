@@ -24,6 +24,7 @@
 #include "shill/property_accessor.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
+#include "shill/stub_storage.h"
 
 using base::FilePath;
 using std::set;
@@ -94,7 +95,7 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
         base::StringPrintf("Could not open profile storage for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str()));
     if (already_exists) {
-      // The profile contents is corrupt, or we do not have access to
+      // The profile contents are corrupt, or we do not have access to
       // this file.  Move this file out of the way so a future open attempt
       // will succeed, assuming the failure reason was the former.
       storage->MarkAsCorrupted();
@@ -113,6 +114,10 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
   set_storage(storage.release());
   manager_->OnProfileStorageInitialized(storage_.get());
   return true;
+}
+
+void Profile::InitStubStorage() {
+  set_storage(new StubStorage());
 }
 
 bool Profile::RemoveStorage(GLib *glib, Error *error) {

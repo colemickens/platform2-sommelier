@@ -912,12 +912,26 @@ TEST_F(ManagerTest, PushPopProfile) {
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
+  vector<ProfileRefPtr> &profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
   EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, ""));
 
-  // Pushing a default profile that does not exist should fail.
-  EXPECT_EQ(Error::kNotFound, TestPushProfile(&manager, "default"));
+  // Create and push a default profile. Should succeed.
+  const char kDefaultProfile0[] = "default";
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kDefaultProfile0));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kDefaultProfile0));
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kDefaultProfile0));
+
+  // Pushing a default profile that does not exist on disk will _not_
+  // fail, because we'll use temporary storage for it.
+  const char kMissingDefaultProfile[] = "missingdefault";
+  EXPECT_EQ(Error::kSuccess,
+            TestPushProfile(&manager, kMissingDefaultProfile));
+  EXPECT_EQ(1, profiles.size());
+  EXPECT_EQ(Error::kSuccess,
+            TestPopProfile(&manager, kMissingDefaultProfile));
+  EXPECT_EQ(0, profiles.size());
 
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
@@ -997,7 +1011,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // The service should now revert to the ephemeral profile.
   EXPECT_EQ(GetEphemeralProfile(&manager), service->profile());
 
-  // Pop the remaining two services off the stack.
+  // Pop the remaining two profiles off the stack.
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
 
@@ -1027,7 +1041,6 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Add two user profiles to the top of the stack.
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile1));
-  vector<ProfileRefPtr> &profiles = GetProfiles(&manager);
   EXPECT_EQ(4, profiles.size());
 
   // PopAllUserProfiles should remove both user profiles, leaving the two

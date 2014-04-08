@@ -70,7 +70,11 @@ class Profile : public base::RefCounted<Profile> {
                    InitStorageOption storage_option,
                    Error *error);
 
-  // Remove the persisitent storage for this Profile.  It is an error to
+  // Set up stub storage for this Profile. The data will NOT be
+  // persisted. In most cases, you should prefer InitStorage.
+  void InitStubStorage();
+
+  // Remove the persistent storage for this Profile.  It is an error to
   // do so while the underlying storage is open via InitStorage() or
   // set_storage().
   bool RemoveStorage(GLib *glib, Error *error);

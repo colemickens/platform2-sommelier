@@ -37,7 +37,7 @@ class DefaultProfile : public Profile {
 
   // Loads global configuration into manager properties.  This should
   // only be called by the Manager.
-  virtual bool LoadManagerProperties(Manager::Properties *manager_props);
+  virtual void LoadManagerProperties(Manager::Properties *manager_props);
 
   // Override the Profile superclass implementation to accept all Ethernet
   // services, since these should have an affinity for the default profile.

@@ -304,7 +304,7 @@ void Manager::InitializeProfiles() {
   CHECK(Profile::ParseIdentifier(
       DefaultProfile::kDefaultId, &default_profile_id));
   PushProfileInternal(default_profile_id, &path, &error);
-  CHECK(error.IsSuccess());  // Must have a default profile.
+  CHECK(!profiles_.empty());  // Must have a default profile.
 
   // Push user profiles onto the stack.
   for (const auto &profile_id : identifiers)  {
@@ -399,17 +399,14 @@ void Manager::PushProfileInternal(
                                            storage_path_,
                                            ident.identifier,
                                            props_));
-    if (!default_profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
-      // |error| will have been populated by InitStorage().
-      return;
+    if (!default_profile->InitStorage(glib_, Profile::kOpenExisting, NULL)) {
+      LOG(ERROR) << "Failed to open default profile.";
+      // Try to continue anyway, so that we can be useful in cases
+      // where the disk is full.
+      default_profile->InitStubStorage();
     }
 
-    if (!LoadProperties(default_profile)) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            "Could not load Manager properties from profile " +
-                            Profile::IdentifierToString(ident));
-      return;
-    }
+    LoadProperties(default_profile);
     profile = default_profile;
   } else {
     profile = new Profile(control_interface_,
@@ -1088,12 +1085,9 @@ void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
   }
 }
 
-bool Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
-  if (!profile->LoadManagerProperties(&props_)) {
-    return false;
-  }
+void Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
+  profile->LoadManagerProperties(&props_);
   SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, NULL);
-  return true;
 }
 
 void Manager::AddTerminationAction(const string &name,

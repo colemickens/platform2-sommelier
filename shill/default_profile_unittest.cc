@@ -198,7 +198,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 
   profile_->set_storage(storage.release());
 
-  ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  profile_->LoadManagerProperties(&manager_props);
   EXPECT_TRUE(manager_props.arp_gateway);
   EXPECT_EQ("", manager_props.host_name);
   EXPECT_FALSE(manager_props.offline_mode);
@@ -262,7 +262,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   profile_->set_storage(storage.release());
 
   Manager::Properties manager_props;
-  ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  profile_->LoadManagerProperties(&manager_props);
   EXPECT_FALSE(manager_props.arp_gateway);
   EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);

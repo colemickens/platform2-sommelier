@@ -78,7 +78,7 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 
 DefaultProfile::~DefaultProfile() {}
 
-bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
+void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   storage()->GetBool(kStorageId, kStorageArpGateway,
                      &manager_props->arp_gateway);
   storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
@@ -113,7 +113,6 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
     manager_props->portal_check_interval_seconds =
         PortalDetector::kDefaultCheckIntervalSeconds;
   }
-  return true;
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr &service) {
