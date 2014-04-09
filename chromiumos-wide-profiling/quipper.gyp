@@ -22,6 +22,7 @@
         'perf_reader.cc',
         'perf_recorder.cc',
         'perf_serializer.cc',
+        'scoped_temp_path.cc',
         'utils.cc',
       ],
       'dependencies': [

@@ -4,9 +4,7 @@
 
 #include "test_utils.h"
 
-#include <errno.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -174,28 +172,6 @@ bool CompareFileContents(const string& filename1, const string& filename2) {
   }
 
   return file1_contents == file2_contents;
-}
-
-ScopedTempFile::ScopedTempFile() {
-  char filename[] = "/tmp/XXXXXX";
-  int fd = mkstemp(filename);
-  if (fd == -1)
-    return;
-  close(fd);
-  path_ = filename;
-}
-
-ScopedTempDir::ScopedTempDir() {
-  char dirname[] = "/tmp/XXXXXX";
-  const char* name = mkdtemp(dirname);
-  if (!name)
-    return;
-  path_ = string(name) + "/";
-}
-
-ScopedTempPath::~ScopedTempPath() {
-  if (!path_.empty() && remove(path_.c_str()))
-    LOG(ERROR) << "Error while removing " << path_ << ", errno: " << errno;
 }
 
 bool GetPerfBuildIDMap(const string& filename,

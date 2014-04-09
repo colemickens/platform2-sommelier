@@ -14,6 +14,7 @@
 #include "perf_test_files.h"
 #include "quipper_string.h"
 #include "quipper_test.h"
+#include "scoped_temp_path.h"
 #include "test_utils.h"
 
 namespace quipper {

@@ -35,36 +35,6 @@ long int GetFileSize(const string& filename);
 // Returns true if the contents of the two files are the same, false otherwise.
 bool CompareFileContents(const string& filename1, const string& filename2);
 
-// Used to create a temporary file or directory.
-// TODO(cwp-team): Move it to a different file and add unit tests to this class.
-class ScopedTempPath {
- public:
-  ScopedTempPath() {}
-  // The temporary path will be removed when the object is destroyed.
-  virtual ~ScopedTempPath();
-  const string path() const {
-    return path_;
-  }
- protected:
-  string path_;
- private:
-  DISALLOW_COPY_AND_ASSIGN(ScopedTempPath);
-};
-
-class ScopedTempFile : public ScopedTempPath {
- public:
-  // Create a temporary file.  If successful, the path will be stored in
-  // |path_|.  If not, |path_| will be an empty string.
-  ScopedTempFile();
-};
-
-class ScopedTempDir : public ScopedTempPath {
- public:
-  // Create a temporary directory.  If successful, the path will be stored in
-  // |path_|.  If not, |path_| will be an empty string.
-  ScopedTempDir();
-};
-
 // Given a perf data file, get the list of build ids and create a map from
 // filenames to build ids.
 bool GetPerfBuildIDMap(const string& filename,
