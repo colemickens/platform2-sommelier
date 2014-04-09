@@ -115,7 +115,7 @@ static const Log common_logs[] = {
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
-  { "ifconfig", "/sbin/ifconfig -a" },
+  { "ifconfig", "/bin/ifconfig -a" },
   { "kernel-crashes", "/bin/cat /var/spool/crash/kernel.*.kcrash" },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
