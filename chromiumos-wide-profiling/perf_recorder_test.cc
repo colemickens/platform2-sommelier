@@ -24,6 +24,7 @@ TEST(PerfRecorderTest, TestRecord) {
   EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
                                                        1,
                                                        &perf_data_proto));
+  EXPECT_GT(perf_data_proto.build_ids_size(), 0);
 }
 
 }  // namespace quipper

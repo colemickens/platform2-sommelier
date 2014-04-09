@@ -15,7 +15,7 @@
 // Temporary paths follow this format, with the X's replaced by letters or
 // digits. This cannot be defined as a const variable because mkstemp() and
 // mkdtemp() requires an initialized but variable string as an argument.
-#define TEMP_PATH_STRING    "/tmp/quipper.XXXXXXXX"
+#define TEMP_PATH_STRING    "/tmp/quipper.XXXXXX"
 
 namespace quipper {
 
