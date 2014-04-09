@@ -339,6 +339,7 @@
         'rtnl_message.cc',
         'scan_session.cc',
         'scope_logger.cc',
+        'scoped_umask.cc',
         'service.cc',
         'service_dbus_adaptor.cc',
         'shill_ares.cc',

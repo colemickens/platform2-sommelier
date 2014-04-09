@@ -16,6 +16,7 @@
 
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
+#include "shill/scoped_umask.h"
 
 using std::map;
 using std::set;
@@ -94,14 +95,8 @@ bool KeyFileStore::Flush() {
     success = false;
   }
   if (success) {
-    // Explicitly set the file creation umask temporarily, so that the file
-    // created here will be accessible by the owner only. Save the current
-    // umask as well, so it can be restored once the file write is completed.
-    mode_t cur_mode = umask(~(S_IRUSR | S_IWUSR));
-    // Atomically write out the file.
+    ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR));
     success = base::ImportantFileWriter::WriteFileAtomically(path_, data);
-    // Restore previous file creation umask.
-    umask(cur_mode);
     if (!success) {
       LOG(ERROR) << "Failed to store key file: " << path_.value();
     }
