@@ -4,79 +4,86 @@
 
 #include "login_manager/child_exit_handler.h"
 
-#include <fcntl.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <vector>
 
-#include <base/files/file_path.h>
-#include <base/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/fake_job_manager.h"
-#include "login_manager/mock_system_utils.h"
+#include "login_manager/job_manager.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
-using ::testing::Return;
-using ::testing::_;
 
-static const pid_t kDummyPid = 4;
+// A fake job manager implementation for testing.
+class FakeJobManager : public JobManagerInterface {
+ public:
+  explicit FakeJobManager(base::RunLoop* run_loop) : run_loop_(run_loop) {}
+  virtual ~FakeJobManager() {}
+
+  pid_t managed_pid() { return 0; }
+  const siginfo_t& last_status() { return last_status_; }
+
+  // Implementation of JobManagerInterface.
+  virtual bool IsManagedJob(pid_t pid) OVERRIDE { return true; }
+  virtual void HandleExit(const siginfo_t& s) OVERRIDE {
+    last_status_ = s;
+    run_loop_->Quit();
+  }
+  virtual void RequestJobExit() OVERRIDE {}
+  virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE {}
+
+ private:
+  base::RunLoop* run_loop_;
+  siginfo_t last_status_;
+
+  DISALLOW_COPY_AND_ASSIGN(FakeJobManager);
+};
 
 class ChildExitHandlerTest : public ::testing::Test {
  public:
-  ChildExitHandlerTest() : handler_(&mock_utils_), fake_manager_(kDummyPid) {}
+  ChildExitHandlerTest()
+      : handler_(&system_utils_), fake_manager_(&run_loop_) {}
   virtual ~ChildExitHandlerTest() {}
 
   virtual void SetUp() {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-
     std::vector<JobManagerInterface*> managers;
     managers.push_back(&fake_manager_);
     handler_.Init(managers);
   }
 
-  virtual void TearDown() {
-    ChildExitHandler::RevertHandlers();
-  }
-
  protected:
   base::MessageLoopForIO loop_;
-  MockSystemUtils mock_utils_;
+  base::RunLoop run_loop_;
+  SystemUtilsImpl system_utils_;
   ChildExitHandler handler_;
   FakeJobManager fake_manager_;
-  base::ScopedTempDir temp_dir_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ChildExitHandlerTest);
 };
 
-TEST_F(ChildExitHandlerTest, DataOnPipe) {
-  siginfo_t canned = {};
-  canned.si_pid = kDummyPid;
-  canned.si_signo = SIGCHLD;
-  canned.si_code = CLD_EXITED;
-  canned.si_status = 1;
+TEST_F(ChildExitHandlerTest, ChildExit) {
+  // Fork off a child process that exits immediately.
+  pid_t child_pid = system_utils_.fork();
+  if (child_pid == 0) {
+    _Exit(EXIT_SUCCESS);
+  }
 
-  base::FilePath scratch;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &scratch));
-  ASSERT_TRUE(file_util::WriteFile(scratch,
-                                   reinterpret_cast<char*>(&canned),
-                                   sizeof(canned)));
-  int canned_fd = open(scratch.value().c_str(), O_RDONLY);
-  ASSERT_GT(canned_fd, 0);
+  // Spin the message loop.
+  run_loop_.Run();
 
-  EXPECT_CALL(mock_utils_, ChildIsGone(kDummyPid, _)).WillOnce(Return(true));
-
-  handler_.OnFileCanReadWithoutBlocking(canned_fd);
-  EXPECT_EQ(canned.si_pid, fake_manager_.last_status().si_pid);
-  EXPECT_EQ(canned.si_signo, fake_manager_.last_status().si_signo);
-  EXPECT_EQ(canned.si_code, fake_manager_.last_status().si_code);
-  EXPECT_EQ(canned.si_status, fake_manager_.last_status().si_status);
-  ASSERT_EQ(close(canned_fd), 0);
+  // Verify child termination has been reported to |fake_manager|.
+  EXPECT_EQ(child_pid, fake_manager_.last_status().si_pid);
+  EXPECT_EQ(SIGCHLD, fake_manager_.last_status().si_signo);
+  EXPECT_EQ(static_cast<int>(CLD_EXITED), fake_manager_.last_status().si_code);
+  EXPECT_EQ(EXIT_SUCCESS, fake_manager_.last_status().si_status);
 }
 
 }  // namespace login_manager

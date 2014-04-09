@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <base/file_util.h>
@@ -49,7 +50,13 @@ ChildExitHandler::ChildExitHandler(SystemUtils* system)
   g_child_pipe_write_fd = pipefd[1];
 }
 
-ChildExitHandler::~ChildExitHandler() {}
+ChildExitHandler::~ChildExitHandler() {
+  RevertHandlers();
+  close(g_child_pipe_write_fd);
+  g_child_pipe_write_fd = -1;
+  close(g_child_pipe_read_fd);
+  g_child_pipe_read_fd = -1;
+}
 
 void ChildExitHandler::Init(const std::vector<JobManagerInterface*>& managers) {
   managers_ = managers;
@@ -64,8 +71,20 @@ void ChildExitHandler::Init(const std::vector<JobManagerInterface*>& managers) {
 
 void ChildExitHandler::OnFileCanReadWithoutBlocking(int fd) {
   siginfo_t info;
-  while (base::ReadFromFD(fd, reinterpret_cast<char*>(&info), sizeof(info))) {
+  while (base::ReadFromFD(fd, reinterpret_cast<char*>(&info), sizeof(info)))
     DCHECK(info.si_signo == SIGCHLD) << "Wrong signal!";
+
+  // Reap all terminated children.
+  while (true) {
+    memset(&info, 0, sizeof(info));
+    int result = waitid(P_ALL, 0, &info, WEXITED | WNOHANG);
+    if (result != 0) {
+      if (errno != ECHILD)
+        PLOG(FATAL) << "waitid failed";
+      break;
+    }
+    if (info.si_pid == 0)
+      break;
     Dispatch(info);
   }
 }
@@ -83,9 +102,6 @@ void ChildExitHandler::RevertHandlers() {
 }
 
 void ChildExitHandler::Dispatch(const siginfo_t& info) {
-  // Reap the child.
-  CHECK(system_->ChildIsGone(info.si_pid, base::TimeDelta::FromSeconds(5)));
-
   // Find the manager who's child has exited.
   std::vector<JobManagerInterface*>::iterator job_manager = managers_.begin();
   while (job_manager != managers_.end()) {
