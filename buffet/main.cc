@@ -12,14 +12,22 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <gflags/gflags.h>
+#include <sysexits.h>
 
 #include "buffet/dbus_manager.h"
 #include "buffet/manager.h"
 
-DEFINE_string(logsroot, "/var/log", "Root directory for buffet logs.");
-
 namespace {
+
+static const char kLogRoot[] = "logroot";
+static const char kHelp[] = "help";
+static const char kDefaultLogRoot[] = "/var/log";
+
+// The help message shown if help flag is passed to the program.
+static const char kHelpMessage[] = "\n"
+    "Available Switches: \n"
+    "  --logroot=/path/to/logroot\n"
+    "    Specifies parent directory to put buffet logs in.\n";
 
 // Returns |utime| as a string
 std::string GetTimeAsString(time_t utime) {
@@ -40,10 +48,10 @@ void SetupLogSymlink(const std::string& symlink_path,
   }
 }
 
-// Creates new log file based on timestamp in |logs_root|/buffet.
-std::string SetupLogFile(const std::string& logs_root) {
-  const auto log_symlink = logs_root + "/buffet.log";
-  const auto logs_dir = logs_root + "/buffet";
+// Creates new log file based on timestamp in |log_root|/buffet.
+std::string SetupLogFile(const std::string& log_root) {
+  const auto log_symlink = log_root + "/buffet.log";
+  const auto logs_dir = log_root + "/buffet";
   const auto log_path =
       base::StringPrintf("%s/buffet.%s",
                          logs_dir.c_str(),
@@ -54,8 +62,8 @@ std::string SetupLogFile(const std::string& logs_root) {
 }
 
 // Sets up logging for buffet.
-void SetupLogging(const std::string& logs_root) {
-  const auto log_file = SetupLogFile(logs_root);
+void SetupLogging(const std::string& log_root) {
+  const auto log_file = SetupLogFile(log_root);
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_ALL;
   settings.log_file = log_file.c_str();
@@ -69,10 +77,19 @@ void SetupLogging(const std::string& logs_root) {
 int main(int argc, char* argv[]) {
   // Parse the args and check for extra args.
   CommandLine::Init(argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
+  CommandLine* cl = CommandLine::ForCurrentProcess();
 
-  SetupLogging(FLAGS_logsroot);
+  if (cl->HasSwitch(kHelp)) {
+    LOG(INFO) << kHelpMessage;
+    return EX_USAGE;
+  }
+
+  std::string log_root = std::string(kDefaultLogRoot);
+  if (cl->HasSwitch(kLogRoot)) {
+    log_root = cl->GetSwitchValueASCII(kLogRoot);
+  }
+
+  SetupLogging(log_root);
 
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
@@ -87,5 +104,5 @@ int main(int argc, char* argv[]) {
   }
 
   dbus_manager.Finalize();
-  return 0;
+  return EX_OK;
 }

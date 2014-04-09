@@ -5,11 +5,13 @@
 #include <iostream>
 #include <string>
 
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #include <dbus/message.h>
+#include <sysexits.h>
 
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_manager.h"
@@ -97,53 +99,59 @@ void usage() {
 } // namespace
 
 int main(int argc, char** argv) {
+  CommandLine::Init(argc, argv);
+  CommandLine* cl = CommandLine::ForCurrentProcess();
+
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
 
-  if (argc < 2) {
+  CommandLine::StringVector args = cl->GetArgs();
+  if (args.size() < 1) {
     usage();
-    return -1;
+    return EX_USAGE;
   }
 
-  char* command = argv[1];
+  // Pop the command off of the args list.
+  std::string command = args[0];
+  args.erase(args.begin());
   bool success = false;
-  if (strcmp(command, kRootTestMethod) == 0) {
+  if (command.compare(kRootTestMethod) == 0) {
     auto proxy = GetBuffetDBusProxy(
         bus, buffet::dbus_constants::kRootServicePath);
     success = CallTestMethod(proxy);
-  } else if (strcmp(command, kManagerRegisterDeviceMethod) == 0) {
-    if (argc != 5) {
+  } else if (command.compare(kManagerRegisterDeviceMethod) == 0) {
+    if (args.size() != 3) {
       std::cerr << "Invalid number of arguments for "
                 << "Manager.RegisterDevice" << std::endl;
       usage();
-      return -1;
+      return EX_USAGE;
     }
     auto proxy = GetBuffetDBusProxy(
         bus, buffet::dbus_constants::kManagerServicePath);
-    success = CallManagerRegisterDevice(proxy, argv[2], argv[3], argv[4]);
-  } else if (strcmp(command, kManagerUpdateStateMethod) == 0) {
-    if (argc != 3) {
+    success = CallManagerRegisterDevice(proxy, args[0], args[1], args[2]);
+  } else if (command.compare(kManagerUpdateStateMethod) == 0) {
+    if (args.size() != 1) {
       std::cerr << "Invalid number of arguments for "
                 << "Manager.UpdateState" << std::endl;
       usage();
-      return -1;
+      return EX_USAGE;
     }
     auto proxy = GetBuffetDBusProxy(
         bus, buffet::dbus_constants::kManagerServicePath);
-    success = CallManagerUpdateState(proxy, argv[2]);
+    success = CallManagerUpdateState(proxy, args[0]);
   } else {
-    std::cerr << "Unkown command: " << command << std::endl;
+    std::cerr << "Unknown command: " << command << std::endl;
     usage();
-    return -1;
+    return EX_USAGE;
   }
 
   if (success) {
     std::cout << "Done." << std::endl;
-    return 0;
+    return EX_OK;
   }
 
-  std::cout << "Done, with errors." << std::endl;
-  return -1;
+  std::cerr << "Done, with errors." << std::endl;
+  return 1;
 }
 

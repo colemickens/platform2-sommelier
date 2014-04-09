@@ -13,19 +13,11 @@
         'libcurl',
       ],
     },
-    # TODO(sosa): Remove gflags: crbug.com/356745.
-    'link_settings': {
-      'libraries': [
-        '-lgflags',
-      ],
-    },
     'include_dirs': [
       '..'  # To access all src/platform2 directories
     ],
-    # TODO(sosa): Remove no-strict-aliasing: crbug.com/356745.
     'cflags_cc': [
       '-std=gnu++11',
-      '-fno-strict-aliasing',
     ],
   },
   'targets': [
