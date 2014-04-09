@@ -15,6 +15,8 @@
 #include "main.h"
 #include "utils.h"
 
+using base::FilePath;
+
 const char* kGlesHeader =
     "#ifdef GL_ES\n"
     "precision highp float;\n"

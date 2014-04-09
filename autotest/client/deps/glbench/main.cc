@@ -9,8 +9,8 @@
 #include <ctime>
 
 #include "base/logging.h"
-#include "base/string_util.h"
-#include "base/string_split.h"
+#include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 
 #include "glinterface.h"
 #include "main.h"

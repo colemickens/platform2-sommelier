@@ -83,9 +83,9 @@ void SaveImage(const char* name) {
   scoped_ptr<char[]> pixels(new char[size]);
   glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   // I really think we want to use outdir as a straight argument
-  FilePath dirname = FilePath(FLAGS_outdir);
-  file_util::CreateDirectory(dirname);
-  FilePath filename = dirname.Append(name);
+  base::FilePath dirname = base::FilePath(FLAGS_outdir);
+  base::CreateDirectory(dirname);
+  base::FilePath filename = dirname.Append(name);
   write_png_file(filename.value().c_str(),
                  pixels.get(), g_width, g_height);
 }

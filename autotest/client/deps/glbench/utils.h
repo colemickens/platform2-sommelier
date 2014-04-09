@@ -11,11 +11,11 @@
 #include "GL/gl.h"
 #endif
 
-#include "base/file_path.h"
+#include "base/files/file_path.h"
 
 void SetBasePathFromArgv0(const char* argv0, const char* relative);
 void *MmapFile(const char *name, size_t *length);
-const FilePath& GetBasePath();
+const base::FilePath& GetBasePath();
 
 // Returns temperature of system before testing started. It is used as a
 // reference for keeping the machine cool.
