@@ -7,6 +7,7 @@
       'deps': [
         'dbus-1',
         'libchrome-<(libbase_ver)',
+        'libchrome-test-<(libbase_ver)',
         'libcurl',
       ],
     },
@@ -34,6 +35,7 @@
         'http_request.cc',
         'http_transport_curl.cc',
         'http_utils.cc',
+        'async_event_sequencer.cc',
         'manager.cc',
         'mime_utils.cc',
         'string_utils.cc',
@@ -68,6 +70,7 @@
         'buffet_testrunner.cc',
         'data_encoding_unittest.cc',
         'exported_property_set_unittest.cc',
+        'async_event_sequencer_unittest.cc',
         'mime_utils_unittest.cc',
         'string_utils_unittest.cc',
       ],
