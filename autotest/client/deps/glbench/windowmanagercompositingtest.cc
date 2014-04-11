@@ -53,7 +53,7 @@ bool WindowManagerCompositingTest::Run() {
     testname = "1280x768_fps_no_fill_compositing";
   }
   InitializeCompositing();
-  RunTest(this, testname, kScreenScaleFactor, WINDOW_WIDTH, WINDOW_HEIGHT, true);
+  RunTest(this, testname, kScreenScaleFactor, true);
   TeardownCompositing();
   return true;
 }

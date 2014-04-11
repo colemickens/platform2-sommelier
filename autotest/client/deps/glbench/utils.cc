@@ -22,7 +22,6 @@ const char* kGlesHeader =
 
 FilePath *g_base_path = new FilePath();
 double g_initial_temperature = GetMachineTemperature();
-extern bool g_hasty;
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
 void SetBasePathFromArgv0(const char* argv0, const char* relative) {
@@ -132,14 +131,6 @@ double WaitForCoolMachine(double cold_temperature, double timeout,
   uint64_t time_now = time_start;
   uint64_t time_end = time_now + 1e6 * timeout;
   *temperature = GetMachineTemperature();
-  // Sleep a conservative 30 seconds to cool down on systems that are returning
-  // implausible temperatures. This allows us to run the binary by hand during
-  // bringup. See crbug.com/360249 for a sample.
-  if (*temperature < 10 || *temperature > 150) {
-    double wait_time = 30.0;
-    sleep(wait_time);
-    return wait_time;
-  }
   while (time_now < time_end) {
     if (*temperature < cold_temperature)
       break;
@@ -155,7 +146,7 @@ double WaitForCoolMachine(double cold_temperature, double timeout,
 
 namespace glbench {
 
-GLuint SetupTexture(GLsizei size_log2, int max_level) {
+GLuint SetupTexture(GLsizei size_log2) {
   GLsizei size = 1 << size_log2;
   GLuint name = ~0;
   glGenTextures(1, &name);
@@ -167,7 +158,7 @@ GLuint SetupTexture(GLsizei size_log2, int max_level) {
   if (!pixels)
     return 0;
 
-  for (GLint level = 0; size > 0 && level <= max_level; level++, size /= 2) {
+  for (GLint level = 0; size > 0; level++, size /= 2) {
     unsigned char *p = pixels;
     for (int i = 0; i < size; i++) {
       for (int j = 0; j < size; j++) {

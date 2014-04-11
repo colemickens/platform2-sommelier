@@ -73,9 +73,6 @@ bool TextureTest::Run() {
     flavor_ = kFlavors[f];
     int sizes[] = {32, 128, 256, 512, 768, 1024, 1536, 2048};
     for (unsigned int j = 0; j < arraysize(sizes); j++) {
-      // In hasty mode only do 512x512 sized problems.
-      if (g_hasty && sizes[j] != 512)
-        continue;
       std::string name = std::string("mtexel_sec_") + Name() + "_" +
           kFlavorNames[f] + "_" + base::IntToString(sizes[j]);
       width_ = height_ = sizes[j];
@@ -96,7 +93,7 @@ bool TextureTest::Run() {
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
       }
-      RunTest(this, name.c_str(), width_ * height_, g_width, g_height, true);
+      RunTest(this, name.c_str(), width_ * height_, true);
       GLenum error = glGetError();
       if (error != GL_NO_ERROR) {
         printf("# GL error code %d after RunTest() with %dx%d texture.", error,
