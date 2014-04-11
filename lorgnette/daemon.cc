@@ -9,7 +9,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/message_loop_proxy.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -26,19 +26,19 @@ const char Daemon::kScanUserName[] = "saned";
 const int Daemon::kShutdownTimeoutMilliseconds = 20000;
 
 Daemon::Daemon()
-    : dont_use_directly_(new MessageLoopForUI),
+    : dont_use_directly_(new base::MessageLoopForUI),
       message_loop_proxy_(base::MessageLoopProxy::current()) {}
 
 Daemon::~Daemon() {}
 
 void Daemon::Run() {
   LOG(INFO) << "Running main loop.";
-  MessageLoop::current()->Run();
+  base::MessageLoop::current()->Run();
   LOG(INFO) << "Exited main loop.";
 }
 
 void Daemon::Quit() {
-  message_loop_proxy_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
+  message_loop_proxy_->PostTask(FROM_HERE, base::MessageLoop::QuitClosure());
 }
 
 void Daemon::Start() {

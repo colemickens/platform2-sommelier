@@ -1,6 +1,6 @@
 {
   'variables': {
-    'libbase_ver': 180609,
+    'libbase_ver': 242728,
   },
   'target_defaults': {
     'dependencies': [

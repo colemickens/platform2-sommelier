@@ -8,18 +8,19 @@
 
 #include <vector>
 
-#include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/string_split.h>
-#include <base/string_number_conversions.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/process.h>
 
 #include "lorgnette/daemon.h"
 
+using base::StringPrintf;
 using file_util::ScopedFD;
 using std::map;
 using std::string;
@@ -64,7 +65,7 @@ void Manager::InitDBus(::DBus::Connection *connection) {
 Manager::ScannerInfo Manager::ListScanners(::DBus::Error *error) {
   base::FilePath output_path;
   FILE *output_file_handle;
-  output_file_handle = file_util::CreateAndOpenTemporaryFile(&output_path);
+  output_file_handle = base::CreateAndOpenTemporaryFile(&output_path);
   if (!output_file_handle) {
     SetError(__func__, "Unable to create temporary file.", error);
     return ScannerInfo();
@@ -74,10 +75,10 @@ Manager::ScannerInfo Manager::ListScanners(::DBus::Error *error) {
   RunListScannersProcess(fileno(output_file_handle), &process);
   fclose(output_file_handle);
   string scanner_output_string;
-  bool read_status = file_util::ReadFileToString(output_path,
-                                                 &scanner_output_string);
+  bool read_status = base::ReadFileToString(output_path,
+                                            &scanner_output_string);
   const bool recursive_delete = false;
-  file_util::Delete(output_path, recursive_delete);
+  base::DeleteFile(output_path, recursive_delete);
   if (!read_status) {
     SetError(__func__, "Unable to read scanner list output file", error);
     return ScannerInfo();
@@ -144,7 +145,7 @@ void Manager::RunScanImageProcess(
           mode != kScanPropertyModeGray &&
           mode != kScanPropertyModeLineart) {
         SetError(__func__,
-                 base::StringPrintf("Invalid mode parameter %s", mode.c_str()),
+                 StringPrintf("Invalid mode parameter %s", mode.c_str()),
                  error);
         return;
       }
@@ -157,9 +158,9 @@ void Manager::RunScanImageProcess(
           property_value.reader().get_uint32()));
     } else {
       SetError(__func__,
-               base::StringPrintf("Invalid scan parameter %s with signature %s",
-                                  property_name.c_str(),
-                                  property_value.signature().c_str()),
+               StringPrintf("Invalid scan parameter %s with signature %s",
+                            property_name.c_str(),
+                            property_value.signature().c_str()),
                error);
       return;
     }

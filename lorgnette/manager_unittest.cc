@@ -9,9 +9,9 @@
 
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
-#include <base/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/process_mock.h>
 #include <gtest/gtest.h>
 

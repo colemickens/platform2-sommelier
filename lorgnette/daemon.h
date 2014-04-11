@@ -9,7 +9,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop.h>
+#include <base/message_loop/message_loop.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
@@ -48,7 +48,7 @@ class Daemon {
   // Restarts a timer for the termination of the daemon process.
   void PostponeShutdown();
 
-  scoped_ptr<MessageLoop> dont_use_directly_;
+  scoped_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
   scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
   scoped_ptr<DBus::Connection> connection_;
