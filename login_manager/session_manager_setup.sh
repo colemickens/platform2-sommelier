@@ -400,6 +400,21 @@ if is_board peach_pit || is_board peach_pi; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
 fi
 
+# Ozone platform configuration
+OZONE_FLAGS=
+if use_flag_is_set ozone; then
+  # TODO(spang): Use freon/chromeos platform, not DRI example platform.
+  OZONE_FLAGS="$OZONE_FLAGS --ozone-platform=dri"
+
+  # TODO(spang): Fix hardware acceleration.
+  OZONE_FLAGS="$OZONE_FLAGS --disable-gpu"
+  OZONE_FLAGS="$OZONE_FLAGS --ui-disable-threaded-compositing"
+
+  # TODO(spang): Fix display sizing.
+  OZONE_FLAGS="$OZONE_FLAGS --ash-host-window-bounds=2560x1700"
+  OZONE_FLAGS="$OZONE_FLAGS --force-device-scale-factor=2"
+fi
+
 # On developer systems, set a flag to let the browser know that it is on
 # one.
 DEVELOPER_MODE_FLAG=
@@ -489,4 +504,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${VMODULE_FLAG} \
             ${GPU_FLAGS} \
             ${VIDEO_FLAGS} \
+            ${OZONE_FLAGS} \
             ${DEVELOPER_MODE_FLAG}
