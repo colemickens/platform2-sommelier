@@ -79,9 +79,10 @@ class StateController : public PrefsObserver {
     // mode" and on if the system isn't in docked mode.
     virtual void UpdatePanelForDockedMode(bool docked) = 0;
 
-    // Announces that the idle action will be performed soon (with "soon"
-    // defined by the PowerManagementPolicy |idle_warning_ms| delays).
-    virtual void EmitIdleActionImminent() = 0;
+    // Announces that the idle action will be performed after
+    // |time_until_idle_action|.
+    virtual void EmitIdleActionImminent(
+        base::TimeDelta time_until_idle_action) = 0;
 
     // Called after EmitIdleActionImminent() if the system left the idle
     // state before the idle action was performed.
@@ -328,6 +329,13 @@ class StateController : public PrefsObserver {
   bool idle_action_performed_;
   bool lid_closed_action_performed_;
   bool turned_panel_off_for_docked_mode_;
+
+  // Set to true by UpdateSettingsAndState() if UpdateState() should send
+  // another warning if the delay has elapsed, even if |sent_idle_warning_| is
+  // true. Warnings contain the remaining time until the idle action will be
+  // performed, so they are re-sent when this interval is likely to have
+  // changed.
+  bool resend_idle_warning_;
 
   // Time at which the screen was turned off, or null if
   // |screen_turned_off_| is false.  Used for updating

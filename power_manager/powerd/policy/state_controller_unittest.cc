@@ -6,6 +6,7 @@
 #include <base/compiler_specific.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
@@ -32,13 +33,17 @@ const char kStopSession[] = "logout";
 const char kShutDown[] = "shut_down";
 const char kDocked[] = "docked";
 const char kUndocked[] = "undocked";
-const char kIdleImminent[] = "idle_imminent";
 const char kIdleDeferred[] = "idle_deferred";
 const char kReportUserActivityMetrics[] = "metrics";
 
 // String returned by TestDelegate::GetActions() if no actions were
 // requested.
 const char kNoActions[] = "";
+
+std::string GetIdleImminentAction(base::TimeDelta time_until_idle_action) {
+  return base::StringPrintf("idle_imminent(%" PRId64 ")",
+                            time_until_idle_action.InMilliseconds());
+}
 
 // StateController::Delegate implementation that records requested actions.
 class TestDelegate : public StateController::Delegate, public ActionRecorder {
@@ -91,8 +96,9 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
     AppendAction(docked ? kDocked : kUndocked);
   }
-  virtual void EmitIdleActionImminent() OVERRIDE {
-    AppendAction(kIdleImminent);
+  virtual void EmitIdleActionImminent(
+      base::TimeDelta time_until_idle_action) OVERRIDE {
+    AppendAction(GetIdleImminentAction(time_until_idle_action));
   }
   virtual void EmitIdleActionDeferred() OVERRIDE {
     AppendAction(kIdleDeferred);
@@ -464,7 +470,8 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledWarnDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kScaledIdleDelay - kScaledWarnDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -478,7 +485,8 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarnDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarnDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 }
@@ -1019,7 +1027,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // The idle-action-imminent notification should be sent at the requested
   // time.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1032,7 +1041,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // performed, an idle-action-deferred notification should be sent.
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   AdvanceTime(kHalfInterval);
   controller_.HandleUserActivity();
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
@@ -1040,7 +1050,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // Let the warning fire again.
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
 
   // Increase the warning delay and check that the deferred notification is
   // sent.
@@ -1052,7 +1063,9 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // The warning should be sent again when its new delay is reached, and
   // the idle action should be performed at the usual time.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(
+                kIdleDelay - (kIdleWarningDelay + kHalfInterval)),
+            delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1065,7 +1078,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleUserActivity();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   policy.mutable_ac_delays()->set_idle_warning_ms(0);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
@@ -1075,7 +1089,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   policy.mutable_ac_delays()->set_idle_warning_ms(
       kIdleWarningDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   policy.mutable_ac_delays()->set_idle_warning_ms(0);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
@@ -1089,7 +1104,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   policy.set_ac_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
@@ -1098,7 +1114,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // idle-imminent to get sent again.
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   policy.set_ac_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
@@ -1125,7 +1142,21 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(JoinActions(kIdleImminent, kStopSession, NULL),
+  EXPECT_EQ(JoinActions(GetIdleImminentAction(base::TimeDelta()).c_str(),
+                        kStopSession, NULL),
+            delegate_.GetActions());
+
+  // Let idle-imminent get sent and then increase the idle delay. idle-imminent
+  // should be sent again immediately with an updated time-until-idle-action.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
+  policy.mutable_ac_delays()->set_idle_ms(2 * kIdleDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(GetIdleImminentAction(2 * kIdleDelay - kIdleWarningDelay),
             delegate_.GetActions());
 }
 
@@ -1207,7 +1238,8 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kLockDelay - kOffDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleWarningDelay - kLockDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay - kIdleWarningDelay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -1436,7 +1468,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1454,7 +1487,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   ResetLastStepDelay();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1468,7 +1502,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   ResetLastStepDelay();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
+            delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1480,7 +1515,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   controller_.HandleSessionStateChange(SESSION_STOPPED);
   controller_.HandleSessionStateChange(SESSION_STARTED);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
+            delegate_.GetActions());
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
 

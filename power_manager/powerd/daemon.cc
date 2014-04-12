@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library.h>
 
@@ -299,8 +300,12 @@ class Daemon::StateControllerDelegate
     daemon_->SetBacklightsDocked(docked);
   }
 
-  virtual void EmitIdleActionImminent() OVERRIDE {
-    daemon_->dbus_sender_->EmitBareSignal(kIdleActionImminentSignal);
+  virtual void EmitIdleActionImminent(
+      base::TimeDelta time_until_idle_action) OVERRIDE {
+    IdleActionImminent proto;
+    proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
+    daemon_->dbus_sender_->EmitSignalWithProtocolBuffer(
+        kIdleActionImminentSignal, proto);
   }
 
   virtual void EmitIdleActionDeferred() OVERRIDE {

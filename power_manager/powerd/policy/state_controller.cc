@@ -159,6 +159,7 @@ StateController::StateController()
       idle_action_performed_(false),
       lid_closed_action_performed_(false),
       turned_panel_off_for_docked_mode_(false),
+      resend_idle_warning_(false),
       saw_user_activity_soon_after_screen_dim_or_off_(false),
       saw_user_activity_during_current_session_(false),
       require_usb_input_device_to_suspend_(false),
@@ -636,8 +637,9 @@ void StateController::LoadPrefs() {
 }
 
 void StateController::UpdateSettingsAndState() {
-  Action old_idle_action = idle_action_;
-  Action old_lid_closed_action = lid_closed_action_;
+  const Action old_idle_action = idle_action_;
+  const Action old_lid_closed_action = lid_closed_action_;
+  const base::TimeDelta old_idle_delay = delays_.idle;
 
   const bool on_ac = power_source_ == POWER_AC;
   const bool presenting = display_mode_ == DISPLAY_PRESENTATION;
@@ -713,6 +715,12 @@ void StateController::UpdateSettingsAndState() {
 
   SanitizeDelays(&delays_);
 
+  // Let UpdateState() know if it may need to re-send the warning with an
+  // updated time-until-idle-action.
+  resend_idle_warning_ = sent_idle_warning_ &&
+      delays_.idle_warning != base::TimeDelta() &&
+      delays_.idle != old_idle_delay;
+
   VLOG(1) << "Updated settings:"
           << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
           << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
@@ -786,10 +794,12 @@ void StateController::UpdateState() {
   if (delays_.idle_warning > base::TimeDelta() &&
       idle_duration >= delays_.idle_warning &&
       idle_action_ != DO_NOTHING) {
-    if (!sent_idle_warning_) {
-      VLOG(1) << "Emitting idle-imminent signal after "
+    if (!sent_idle_warning_ || resend_idle_warning_) {
+      const base::TimeDelta time_until_idle = delays_.idle - idle_duration;
+      VLOG(1) << "Emitting idle-imminent signal with "
+              << util::TimeDeltaToString(time_until_idle) << " after "
               << util::TimeDeltaToString(idle_duration);
-      delegate_->EmitIdleActionImminent();
+      delegate_->EmitIdleActionImminent(time_until_idle);
       sent_idle_warning_ = true;
     }
   } else if (sent_idle_warning_) {
@@ -802,6 +812,7 @@ void StateController::UpdateState() {
       delegate_->EmitIdleActionDeferred();
     }
   }
+  resend_idle_warning_ = false;
 
   bool docked = in_docked_mode();
   if (docked != turned_panel_off_for_docked_mode_) {
