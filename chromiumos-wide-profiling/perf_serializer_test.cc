@@ -9,7 +9,6 @@
 #include <string>
 
 #include "base/logging.h"
-#include "base/stringprintf.h"
 
 #include "perf_protobuf_io.h"
 #include "perf_reader.h"
