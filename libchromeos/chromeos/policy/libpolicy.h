@@ -30,9 +30,9 @@ class PolicyProvider {
 
   // This function will ensure the freshnes of the contents that the getters
   // are delivering. Normally contents are cached to prevent unneccessary load.
-  bool Reload();
+  virtual bool Reload();
 
-  bool device_policy_is_loaded() const;
+  virtual bool device_policy_is_loaded() const;
 
   // Returns a value from the device policy cache.
   virtual const DevicePolicy& GetDevicePolicy() const;
