@@ -3,9 +3,6 @@
 # found in the LICENSE file.
 
 {
-  'variables': {
-    'libbase_ver': 242728,
-  },
   'target_defaults': {
     'dependencies': [
       '<(platform_root)/libchromeos/libchromeos-<(libbase_ver).gyp:*',

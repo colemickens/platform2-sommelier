@@ -1,7 +1,4 @@
 {
-  'variables': {
-    'libbase_ver': 242728,
-  },
   'target_defaults': {
     'dependencies': [
       '../../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
