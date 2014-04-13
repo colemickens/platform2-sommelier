@@ -185,6 +185,7 @@ class Platform2(object):
       '-Dlibdir=' + self.libdir,
       '-Dplatform_root=' + self.get_platform_root(),
       '-Dlibbase_ver=' + os.environ.get('BASE_VER', _BASE_VER),
+      '-Dclang_syntax=' + os.environ.get('CROS_WORKON_CLANG', ''),
       '-Dexternal_cflags=' + os.environ.get('CFLAGS', ''),
       '-Dexternal_cxxflags=' + os.environ.get('CXXFLAGS', ''),
       '-Dexternal_ldflags=' + os.environ.get('LDFLAGS', ''),

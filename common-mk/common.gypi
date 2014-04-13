@@ -9,6 +9,9 @@
     # Set this to 1 if you'd like to enable debugging flags.
     'debug%': 0,
 
+    # Set this to 0 if you'd like to disable -clang-syntax.
+    'clang_syntax%': 1,
+
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
     'USE_buffet%': 0,
@@ -84,12 +87,16 @@
           'NDEBUG',
         ],
       }],
+      ['USE_cros_host == 0 and clang_syntax == 1', {
+        'cflags': [
+          '-clang-syntax',
+        ],
+      }],
       ['USE_cros_host == 0', {
         'include_dirs': [
           '<(sysroot)/usr/include',
         ],
         'cflags': [
-          '-clang-syntax',
           '--sysroot=<(sysroot)',
         ],
         'link_settings': {
