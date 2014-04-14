@@ -18,9 +18,6 @@
         '-lprotobuf',
       ],
     },
-    'include_dirs': [
-      '..'  # To access all src/platform2 directories
-    ],
     'cflags_cc': [ '-std=gnu++11' ],
   },
   'targets': [
@@ -55,7 +52,7 @@
       'sources': [
         '<(proto_in_dir)/dbus_interface.proto'
       ],
-      'includes': ['../../common-mk/protoc.gypi'],
+      'includes': ['../common-mk/protoc.gypi'],
     },
   ],
 }

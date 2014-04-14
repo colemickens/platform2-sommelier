@@ -1,7 +1,7 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
+      '<(platform_root)/metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
     ],
     'variables': {
       'deps': [
@@ -10,9 +10,13 @@
         'libcurl',
       ],
     },
-    'include_dirs': [
-      '..'  # To access all src/platform2 directories
-    ],
+    # TODO(sosa): Remove gflags: crbug.com/356745.
+    'link_settings': {
+      'libraries': [
+        '-lgflags',
+      ],
+    },
+    # TODO(sosa): Remove no-strict-aliasing: crbug.com/356745.
     'cflags_cc': [
       '-std=gnu++11',
     ],
@@ -59,7 +63,7 @@
       'dependencies': [
         'buffet_common',
       ],
-      'includes': ['../../common-mk/common_test.gypi'],
+      'includes': ['../common-mk/common_test.gypi'],
       'sources': [
         'buffet_testrunner.cc',
         'data_encoding_unittest.cc',

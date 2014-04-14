@@ -6,13 +6,13 @@
       'target_name': 'All',
       'type': 'none',
       'dependencies': [
-        '<(DEPTH)/libchromeos/libchromeos-180609.gyp:*',
-        '<(DEPTH)/libchromeos/libchromeos-242728.gyp:*',
-        '<(DEPTH)/metrics/libmetrics-180609.gyp:*',
-        '<(DEPTH)/metrics/libmetrics-242728.gyp:*',
-        '<(DEPTH)/metrics/metrics.gyp:*',
-        '<(DEPTH)/power_manager/power_manager.gyp:*',
-        '<(DEPTH)/system_api/system_api.gyp:*',
+        '<(DEPTH)/platform/libchromeos/libchromeos-180609.gyp:*',
+        '<(DEPTH)/platform/libchromeos/libchromeos-242728.gyp:*',
+        '<(DEPTH)/platform/metrics/libmetrics-180609.gyp:*',
+        '<(DEPTH)/platform/metrics/libmetrics-242728.gyp:*',
+        '<(DEPTH)/platform/metrics/metrics.gyp:*',
+        '<(DEPTH)/platform/power_manager/power_manager.gyp:*',
+        '<(DEPTH)/platform/system_api/system_api.gyp:*',
       ],
       'conditions': [
         ['USE_cros_host == 0', {
@@ -24,54 +24,54 @@
             }],
             ['USE_cellular == 1', {
               'dependencies': [
-                '<(DEPTH)/cromo/cromo.gyp:*',
-                '<(DEPTH)/mist/mist.gyp:*',
+                '<(DEPTH)/platform/cromo/cromo.gyp:*',
+                '<(DEPTH)/platform/mist/mist.gyp:*',
               ],
             }],
             ['USE_crash_reporting == 1', {
               'dependencies': [
-                '<(DEPTH)/crash-reporter/crash-reporter.gyp:*',
+                '<(DEPTH)/platform/crash-reporter/crash-reporter.gyp:*',
               ],
             }],
             ['USE_cros_disks == 1', {
               'dependencies': [
-                '<(DEPTH)/cros-disks/cros-disks.gyp:*',
+                '<(DEPTH)/platform/cros-disks/cros-disks.gyp:*',
               ],
             }],
             ['USE_debugd == 1', {
               'dependencies': [
-                '<(DEPTH)/debugd/debugd.gyp:*',
+                '<(DEPTH)/platform/debugd/debugd.gyp:*',
               ],
             }],
             ['USE_gdmwimax == 1', {
               'dependencies': [
-                '<(DEPTH)/wimax_manager/wimax_manager.gyp:*',
+                '<(DEPTH)/platform/wimax_manager/wimax_manager.gyp:*',
               ],
             }],
             ['USE_lorgnette == 1', {
               'dependencies': [
-                '<(DEPTH)/lorgnette/lorgnette.gyp:*',
+                '<(DEPTH)/platform/lorgnette/lorgnette.gyp:*',
               ],
             }],
             ['USE_profile == 1', {
               'dependencies': [
-                '<(DEPTH)/chromiumos-wide-profiling/quipper.gyp:*',
+                '<(DEPTH)/platform/chromiumos-wide-profiling/quipper.gyp:*',
               ],
             }],
             ['USE_shill == 1', {
               'dependencies': [
-                '<(DEPTH)/shill/shill.gyp:*',
+                '<(DEPTH)/platform/shill/shill.gyp:*',
               ],
             }],
             ['USE_tpm == 1', {
               'dependencies': [
-                '<(DEPTH)/chaps/chaps.gyp:*',
+                '<(DEPTH)/platform/chaps/chaps.gyp:*',
                 '<(DEPTH)/platform2/attestation/attestation.gyp:*',
               ],
             }],
             ['USE_vpn == 1', {
               'dependencies': [
-                '<(DEPTH)/vpn-manager/vpn-manager.gyp:*',
+                '<(DEPTH)/platform/vpn-manager/vpn-manager.gyp:*',
               ],
             }],
           ],
