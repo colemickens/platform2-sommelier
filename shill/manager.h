@@ -57,7 +57,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     Properties()
         : offline_mode(false),
           portal_check_interval_seconds(0),
-          arp_gateway(true) {}
+          arp_gateway(true),
+          connection_id_salt(0) {}
     bool offline_mode;
     std::string check_portal_list;
     std::string country;
@@ -72,6 +73,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     std::string link_monitor_technologies;
     // Comma-separated list of DNS search paths to be ignored.
     std::string ignored_dns_search_paths;
+    // Salt value use for calculating network connection ID.
+    int connection_id_salt;
   };
 
   Manager(ControlInterface *control_interface,
@@ -380,6 +383,14 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                                    const std::string &network_path,
                                    const ResultStringCallback &cb,
                                    Error *error);
+
+  // Calculate connection identifier, which is hash of salt value, gateway IP
+  // address, and gateway MAC address.
+  int CalcConnectionId(std::string gateway_ip, std::string gateway_mac);
+
+  // Report the number of services associated with given connection
+  // |connection_id|.
+  void ReportServicesOnSameNetwork(int connection_id);
 
  private:
   friend class CellularTest;

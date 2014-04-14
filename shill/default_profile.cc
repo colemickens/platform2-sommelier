@@ -50,6 +50,8 @@ const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
 // static
 const char DefaultProfile::kStoragePortalCheckInterval[] =
     "PortalCheckInterval";
+// static
+const char DefaultProfile::kStorageConnectionIdSalt[] = "ConnectionIdSalt";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
                                Metrics *metrics,
@@ -113,6 +115,11 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
     manager_props->portal_check_interval_seconds =
         PortalDetector::kDefaultCheckIntervalSeconds;
   }
+  if (!storage()->GetInt(kStorageId, kStorageConnectionIdSalt,
+                         &manager_props->connection_id_salt)) {
+    srand(time(NULL));
+    manager_props->connection_id_salt = rand();
+  }
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr &service) {
@@ -150,6 +157,8 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStoragePortalCheckInterval,
                        base::IntToString(props_.portal_check_interval_seconds));
+  storage()->SetInt(kStorageId, kStorageConnectionIdSalt,
+                    props_.connection_id_salt);
   return Profile::Save();
 }
 

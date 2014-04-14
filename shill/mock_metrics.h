@@ -44,7 +44,7 @@ class MockMetrics : public Metrics {
                                int max, int num_buckets));
   MOCK_METHOD1(NotifyWifiAutoConnectableServices, void(int num_service));
   MOCK_METHOD1(NotifyWifiAvailableBSSes, void(int num_bss));
-  MOCK_METHOD1(NotifyWifiServicesOnSameNetwork, void(int num_service));
+  MOCK_METHOD1(NotifyServicesOnSameNetwork, void(int num_service));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

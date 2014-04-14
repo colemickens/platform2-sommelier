@@ -84,6 +84,7 @@ const char Service::kStorageProxyConfig[] = "ProxyConfig";
 const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
+const char Service::kStorageConnectionId[] = "ConnectionId";
 
 const uint8 Service::kStrengthMax = 100;
 const uint8 Service::kStrengthMin = 0;
@@ -146,7 +147,8 @@ Service::Service(ControlInterface *control_interface,
       time_(Time::GetInstance()),
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()),
       consecutive_dhcp_failures_(0),
-      dhcp_option_failure_state_(kDHCPOptionFailureNotDetected) {
+      dhcp_option_failure_state_(kDHCPOptionFailureNotDetected),
+      connection_id_(0) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull,
@@ -225,6 +227,8 @@ Service::Service(ControlInterface *control_interface,
                                   &Service::GetDisconnectsProperty);
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
+  store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
+
   metrics_->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -454,6 +458,7 @@ bool Service::Load(StoreInterface *storage) {
     last_dhcp_option_failure_ = Timestamp();
     dhcp_option_failure_state_ = kDHCPOptionFailureNotDetected;
   }
+  storage->GetInt(id, kStorageConnectionId, &connection_id_);
 
   static_ip_parameters_.Load(storage, id);
 
@@ -540,6 +545,7 @@ bool Service::Save(StoreInterface *storage) {
   } else {
     storage->DeleteKey(id, kStorageLastDHCPOptionFailure);
   }
+  storage->SetInt(id, kStorageConnectionId, connection_id_);
 
   static_ip_parameters_.Save(storage, id);
   if (eap()) {

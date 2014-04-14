@@ -1252,6 +1252,22 @@ void Manager::VerifyAndEncryptCredentials(const string &certificate,
   error->Populate(Error::kNotImplemented, "Not implemented");
 }
 
+int Manager::CalcConnectionId(std::string gateway_ip,
+                              std::string gateway_mac) {
+  return  (int)(std::hash<std::string>()(gateway_ip + gateway_mac +
+      std::to_string(props_.connection_id_salt)));
+}
+
+void Manager::ReportServicesOnSameNetwork(int connection_id) {
+  int num_services = 0;
+  for (const auto &service : services_) {
+    if (service->connection_id() == connection_id) {
+      num_services++;
+    }
+  }
+  metrics_->NotifyServicesOnSameNetwork(num_services);
+}
+
 void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
   for (map<int, ServiceCallback>::const_iterator it =
            default_service_callbacks_.begin();

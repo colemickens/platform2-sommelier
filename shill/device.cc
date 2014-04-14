@@ -834,6 +834,17 @@ void Device::OnLinkMonitorFailure() {
              << ": Link Monitor indicates failure.";
 }
 
+void Device::OnLinkMonitorGatewayChange() {
+  string gateway_mac = link_monitor()->gateway_mac_address().HexEncode();
+  int connection_id = manager_->CalcConnectionId(
+      ipconfig_->properties().gateway, gateway_mac);
+
+  CHECK(selected_service_);
+  selected_service_->set_connection_id(connection_id);
+
+  manager_->ReportServicesOnSameNetwork(connection_id);
+}
+
 void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 

@@ -79,6 +79,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageSaveCredentials[];
   static const char kStorageType[];
   static const char kStorageUIData[];
+  static const char kStorageConnectionId[];
 
   static const uint8 kStrengthMax;
   static const uint8 kStrengthMin;
@@ -464,6 +465,9 @@ class Service : public base::RefCounted<Service> {
   // this service.
   std::map<std::string, std::string> GetLoadableProfileEntries();
 
+  void set_connection_id(int connection_id) { connection_id_ = connection_id; }
+  int connection_id() const { return connection_id_; }
+
  protected:
   friend class base::RefCounted<Service>;
 
@@ -809,6 +813,10 @@ class Service : public base::RefCounted<Service> {
 
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;
+
+  // Network identifier indicating the network (gateway) the service is
+  // connected to.
+  int connection_id_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
