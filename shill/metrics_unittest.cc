@@ -725,6 +725,16 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
+TEST_F(MetricsTest, NotifyServicesOnSameNetwork) {
+  EXPECT_CALL(library_,
+      SendToUMA(Metrics::kMetricServicesOnSameNetwork,
+                1,
+                Metrics::kMetricServicesOnSameNetworkMin,
+                Metrics::kMetricServicesOnSameNetworkMax,
+                Metrics::kMetricServicesOnSameNetworkNumBuckets));
+  metrics_.NotifyServicesOnSameNetwork(1);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

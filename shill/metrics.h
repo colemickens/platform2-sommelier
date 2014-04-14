@@ -449,6 +449,12 @@ class Metrics {
   static const int kMetricWifiAvailableBSSesMin;
   static const int kMetricWifiAvailableBSSesNumBuckets;
 
+  // Number of services associated with currently connected network.
+  static const char kMetricServicesOnSameNetwork[];
+  static const int kMetricServicesOnSameNetworkMax;
+  static const int kMetricServicesOnSameNetworkMin;
+  static const int kMetricServicesOnSameNetworkNumBuckets;
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -613,6 +619,10 @@ class Metrics {
   // Notifies this object about number of BSSes available for a wifi service
   // when attempt to connect to that service.
   virtual void NotifyWifiAvailableBSSes(int num_services);
+
+  // Notifies this object about number of services associated to the
+  // currently connected network.
+  virtual void NotifyServicesOnSameNetwork(int num_services);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();

@@ -291,6 +291,13 @@ const int Metrics::kMetricWifiAvailableBSSesMax = 50;
 const int Metrics::kMetricWifiAvailableBSSesMin = 1;
 const int Metrics::kMetricWifiAvailableBSSesNumBuckets = 10;
 
+// Number of services associated with currently connected network.
+const char Metrics::kMetricServicesOnSameNetwork[] =
+    "Network.Shill.ServicesOnSameNetwork";
+const int Metrics::kMetricServicesOnSameNetworkMax = 20;
+const int Metrics::kMetricServicesOnSameNetworkMin = 1;
+const int Metrics::kMetricServicesOnSameNetworkNumBuckets = 10;
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1065,6 +1072,14 @@ void Metrics::NotifyWifiAvailableBSSes(int num_bss) {
             kMetricWifiAvailableBSSesMin,
             kMetricWifiAvailableBSSesMax,
             kMetricWifiAvailableBSSesNumBuckets);
+}
+
+void Metrics::NotifyServicesOnSameNetwork(int num_services) {
+  SendToUMA(kMetricServicesOnSameNetwork,
+            num_services,
+            kMetricServicesOnSameNetworkMin,
+            kMetricServicesOnSameNetworkMax,
+            kMetricServicesOnSameNetworkNumBuckets);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
