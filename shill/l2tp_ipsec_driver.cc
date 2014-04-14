@@ -72,7 +72,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { kL2tpIpsecIkeVersion, 0 },
   { kL2tpIpsecPasswordProperty, Property::kCredential | Property::kWriteOnly },
   { kL2tpIpsecPinProperty, Property::kCredential },
-  { kL2tpIpsecPskProperty, Property::kCredential },
+  { kL2tpIpsecPskProperty, Property::kCredential | Property::kWriteOnly },
   { kL2tpIpsecUserProperty, 0 },
   { kProviderHostProperty, 0 },
   { kProviderTypeProperty, 0 },
@@ -87,8 +87,9 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { kL2TPIPSecRequireAuthProperty, 0 },
   { kL2TPIPSecRequireChapProperty, 0 },
   { kL2TPIPSecRightProtoPortProperty, 0 },
-  { kL2tpIpsecXauthUserProperty, Property::kCredential },
-  { kL2tpIpsecXauthPasswordProperty, Property::kCredential },
+  { kL2tpIpsecXauthUserProperty, Property::kCredential | Property::kWriteOnly },
+  { kL2tpIpsecXauthPasswordProperty,
+    Property::kCredential | Property::kWriteOnly },
 };
 
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
