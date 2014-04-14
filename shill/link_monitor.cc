@@ -39,12 +39,14 @@ LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
                          EventDispatcher *dispatcher,
                          Metrics *metrics,
                          DeviceInfo *device_info,
-                         const FailureCallback &failure_callback)
+                         const FailureCallback &failure_callback,
+                         const GatewayChangeCallback &gateway_change_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       metrics_(metrics),
       device_info_(device_info),
       failure_callback_(failure_callback),
+      gateway_change_callback_(gateway_change_callback),
       test_period_milliseconds_(kDefaultTestPeriodMilliseconds),
       broadcast_failure_count_(0),
       unicast_failure_count_(0),
@@ -267,6 +269,9 @@ void LinkMonitor::ReceiveResponse(int fd) {
       SLOG(Link, 2) << "Gateway MAC address changed.";
     }
     gateway_mac_address_ = new_mac_address;
+
+    // Notify device of the new gateway mac address.
+    gateway_change_callback_.Run();
   }
 
   is_unicast_ = !is_unicast_;

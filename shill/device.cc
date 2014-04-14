@@ -813,7 +813,9 @@ bool Device::StartLinkMonitor() {
     set_link_monitor(
       new LinkMonitor(
           connection_, dispatcher_, metrics(), manager_->device_info(),
-          Bind(&Device::OnLinkMonitorFailure, weak_ptr_factory_.GetWeakPtr())));
+          Bind(&Device::OnLinkMonitorFailure, weak_ptr_factory_.GetWeakPtr()),
+          Bind(&Device::OnLinkMonitorGatewayChange,
+               weak_ptr_factory_.GetWeakPtr())));
   }
 
   SLOG(Device, 2) << "Device " << FriendlyName()

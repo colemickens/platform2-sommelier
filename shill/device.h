@@ -425,6 +425,10 @@ class Device : public base::RefCounted<Device> {
   // Respond to a LinkMonitor failure in a Device-specific manner.
   virtual void OnLinkMonitorFailure();
 
+  // Respond to a LinkMonitor gateway's MAC address found/change in a
+  // Device-specific manner.
+  virtual void OnLinkMonitorGatewayChange() {}
+
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
   void SetServiceConnectedState(Service::ConnectState state);

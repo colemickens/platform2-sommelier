@@ -27,10 +27,12 @@ class Time;
 // messages to the default gateway for a connection.  It keeps
 // track of response times which can be an indicator of link
 // quality.  It signals to caller that the link has failed if
-// too many requests go unanswered.
+// too many requests go unanswered. It also signals to caller
+// when the gateway's mac address is found or changed.
 class LinkMonitor {
  public:
   typedef base::Closure FailureCallback;
+  typedef base::Closure GatewayChangeCallback;
 
   // The default number of milliseconds between ARP requests. Needed by Metrics.
   static const int kDefaultTestPeriodMilliseconds;
@@ -48,7 +50,8 @@ class LinkMonitor {
               EventDispatcher *dispatcher,  // Owned by caller; can't be NULL.
               Metrics *metrics,  // Owned by caller; must not be NULL.
               DeviceInfo *device_info,
-              const FailureCallback &failure_callback);
+              const FailureCallback &failure_callback,
+              const GatewayChangeCallback &gateway_change_callback);
   virtual ~LinkMonitor();
 
   // Starts link-monitoring on the selected connection.  Returns
@@ -72,6 +75,10 @@ class LinkMonitor {
   // Returns true if the LinkMonitor was ever able to find the default
   // gateway via broadcast ARP.
   virtual bool IsGatewayFound() const;
+
+  const ByteString &gateway_mac_address() const {
+    return gateway_mac_address_;
+  }
 
  private:
   friend class LinkMonitorForTest;
@@ -124,6 +131,8 @@ class LinkMonitor {
   DeviceInfo *device_info_;
   // Failure callback method to call if LinkMonitor fails.
   FailureCallback failure_callback_;
+  // Callback method to call if gateway mac address changes.
+  GatewayChangeCallback gateway_change_callback_;
   // The MAC address of device associated with this connection.
   ByteString local_mac_address_;
   // The MAC address of the default gateway.

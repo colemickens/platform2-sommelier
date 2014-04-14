@@ -54,6 +54,8 @@ class LinkMonitorForTest : public LinkMonitor {
                      DeviceInfo *device_info)
       : LinkMonitor(connection, dispatcher, metrics, device_info,
                     Bind(&LinkMonitorForTest::FailureCallbackHandler,
+                         Unretained(this)),
+                    Bind(&LinkMonitorForTest::GatewayChangeCallbackHandler,
                          Unretained(this))) {}
 
   virtual ~LinkMonitorForTest() {}
@@ -64,6 +66,11 @@ class LinkMonitorForTest : public LinkMonitor {
   // in unit tests to support expectations when the LinkMonitor notifies
   // its client of a failure.
   MOCK_METHOD0(FailureCallbackHandler, void());
+
+  // This does not override any methods in LinkMonitor, but is used here
+  // in unit tests to support expectations when the LinkMonitor notifies
+  // its client of a gateway mac address change.
+  MOCK_METHOD0(GatewayChangeCallbackHandler, void());
 };
 
 MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
@@ -468,6 +475,7 @@ TEST_F(LinkMonitorTest, ReplyReception) {
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), kResponseTime,
        _, _, _)).Times(1);
+  EXPECT_CALL(monitor_, GatewayChangeCallbackHandler()).Times(1);
   ReceiveCorrectResponse();
   EXPECT_FALSE(GetArpClient());
   EXPECT_EQ(kResponseTime, monitor_.GetResponseTimeMilliseconds());
@@ -537,6 +545,7 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
       HasSubstr("BroadcastErrorsAtFailure"), _, _, _, _)).Times(0);
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("UnicastErrorsAtFailure"), _, _, _, _)).Times(0);
+  EXPECT_CALL(monitor_, GatewayChangeCallbackHandler()).Times(1);
 
   // Unicast failures should not cause LinkMonitor errors if we haven't
   // noted the gateway as reliably replying to unicast ARP messages.  Test
@@ -636,6 +645,7 @@ TEST_F(LinkMonitorTest, OnAfterResume) {
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), kResponseTime,  _, _, _))
       .Times(2);
+  EXPECT_CALL(monitor_, GatewayChangeCallbackHandler()).Times(1);
   AdvanceTime(kResponseTime);
   ReceiveCorrectResponse();
   EXPECT_EQ(GetFastTestPeriodMilliseconds(),
@@ -716,6 +726,7 @@ TEST_F(LinkMonitorTest, OnAfterResumeWithoutUnicast) {
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), kResponseTime,  _, _, _));
   AdvanceTime(kResponseTime);
+  EXPECT_CALL(monitor_, GatewayChangeCallbackHandler()).Times(1);
   ReceiveCorrectResponse();
   EXPECT_EQ(GetDefaultTestPeriodMilliseconds(),
             GetCurrentTestPeriodMilliseconds());
@@ -728,6 +739,7 @@ TEST_F(LinkMonitorTest, Average) {
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), _, _, _, _))
       .Times(arraysize(kSamples));
+  EXPECT_CALL(monitor_, GatewayChangeCallbackHandler()).Times(1);
   ASSERT_GT(arraysize(kSamples), filter_depth);
   StartMonitor();
   size_t i = 0;
@@ -755,6 +767,7 @@ TEST_F(LinkMonitorTest, ImpulseResponse) {
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), _, _, _, _))
       .Times(AnyNumber());
+  EXPECT_CALL(monitor_, GatewayChangeCallbackHandler()).Times(1);
   StartMonitor();
   for (int i = 0; i < filter_depth * 2; ++i) {
     AdvanceTime(kNormalValue);
