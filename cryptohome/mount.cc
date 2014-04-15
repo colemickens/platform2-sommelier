@@ -1111,7 +1111,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   bool scrypt_wrapped =
       (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
   bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
-                     crypto_->is_cryptohome_key_loaded());
+                     crypto_->is_tpm_connected());
   bool should_scrypt = true;
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,

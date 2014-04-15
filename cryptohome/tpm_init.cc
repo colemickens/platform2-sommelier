@@ -9,33 +9,13 @@
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <trousers/scoped_tss_type.h>
 
 #include "attestation.h"
-#include "cryptolib.h"
-#include "interface.h"
 
 using base::PlatformThread;
 using base::PlatformThreadHandle;
-using chromeos::SecureBlob;
 
 namespace cryptohome {
-
-const int kMaxTimeoutRetries = 5;
-
-const char* kTpmCheckEnabledFile = "/sys/class/misc/tpm0/device/enabled";
-const char* kTpmCheckOwnedFile = "/sys/class/misc/tpm0/device/owned";
-const char* kTpmOwnedFileOld = "/var/lib/.tpm_owned";
-const char* kTpmStatusFileOld = "/var/lib/.tpm_status";
-const char* kTpmOwnedFile = "/mnt/stateful_partition/.tpm_owned";
-const char* kTpmStatusFile = "/mnt/stateful_partition/.tpm_status";
-const char* kOpenCryptokiPath = "/var/lib/opencryptoki";
-const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
-
-const int kOwnerPasswordLength = 12;
-const char kTpmWellKnownPassword[] = TSS_WELL_KNOWN_SECRET;
-const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
-                                           {0, 9, 8, 1, 0, 3}};
 
 // TpmInitTask is a private class used to handle asynchronous initialization of
 // the TPM.
@@ -43,7 +23,8 @@ class TpmInitTask : public PlatformThread::Delegate {
  public:
   explicit TpmInitTask(Platform* platform)
         : tpm_(NULL),
-        init_(NULL) {
+        init_(NULL),
+        platform_(platform) {
   }
 
   virtual ~TpmInitTask() {
@@ -51,9 +32,8 @@ class TpmInitTask : public PlatformThread::Delegate {
 
   void Init(TpmInit* init) {
     init_ = init;
-    if (tpm_) {
-      init->SetupTpm(false);
-    }
+    if (tpm_)
+      tpm_->Init(platform_, false);
   }
 
   virtual void ThreadMain() {
@@ -73,6 +53,7 @@ class TpmInitTask : public PlatformThread::Delegate {
  private:
   Tpm* tpm_;
   TpmInit* init_;
+  Platform* platform_;
 };
 
 TpmInit::TpmInit(Platform* platform)
@@ -81,9 +62,7 @@ TpmInit::TpmInit(Platform* platform)
       initialize_called_(false),
       initialize_took_ownership_(false),
       initialization_time_(0),
-      platform_(platform),
-      cryptohome_context_(0),
-      cryptohome_key_(0, 0) {
+      platform_(platform) {
 }
 
 TpmInit::~TpmInit() {
@@ -111,7 +90,11 @@ void TpmInit::Init(TpmInitCallback* notify_callback) {
   tpm_init_task_->Init(this);
 }
 
-bool TpmInit::AsyncInitializeTpm() {
+bool TpmInit::GetRandomData(int length, chromeos::Blob* data) {
+  return tpm_init_task_->get_tpm()->GetRandomData(length, data);
+}
+
+bool TpmInit::StartInitializeTpm() {
   initialize_called_ = true;
   if (!PlatformThread::Create(0, tpm_init_task_.get(), &init_thread_)) {
     LOG(ERROR) << "Unable to create TPM initialization background thread.";
@@ -135,16 +118,8 @@ bool TpmInit::IsTpmOwned() {
   return tpm_init_task_->get_tpm()->IsOwned();
 }
 
-void TpmInit::SetTpmOwned(bool owned) {
-  tpm_init_task_->get_tpm()->SetIsOwned(owned);
-}
-
 bool TpmInit::IsTpmBeingOwned() {
   return tpm_init_task_->get_tpm()->IsBeingOwned();
-}
-
-void TpmInit::SetTpmBeingOwned(bool being_owned) {
-  tpm_init_task_->get_tpm()->SetIsBeingOwned(being_owned);
 }
 
 bool TpmInit::HasInitializeBeenCalled() {
@@ -156,26 +131,12 @@ bool TpmInit::GetTpmPassword(chromeos::Blob* password) {
 }
 
 void TpmInit::ClearStoredTpmPassword() {
-  TpmStatus tpm_status;
-  if (LoadTpmStatus(&tpm_status)) {
-    int32 dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                             TpmStatus::ATTESTATION_NEEDS_OWNER;
-    if (tpm_status.flags() & dependency_flags) {
-      // The password is still needed, do not clear.
-      return;
-    }
-    if (tpm_status.has_owner_password()) {
-      tpm_status.clear_owner_password();
-      StoreTpmStatus(tpm_status);
-    }
-  }
-  SecureBlob empty;
-  get_tpm()->SetOwnerPassword(empty);
+  tpm_init_task_->get_tpm()->ClearStoredOwnerPassword();
 }
 
 void TpmInit::ThreadMain() {
   base::TimeTicks start = base::TimeTicks::Now();
-  bool initialize_result = InitializeTpm(
+  bool initialize_result = tpm_init_task_->get_tpm()->InitializeTpm(
       &initialize_took_ownership_);
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   initialization_time_ = delta.InMilliseconds();
@@ -186,457 +147,6 @@ void TpmInit::ThreadMain() {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
   }
-}
-
-void TpmInit::MigrateStatusFiles() {
-  if (!platform_->FileExists(kTpmOwnedFile) &&
-      platform_->FileExists(kTpmOwnedFileOld)) {
-    platform_->Move(kTpmOwnedFileOld, kTpmOwnedFile);
-  }
-  if (!platform_->FileExists(kTpmStatusFile) &&
-      platform_->FileExists(kTpmStatusFileOld)) {
-    platform_->Move(kTpmStatusFileOld, kTpmStatusFile);
-  }
-}
-
-bool TpmInit::SetupTpm(bool load_key) {
-  if (get_tpm()->IsInitialized()) {
-    return false;
-  }
-  get_tpm()->SetIsInitialized(true);
-
-  MigrateStatusFiles();
-
-  // Checking disabled and owned either via sysfs or via TSS calls will block if
-  // ownership is being taken by another thread or process.  So for this to work
-  // well, SetupTpm() needs to be called before InitializeTpm() is called.  At
-  // that point, the public API for Tpm only checks these booleans, so other
-  // threads can check without being blocked.  InitializeTpm() will reset the
-  // TPM's is_owned_ bit on success.
-  bool is_enabled = false;
-  bool is_owned = false;
-  bool successful_check = false;
-  if (platform_->FileExists(kTpmCheckEnabledFile)) {
-    is_enabled = IsEnabledCheckViaSysfs();
-    is_owned = IsOwnedCheckViaSysfs();
-    successful_check = true;
-  } else {
-    if (get_tpm()->PerformEnabledOwnedCheck(&is_enabled, &is_owned)) {
-      successful_check = true;
-    }
-  }
-
-  get_tpm()->SetIsOwned(is_owned);
-  get_tpm()->SetIsEnabled(is_enabled);
-
-  if (successful_check && !is_owned) {
-    platform_->DeleteFile(kOpenCryptokiPath, true);
-    platform_->DeleteFile(kTpmOwnedFile, false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-  }
-  if (successful_check && is_owned) {
-    if (!platform_->FileExists(kTpmOwnedFile)) {
-      chromeos::Blob empty_blob(0);
-      platform_->WriteFile(kTpmOwnedFile, empty_blob);
-    }
-  }
-
-  TpmStatus tpm_status;
-  if (LoadTpmStatus(&tpm_status)) {
-    if (tpm_status.has_owner_password()) {
-      SecureBlob local_owner_password;
-      if (LoadOwnerPassword(tpm_status, &local_owner_password)) {
-        get_tpm()->SetOwnerPassword(local_owner_password);
-      }
-    }
-  }
-
-  if (load_key) {
-    // load cryptohome key
-    TSS_HCONTEXT context_handle = get_tpm()->ConnectContext();
-    if (context_handle) {
-      TSS_HKEY key_handle;
-      TSS_RESULT result;
-      if (LoadOrCreateCryptohomeKey(
-          context_handle, &key_handle, &result)) {
-        cryptohome_context_.reset(context_handle);
-        cryptohome_key_.reset(context_handle, key_handle);
-      } else {
-        get_tpm()->CloseContext(context_handle);
-      }
-    }
-  }
-
-  return true;
-}
-
-bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
-  TpmStatus tpm_status;
-
-  if (!LoadTpmStatus(&tpm_status)) {
-    tpm_status.Clear();
-    tpm_status.set_flags(TpmStatus::NONE);
-  }
-
-  if (OUT_took_ownership) {
-    *OUT_took_ownership = false;
-  }
-
-  if (!IsTpmEnabled()) {
-    return false;
-  }
-
-  trousers::ScopedTssContext context_handle;
-  if (!(*(context_handle.ptr()) = get_tpm()->ConnectContext())) {
-    LOG(ERROR) << "Failed to connect to TPM";
-    return false;
-  }
-
-  SecureBlob default_owner_password(sizeof(kTpmWellKnownPassword));
-  memcpy(default_owner_password.data(), kTpmWellKnownPassword,
-         sizeof(kTpmWellKnownPassword));
-
-  bool took_ownership = false;
-  if (!IsTpmOwned()) {
-    SetTpmBeingOwned(true);
-    platform_->DeleteFile(kOpenCryptokiPath, true);
-    platform_->DeleteFile(kTpmOwnedFile, false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-
-    if (!get_tpm()->IsEndorsementKeyAvailable(context_handle)) {
-      if (!get_tpm()->CreateEndorsementKey(context_handle)) {
-        LOG(ERROR) << "Failed to create endorsement key";
-        SetTpmBeingOwned(false);
-        return false;
-      }
-    }
-
-    if (!get_tpm()->IsEndorsementKeyAvailable(context_handle)) {
-      LOG(ERROR) << "Endorsement key is not available";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    if (!get_tpm()->TakeOwnership(context_handle, kMaxTimeoutRetries,
-                                  default_owner_password)) {
-      LOG(ERROR) << "Take Ownership failed";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    SetTpmOwned(true);
-    took_ownership = true;
-
-    tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_WELL_KNOWN_OWNER |
-                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::ATTESTATION_NEEDS_OWNER);
-    tpm_status.clear_owner_password();
-    StoreTpmStatus(tpm_status);
-  }
-
-  if (OUT_took_ownership) {
-    *OUT_took_ownership = took_ownership;
-  }
-
-  // If we can open the TPM with the default password, then we still need to
-  // zero the SRK password and unrestrict it, then change the owner password.
-  TSS_HTPM tpm_handle;
-  if (!platform_->FileExists(kTpmOwnedFile) &&
-      get_tpm()->GetTpmWithAuth(context_handle,
-                                default_owner_password,
-                                &tpm_handle) &&
-      get_tpm()->TestTpmAuth(tpm_handle)) {
-    if (!get_tpm()->ZeroSrkPassword(context_handle, default_owner_password)) {
-      LOG(ERROR) << "Couldn't zero SRK password";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    if (!get_tpm()->UnrestrictSrk(context_handle, default_owner_password)) {
-      LOG(ERROR) << "Couldn't unrestrict the SRK";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    SecureBlob owner_password;
-    CreateOwnerPassword(&owner_password);
-
-    tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_RANDOM_OWNER |
-                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::ATTESTATION_NEEDS_OWNER);
-    if (!StoreOwnerPassword(owner_password, &tpm_status)) {
-      tpm_status.clear_owner_password();
-    }
-    StoreTpmStatus(tpm_status);
-
-    if ((get_tpm()->ChangeOwnerPassword(context_handle,
-                                        default_owner_password,
-                                        owner_password))) {
-      get_tpm()->SetOwnerPassword(owner_password);
-    }
-    chromeos::Blob empty_blob(0);
-    platform_->WriteFile(kTpmOwnedFile, empty_blob);
-  } else {
-    // If we fall through here, then the TPM owned file doesn't exist, but we
-    // couldn't auth with the well-known password.  In this case, we must assume
-    // that the TPM has already been owned and set to a random password, so
-    // touch the TPM owned file.
-    if (!platform_->FileExists(kTpmOwnedFile)) {
-      chromeos::Blob empty_blob(0);
-      platform_->WriteFile(kTpmOwnedFile, empty_blob);
-    }
-  }
-
-  SetTpmBeingOwned(false);
-  return true;
-}
-
-bool TpmInit::LoadTpmStatus(TpmStatus* serialized) {
-  if (!platform_->FileExists(kTpmStatusFile)) {
-    return false;
-  }
-  SecureBlob file_data;
-  if (!platform_->ReadFile(kTpmStatusFile, &file_data)) {
-    return false;
-  }
-  if (!serialized->ParseFromArray(
-           static_cast<const unsigned char*>(file_data.data()),
-           file_data.size())) {
-    return false;
-  }
-  return true;
-}
-
-bool TpmInit::StoreTpmStatus(const TpmStatus& serialized) {
-  int old_mask = platform_->SetMask(kDefaultUmask);
-  if (platform_->FileExists(kTpmStatusFile)) {
-    do {
-      int64 file_size;
-      if (!platform_->GetFileSize(kTpmStatusFile, &file_size)) {
-        break;
-      }
-      SecureBlob random;
-      if (!get_tpm()->GetRandomData(file_size, &random)) {
-        break;
-      }
-      FILE* file = platform_->OpenFile(kTpmStatusFile, "wb+");
-      if (!file) {
-        break;
-      }
-      if (!platform_->WriteOpenFile(file, random)) {
-        platform_->CloseFile(file);
-        break;
-      }
-      platform_->CloseFile(file);
-    } while (false);
-    platform_->DeleteFile(kTpmStatusFile, false);
-  }
-  SecureBlob final_blob(serialized.ByteSize());
-  serialized.SerializeWithCachedSizesToArray(
-      static_cast<google::protobuf::uint8*>(final_blob.data()));
-  bool ok = platform_->WriteFile(kTpmStatusFile, final_blob);
-  platform_->SetMask(old_mask);
-  return ok;
-}
-
-void TpmInit::CreateOwnerPassword(SecureBlob* password) {
-  // Generate a random owner password.  The default is a 12-character,
-  // hex-encoded password created from 6 bytes of random data.
-  SecureBlob random(kOwnerPasswordLength / 2);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(random.data()),
-                             random.size());
-  SecureBlob tpm_password(kOwnerPasswordLength);
-  CryptoLib::AsciiEncodeToBuffer(random,
-                                 static_cast<char*>(tpm_password.data()),
-                                 tpm_password.size());
-  password->swap(tpm_password);
-}
-
-bool TpmInit::LoadOwnerPassword(const TpmStatus& tpm_status,
-                                chromeos::Blob* owner_password) {
-  if (!(tpm_status.flags() & TpmStatus::OWNED_BY_THIS_INSTALL)) {
-    return false;
-  }
-  if ((tpm_status.flags() & TpmStatus::USES_WELL_KNOWN_OWNER)) {
-    SecureBlob default_owner_password(sizeof(kTpmWellKnownPassword));
-    memcpy(default_owner_password.data(), kTpmWellKnownPassword,
-           sizeof(kTpmWellKnownPassword));
-    owner_password->swap(default_owner_password);
-    return true;
-  }
-  if (!(tpm_status.flags() & TpmStatus::USES_RANDOM_OWNER) ||
-      !tpm_status.has_owner_password()) {
-    return false;
-  }
-
-  SecureBlob local_owner_password(tpm_status.owner_password().length());
-  tpm_status.owner_password().copy(
-      static_cast<char*>(local_owner_password.data()),
-      tpm_status.owner_password().length(), 0);
-  if (!get_tpm()->Unseal(local_owner_password, owner_password)) {
-    LOG(ERROR) << "Failed to unseal the owner password.";
-    return false;
-  }
-  return true;
-}
-
-bool TpmInit::StoreOwnerPassword(const chromeos::Blob& owner_password,
-                                 TpmStatus* tpm_status) {
-  // Use PCR0 when sealing the data so that the owner password is only
-  // available in the current boot mode.  This helps protect the password from
-  // offline attacks until it has been presented and cleared.
-  SecureBlob sealed_password;
-  if (!get_tpm()->SealToPCR0(owner_password, &sealed_password)) {
-    LOG(ERROR) << "StoreOwnerPassword: Failed to seal owner password.";
-    return false;
-  }
-  tpm_status->set_owner_password(sealed_password.data(),
-                                 sealed_password.size());
-  return true;
-}
-
-void TpmInit::RemoveTpmOwnerDependency(TpmOwnerDependency dependency) {
-  int32 flag_to_clear = TpmStatus::NONE;
-  switch (dependency) {
-    case kInstallAttributes:
-      flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
-      break;
-    case kAttestation:
-      flag_to_clear = TpmStatus::ATTESTATION_NEEDS_OWNER;
-      break;
-    default:
-      CHECK(false);
-  }
-  TpmStatus tpm_status;
-  if (!LoadTpmStatus(&tpm_status))
-    return;
-  tpm_status.set_flags(tpm_status.flags() & ~flag_to_clear);
-  StoreTpmStatus(tpm_status);
-}
-
-bool TpmInit::CheckSysfsForOne(const char* file_name) const {
-  std::string contents;
-  if (!platform_->ReadFileToString(file_name, &contents)) {
-    return false;
-  }
-  if (contents.size() < 1) {
-    return false;
-  }
-  return (contents[0] == '1');
-}
-
-bool TpmInit::IsEnabledCheckViaSysfs() {
-  return CheckSysfsForOne(kTpmCheckEnabledFile);
-}
-
-bool TpmInit::IsOwnedCheckViaSysfs() {
-  return CheckSysfsForOne(kTpmCheckOwnedFile);
-}
-
-bool TpmInit::CreateCryptohomeKey(TSS_HCONTEXT context_handle) {
-  chromeos::SecureBlob wrapped_key;
-  if (!get_tpm()->CreateWrappedRsaKey(context_handle, &wrapped_key)) {
-    LOG(ERROR) << "Couldn't create cryptohome key";
-    return false;
-  }
-
-  if (!SaveCryptohomeKey(wrapped_key)) {
-    LOG(ERROR) << "Couldn't save cryptohome key";
-    return false;
-  }
-
-  LOG(INFO) << "Created new cryptohome key.";
-  return true;
-}
-
-bool TpmInit::SaveCryptohomeKey(const chromeos::SecureBlob& raw_key) {
-  int previous_mask = platform_->SetMask(cryptohome::kDefaultUmask);
-  bool ok = platform_->WriteFile(kDefaultCryptohomeKeyFile, raw_key);
-  platform_->SetMask(previous_mask);
-  if (!ok)
-    LOG(ERROR) << "Error writing key file of desired size: " << raw_key.size();
-  return ok;
-}
-
-bool TpmInit::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
-                                TSS_HKEY* key_handle,
-                                TSS_RESULT* result) {
-  // First, try loading the key from the key file
-  {
-    SecureBlob raw_key;
-    if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
-      if (get_tpm()->LoadWrappedKey(context_handle,
-                                    raw_key,
-                                    key_handle,
-                                    result)) {
-        return true;
-      }
-      if (get_tpm()->IsTransient(*result)) {
-        return false;
-      }
-    }
-  }
-
-  // Then try loading the key by the UUID (this is a legacy upgrade path)
-  SecureBlob raw_key;
-  trousers::ScopedTssKey local_key_handle(context_handle);
-  if (!get_tpm()->LoadKeyByUuid(context_handle,
-                               kCryptohomeWellKnownUuid,
-                               local_key_handle.ptr(),
-                               &raw_key,
-                               result)) {
-    return false;
-  }
-
-  // Save the cryptohome key to the well-known location
-  if (!SaveCryptohomeKey(raw_key)) {
-    LOG(ERROR) << "Couldn't save cryptohome key";
-    return false;
-  }
-
-  *key_handle = local_key_handle.release();
-
-  return true;
-}
-
-bool TpmInit::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                        TSS_HKEY* key_handle,
-                                        TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
-  // Try to load the cryptohome key.
-  if (LoadCryptohomeKey(context_handle, key_handle, result)) {
-    return true;
-  }
-
-  // If the error is expected to be transient, return now.
-  if (get_tpm()->IsTransient(*result)) {
-    LOG(INFO) << "Transient failure loading cryptohome key";
-    return false;
-  }
-
-  // Otherwise, the key couldn't be loaded, and it wasn't due to a transient
-  // error, so we must create the key.
-  if (CreateCryptohomeKey(context_handle)) {
-    if (LoadCryptohomeKey(context_handle, key_handle, result)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool TpmInit::HasCryptohomeKey() {
-  return cryptohome_context_.value() && cryptohome_key_.value();
-}
-
-TSS_HCONTEXT TpmInit::GetCryptohomeContext() {
-  return cryptohome_context_.value();
-}
-
-TSS_HKEY TpmInit::GetCryptohomeKey() {
-  return cryptohome_key_.value();
 }
 
 }  // namespace cryptohome

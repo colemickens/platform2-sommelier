@@ -261,7 +261,7 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   FilePath fd_dirpath = pid_path.Append("fd");
 
   base::FileEnumerator fd_dir_enum(fd_dirpath, false,
-                                   base::FileEnumerator::FILES);
+                                        base::FileEnumerator::FILES);
 
   std::set<std::string> open_files;
   // List open file descriptors
@@ -316,7 +316,7 @@ void Platform::LookForOpenFiles(const std::string& path_in,
     FilePath fd_dirpath = pid_path.Append("fd");
 
     base::FileEnumerator fd_dir_enum(fd_dirpath, false,
-                                     base::FileEnumerator::FILES);
+                                          base::FileEnumerator::FILES);
 
     // List open file descriptors
     for (FilePath fd_path = fd_dir_enum.Next();

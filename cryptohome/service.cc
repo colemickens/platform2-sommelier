@@ -441,7 +441,6 @@ bool Service::Initialize() {
   metrics_lib_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
 
-  crypto_->set_tpm_init(tpm_init_);
   crypto_->set_use_tpm(use_tpm_);
   if (!crypto_->Init())
     return false;
@@ -461,7 +460,7 @@ bool Service::Initialize() {
   // Pass in all the shared dependencies here rather than
   // needing to always get the Attestation object to set them
   // during testing.
-  attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_);
+  attestation_->Initialize(tpm_, platform_, crypto_, install_attrs_);
 
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
@@ -609,7 +608,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
 
 bool Service::SeedUrandom() {
   SecureBlob random;
-  if (!tpm_->GetRandomData(kDefaultRandomSeedLength, &random)) {
+  if (!tpm_init_->GetRandomData(kDefaultRandomSeedLength, &random)) {
     LOG(ERROR) << "Could not get random data from the TPM";
     return false;
   }
@@ -2003,7 +2002,7 @@ gboolean Service::TpmCanAttemptOwnership(GError** error) {
   if (!tpm_init_->HasInitializeBeenCalled()) {
     timer_collection_->UpdateTimer(TimerCollection::kTpmTakeOwnershipTimer,
                                    true);
-    tpm_init_->AsyncInitializeTpm();
+    tpm_init_->StartInitializeTpm();
   }
   return TRUE;
 }
@@ -2532,26 +2531,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++)
     mounts->Append(it->second->GetStatus());
   Value* attrs = install_attrs_->GetStatus();
-
-  Tpm::TpmStatusInfo tpm_status_info;
-  tpm_->GetStatus(tpm_init_->GetCryptohomeContext(),
-                  tpm_init_->GetCryptohomeKey(),
-                  &tpm_status_info);
-  base::DictionaryValue* tpm = new base::DictionaryValue();
-  tpm->SetBoolean("can_connect", tpm_status_info.CanConnect);
-  tpm->SetBoolean("can_load_srk", tpm_status_info.CanLoadSrk);
-  tpm->SetBoolean("can_load_srk_pubkey", tpm_status_info.CanLoadSrkPublicKey);
-  tpm->SetBoolean("has_cryptohome_key", tpm_status_info.HasCryptohomeKey);
-  tpm->SetBoolean("can_encrypt", tpm_status_info.CanEncrypt);
-  tpm->SetBoolean("can_decrypt", tpm_status_info.CanDecrypt);
-  tpm->SetBoolean("has_context", tpm_status_info.ThisInstanceHasContext);
-  tpm->SetBoolean("has_key_handle", tpm_status_info.ThisInstanceHasKeyHandle);
-  tpm->SetInteger("last_error", tpm_status_info.LastTpmError);
-
-  tpm->SetBoolean("enabled", tpm_->IsEnabled());
-  tpm->SetBoolean("owned", tpm_->IsOwned());
-  tpm->SetBoolean("being_owned", tpm_->IsBeingOwned());
-
+  Value* tpm = tpm_->GetStatusValue(tpm_init_);
   dv.Set("mounts", mounts);
   dv.Set("installattrs", attrs);
   dv.Set("tpm", tpm);
