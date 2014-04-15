@@ -1416,6 +1416,7 @@ void Cellular::set_prl_version(uint16 prl_version) {
 }
 
 void Cellular::UpdateHomeProvider(const MobileOperatorInfo *operator_info) {
+  SLOG(Cellular, 3) << __func__;
   // TODO(pprabhu) Change |set_home_provider| to take Stringmap argument and
   // update this.
   Operator oper;
@@ -1467,6 +1468,7 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo *operator_info) {
 void Cellular::UpdateServingOperator(
     const MobileOperatorInfo *operator_info,
     const MobileOperatorInfo *home_provider_info) {
+  SLOG(Cellular, 3) << __func__;
   if (!service()) {
     return;
   }
@@ -1488,14 +1490,14 @@ void Cellular::UpdateServingOperator(
   // Set friendly name of service.
   string service_name;
   if (!operator_info->operator_name().empty()) {
-    service_name = operator_info->operator_name();
     // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
     // rules (TS 31.102 and annex A of 122.101).
     if (service()->roaming_state() == kRoamingStateRoaming &&
         home_provider_info &&
         !home_provider_info->operator_name().empty()) {
-      service_name += " | " + home_provider_info->operator_name();
+      service_name += home_provider_info->operator_name() + " | ";
     }
+    service_name += operator_info->operator_name();
   } else if(!operator_info->mccmnc().empty()){
     // We could not get a name for the operator, just use the code.
     service_name = "cellular_" + operator_info->mccmnc();
