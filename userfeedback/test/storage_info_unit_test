@@ -8,7 +8,7 @@
 
 . scripts/storage_info --test
 
-TEST_COUNT=7
+TEST_COUNT=8
 
 # stout - old fw  crbug.com/328587#c11
 MODEL_1="SanDisk_SSD_U100_16GB"
@@ -44,6 +44,11 @@ RESULT_6="MATCH"
 MODEL_7="LITEONIT_LSS-32L6G-HP"
 VERSION_7="DS51704"
 RESULT_7="NOT_MATCH"
+
+# butterfly
+MODEL_8="SanDisk_SDSA5GK-016G-1006"
+VERSION_8="CS.54.06"
+RESULT_8="MATCH"
 
 get_is_ssd_blacklist_result() {
   if is_ssd_blacklist $1 $2; then
