@@ -26,8 +26,6 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   void Initialize();
   void Finalize();
 
-  void ResumeOnSuspendTimedOut();
-
   // Synchronously registers a suspend delay with the power manager, assigning
   // the delay's ID to |suspend_delay_id_| and setting
   // |suspend_delay_registered_| to true on success.  |timeout| is the maximum
@@ -40,16 +38,27 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   // Unregisters |suspend_delay_id_|.
   void UnregisterSuspendDelay();
 
-  // Invoked when the power manager is about to suspend the system.  Prepares
-  // the manager for suspend and calls SendHandleSuspendReadiness().
+  // Invoked when the power manager is about to attempt to suspend the system.
+  // Prepares the manager for suspend and calls SendHandleSuspendReadiness().
   void OnSuspendImminent(const std::vector<uint8> &serialized_proto);
 
-  void OnPowerStateChanged(const std::string &new_power_state);
+  // Invoked when the power manager has completed a suspend attempt (possibly
+  // without actually suspending and resuming if the attempt was canceled by the
+  // user).
+  void OnSuspendDone(const std::vector<uint8> &serialized_proto);
 
  private:
   // Calls the power manager's HandleSuspendReadiness method to report readiness
   // for suspend attempt |suspend_id|.
   void SendHandleSuspendReadiness(int suspend_id);
+
+  // Invoked by |suspend_timeout_timer_| if the power manager doesn't emit a
+  // SuspendDone signal quickly enough after announcing a suspend attempt.
+  void ResumeOnSuspendTimedOut();
+
+  // Called by OnSuspendDone() and ResumeOnSuspendTimedOut() to handle the
+  // completion of a suspend attempt.
+  void HandleResume();
 
   // Is a suspend delay currently registered?
   bool suspend_delay_registered_;

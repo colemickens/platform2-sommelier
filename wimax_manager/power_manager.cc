@@ -21,8 +21,6 @@ namespace {
 
 const uint32 kDefaultSuspendDelayInMilliSeconds = 5000;  // 5s
 const uint32 kSuspendTimeoutInSeconds = 15;  // 15s
-const char kPowerStateMem[] = "mem";
-const char kPowerStateOn[] = "on";
 const char kSuspendDelayDescription[] = "wimax-manager";
 
 // Serializes |protobuf| to |out| and returns true on success.
@@ -77,12 +75,6 @@ void PowerManager::Initialize() {
 void PowerManager::Finalize() {
   suspend_timeout_timer_.Stop();
   UnregisterSuspendDelay();
-}
-
-void PowerManager::ResumeOnSuspendTimedOut() {
-  LOG(WARNING) << "Timed out waiting for power state change signal from "
-               << "power manager. Assume suspend is canceled.";
-  OnPowerStateChanged(kPowerStateOn);
 }
 
 void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
@@ -154,7 +146,7 @@ void PowerManager::OnSuspendImminent(const vector<uint8> &serialized_proto) {
     suspended_ = true;
   }
   SendHandleSuspendReadiness(proto.suspend_id());
-  // If the power manager does not emit a PowerStateChanged "mem" signal within
+  // If the power manager does not emit a SuspendDone signal within
   // |kSuspendTimeoutInSeconds|, assume suspend is canceled. Schedule a callback
   // to resume.
   suspend_timeout_timer_.Start(
@@ -164,22 +156,15 @@ void PowerManager::OnSuspendImminent(const vector<uint8> &serialized_proto) {
       &PowerManager::ResumeOnSuspendTimedOut);
 }
 
-void PowerManager::OnPowerStateChanged(const string &new_power_state) {
-  LOG(INFO) << "Power state changed to '" << new_power_state << "'.";
-
-  // Cancel any pending suspend timeout regardless of the new power state
-  // to avoid resuming unexpectedly.
-  suspend_timeout_timer_.Stop();
-
-  if (new_power_state == kPowerStateMem) {
-    suspended_ = true;
+void PowerManager::OnSuspendDone(const vector<uint8> &serialized_proto) {
+  power_manager::SuspendDone proto;
+  if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
+    LOG(ERROR) << "Failed to parse SuspendDone signal.";
     return;
   }
 
-  if (suspended_ && new_power_state == kPowerStateOn) {
-    wimax_manager_->Resume();
-    suspended_ = false;
-  }
+  LOG(INFO) << "Received SuspendDone (" << proto.suspend_id() << ").";
+  HandleResume();
 }
 
 void PowerManager::SendHandleSuspendReadiness(int suspend_id) {
@@ -195,6 +180,20 @@ void PowerManager::SendHandleSuspendReadiness(int suspend_id) {
   } catch (const DBus::Error &error) {
     LOG(ERROR) << "Failed to call HandleSuspendReadiness. DBus exception: "
                << error.name() << ": " << error.what();
+  }
+}
+
+void PowerManager::ResumeOnSuspendTimedOut() {
+  LOG(WARNING) << "Timed out waiting for SuspendDone signal from "
+               << "power manager. Assuming suspend was canceled.";
+  HandleResume();
+}
+
+void PowerManager::HandleResume() {
+  suspend_timeout_timer_.Stop();
+  if (suspended_) {
+    wimax_manager_->Resume();
+    suspended_ = false;
   }
 }
 

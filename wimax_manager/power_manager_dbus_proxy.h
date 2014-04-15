@@ -24,7 +24,7 @@ class PowerManagerDBusProxy : public org::chromium::PowerManager_proxy,
   virtual ~PowerManagerDBusProxy();
 
   virtual void SuspendImminent(const std::vector<uint8> &serialized_proto);
-  virtual void PowerStateChanged(const std::string &new_power_state);
+  virtual void SuspendDone(const std::vector<uint8> &serialized_proto);
 
  private:
   PowerManager *power_manager_;

@@ -33,8 +33,9 @@ void PowerManagerDBusProxy::SuspendImminent(
   power_manager_->OnSuspendImminent(serialized_proto);
 }
 
-void PowerManagerDBusProxy::PowerStateChanged(const string &new_power_state) {
-  power_manager_->OnPowerStateChanged(new_power_state);
+void PowerManagerDBusProxy::SuspendDone(
+    const vector<uint8> &serialized_proto) {
+  power_manager_->OnSuspendDone(serialized_proto);
 }
 
 }  // namespace wimax_manager
