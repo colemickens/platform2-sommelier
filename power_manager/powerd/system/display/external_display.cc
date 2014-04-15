@@ -190,7 +190,7 @@ bool ExternalDisplay::ReadBrightness() {
   }
 
   // Validate the message.
-  DCHECK_EQ(message.size(), 8);
+  DCHECK_EQ(message.size(), 8u);
   if (message[0] != kDdcGetReplyCommand) {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with command " << ByteToHex(message[0]) << " (expected "

@@ -43,7 +43,7 @@ class TestDelegate : public ExternalDisplay::Delegate {
   // the vector. Crashes if multiple messages are present.
   std::string PopSentMessage() {
     std::string message;
-    CHECK_LE(sent_messages_.size(), 1);
+    CHECK_LE(sent_messages_.size(), 1u);
     if (!sent_messages_.empty())
       message = sent_messages_[0];
     sent_messages_.clear();
@@ -56,14 +56,14 @@ class TestDelegate : public ExternalDisplay::Delegate {
   virtual bool PerformI2COperation(struct i2c_rdwr_ioctl_data* data) OVERRIDE {
     // Check that the passed-in data is remotely sane.
     CHECK(data);
-    CHECK_EQ(data->nmsgs, 1);
+    CHECK_EQ(data->nmsgs, 1u);
     struct i2c_msg* const i2c_message = data->msgs;
     CHECK(i2c_message);
     CHECK(i2c_message->buf);
     uint8* const message = i2c_message->buf;
     const size_t message_length = i2c_message->len;
     CHECK(message);
-    CHECK_GT(message_length, 0);
+    CHECK_GT(message_length, 0u);
 
     if (i2c_message->addr != ExternalDisplay::kDdcI2CAddress) {
       LOG(ERROR) << "Ignoring operation with I2C address " << i2c_message->addr;
