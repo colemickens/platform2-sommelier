@@ -84,26 +84,31 @@ void ExportedPropertySet::HandleGetAll(
         GetBadArgsError(method_call, "Too many arguments to GetAll."));
     return;
   }
-  auto property_map_itr = properties_.find(interface_name);
-  if (property_map_itr == properties_.end()) {
-    response_sender.Run(
-        GetBadArgsError(method_call, "No such interface on object."));
-    return;
-  }
   scoped_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter resp_writer(response.get());
-  dbus::MessageWriter dict_writer(nullptr);
-  resp_writer.OpenArray("{sv}", &dict_writer);
-  for (const auto& kv : property_map_itr->second) {
-    dbus::MessageWriter entry_writer(nullptr);
-    dict_writer.OpenDictEntry(&entry_writer);
-    entry_writer.AppendString(kv.first);
-    kv.second->AppendValueToWriter(&entry_writer);
-    dict_writer.CloseContainer(&entry_writer);
-  }
-  resp_writer.CloseContainer(&dict_writer);
+  WritePropertiesDictToMessage(interface_name, &resp_writer);
   response_sender.Run(response.Pass());
+}
+
+void ExportedPropertySet::WritePropertiesDictToMessage(
+    const std::string& interface_name,
+    dbus::MessageWriter* writer) {
+  dbus::MessageWriter dict_writer(nullptr);
+  writer->OpenArray("{sv}", &dict_writer);
+  auto property_map_itr = properties_.find(interface_name);
+  if (property_map_itr != properties_.end()) {
+    for (const auto& kv : property_map_itr->second) {
+      dbus::MessageWriter entry_writer(nullptr);
+      dict_writer.OpenDictEntry(&entry_writer);
+      entry_writer.AppendString(kv.first);
+      kv.second->AppendValueToWriter(&entry_writer);
+      dict_writer.CloseContainer(&entry_writer);
+    }
+  } else {
+    LOG(WARNING) << "No properties found for interface interface_name";
+  }
+  writer->CloseContainer(&dict_writer);
 }
 
 void ExportedPropertySet::HandleGet(

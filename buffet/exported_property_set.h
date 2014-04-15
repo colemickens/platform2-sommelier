@@ -11,7 +11,6 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
-#include <gtest/gtest_prod.h>
 
 namespace buffet {
 
@@ -105,6 +104,8 @@ class ExportedPropertySet {
   // are exported to the DBus object.  |cb| will be called on the origin
   // thread.
   void Init(const OnInitFinish& cb);
+  base::Callback<void(dbus::MessageWriter* writer)> GetPropertyWriter(
+      const std::string& interface);
 
  protected:
   void RegisterProperty(const std::string& interface_name,
@@ -112,6 +113,11 @@ class ExportedPropertySet {
                         ExportedPropertyBase* exported_property);
 
  private:
+  // Used to write the dictionary of string->variant to a message.
+  // This dictionary represents the property name/value pairs for the
+  // given interface.
+  void WritePropertiesDictToMessage(const std::string& interface_name,
+                                    dbus::MessageWriter* writer);
   void HandleGetAll(dbus::MethodCall* method_call,
                     dbus::ExportedObject::ResponseSender response_sender);
   void HandleGet(dbus::MethodCall* method_call,

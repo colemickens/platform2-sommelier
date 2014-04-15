@@ -201,11 +201,22 @@ TEST_F(ExportedPropertySetTest, GetAllNoArgs) {
 }
 
 TEST_F(ExportedPropertySetTest, GetAllInvalidInterface) {
-  dbus::MethodCall method_call(dbus::kPropertiesInterface,
-                               dbus::kPropertiesGetAll);
+  dbus::MethodCall method_call(
+      dbus::kPropertiesInterface, dbus::kPropertiesGetAll);
+  method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("org.chromium.BadInterface");
-  AssertGetAllReturnsError(&method_call);
+  auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
+                                    base::Unretained(this));
+  p_->CallHandleGetAll(&method_call, response_sender);
+  dbus::MessageReader response_reader(last_response_.get());
+  dbus::MessageReader dict_reader(nullptr);
+  ASSERT_TRUE(response_reader.PopArray(&dict_reader));
+  // The response should just be a an empty array, since there are no properties
+  // on this interface.  The spec doesn't say much about error conditions here,
+  // so I'm going to assume this is a valid implementation.
+  ASSERT_FALSE(dict_reader.HasMoreData());
+  ASSERT_FALSE(response_reader.HasMoreData());
 }
 
 TEST_F(ExportedPropertySetTest, GetAllExtraArgs) {
