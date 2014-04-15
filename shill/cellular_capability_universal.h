@@ -230,6 +230,10 @@ class CellularCapabilityUniversal : public CellularCapability {
               StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemALT3100);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              StopModemALT3100DeleteBearerFailure);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              StopModemALT3100NotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,

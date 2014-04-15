@@ -541,6 +541,92 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemALT3100) {
   set_power_state_callback.Run(Error(Error::kSuccess));
 }
 
+TEST_F(CellularCapabilityUniversalMainTest,
+       StopModemALT3100DeleteBearerFailure) {
+  // Save pointers to proxies before they are lost by the call to InitProxies
+  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  capability_->InitProxies();
+
+  const char kBearerDBusPath[] = "/bearer/dbus/path";
+  capability_->set_active_bearer(
+      new CellularBearer(&proxy_factory_,
+                         kBearerDBusPath,
+                         cellular_->dbus_service()));  // Passes ownership.
+
+  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
+
+  Error error;
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+  capability_->StopModem(&error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ResultCallback delete_bearer_callback;
+  EXPECT_CALL(*modem_proxy,
+              DeleteBearer(::DBus::Path(kBearerDBusPath), _, _,
+                           CellularCapability::kTimeoutDefault))
+      .WillOnce(SaveArg<2>(&delete_bearer_callback));
+  dispatcher_.DispatchPendingEvents();
+
+  ResultCallback disable_callback;
+  EXPECT_CALL(*modem_proxy,
+              Enable(false, _, _, CellularCapability::kTimeoutEnable))
+      .WillOnce(SaveArg<2>(&disable_callback));
+  delete_bearer_callback.Run(Error(Error::kOperationFailed));
+
+  ResultCallback set_power_state_callback;
+  EXPECT_CALL(
+      *modem_proxy,
+      SetPowerState(
+          MM_MODEM_POWER_STATE_LOW, _, _,
+          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+      .WillOnce(SaveArg<2>(&set_power_state_callback));
+  disable_callback.Run(Error(Error::kSuccess));
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  set_power_state_callback.Run(Error(Error::kSuccess));
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, StopModemALT3100NotConnected) {
+  // Save pointers to proxies before they are lost by the call to InitProxies
+  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  capability_->InitProxies();
+  capability_->set_active_bearer(NULL);
+  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
+
+  Error error;
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+  capability_->StopModem(&error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ResultCallback disable_callback;
+  EXPECT_CALL(*modem_proxy,
+              Enable(false, _, _, CellularCapability::kTimeoutEnable))
+      .WillOnce(SaveArg<2>(&disable_callback));
+  dispatcher_.DispatchPendingEvents();
+
+  ResultCallback set_power_state_callback;
+  EXPECT_CALL(
+      *modem_proxy,
+      SetPowerState(
+          MM_MODEM_POWER_STATE_LOW, _, _,
+          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+      .WillOnce(SaveArg<2>(&set_power_state_callback));
+  disable_callback.Run(Error(Error::kSuccess));
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  set_power_state_callback.Run(Error(Error::kSuccess));
+  Mock::VerifyAndClearExpectations(this);
+
+  // TestCallback should get called with success even if the power state
+  // callback gets called with an error
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  set_power_state_callback.Run(Error(Error::kOperationFailed));
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, TerminationAction) {
   ExpectModemAndModem3gppProperties();
 

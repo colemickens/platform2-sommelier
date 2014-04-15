@@ -314,6 +314,12 @@ void CellularCapabilityUniversal::StopModem(Error *error,
 void CellularCapabilityUniversal::Stop_DeleteActiveBearer(
     const ResultCallback &callback) {
   SLOG(Cellular, 3) << __func__;
+
+  if (!active_bearer_) {
+    Stop_Disable(callback);
+    return;
+  }
+
   Error error;
   modem_proxy_->DeleteBearer(
       active_bearer_->dbus_path(), &error,
@@ -327,14 +333,9 @@ void CellularCapabilityUniversal::Stop_DeleteActiveBearer(
 void CellularCapabilityUniversal::Stop_DeleteActiveBearerCompleted(
     const ResultCallback &callback, const Error &error) {
   SLOG(Cellular, 3) << __func__;
-
-  if (error.IsSuccess()) {
-    // The active bearer has been deleted, but we still need to disable it.
-    Stop_Disable(callback);
-  } else {
-    // An error occurred; terminate the stop sequence.
-    callback.Run(error);
-  }
+  // Disregard the error from the bearer deletion since the disable will clean
+  // up any remaining bearers.
+  Stop_Disable(callback);
 }
 
 void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {
