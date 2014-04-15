@@ -227,6 +227,7 @@ class Request {
 
   // Adds additional HTTP request header
   void AddHeader(char const* header, char const* value);
+  void AddHeaders(HeaderList const& headers);
 
   // Removes HTTP request header
   void RemoveHeader(char const* header);

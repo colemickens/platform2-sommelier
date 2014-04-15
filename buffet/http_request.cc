@@ -160,6 +160,11 @@ void Request::AddHeader(char const* header, char const* value) {
     transport_->AddHeader(header, value);
 }
 
+void Request::AddHeaders(HeaderList const& headers) {
+  for (auto&& pair : headers)
+    AddHeader(pair.first.c_str(), pair.second.c_str());
+}
+
 bool Request::AddRequestBody(void const* data, size_t size) {
   return transport_ && transport_->AddRequestBody(data, size);
 }

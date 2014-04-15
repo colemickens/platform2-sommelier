@@ -11,6 +11,8 @@
 namespace chromeos {
 namespace data_encoding {
 
+typedef std::vector<std::pair<std::string, std::string>> WebParamList;
+
 // Encode/escape string to be used in the query portion of a URL.
 // If |encodeSpaceAsPlus| is set to true, spaces are encoded as '+' instead
 // of "%20"
@@ -26,20 +28,16 @@ std::string UrlDecode(char const* data);
 
 // Converts a list of key-value pairs into a string compatible with
 // 'application/x-www-form-urlencoded' content encoding.
-std::string WebParamsEncode(
-    std::vector<std::pair<std::string, std::string>> const& params,
-    bool encodeSpaceAsPlus);
+std::string WebParamsEncode(WebParamList const& params, bool encodeSpaceAsPlus);
 
-inline std::string WebParamsEncode(
-    std::vector<std::pair<std::string, std::string>> const& params) {
+inline std::string WebParamsEncode(WebParamList const& params) {
   return WebParamsEncode(params, true);
 }
 
 // Parses a string of '&'-delimited key-value pairs (separated by '=') and
 // encoded in a way compatible with 'application/x-www-form-urlencoded'
 // content encoding.
-std::vector<std::pair<std::string, std::string>> WebParamsDecode(
-    std::string const& data);
+WebParamList WebParamsDecode(std::string const& data);
 
 } // namespace data_encoding
 } // namespace chromeos

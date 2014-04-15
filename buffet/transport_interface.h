@@ -12,6 +12,8 @@
 namespace chromeos {
 namespace http {
 
+typedef std::vector<std::pair<std::string, std::string>> HeaderList;
+
 ///////////////////////////////////////////////////////////////////////////////
 // TransportInterface is an interface to abstract specific implementation
 // of HTTP communication. This interface (and its underlying implementation)

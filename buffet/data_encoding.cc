@@ -72,9 +72,8 @@ std::string UrlDecode(char const* data) {
   return result;
 }
 
-std::string WebParamsEncode(
-    std::vector<std::pair<std::string, std::string>> const& params,
-    bool encodeSpaceAsPlus) {
+std::string WebParamsEncode(WebParamList const& params,
+                            bool encodeSpaceAsPlus) {
   std::vector<std::string> pairs;
   pairs.reserve(params.size());
   for (auto const& p : params) {
@@ -86,9 +85,8 @@ std::string WebParamsEncode(
   return string_utils::Join('&', pairs);
 }
 
-std::vector<std::pair<std::string, std::string>> WebParamsDecode(
-    std::string const& data) {
-  std::vector<std::pair<std::string, std::string>> result;
+WebParamList WebParamsDecode(std::string const& data) {
+  WebParamList result;
   std::vector<std::string> params = string_utils::Split(data, '&');
   for (auto p : params) {
     auto pair = string_utils::SplitAtFirst(p, '=');

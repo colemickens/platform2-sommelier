@@ -89,9 +89,7 @@ class Transport : public TransportInterface {
   virtual std::string GetResponseHeader(char const* header_name) const override;
 
   // Implementation of Response::GetData.
-  virtual std::vector<unsigned char> const& GetResponseData() const override {
-    return response_data_;
-  }
+  virtual std::vector<unsigned char> const& GetResponseData() const override;
 
   // Implementation of Response::GetErrorMessage.
   virtual std::string GetErrorMessage() const override { return error_; }
@@ -100,7 +98,7 @@ class Transport : public TransportInterface {
   virtual void Close() override;
 
  private:
-  std::vector<std::pair<std::string, std::string>> GetHeaders() const;
+   HeaderList GetHeaders() const;
 
   // Write data callback. Used by CURL when receiving response data.
   static size_t write_callback(char* ptr, size_t size, size_t num, void* data);

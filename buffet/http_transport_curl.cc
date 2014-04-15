@@ -16,6 +16,42 @@
 using namespace chromeos;
 using namespace chromeos::http::curl;
 
+#define VERBOSE_CURL 0  // Set to 1 to log advanced debugging info for CURL
+
+#if VERBOSE_CURL
+static int curl_trace(CURL *handle, curl_infotype type,
+                      char *data, size_t size, void *userp) {
+  std::string msg(data, size);
+
+  switch (type) {
+  case CURLINFO_TEXT:
+    LOG(INFO) << "== Info: " << msg;
+    break;
+  case CURLINFO_HEADER_OUT:
+    LOG(INFO) << "=> Send headers:\n" << msg;
+    break;
+  case CURLINFO_DATA_OUT:
+    LOG(INFO) << "=> Send data:\n" << msg;
+    break;
+  case CURLINFO_SSL_DATA_OUT:
+    LOG(INFO) << "=> Send SSL data" << msg;
+    break;
+  case CURLINFO_HEADER_IN:
+    LOG(INFO) << "<= Recv header: " << msg;
+    break;
+  case CURLINFO_DATA_IN:
+    LOG(INFO) << "<= Recv data:\n" << msg;
+    break;
+  case CURLINFO_SSL_DATA_IN:
+    LOG(INFO) << "<= Recv SSL data" << msg;
+    break;
+  default:
+    break;
+  }
+  return 0;
+}
+#endif
+
 Transport::Transport(std::string const& url, char const* method) :
     request_url_(url),
     method_(method ? method : request_type::kGet) {
@@ -42,8 +78,8 @@ std::string Transport::GetAccept() const {
   return accept_;
 }
 
-std::vector<std::pair<std::string, std::string>> Transport::GetHeaders() const {
-  auto headers = MapToVector(headers_);
+chromeos::http::HeaderList Transport::GetHeaders() const {
+  chromeos::http::HeaderList headers = MapToVector(headers_);
   std::vector<std::string> ranges;
   if (method_ != request_type::kHead) {
     ranges.reserve(ranges_.size());
@@ -104,7 +140,13 @@ bool Transport::Perform() {
     return false;
   }
 
+  LOG(INFO) << "Sending a " << method_ << " request to " << request_url_;
   curl_easy_setopt(curl_handle_, CURLOPT_URL, request_url_.c_str());
+
+#if VERBOSE_CURL
+  curl_easy_setopt(curl_handle_, CURLOPT_DEBUGFUNCTION, curl_trace);
+  curl_easy_setopt(curl_handle_, CURLOPT_VERBOSE, 1L);
+#endif
 
   if (!user_agent_.empty()) {
     curl_easy_setopt(curl_handle_,
@@ -121,7 +163,15 @@ bool Transport::Perform() {
     curl_easy_setopt(curl_handle_, CURLOPT_HTTPGET, 1L);
   } else if (method_ == request_type::kHead) {
     curl_easy_setopt(curl_handle_, CURLOPT_NOBODY, 1L);
-  } else if (method_ == request_type::kPost) {
+  } else if (method_ == request_type::kPut) {
+    curl_easy_setopt(curl_handle_, CURLOPT_UPLOAD, 1L);
+    curl_easy_setopt(curl_handle_, CURLOPT_INFILESIZE_LARGE,
+                     curl_off_t(request_data_.size()));
+    curl_easy_setopt(curl_handle_,
+                     CURLOPT_READFUNCTION, &Transport::read_callback);
+    curl_easy_setopt(curl_handle_, CURLOPT_READDATA, this);
+  } else {
+    // POST and custom request methods
     curl_easy_setopt(curl_handle_, CURLOPT_POST, 1L);
     curl_easy_setopt(curl_handle_, CURLOPT_POSTFIELDS, nullptr);
     if (!request_data_.empty()) {
@@ -131,21 +181,14 @@ bool Transport::Perform() {
     }
     curl_easy_setopt(curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE,
                      curl_off_t(request_data_.size()));
-  } else if (method_ == request_type::kPut) {
-    curl_easy_setopt(curl_handle_, CURLOPT_UPLOAD, 1L);
-    curl_easy_setopt(curl_handle_, CURLOPT_INFILESIZE_LARGE,
-                     curl_off_t(request_data_.size()));
-    curl_easy_setopt(curl_handle_,
-                     CURLOPT_READFUNCTION, &Transport::read_callback);
-    curl_easy_setopt(curl_handle_, CURLOPT_READDATA, this);
-  } else {
-    curl_easy_setopt(curl_handle_, CURLOPT_CUSTOMREQUEST, method_.c_str());
-    if (!request_data_.empty()) {
-      curl_easy_setopt(curl_handle_,
-                       CURLOPT_READFUNCTION, &Transport::read_callback);
-      curl_easy_setopt(curl_handle_, CURLOPT_READDATA, this);
-    }
+    if (method_ != request_type::kPost)
+      curl_easy_setopt(curl_handle_, CURLOPT_CUSTOMREQUEST, method_.c_str());
   }
+
+  VLOG_IF(2, !request_data_.empty()) << "Request data ("
+      << request_data_.size() << "): "
+      << std::string(reinterpret_cast<char const*>(request_data_.data()),
+      request_data_.size());
 
   // Setup HTTP response data.
   if (method_ != request_type::kHead) {
@@ -165,6 +208,7 @@ bool Transport::Perform() {
   if (!headers.empty()) {
     for (auto pair : headers) {
       std::string header = string_utils::Join(": ", pair.first, pair.second);
+      VLOG(2) << "Request header: " << header;
       header_list = curl_slist_append(header_list, header.c_str());
     }
     curl_easy_setopt(curl_handle_, CURLOPT_HTTPHEADER, header_list);
@@ -186,6 +230,13 @@ bool Transport::Perform() {
     stage_ = Stage::response_received;
   }
   curl_slist_free_all(header_list);
+  if (stage_ == Stage::response_received) {
+    LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
+              << GetResponseStatusText() << ")";
+    VLOG(2) << "Response data (" << response_data_.size() << "): "
+        << std::string(reinterpret_cast<char const*>(response_data_.data()),
+                       response_data_.size());
+  }
   return (ret == CURLE_OK);
 }
 
@@ -202,6 +253,9 @@ std::string Transport::GetResponseHeader(char const* headerName) const {
   return p != headers_.end() ? p->second : std::string();
 }
 
+std::vector<unsigned char> const& Transport::GetResponseData() const {
+  return response_data_;
+}
 
 void Transport::Close() {
   if (curl_handle_) {
@@ -241,6 +295,13 @@ size_t Transport::header_callback(char* ptr, size_t size,
   Transport* me = reinterpret_cast<Transport*>(data);
   size_t hdr_len = size * num;
   std::string header(ptr, int(hdr_len));
+  // Remove newlines at the end of header line.
+  while (!header.empty() && (header.back() == '\r' || header.back() == '\n')) {
+    header.pop_back();
+  }
+
+  VLOG(2) << "Response header: " << header;
+
   if (!me->status_text_set_) {
     // First header - response code as "HTTP/1.1 200 OK".
     // Need to extract the OK part
