@@ -64,13 +64,13 @@ bool GLInterfaceTest::Run() {
 
   // Run test without GL commands.
   render_func_.Reset();
-  RunTest(this, (test_name_base + "nogl").c_str(), 1.f, false);
+  RunTest(this, (test_name_base + "nogl").c_str(), 1.0, g_width, g_height, false);
 
   // Run main test with simple GL commands.
   SetupGLRendering();
   render_func_ = base::Bind(&GLInterfaceTest::RenderGLSimple,
                             base::Unretained(this));
-  RunTest(this, (test_name_base + "glsimple").c_str(), 1.f, false);
+  RunTest(this, (test_name_base + "glsimple").c_str(), 1.0, g_width, g_height, false);
   CleanupGLRendering();
 
   // TODO(sque): Run with complex GL commands. See crosbug.com/36746.

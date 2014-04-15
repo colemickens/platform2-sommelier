@@ -16,6 +16,8 @@
 #include "testbase.h"
 #include "utils.h"
 
+extern bool g_hasty;
+
 DEFINE_bool(save, false, "save images after each test case");
 DEFINE_string(outdir, "", "directory to save images");
 
@@ -46,13 +48,18 @@ double Bench(TestBase* test) {
   // probably not required. But these parameters could be tuned.
   double initial_temperature = GetInitialMachineTemperature();
   double temperature = 0;
-  // Try to cool to initial + 5'C but don't wait longer than 30s.
-  double wait = WaitForCoolMachine(initial_temperature + 5.0, 30.0,
-                                   &temperature);
-  printf("Bench: Cooled down to %.1f'C (initial=%.1f'C) after waiting %.1fs.\n",
-         temperature, initial_temperature, wait);
-  if (temperature > initial_temperature + 10.0)
-    printf("Warning: Machine did not cool down enough for next test!");
+  double wait = 0;
+
+  // By default we try to cool to initial + 5'C but don't wait longer than 30s.
+  // But in hasty mode we really don't want to spend too much time to get the
+  // numbers right, so we don't wait at all.
+  if (!::g_hasty) {
+    wait = WaitForCoolMachine(initial_temperature + 5.0, 30.0, &temperature);
+    printf("Bench: Cooled down to %.1f'C (initial=%.1f'C) after waiting %.1fs.\n",
+           temperature, initial_temperature, wait);
+    if (temperature > initial_temperature + 10.0)
+      printf("Warning: Machine did not cool down enough for next test!");
+  }
 
   // Do two iterations because initial timings can vary wildly.
   TimeTest(test, 2);
@@ -66,7 +73,10 @@ double Bench(TestBase* test) {
   uint64_t time_prev = 0;
   do {
     time = TimeTest(test, iterations);
-    if (time > MIN_ITERATION_DURATION_US)
+    // If we are running in hasty mode we will stop after a fraction of the
+    // testing time and return much more noisy performance numbers. The MD5s
+    // of the images should stay the same though.
+    if (time > MIN_ITERATION_DURATION_US / (::g_hasty ? 20.0 : 1.0))
       return (static_cast<double>(time + time_prev) /
               (iterations + iterations_prev));
 
@@ -78,39 +88,38 @@ double Bench(TestBase* test) {
   return 0.0;
 }
 
-void SaveImage(const char* name) {
-  const int size = g_width * g_height * 4;
+void SaveImage(const char* name, const int width, const int height) {
+  const int size = width * height * 4;
   scoped_ptr<char[]> pixels(new char[size]);
-  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   // I really think we want to use outdir as a straight argument
   base::FilePath dirname = base::FilePath(FLAGS_outdir);
   base::CreateDirectory(dirname);
   base::FilePath filename = dirname.Append(name);
   write_png_file(filename.value().c_str(),
-                 pixels.get(), g_width, g_height);
+                 pixels.get(), width, height);
 }
 
-void ComputeMD5(unsigned char digest[16]) {
+void ComputeMD5(unsigned char digest[16], const int width, const int height) {
   MD5Context ctx;
   MD5Init(&ctx);
-  const int size = g_width * g_height * 4;
+  const int size = width * height * 4;
   scoped_ptr<char[]> pixels(new char[size]);
-  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
-  MD5Update(&ctx, (unsigned char *)pixels.get(), 4*g_width*g_height);
+  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+  MD5Update(&ctx, (unsigned char *)pixels.get(), size);
   MD5Final(digest, &ctx);
 }
 
-void RunTest(TestBase* test, const char* testname,
-             double coefficient, bool inverse) {
+void RunTest(TestBase* test, const char* testname, const double coefficient,
+             const int width, const int height, bool inverse) {
   double value;
-
   GLenum error = glGetError();
   if (error == GL_NO_ERROR) {
     value = Bench(test);
     // save as png with MD5 as hex string attached
     char          pixmd5[33];
     unsigned char d[16];
-    ComputeMD5(d);
+    ComputeMD5(d, width, height);
     // translate to hexadecimal ASCII of MD5
     sprintf(pixmd5,
       "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -120,7 +129,7 @@ void RunTest(TestBase* test, const char* testname,
     sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
 
     if (FLAGS_save)
-      SaveImage(name_png);
+      SaveImage(name_png, width, height);
 
     // TODO(ihf) adjust string length based on longest test name
     int length = strlen(testname);
@@ -159,13 +168,13 @@ void DrawArraysTestFunc::FillRateTestNormal(const char* name) {
 
 
 void DrawArraysTestFunc::FillRateTestNormalSubWindow(const char* name,
-                                                     double width,
-                                                     double height)
+                                                     const int width,
+                                                     const int height)
 {
   const int buffer_len = 64;
   char buffer[buffer_len];
   snprintf(buffer, buffer_len, "mpixels_sec_%s", name);
-  RunTest(this, buffer, width * height, true);
+  RunTest(this, buffer, width * height, width, height, true);
 }
 
 
@@ -176,7 +185,7 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_blended", name);
-  RunTest(this, buffer, g_width * g_height, true);
+  RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
   glDisable(GL_BLEND);
 
   // We are relying on the default depth clear value of 1 here.
@@ -184,14 +193,14 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_NOTEQUAL);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_neq", name);
-  RunTest(this, buffer, g_width * g_height, true);
+  RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
 
   // The DrawArrays call invoked by this test shouldn't render anything
   // because every fragment will fail the depth test.  Therefore we
   // should see the clear color.
   glDepthFunc(GL_NEVER);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_never", name);
-  RunTest(this, buffer, g_width * g_height, true);
+  RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
   glDisable(GL_DEPTH_TEST);
 }
 

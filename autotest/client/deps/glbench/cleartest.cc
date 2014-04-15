@@ -36,22 +36,22 @@ bool ClearTest::TestFunc(uint64_t iterations) {
 
 bool ClearTest::Run() {
   mask_ = GL_COLOR_BUFFER_BIT;
-  RunTest(this, "mpixels_sec_clear_color", g_width * g_height, true);
+  RunTest(this, "mpixels_sec_clear_color", g_width * g_height, g_width, g_height, true);
 
   mask_ = GL_DEPTH_BUFFER_BIT;
-  RunTest(this, "mpixels_sec_clear_depth", g_width * g_height, true);
+  RunTest(this, "mpixels_sec_clear_depth", g_width * g_height, g_width, g_height, true);
 
   mask_ = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
   RunTest(this, "mpixels_sec_clear_colordepth",
-          g_width * g_height, true);
+          g_width * g_height, g_width, g_height, true);
 
   mask_ = GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
   RunTest(this, "mpixels_sec_clear_depthstencil",
-          g_width * g_height, true);
+          g_width * g_height, g_width, g_height, true);
 
   mask_ = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
   RunTest(this, "mpixels_sec_clear_colordepthstencil",
-          g_width * g_height, true);
+          g_width * g_height, g_width, g_height, true);
   return true;
 }
 

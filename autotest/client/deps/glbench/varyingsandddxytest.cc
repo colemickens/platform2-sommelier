@@ -181,33 +181,33 @@ bool VaryingsAndDdxyShaderTest::Run() {
 
   GLuint program = VaryingsShaderProgram(1, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_1", g_width * g_height, true);
+          "mpixels_sec_varyings_shader_1", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = VaryingsShaderProgram(2, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_2", g_width * g_height, true);
+          "mpixels_sec_varyings_shader_2", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = VaryingsShaderProgram(4, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_4", g_width * g_height, true);
+          "mpixels_sec_varyings_shader_4", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = VaryingsShaderProgram(8, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_8", g_width * g_height, true);
+          "mpixels_sec_varyings_shader_8", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
 #if !defined(DISABLE_SOME_TESTS_FOR_INTEL_DRIVER)
   program = DdxDdyShaderProgram(true, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_ddx_shader", g_width * g_height, true);
+          "mpixels_sec_ddx_shader", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = DdxDdyShaderProgram(false, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_ddy_shader", g_width * g_height, true);
+          "mpixels_sec_ddy_shader", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 #endif
 
