@@ -90,7 +90,10 @@ void DBusControl::Init() {
   DBus::default_dispatcher = dispatcher_.get();
   dispatcher_->attach(NULL);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-  connection_->request_name(SHILL_INTERFACE);
+  if (!connection_->acquire_name(SHILL_INTERFACE)) {
+    LOG(FATAL) << "Failed to acquire D-Bus name " << SHILL_INTERFACE << ". "
+               << "Is another shill running?";
+  }
 }
 
 }  // namespace shill
