@@ -37,12 +37,19 @@ std::unique_ptr<Response> SendRequest(const char* method,
                                       const HeaderList& headers);
 
 // Performs a simple GET request and returns the data as a string.
-std::string GetAsString(const std::string& url);
+std::string GetAsString(const std::string& url, const HeaderList& headers);
+inline std::string GetAsString(const std::string& url) {
+  return GetAsString(url, HeaderList());
+}
 
 // Performs a GET request. Success status, returned data and additional
 // information (such as returned HTTP headers) can be obtained from
 // the returned Response object.
-std::unique_ptr<Response> Get(const std::string& url);
+std::unique_ptr<Response> Get(const std::string& url,
+                              const HeaderList& headers);
+inline std::unique_ptr<Response> Get(const std::string& url) {
+  return Get(url, HeaderList());
+}
 
 // Performs a HEAD request. Success status and additional
 // information (such as returned HTTP headers) can be obtained from

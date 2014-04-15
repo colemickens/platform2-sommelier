@@ -18,8 +18,11 @@ const char kRootTestMethod[] = "TestMethod";
 const char kManagerInterface[] = "org.chromium.Buffet.Manager";
 const char kManagerServicePath[] = "/org/chromium/Buffet/Manager";
 
-const char kManagerUpdateStateMethod[] = "UpdateState";
-const char kManagerRegisterDeviceMethod[] = "RegisterDevice";
+const char kManagerCheckDeviceRegistered[]  = "CheckDeviceRegistered";
+const char kManagerGetDeviceInfo[]          = "GetDeviceInfo";
+const char kManagerStartRegisterDevice[]    = "StartRegisterDevice";
+const char kManagerFinishRegisterDevice[]   = "FinishRegisterDevice";
+const char kManagerUpdateStateMethod[]      = "UpdateState";
 
 }  // namespace dbus_constants
 

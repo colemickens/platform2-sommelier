@@ -16,13 +16,14 @@
 namespace chromeos {
 namespace http {
 
-std::unique_ptr<Response> Get(const std::string& url) {
-  Request request(url);
-  return request.GetResponse();
+std::unique_ptr<Response> Get(const std::string& url,
+                              const HeaderList& headers) {
+  return SendRequest(request_type::kGet, url, nullptr, 0, nullptr, headers);
 }
 
-std::string GetAsString(const std::string& url) {
-  auto resp = Get(url);
+std::string GetAsString(const std::string& url,
+                        const HeaderList& headers) {
+  auto resp = Get(url, headers);
   return resp ? resp->GetDataAsString() : std::string();
 }
 

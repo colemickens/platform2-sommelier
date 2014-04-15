@@ -7,6 +7,8 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <dbus/object_path.h>
+#include <dbus/values_util.h>
+#include <base/json/json_writer.h>
 
 #include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_constants.h"
@@ -38,14 +40,47 @@ void Manager::Init(const OnInitFinish& cb) {
       new dbus_utils::AsyncEventSequencer());
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
-      dbus_constants::kManagerRegisterDeviceMethod,
+      dbus_constants::kManagerCheckDeviceRegistered,
       dbus_utils::GetExportableDBusMethod(
-          base::Bind(&Manager::HandleRegisterDevice,
+          base::Bind(&Manager::HandleCheckDeviceRegistered,
           base::Unretained(this))),
       sequencer->GetExportHandler(
           dbus_constants::kManagerInterface,
-          dbus_constants::kManagerRegisterDeviceMethod,
-          "Failed exporting RegisterDevice method",
+          dbus_constants::kManagerCheckDeviceRegistered,
+          "Failed exporting CheckDeviceRegistered method",
+          true));
+  exported_object_->ExportMethod(
+      dbus_constants::kManagerInterface,
+      dbus_constants::kManagerGetDeviceInfo,
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&Manager::HandleGetDeviceInfo,
+          base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kManagerInterface,
+          dbus_constants::kManagerGetDeviceInfo,
+          "Failed exporting GetDeviceInfo method",
+          true));
+  exported_object_->ExportMethod(
+      dbus_constants::kManagerInterface,
+      dbus_constants::kManagerStartRegisterDevice,
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&Manager::HandleStartRegisterDevice,
+          base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kManagerInterface,
+          dbus_constants::kManagerStartRegisterDevice,
+          "Failed exporting StartRegisterDevice method",
+          true));
+  exported_object_->ExportMethod(
+      dbus_constants::kManagerInterface,
+      dbus_constants::kManagerFinishRegisterDevice,
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&Manager::HandleFinishRegisterDevice,
+          base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kManagerInterface,
+          dbus_constants::kManagerFinishRegisterDevice,
+          "Failed exporting FinishRegisterDevice method",
           true));
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
@@ -65,38 +100,122 @@ void Manager::Init(const OnInitFinish& cb) {
   properties_->Init(
       sequencer->GetHandler("Manager properties export failed.", true));
   sequencer->OnAllTasksCompletedCall({cb});
+  device_info_.Load();
 }
 
-scoped_ptr<dbus::Response> Manager::HandleRegisterDevice(
+scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
     dbus::MethodCall* method_call) {
   // Read the parameters to the method.
   dbus::MessageReader reader(method_call);
-  if (!reader.HasMoreData()) {
-    return GetBadArgsError(method_call, "No parameters to RegisterDevice");
-  }
-  std::string client_id, client_secret, api_key;
-  if (!reader.PopString(&client_id)) {
-    return GetBadArgsError(method_call, "Failed to read client_id");
-  }
-  if (!reader.PopString(&client_secret)) {
-    return GetBadArgsError(method_call, "Failed to read client_secret");
-  }
-  if (!reader.PopString(&api_key)) {
-    return GetBadArgsError(method_call, "Failed to read api_key");
-  }
   if (reader.HasMoreData()) {
-    return GetBadArgsError(
-        method_call, "Too many parameters to RegisterDevice");
+    return GetBadArgsError(method_call,
+                           "Too many parameters to CheckDeviceRegistered");
   }
 
-  LOG(INFO) << "Received call to Manager.RegisterDevice()";
-  // TODO(wiley): Do something with these parameters to register the device.
+  LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
+
+  bool registered = device_info_.CheckRegistration();
 
   // Send back our response.
   scoped_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
-  writer.AppendString("<registration ticket id>");
+  writer.AppendString(registered ? device_info_.GetDeviceId() : std::string());
+  return response.Pass();
+}
+
+scoped_ptr<dbus::Response> Manager::HandleGetDeviceInfo(
+    dbus::MethodCall* method_call) {
+  // Read the parameters to the method.
+  dbus::MessageReader reader(method_call);
+  if (reader.HasMoreData()) {
+    return GetBadArgsError(method_call,
+                           "Too many parameters to GetDeviceInfo");
+  }
+
+  LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
+
+  std::string device_info_str;
+  std::unique_ptr<base::Value> device_info = device_info_.GetDeviceInfo();
+  if (device_info)
+    base::JSONWriter::Write(device_info.get(), &device_info_str);
+
+  // Send back our response.
+  scoped_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(device_info_str);
+  return response.Pass();
+}
+
+scoped_ptr<dbus::Response> Manager::HandleStartRegisterDevice(
+    dbus::MethodCall* method_call) {
+  // Read the parameters to the method.
+  dbus::MessageReader reader(method_call);
+  if (!reader.HasMoreData()) {
+    return GetBadArgsError(method_call, "No parameters to StartRegisterDevice");
+  }
+
+  dbus::MessageReader array_reader(nullptr);
+  if (!reader.PopArray(&array_reader))
+    return GetBadArgsError(method_call, "Failed to read the parameter array");
+  std::map<std::string, std::shared_ptr<base::Value>> params;
+  while (array_reader.HasMoreData()) {
+    dbus::MessageReader dict_entry_reader(nullptr);
+    if (!array_reader.PopDictEntry(&dict_entry_reader))
+      return GetBadArgsError(method_call, "Failed to get a call parameter");
+    std::string key;
+    if (!dict_entry_reader.PopString(&key))
+      return GetBadArgsError(method_call, "Failed to read parameter key");
+    base::Value* value = dbus::PopDataAsValue(&dict_entry_reader);
+    if (!value)
+      return GetBadArgsError(method_call, "Failed to read parameter value");
+    params.insert(std::make_pair(key, std::shared_ptr<base::Value>(value)));
+  }
+  if (reader.HasMoreData())
+    return GetBadArgsError(method_call,
+                           "Too many parameters to StartRegisterDevice");
+
+  LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
+
+  std::string error_msg;
+  std::string id = device_info_.StartRegistration(params, &error_msg);
+  if(id.empty())
+    return GetBadArgsError(method_call, error_msg);
+
+  // Send back our response.
+  scoped_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(id);
+  return response.Pass();
+}
+
+scoped_ptr<dbus::Response> Manager::HandleFinishRegisterDevice(
+  dbus::MethodCall* method_call) {
+  // Read the parameters to the method.
+  dbus::MessageReader reader(method_call);
+  if (!reader.HasMoreData()) {
+    return GetBadArgsError(method_call,
+                           "No parameters to FinishRegisterDevice");
+  }
+  std::string user_auth_code;
+  if (!reader.PopString(&user_auth_code)) {
+    return GetBadArgsError(method_call, "Failed to read UserAuthCode");
+  }
+  if (reader.HasMoreData()) {
+    return GetBadArgsError(method_call,
+                           "Too many parameters to FinishRegisterDevice");
+  }
+
+  LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
+  bool success = device_info_.FinishRegistration(user_auth_code);
+
+  // Send back our response.
+  scoped_ptr<dbus::Response> response(
+    dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(success ? device_info_.GetDeviceId() : std::string());
   return response.Pass();
 }
 

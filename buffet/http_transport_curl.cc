@@ -185,10 +185,10 @@ bool Transport::Perform() {
       curl_easy_setopt(curl_handle_, CURLOPT_CUSTOMREQUEST, method_.c_str());
   }
 
-  VLOG_IF(2, !request_data_.empty()) << "Request data ("
-      << request_data_.size() << "): "
+  LOG(INFO) << "Request data (" << request_data_.size() << ")";
+  VLOG_IF(2, !request_data_.empty()) << "Raw request data: "
       << std::string(reinterpret_cast<const char*>(request_data_.data()),
-                                                   request_data_.size());
+                     request_data_.size());
 
   // Setup HTTP response data.
   if (method_ != request_type::kHead) {

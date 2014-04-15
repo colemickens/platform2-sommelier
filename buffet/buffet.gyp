@@ -32,6 +32,7 @@
         'dbus_constants.cc',
         'dbus_manager.cc',
         'dbus_utils.cc',
+        'device_registration_info.cc',
         'exported_property_set.cc',
         'http_request.cc',
         'http_transport_curl.cc',
@@ -58,6 +59,9 @@
       'sources': [
         'buffet_client.cc',
         'dbus_constants.cc',
+      ],
+      'dependencies': [
+        'buffet_common',
       ],
     },
     {

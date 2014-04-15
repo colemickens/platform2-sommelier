@@ -24,8 +24,11 @@ extern const char kManagerInterface[];
 extern const char kManagerServicePath[];
 
 // Methods exposed as part of kManagerInterface.
+extern const char kManagerCheckDeviceRegistered[];
+extern const char kManagerGetDeviceInfo[];
+extern const char kManagerStartRegisterDevice[];
+extern const char kManagerFinishRegisterDevice[];
 extern const char kManagerUpdateStateMethod[];
-extern const char kManagerRegisterDeviceMethod[];
 
 }  // namespace dbus_constants
 

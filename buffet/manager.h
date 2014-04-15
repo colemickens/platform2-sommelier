@@ -7,11 +7,14 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/values.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
+#include <memory>
 
 #include "buffet/dbus_constants.h"
 #include "buffet/exported_property_set.h"
+#include "buffet/device_registration_info.h"
 
 namespace buffet {
 
@@ -40,8 +43,17 @@ class Manager {
     virtual ~Properties() {}
   };
 
-  // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
-  scoped_ptr<dbus::Response> HandleRegisterDevice(
+  // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
+  scoped_ptr<dbus::Response> HandleCheckDeviceRegistered(
+      dbus::MethodCall* method_call);
+  // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
+  scoped_ptr<dbus::Response> HandleGetDeviceInfo(
+      dbus::MethodCall* method_call);
+  // Handles calls to org.chromium.Buffet.Manager.StartRegisterDevice().
+  scoped_ptr<dbus::Response> HandleStartRegisterDevice(
+      dbus::MethodCall* method_call);
+  // Handles calls to org.chromium.Buffet.Manager.FinishRegisterDevice().
+  scoped_ptr<dbus::Response> HandleFinishRegisterDevice(
       dbus::MethodCall* method_call);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   scoped_ptr<dbus::Response> HandleUpdateState(
@@ -50,6 +62,8 @@ class Manager {
   dbus::Bus* bus_;
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
   scoped_ptr<Properties> properties_;
+
+  DeviceRegistrationInfo device_info_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
