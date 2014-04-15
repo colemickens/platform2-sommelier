@@ -1100,6 +1100,10 @@ cmd_tpcontrol() (
   echo "tpcontrol is deprecated. Please use inputcontrol instead."
 )
 
+cmd_try_touch_experiment() (
+  /usr/sbin/try_touch_experiment "$@"
+)
+
 cmd_inputcontrol() (
   /opt/google/input/inputcontrol "$@"
 )
