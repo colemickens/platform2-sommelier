@@ -11,6 +11,7 @@
 #include <map>
 
 #include <base/bind.h>
+#include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
 
 #include "shill/logging.h"
@@ -214,10 +215,9 @@ void MobileOperatorInfoImpl::UpdateIMSI(const string &imsi) {
   user_imsi_ = imsi;
 
   if (!user_mccmnc_.empty()) {
-    if (user_mccmnc_.size() > imsi.size() ||
-        imsi.substr(user_mccmnc_.size()) != user_mccmnc_) {
-      LOG(WARNING) << "IMSI [" << imsi << "] is not a substring of the "
-                    << "MCCMNC [" << user_mccmnc_ << "].";
+    if (!StartsWithASCII(imsi, user_mccmnc_, false)) {
+      LOG(WARNING) << "MCCMNC [" << user_mccmnc_ << "] is not a substring of "
+                   << "the IMSI [" << imsi << "].";
     }
   } else {
     // Attempt to determine the MNO from IMSI since MCCMNC is absent.
