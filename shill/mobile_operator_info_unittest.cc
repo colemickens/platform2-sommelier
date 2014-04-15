@@ -480,11 +480,6 @@ TEST_F(MobileOperatorInfoMainTest, MNOUchangedBySecondaryUpdates) {
   VerifyEventCount();
   VerifyMNOWithUUID("uuid111001");
 
-  ExpectEventCount(1);  // SID change event.
-  operator_info_->UpdateSID("111102");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid111001");
-
   ExpectEventCount(1);  // NID change event.
   operator_info_->UpdateNID("111202");
   VerifyEventCount();
@@ -713,26 +708,26 @@ TEST_F(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
 
 TEST_F(MobileOperatorInfoMainTest, MVNOSIDMatch) {
   // message: MNO with one MVNO (sid filter).
-  // match by: MNO matches by MCCMNC,
+  // match by: MNO matches by SID,
   //           MVNO fails to match by fist sid update,
   //           then MVNO matches by sid.
   // verify: Two Observer events: MNO followed by MVNO.
-  ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("120001");
-  VerifyEventCount();
-  VerifyMNOWithUUID("uuid120001");
-
-  ExpectEventCount(1);
+  ExpectEventCount(0);
   operator_info_->UpdateSID("120999");  // No match.
   VerifyEventCount();
-  VerifyMNOWithUUID("uuid120001");
-  EXPECT_EQ("120999", operator_info_->sid());
+  VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("120123");
+  operator_info_->UpdateSID("120001");  // Only MNO matches.
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid120001");
+  EXPECT_EQ("120001", operator_info_->sid());
+
+  ExpectEventCount(1);
+  operator_info_->UpdateSID("120002");  // MVNO matches as well.
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid120002");
-  EXPECT_EQ("120123", operator_info_->sid());
+  EXPECT_EQ("120002", operator_info_->sid());
 }
 
 TEST_F(MobileOperatorInfoMainTest, MVNOAllMatch) {
@@ -836,6 +831,68 @@ TEST_F(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid113002");
   EXPECT_EQ("name113002", operator_info_->operator_name());
+}
+
+// Here, we rely on our knowledge about the implementation: The SID and MCCMNC
+// updates follow the same code paths, and so we can get away with not testing
+// all the scenarios we test above for MCCMNC. Instead, we only do basic testing
+// to make sure that SID upates operator as MCCMNC updates do.
+TEST_F(MobileOperatorInfoMainTest, MNOBySID) {
+  // message: Has an MNO with no MVNO.
+  // match by: SID.
+  // verify: Observer event, uuid.
+
+  ExpectEventCount(0);
+  operator_info_->UpdateSID("1229");  // No match.
+  VerifyEventCount();
+  VerifyNoMatch();
+
+  ExpectEventCount(1);
+  operator_info_->UpdateSID("1221");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid1221");
+
+  ExpectEventCount(1);
+  operator_info_->UpdateSID("1229");  // No Match.
+  VerifyEventCount();
+  VerifyNoMatch();
+}
+
+TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
+  // message: Has an MNO with no MVNO.
+  // match by: SID / MCCMNC alternately.
+  // verify: Observer event, uuid.
+
+  ExpectEventCount(0);
+  operator_info_->UpdateMCCMNC("123999");  // NO match.
+  operator_info_->UpdateSID("1239");  // No match.
+  VerifyEventCount();
+  VerifyNoMatch();
+
+  ExpectEventCount(1);
+  operator_info_->UpdateMCCMNC("123001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid123001");
+
+  ExpectEventCount(1);
+  operator_info_->Reset();
+  VerifyEventCount();
+  VerifyNoMatch();
+
+  ExpectEventCount(1);
+  operator_info_->UpdateSID("1232");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid1232");
+
+  ExpectEventCount(1);
+  operator_info_->Reset();
+  VerifyEventCount();
+  VerifyNoMatch();
+
+  ExpectEventCount(1);
+  operator_info_->UpdateMCCMNC("123001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid123001");
 }
 
 class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
@@ -1072,7 +1129,7 @@ TEST_F(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
   operator_info_->UpdateMCCMNC("200999");  // No match.
   operator_info_->UpdateOperatorName("name200001");  // matches MNO
   operator_info_->UpdateOperatorName("name200101");  // matches MVNO filter.
-  operator_info_->UpdateSID("200123");  // Not used in any filter.
+  operator_info_->UpdateSID("200999");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 }
@@ -1083,7 +1140,6 @@ TEST_F(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   //   updated properties override the ones provided by the database.
   string imsi {"2009991234512345"};
   string iccid {"200999123456789"};
-  string sid {"200999"};
   string olp_url {"url@url.com"};
   string olp_method {"POST"};
   string olp_post_data {"data"};
@@ -1096,8 +1152,7 @@ TEST_F(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   VerifyMVNOWithUUID("uuid200101");
 
   // Send updates.
-  ExpectEventCount(2);
-  operator_info_->UpdateSID(sid);
+  ExpectEventCount(1);
   operator_info_->UpdateOnlinePortal(olp_url, olp_method, olp_post_data);
   operator_info_->UpdateIMSI(imsi);
   // No event raised because imsi is not exposed.
@@ -1108,12 +1163,9 @@ TEST_F(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
 
   // Update our expectations.
   PopulateMVNOData();
-  sid_ = sid;
-  sid_list_.push_back(sid);
   olp_list_.push_back({olp_url, olp_method, olp_post_data});
 
   VerifyDatabaseData();
-  VerifyUserData();
 }
 
 TEST_F(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
@@ -1168,14 +1220,12 @@ TEST_F(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
 
   // Send redundant updates.
   // TODO(pprabhu)
-  // Both the |UpdateSID| and |UpdateOnlinePortal| lead to an event because this
-  // is the first time this values were set *by the user*. Although the values
-  // from the database were the same, we did not use those values for filters.
-  // It would be ideal to not raise these redundant events (since no public
-  // information about the object changed), but I haven't invested in doing so
-  // yet.
-  ExpectEventCount(2);
-  operator_info_->UpdateSID(operator_info_->sid());
+  // |UpdateOnlinePortal| leads to an event because this is the first time this
+  // value are set *by the user*. Although the values from the database were the
+  // same, we did not use those values for filters.  It would be ideal to not
+  // raise these redundant events (since no public information about the object
+  // changed), but I haven't invested in doing so yet.
+  ExpectEventCount(1);
   operator_info_->UpdateOperatorName(operator_info_->operator_name());
   operator_info_->UpdateOnlinePortal("someother@random.com", "GET", "");
   VerifyEventCount();

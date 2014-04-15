@@ -101,6 +101,8 @@ class MobileOperatorInfoImpl {
   std::string GenerateUUID(const mobile_operator_db::Data &data) const;
   // Append candidates recognized by |mccmnc| to the candidate list.
   bool AppendToCandidatesByMCCMNC(const std::string &mccmnc);
+  bool AppendToCandidatesBySID(const std::string &sid);
+  std::string OperatorCodeString() const;
 
   // Notifies all observers that the operator has changed.
   void PostNotifyOperatorChanged();
@@ -144,9 +146,22 @@ class MobileOperatorInfoImpl {
 
   scoped_ptr<mobile_operator_db::MobileOperatorDB> database_;
   StringToMNOListMap mccmnc_to_mnos_;
+  StringToMNOListMap sid_to_mnos_;
   StringToMNOListMap name_to_mnos_;
+
+  // |candidates_by_operator_code| can be determined either using MCCMNC or
+  // using SID.  At any one time, we only expect one of these operator codes to
+  // be updated by the user. We use |operator_code_type_| to keep track of which
+  // update we have received and warn the user if we receive both.
+  enum OperatorCodeType {
+    kOperatorCodeTypeUnknown = 0,
+    kOperatorCodeTypeMCCMNC,
+    kOperatorCodeTypeSID,
+  };
+  OperatorCodeType operator_code_type_;
   std::vector<const mobile_operator_db::MobileNetworkOperator *>
-      candidates_by_mccmnc_;
+      candidates_by_operator_code_;
+
   std::vector<const mobile_operator_db::MobileNetworkOperator *>
       candidates_by_name_;
   const mobile_operator_db::MobileNetworkOperator *current_mno_;
