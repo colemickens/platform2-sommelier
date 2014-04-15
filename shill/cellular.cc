@@ -139,6 +139,12 @@ Cellular::Cellular(ModemInfo *modem_info,
       is_ppp_authenticating_(false),
       scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
+  // TODO(pprabhu): This will break when there are multiple modems on the
+  // device. So, split MobileOperatorInfo into a context that contains no
+  // device specific state, and one that does. The context should be owned by
+  // the |modem_info_|, while the latter should be owned by the cellular device.
+  modem_info_->home_provider_info()->Reset();
+  modem_info_->serving_operator_info()->Reset();
   modem_info_->home_provider_info()->AddObserver(
       mobile_operator_info_observer_.get());
   modem_info_->serving_operator_info()->AddObserver(
