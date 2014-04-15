@@ -888,7 +888,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
       mobile_apns[apn_node->apn] = apn_node;
     }
     for (const auto &apn_lhs : apn_list_) {
-      EXPECT_TRUE(mobile_apns.find(apn_lhs->apn) != mobile_apns.end());
+      ASSERT_TRUE(mobile_apns.find(apn_lhs->apn) != mobile_apns.end());
       const auto &apn_rhs = mobile_apns[apn_lhs->apn];
       // Only comparing apn, name, username, password.
       EXPECT_EQ(apn_lhs->apn, apn_rhs->apn);
@@ -905,7 +905,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
       olps[olp.url] = olp;
     }
     for (const auto &olp : olp_list_) {
-      EXPECT_TRUE(olps.find(olp.url) != olps.end());
+      ASSERT_TRUE(olps.find(olp.url) != olps.end());
       const auto &olp_rhs = olps[olp.url];
       EXPECT_EQ(olp.method, olp_rhs.method);
       EXPECT_EQ(olp.post_data, olp_rhs.post_data);
