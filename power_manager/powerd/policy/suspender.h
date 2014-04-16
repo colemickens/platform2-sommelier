@@ -58,7 +58,7 @@ class Suspender : public SuspendDelayObserver {
   //   suspend.
   // - If the suspend attempt is canceled while Suspender is still waiting
   //   for other processes to report readiness for suspend, then
-  //   HandleCanceledSuspendAnnouncementIsCalled().
+  //   HandleCanceledSuspendAnnouncement() is called.
   // - Otherwise, PrepareForSuspend() is called.
   // - Suspend() is then called within a do-while loop (looping only for dark
   //   resumes).
@@ -87,11 +87,20 @@ class Suspender : public SuspendDelayObserver {
     virtual bool IsLidClosed() = 0;
 
     // Reads the current wakeup count from sysfs and stores it in
-    // |wakeup_count|.  Returns true on success.
+    // |wakeup_count|. Returns true on success.
     virtual bool GetWakeupCount(uint64* wakeup_count) = 0;
 
+    // Sets state that persists across powerd restarts but not across system
+    // reboots to track whether a suspend attempt's commencement was announced
+    // (the SuspendImminent signal was emitted) but its completion wasn't (the
+    // SuspendDone signal wasn't emitted).
+    virtual void SetSuspendAnnounced(bool announced) = 0;
+
+    // Gets the state previously set via SetSuspendAnnounced().
+    virtual bool GetSuspendAnnounced() = 0;
+
     // Performs any work that needs to happen before other processes are
-    // informed that the system is about to suspend.  Called by
+    // informed that the system is about to suspend. Called by
     // RequestSuspend().
     virtual void PrepareForSuspendAnnouncement() = 0;
 
@@ -228,9 +237,11 @@ class Suspender : public SuspendDelayObserver {
   // Cancels an outstanding suspend request.
   void CancelSuspend();
 
-  // Emits a D-Bus signal announcing that suspend attempt |suspend_id_| is
-  // complete and that the system was suspended for |suspend_duration|.
-  void SendSuspendDoneSignal(const base::TimeDelta& suspend_duration);
+  // Announces to other processes that attempt |suspend_id| completed in
+  // |suspend_duration|. Emits a SuspendDone D-Bus signal and calls
+  // delegate_->SetSuspendAnnounced(false).
+  void AnnounceSuspendCompletion(int suspend_id,
+                                 const base::TimeDelta& suspend_duration);
 
   // Emits a D-Bus signal informing other processes that we've suspended or
   // resumed at |wall_time|.

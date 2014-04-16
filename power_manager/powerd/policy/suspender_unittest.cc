@@ -43,6 +43,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
         report_success_for_get_wakeup_count_(true),
         suspend_result_(SUSPEND_SUCCESSFUL),
         wakeup_count_(0),
+        suspend_announced_(false),
         suspend_wakeup_count_(0),
         suspend_wakeup_count_valid_(false),
         suspend_was_successful_(false),
@@ -53,6 +54,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void set_report_success_for_get_wakeup_count(bool success) {
     report_success_for_get_wakeup_count_ = success;
   }
+  void set_suspend_announced(bool announced) { suspend_announced_ = announced; }
   void set_suspend_result(SuspendResult result) {
     suspend_result_ = result;
   }
@@ -64,6 +66,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     completion_callback_ = callback;
   }
 
+  bool suspend_announced() const { return suspend_announced_; }
   uint64 suspend_wakeup_count() const { return suspend_wakeup_count_; }
   bool suspend_wakeup_count_valid() const {
     return suspend_wakeup_count_valid_;
@@ -80,6 +83,12 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     *wakeup_count = wakeup_count_;
     return true;
   }
+
+  virtual void SetSuspendAnnounced(bool announced) OVERRIDE {
+    suspend_announced_ = announced;
+  }
+
+  virtual bool GetSuspendAnnounced() OVERRIDE { return suspend_announced_; }
 
   virtual void PrepareForSuspendAnnouncement() OVERRIDE {
     AppendAction(kAnnounce);
@@ -140,6 +149,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   // Count that should be returned by GetWakeupCount().
   uint64 wakeup_count_;
+
+  // Value updated by SetSuspendAnnounced() and returned by
+  // GetSuspendAnnounced().
+  bool suspend_announced_;
 
   // Callback that will be run once (if non-null) when Suspend() is called.
   base::Closure suspend_callback_;
@@ -208,6 +221,7 @@ TEST_F(SuspenderTest, SuspendResume) {
       dbus_sender_.GetSentSignal(0, kSuspendImminentSignal, &imminent_proto));
   EXPECT_EQ(suspend_id, imminent_proto.suspend_id());
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
 
   // Advance the time and register a callback to advance the time again
   // when the suspend request is received.
@@ -251,6 +265,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
   EXPECT_EQ((kResumeTime - kSuspendTime).ToInternalValue(),
             done_proto.suspend_duration());
+  EXPECT_FALSE(delegate_.suspend_announced());
 
   // A retry timeout shouldn't be set.
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
@@ -296,6 +311,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int orig_suspend_id = test_api_.suspend_id();
+  EXPECT_TRUE(delegate_.suspend_announced());
 
   dbus_sender_.ClearSentSignals();
   suspender_.OnReadyForSuspend(orig_suspend_id);
@@ -310,6 +326,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   SuspendDone done_proto;
   EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(orig_suspend_id, done_proto.suspend_id());
+  EXPECT_FALSE(delegate_.suspend_announced());
 
   // The timeout should trigger a new suspend announcement.
   const uint64 kRetryWakeupCount = 67;
@@ -405,6 +422,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   dbus_sender_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
   suspender_.HandleUserActivity();
 
   // Skip the SuspendImminent signal at position 0.
@@ -412,6 +430,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(test_api_.suspend_id(), done_proto.suspend_id());
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
+  EXPECT_FALSE(delegate_.suspend_announced());
   EXPECT_EQ(JoinActions(kCancel, kRequestCanceled, NULL),
             delegate_.GetActions());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
@@ -594,6 +613,19 @@ TEST_F(SuspenderTest, CompletionCallbackStartsNewAttempt) {
   SuspendDone done_proto;
   EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(kOldSuspendId, done_proto.suspend_id());
+}
+
+// Tests that a SuspendDone signal is emitted at startup and the "suspend
+// announced" state is cleared if the delegate claims that a previous suspend
+// attempt was abandoned after being announced.
+TEST_F(SuspenderTest, SendSuspendDoneAtStartupForAbandonedAttempt) {
+  delegate_.set_suspend_announced(true);
+  Init();
+  SuspendDone proto;
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &proto));
+  EXPECT_EQ(0, proto.suspend_id());
+  EXPECT_EQ(base::TimeDelta().ToInternalValue(), proto.suspend_duration());
+  EXPECT_FALSE(delegate_.suspend_announced());
 }
 
 }  // namespace policy

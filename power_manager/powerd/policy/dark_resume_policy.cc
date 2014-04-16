@@ -63,7 +63,7 @@ void DarkResumePolicy::Init(system::PowerSupply* power_supply,
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
               ReadSuspendDurationsPref() &&
               ReadBatteryMarginsPref();
-  LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
+  VLOG(1) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
   GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, kDarkResumeSource);
   GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kDarkResumeActive);
   SetStates(dark_resume_sources_, (enabled_ ? kEnabled : kDisabled));
@@ -105,6 +105,9 @@ base::TimeDelta DarkResumePolicy::GetSuspendDuration() {
 }
 
 bool DarkResumePolicy::CurrentlyInDarkResume() {
+  if (!enabled_)
+    return false;
+
   std::string buf;
   if (!base::ReadFileToString(base::FilePath(kDarkResumeStatePath), &buf)) {
     PLOG(ERROR) << "Unable to read " << kDarkResumeStatePath;

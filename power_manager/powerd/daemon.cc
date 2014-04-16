@@ -49,6 +49,10 @@ namespace {
 // the battery charge reaching zero).
 const char kSuspendedStatePath[] = "/var/lib/power_manager/powerd_suspended";
 
+// Basename appended to |run_dir| (see Daemon's c'tor) to produce
+// |suspend_announced_path_|.
+const char kSuspendAnnouncedFile[] = "suspend_announced";
+
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal.
 const char kSessionStarted[] = "started";
@@ -349,6 +353,24 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     return false;
   }
 
+  virtual void SetSuspendAnnounced(bool announced) OVERRIDE {
+    if (announced) {
+      if (file_util::WriteFile(daemon_->suspend_announced_path_, NULL, 0) < 0) {
+        PLOG(ERROR) << "Couldn't create "
+                    << daemon_->suspend_announced_path_.value();
+      }
+    } else {
+      if (!base::DeleteFile(daemon_->suspend_announced_path_, false)) {
+        PLOG(ERROR) << "Couldn't delete "
+                    << daemon_->suspend_announced_path_.value();
+      }
+    }
+  }
+
+  virtual bool GetSuspendAnnounced() OVERRIDE {
+    return base::PathExists(daemon_->suspend_announced_path_);
+  }
+
   virtual void PrepareForSuspendAnnouncement() OVERRIDE {
     // When going to suspend, notify the backlight controller so it can turn
     // the backlight off and tell the kernel to resume the current level
@@ -459,7 +481,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       suspender_(new policy::Suspender),
       metrics_collector_(new MetricsCollector),
       shutting_down_(false),
-      run_dir_(run_dir),
+      suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
       state_controller_initialized_(false),
       created_suspended_state_file_(false),

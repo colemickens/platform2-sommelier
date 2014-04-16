@@ -72,6 +72,13 @@ void Suspender::Init(Delegate *delegate,
   retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);
 
   CHECK(prefs->GetInt64(kRetrySuspendAttemptsPref, &max_retries_));
+
+  // Clean up if powerd was previously restarted after emitting SuspendImminent
+  // but before emitting SuspendDone.
+  if (delegate_->GetSuspendAnnounced()) {
+    LOG(INFO) << "Previous run exited mid-suspend; emitting SuspendDone";
+    AnnounceSuspendCompletion(0, base::TimeDelta());
+  }
 }
 
 void Suspender::RequestSuspend() {
@@ -196,6 +203,7 @@ void Suspender::StartSuspendAttempt() {
   num_attempts_++;
   waiting_for_readiness_ = true;
   delegate_->PrepareForSuspendAnnouncement();
+  delegate_->SetSuspendAnnounced(true);
   suspend_delay_controller_->PrepareForSuspend(suspend_id_);
 }
 
@@ -286,7 +294,7 @@ void Suspender::Suspend() {
   // Protect against the system clock having gone backwards.
   base::TimeDelta elapsed_time = std::max(base::TimeDelta(),
       clock_->GetCurrentWallTime() - start_wall_time);
-  SendSuspendDoneSignal(elapsed_time);
+  AnnounceSuspendCompletion(old_suspend_id, elapsed_time);
 
   // Check for bugs where another suspend attempt is started before the previous
   // one is fully cleaned up.
@@ -322,7 +330,7 @@ void Suspender::CancelSuspend() {
     LOG(INFO) << "Canceling suspend before running powerd_suspend";
     waiting_for_readiness_ = false;
     DCHECK(!retry_suspend_timer_.IsRunning());
-    SendSuspendDoneSignal(base::TimeDelta());
+    AnnounceSuspendCompletion(suspend_id_, base::TimeDelta());
     delegate_->HandleCanceledSuspendAnnouncement();
   } else if (retry_suspend_timer_.IsRunning()) {
     LOG(INFO) << "Canceling suspend between retries";
@@ -335,11 +343,14 @@ void Suspender::CancelSuspend() {
   }
 }
 
-void Suspender::SendSuspendDoneSignal(const base::TimeDelta& suspend_duration) {
+void Suspender::AnnounceSuspendCompletion(
+    int suspend_id,
+    const base::TimeDelta& suspend_duration) {
   SuspendDone proto;
-  proto.set_suspend_id(suspend_id_);
+  proto.set_suspend_id(suspend_id);
   proto.set_suspend_duration(suspend_duration.ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
+  delegate_->SetSuspendAnnounced(false);
 }
 
 void Suspender::SendSuspendStateChangedSignal(SuspendState_Type type,

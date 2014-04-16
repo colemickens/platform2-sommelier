@@ -247,7 +247,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // system has powered off.
   bool shutting_down_;
 
-  base::FilePath run_dir_;
+  // Path to a file that's touched when a suspend attempt's commencement is
+  // announced to other processes and unlinked when the attempt's completion is
+  // announced. Used to detect cases where powerd was restarted
+  // mid-suspend-attempt and didn't announce that the attempt finished.
+  base::FilePath suspend_announced_path_;
 
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_;
