@@ -310,7 +310,12 @@ uint16_t NetlinkManager::GetFamily(const string &name,
     // Wait with timeout for a message from the netlink socket.
     fd_set read_fds;
     FD_ZERO(&read_fds);
-    FD_SET(file_descriptor(), &read_fds);
+
+    int socket = file_descriptor();
+    if (socket >= FD_SETSIZE)
+       LOG(FATAL) << "Invalid file_descriptor.";
+    FD_SET(socket, &read_fds);
+
     struct timeval wait_duration;
     timersub(&end_time, &now, &wait_duration);
     int result = sock_->sockets()->Select(file_descriptor() + 1,
