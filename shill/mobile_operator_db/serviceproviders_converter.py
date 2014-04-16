@@ -41,8 +41,24 @@ class ServiceProvidersConverter(object):
         self._file_path = file_path
         self._out_file_path = out_file_path
 
+        self._gsm_nodes_no_mccmnc = set()
         self._gsm_nodes_by_mccmnc = {}
         self._mcc_mnc_by_mccmnc = {}
+
+        # Book-keeping to sanity check the total number of providers converted,
+        # and detailed information about the conversion.
+        self._xml_cdma_nodes = 0
+        self._xml_gsm_nodes = 0
+        self._protobuf_mnos_dumped = 0
+        self._protobuf_mvnos_dumped = 0
+        self._protobuf_gsm_mnos = 0
+        self._protobuf_cdma_mnos = 0
+        self._protobuf_gsm_mvnos = 0
+        self._protobuf_gsm_unique_mvnos = 0
+        # Turns out some MVNOs are MNOs using a different MCCMNC.
+        self._protobuf_gsm_mvnos_mnos = 0
+        # Remember nodes that we decide to drop at any point.
+        self._dropped_nodes = set()
 
         # Related to the actual protobuf output:
         self._indent = 0
@@ -55,6 +71,8 @@ class ServiceProvidersConverter(object):
         self._root = element_tree.getroot()
         logging.info('Dumping parsed XML')
         self._DumpXMLToTempFile()
+        self._xml_cdma_nodes = len(self._root.findall(u'.//cdma'))
+        self._xml_gsm_nodes = len(self._root.findall(u'.//gsm'))
 
         self._TransformXML()
         logging.info('Dumping transformed XML.')
@@ -69,6 +87,106 @@ class ServiceProvidersConverter(object):
         else:
             self._out_file = sys.stdout
             self._SpewProtobuf()
+
+        self._RunStatsDiagnostics()
+
+
+    def _CheckStatsEqual(self, lhs, lhs_name, rhs, rhs_name):
+        """
+        Test that |lhs| == |rhs| and log appropriate message.
+
+        @param lhs: One value to compare.
+        @param lhs_name: str name to be used for |lhs| for logging.
+        @param rhs: Other value to compare.
+        @param rhs_name: str name to be used for |rhs| for logging.
+        @return True if check passes, False otherwise.
+
+        """
+        result = (lhs == rhs)
+        logger = logging.info if result else logging.error
+        message = 'PASS' if result else 'FAIL'
+        logger('Sanity check: (%s) == (%s) (%d == %d) **%s**',
+               lhs_name, rhs_name, lhs, rhs, message)
+        return result
+
+
+    def _RunStatsDiagnostics(self):
+        """ Checks that the stats about nodes found / dumped tally. """
+        # First dump dropped nodes.
+        if len(self._dropped_nodes) > 0:
+            logging.warning('Following nodes were dropped:')
+            for node in self._dropped_nodes:
+                logging.info(self._PPrintXML(node).encode(FILE_ENCODING))
+
+        logging.info('######################')
+        logging.info('Conversion diagnostics')
+        logging.info('######################')
+
+        logging.info('Total number of XML CDMA nodes read [xml_cdma_nodes]: %d',
+                     self._xml_cdma_nodes)
+        logging.info('Total number of XML GSM nodes read [xml_gsm_nodes]: %d',
+                     self._xml_gsm_nodes)
+        logging.info('Total number of XML nodes read '
+                     '[xml_nodes = xml_cdma_nodes + xml_gsm_nodes]: %d',
+                     self._xml_cdma_nodes + self._xml_gsm_nodes)
+
+        logging.info('Total number of protobuf MNOs dumped '
+                     '[protobuf_mnos_dumped]: %d',
+                     self._protobuf_mnos_dumped)
+        logging.info('Total number of protobuf MVNOs dumped '
+                     '[protobuf_mvnos_dumped]: %d',
+                     self._protobuf_mvnos_dumped)
+        logging.info('Total number of protobuf nodes dropped '
+                     '[protobuf_dropped_nodes]: %d',
+                     len(self._dropped_nodes))
+        logging.info('  (See above for the exact nodes dropped)')
+
+        logging.info('Total number of protobuf CDMA MNOs '
+                     '[protobuf_cdma_mnos]: %d',
+                     self._protobuf_cdma_mnos)
+        logging.info('Total number of protobuf GSM MNOs '
+                     '[protobuf_gsm_mnos]: %d',
+                     self._protobuf_gsm_mnos)
+        logging.info('Total number of protobuf GSM MVNOs '
+                     '[protobuf_gsm_mvnos]: %d',
+                     self._protobuf_gsm_mvnos)
+        logging.info('Total number of protobuf unique GSM MVNOs. '
+                     '[protobuf_gsm_unique_mvnos]: %d',
+                     self._protobuf_gsm_unique_mvnos)
+        logging.info('  (Some MVNOs may appear in multiple MNOs)')
+        logging.info('Total number of protobuf GSM MVNOs that are also MNOs. '
+                     '[protobuf_gsm_mvnos_mnos]: %d',
+                     self._protobuf_gsm_mvnos_mnos)
+
+        check_results = []
+        check_results.append(self._CheckStatsEqual(
+                self._protobuf_mnos_dumped,
+                'protobuf_mnos_dumped',
+                self._protobuf_cdma_mnos + self._protobuf_gsm_mnos,
+                'protobuf_cdma_mnos + protobuf_gsm_mnos'))
+
+        check_results.append(self._CheckStatsEqual(
+                self._protobuf_mnos_dumped + self._protobuf_mvnos_dumped,
+                'protobuf_mnos_dumped + protobuf_mvnos_dumped',
+                (self._protobuf_cdma_mnos +
+                 self._protobuf_gsm_mnos +
+                 self._protobuf_gsm_mvnos),
+                'protobuf_cdma_mnos + protobuf_gsm_mnos + protobuf_gsm_mvnos'))
+
+        check_results.append(self._CheckStatsEqual(
+                self._xml_cdma_nodes + self._xml_gsm_nodes,
+                'xml_cdma_nodes + xml_gsm_nodes',
+                (len(self._dropped_nodes) +
+                 self._protobuf_gsm_mnos +
+                 self._protobuf_cdma_mnos +
+                 self._protobuf_gsm_unique_mvnos -
+                 self._protobuf_gsm_mvnos_mnos),
+                ('protobuf_dropped_nodes + '
+                 'protobuf_gsm_mnos + protobuf_cdma_mnos + '
+                 'protobuf_gsm_unique_mvnos - protobuf_gsm_mvnos_mnos')))
+
+        if False in check_results:
+            self._LogAndRaise('StatsDiagnostics failed.')
 
 
     def _DumpXMLToTempFile(self):
@@ -150,7 +268,7 @@ class ServiceProvidersConverter(object):
 
     def _CheckAmbiguousMCCMNC(self, mcc, mnc):
         """
-        Ensure that no two mcc, mnc pairs concat to the same mccmnc.
+        Ensure that no two mcc, mnc pairs concat to the same MCCMNC.
 
         @param mcc: The mcc to check.
         @param mnc: The mnc to check.
@@ -170,6 +288,12 @@ class ServiceProvidersConverter(object):
     def _GroupGSMNodesByMCCMNC(self):
         """ Map all GSM nodes with same MCCMNC together. """
         for gsm_node in self._root.findall(u'.//gsm'):
+            network_id_nodes = gsm_node.findall(u'network-id')
+            if not network_id_nodes:
+                logging.warning('Found a GSM node with no MCCMNC. ')
+                self._gsm_nodes_no_mccmnc.add(gsm_node)
+                continue
+
             for network_id_node in gsm_node.findall(u'network-id'):
                 mcc = network_id_node.get(u'mcc')
                 mnc = network_id_node.get(u'mnc')
@@ -190,41 +314,64 @@ class ServiceProvidersConverter(object):
         primary are primary.
 
         """
-        # All cdma nodes are primary
-        self._primary_nodes = set(self._root.findall(u'.//cdma'))
+        unique_mvnos = set()
         self._mvnos = {}
 
+        # All cdma nodes are primary.
+        self._primary_cdma_nodes = set(self._root.findall(u'.//cdma'))
+
+        self._protobuf_cdma_mnos = len(self._primary_cdma_nodes)
+
+
+        # Start by marking all nodes with no MCCMNC primary.
+        self._primary_gsm_nodes = self._gsm_nodes_no_mccmnc
         for mccmnc, nodes in self._gsm_nodes_by_mccmnc.iteritems():
             mvnos = set()
             if len(nodes) == 1:
-                self._primary_nodes.add(nodes[0])
-            else:
-                # Exactly one node in the list should claim to be primary.
-                primary = None
-                for node in nodes:
-                    provider_node = node.find(u'provider')
-                    if (provider_node.get(u'primary') and
-                        provider_node.get(u'primary') == u'true'):
-                        if primary is not None:
-                            self._LogAndRaise(
-                                    u'Found two primary gsm nodes with mccmnc['
-                                    u'%s]: \n%s\n%s',
-                                    mccmnc, self._PPrintXML(primary),
-                                    self._PPrintXML(node))
+                self._primary_gsm_nodes.add(nodes[0])
+                continue
 
-                        primary = node
-                        self._primary_nodes.add(node)
-                    else:
-                        mvnos.add(node)
-                if primary is None:
-                    logging.warning('Failed to find primary node with '
-                                    'mccmnc[%s]. Will make all of them '
-                                    'distinct MNOs', mccmnc)
-                    logging.info('Nodes found:')
-                    for node in nodes:
-                        self._PPrintLogXML(logging.info, node)
-                    self._primary_nodes.union(set(nodes))
-                self._mvnos[primary] = mvnos
+            # Exactly one node in the list should claim to be primary.
+            primary = None
+            for node in nodes:
+                provider_node = node.find(u'provider')
+                if (provider_node.get(u'primary') and
+                    provider_node.get(u'primary') == u'true'):
+                    if primary is not None:
+                        self._LogAndRaise(
+                                u'Found two primary gsm nodes with MCCMNC['
+                                u'%s]: \n%s\n%s',
+                                mccmnc, self._PPrintXML(primary),
+                                self._PPrintXML(node))
+
+                    primary = node
+                    self._primary_gsm_nodes.add(node)
+                else:
+                    mvnos.add(node)
+            if primary is None:
+                logging.warning('Failed to find primary node with '
+                                'MCCMNC[%s]. Will make all of them '
+                                'distinct MNOs', mccmnc)
+                logging.info('Nodes found:')
+                for node in nodes:
+                    self._PPrintLogXML(logging.info, node)
+                self._primary_gsm_nodes = (self._primary_gsm_nodes | set(nodes))
+                continue
+
+            # This primary may already have MVNOs due to another MCCMNC.
+            existing_mvnos = self._mvnos.get(primary, set())
+            self._mvnos[primary] = existing_mvnos | mvnos
+            # Only add to the MVNO count the *new* MVNOs added.
+            self._protobuf_gsm_mvnos += (len(self._mvnos[primary]) -
+                                         len(existing_mvnos))
+            unique_mvnos = unique_mvnos | mvnos
+
+        self._primary_nodes = (self._primary_cdma_nodes |
+                               self._primary_gsm_nodes)
+        self._protobuf_gsm_mnos = len(self._primary_gsm_nodes)
+        self._protobuf_gsm_unique_mvnos = len(unique_mvnos)
+        self._protobuf_gsm_mvnos_mnos = len(
+                self._primary_gsm_nodes & unique_mvnos)
 
 
     def _SortOperators(self, node_list):
@@ -251,12 +398,14 @@ class ServiceProvidersConverter(object):
         primaries = list(self._primary_nodes)
         self._SortOperators(primaries)
         for node in primaries:
+            self._protobuf_mnos_dumped += 1
             self._SpewMessageBegin(u'mno')
             self._SpewData(node)
             if node in self._mvnos:
                 mvnos = list(self._mvnos[node])
                 self._SortOperators(mvnos)
                 for mvno_node in mvnos:
+                    self._protobuf_mvnos_dumped += 1
                     self._SpewMessageBegin(u'mvno')
                     self._SpewNameFilter(mvno_node)
                     self._SpewData(mvno_node)

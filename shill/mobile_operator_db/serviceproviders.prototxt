@@ -324,6 +324,66 @@ mno {
     country : "at"
     provider_type : GSM
     localized_name {
+      name : "A1/Telekom Austria"
+    }
+    mccmnc : "23201"
+    mobile_apn {
+      apn : "a1.net"
+      plan : POSTPAID
+      localized_name {
+        name : "A1 Breitband"
+      }
+      username : "ppp@A1plus.at"
+      password : "ppp"
+      dns : "194.48.124.202"
+      dns : "194.48.124.200"
+    }
+    mobile_apn {
+      apn : "aon.data"
+      plan : POSTPAID
+      localized_name {
+        name : "aon (Flex, Breitband-Duo, BusinessFlex)"
+      }
+      username : "mobile@aon.at"
+      password : "ppp"
+    }
+    mobile_apn {
+      apn : "aon.at"
+      plan : POSTPAID
+      localized_name {
+        name : "aonMobile"
+      }
+      username : "mobile@aon.at"
+      password : "ppp"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "at"
+    provider_type : GSM
+    localized_name {
+      name : "ABroadband"
+    }
+    mccmnc : "23201"
+    mobile_apn {
+      apn : "mdata.com"
+      plan : PREPAID
+      localized_name {
+        name : "International Roaming"
+      }
+      username : "mdata@mdata.com"
+      password : "ppp"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "at"
+    provider_type : GSM
+    localized_name {
       name : "Bob"
     }
     mccmnc : "23211"
@@ -444,6 +504,61 @@ mno {
     country : "at"
     provider_type : GSM
     localized_name {
+      name : "T-Mobile"
+    }
+    mccmnc : "23203"
+    mobile_apn {
+      apn : "gprswap"
+      plan : POSTPAID
+      localized_name {
+        name : "WAP"
+      }
+      username : "t-mobile"
+      password : "tm"
+    }
+    mobile_apn {
+      apn : "gprsinternet"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet"
+      }
+      username : "t-mobile"
+      password : "tm"
+      dns : "213.162.69.169"
+      dns : "213.162.65.1"
+    }
+    mobile_apn {
+      apn : "business.gprsinternet"
+      plan : POSTPAID
+      localized_name {
+        name : "Business Internet"
+      }
+      username : "t-mobile"
+      password : "tm"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "at"
+    provider_type : GSM
+    localized_name {
+      name : "VOLmobil"
+    }
+    mccmnc : "23203"
+    mobile_apn {
+      apn : "volmobil"
+      plan : PREPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "at"
+    provider_type : GSM
+    localized_name {
       name : "Yesss"
     }
     mccmnc : "23212"
@@ -481,6 +596,71 @@ mno {
     country : "au"
     provider_type : GSM
     localized_name {
+      name : "Amaysim"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "internet"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Apex Telecom"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "splns357"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "BLiNK"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "splns888a1"
+      localized_name {
+        name : "BLiNK (services after 04/08/09)"
+      }
+    }
+    mobile_apn {
+      apn : "connect"
+      localized_name {
+        name : "BLiNK (services prior to 04/08/09)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Beagle"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "splns357"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
       name : "Crazy John's"
     }
     mccmnc : "50503"
@@ -499,6 +679,265 @@ mno {
       plan : POSTPAID
       localized_name {
         name : "Crazy WAP/MMS"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Dodo"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "WirelessBroadband"
+      localized_name {
+        name : "Postpaid"
+      }
+    }
+    mobile_apn {
+      apn : "DODOLNS1"
+      localized_name {
+        name : "Prepaid"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Escape Net"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "splns357"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Exetel"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "exetel1"
+      localized_name {
+        name : "Exetel (Optus Based HSPA plans)"
+      }
+    }
+    mobile_apn {
+      apn : "INTERNET"
+      localized_name {
+        name : "Exetel (Optus Based CAP Plans) not iPhone"
+      }
+    }
+    mobile_apn {
+      apn : "OPTUSWAP"
+      localized_name {
+        name : "Exetel (Optus Based CAP Plans) not iPhone"
+      }
+    }
+    mobile_apn {
+      apn : "YesINTERNET"
+      localized_name {
+        name : "Exetel (Optus Based CAP Plans) iPhone"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Exetel (Vodafone based)"
+    }
+    mccmnc : "50503"
+    mobile_apn {
+      apn : "vfinternet.au"
+      localized_name {
+        name : "Exetel (Vodafone Based)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Highway1"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "splns357"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Internode"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "internode"
+      plan : POSTPAID
+      localized_name {
+        name : "NodeMobile Data"
+      }
+    }
+    mobile_apn {
+      apn : "splns333a1"
+      plan : POSTPAID
+      localized_name {
+        name : "Old NodeMobile Data (before 2009-08-26)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Optus"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobile Internet (handsets)"
+      }
+      dns : "211.29.132.12"
+      dns : "198.142.0.51"
+    }
+    mobile_apn {
+      apn : "yesinternet"
+      plan : PREPAID
+      localized_name {
+        name : "Optus Yes Internet"
+      }
+      dns : "211.29.132.12"
+      dns : "198.142.0.51"
+    }
+    mobile_apn {
+      apn : "connect"
+      plan : POSTPAID
+      localized_name {
+        name : "Wireless Broadband"
+      }
+      dns : "211.29.132.12"
+      dns : "198.142.0.51"
+    }
+    mobile_apn {
+      apn : "connectcap"
+      plan : POSTPAID
+      localized_name {
+        name : "Post-Paid Mobile Broadband"
+      }
+      dns : "211.29.132.12"
+      dns : "198.142.0.51"
+    }
+    mobile_apn {
+      apn : "preconnect"
+      plan : POSTPAID
+      localized_name {
+        name : "Pre-Paid Mobile Broadband"
+      }
+      dns : "211.29.132.12"
+      dns : "198.142.0.51"
+    }
+    mobile_apn {
+      apn : "mms"
+      plan : POSTPAID
+      localized_name {
+        name : "Optus MMS"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Pennytel"
+    }
+    mccmnc : "50503"
+    mobile_apn {
+      apn : "live.vodafone.com"
+      localized_name {
+        name : "Pennytel (Vodafone) live.vodafone.com"
+      }
+    }
+    mobile_apn {
+      apn : "vfinternet.au"
+      localized_name {
+        name : "Pennytel (Vodafone) vfinternet.au"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Smelly Black Dog"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "splns357"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "TPG Mobile"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "yesinternet"
+      localized_name {
+        name : "TPG (iPhone)"
+      }
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "TPG (all except iPhone)"
+      }
+    }
+    mobile_apn {
+      apn : "mms"
+      plan : POSTPAID
+      localized_name {
+        name : "MMS"
       }
     }
   }
@@ -597,6 +1036,120 @@ mno {
       password : "a"
       dns : "202.124.68.130"
       dns : "202.124.76.66"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Virgin Mobile"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "VirginInternet"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobile Internet"
+      }
+      username : "guest"
+      password : "guest"
+      dns : "61.88.88.88"
+    }
+    mobile_apn {
+      apn : "VirginBroadband"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobile Broadband"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Vodafone"
+    }
+    mccmnc : "50503"
+    mobile_apn {
+      apn : "vfinternet.au"
+      plan : POSTPAID
+      localized_name {
+        name : "Postpaid and some prepaid phone plans"
+      }
+    }
+    mobile_apn {
+      apn : "vfprepaymbb"
+      plan : PREPAID
+      localized_name {
+        name : "Prepaid"
+      }
+      dns : "203.21.112.40"
+      dns : "203.21.113.40"
+    }
+    mobile_apn {
+      apn : "live.vodafone.com"
+      plan : POSTPAID
+      localized_name {
+        name : "Vodafone Internet"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "Westnet"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "yesinternet"
+      localized_name {
+        name : "Westnet (iPhone)"
+      }
+    }
+    mobile_apn {
+      apn : "internet"
+      localized_name {
+        name : "Westnet (all except iPhone)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "iPrimus"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "primuslns1"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "au"
+    provider_type : GSM
+    localized_name {
+      name : "iiNet"
+    }
+    mccmnc : "50502"
+    mobile_apn {
+      apn : "iinet"
+      plan : POSTPAID
     }
   }
 }
@@ -847,6 +1400,109 @@ mno {
     country : "be"
     provider_type : GSM
     localized_name {
+      name : "Base"
+    }
+    mccmnc : "20620"
+    mobile_apn {
+      apn : "gprs.base.be"
+      plan : POSTPAID
+      username : "base"
+      password : "base"
+      dns : "195.130.131.139"
+      dns : "212.53.4.4"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "be"
+    provider_type : GSM
+    localized_name {
+      name : "Mobile Vikings"
+    }
+    mccmnc : "20620"
+    mobile_apn {
+      apn : "web.be"
+      plan : PREPAID
+      username : "web"
+      password : "web"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "be"
+    provider_type : GSM
+    localized_name {
+      name : "Mobistar"
+    }
+    mccmnc : "20610"
+    mobile_apn {
+      apn : "web.pro.be"
+      plan : POSTPAID
+      localized_name {
+        name : "Business"
+      }
+      username : "mobistar"
+      password : "mobistar"
+      dns : "212.65.63.10"
+      dns : "212.65.63.145"
+    }
+    mobile_apn {
+      apn : "internet.be"
+      plan : POSTPAID
+      localized_name {
+        name : "Personal"
+      }
+      username : "mobistar"
+      password : "mobistar"
+      dns : "212.65.63.10"
+      dns : "212.65.63.145"
+    }
+    mobile_apn {
+      apn : "iew.be"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet Everywhere"
+      }
+      username : "mobistar"
+      password : "mobistar"
+      dns : "212.224.255.252"
+      dns : "212.65.63.217"
+    }
+    mobile_apn {
+      apn : "mworld.be"
+      plan : POSTPAID
+      username : "mobistar"
+      password : "mobistar"
+      dns : "212.65.63.10"
+      dns : "212.65.63.145"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "be"
+    provider_type : GSM
+    localized_name {
+      name : "Orange"
+    }
+    mccmnc : "20610"
+    mobile_apn {
+      apn : "orangeinternet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "be"
+    provider_type : GSM
+    localized_name {
       name : "Proximus"
     }
     mccmnc : "20601"
@@ -867,6 +1523,38 @@ mno {
       }
       dns : "195.238.2.21"
       dns : "195.238.2.22"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "be"
+    provider_type : GSM
+    localized_name {
+      name : "Telenet Mobile"
+    }
+    mccmnc : "20610"
+    mobile_apn {
+      apn : "mobile.internet.be"
+      plan : POSTPAID
+      localized_name {
+        name : "Old Walk & Surf"
+      }
+    }
+    mobile_apn {
+      apn : "telenetwap.be"
+      plan : POSTPAID
+      localized_name {
+        name : "Walk & Talk"
+      }
+    }
+    mobile_apn {
+      apn : "telenetwap.be"
+      plan : POSTPAID
+      localized_name {
+        name : "Walk & Surf"
+      }
     }
   }
 }
@@ -1084,6 +1772,23 @@ mno {
     country : "br"
     provider_type : GSM
     localized_name {
+      name : "Brasil Telecom"
+    }
+    mccmnc : "72416"
+    mobile_apn {
+      apn : "brt.br"
+      plan : POSTPAID
+      username : "BrT"
+      password : "BrT"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "br"
+    provider_type : GSM
+    localized_name {
       name : "CTBC"
     }
     mccmnc : "72407"
@@ -1170,6 +1875,23 @@ mno {
       password : "tim"
       dns : "10.223.246.102"
       dns : "10.223.246.103"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "br"
+    provider_type : GSM
+    localized_name {
+      name : "Velox"
+    }
+    mobile_apn {
+      apn : "wap.telcel.com"
+      plan : POSTPAID
+      username : "iesgprs"
+      password : "iesgprs2002"
+      dns : "66.36.250.14"
     }
   }
 }
@@ -1342,41 +2064,6 @@ mno {
 mno {
   data {
     country : "ca"
-    provider_type : CDMA
-    localized_name {
-      name : "Bell Mobility"
-    }
-    sid : "16420"
-    sid : "16440"
-    sid : "16456"
-    sid : "16410"
-    sid : "16444"
-    sid : "16390"
-    sid : "16394"
-    sid : "16402"
-    sid : "16414"
-    sid : "16416"
-    sid : "16418"
-    sid : "16462"
-    sid : "16472"
-    sid : "16408"
-    sid : "16404"
-    sid : "16430"
-    sid : "16396"
-    sid : "16426"
-    sid : "16388"
-    sid : "16390"
-    sid : "16408"
-    sid : "16414"
-    sid : "16430"
-    sid : "16460"
-    sid : "16468"
-  }
-}
-
-mno {
-  data {
-    country : "ca"
     provider_type : GSM
     localized_name {
       name : "Bell Mobility"
@@ -1406,6 +2093,41 @@ mno {
         name : "Mobile Fast Web"
       }
     }
+  }
+}
+
+mno {
+  data {
+    country : "ca"
+    provider_type : CDMA
+    localized_name {
+      name : "Bell Mobility"
+    }
+    sid : "16420"
+    sid : "16440"
+    sid : "16456"
+    sid : "16410"
+    sid : "16444"
+    sid : "16390"
+    sid : "16394"
+    sid : "16402"
+    sid : "16414"
+    sid : "16416"
+    sid : "16418"
+    sid : "16462"
+    sid : "16472"
+    sid : "16408"
+    sid : "16404"
+    sid : "16430"
+    sid : "16396"
+    sid : "16426"
+    sid : "16388"
+    sid : "16390"
+    sid : "16408"
+    sid : "16414"
+    sid : "16430"
+    sid : "16460"
+    sid : "16468"
   }
 }
 
@@ -1487,6 +2209,23 @@ mno {
 mno {
   data {
     country : "ca"
+    provider_type : CDMA
+    localized_name {
+      name : "Telus Mobility"
+    }
+    sid : "16422"
+    sid : "17500"
+    sid : "16438"
+    sid : "16458"
+    sid : "16436"
+    sid : "16434"
+    sid : "16384"
+  }
+}
+
+mno {
+  data {
+    country : "ca"
     provider_type : GSM
     localized_name {
       name : "Telus Mobility"
@@ -1522,23 +2261,6 @@ mno {
         name : "Mobile Web/Smartphone"
       }
     }
-  }
-}
-
-mno {
-  data {
-    country : "ca"
-    provider_type : CDMA
-    localized_name {
-      name : "Telus Mobility"
-    }
-    sid : "16422"
-    sid : "17500"
-    sid : "16438"
-    sid : "16458"
-    sid : "16436"
-    sid : "16434"
-    sid : "16384"
   }
 }
 
@@ -1625,6 +2347,24 @@ mno {
     country : "ch"
     provider_type : GSM
     localized_name {
+      name : "M-Budget"
+    }
+    mccmnc : "22801"
+    mobile_apn {
+      apn : "gprs.swisscom.ch"
+      plan : POSTPAID
+      localized_name {
+        name : "Migros Data"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ch"
+    provider_type : GSM
+    localized_name {
       name : "Orange"
     }
     mccmnc : "22803"
@@ -1687,6 +2427,42 @@ mno {
       apn : "mms.sunrise.ch"
       username : "mms"
       password : "mms"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ch"
+    provider_type : GSM
+    localized_name {
+      name : "Swisscom"
+    }
+    mccmnc : "22801"
+    mobile_apn {
+      apn : "gprs.swisscom.ch"
+      plan : POSTPAID
+      localized_name {
+        name : "Swisscom GPRS"
+      }
+      dns : "138.188.101.189"
+      dns : "138.188.101.186"
+    }
+    mobile_apn {
+      apn : "corporate.swisscom.ch"
+      plan : POSTPAID
+      localized_name {
+        name : "Swisscom CAA"
+      }
+      username : "testprofil"
+      password : "temporary"
+    }
+    mobile_apn {
+      apn : "event.swisscom.ch"
+      plan : POSTPAID
+      localized_name {
+        name : "Swisscom MMS"
+      }
     }
   }
 }
@@ -1938,6 +2714,92 @@ mno {
 
 mno {
   data {
+    country : "co"
+    provider_type : GSM
+    localized_name {
+      name : "Tigo"
+    }
+    mccmnc : "732103"
+    mccmnc : "732111"
+    mobile_apn {
+      apn : "web.colombiamovil.com.co"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "co"
+    provider_type : GSM
+    localized_name {
+      name : "UNE"
+    }
+    mccmnc : "732103"
+    mccmnc : "732111"
+    mobile_apn {
+      apn : "www.une.net.co"
+      plan : POSTPAID
+      username : "une"
+      password : "une"
+    }
+    mobile_apn {
+      apn : "une4glte.net.co"
+      plan : POSTPAID
+      localized_name {
+        name : "LTE (4G)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "co"
+    provider_type : GSM
+    localized_name {
+      name : "Uff"
+    }
+    mobile_apn {
+      apn : "web.uffmovil.com.co"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "co"
+    provider_type : GSM
+    localized_name {
+      name : "Virgin Mobile"
+    }
+    mccmnc : "732123"
+    mobile_apn {
+      apn : "web.vmc.net.co"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "co"
+    provider_type : GSM
+    localized_name {
+      name : "eTb"
+    }
+    mobile_apn {
+      apn : "moviletb.net.co"
+      plan : POSTPAID
+      username : "etb"
+      password : "etb"
+    }
+  }
+}
+
+mno {
+  data {
     country : "cr"
     provider_type : GSM
     localized_name {
@@ -2075,6 +2937,48 @@ mno {
       plan : POSTPAID
       dns : "217.77.161.130"
       dns : "217.77.161.131"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "Alice"
+    }
+    mccmnc : "26207"
+    mobile_apn {
+      apn : "internet.partner1"
+      plan : POSTPAID
+      localized_name {
+        name : "Option Mobile"
+      }
+      dns : "193.189.244.225"
+      dns : "193.189.244.206"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "Congstar"
+    }
+    mccmnc : "26201"
+    mobile_apn {
+      apn : "internet.t-mobile"
+      plan : PREPAID
+      localized_name {
+        name : "Prepaid Contracts"
+      }
+      username : "t-mobile"
+      password : "tm"
+      dns : "193.254.160.1"
+      dns : "10.74.83.22"
     }
   }
 }
@@ -2222,6 +3126,153 @@ mno {
     country : "de"
     provider_type : GSM
     localized_name {
+      name : "FONIC"
+    }
+    mccmnc : "26207"
+    mccmnc : "26208"
+    mccmnc : "26211"
+    mobile_apn {
+      apn : "pinternet.interkom.de"
+      plan : POSTPAID
+      username : "fonic"
+      password : "fonic"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "Materna BR"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "Netzclub"
+    }
+    mccmnc : "26207"
+    mccmnc : "26208"
+    mccmnc : "26211"
+    mobile_apn {
+      apn : "pinternet.interkom.de"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "O2"
+    }
+    mccmnc : "26207"
+    mccmnc : "26208"
+    mccmnc : "26211"
+    mobile_apn {
+      apn : "pinternet.interkom.de"
+      plan : POSTPAID
+      localized_name {
+        name : "LOOP"
+      }
+      dns : "193.189.244.225"
+      dns : "193.189.244.206"
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "Pay-by-MB"
+      }
+      dns : "195.182.110.132"
+      dns : "62.134.11.4"
+    }
+    mobile_apn {
+      apn : "surfo2"
+      plan : POSTPAID
+      localized_name {
+        name : "Pay-by-time"
+      }
+      dns : "195.182.110.132"
+      dns : "62.134.11.4"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "PTT mobile"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "SunSIM"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "SüdkurierTel"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
       name : "T-Mobile(Telekom)"
     }
     mccmnc : "26201"
@@ -2240,6 +3291,43 @@ mno {
       password : "tm"
       dns : "10.74.83.22"
       dns : "193.254.160.1"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "Tchibo-Mobil"
+    }
+    mccmnc : "26207"
+    mccmnc : "26208"
+    mccmnc : "26211"
+    mobile_apn {
+      apn : "webmobil1"
+      plan : POSTPAID
+      localized_name {
+        name : "Tagesflat / Monats-Flatrate L / Monats-Flatrate XL"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "TouristMobile"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
     }
   }
 }
@@ -2302,6 +3390,111 @@ mno {
         username : "D2"
         password : "Web"
       }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Bild Mobil"
+    }
+    data {
+      country : "de"
+      provider_type : GSM
+      localized_name {
+        name : "Bild Mobil"
+      }
+      mccmnc : "26202"
+      mobile_apn {
+        apn : "access.vodafone.de"
+        plan : POSTPAID
+        localized_name {
+          name : "BILD Mobilportal"
+        }
+      }
+      mobile_apn {
+        apn : "web.vodafone.de"
+        plan : POSTPAID
+        localized_name {
+          name : "Contract"
+        }
+        dns : "139.7.30.125"
+        dns : "139.7.30.126"
+      }
+      mobile_apn {
+        apn : "event.vodafone.de"
+        plan : PREPAID
+        localized_name {
+          name : "BILDmobil Speedstick (Surfpakete)"
+        }
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "igge & ko"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "sdt.net"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "solomo"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "de"
+    provider_type : GSM
+    localized_name {
+      name : "vistream"
+    }
+    mccmnc : "26216"
+    mobile_apn {
+      apn : "internet.vistream.net"
+      plan : POSTPAID
+      username : "web"
+      password : "vistream"
     }
   }
 }
@@ -2369,6 +3562,53 @@ mno {
           name : "Mobile Internet"
         }
       }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "dk"
+    provider_type : GSM
+    localized_name {
+      name : "BiBoB"
+    }
+    mccmnc : "23802"
+    mobile_apn {
+      apn : "internet.bibob.dk"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "dk"
+    provider_type : GSM
+    localized_name {
+      name : "CBB Mobil"
+    }
+    mccmnc : "23802"
+    mccmnc : "23877"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "dk"
+    provider_type : GSM
+    localized_name {
+      name : "Fullrate"
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      username : "Fullrate"
+      password : "Fullrate"
     }
   }
 }
@@ -2468,6 +3708,24 @@ mno {
         apn : "internet"
         plan : POSTPAID
       }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "dk"
+    provider_type : GSM
+    localized_name {
+      name : "Telenor"
+    }
+    mccmnc : "23802"
+    mccmnc : "23877"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      dns : "212.88.64.199"
+      dns : "212.88.64.14"
     }
   }
 }
@@ -2643,6 +3901,23 @@ mno {
     country : "ee"
     provider_type : GSM
     localized_name {
+      name : "EMT"
+    }
+    mccmnc : "24801"
+    mobile_apn {
+      apn : "internet.emt.ee"
+      plan : POSTPAID
+      dns : "217.71.32.116"
+      dns : "217.71.32.115"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ee"
+    provider_type : GSM
+    localized_name {
       name : "Elisa"
     }
     mccmnc : "24802"
@@ -2650,6 +3925,21 @@ mno {
       apn : "internet"
       plan : POSTPAID
       dns : "194.204.0.1"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ee"
+    provider_type : GSM
+    localized_name {
+      name : "Nordea"
+    }
+    mccmnc : "24801"
+    mobile_apn {
+      apn : "internet.emt.ee"
+      plan : POSTPAID
     }
   }
 }
@@ -2718,6 +4008,20 @@ mno {
       password : "internet"
       dns : "163.121.128.134"
       dns : "212.103.160.18"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "es"
+    provider_type : GSM
+    localized_name {
+      name : "Carrefour Móvil"
+    }
+    mobile_apn {
+      apn : "CARREFOURINTERNET"
+      plan : POSTPAID
     }
   }
 }
@@ -2812,6 +4116,21 @@ mno {
     country : "es"
     provider_type : GSM
     localized_name {
+      name : "Másmovil"
+    }
+    mccmnc : "21403"
+    mobile_apn {
+      apn : "internetmas"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "es"
+    provider_type : GSM
+    localized_name {
       name : "ONO"
     }
     mccmnc : "21418"
@@ -2843,6 +4162,31 @@ mno {
       password : "ORANGE"
       dns : "85.62.229.133"
       dns : "85.62.229.134"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "es"
+    provider_type : GSM
+    localized_name {
+      name : "Pepephone"
+    }
+    mccmnc : "21406"
+    mobile_apn {
+      apn : "gprs.pepephone.com"
+      plan : POSTPAID
+      localized_name {
+        name : "Pepephone"
+      }
+    }
+    mobile_apn {
+      apn : "gprsmov.pepephone.com"
+      plan : POSTPAID
+      localized_name {
+        name : "Pepephone (Mobile)"
+      }
     }
   }
 }
@@ -2937,6 +4281,23 @@ mno {
     country : "es"
     provider_type : GSM
     localized_name {
+      name : "moviData"
+    }
+    mccmnc : "21403"
+    mobile_apn {
+      apn : "INTERNETTPH"
+      plan : POSTPAID
+      dns : "213.143.33.8"
+      dns : "62.36.225.150"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "es"
+    provider_type : GSM
+    localized_name {
       name : "móbil R (Mundo-R)"
     }
     mccmnc : "21417"
@@ -2989,29 +4350,15 @@ mno {
     localized_name {
       name : "Dna"
     }
-    mccmnc : "24404"
+    mccmnc : "24403"
     mobile_apn {
       apn : "internet"
+      plan : POSTPAID
       localized_name {
         name : "dna internet"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    country : "fi"
-    provider_type : GSM
-    localized_name {
-      name : "Dna"
-    }
-    mccmnc : "24412"
-    mobile_apn {
-      apn : "internet"
-      localized_name {
-        name : "dna internet"
-      }
+      dns : "217.78.192.22"
+      dns : "217.78.192.78"
     }
   }
 }
@@ -3040,15 +4387,29 @@ mno {
     localized_name {
       name : "Dna"
     }
-    mccmnc : "24403"
+    mccmnc : "24404"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "dna internet"
       }
-      dns : "217.78.192.22"
-      dns : "217.78.192.78"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "fi"
+    provider_type : GSM
+    localized_name {
+      name : "Dna"
+    }
+    mccmnc : "24412"
+    mobile_apn {
+      apn : "internet"
+      localized_name {
+        name : "dna internet"
+      }
     }
   }
 }
@@ -3134,6 +4495,23 @@ mno {
 
 mno {
   data {
+    country : "fi"
+    provider_type : GSM
+    localized_name {
+      name : "Welho"
+    }
+    mobile_apn {
+      apn : "internet.welho.fi"
+      plan : POSTPAID
+      localized_name {
+        name : "Wekkula"
+      }
+    }
+  }
+}
+
+mno {
+  data {
     country : "fj"
     provider_type : GSM
     localized_name {
@@ -3165,6 +4543,20 @@ mno {
     mccmnc : "28802"
     mobile_apn {
       apn : "vmc.vodafone.fo"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "fr"
+    provider_type : GSM
+    localized_name {
+      name : "A Mobile (Auchan Telecom)"
+    }
+    mobile_apn {
+      apn : "wap65"
       plan : POSTPAID
     }
   }
@@ -3387,6 +4779,32 @@ mno {
     country : "fr"
     provider_type : GSM
     localized_name {
+      name : "TEN"
+    }
+    mccmnc : "20801"
+    mobile_apn {
+      apn : "ao.fr"
+      plan : POSTPAID
+      username : "orange"
+      password : "orange"
+    }
+    mobile_apn {
+      apn : "ofnew.fr"
+      plan : POSTPAID
+      localized_name {
+        name : "Pay-by-MB"
+      }
+      username : "orange"
+      password : "orange"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "fr"
+    provider_type : GSM
+    localized_name {
       name : "Transatel Telecom"
     }
     mccmnc : "20822"
@@ -3429,6 +4847,23 @@ mno {
     country : "gb"
     provider_type : GSM
     localized_name {
+      name : "Asda Mobile"
+    }
+    mccmnc : "23415"
+    mobile_apn {
+      apn : "asdamobiles.co.uk"
+      plan : PREPAID
+      username : "web"
+      password : "web"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gb"
+    provider_type : GSM
+    localized_name {
       name : "BT Mobile"
     }
     mccmnc : "23400"
@@ -3437,6 +4872,79 @@ mno {
       plan : POSTPAID
       username : "bt"
       password : "bt"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gb"
+    provider_type : GSM
+    localized_name {
+      name : "O2"
+    }
+    mccmnc : "23402"
+    mccmnc : "23410"
+    mccmnc : "23411"
+    mobile_apn {
+      apn : "mobile.o2.co.uk"
+      plan : POSTPAID
+      localized_name {
+        name : "Contract"
+      }
+      username : "o2web"
+      password : "password"
+      dns : "193.113.200.200"
+      dns : "193.113.200.201"
+    }
+    mobile_apn {
+      apn : "mobile.o2.co.uk"
+      plan : POSTPAID
+      localized_name {
+        name : "Contract (faster)"
+      }
+      username : "faster"
+      password : "password"
+      dns : "193.113.200.200"
+      dns : "193.113.200.201"
+    }
+    mobile_apn {
+      apn : "payandgo.o2.co.uk"
+      plan : PREPAID
+      localized_name {
+        name : "Pay and Go (Prepaid)"
+      }
+      username : "payandgo"
+      password : "payandgo"
+    }
+    mobile_apn {
+      apn : "idata.o2.co.uk"
+      plan : POSTPAID
+      localized_name {
+        name : "iPhone (Contract)"
+      }
+      username : "vertigo"
+      password : "password"
+    }
+    mobile_apn {
+      apn : "m-bb.o2.co.uk"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobile Broadband"
+      }
+      username : "o2bb"
+      password : "password"
+      dns : "82.132.254.2"
+      dns : "82.132.254.3"
+    }
+    mobile_apn {
+      apn : "wap.o2.co.uk"
+      plan : POSTPAID
+      localized_name {
+        name : "WAP"
+      }
+      username : "o2wap"
+      password : "password"
     }
   }
 }
@@ -3516,6 +5024,42 @@ mno {
     country : "gb"
     provider_type : GSM
     localized_name {
+      name : "TalkTalk"
+    }
+    mobile_apn {
+      apn : "mobile.talktalk.co.uk"
+      gateway : "212.183.137.12:8799"
+      username : "wap"
+      password : "wap"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gb"
+    provider_type : GSM
+    localized_name {
+      name : "Tesco Mobile"
+    }
+    mccmnc : "23402"
+    mccmnc : "23410"
+    mccmnc : "23411"
+    mobile_apn {
+      apn : "prepay.tesco-mobile.com"
+      plan : PREPAID
+      username : "tescowap"
+      password : "password"
+      dns : "193.113.200.195"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gb"
+    provider_type : GSM
+    localized_name {
       name : "Virgin Mobile"
     }
     mccmnc : "23431"
@@ -3536,6 +5080,90 @@ mno {
 
 mno {
   data {
+    country : "gb"
+    provider_type : GSM
+    localized_name {
+      name : "Vodafone UK"
+    }
+    mccmnc : "23415"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "Contract Internet"
+      }
+      username : "web"
+      password : "web"
+      dns : "10.206.65.68"
+      dns : "10.203.65.68"
+    }
+    mobile_apn {
+      apn : "ppbundle.internet"
+      plan : PREPAID
+      localized_name {
+        name : "PAYG Internet Bundle"
+      }
+      username : "web"
+      password : "web"
+      dns : "10.203.129.68"
+      dns : "10.203.129.68"
+    }
+    mobile_apn {
+      apn : "smart"
+      plan : PREPAID
+      localized_name {
+        name : "PAYG Internet"
+      }
+      username : "web"
+      password : "web"
+    }
+    mobile_apn {
+      apn : "pp.internet"
+      plan : PREPAID
+      localized_name {
+        name : "PAYG Internet"
+      }
+      username : "web"
+      password : "web"
+    }
+    mobile_apn {
+      apn : "pp.vodafone.co.uk"
+      plan : PREPAID
+      localized_name {
+        name : "PAYG WAP"
+      }
+      username : "web"
+      password : "web"
+      dns : "172.29.1.11"
+      dns : "172.29.1.11"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gb"
+    provider_type : GSM
+    localized_name {
+      name : "giffgaff"
+    }
+    mccmnc : "23402"
+    mccmnc : "23410"
+    mccmnc : "23411"
+    mobile_apn {
+      apn : "giffgaff.com"
+      plan : PREPAID
+      localized_name {
+        name : "Mobile Broadband"
+      }
+      username : "giffgaff"
+      password : "password"
+    }
+  }
+}
+
+mno {
+  data {
     country : "ge"
     provider_type : GSM
     localized_name {
@@ -3547,6 +5175,63 @@ mno {
       plan : POSTPAID
       dns : "212.72.130.20"
       dns : "212.72.152.001"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gg"
+    provider_type : GSM
+    localized_name {
+      name : "Airtel-Vodaphone"
+    }
+    mccmnc : "23403"
+    mobile_apn {
+      apn : "airtel-ci-gprs.com"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gg"
+    provider_type : GSM
+    localized_name {
+      name : "Sure (Cable & Wireless)"
+    }
+    mccmnc : "23455"
+    mobile_apn {
+      apn : "wap"
+      plan : POSTPAID
+      localized_name {
+        name : "WAP"
+      }
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gg"
+    provider_type : GSM
+    localized_name {
+      name : "Wave Telecom"
+    }
+    mccmnc : "23450"
+    mobile_apn {
+      apn : "pepper"
+      plan : POSTPAID
+      dns : "212.9.0.135"
+      dns : "212.9.0.136"
     }
   }
 }
@@ -3641,6 +5326,19 @@ mno {
     mobile_apn {
       apn : "browse"
       plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "gl"
+    provider_type : GSM
+    localized_name {
+      name : "Tele Greenland A/S"
+    }
+    mobile_apn {
+      apn : "internet"
     }
   }
 }
@@ -3841,6 +5539,21 @@ mno {
     country : "hk"
     provider_type : GSM
     localized_name {
+      name : "Orange"
+    }
+    mccmnc : "45404"
+    mobile_apn {
+      apn : "web.orangehk.com"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hk"
+    provider_type : GSM
+    localized_name {
       name : "PCCW (Sunday)"
     }
     mccmnc : "45416"
@@ -3889,6 +5602,21 @@ mno {
     country : "hk"
     provider_type : GSM
     localized_name {
+      name : "Sunday"
+    }
+    mccmnc : "45416"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hk"
+    provider_type : GSM
+    localized_name {
       name : "Three"
     }
     mccmnc : "45403"
@@ -3920,6 +5648,40 @@ mno {
     country : "hr"
     provider_type : GSM
     localized_name {
+      name : "CARNet Tele2"
+    }
+    mccmnc : "21902"
+    mobile_apn {
+      apn : "carnet.tele2.hr"
+      plan : POSTPAID
+      username : "AAIEDU"
+      password : ""
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hr"
+    provider_type : GSM
+    localized_name {
+      name : "CARNet VIPNET"
+    }
+    mccmnc : "21910"
+    mobile_apn {
+      apn : "carnet.vip.hr"
+      plan : POSTPAID
+      username : "AAIEDU"
+      password : ""
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hr"
+    provider_type : GSM
+    localized_name {
       name : "T-Mobile"
     }
     mccmnc : "21901"
@@ -3927,6 +5689,106 @@ mno {
       apn : "web.htgprs"
       plan : POSTPAID
       dns : "10.12.0.1"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hr"
+    provider_type : GSM
+    localized_name {
+      name : "Tele2"
+    }
+    mccmnc : "21902"
+    mobile_apn {
+      apn : "mobileinternet.tele2.hr"
+      plan : POSTPAID
+      dns : "212.247.156.66"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hr"
+    provider_type : GSM
+    localized_name {
+      name : "VIPNET"
+    }
+    mccmnc : "21910"
+    mobile_apn {
+      apn : "data.vip.hr"
+      plan : POSTPAID
+      localized_name {
+        name : "Contract and Prepaid"
+      }
+    }
+    mobile_apn {
+      apn : "gprs5.vipnet.hr"
+      plan : POSTPAID
+      localized_name {
+        name : "GPRS 5"
+      }
+      username : "38591"
+      password : "38591"
+      dns : "195.29.159.15"
+    }
+    mobile_apn {
+      apn : "gprs0.vipnet.hr"
+      plan : POSTPAID
+      localized_name {
+        name : "GPRS 0"
+      }
+      username : "38591"
+      password : "38591"
+      dns : "195.29.159.15"
+    }
+    mobile_apn {
+      apn : "3g.vip.hr"
+      plan : POSTPAID
+      localized_name {
+        name : "3G"
+      }
+      username : "38591"
+      password : "38591"
+      dns : "212.91.97.3"
+      dns : "212.91.97.4"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hu"
+    provider_type : GSM
+    localized_name {
+      name : "DIGI"
+    }
+    mccmnc : "21601"
+    mobile_apn {
+      apn : "digi"
+      plan : POSTPAID
+      localized_name {
+        name : "DIGI Move"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hu"
+    provider_type : GSM
+    localized_name {
+      name : "Invitel"
+    }
+    mobile_apn {
+      apn : "invitel.mobilnet"
+      plan : POSTPAID
+      localized_name {
+        name : "net.and.go"
+      }
     }
   }
 }
@@ -3954,6 +5816,26 @@ mno {
       username : "mms"
       dns : "212.51.115.1"
       dns : "194.176.224.3"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "hu"
+    provider_type : GSM
+    localized_name {
+      name : "Telenor"
+    }
+    mccmnc : "21601"
+    mobile_apn {
+      apn : "net"
+      plan : POSTPAID
+      localized_name {
+        name : "mobilinternet"
+      }
+      dns : "217.79.128.40"
+      dns : "217.79.128.45"
     }
   }
 }
@@ -4254,6 +6136,83 @@ mno {
       }
       username : "foo"
       password : "bar"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ie"
+    provider_type : GSM
+    requires_roaming : true
+    localized_name {
+      name : "Cubic"
+    }
+    localized_name {
+      name : "CUBIC"
+    }
+    mobile_apn {
+      apn : "mtoom.com"
+      username : "mtoom"
+      password : "mtoom"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ie"
+    provider_type : GSM
+    localized_name {
+      name : "E-Mobile"
+    }
+    mccmnc : "27203"
+    mobile_apn {
+      apn : "broadband.eircommbb.ie"
+      plan : POSTPAID
+      localized_name {
+        name : "Broadband To Go"
+      }
+      dns : "212.129.64.220"
+      dns : "212.129.64.221"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ie"
+    provider_type : GSM
+    localized_name {
+      name : "Meteor"
+    }
+    mccmnc : "27203"
+    mobile_apn {
+      apn : "data.mymeteor.ie"
+      plan : POSTPAID
+      localized_name {
+        name : "Meteor Data"
+      }
+      username : "my"
+      password : "meteor"
+    }
+    mobile_apn {
+      apn : "broadband.mymeteor.ie"
+      plan : POSTPAID
+      localized_name {
+        name : "Broadband To Go"
+      }
+      dns : "212.129.64.220"
+      dns : "212.129.64.221"
+    }
+    mobile_apn {
+      apn : "isp.mymeteor.ie"
+      plan : POSTPAID
+      localized_name {
+        name : "GPRS"
+      }
+      username : "my"
+      password : "isp"
     }
   }
 }
@@ -4891,6 +6850,31 @@ mno {
     country : "in"
     provider_type : GSM
     localized_name {
+      name : "Spice telecom"
+    }
+    mccmnc : "40414"
+    mccmnc : "40444"
+    mobile_apn {
+      apn : "Simplyenjoy"
+      plan : POSTPAID
+      username : "spice"
+      password : "spice"
+    }
+    mobile_apn {
+      apn : "simplydownload"
+      plan : POSTPAID
+      localized_name {
+        name : "kar"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "in"
+    provider_type : GSM
+    localized_name {
       name : "Tata Docomo"
     }
     mccmnc : "405025"
@@ -5259,6 +7243,54 @@ mno {
     country : "it"
     provider_type : GSM
     localized_name {
+      name : "CoopVoce"
+    }
+    mccmnc : "22201"
+    mobile_apn {
+      apn : "web.coopvoce.it"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet Mobile"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "it"
+    provider_type : GSM
+    localized_name {
+      name : "TIM"
+    }
+    mccmnc : "22201"
+    mobile_apn {
+      apn : "ibox.tim.it"
+      plan : POSTPAID
+      localized_name {
+        name : "Maxxi Alice/Internet"
+      }
+      dns : "217.200.200.42"
+      dns : "213.230.129.10"
+    }
+    mobile_apn {
+      apn : "wap.tim.it"
+      plan : POSTPAID
+      localized_name {
+        name : "WAP"
+      }
+      username : "WAPTIM"
+      dns : "213.230.155.94"
+      dns : "213.230.130.222"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "it"
+    provider_type : GSM
+    localized_name {
       name : "Vodafone"
     }
     mccmnc : "22210"
@@ -5328,6 +7360,65 @@ mno {
       password : "Wind"
       dns : "193.70.152.25"
       dns : "193.70.192.25"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "je"
+    provider_type : GSM
+    localized_name {
+      name : "Airtel-Vodaphone"
+    }
+    mccmnc : "23403"
+    mobile_apn {
+      apn : "airtel-ci-gprs.com"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "je"
+    provider_type : GSM
+    localized_name {
+      name : "Jersey Telecom"
+    }
+    mccmnc : "23450"
+    mobile_apn {
+      apn : "pepper"
+      plan : POSTPAID
+      username : "abc"
+      password : "abc"
+      dns : "212.9.0.135"
+      dns : "212.9.0.136"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "je"
+    provider_type : GSM
+    localized_name {
+      name : "Sure (Cable & Wireless)"
+    }
+    mccmnc : "23455"
+    mobile_apn {
+      apn : "wap"
+      plan : POSTPAID
+      localized_name {
+        name : "WAP"
+      }
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet"
+      }
     }
   }
 }
@@ -5529,6 +7620,26 @@ mno {
       password : "au"
       dns : "210.196.3.183"
       dns : "210.141.112.163"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "jp"
+    provider_type : GSM
+    localized_name {
+      name : "b-mobile"
+    }
+    mccmnc : "44010"
+    mobile_apn {
+      apn : "dm.jplat.net"
+      plan : POSTPAID
+      localized_name {
+        name : "u300"
+      }
+      username : "bmobile@u300"
+      password : "bmobile"
     }
   }
 }
@@ -5898,6 +8009,16 @@ mno {
 mno {
   data {
     country : "kr"
+    provider_type : CDMA
+    localized_name {
+      name : "LGUPlus"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "kr"
     provider_type : GSM
     localized_name {
       name : "LGUPlus"
@@ -5906,16 +8027,6 @@ mno {
     mobile_apn {
       apn : "internet.lguplus.co.kr"
       plan : POSTPAID
-    }
-  }
-}
-
-mno {
-  data {
-    country : "kr"
-    provider_type : CDMA
-    localized_name {
-      name : "LGUPlus"
     }
   }
 }
@@ -6014,6 +8125,21 @@ mno {
     country : "kz"
     provider_type : GSM
     localized_name {
+      name : "Activ"
+    }
+    mccmnc : "40102"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "kz"
+    provider_type : GSM
+    localized_name {
       name : "Beeline"
     }
     mccmnc : "40101"
@@ -6041,6 +8167,21 @@ mno {
       }
       username : "Dalacom"
       password : "Dalacom"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "kz"
+    provider_type : GSM
+    localized_name {
+      name : "K'CELL"
+    }
+    mccmnc : "40102"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
     }
   }
 }
@@ -6378,6 +8519,23 @@ mno {
     country : "lu"
     provider_type : GSM
     localized_name {
+      name : "Orange"
+    }
+    mccmnc : "27099"
+    mobile_apn {
+      apn : "orange.lu"
+      plan : POSTPAID
+      dns : "85.94.224.1"
+      dns : "85.94.224.2"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "lu"
+    provider_type : GSM
+    localized_name {
       name : "Tango"
     }
     mccmnc : "27077"
@@ -6400,6 +8558,21 @@ mno {
       password : "tango"
       dns : "212.66.70.3"
       dns : "212.66.75.7"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "lu"
+    provider_type : GSM
+    localized_name {
+      name : "VOXmobile"
+    }
+    mccmnc : "27099"
+    mobile_apn {
+      apn : "vox.lu"
+      plan : POSTPAID
     }
   }
 }
@@ -7572,6 +9745,21 @@ mno {
     country : "nl"
     provider_type : GSM
     localized_name {
+      name : "Lebara"
+    }
+    mccmnc : "20412"
+    mobile_apn {
+      apn : "multimedia.lebara.nl"
+      plan : PREPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "nl"
+    provider_type : GSM
+    localized_name {
       name : "Lycamobile"
     }
     mccmnc : "20409"
@@ -7677,6 +9865,22 @@ mno {
     country : "nl"
     provider_type : GSM
     localized_name {
+      name : "Telfort"
+    }
+    mccmnc : "20412"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      username : "telfortnl"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "nl"
+    provider_type : GSM
+    localized_name {
       name : "Vodafone"
     }
     mccmnc : "20404"
@@ -7699,6 +9903,129 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "nl"
+    provider_type : GSM
+    localized_name {
+      name : "XS4ALL Mobiel Internet"
+    }
+    mobile_apn {
+      apn : "umts.xs4all.nl"
+      plan : POSTPAID
+      username : "xs4all"
+      password : "xs4all"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Altibox"
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Chess"
+    }
+    mccmnc : "24202"
+    mobile_apn {
+      apn : "netcom"
+      plan : POSTPAID
+      username : "chess"
+      password : "chess"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Ludo Mobil"
+    }
+    mccmnc : "24207"
+    mobile_apn {
+      apn : "internet.ventelo.no"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "MyCall"
+    }
+    mccmnc : "24205"
+    mobile_apn {
+      apn : "internet"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Netcom"
+    }
+    mccmnc : "24202"
+    mobile_apn {
+      apn : "internet.netcom.no"
+      plan : POSTPAID
+      username : "netcom"
+      password : "netcom"
+      dns : "212.169.123.67"
+      dns : "212.45.188.254"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Network Norway"
+    }
+    mccmnc : "24205"
+    mobile_apn {
+      apn : "internet"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "OneCall"
+    }
+    mccmnc : "24205"
+    mobile_apn {
+      apn : "internet"
     }
   }
 }
@@ -7759,6 +10086,36 @@ mno {
       plan : POSTPAID
       dns : "212.17.131.3"
       dns : "148.122.161.2"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Telipol"
+    }
+    mccmnc : "24205"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "no"
+    provider_type : GSM
+    localized_name {
+      name : "Ventelo"
+    }
+    mccmnc : "24207"
+    mobile_apn {
+      apn : "internet.ventelo.no"
+      plan : POSTPAID
     }
   }
 }
@@ -7843,6 +10200,23 @@ mno {
     country : "nz"
     provider_type : GSM
     localized_name {
+      name : "Orcon"
+    }
+    mobile_apn {
+      apn : "www.orcon.net.nz"
+      plan : PREPAID
+      localized_name {
+        name : "Broadband"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "nz"
+    provider_type : GSM
+    localized_name {
       name : "Telecom New Zealand"
     }
     mccmnc : "53000"
@@ -7877,6 +10251,23 @@ mno {
       plan : POSTPAID
       localized_name {
         name : "XT mobile (One Office/Remote Office)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "nz"
+    provider_type : GSM
+    localized_name {
+      name : "TelstraClear"
+    }
+    mobile_apn {
+      apn : "www.telstraclear.net.nz"
+      plan : PREPAID
+      localized_name {
+        name : "Broadband"
       }
     }
   }
@@ -8150,6 +10541,23 @@ mno {
     country : "pk"
     provider_type : GSM
     localized_name {
+      name : "Djuice"
+    }
+    mccmnc : "51506"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      username : "telenor"
+      password : "telenor"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "pk"
+    provider_type : GSM
+    localized_name {
       name : "Mobilink"
     }
     mccmnc : "51501"
@@ -8184,6 +10592,23 @@ mno {
       }
       username : "vwireless@ptcl.com"
       password : "ptcl"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "pk"
+    provider_type : GSM
+    localized_name {
+      name : "Telenor"
+    }
+    mccmnc : "51506"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      username : "telenor"
+      password : "telenor"
     }
   }
 }
@@ -8292,24 +10717,6 @@ mno {
       }
       username : "CDMA"
       password : "CDMA"
-    }
-  }
-}
-
-mno {
-  data {
-    country : "pl"
-    provider_type : CDMA
-    localized_name {
-      name : "Orange"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Orange"
-      }
-      username : "cdma@orange"
-      password : "orange"
     }
   }
 }
@@ -8428,6 +10835,24 @@ mno {
         }
         username : "telogic.internet"
       }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "pl"
+    provider_type : CDMA
+    localized_name {
+      name : "Orange"
+    }
+    mobile_apn {
+      apn : ""
+      localized_name {
+        name : "Orange"
+      }
+      username : "cdma@orange"
+      password : "orange"
     }
   }
 }
@@ -8714,6 +11139,96 @@ mno {
     mobile_apn {
       apn : "darmowy"
       plan : PREPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "pt"
+    provider_type : GSM
+    localized_name {
+      name : "Clix"
+    }
+    mccmnc : "26803"
+    mobile_apn {
+      apn : "clixinternetmovel"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "pt"
+    provider_type : GSM
+    localized_name {
+      name : "Kanguru"
+    }
+    mccmnc : "26803"
+    mobile_apn {
+      apn : "kanguru-portatil"
+      plan : POSTPAID
+      localized_name {
+        name : "Portable"
+      }
+      localized_name {
+        name : "Portátil"
+      }
+      dns : "62.169.67.172"
+      dns : "62.169.67.171"
+    }
+    mobile_apn {
+      apn : "kanguru-tempo"
+      plan : PREPAID
+      localized_name {
+        name : "Tempo (Prepaid)"
+      }
+      dns : "62.169.67.172"
+      dns : "62.169.67.171"
+    }
+    mobile_apn {
+      apn : "kangurufixo"
+      plan : POSTPAID
+      localized_name {
+        name : "Fixo"
+      }
+      dns : "62.169.67.172"
+      dns : "62.169.67.171"
+    }
+    mobile_apn {
+      apn : "noapn"
+      localized_name {
+        name : "Apn dinâmico (no apn)"
+      }
+      dns : "62.169.67.171"
+      dns : "62.169.67.172"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "pt"
+    provider_type : GSM
+    localized_name {
+      name : "Optimus"
+    }
+    mccmnc : "26803"
+    mobile_apn {
+      apn : "umts"
+      plan : POSTPAID
+      localized_name {
+        name : "3G"
+      }
+    }
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "GPRS"
+      }
+      dns : "194.79.69.129"
     }
   }
 }
@@ -9216,6 +11731,42 @@ mno {
     country : "ru"
     provider_type : GSM
     localized_name {
+      name : "ETK"
+    }
+    mccmnc : "25005"
+    mobile_apn {
+      apn : "wap.etk.ru"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ru"
+    provider_type : GSM
+    localized_name {
+      name : "Enisey TeleCom"
+    }
+    localized_name {
+      name : "Енисей Телеком"
+    }
+    mccmnc : "25005"
+    mobile_apn {
+      apn : "internet.etk.ru"
+      plan : POSTPAID
+      username : "etk"
+      dns : "10.10.30.3"
+      dns : "10.10.30.4"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ru"
+    provider_type : GSM
+    localized_name {
       name : "MTS"
     }
     mccmnc : "25001"
@@ -9432,6 +11983,27 @@ mno {
     country : "ru"
     provider_type : GSM
     localized_name {
+      name : "Tatincom"
+    }
+    localized_name {
+      name : "Татинком"
+    }
+    mobile_apn {
+      apn : "internet.tatincom.ru"
+      plan : POSTPAID
+      username : "tatincom"
+      password : "tatincom"
+      dns : "89.207.96.2"
+      dns : "89.207.97.18"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ru"
+    provider_type : GSM
+    localized_name {
       name : "Tele2"
     }
     localized_name {
@@ -9567,15 +12139,14 @@ mno {
 mno {
   data {
     country : "sd"
-    provider_type : CDMA
+    provider_type : GSM
     localized_name {
       name : "Sudani"
     }
+    mccmnc : "63407"
     mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Sudani"
-      }
+      apn : "sudaninet"
+      plan : POSTPAID
       username : "sudani"
       password : "sudani"
     }
@@ -9585,14 +12156,15 @@ mno {
 mno {
   data {
     country : "sd"
-    provider_type : GSM
+    provider_type : CDMA
     localized_name {
       name : "Sudani"
     }
-    mccmnc : "63407"
     mobile_apn {
-      apn : "sudaninet"
-      plan : POSTPAID
+      apn : ""
+      localized_name {
+        name : "Sudani"
+      }
       username : "sudani"
       password : "sudani"
     }
@@ -9708,12 +12280,145 @@ mno {
     country : "se"
     provider_type : GSM
     localized_name {
+      name : "Comviq"
+    }
+    mccmnc : "24007"
+    mccmnc : "24005"
+    mobile_apn {
+      apn : "data.comviq.se"
+      plan : PREPAID
+      localized_name {
+        name : "Surf"
+      }
+    }
+    mobile_apn {
+      apn : "internet.tele2.se"
+      plan : PREPAID
+      localized_name {
+        name : "Tele2 Comviq 3G"
+      }
+    }
+    mobile_apn {
+      apn : "mobileinternet.tele2.se"
+      plan : PREPAID
+      localized_name {
+        name : "Tele2 Comviq 3G (7,2 Mbit/s)"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Glocalnet"
+    }
+    mccmnc : "24008"
+    mobile_apn {
+      apn : "bredband.glocalnet.se"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobilt Bredband"
+      }
+    }
+    mobile_apn {
+      apn : "internet.glocalnet.se"
+      plan : POSTPAID
+      localized_name {
+        name : "Glocalnet Internet"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Halebop"
+    }
+    mccmnc : "24001"
+    mobile_apn {
+      apn : "halebop.telia.se"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Multicom Security"
+    }
+    mccmnc : "24001"
+    mccmnc : "24005"
+    mobile_apn {
+      apn : "mobiflex.telia.se"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobiflex"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Parlino"
+    }
+    mccmnc : "24007"
+    mobile_apn {
+      apn : "internet.parlino.se"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
       name : "TDC"
     }
     mccmnc : "24014"
     mobile_apn {
       apn : "internet.se"
       plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Tele2"
+    }
+    mccmnc : "24007"
+    mccmnc : "24005"
+    mobile_apn {
+      apn : "internet.tele2.se"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobilt Internet"
+      }
+    }
+    mobile_apn {
+      apn : "mobileinternet.tele2.se"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobilt Bredband"
+      }
     }
   }
 }
@@ -9747,6 +12452,64 @@ mno {
       plan : POSTPAID
       localized_name {
         name : "Mobilt Bredband"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Telia"
+    }
+    mccmnc : "24001"
+    mccmnc : "24005"
+    mobile_apn {
+      apn : "online.telia.se"
+      plan : POSTPAID
+      localized_name {
+        name : "Telia 3G"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Teliasonera"
+    }
+    mccmnc : "24001"
+    mobile_apn {
+      apn : "online.telia.se"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "se"
+    provider_type : GSM
+    localized_name {
+      name : "Universal Telecom"
+    }
+    mobile_apn {
+      apn : "sp-internet"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobilt Bredband"
+      }
+    }
+    mobile_apn {
+      apn : "internet.uvtc.com"
+      plan : POSTPAID
+      localized_name {
+        name : "Mobilt Internet"
       }
     }
   }
@@ -10616,6 +13379,38 @@ mno {
 mno {
   data {
     country : "ua"
+    provider_type : GSM
+    localized_name {
+      name : "Djuice"
+    }
+    mccmnc : "25503"
+    mobile_apn {
+      apn : "www.djuice.com.ua"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet GPRS"
+      }
+    }
+    mobile_apn {
+      apn : "xl.kyivstar.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet XL"
+      }
+    }
+    mobile_apn {
+      apn : "3g.kyivstar.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet 3G"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ua"
     provider_type : CDMA
     localized_name {
       name : "InterTelecom"
@@ -10628,6 +13423,76 @@ mno {
       }
       username : "IT@IT"
       password : "IT"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ua"
+    provider_type : GSM
+    localized_name {
+      name : "Jeans"
+    }
+    mccmnc : "25501"
+    mobile_apn {
+      apn : "www.jeans.ua"
+      plan : POSTPAID
+      dns : "80.255.64.23"
+      dns : "80.255.64.24"
+    }
+    mobile_apn {
+      apn : "hyper.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Hyper.NET"
+      }
+      dns : "212.58.160.33"
+      dns : "212.58.160.34"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ua"
+    provider_type : GSM
+    localized_name {
+      name : "MTS"
+    }
+    mccmnc : "25501"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "GPRS Internet"
+      }
+      username : "internet"
+      dns : "212.58.160.33"
+      dns : "212.58.160.34"
+    }
+    mobile_apn {
+      apn : "hyper.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Hyper.NET"
+      }
+    }
+    mobile_apn {
+      apn : "active"
+      plan : POSTPAID
+      localized_name {
+        name : "HyperActive"
+      }
+    }
+    mobile_apn {
+      apn : "www.umc.ua"
+      plan : POSTPAID
+      localized_name {
+        name : "umc.ua"
+      }
+      dns : "80.255.64.23"
+      dns : "80.255.64.24"
     }
   }
 }
@@ -10672,6 +13537,40 @@ mno {
     mobile_apn {
       apn : "3g.utel.ua"
       plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    country : "ua"
+    provider_type : GSM
+    localized_name {
+      name : "kyivstar"
+    }
+    mccmnc : "25503"
+    mobile_apn {
+      apn : "www.ab.kyivstar.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Ace&Base"
+      }
+      username : "igprs"
+      password : "internet"
+    }
+    mobile_apn {
+      apn : "www.kyivstar.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Contract GPRS"
+      }
+    }
+    mobile_apn {
+      apn : "3g.kyivstar.net"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet 3G"
+      }
     }
   }
 }
@@ -11432,6 +14331,27 @@ mno {
 mno {
   data {
     country : "us"
+    provider_type : GSM
+    localized_name {
+      name : "Verizon Wireless"
+    }
+    mccmnc : "310995"
+    mccmnc : "311480"
+    mobile_apn {
+      apn : "vzwinternet"
+      plan : POSTPAID
+      localized_name {
+        name : "4G LTE Contract"
+      }
+      dns : "66.174.92.14"
+      dns : "69.78.96.14"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "us"
     provider_type : CDMA
     localized_name {
       name : "Verizon Wireless"
@@ -11652,27 +14572,6 @@ mno {
     sid : "9640"
     sid : "9642"
     sid : "9644"
-  }
-}
-
-mno {
-  data {
-    country : "us"
-    provider_type : GSM
-    localized_name {
-      name : "Verizon Wireless"
-    }
-    mccmnc : "310995"
-    mccmnc : "311480"
-    mobile_apn {
-      apn : "vzwinternet"
-      plan : POSTPAID
-      localized_name {
-        name : "4G LTE Contract"
-      }
-      dns : "66.174.92.14"
-      dns : "69.78.96.14"
-    }
   }
 }
 
@@ -11921,24 +14820,6 @@ mno {
 mno {
   data {
     country : "vn"
-    provider_type : CDMA
-    localized_name {
-      name : "EVNTelecom/E-Mobile"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "EVNTelecom/E-Mobile"
-      }
-      username : "evntelecom"
-      password : "evntelecom"
-    }
-  }
-}
-
-mno {
-  data {
-    country : "vn"
     provider_type : GSM
     localized_name {
       name : "EVNTelecom/E-Mobile"
@@ -11950,6 +14831,24 @@ mno {
       localized_name {
         name : "EVNTelecomNet"
       }
+    }
+  }
+}
+
+mno {
+  data {
+    country : "vn"
+    provider_type : CDMA
+    localized_name {
+      name : "EVNTelecom/E-Mobile"
+    }
+    mobile_apn {
+      apn : ""
+      localized_name {
+        name : "EVNTelecom/E-Mobile"
+      }
+      username : "evntelecom"
+      password : "evntelecom"
     }
   }
 }
@@ -12078,6 +14977,23 @@ mno {
     country : "za"
     provider_type : GSM
     localized_name {
+      name : "Cell-c"
+    }
+    mccmnc : "65507"
+    mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      dns : "196.7.0.138"
+      dns : "196.7.142.132"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "za"
+    provider_type : GSM
+    localized_name {
       name : "MTN"
     }
     mccmnc : "65510"
@@ -12086,6 +15002,23 @@ mno {
       plan : POSTPAID
       dns : "196.11.240.241"
       dns : "209.212.97.1"
+    }
+  }
+}
+
+mno {
+  data {
+    country : "za"
+    provider_type : GSM
+    localized_name {
+      name : "Virgin Mobile"
+    }
+    mccmnc : "65507"
+    mobile_apn {
+      apn : "vdata"
+      plan : POSTPAID
+      dns : "196.7.0.138"
+      dns : "196.7.142.132"
     }
   }
 }
