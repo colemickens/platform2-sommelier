@@ -30,9 +30,8 @@ ManagerDBusAdaptor::~ManagerDBusAdaptor() {
 void ManagerDBusAdaptor::UpdateDevices() {
   vector<DBus::Path> device_paths;
   const vector<Device *> &devices = manager_->devices();
-  for (vector<Device *>::const_iterator device_iterator = devices.begin();
-       device_iterator != devices.end(); ++device_iterator) {
-    device_paths.push_back((*device_iterator)->dbus_object_path());
+  for (const auto &device : devices) {
+    device_paths.push_back(device->dbus_object_path());
   }
   Devices = device_paths;
   DevicesChanged(device_paths);

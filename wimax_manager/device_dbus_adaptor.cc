@@ -30,13 +30,10 @@ bool ConvertDBusDictionaryToDictionaryValue(
   CHECK(dictionary_value);
 
   dictionary_value->Clear();
-  for (map<string, DBus::Variant>::const_iterator
-       dictionary_it = dbus_dictionary.begin();
-       dictionary_it != dbus_dictionary.end();
-       ++dictionary_it) {
-    const string &key = dictionary_it->first;
-    const DBus::Signature &value_signature = dictionary_it->second.signature();
-    DBus::MessageIter value_reader = dictionary_it->second.reader();
+  for (const auto &key_value : dbus_dictionary) {
+    const string &key = key_value.first;
+    const DBus::Signature &value_signature = key_value.second.signature();
+    DBus::MessageIter value_reader = key_value.second.reader();
     if (value_signature == DBus::type<string>::sig()) {
       dictionary_value->SetString(key, value_reader.get_string());
     } else if (value_signature == DBus::type<bool>::sig()) {
@@ -142,10 +139,8 @@ void DeviceDBusAdaptor::UpdateMACAddress() {
 
 void DeviceDBusAdaptor::UpdateNetworks() {
   vector<DBus::Path> network_paths;
-  const NetworkMap &networks = device_->networks();
-  for (NetworkMap::const_iterator network_iterator = networks.begin();
-       network_iterator != networks.end(); ++network_iterator) {
-    network_paths.push_back(network_iterator->second->dbus_object_path());
+  for (const auto &network : device_->networks()) {
+    network_paths.push_back(network.second->dbus_object_path());
   }
   Networks = network_paths;
   NetworksChanged(network_paths);
@@ -166,11 +161,9 @@ void DeviceDBusAdaptor::UpdateStatus() {
 
 NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
     const DBus::Path &network_object_path) const {
-  const NetworkMap &networks = device_->networks();
-  for (NetworkMap::const_iterator network_iterator = networks.begin();
-       network_iterator != networks.end(); ++network_iterator) {
-    if (network_iterator->second->dbus_object_path() == network_object_path)
-      return network_iterator->second;
+  for (const auto &network : device_->networks()) {
+    if (network.second->dbus_object_path() == network_object_path)
+      return network.second;
   }
   return NULL;
 }

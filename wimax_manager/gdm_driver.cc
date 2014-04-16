@@ -290,15 +290,11 @@ bool GdmDriver::GetDeviceRFInfo(GdmDevice *device) {
   device->SetBaseStationId(base_station_id);
   device->set_frequency(rf_info.Frequency);
 
-  vector<int> cinr;
-  cinr.push_back(Network::DecodeCINR(rf_info.CINR));
-  cinr.push_back(Network::DecodeCINR(rf_info.CINR2));
-  device->set_cinr(cinr);
+  device->set_cinr({Network::DecodeCINR(rf_info.CINR),
+                    Network::DecodeCINR(rf_info.CINR2)});
 
-  vector<int> rssi;
-  rssi.push_back(Network::DecodeRSSI(rf_info.RSSI));
-  rssi.push_back(Network::DecodeRSSI(rf_info.RSSI2));
-  device->set_rssi(rssi);
+  device->set_rssi({Network::DecodeRSSI(rf_info.RSSI),
+                    Network::DecodeRSSI(rf_info.RSSI2)});
 
   device->UpdateRFInfo();
   return true;

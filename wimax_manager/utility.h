@@ -15,9 +15,8 @@ namespace wimax_manager {
 template <typename KeyType, typename ValueType>
 std::set<KeyType> GetKeysOfMap(const std::map<KeyType, ValueType> &m) {
   std::set<KeyType> keys;
-  typename std::map<KeyType, ValueType>::const_iterator map_iterator;
-  for (map_iterator = m.begin(); map_iterator != m.end(); ++map_iterator) {
-    keys.insert(map_iterator->first);
+  for (const auto &key_value : m) {
+    keys.insert(key_value.first);
   }
   return keys;
 }
@@ -27,10 +26,8 @@ void RemoveKeysFromMap(std::map<KeyType, ValueType> *m,
                        const std::set<KeyType> &keys_to_remove) {
   CHECK(m);
 
-  typename std::set<KeyType>::const_iterator key_iterator;
-  for (key_iterator = keys_to_remove.begin();
-       key_iterator != keys_to_remove.end(); ++key_iterator) {
-    m->erase(*key_iterator);
+  for (const auto &key : keys_to_remove) {
+    m->erase(key);
   }
 }
 
