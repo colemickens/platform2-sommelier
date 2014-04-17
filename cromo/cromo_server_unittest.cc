@@ -17,8 +17,11 @@ TEST(Carrier, Find) {
   dispatcher.attach(NULL);
 
   DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(
-      (CromoServer::kServiceName + std::string(".UnitTest")).c_str());
+
+  std::string service_name =
+      std::string(CromoServer::kServiceName) + ".UnitTest";
+  ASSERT_TRUE(conn.acquire_name(service_name.c_str()))
+      << "Failed to acquire D-Bus name " << service_name;
 
   static const char kTestName[] = "test_carrier";
 

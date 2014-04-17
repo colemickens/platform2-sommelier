@@ -147,7 +147,9 @@ int main(int argc, char* argv[]) {
   dispatcher.attach(NULL);
 
   DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(CromoServer::kServiceName);
+
+  CHECK(conn.acquire_name(CromoServer::kServiceName))
+      << "Failed to acquire D-Bus name " << CromoServer::kServiceName;
 
   server = new CromoServer(conn);
 
