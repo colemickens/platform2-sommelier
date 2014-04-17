@@ -129,17 +129,13 @@ class PerfSerializer : public PerfParser {
       RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
       std::vector<build_id_event*>* to) const;
 
+  bool SerializeMetadata(PerfDataProto* to) const;
+  bool DeserializeMetadata(const PerfDataProto& from);
+
   bool SerializeBuildIDEvent(build_id_event* const& from,
                              PerfDataProto_PerfBuildID* to) const;
   bool DeserializeBuildIDEvent(const PerfDataProto_PerfBuildID& from,
                                build_id_event** to) const;
-
-  bool SerializeSingleStringMetadata(
-      const PerfStringMetadata& metadata,
-      PerfDataProto_PerfStringMetadata* proto_metadata) const;
-  bool DeserializeSingleStringMetadata(
-      const PerfDataProto_PerfStringMetadata& proto_metadata,
-      PerfStringMetadata* metadata) const;
 
   bool SerializeSingleUint32Metadata(
       const PerfUint32Metadata& metadata,
@@ -225,13 +221,6 @@ bool name(const RepeatedPtrField<proto_type>& from, \
   DESERIALIZEVECTORFUNCTION(DeserializeBuildIDEvents, build_id_event*,
                             quipper::PerfDataProto_PerfBuildID,
                             DeserializeBuildIDEvent)
-
-  SERIALIZEVECTORFUNCTION(SerializeStringMetadata, PerfStringMetadata,
-                          quipper::PerfDataProto_PerfStringMetadata,
-                          SerializeSingleStringMetadata)
-  DESERIALIZEVECTORFUNCTION(DeserializeStringMetadata, PerfStringMetadata,
-                            quipper::PerfDataProto_PerfStringMetadata,
-                            DeserializeSingleStringMetadata)
 
   SERIALIZEVECTORFUNCTION(SerializeUint32Metadata, PerfUint32Metadata,
                           quipper::PerfDataProto_PerfUint32Metadata,

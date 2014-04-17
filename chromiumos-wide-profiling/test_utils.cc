@@ -71,19 +71,6 @@ string GetPerfBuildIDArgs() {
   return args;
 }
 
-// Trim leading and trailing whitespace from |str|.
-void TrimWhitespace(string* str) {
-  const char kWhitespaceCharacters[] = " \t\n\r";
-  size_t end = str->find_last_not_of(kWhitespaceCharacters);
-  if (end != std::string::npos) {
-    size_t start = str->find_first_not_of(kWhitespaceCharacters);
-    *str = str->substr(start, end + 1 - start);
-  } else {
-    // The string contains only whitespace.
-    *str = "";
-  }
-}
-
 // Splits a character array by |delimiter| into a vector of strings tokens.
 void SplitString(const string& str,
                  char delimiter,

@@ -295,4 +295,16 @@ bool RunCommandAndGetStdout(const string& command, std::vector<char>* output) {
   return true;
 }
 
+void TrimWhitespace(string* str) {
+  const char kWhitespaceCharacters[] = " \t\n\r";
+  size_t end = str->find_last_not_of(kWhitespaceCharacters);
+  if (end != std::string::npos) {
+    size_t start = str->find_first_not_of(kWhitespaceCharacters);
+    *str = str->substr(start, end + 1 - start);
+  } else {
+    // The string contains only whitespace.
+    *str = "";
+  }
+}
+
 }  // namespace quipper

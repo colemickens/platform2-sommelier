@@ -76,6 +76,9 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename);
 // success, false otherwise.
 bool RunCommandAndGetStdout(const string& command, std::vector<char>* output);
 
+// Trim leading and trailing whitespace from |str|.
+void TrimWhitespace(string* str);
+
 }  // namespace quipper
 
 #endif  // UTILS_H_
