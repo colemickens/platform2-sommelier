@@ -37,11 +37,8 @@ bool DebugDaemon::Init() {
   storage_tool_ = new StorageTool();
   memory_tool_ = new MemtesterTool();
   wimax_status_tool_ = new WiMaxStatusTool();
-  try {
-    // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
-    dbus_->request_name(kDebugDaemonService);
-  }
-  catch (DBus::Error e) { // NOLINT
+  if (!dbus_->acquire_name(kDebugDaemonService)) {
+    LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugDaemonService;
     return false;
   }
   return true;
