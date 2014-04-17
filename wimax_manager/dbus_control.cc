@@ -44,7 +44,8 @@ void DBusControl::Initialize() {
   connection_.reset(
       new(std::nothrow) DBus::Connection(DBus::Connection::SystemBus()));
   CHECK(connection_.get());
-  connection_->request_name(kWiMaxManagerServiceName);
+  CHECK(connection_->acquire_name(kWiMaxManagerServiceName))
+      << "Failed to acquire D-Bus name " << kWiMaxManagerServiceName;
 }
 
 void DBusControl::Finalize() {
