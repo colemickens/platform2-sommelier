@@ -9,7 +9,8 @@
 # builds.
 OPT_CFLAGS =
 COMMON_CFLAGS += -D_GNU_SOURCE
-COMMON_CFLAGS += -Wall -Werror -fPIC -fno-exceptions $(OPT_CFLAGS)
+COMMON_CFLAGS += -Wall -Werror -fno-exceptions $(OPT_CFLAGS)
+COMMON_LDLIBS = -lrootdev
 
 CFLAGS += $(COMMON_CFLAGS)
 CXXFLAGS += $(COMMON_CFLAGS)
@@ -21,7 +22,7 @@ COMMAND_LDFLAGS = $(LDFLAGS)
 
 TEST_OBJS = log_unit_tests.o
 TEST_LDFLAGS = $(LDFLAGS)
-TEST_LDLIBS = -lgtest
+TEST_LDLIBS = -lgtest $(COMMON_LDLIBS)
 
 OBJS = $(LIB_OBJS) $(TEST_OBJS) $(COMMAND_OBJS)
 
@@ -30,16 +31,16 @@ COMMAND = bootstat
 TEST = log_unit_test
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 %.o: %.cc
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -c $<
 
 all: $(COMMAND) $(LIB)
 tests: $(TEST)
 
 $(COMMAND): $(COMMAND_OBJS) $(LIB)
-	$(CC) -o $@ $(COMMAND_LDFLAGS) $^
+	$(CC) $(CFLAGS) -o $@ $(COMMAND_LDFLAGS) $^ $(COMMON_LDLIBS)
 
 $(LIB): $(LIB_OBJS)
 	$(AR) rcs $@ $^

@@ -14,9 +14,9 @@
 extern "C" {
 #endif
 
-extern void bootstat_set_output_directory(const char*);
-extern void bootstat_set_uptime_file_name(const char*);
-extern void bootstat_set_disk_file_name(const char*);
+extern void bootstat_set_output_directory_for_test(const char*);
+extern void bootstat_set_uptime_file_name_for_test(const char*);
+extern void bootstat_set_disk_file_name_for_test(const char*);
 
 #if defined(__cplusplus)
 }

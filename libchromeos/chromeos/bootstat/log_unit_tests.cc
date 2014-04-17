@@ -224,12 +224,12 @@ void BootstatTest::SetUp() {
   disk_event_prefix_ = stats_output_dir_ + "/disk-";
   mock_uptime_file_name_ = stats_output_dir_ + "/proc_uptime";
   mock_disk_file_name_ = stats_output_dir_ + "/block_stats";
-  bootstat_set_output_directory(stats_output_dir_.c_str());
+  bootstat_set_output_directory_for_test(stats_output_dir_.c_str());
 }
 
 
 void BootstatTest::TearDown() {
-  bootstat_set_output_directory(NULL);
+  bootstat_set_output_directory_for_test(NULL);
   EXPECT_EQ(0, rmdir(stats_output_dir_.c_str()))
       << "BootstatTest::Teardown rmdir(): " << stats_output_dir_
       << ": " << strerror(errno) << ".";
@@ -259,15 +259,15 @@ void BootstatTest::SetMockStats(const char* uptime_data,
   WriteMockStats(mock_uptime_content_, mock_uptime_file_name_);
   mock_disk_content_ = string(disk_data);
   WriteMockStats(mock_disk_content_, mock_disk_file_name_);
-  bootstat_set_uptime_file_name(mock_uptime_file_name_.c_str());
-  bootstat_set_disk_file_name(mock_disk_file_name_.c_str());
+  bootstat_set_uptime_file_name_for_test(mock_uptime_file_name_.c_str());
+  bootstat_set_disk_file_name_for_test(mock_disk_file_name_.c_str());
 }
 
 
 // Clean up the effects from SetMockStats().
 void BootstatTest::ClearMockStats() {
-  bootstat_set_uptime_file_name(NULL);
-  bootstat_set_disk_file_name(NULL);
+  bootstat_set_uptime_file_name_for_test(NULL);
+  bootstat_set_disk_file_name_for_test(NULL);
   RemoveFile(mock_uptime_file_name_);
   RemoveFile(mock_disk_file_name_);
 }

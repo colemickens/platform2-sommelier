@@ -5,19 +5,23 @@
 // Implementation of bootstat_log(), part of the Chromium OS 'bootstat'
 // facility.
 
-#include "bootstat.h"
-#include "bootstat_test.h"
-
 #include <assert.h>
+#include <libgen.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
 #include <sys/fcntl.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <rootdev/rootdev.h>
+
+#include "bootstat.h"
+#include "bootstat_test.h"
 
 static const char kBootstageMarkFile[] = "/sys/kernel/debug/bootstage/mark";
 
@@ -32,23 +36,50 @@ static const char kDefaultOutputDirectoryName[] = "/tmp";
 //
 static const char kDefaultUptimeStatisticsFileName[] = "/proc/uptime";
 
-#if defined (__amd64__) || defined (__x86_64__) || defined (__i386__)
-static const char kDefaultDiskStatisticsFileName[] = "/sys/block/sda/stat";
-#elif defined (__arm__)
-static const char kDefaultDiskStatisticsFileName[] = "/sys/block/mmcblk0/stat";
-#else
-#error "unknown processor type?"
-#endif
-
-static const char *output_directory_name = kDefaultOutputDirectoryName;
-static const char *uptime_statistics_file_name =
+static const char* output_directory_name = kDefaultOutputDirectoryName;
+static const char* uptime_statistics_file_name =
     kDefaultUptimeStatisticsFileName;
-static const char *disk_statistics_file_name = kDefaultDiskStatisticsFileName;
+
+static const char* disk_statistics_file_name_for_test = NULL;
+
+// Stores the path representing the stats file for the root disk in
+// |stats_path| of length |len|.
+// Returns |stats_path| on success, NULL on failure.
+static char* get_disk_statistics_file_name(char* stats_path, size_t len) {
+  char boot_path[PATH_MAX];
+  int ret = rootdev(boot_path, sizeof(boot_path),
+                    true,  // Do full resolution.
+                    false);  // Do not remove partition number.
+  if (ret < 0) {
+    return NULL;
+  }
+
+  // The general idea is to use the the root device's sysfs entry to
+  // get the path to the root disk's sysfs entry.
+  // Example:
+  // - rootdev() returns "/dev/sda3"
+  // - Use /sys/class/block/sda3/../ to get to root disk (sda) sysfs entry.
+  //   This is because /sys/class/block/sda3 is a symlink that maps to:
+  //     /sys/devices/pci.../.../ata./host./target.../.../block/sda/sda3
+  const char* root_device_name = basename(boot_path);
+  if (!root_device_name) {
+    return NULL;
+  }
+
+  ret = snprintf(stats_path, len,
+                 "/sys/class/block/%s/../stat", root_device_name);
+  if (ret >= PATH_MAX || ret < 0) {
+    return NULL;
+  }
+  return stats_path;
+}
 
 static void append_logdata(const char* input_path,
                            const char* output_name_prefix,
                            const char* event_name)
 {
+  if (!input_path || !output_name_prefix || !event_name)
+    return;
   const mode_t kFileCreationMode =
       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
   char output_path[PATH_MAX];
@@ -112,13 +143,20 @@ static void write_mark(const char *event_name)
 
 void bootstat_log(const char* event_name)
 {
+  const char* disk_statistics_file_name;
+  char stats_path[PATH_MAX];
   write_mark(event_name);
   append_logdata(uptime_statistics_file_name, "uptime", event_name);
+  if (disk_statistics_file_name_for_test) {
+    disk_statistics_file_name = disk_statistics_file_name_for_test;
+  } else {
+    disk_statistics_file_name = get_disk_statistics_file_name(
+        stats_path, sizeof(stats_path));
+  }
   append_logdata(disk_statistics_file_name, "disk", event_name);
 }
 
-
-void bootstat_set_output_directory(const char* dirname)
+void bootstat_set_output_directory_for_test(const char* dirname)
 {
   if (dirname != NULL)
     output_directory_name = dirname;
@@ -126,8 +164,7 @@ void bootstat_set_output_directory(const char* dirname)
     output_directory_name = kDefaultOutputDirectoryName;
 }
 
-
-void bootstat_set_uptime_file_name(const char* filename)
+void bootstat_set_uptime_file_name_for_test(const char* filename)
 {
   if (filename != NULL)
     uptime_statistics_file_name = filename;
@@ -135,11 +172,7 @@ void bootstat_set_uptime_file_name(const char* filename)
     uptime_statistics_file_name = kDefaultUptimeStatisticsFileName;
 }
 
-
-void bootstat_set_disk_file_name(const char* filename)
+void bootstat_set_disk_file_name_for_test(const char* filename)
 {
-  if (filename != NULL)
-    disk_statistics_file_name = filename;
-  else
-    disk_statistics_file_name = kDefaultDiskStatisticsFileName;
+  disk_statistics_file_name_for_test = filename;
 }
