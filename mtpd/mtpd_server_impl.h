@@ -21,15 +21,6 @@ namespace mtpd {
 class DeviceManager;
 
 // The D-bus server for the mtpd daemon.
-//
-// Example Usage:
-//
-// DBus::Connection server_conn = DBus::Connection::SystemBus();
-// server_conn.request_name("org.chromium.Mtpd");
-// MtpdServer* server = new(std::nothrow) MtpdServer(server_conn, &manager);
-//
-// At this point the server should be attached to the main loop.
-
 class MtpdServer : public org::chromium::Mtpd_adaptor,
                    public DBus::ObjectAdaptor,
                    public DeviceEventDelegate {

@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Creating the mtpd server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
-  server_conn.request_name(mtpd::kMtpdServiceName);
+  CHECK(server_conn.acquire_name(mtpd::kMtpdServiceName));
   Daemon daemon(&server_conn);
 
   // Set up a monitor for handling device events.
