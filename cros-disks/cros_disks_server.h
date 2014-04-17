@@ -29,7 +29,7 @@ struct DeviceEvent;
 // Example Usage:
 //
 // DBus::Connection server_conn = DBus::Connection::SystemBus();
-// server_conn.request_name("org.chromium.CrosDisks");
+// CHECK(server_conn.acquire_name("org.chromium.CrosDisks"));
 // ArchiveManager archive_manager(...);
 // DiskManager disk_manager(...);
 // FormatManager format_manager;

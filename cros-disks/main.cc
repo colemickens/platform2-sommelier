@@ -132,7 +132,9 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Creating the cros-disks server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
-  server_conn.request_name(cros_disks::kCrosDisksServiceName);
+  CHECK(server_conn.acquire_name(cros_disks::kCrosDisksServiceName))
+      << "Failed to acquire D-Bus name " << cros_disks::kCrosDisksServiceName;
+
   Daemon daemon(&server_conn);
   daemon.Initialize();
 
