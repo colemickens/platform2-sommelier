@@ -352,6 +352,7 @@ std::string IpsecManager::FormatStrongswanConfigFile() {
   config.append("  }\n");
   config.append("}\n");
   config.append("charon {\n");
+  config.append("  accept_unencrypted_mainmode_messages = yes\n");
   config.append("  ignore_routing_tables = 0\n");
   config.append("  install_routes = no\n");
   config.append("  routing_table = 0\n");

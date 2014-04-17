@@ -275,6 +275,7 @@ TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
       "  }\n"
       "}\n"
       "charon {\n"
+      "  accept_unencrypted_mainmode_messages = yes\n"
       "  ignore_routing_tables = 0\n"
       "  install_routes = no\n"
       "  routing_table = 0\n"
