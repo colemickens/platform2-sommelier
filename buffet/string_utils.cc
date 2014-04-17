@@ -11,7 +11,7 @@
 namespace chromeos {
 namespace string_utils {
 
-std::vector<std::string> Split(std::string const& str,
+std::vector<std::string> Split(const std::string& str,
                                char delimiter,
                                bool trim_whitespaces,
                                bool purge_empty_strings) {
@@ -19,9 +19,9 @@ std::vector<std::string> Split(std::string const& str,
   if (delimiter == 0)
     return tokens;
 
-  char const* sz = str.c_str();
+  const char* sz = str.c_str();
   if (sz) {
-    char const* szNext = strchr(sz, delimiter);
+    const char* szNext = strchr(sz, delimiter);
     while (szNext) {
       if (szNext != sz || !purge_empty_strings)
         tokens.emplace_back(sz, szNext - sz);
@@ -40,15 +40,15 @@ std::vector<std::string> Split(std::string const& str,
   return tokens;
 }
 
-std::pair<std::string, std::string> SplitAtFirst(std::string const& str,
+std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
                                                  char delimiter,
                                                  bool trim_whitespaces) {
   std::pair<std::string, std::string> pair;
   if (delimiter == 0)
     return pair;
 
-  char const* sz = str.c_str();
-  char const* szNext = strchr(sz, delimiter);
+  const char* sz = str.c_str();
+  const char* szNext = strchr(sz, delimiter);
   if (szNext) {
     pair.first = std::string(sz, szNext);
     pair.second = std::string(szNext + 1);
@@ -64,22 +64,22 @@ std::pair<std::string, std::string> SplitAtFirst(std::string const& str,
   return pair;
 }
 
-std::string Join(char delimiter, std::vector<std::string> const& strings) {
+std::string Join(char delimiter, const std::vector<std::string>& strings) {
   return JoinString(strings, delimiter);
 }
 
-std::string Join(std::string const& delimiter,
-                 std::vector<std::string> const& strings) {
+std::string Join(const std::string& delimiter,
+                 const std::vector<std::string>& strings) {
   return JoinString(strings, delimiter);
 }
 
 std::string Join(char delimiter,
-                 std::string const& str1, std::string const& str2) {
+                 const std::string& str1, const std::string& str2) {
   return str1 + delimiter + str2;
 }
 
-std::string Join(std::string const& delimiter,
-                 std::string const& str1, std::string const& str2) {
+std::string Join(const std::string& delimiter,
+                 const std::string& str1, const std::string& str2) {
   return str1 + delimiter + str2;
 }
 

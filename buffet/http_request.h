@@ -210,30 +210,30 @@ class Request {
   // to send the request to. Optional |method| is the HTTP request verb. If
   // omitted, "GET" is used.
   // Uses the default libcurl-based implementation of TransportInterface
-  Request(std::string const& url, char const* method);
-  Request(std::string const& url);
+  Request(const std::string& url, const char* method);
+  Request(const std::string& url);
 
   // Custom constructor that allows non-default implementations
   // of TransportInterface to be used.
   Request(std::shared_ptr<TransportInterface> transport);
 
   // Gets/Sets "Accept:" header value. The default value is "*/*" if not set.
-  void SetAccept(char const* accept_mime_types);
+  void SetAccept(const char* accept_mime_types);
   std::string GetAccept() const;
 
   // Gets/Sets "Content-Type:" header value
-  void SetContentType(char const* content_type);
+  void SetContentType(const char* content_type);
   std::string GetContentType() const;
 
   // Adds additional HTTP request header
-  void AddHeader(char const* header, char const* value);
-  void AddHeaders(HeaderList const& headers);
+  void AddHeader(const char* header, const char* value);
+  void AddHeaders(const HeaderList& headers);
 
   // Removes HTTP request header
-  void RemoveHeader(char const* header);
+  void RemoveHeader(const char* header);
 
   // Adds a request body. This is not to be used with GET method
-  bool AddRequestBody(void const* data, size_t size);
+  bool AddRequestBody(const void* data, size_t size);
 
   // Makes a request for a subrange of data. Specifies a partial range with
   // either from beginning of the data to the specified offset (if |bytes| is
@@ -248,18 +248,18 @@ class Request {
   void AddRange(uint64_t from_byte, uint64_t to_byte);
 
   // Gets/Sets an HTTP request verb to be used with request
-  void SetMethod(char const* method);
+  void SetMethod(const char* method);
   std::string GetMethod() const;
 
   // Returns the request URL
   std::string GetRequestURL() const;
 
   // Gets/Sets a request referer URL (sent as "Referer:" request header).
-  void SetReferer(char const* referer);
+  void SetReferer(const char* referer);
   std::string GetReferer() const;
 
   // Gets/Sets a user agent string (sent as "User-Agent:" request header).
-  void SetUserAgent(char const* user_agent);
+  void SetUserAgent(const char* user_agent);
   std::string GetUserAgent() const;
 
   // Sends the request to the server and returns the response object.
@@ -305,7 +305,7 @@ class Response {
   std::string GetDataAsString() const;
 
   // Returns a value of a given response HTTP header.
-  std::string GetHeader(char const* header_name) const;
+  std::string GetHeader(const char* header_name) const;
 
  private:
   std::shared_ptr<TransportInterface> transport_;

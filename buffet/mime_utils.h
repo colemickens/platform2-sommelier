@@ -56,45 +56,45 @@ typedef std::vector<std::pair<std::string, std::string>> Parameters;
 // Combine a MIME type, subtype and parameters into a MIME string.
 // e.g. Combine("text", "plain", {{"charset", "utf-8"}}) will give:
 //      "text/plain; charset=utf-8"
-std::string Combine(std::string const& type, std::string const& subtype,
-                    Parameters const& parameters = Parameters());
+std::string Combine(const std::string& type, const std::string& subtype,
+                    const Parameters& parameters = {});
 
 // Splits a MIME string into type and subtype.
 // "text/plain;charset=utf-8" => ("text", "plain")
-bool Split(std::string const& mime_string,
+bool Split(const std::string& mime_string,
            std::string* type, std::string* subtype);
 
 // Splits a MIME string into type, subtype, and parameters.
 // "text/plain;charset=utf-8" => ("text", "plain", {{"charset","utf-8"}})
-bool Split(std::string const& mime_string,
+bool Split(const std::string& mime_string,
            std::string* type, std::string* subtype, Parameters* parameters);
 
 // Returns the MIME type from MIME string.
 // "text/plain;charset=utf-8" => "text"
-std::string GetType(std::string const& mime_string);
+std::string GetType(const std::string& mime_string);
 
 // Returns the MIME sub-type from MIME string.
 // "text/plain;charset=utf-8" => "plain"
-std::string GetSubtype(std::string const& mime_string);
+std::string GetSubtype(const std::string& mime_string);
 
 // Returns the MIME parameters from MIME string.
 // "text/plain;charset=utf-8" => {{"charset","utf-8"}}
-Parameters GetParameters(std::string const& mime_string);
+Parameters GetParameters(const std::string& mime_string);
 
 // Removes parameters from a MIME string
 // "text/plain;charset=utf-8" => "text/plain"
-std::string RemoveParameters(std::string const& mime_string);
+std::string RemoveParameters(const std::string& mime_string);
 
 // Appends a parameter to a MIME string.
 // "text/plain" => "text/plain; charset=utf-8"
-std::string AppendParameter(std::string const& mime_string,
-                            std::string const& paramName,
-                            std::string const& paramValue);
+std::string AppendParameter(const std::string& mime_string,
+                            const std::string& paramName,
+                            const std::string& paramValue);
 
 // Returns the value of a parameter on a MIME string (empty string if missing).
 // ("text/plain;charset=utf-8","charset") => "utf-8"
-std::string GetParameterValue(std::string const& mime_string,
-                              std::string const& paramName);
+std::string GetParameterValue(const std::string& mime_string,
+                              const std::string& paramName);
 
 } // namespace mime
 } // namespace chromeos

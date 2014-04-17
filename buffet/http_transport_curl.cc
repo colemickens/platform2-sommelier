@@ -52,7 +52,7 @@ static int curl_trace(CURL *handle, curl_infotype type,
 }
 #endif
 
-Transport::Transport(std::string const& url, char const* method) :
+Transport::Transport(const std::string& url, const char* method) :
     request_url_(url),
     method_(method ? method : request_type::kGet) {
   stage_ = Stage::initialized;
@@ -106,15 +106,15 @@ chromeos::http::HeaderList Transport::GetHeaders() const {
   return headers;
 }
 
-void Transport::AddHeader(char const* header, char const* value) {
+void Transport::AddHeader(const char* header, const char* value) {
   headers_[header] = value;
 }
 
-void Transport::RemoveHeader(char const* header) {
+void Transport::RemoveHeader(const char* header) {
   AddHeader(header, "");
 }
 
-bool Transport::AddRequestBody(void const* data, size_t size) {
+bool Transport::AddRequestBody(const void* data, size_t size) {
   if (size == 0)
     return true;
 
@@ -123,7 +123,7 @@ bool Transport::AddRequestBody(void const* data, size_t size) {
     return false;
   }
 
-  unsigned char const* data_ptr = reinterpret_cast<unsigned char const*>(data);
+  const unsigned char* data_ptr = reinterpret_cast<const unsigned char*>(data);
   request_data_.insert(request_data_.end(), data_ptr, data_ptr + size);
   return true;
 }
@@ -187,8 +187,8 @@ bool Transport::Perform() {
 
   VLOG_IF(2, !request_data_.empty()) << "Request data ("
       << request_data_.size() << "): "
-      << std::string(reinterpret_cast<char const*>(request_data_.data()),
-      request_data_.size());
+      << std::string(reinterpret_cast<const char*>(request_data_.data()),
+                                                   request_data_.size());
 
   // Setup HTTP response data.
   if (method_ != request_type::kHead) {
@@ -234,7 +234,7 @@ bool Transport::Perform() {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
               << GetResponseStatusText() << ")";
     VLOG(2) << "Response data (" << response_data_.size() << "): "
-        << std::string(reinterpret_cast<char const*>(response_data_.data()),
+        << std::string(reinterpret_cast<const char*>(response_data_.data()),
                        response_data_.size());
   }
   return (ret == CURLE_OK);
@@ -248,12 +248,12 @@ int Transport::GetResponseStatusCode() const {
   return status_code;
 }
 
-std::string Transport::GetResponseHeader(char const* headerName) const {
+std::string Transport::GetResponseHeader(const char* headerName) const {
   auto p = headers_.find(headerName);
   return p != headers_.end() ? p->second : std::string();
 }
 
-std::vector<unsigned char> const& Transport::GetResponseData() const {
+const std::vector<unsigned char>& Transport::GetResponseData() const {
   return response_data_;
 }
 

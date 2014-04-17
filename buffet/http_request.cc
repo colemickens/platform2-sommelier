@@ -98,11 +98,11 @@ const char response_header::kWwwAuthenticate[]    = "WWW-Authenticate";
 //**************************************************************************
 //********************** Request Class **********************
 //**************************************************************************
-Request::Request(std::string const& url, char const* method) :
+Request::Request(const std::string& url, const char* method) :
   transport_(new curl::Transport(url, method)) {
 }
 
-Request::Request(std::string const& url) :
+Request::Request(const std::string& url) :
   transport_(new curl::Transport(url, nullptr)) {
 }
 
@@ -133,7 +133,7 @@ std::unique_ptr<Response> Request::GetResponse() {
   return std::unique_ptr<Response>();
 }
 
-void Request::SetAccept(char const* accept_mime_types) {
+void Request::SetAccept(const char* accept_mime_types) {
   if (transport_)
     transport_->SetAccept(accept_mime_types);
 }
@@ -146,7 +146,7 @@ std::string Request::GetRequestURL() const {
   return transport_ ? transport_->GetRequestURL() : std::string();
 }
 
-void Request::SetContentType(char const* contentType) {
+void Request::SetContentType(const char* contentType) {
   if (transport_)
     transport_->SetContentType(contentType);
 }
@@ -155,21 +155,21 @@ std::string Request::GetContentType() const {
   return transport_ ? transport_->GetContentType() : std::string();
 }
 
-void Request::AddHeader(char const* header, char const* value) {
+void Request::AddHeader(const char* header, const char* value) {
   if (transport_)
     transport_->AddHeader(header, value);
 }
 
-void Request::AddHeaders(HeaderList const& headers) {
+void Request::AddHeaders(const HeaderList& headers) {
   for (auto&& pair : headers)
     AddHeader(pair.first.c_str(), pair.second.c_str());
 }
 
-bool Request::AddRequestBody(void const* data, size_t size) {
+bool Request::AddRequestBody(const void* data, size_t size) {
   return transport_ && transport_->AddRequestBody(data, size);
 }
 
-void Request::SetMethod(char const* method) {
+void Request::SetMethod(const char* method) {
   if (transport_)
     transport_->SetMethod(method);
 }
@@ -178,7 +178,7 @@ std::string Request::GetMethod() const {
   return transport_ ? transport_->GetMethod() : std::string();
 }
 
-void Request::SetReferer(char const* referer) {
+void Request::SetReferer(const char* referer) {
   if (transport_)
     transport_->SetReferer(referer);
 }
@@ -187,7 +187,7 @@ std::string Request::GetReferer() const {
   return transport_ ? transport_->GetReferer() : std::string();
 }
 
-void Request::SetUserAgent(char const* user_agent) {
+void Request::SetUserAgent(const char* user_agent) {
   if (transport_)
     transport_->SetUserAgent(user_agent);
 }
@@ -249,14 +249,14 @@ std::vector<unsigned char> Response::GetData() const {
 std::string Response::GetDataAsString() const {
   if (transport_) {
     auto data = transport_->GetResponseData();
-    char const* data_buf = reinterpret_cast<char const*>(data.data());
+    const char* data_buf = reinterpret_cast<const char*>(data.data());
     return std::string(data_buf, data_buf + data.size());
   }
 
   return std::string();
 }
 
-std::string Response::GetHeader(char const* header_name) const {
+std::string Response::GetHeader(const char* header_name) const {
   if (transport_)
     return transport_->GetResponseHeader(header_name);
 

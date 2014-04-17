@@ -29,7 +29,7 @@ inline int HexToDec(int hex) {
 namespace chromeos {
 namespace data_encoding {
 
-std::string UrlEncode(char const* data, bool encodeSpaceAsPlus) {
+std::string UrlEncode(const char* data, bool encodeSpaceAsPlus) {
   std::string result;
 
   while(*data) {
@@ -53,7 +53,7 @@ std::string UrlEncode(char const* data, bool encodeSpaceAsPlus) {
   return result;
 }
 
-std::string UrlDecode(char const* data) {
+std::string UrlDecode(const char* data) {
   std::string result;
   while (*data) {
     char c = *data++;
@@ -72,11 +72,11 @@ std::string UrlDecode(char const* data) {
   return result;
 }
 
-std::string WebParamsEncode(WebParamList const& params,
+std::string WebParamsEncode(const WebParamList& params,
                             bool encodeSpaceAsPlus) {
   std::vector<std::string> pairs;
   pairs.reserve(params.size());
-  for (auto const& p : params) {
+  for (auto&& p : params) {
     std::string key = UrlEncode(p.first.c_str(), encodeSpaceAsPlus);
     std::string value = UrlEncode(p.second.c_str(), encodeSpaceAsPlus);
     pairs.push_back(string_utils::Join('=', key, value));
@@ -85,7 +85,7 @@ std::string WebParamsEncode(WebParamList const& params,
   return string_utils::Join('&', pairs);
 }
 
-WebParamList WebParamsDecode(std::string const& data) {
+WebParamList WebParamsDecode(const std::string& data) {
   WebParamList result;
   std::vector<std::string> params = string_utils::Split(data, '&');
   for (auto p : params) {

@@ -42,7 +42,7 @@ const char mime::application::kWwwFormUrlEncoded[] =
 //***************************************************************************
 //**************************** Utility Functions ****************************
 //***************************************************************************
-static std::string EncodeParam(std::string const& param) {
+static std::string EncodeParam(const std::string& param) {
   // If the string contains one of "tspecials" characters as
   // specified in RFC 1521, enclose it in quotes.
   if (param.find_first_of("()<>@,;:\\\"/[]?=") != std::string::npos) {
@@ -51,7 +51,7 @@ static std::string EncodeParam(std::string const& param) {
   return param;
 }
 
-static std::string DecodeParam(std::string const& param) {
+static std::string DecodeParam(const std::string& param) {
   if (param.size() > 1 && param.front() == '"' && param.back() == '"') {
     return param.substr(1, param.size() - 2);
   }
@@ -62,7 +62,7 @@ static std::string DecodeParam(std::string const& param) {
 //******************** Main MIME manipulation functions *********************
 //***************************************************************************
 
-bool mime::Split(std::string const& mime_string,
+bool mime::Split(const std::string& mime_string,
                  std::string* type, std::string* subtype,
                  mime::Parameters* parameters) {
   std::vector<std::string> parts = string_utils::Split(mime_string, ';');
@@ -84,7 +84,7 @@ bool mime::Split(std::string const& mime_string,
   return true;
 }
 
-bool mime::Split(std::string const& mime_string,
+bool mime::Split(const std::string& mime_string,
                  std::string* type, std::string* subtype) {
   std::string mime = mime::RemoveParameters(mime_string);
   auto types = string_utils::SplitAtFirst(mime, '/');
@@ -98,28 +98,28 @@ bool mime::Split(std::string const& mime_string,
   return !types.first.empty() && !types.second.empty();
 }
 
-std::string mime::Combine(std::string const& type, std::string const& subtype,
-                          mime::Parameters const& parameters) {
+std::string mime::Combine(const std::string& type, const std::string& subtype,
+                          const mime::Parameters& parameters) {
   std::vector<std::string> parts;
   parts.push_back(string_utils::Join('/', type, subtype));
-  for (std::pair<std::string, std::string> const& pair : parameters) {
+  for (auto&& pair : parameters) {
     parts.push_back(string_utils::Join('=', pair.first,
                                        EncodeParam(pair.second)));
   }
   return string_utils::Join("; ", parts);
 }
 
-std::string mime::GetType(std::string const& mime_string) {
+std::string mime::GetType(const std::string& mime_string) {
   std::string mime = mime::RemoveParameters(mime_string);
   return string_utils::SplitAtFirst(mime, '/').first;
 }
 
-std::string mime::GetSubtype(std::string const& mime_string) {
+std::string mime::GetSubtype(const std::string& mime_string) {
   std::string mime = mime::RemoveParameters(mime_string);
   return string_utils::SplitAtFirst(mime, '/').second;
 }
 
-mime::Parameters mime::GetParameters(std::string const& mime_string) {
+mime::Parameters mime::GetParameters(const std::string& mime_string) {
   std::string type;
   std::string subtype;
   mime::Parameters parameters;
@@ -130,23 +130,23 @@ mime::Parameters mime::GetParameters(std::string const& mime_string) {
   return mime::Parameters();
 }
 
-std::string mime::RemoveParameters(std::string const& mime_string) {
+std::string mime::RemoveParameters(const std::string& mime_string) {
   return string_utils::SplitAtFirst(mime_string, ';').first;
 }
 
-std::string mime::AppendParameter(std::string const& mime_string,
-                                  std::string const& paramName,
-                                  std::string const& paramValue) {
+std::string mime::AppendParameter(const std::string& mime_string,
+                                  const std::string& paramName,
+                                  const std::string& paramValue) {
   std::string mime(mime_string);
   mime += "; ";
   mime += string_utils::Join('=', paramName, EncodeParam(paramValue));
   return mime;
 }
 
-std::string mime::GetParameterValue(std::string const& mime_string,
-                                    std::string const& paramName) {
+std::string mime::GetParameterValue(const std::string& mime_string,
+                                    const std::string& paramName) {
   mime::Parameters params = mime::GetParameters(mime_string);
-  for(auto const& pair : params) {
+  for(auto&& pair : params) {
     if (base::strcasecmp(pair.first.c_str(), paramName.c_str()) == 0)
       return pair.second;
   }

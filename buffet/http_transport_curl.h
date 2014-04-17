@@ -26,7 +26,7 @@ class Transport : public TransportInterface {
   // schema, host address, resource path as well as optional query parameters
   // and/or user name/password. |method| is one of HTTP request verbs such as
   // "GET", "POST", etc. If nullptr is specified, "GET" is assumed.
-  Transport(std::string const& url, char const* method);
+  Transport(const std::string& url, const char* method);
   ~Transport();
 
   // Returns the current request/response stage.
@@ -37,7 +37,7 @@ class Transport : public TransportInterface {
   virtual void AddRange(uint64_t from_byte, uint64_t to_byte) override;
 
   // Implementation of Request::SetAccept/Request::GetAccept.
-  virtual void SetAccept(char const* acceptMimeTypes) override {
+  virtual void SetAccept(const char* acceptMimeTypes) override {
     accept_ = acceptMimeTypes;
   }
   virtual std::string GetAccept() const override;
@@ -46,30 +46,30 @@ class Transport : public TransportInterface {
   virtual std::string GetRequestURL() const override { return request_url_; }
 
   // Implementation of Request::SetContentType/Request::GetContentType.
-  virtual void SetContentType(char const* content_type) override {
+  virtual void SetContentType(const char* content_type) override {
     content_type_ = content_type;
   }
   virtual std::string GetContentType() const override { return content_type_; }
 
   // Implementation of Request::AddHeader.
-  virtual void AddHeader(char const* header, char const* value) override;
+  virtual void AddHeader(const char* header, const char* value) override;
 
   // Implementation of Request::RemoveHeader.
-  virtual void RemoveHeader(char const* header) override;
+  virtual void RemoveHeader(const char* header) override;
 
   // Implementation of Request::AddRequestBody.
-  virtual bool AddRequestBody(void const* data, size_t size) override;
+  virtual bool AddRequestBody(const void* data, size_t size) override;
 
   // Implementation of Request::SetMethod/Request::GetMethod.
-  virtual void SetMethod(char const* method) override { method_ = method; }
+  virtual void SetMethod(const char* method) override { method_ = method; }
   virtual std::string GetMethod() const override { return method_; }
 
   // Implementation of Request::SetReferer/Request::GetReferer.
-  virtual void SetReferer(char const* referer) override { referer_ = referer; }
+  virtual void SetReferer(const char* referer) override { referer_ = referer; }
   virtual std::string GetReferer() const override { return referer_; }
 
   // Implementation of Request::SetUserAgent/Request::GetUserAgent.
-  virtual void SetUserAgent(char const* user_agent) override {
+  virtual void SetUserAgent(const char* user_agent) override {
     user_agent_ = user_agent;
   }
   virtual std::string GetUserAgent() const override { return user_agent_; }
@@ -86,10 +86,10 @@ class Transport : public TransportInterface {
   }
 
   // Implementation of Response::GetHeader.
-  virtual std::string GetResponseHeader(char const* header_name) const override;
+  virtual std::string GetResponseHeader(const char* header_name) const override;
 
   // Implementation of Response::GetData.
-  virtual std::vector<unsigned char> const& GetResponseData() const override;
+  virtual const std::vector<unsigned char>& GetResponseData() const override;
 
   // Implementation of Response::GetErrorMessage.
   virtual std::string GetErrorMessage() const override { return error_; }

@@ -16,25 +16,25 @@
 namespace chromeos {
 namespace http {
 
-std::unique_ptr<Response> Get(std::string const& url) {
+std::unique_ptr<Response> Get(const std::string& url) {
   Request request(url);
   return request.GetResponse();
 }
 
-std::string GetAsString(std::string const& url) {
+std::string GetAsString(const std::string& url) {
   auto resp = Get(url);
   return resp ? resp->GetDataAsString() : std::string();
 }
 
-std::unique_ptr<Response> Head(std::string const& url) {
+std::unique_ptr<Response> Head(const std::string& url) {
   Request request(url, request_type::kHead);
   return request.GetResponse();
 }
 
-std::unique_ptr<Response> PostText(std::string const& url,
-                                   char const* data,
-                                   char const* mime_type,
-                                   HeaderList const& headers) {
+std::unique_ptr<Response> PostText(const std::string& url,
+                                   const char* data,
+                                   const char* mime_type,
+                                   const HeaderList& headers) {
   if (mime_type == nullptr) {
     mime_type = chromeos::mime::application::kWwwFormUrlEncoded;
   }
@@ -42,12 +42,12 @@ std::unique_ptr<Response> PostText(std::string const& url,
   return PostBinary(url, data, strlen(data), mime_type, headers);
 }
 
-std::unique_ptr<Response> SendRequest(char const* method,
-                                      std::string const& url,
-                                      void const* data,
+std::unique_ptr<Response> SendRequest(const char * method,
+                                      const std::string& url,
+                                      const void* data,
                                       size_t data_size,
-                                      char const* mime_type,
-                                      HeaderList const& headers) {
+                                      const char* mime_type,
+                                      const HeaderList& headers) {
   Request request(url, method);
   request.AddHeaders(headers);
   if (data_size > 0) {
@@ -60,25 +60,25 @@ std::unique_ptr<Response> SendRequest(char const* method,
   return request.GetResponse();
 }
 
-std::unique_ptr<Response> PostBinary(std::string const& url, void const* data,
-                                     size_t data_size, char const* mime_type,
-                                     HeaderList const& headers) {
+std::unique_ptr<Response> PostBinary(const std::string & url, const void* data,
+                                     size_t data_size, const char* mime_type,
+                                     const HeaderList& headers) {
   return SendRequest(request_type::kPost, url,
                      data, data_size, mime_type, headers);
 }
 
-std::unique_ptr<Response> PostFormData(std::string const& url,
-                                       FormFieldList const& data,
-                                       HeaderList const& headers) {
+std::unique_ptr<Response> PostFormData(const std::string& url,
+                                       const FormFieldList& data,
+                                       const HeaderList& headers) {
   std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
   return PostBinary(url, encoded_data.c_str(), encoded_data.size(),
                     chromeos::mime::application::kWwwFormUrlEncoded, headers);
 }
 
 
-std::unique_ptr<Response> PostJson(std::string const& url,
-                                   base::Value const* json,
-                                   HeaderList const& headers) {
+std::unique_ptr<Response> PostJson(const std::string& url,
+                                   const base::Value* json,
+                                   const HeaderList& headers) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
@@ -86,9 +86,9 @@ std::unique_ptr<Response> PostJson(std::string const& url,
                     mime::application::kJson, headers);
 }
 
-std::unique_ptr<Response> PatchJson(std::string const& url,
-                                    base::Value const* json,
-                                    HeaderList const& headers) {
+std::unique_ptr<Response> PatchJson(const std::string& url,
+                                    const base::Value* json,
+                                    const HeaderList& headers) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
@@ -97,7 +97,7 @@ std::unique_ptr<Response> PatchJson(std::string const& url,
 }
 
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    Response const* response, int* status_code, std::string* error_message) {
+    const Response* response, int* status_code, std::string* error_message) {
   std::unique_ptr<base::DictionaryValue> dict;
   if (response) {
     if (status_code)

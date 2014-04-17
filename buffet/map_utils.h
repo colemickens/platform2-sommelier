@@ -12,7 +12,7 @@ namespace chromeos {
 
 // Given an STL map returns a vector containing all keys from the map
 template<typename T>
-std::vector<typename T::key_type> GetMapKeys(T const& map) {
+std::vector<typename T::key_type> GetMapKeys(const T& map) {
   std::vector<typename T::key_type> keys;
   keys.reserve(map.size());
   for (auto&& pair : map)
@@ -22,7 +22,7 @@ std::vector<typename T::key_type> GetMapKeys(T const& map) {
 
 // Given an STL map returns a vector containing all values from the map
 template<typename T>
-std::vector<typename T::mapped_type> GetMapValues(T const& map) {
+std::vector<typename T::mapped_type> GetMapValues(const T& map) {
   std::vector<typename T::mapped_type> values;
   values.reserve(map.size());
   for (auto&& pair : map)
@@ -33,7 +33,7 @@ std::vector<typename T::mapped_type> GetMapValues(T const& map) {
 // Given an STL map returns a vector of key-value pairs from the map
 template<typename T>
 std::vector<std::pair<typename T::key_type,
-                      typename T::mapped_type>> MapToVector(T const& map) {
+                      typename T::mapped_type>> MapToVector(const T& map) {
   std::vector<std::pair<typename T::key_type, typename T::mapped_type>> vector;
   vector.reserve(map.size());
   for (auto&& pair : map)
