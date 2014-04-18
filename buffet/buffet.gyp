@@ -18,7 +18,6 @@
         '-lbase-dbus_test_support-<(libbase_ver)',
       ],
     },
-    # TODO(sosa): Remove no-strict-aliasing: crbug.com/356745.
     'cflags_cc': [
       '-std=gnu++11',
     ],
@@ -41,6 +40,7 @@
         'manager.cc',
         'mime_utils.cc',
         'string_utils.cc',
+        'url_utils.cc'
       ],
     },
     {
@@ -78,6 +78,7 @@
         'async_event_sequencer_unittest.cc',
         'mime_utils_unittest.cc',
         'string_utils_unittest.cc',
+        'url_utils_unittest.cc'
       ],
     },
   ],

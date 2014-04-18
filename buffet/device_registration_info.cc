@@ -14,6 +14,7 @@
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
 #include "buffet/data_encoding.h"
+#include "buffet/url_utils.h"
 
 using namespace chromeos::http;
 using namespace chromeos::data_encoding;
@@ -76,20 +77,11 @@ std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
   return resp;
 }
 
-std::string BuildURL(std::string url,
-                     const std::string& subpath,
+std::string BuildURL(const std::string& url,
+                     const std::vector<std::string>& subpaths,
                      const WebParamList& params) {
-  if (!subpath.empty()) {
-    if (!url.empty() && url.back() != '/')
-      url += '/';
-    url += subpath;
-  }
-
-  if (!params.empty()) {
-    url += '?';
-    url += WebParamsEncode(params);
-  }
-  return url;
+  std::string result = chromeos::url::CombineMultiple(url, subpaths);
+  return chromeos::url::AppendQueryParams(result, params);
 }
 
 
@@ -104,22 +96,18 @@ std::pair<std::string, std::string>
 
 std::string DeviceRegistrationInfo::GetServiceURL(
     const std::string& subpath, const WebParamList& params) const {
-  return BuildURL(service_url_, subpath, params);
+  return BuildURL(service_url_, {subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceURL(
     const std::string& subpath, const WebParamList& params) const {
   CHECK(!device_id_.empty()) << "Must have a valid device ID";
-  std::string path = "devices/" + device_id_;
-  if (!subpath.empty()) {
-    path += '/' + subpath;
-  }
-  return GetServiceURL(path, params);
+  return BuildURL(service_url_, {"devices", device_id_, subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetOAuthURL(const std::string& subpath,
                                     const WebParamList& params) const {
-  return BuildURL(oauth_url_, subpath, params);
+  return BuildURL(oauth_url_, {subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceId() {

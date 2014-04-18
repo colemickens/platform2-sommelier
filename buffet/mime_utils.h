@@ -5,6 +5,7 @@
 #ifndef BUFFET_MIME_UTILS_H_
 #define BUFFET_MIME_UTILS_H_
 
+#include <base/basictypes.h>
 #include <string>
 #include <vector>
 
@@ -57,7 +58,7 @@ typedef std::vector<std::pair<std::string, std::string>> Parameters;
 // e.g. Combine("text", "plain", {{"charset", "utf-8"}}) will give:
 //      "text/plain; charset=utf-8"
 std::string Combine(const std::string& type, const std::string& subtype,
-                    const Parameters& parameters = {});
+                    const Parameters& parameters = {}) WARN_UNUSED_RESULT;
 
 // Splits a MIME string into type and subtype.
 // "text/plain;charset=utf-8" => ("text", "plain")
@@ -83,13 +84,13 @@ Parameters GetParameters(const std::string& mime_string);
 
 // Removes parameters from a MIME string
 // "text/plain;charset=utf-8" => "text/plain"
-std::string RemoveParameters(const std::string& mime_string);
+std::string RemoveParameters(const std::string& mime_string) WARN_UNUSED_RESULT;
 
 // Appends a parameter to a MIME string.
 // "text/plain" => "text/plain; charset=utf-8"
 std::string AppendParameter(const std::string& mime_string,
                             const std::string& paramName,
-                            const std::string& paramValue);
+                            const std::string& paramValue) WARN_UNUSED_RESULT;
 
 // Returns the value of a parameter on a MIME string (empty string if missing).
 // ("text/plain;charset=utf-8","charset") => "utf-8"
