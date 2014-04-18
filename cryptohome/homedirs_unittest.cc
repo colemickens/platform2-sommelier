@@ -1047,6 +1047,62 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   EXPECT_EQ(serialized_.key_data().revision(), new_key.data().revision());
 }
 
+// Ensure signing matches the test vectors in Chrome.
+TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
+  KeysetSetUp();
+
+  // The salted password passed in from Chrome.
+  const char kPassword[] = "OSL3HZZSfK+mDQTYUh3lXhgAzJNWhYz52ax0Bleny7Q=";
+  // A no-op encryption key.
+  const char kB64CipherKey[] = "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=";
+  // The signing key pre-installed.
+  const char kB64SigningKey[] = "p5TR/34XX0R7IMuffH14BiL1vcdSD8EajPzdIg09z9M=";
+  // The HMAC-256 signature over kPassword using kSigningKey.
+  const char kB64Signature[] = "KOPQmmJcMr9iMkr36N1cX+G9gDdBBu7zutAxNayPMN4=";
+
+  // No need to do PasswordToPasskey as that is the
+  // external callers job.
+  SecureBlob new_pass(kPassword, sizeof(kPassword)-1);
+  Key new_key;
+  new_key.set_secret(std::string(kPassword, sizeof(kPassword)-1));
+  new_key.mutable_data()->set_label("new label");
+  // The compat revision to test is '1'.
+  new_key.mutable_data()->set_revision(1);
+  // The injected keyset in the fixture handles the up_ validation.
+  KeyData* key_data = serialized_.mutable_key_data();
+  key_data->set_label("current label");
+  key_data->set_revision(0);
+  key_data->mutable_privileges()->set_update(false);
+  key_data->mutable_privileges()->set_authorized_update(true);
+  KeyAuthorizationData* auth_data = key_data->add_authorization_data();
+  auth_data->set_type(KeyAuthorizationData::KEY_AUTHORIZATION_TYPE_HMACSHA256);
+  KeyAuthorizationSecret* auth_secret = auth_data->add_secrets();
+  auth_secret->mutable_usage()->set_sign(true);
+  std::string signing_key = CryptoLib::Base64Decode(kB64SigningKey);
+  auth_secret->set_symmetric_key(signing_key);
+  // Add an encryption secret to ensure matching behavior.
+  auth_secret = auth_data->add_secrets();
+  auth_secret->mutable_usage()->set_encrypt(true);
+  std::string cipher_key = CryptoLib::Base64Decode(kB64CipherKey);
+  auth_secret->set_symmetric_key(cipher_key);
+
+
+  std::string vk_path = "some/path/master.0";
+  EXPECT_CALL(*active_vk_, source_file())
+    .WillOnce(ReturnRef(vk_path));
+  EXPECT_CALL(*active_vk_, Encrypt(new_pass))
+    .WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_, Save(vk_path))
+    .WillOnce(Return(true));
+
+  std::string signature = CryptoLib::Base64Decode(kB64Signature);
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.UpdateKeyset(*up_,
+                                   const_cast<const Key *>(&new_key),
+                                   signature));
+  EXPECT_EQ(new_key.data().revision(), serialized_.key_data().revision());
+}
+
 TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   KeysetSetUp();
 

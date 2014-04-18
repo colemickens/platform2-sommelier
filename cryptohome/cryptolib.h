@@ -111,6 +111,12 @@ class CryptoLib {
   static std::string Base64Encode(const std::string& blob,
                                   bool include_newlines);
 
+  // Decodes a binary blob to base64.
+  //
+  // Parameters
+  //   blob - The input blob.
+  static std::string Base64Decode(const std::string& blob);
+
   // Computes an HMAC over the iv and encrypted_data fields of an EncryptedData
   // protobuf.
   // Parameters
