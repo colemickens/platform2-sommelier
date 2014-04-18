@@ -31,6 +31,7 @@ using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::ContainsRegex;
+using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -71,6 +72,10 @@ class DHCPConfigTest : public PropertyStoreTest {
   virtual void TearDown() {
     config_->proxy_factory_ = NULL;
     config_->minijail_ = NULL;
+  }
+
+  void StopInstance() {
+    config_->Stop("In test");
   }
 
   DHCPConfigRefPtr CreateMockMinijailConfig(const string &hostname,
@@ -484,6 +489,41 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
           << failure_message;
     }
   }
+}
+
+TEST_F(DHCPConfigCallbackTest, StoppedDuringFailureCallback) {
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+    0x01020304);
+  // Stop the DHCP config while it is calling the failure callback.  We
+  // need to ensure that no callbacks are left running inadvertently as
+  // a result.
+  EXPECT_CALL(*this, FailureCallback(ConfigRef()))
+      .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
+  config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
+  EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
+}
+
+TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+    0x01020304);
+  const uint32 kLeaseTime = 1;
+  conf[DHCPConfig::kConfigurationKeyLeaseTime].writer().append_uint32(
+      kLeaseTime);
+  // Stop the DHCP config while it is calling the success callback.  This
+  // can happen if the device has a static IP configuration and releases
+  // the lease after accepting other network parameters from the DHCP
+  // IPConfig properties.  We need to ensure that no callbacks are left
+  // running inadvertently as a result.
+  EXPECT_CALL(*this, SuccessCallback(ConfigRef()))
+      .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
+  config_->ProcessEventSignal(DHCPConfig::kReasonBound, conf);
+  EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
 }
 
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalUnknown) {

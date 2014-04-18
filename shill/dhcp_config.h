@@ -79,6 +79,8 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalUnknown);
   FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, StartTimeout);
+  FRIEND_TEST(DHCPConfigCallbackTest, StoppedDuringFailureCallback);
+  FRIEND_TEST(DHCPConfigCallbackTest, StoppedDuringSuccessCallback);
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, InitProxy);
   FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);

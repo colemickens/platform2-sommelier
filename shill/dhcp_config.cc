@@ -206,13 +206,13 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
 
 void DHCPConfig::UpdateProperties(const Properties &properties) {
   StopAcquisitionTimeout();
-  IPConfig::UpdateProperties(properties);
   if (properties.lease_duration_seconds) {
     StartExpirationTimeout(properties.lease_duration_seconds);
   } else {
     LOG(WARNING) << "Lease duration is zero; not starting an expiration timer.";
     StopExpirationTimeout();
   }
+  IPConfig::UpdateProperties(properties);
 }
 
 void DHCPConfig::NotifyFailure() {
