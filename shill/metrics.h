@@ -518,8 +518,8 @@ class Metrics {
   void NotifySignalAtDisconnect(const Service &service,
                                 int16_t signal_strength);
 
-  // Notifies this object of a power management state change.
-  void NotifyPowerStateChange(PowerManager::SuspendState new_state);
+  // Notifies this object of the end of a suspend attempt.
+  void NotifySuspendDone();
 
   // Notifies this object that termination actions started executing.
   void NotifyTerminationActionsStarted(TerminationActionReason reason);

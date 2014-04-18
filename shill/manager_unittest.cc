@@ -360,8 +360,8 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(DisableTechnologyReplyHandler);
   };
 
-  void SetPowerState(PowerManagerProxyDelegate::SuspendState state) {
-    power_manager_->power_state_ = state;
+  void SetSuspending(bool suspending) {
+    power_manager_->suspending_ = suspending;
   }
 
   void SetPowerManager() {
@@ -372,12 +372,12 @@ class ManagerTest : public PropertyStoreTest {
     return &manager()->termination_actions_;
   }
 
-  void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState state) {
-    manager()->OnPowerStateChanged(state);
-  }
-
   void OnSuspendImminent(int suspend_id) {
     manager()->OnSuspendImminent(suspend_id);
+  }
+
+  void OnSuspendDone(int suspend_id) {
+    manager()->OnSuspendDone(suspend_id);
   }
 
   void OnSuspendActionsComplete(int suspend_id, const Error &error) {
@@ -2970,36 +2970,18 @@ TEST_F(ManagerTest, AutoConnectOnDeregister) {
   dispatcher()->DispatchPendingEvents();
 }
 
-TEST_F(ManagerTest, AutoConnectOnPowerStateSuspending) {
+TEST_F(ManagerTest, AutoConnectOnSuspending) {
   MockServiceRefPtr service = MakeAutoConnectableService();
-  SetPowerState(PowerManagerProxyDelegate::kSuspending);
+  SetSuspending(true);
   SetPowerManager();
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   manager()->RegisterService(service);
   dispatcher()->DispatchPendingEvents();
 }
 
-TEST_F(ManagerTest, AutoConnectOnPowerStateMem) {
+TEST_F(ManagerTest, AutoConnectOnNotSuspending) {
   MockServiceRefPtr service = MakeAutoConnectableService();
-  SetPowerState(PowerManagerProxyDelegate::kMem);
-  SetPowerManager();
-  EXPECT_CALL(*service, AutoConnect()).Times(0);
-  manager()->RegisterService(service);
-  dispatcher()->DispatchPendingEvents();
-}
-
-TEST_F(ManagerTest, AutoConnectOnPowerStateOn) {
-  MockServiceRefPtr service = MakeAutoConnectableService();
-  SetPowerState(PowerManagerProxyDelegate::kOn);
-  SetPowerManager();
-  EXPECT_CALL(*service, AutoConnect());
-  manager()->RegisterService(service);
-  dispatcher()->DispatchPendingEvents();
-}
-
-TEST_F(ManagerTest, AutoConnectOnPowerStateUnknown) {
-  MockServiceRefPtr service = MakeAutoConnectableService();
-  SetPowerState(PowerManagerProxyDelegate::kUnknown);
+  SetSuspending(false);
   SetPowerManager();
   EXPECT_CALL(*service, AutoConnect());
   manager()->RegisterService(service);
@@ -3014,31 +2996,30 @@ TEST_F(ManagerTest, AutoConnectWhileNotRunning) {
   dispatcher()->DispatchPendingEvents();
 }
 
-TEST_F(ManagerTest, OnPowerStateChanged) {
+TEST_F(ManagerTest, Suspend) {
   MockServiceRefPtr service = MakeAutoConnectableService();
-  SetPowerState(PowerManagerProxyDelegate::kOn);
   SetPowerManager();
   EXPECT_CALL(*service, AutoConnect());
   manager()->RegisterService(service);
   manager()->RegisterDevice(mock_devices_[0]);
   dispatcher()->DispatchPendingEvents();
 
-  EXPECT_CALL(*mock_devices_[0], OnAfterResume());
-  OnPowerStateChanged(PowerManagerProxyDelegate::kOn);
-  EXPECT_CALL(*service, AutoConnect());
+  const int kSuspendId = 1;
+  EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend());
+  OnSuspendImminent(kSuspendId);
+  EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(mock_devices_[0]);
 
-  EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend());
-  OnPowerStateChanged(PowerManagerProxyDelegate::kMem);
-  EXPECT_CALL(*service, AutoConnect()).Times(0);
+  EXPECT_CALL(*mock_devices_[0], OnAfterResume());
+  OnSuspendDone(kSuspendId);
+  EXPECT_CALL(*service, AutoConnect());
   dispatcher()->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(mock_devices_[0]);
 }
 
 TEST_F(ManagerTest, AddTerminationAction) {
-  EXPECT_CALL(*power_manager_, AddSuspendDelayCallback(_, _));
-  EXPECT_CALL(*power_manager_, RegisterSuspendDelay(_, _, _));
+  EXPECT_CALL(*power_manager_, AddSuspendDelay(_, _, _, _, _));
   SetPowerManager();
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction("action1", base::Closure());
@@ -3049,39 +3030,35 @@ TEST_F(ManagerTest, AddTerminationAction) {
 TEST_F(ManagerTest, RemoveTerminationAction) {
   const char kKey1[] = "action1";
   const char kKey2[] = "action2";
-  const int kSuspendDelayId = 123;
 
   MockPowerManager &power_manager = *power_manager_;
   SetPowerManager();
 
   // Removing an action when the hook table is empty should not result in any
   // calls to the power manager.
-  EXPECT_CALL(power_manager, UnregisterSuspendDelay(_)).Times(0);
-  EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_)).Times(0);
+  EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->RemoveTerminationAction("unknown");
   Mock::VerifyAndClearExpectations(&power_manager);
 
-  EXPECT_CALL(power_manager, RegisterSuspendDelay(_, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kSuspendDelayId), Return(true)));
-  EXPECT_CALL(power_manager, AddSuspendDelayCallback(_, _)).Times(1);
+  EXPECT_CALL(power_manager, AddSuspendDelay(_, _, _, _, _))
+      .WillOnce(Return(true));
   manager()->AddTerminationAction(kKey1, base::Closure());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction(kKey2, base::Closure());
+  Mock::VerifyAndClearExpectations(&power_manager);
 
   // Removing an action that ends up with a non-empty hook table should not
   // result in any calls to the power manager.
-  EXPECT_CALL(power_manager, UnregisterSuspendDelay(_)).Times(0);
-  EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_)).Times(0);
+  EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   manager()->RemoveTerminationAction(kKey1);
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
   Mock::VerifyAndClearExpectations(&power_manager);
 
   // Removing the last action should trigger unregistering from the power
   // manager.
-  EXPECT_CALL(power_manager, UnregisterSuspendDelay(kSuspendDelayId))
+  EXPECT_CALL(power_manager, RemoveSuspendDelay(_))
       .WillOnce(Return(true));
-  EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_));
   manager()->RemoveTerminationAction(kKey2);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
 }
@@ -3106,9 +3083,7 @@ TEST_F(ManagerTest, RunTerminationActions) {
 TEST_F(ManagerTest, OnSuspendImminent) {
   const int kSuspendId = 123;
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
-  EXPECT_CALL(*power_manager_,
-              ReportSuspendReadiness(
-                  manager()->suspend_delay_id_for_testing(), kSuspendId));
+  EXPECT_CALL(*power_manager_, ReportSuspendReadiness(_, kSuspendId));
   SetPowerManager();
   OnSuspendImminent(kSuspendId);
 }
@@ -3116,9 +3091,7 @@ TEST_F(ManagerTest, OnSuspendImminent) {
 TEST_F(ManagerTest, OnSuspendActionsComplete) {
   const int kSuspendId = 54321;
   Error error;
-  EXPECT_CALL(*power_manager_,
-              ReportSuspendReadiness(
-                  manager()->suspend_delay_id_for_testing(), kSuspendId));
+  EXPECT_CALL(*power_manager_, ReportSuspendReadiness(_, kSuspendId));
   SetPowerManager();
   OnSuspendActionsComplete(kSuspendId, error);
 }

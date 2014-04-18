@@ -19,20 +19,15 @@ class MockPowerManager : public PowerManager {
   MockPowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
   virtual ~MockPowerManager();
 
-  MOCK_METHOD2(AddStateChangeCallback,
-               void(const std::string &key,
-                    const PowerStateCallback &callback));
-  MOCK_METHOD2(AddSuspendDelayCallback,
-               void(const std::string &key,
-                    const SuspendDelayCallback &callback));
-  MOCK_METHOD1(RemoveStateChangeCallback, void(const std::string &key));
-  MOCK_METHOD1(RemoveSuspendDelayCallback, void(const std::string &key));
-  MOCK_METHOD3(RegisterSuspendDelay,
-               bool(base::TimeDelta timeout,
+  MOCK_METHOD5(AddSuspendDelay,
+               bool(const std::string &key,
                     const std::string &description,
-                    int *delay_id_out));
-  MOCK_METHOD1(UnregisterSuspendDelay, bool(int delay_id));
-  MOCK_METHOD2(ReportSuspendReadiness, bool(int delay_id, int suspend_id));
+                    base::TimeDelta timeout,
+                    const SuspendImminentCallback &immiment_callback,
+                    const SuspendDoneCallback &done_callback));
+  MOCK_METHOD1(RemoveSuspendDelay, bool(const std::string &key));
+  MOCK_METHOD2(ReportSuspendReadiness,
+               bool(const std::string &key, int suspend_id));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManager);

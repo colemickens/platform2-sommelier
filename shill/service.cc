@@ -884,11 +884,9 @@ void Service::NoteDisconnectEvent() {
     SLOG(Service, 2) << "Disconnect while manager stopped ignored.";
     return;
   }
-  // Ignore the event if the power state is not on (e.g., when suspending).
+  // Ignore the event if the system is suspending.
   PowerManager *power_manager = manager_->power_manager();
-  if (!power_manager ||
-      (power_manager->power_state() != PowerManager::kOn &&
-       power_manager->power_state() != PowerManager::kUnknown)) {
+  if (!power_manager || power_manager->suspending()) {
     SLOG(Service, 2) << "Disconnect in transitional power state ignored.";
     return;
   }

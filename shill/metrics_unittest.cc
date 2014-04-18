@@ -209,8 +209,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                                   Metrics::kTimerHistogramNumBuckets));
   EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_)).
       WillOnce(DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
-  metrics_.NotifyPowerStateChange(PowerManagerProxyDelegate::kMem);
-  metrics_.NotifyPowerStateChange(PowerManagerProxyDelegate::kOn);
+  metrics_.NotifySuspendDone();
   metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);

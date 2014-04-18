@@ -647,12 +647,8 @@ void Metrics::NotifySignalAtDisconnect(const Service &service,
             kMetricSignalAtDisconnectNumBuckets);
 }
 
-void Metrics::NotifyPowerStateChange(PowerManager::SuspendState new_state) {
-  if (new_state == PowerManagerProxyDelegate::kOn) {
-    time_resume_to_ready_timer_->Start();
-  } else {
-    time_resume_to_ready_timer_->Reset();
-  }
+void Metrics::NotifySuspendDone() {
+  time_resume_to_ready_timer_->Start();
 }
 
 void Metrics::NotifyTerminationActionsStarted(

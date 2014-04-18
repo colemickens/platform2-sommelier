@@ -291,8 +291,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool GetArpGateway() const { return props_.arp_gateway; }
   const std::string &GetHostName() const { return props_.host_name; }
 
-  int suspend_delay_id_for_testing() const { return suspend_delay_id_; }
-
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
 
@@ -525,8 +523,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
   void RunTerminationActions(const base::Callback<void(const Error &)> &done);
 
-  void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState power_state);
+  // Called when the system is about to be suspended.  Each call will be
+  // followed by a call to OnSuspendDone().
   void OnSuspendImminent(int suspend_id);
+
+  // Called when the system has completed a suspend attempt (possibly without
+  // actually suspending, in the event of the user canceling the attempt).
+  void OnSuspendDone(int suspend_id);
 
   void OnSuspendActionsComplete(int suspend_id, const Error &error);
   void VerifyToEncryptLink(std::string public_key, std::string data,
@@ -612,10 +615,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Is a suspend delay currently registered with the power manager?
   bool suspend_delay_registered_;
-
-  // If |suspend_delay_registered_| is true, contains the unique ID
-  // corresponding to the suspend delay.
-  int suspend_delay_id_;
 
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;

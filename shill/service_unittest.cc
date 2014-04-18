@@ -102,8 +102,8 @@ class ServiceTest : public PropertyStoreTest {
 
   void SetManagerRunning(bool running) { mock_manager_.running_ = running; }
 
-  void SetPowerState(PowerManager::SuspendState state) {
-    power_manager_->power_state_ = state;
+  void SetSuspending(bool suspending) {
+    power_manager_->suspending_ = suspending;
   }
 
   void SetExplicitlyDisconnected(bool explicitly) {
@@ -1538,7 +1538,7 @@ TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
 
   // Disconnect while suspending is a non-event.
   SetManagerRunning(true);
-  SetPowerState(PowerManager::kSuspending);
+  SetSuspending(true);
   NoteDisconnectEvent();
   EXPECT_TRUE(GetDisconnects()->empty());
   EXPECT_TRUE(GetMisconnects()->empty());

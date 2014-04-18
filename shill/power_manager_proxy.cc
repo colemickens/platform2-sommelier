@@ -132,23 +132,15 @@ void PowerManagerProxy::Proxy::SuspendImminent(
   delegate_->OnSuspendImminent(proto.suspend_id());
 }
 
-void PowerManagerProxy::Proxy::PowerStateChanged(
-    const string &new_power_state) {
-  LOG(INFO) << __func__ << "(" << new_power_state << ")";
-
-  PowerManagerProxyDelegate::SuspendState suspend_state;
-  if (new_power_state == "on") {
-    suspend_state = PowerManagerProxyDelegate::kOn;
-  } else if (new_power_state == "standby") {
-    suspend_state = PowerManagerProxyDelegate::kStandby;
-  } else if (new_power_state == "mem") {
-    suspend_state = PowerManagerProxyDelegate::kMem;
-  } else if (new_power_state == "disk") {
-    suspend_state = PowerManagerProxyDelegate::kDisk;
-  } else {
-    suspend_state = PowerManagerProxyDelegate::kUnknown;
+void PowerManagerProxy::Proxy::SuspendDone(
+    const vector<uint8_t> &serialized_proto) {
+  LOG(INFO) << __func__;
+  power_manager::SuspendDone proto;
+  if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
+    LOG(ERROR) << "Failed to parse SuspendDone signal.";
+    return;
   }
-  delegate_->OnPowerStateChanged(suspend_state);
+  delegate_->OnSuspendDone(proto.suspend_id());
 }
 
 }  // namespace shill

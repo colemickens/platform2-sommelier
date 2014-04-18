@@ -121,7 +121,6 @@ Manager::Manager(ControlInterface *control_interface,
       use_startup_portal_list_(false),
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
-      suspend_delay_id_(0),
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
       health_checker_remote_ips_(new IPAddressStore()) {
@@ -201,13 +200,6 @@ void Manager::Start() {
 
   power_manager_.reset(
       new PowerManager(dispatcher_, ProxyFactory::GetInstance()));
-  power_manager_->AddStateChangeCallback(
-      kPowerManagerKey,
-      Bind(&Manager::OnPowerStateChanged, AsWeakPtr()));
-  // TODO(ers): weak ptr for metrics_?
-  PowerManager::PowerStateCallback cb =
-      Bind(&Metrics::NotifyPowerStateChange, Unretained(metrics_));
-  power_manager_->AddStateChangeCallback(Metrics::kMetricPowerManagerKey, cb);
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
@@ -1092,16 +1084,15 @@ void Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
 
 void Manager::AddTerminationAction(const string &name,
                                    const base::Closure &start) {
-  if (termination_actions_.IsEmpty() && power_manager_.get()) {
-    power_manager_->AddSuspendDelayCallback(
+  if (termination_actions_.IsEmpty() && power_manager_.get() &&
+      !suspend_delay_registered_) {
+    suspend_delay_registered_ = power_manager_->AddSuspendDelay(
         kPowerManagerKey,
-        Bind(&Manager::OnSuspendImminent, AsWeakPtr()));
-    CHECK(!suspend_delay_registered_);
-    suspend_delay_registered_ = power_manager_->RegisterSuspendDelay(
+        kSuspendDelayDescription,
         base::TimeDelta::FromMilliseconds(
             kTerminationActionsTimeoutMilliseconds),
-        kSuspendDelayDescription,
-        &suspend_delay_id_);
+        Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
+        Bind(&Manager::OnSuspendDone, AsWeakPtr()));
   }
   termination_actions_.Add(name, start);
 }
@@ -1117,14 +1108,12 @@ void Manager::RemoveTerminationAction(const string &name) {
     return;
   }
   termination_actions_.Remove(name);
-  if (termination_actions_.IsEmpty() && power_manager_.get()) {
-    if (suspend_delay_registered_) {
-      SLOG(Manager, 2) << "Unregistering suspend delay.";
-      power_manager_->UnregisterSuspendDelay(suspend_delay_id_);
+  if (termination_actions_.IsEmpty() && power_manager_.get() &&
+      suspend_delay_registered_) {
+    SLOG(Manager, 2) << "Unregistering suspend delay.";
+    if (power_manager_->RemoveSuspendDelay(kPowerManagerKey)) {
       suspend_delay_registered_ = false;
-      suspend_delay_id_ = 0;
     }
-    power_manager_->RemoveSuspendDelayCallback(kPowerManagerKey);
   }
 }
 
@@ -1286,32 +1275,29 @@ void Manager::EmitDefaultService() {
   }
 }
 
-void Manager::OnPowerStateChanged(
-    PowerManagerProxyDelegate::SuspendState power_state) {
-  if (power_state == PowerManagerProxyDelegate::kOn) {
-    vector<ServiceRefPtr>::iterator sit;
-    for (sit = services_.begin(); sit != services_.end(); ++sit) {
-      (*sit)->OnAfterResume();
-    }
-    SortServices();
-    vector<DeviceRefPtr>::iterator it;
-    for (it = devices_.begin(); it != devices_.end(); ++it) {
-      (*it)->OnAfterResume();
-    }
-  } else if (power_state == PowerManagerProxyDelegate::kMem) {
-    vector<DeviceRefPtr>::iterator it;
-    for (it = devices_.begin(); it != devices_.end(); ++it) {
-      (*it)->OnBeforeSuspend();
-    }
+void Manager::OnSuspendImminent(int suspend_id) {
+  vector<DeviceRefPtr>::iterator it;
+  for (it = devices_.begin(); it != devices_.end(); ++it) {
+    (*it)->OnBeforeSuspend();
+  }
+  if (!RunTerminationActionsAndNotifyMetrics(
+           Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), suspend_id),
+           Metrics::kTerminationActionReasonSuspend)) {
+    LOG(INFO) << "No asynchronous suspend actions were run.";
+    power_manager_->ReportSuspendReadiness(kPowerManagerKey, suspend_id);
   }
 }
 
-void Manager::OnSuspendImminent(int suspend_id) {
-  if (!RunTerminationActionsAndNotifyMetrics(
-       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), suspend_id),
-       Metrics::kTerminationActionReasonSuspend)) {
-    LOG(INFO) << "No suspend actions were run.";
-    power_manager_->ReportSuspendReadiness(suspend_delay_id_, suspend_id);
+void Manager::OnSuspendDone(int suspend_id) {
+  metrics_->NotifySuspendDone();
+  vector<ServiceRefPtr>::iterator sit;
+  for (sit = services_.begin(); sit != services_.end(); ++sit) {
+    (*sit)->OnAfterResume();
+  }
+  SortServices();
+  vector<DeviceRefPtr>::iterator it;
+  for (it = devices_.begin(); it != devices_.end(); ++it) {
+    (*it)->OnAfterResume();
   }
 }
 
@@ -1319,7 +1305,7 @@ void Manager::OnSuspendActionsComplete(int suspend_id, const Error &error) {
   LOG(INFO) << "Finished suspend actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonSuspend, error.IsSuccess());
-  power_manager_->ReportSuspendReadiness(suspend_delay_id_, suspend_id);
+  power_manager_->ReportSuspendReadiness(kPowerManagerKey, suspend_id);
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,
@@ -1463,10 +1449,8 @@ void Manager::AutoConnect() {
     LOG(INFO) << "Auto-connect suppressed -- not running.";
     return;
   }
-  if (power_manager_.get() &&
-      power_manager_->power_state() != PowerManagerProxyDelegate::kOn &&
-      power_manager_->power_state() != PowerManagerProxyDelegate::kUnknown) {
-    LOG(INFO) << "Auto-connect suppressed -- power state is not 'on'.";
+  if (power_manager_ && power_manager_->suspending()) {
+    LOG(INFO) << "Auto-connect suppressed -- system is suspending.";
     return;
   }
   if (services_.empty()) {

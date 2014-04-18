@@ -51,19 +51,12 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
    private:
     // Signal callbacks inherited from org::chromium::PowerManager_proxy.
     virtual void SuspendImminent(const std::vector<uint8_t> &serialized_proto);
-    virtual void PowerStateChanged(const std::string &new_power_state);
+    virtual void SuspendDone(const std::vector<uint8_t> &serialized_proto);
 
     PowerManagerProxyDelegate *const delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
-
-  // The PowerStateChanged event occurs on this path.  The root path ("/") is
-  // used because the powerd_suspend script sends signals on that path.  When
-  // the powerd_suspend script is fixed to use the same path as the rest of the
-  // power manager, then this proxy can use the usual power manager path
-  // power_manager::kPowerManagerServicePath.
-  static const char kRootPath[];
 
   // Constructs a PowerManager DBus object proxy with signals dispatched to
   // |delegate|.

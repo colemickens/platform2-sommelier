@@ -25,31 +25,63 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
                            ProxyFactory *proxy_factory)
     : dispatcher_(dispatcher),
       power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
-      power_state_(kUnknown) {}
+      suspending_(false) {}
 
 PowerManager::~PowerManager() {
 }
 
-void PowerManager::AddStateChangeCallback(const string &key,
-                                          const PowerStateCallback &callback) {
-  SLOG(Power, 2) << __func__ << " key " << key;
-  AddCallback(key, callback, &state_change_callbacks_);
+bool PowerManager::AddSuspendDelay(
+    const std::string &key,
+    const std::string &description,
+    base::TimeDelta timeout,
+    const SuspendImminentCallback &imminent_callback,
+    const SuspendDoneCallback &done_callback) {
+  CHECK(!imminent_callback.is_null());
+  CHECK(!done_callback.is_null());
+
+  if (ContainsKey(suspend_delays_, key)) {
+    LOG(ERROR) << "Ignoring request to insert duplicate key " << key;
+    return false;
+  }
+
+  int delay_id = 0;
+  if (!power_manager_proxy_->RegisterSuspendDelay(
+           timeout, description, &delay_id)) {
+    return false;
+  }
+
+  SuspendDelay delay;
+  delay.imminent_callback = imminent_callback;
+  delay.done_callback = done_callback;
+  delay.delay_id = delay_id;
+  suspend_delays_[key] = delay;
+  return true;
 }
 
-void PowerManager::AddSuspendDelayCallback(
-    const string &key, const SuspendDelayCallback &callback) {
-  SLOG(Power, 2) << __func__ << " key " << key;
-  AddCallback(key, callback, &suspend_delay_callbacks_);
+bool PowerManager::RemoveSuspendDelay(const std::string &key) {
+  SuspendDelayMap::const_iterator it = suspend_delays_.find(key);
+  if (it == suspend_delays_.end()) {
+    LOG(ERROR) << "Ignoring unregistered key " << key;
+    return false;
+  }
+
+  if (!power_manager_proxy_->UnregisterSuspendDelay(it->second.delay_id)) {
+    return false;
+  }
+
+  suspend_delays_.erase(it);
+  return true;
 }
 
-void PowerManager::RemoveStateChangeCallback(const string &key) {
-  SLOG(Power, 2) << __func__ << " key " << key;
-  RemoveCallback(key, &state_change_callbacks_);
-}
-
-void PowerManager::RemoveSuspendDelayCallback(const string &key) {
-  SLOG(Power, 2) << __func__ << " key " << key;
-  RemoveCallback(key, &suspend_delay_callbacks_);
+bool PowerManager::ReportSuspendReadiness(const std::string &key,
+                                          int suspend_id) {
+  SuspendDelayMap::const_iterator it = suspend_delays_.find(key);
+  if (it == suspend_delays_.end()) {
+    LOG(ERROR) << "Ignoring unregistered key " << key;
+    return false;
+  }
+  return power_manager_proxy_->ReportSuspendReadiness(
+      it->second.delay_id, suspend_id);
 }
 
 void PowerManager::OnSuspendImminent(int suspend_id) {
@@ -58,78 +90,36 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
   // that the manager can suppress auto-connect, for example. Schedules a
   // suspend timeout in case the suspend attempt failed or got interrupted, and
   // there's no proper notification from the power manager.
-  power_state_ = kSuspending;
+  suspending_ = true;
   suspend_timeout_.Reset(
-      base::Bind(&PowerManager::OnSuspendTimeout, base::Unretained(this)));
+      base::Bind(&PowerManager::OnSuspendTimeout, base::Unretained(this),
+                 suspend_id));
   dispatcher_->PostDelayedTask(suspend_timeout_.callback(),
                                kSuspendTimeoutMilliseconds);
-  OnEvent(suspend_id, &suspend_delay_callbacks_);
+
+  for (SuspendDelayMap::const_iterator it = suspend_delays_.begin();
+       it != suspend_delays_.end(); ++it) {
+    SuspendImminentCallback callback = it->second.imminent_callback;
+    CHECK(!callback.is_null());
+    callback.Run(suspend_id);
+  }
 }
 
-void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
-  LOG(INFO) << "Power state changed: "
-            << power_state_ << "->" << new_power_state;
+void PowerManager::OnSuspendDone(int suspend_id) {
+  LOG(INFO) << __func__ << "(" << suspend_id << ")";
   suspend_timeout_.Cancel();
-  power_state_ = new_power_state;
-  OnEvent(new_power_state, &state_change_callbacks_);
+  suspending_ = false;
+  for (SuspendDelayMap::const_iterator it = suspend_delays_.begin();
+       it != suspend_delays_.end(); ++it) {
+    SuspendDoneCallback callback = it->second.done_callback;
+    CHECK(!callback.is_null());
+    callback.Run(suspend_id);
+  }
 }
 
-bool PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
-                                        const string &description,
-                                        int *delay_id_out) {
-  return power_manager_proxy_->RegisterSuspendDelay(timeout, description,
-                                                    delay_id_out);
-}
-
-bool PowerManager::UnregisterSuspendDelay(int delay_id) {
-  return power_manager_proxy_->UnregisterSuspendDelay(delay_id);
-}
-
-bool PowerManager::ReportSuspendReadiness(int delay_id, int suspend_id) {
-  return power_manager_proxy_->ReportSuspendReadiness(delay_id, suspend_id);
-}
-
-void PowerManager::OnSuspendTimeout() {
+void PowerManager::OnSuspendTimeout(int suspend_id) {
   LOG(ERROR) << "Suspend timed out -- assuming power-on state.";
-  OnPowerStateChanged(kOn);
+  OnSuspendDone(suspend_id);
 }
-
-template<class Callback>
-void PowerManager::AddCallback(const string &key, const Callback &callback,
-                               map<const string, Callback> *callback_map) {
-  CHECK(callback_map != NULL);
-  CHECK(!callback.is_null());
-  if (ContainsKey(*callback_map, key)) {
-    LOG(DFATAL) << "Inserting duplicate key " << key;
-    LOG(INFO) << "Removing previous callback for key " << key;
-    RemoveCallback(key, callback_map);
-  }
-  (*callback_map)[key] = callback;
-}
-
-template<class Callback>
-void PowerManager::RemoveCallback(const string &key,
-                                  map<const string, Callback> *callback_map) {
-  CHECK(callback_map != NULL);
-  DCHECK(ContainsKey(*callback_map, key)) << "Removing unknown key " << key;
-  typename map<const string, Callback>::iterator it = callback_map->find(key);
-  if (it != callback_map->end()) {
-    callback_map->erase(it);
-  }
-}
-
-template<class Param, class Callback>
-void PowerManager::OnEvent(const Param &param,
-                           map<const string, Callback> *callback_map) const {
-  CHECK(callback_map != NULL);
-  for (typename map<const string, Callback>::const_iterator it =
-           callback_map->begin();
-       it != callback_map->end(); ++it) {
-    CHECK(!it->second.is_null());
-    it->second.Run(param);
-  }
-}
-
-
 
 }  // namespace shill

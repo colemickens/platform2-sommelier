@@ -8,27 +8,6 @@
 // This class instantiates a PowerManagerProxy and distributes power events to
 // registered users.  It also provides a means for calling methods on the
 // PowerManagerProxy.
-//
-// Usage:
-//
-// Registering for power state changes is done as follows:
-//
-//   class Foo {
-//    public:
-//     void HandleStateChange(PowerManager::SuspendState new_state);
-//   };
-//   Foo foo;
-//   PowerManager power_manager(ProxyFactory::GetInstance());
-//   PowerManager::PowerStateCallback cb = Bind(&Foo::HandleStateChange, &foo);
-//   power_manager.AddStateChangeCallback("foo_key", cb);
-//
-//   Note that depending on the definition of Foo, "&foo" may need to appear
-//   inside an appropriate wrapper, such as base::Unretained.
-//
-// Whenever the power state changes, foo.HandleStateChange() is called with the
-// new state passed in. To unregister:
-//
-//   power_manager.RemoveStateChangeCallback("foo_key");
 
 #include <map>
 #include <string>
@@ -46,19 +25,16 @@ class ProxyFactory;
 
 class PowerManager : public PowerManagerProxyDelegate {
  public:
-  typedef PowerManagerProxyDelegate::SuspendState SuspendState;
-
-  // Callbacks registered with the power manager are of this type.  They take
-  // one argument, the new power state.  The callback function or method should
-  // look like this:
-  //
-  //   void HandlePowerStateChange(PowerStateCallbacks::SuspendState);
-  typedef base::Callback<void(SuspendState)> PowerStateCallback;
-
-  // This callback is called prior to a suspend event.  When it is OK for the
+  // This callback is called prior to a suspend attempt.  When it is OK for the
   // system to suspend, this callback should call ReportSuspendReadiness(),
-  // passing it the suspend ID passed to this callback.
-  typedef base::Callback<void(int)> SuspendDelayCallback;
+  // passing it the key passed to AddSuspendDelay() and the suspend ID passed to
+  // this callback.
+  typedef base::Callback<void(int)> SuspendImminentCallback;
+
+  // This callback is called after the completion of a suspend attempt.  The
+  // receiver should undo any pre-suspend work that was done by the
+  // SuspendImminentCallback.
+  typedef base::Callback<void(int)> SuspendDoneCallback;
 
   static const int kSuspendTimeoutMilliseconds;
 
@@ -68,74 +44,61 @@ class PowerManager : public PowerManagerProxyDelegate {
                ProxyFactory *proxy_factory);
   virtual ~PowerManager();
 
-  SuspendState power_state() const { return power_state_; }
+  bool suspending() const { return suspending_; }
+
+  // Registers a suspend delay with the power manager under the unique name
+  // |key|.  See PowerManagerProxyInterface::RegisterSuspendDelay() for
+  // information about |description| and |timeout|.  |imminent_callback| will be
+  // invoked when a suspend attempt is commenced and |done_callback| will be
+  // invoked when the attempt is completed.  Returns false on failure.
+  virtual bool AddSuspendDelay(const std::string &key,
+                               const std::string &description,
+                               base::TimeDelta timeout,
+                               const SuspendImminentCallback &immiment_callback,
+                               const SuspendDoneCallback &done_callback);
+
+  // Removes a suspend delay previously created via AddSuspendDelay().  Returns
+  // false on failure.
+  virtual bool RemoveSuspendDelay(const std::string &key);
+
+  // Reports readiness for suspend attempt |suspend_id| on behalf of the suspend
+  // delay described by |key|, the value originally passed to AddSuspendDelay().
+  // Returns false on failure.
+  virtual bool ReportSuspendReadiness(const std::string &key, int suspend_id);
 
   // Methods inherited from PowerManagerProxyDelegate.
   virtual void OnSuspendImminent(int suspend_id);
-  virtual void OnPowerStateChanged(SuspendState new_power_state);
-
-  // See corresponding methods in PowerManagerProxyInterface.
-  virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
-                                    const std::string &description,
-                                    int *delay_id_out);
-  virtual bool UnregisterSuspendDelay(int delay_id);
-  virtual bool ReportSuspendReadiness(int delay_id, int suspend_id);
-
-  // Registers a power state change callback with the power manager.  When a
-  // power state change occurs, this callback will be called with the new power
-  // state as its argument.  |key| must be unique.
-  virtual void AddStateChangeCallback(const std::string &key,
-                                      const PowerStateCallback &callback);
-
-  // Registers a suspend delay callback with the power manager.  This callback
-  // will be called prior to a suspend event by the amount specified in the most
-  // recent call to RegisterSuspendDelay().  |key| must be unique.
-  virtual void AddSuspendDelayCallback(const std::string &key,
-                                       const SuspendDelayCallback &callback);
-
-  // Unregisters a power state change callback identified by |key|.  The
-  // callback must have been previously registered and not yet removed.
-  virtual void RemoveStateChangeCallback(const std::string &key);
-
-  // Unregisters a suspend delay callback identified by |key|.  The callback
-  // must have been previously registered and not yet removed.
-  virtual void RemoveSuspendDelayCallback(const std::string &key);
+  virtual void OnSuspendDone(int suspend_id);
 
  private:
   friend class ManagerTest;
   friend class PowerManagerTest;
   friend class ServiceTest;
 
-  typedef std::map<const std::string, PowerStateCallback>
-    StateChangeCallbackMap;
+  // Information about a suspend delay added via AddSuspendDelay().
+  struct SuspendDelay {
+    SuspendImminentCallback imminent_callback;
+    SuspendDoneCallback done_callback;
+    int delay_id;
+  };
 
-  typedef std::map<const std::string, SuspendDelayCallback>
-    SuspendDelayCallbackMap;
+  // Keyed by the |key| argument to AddSuspendDelay().
+  typedef std::map<const std::string, SuspendDelay> SuspendDelayMap;
 
-  void OnSuspendTimeout();
-
-  template<class Callback>
-  void AddCallback(const std::string &key, const Callback &callback,
-                   std::map<const std::string, Callback> *callback_map);
-
-  template<class Callback>
-  void RemoveCallback(const std::string &key,
-                      std::map<const std::string, Callback> *callback_map);
-
-  template<class Param, class Callback>
-  void OnEvent(const Param &param,
-               std::map<const std::string, Callback> *callback_map) const;
+  // Run by |suspend_timeout_| to manually invoke OnSuspendDone() if the signal
+  // never arrives.
+  void OnSuspendTimeout(int suspend_id);
 
   EventDispatcher *dispatcher_;
 
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.
   const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
-  StateChangeCallbackMap state_change_callbacks_;
-  SuspendDelayCallbackMap suspend_delay_callbacks_;
+  SuspendDelayMap suspend_delays_;
   base::CancelableClosure suspend_timeout_;
 
-  SuspendState power_state_;
+  // Set to true by OnSuspendImminent() and to false by OnSuspendDone().
+  bool suspending_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
 };

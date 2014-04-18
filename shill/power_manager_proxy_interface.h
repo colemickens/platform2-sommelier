@@ -45,28 +45,16 @@ class PowerManagerProxyInterface {
 // PowerManager signal delegate to be associated with the proxy.
 class PowerManagerProxyDelegate {
  public:
-  // Possible states broadcast from the powerd_suspend script.
-  enum SuspendState {
-    kOn,
-    kStandby,
-    kMem,
-    kDisk,
-    kSuspending,  // Internal to shill.
-    // Place new states above kUnknown.
-    kUnknown
-  };
-
   virtual ~PowerManagerProxyDelegate() {}
 
-  // Broadcasted by the power manager when it's about to suspend. RPC clients
+  // Broadcast by the power manager when it's about to suspend. RPC clients
   // that have registered through RegisterSuspendDelay() should tell the power
   // manager that they're ready to suspend by calling ReportSuspendReadiness()
   // with the delay ID returned by RegisterSuspendDelay() and |suspend_id|.
   virtual void OnSuspendImminent(int suspend_id) = 0;
 
-  // This method will be called when suspending or resuming.  |new_power_state|
-  // will be "kMem" when suspending (to memory), or "kOn" when resuming.
-  virtual void OnPowerStateChanged(SuspendState new_power_state) = 0;
+  // Broadcast by the power manager when a suspend attempt has completed.
+  virtual void OnSuspendDone(int suspend_id) = 0;
 };
 
 }  // namespace shill
