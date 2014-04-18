@@ -109,7 +109,7 @@ class OpenVPNDriverTest
     driver_->extra_certificates_file_.reset(
         extra_certificates_file_);  // Passes ownership.
     driver_->process_killer_ = &process_killer_;
-    temporary_directory_.CreateUniqueTempDir();
+    CHECK(temporary_directory_.CreateUniqueTempDir());
     driver_->openvpn_config_directory_ =
         temporary_directory_.path().Append(kOpenVPNConfigDirectory);
   }

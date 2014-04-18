@@ -7,6 +7,7 @@
 
 #include "shill/logging.h"
 
+#include <base/basictypes.h>  // for ignore_result
 #include <dbus-c++/error.h>
 
 #include "shill/error.h"
@@ -39,7 +40,16 @@ void BeginAsyncDBusCall(const TraceMsgT &trace_msg, ProxyT &proxy,
   auto cb = make_scoped_ptr(new CallbackT(callback));
   try {
     (proxy.*call)(call_args..., cb.get(), timeout);
-    cb.release();
+    // We've successfully passed ownership of |cb| to |proxy|, so we
+    // must release() ownership.  (Otherwise, |cb| will be deleted on
+    // return from this function.)
+    //
+    // Since we have no further need to reference the CallbackT in
+    // this scope, we ignore the return value of release().  Ignoring
+    // the return value is normally an error, because that means
+    // you're leaking the object.  However, it's fine here, because
+    // |proxy| now owns |cb|.
+    ignore_result(cb.release());
   } catch (const DBus::Error &e) {
     if (error)
       error_converter(e, error);

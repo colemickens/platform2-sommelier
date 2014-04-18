@@ -1077,7 +1077,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   virtual ~DeviceInfoTechnologyTest() {}
 
   virtual void SetUp() {
-    temp_dir_.CreateUniqueTempDir();
+    CHECK(temp_dir_.CreateUniqueTempDir());
     device_info_root_ = temp_dir_.path().Append("sys/class/net");
     device_info_.device_info_root_ = device_info_root_;
     // Most tests require that the uevent file exist.
@@ -1092,6 +1092,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   void CreateInfoSymLink(const string &name, const string &contents);
   void SetDeviceName(const string &name) {
     test_device_name_ = name;
+    EXPECT_TRUE(temp_dir_.Delete());  // nuke old temp dir
     SetUp();
   }
 

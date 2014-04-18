@@ -18,7 +18,6 @@
       '-std=gnu++11',
       '-Woverloaded-virtual',
       '-Wno-missing-field-initializers',  # for LAZY_INSTANCE_INITIALIZER
-      '-Wno-unused-result',  # crbug.com/293668
     ],
     'defines': [
       '__STDC_FORMAT_MACROS',
