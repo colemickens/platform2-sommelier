@@ -5,12 +5,22 @@
 #include "shill/mm1_sim_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
 
 namespace shill {
 namespace mm1 {
+
+template<typename TraceMsgT, typename CallT, typename CallbackT,
+         typename... ArgTypes>
+void SimProxy::BeginCall(
+    const TraceMsgT &trace_msg, const CallT &call, CallbackT &callback,
+    Error *error, int timeout, ArgTypes... rest) {
+  BeginAsyncDBusCall(trace_msg, proxy_, call, callback, error,
+                     &CellularError::FromMM1DBusError, timeout, rest...);
+}
 
 SimProxy::SimProxy(DBus::Connection *connection,
                    const string &path,
@@ -26,15 +36,8 @@ void SimProxy::SendPin(const string &pin,
                        int timeout) {
   // pin is intentionally not logged.
   SLOG(Modem, 2) << __func__ << "( XXX, " << timeout << ")";
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SendPin(pin, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::SendPinAsync, callback, error, timeout,
+            pin);
 }
 
 void SimProxy::SendPuk(const string &puk,
@@ -44,15 +47,8 @@ void SimProxy::SendPuk(const string &puk,
                        int timeout) {
   // pin and puk are intentionally not logged.
   SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SendPuk(puk, pin, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::SendPukAsync, callback, error, timeout,
+            puk, pin);
 }
 
 void SimProxy::EnablePin(const string &pin,
@@ -62,15 +58,8 @@ void SimProxy::EnablePin(const string &pin,
                          int timeout) {
   // pin is intentionally not logged.
   SLOG(Modem, 2) << __func__ << "( XXX, " << enabled << ", " << timeout << ")";
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.EnablePin(pin, enabled, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::EnablePinAsync, callback, error, timeout,
+            pin, enabled);
 }
 
 void SimProxy::ChangePin(const string &old_pin,
@@ -80,15 +69,8 @@ void SimProxy::ChangePin(const string &old_pin,
                          int timeout) {
   // old_pin and new_pin are intentionally not logged.
   SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.ChangePin(old_pin, new_pin, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::ChangePinAsync, callback, error, timeout,
+            old_pin, new_pin);
 }
 
 SimProxy::Proxy::Proxy(DBus::Connection *connection,

@@ -5,6 +5,7 @@
 #include "shill/modem_gsm_network_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
@@ -25,60 +26,32 @@ void ModemGSMNetworkProxy::GetRegistrationInfo(
     Error *error,
     const RegistrationInfoCallback &callback,
     int timeout) {
-  scoped_ptr<RegistrationInfoCallback>
-      cb(new RegistrationInfoCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetRegistrationInfo(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetRegistrationInfoAsync,
+                     callback, error, &CellularError::FromDBusError, timeout);
 }
 
 void ModemGSMNetworkProxy::GetSignalQuality(
     Error *error,
     const SignalQualityCallback &callback,
     int timeout) {
-  scoped_ptr<SignalQualityCallback> cb(new SignalQualityCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetSignalQuality(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetSignalQualityAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 void ModemGSMNetworkProxy::Register(const string &network_id,
                                     Error *error,
                                     const ResultCallback &callback,
                                     int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Register(network_id, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::RegisterAsync, callback,
+                     error, &CellularError::FromDBusError, timeout,
+                     network_id);
 }
 
 void ModemGSMNetworkProxy::Scan(Error *error,
                                 const ScanResultsCallback &callback,
                                 int timeout) {
-  scoped_ptr<ScanResultsCallback> cb(new ScanResultsCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Scan(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ScanAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 uint32 ModemGSMNetworkProxy::AccessTechnology() {

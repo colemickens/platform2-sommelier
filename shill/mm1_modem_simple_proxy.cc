@@ -5,6 +5,7 @@
 #include "shill/mm1_modem_simple_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -24,44 +25,25 @@ void ModemSimpleProxy::Connect(
     Error *error,
     const DBusPathCallback &callback,
     int timeout) {
-  scoped_ptr<DBusPathCallback> cb(new DBusPathCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Connect(properties, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ConnectAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout,
+                     properties);
 }
 
 void ModemSimpleProxy::Disconnect(const ::DBus::Path &bearer,
                                   Error *error,
                                   const ResultCallback &callback,
                                   int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Disconnect(bearer, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::DisconnectAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout,
+                     bearer);
 }
 
 void ModemSimpleProxy::GetStatus(Error *error,
                                  const DBusPropertyMapCallback &callback,
                                  int timeout) {
-  scoped_ptr<DBusPropertyMapCallback> cb(new DBusPropertyMapCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetStatus(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetStatusAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout);
 }
 
 

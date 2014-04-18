@@ -5,6 +5,7 @@
 #include "shill/mm1_modem_time_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -28,15 +29,8 @@ void ModemTimeProxy::GetNetworkTime(Error *error,
                                     const StringCallback &callback,
                                     int timeout) {
   SLOG(Modem, 2) << __func__;
-  scoped_ptr<StringCallback> cb(new StringCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetNetworkTime(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetNetworkTimeAsync, callback,
+                     error,  &CellularError::FromMM1DBusError, timeout);
 }
 
 ModemTimeProxy::Proxy::Proxy(DBus::Connection *connection,

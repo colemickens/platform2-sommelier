@@ -7,12 +7,22 @@
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
 
 namespace shill {
 namespace mm1 {
+
+template<typename TraceMsgT, typename CallT, typename CallbackT,
+         typename... ArgTypes>
+void ModemProxy::BeginCall(
+    const TraceMsgT &trace_msg, const CallT &call, CallbackT &callback,
+    Error *error, int timeout, ArgTypes... rest) {
+  BeginAsyncDBusCall(trace_msg, proxy_, call, callback, error,
+                     &CellularError::FromMM1DBusError, timeout, rest...);
+}
 
 ModemProxy::ModemProxy(DBus::Connection *connection,
                        const string &path,
@@ -31,15 +41,8 @@ void ModemProxy::Enable(bool enable,
                         const ResultCallback &callback,
                         int timeout) {
   SLOG(Modem, 2) << __func__ << "(" << enable << ", " << timeout << ")";
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Enable(enable, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::EnableAsync, callback, error, timeout,
+            enable);
 }
 
 void ModemProxy::CreateBearer(
@@ -47,74 +50,38 @@ void ModemProxy::CreateBearer(
     Error *error,
     const DBusPathCallback &callback,
     int timeout) {
-  scoped_ptr<DBusPathCallback> cb(new DBusPathCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.CreateBearer(properties, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::CreateBearerAsync, callback, error, timeout,
+            properties);
 }
 
 void ModemProxy::DeleteBearer(const ::DBus::Path &bearer,
                               Error *error,
                               const ResultCallback &callback,
                               int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.DeleteBearer(bearer, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::DeleteBearerAsync, callback, error, timeout,
+            bearer);
 }
 
 void ModemProxy::Reset(Error *error,
                        const ResultCallback &callback,
                        int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Reset(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::ResetAsync, callback, error, timeout);
 }
 
 void ModemProxy::FactoryReset(const std::string &code,
                               Error *error,
                               const ResultCallback &callback,
                               int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.FactoryReset(code, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::FactoryResetAsync, callback, error, timeout,
+            code);
 }
 
 void ModemProxy::SetCurrentCapabilities(const uint32_t &capabilities,
                                         Error *error,
                                         const ResultCallback &callback,
                                         int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SetCurrentCapabilities(capabilities, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::SetCurrentCapabilitiesAsync, callback, error,
+            timeout, capabilities);
 }
 
 void ModemProxy::SetCurrentModes(
@@ -122,30 +89,16 @@ void ModemProxy::SetCurrentModes(
     Error *error,
     const ResultCallback &callback,
     int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SetCurrentModes(modes, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::SetCurrentModesAsync, callback, error, timeout,
+            modes);
 }
 
 void ModemProxy::SetCurrentBands(const std::vector<uint32_t> &bands,
                                  Error *error,
                                  const ResultCallback &callback,
                                  int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SetCurrentBands(bands, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::SetCurrentBandsAsync, callback, error, timeout,
+            bands);
 }
 
 void ModemProxy::Command(const std::string &cmd,
@@ -153,30 +106,16 @@ void ModemProxy::Command(const std::string &cmd,
                          Error *error,
                          const StringCallback &callback,
                          int timeout) {
-  scoped_ptr<StringCallback> cb(new StringCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Command(cmd, user_timeout, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::CommandAsync, callback, error, timeout,
+            cmd, user_timeout);
 }
 
 void ModemProxy::SetPowerState(const uint32_t &power_state,
                                Error *error,
                                const ResultCallback &callback,
                                int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SetPowerState(power_state, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginCall(__func__, &Proxy::SetPowerStateAsync, callback, error, timeout,
+            power_state);
 }
 
 ModemProxy::Proxy::Proxy(DBus::Connection *connection,

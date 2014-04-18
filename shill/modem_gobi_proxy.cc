@@ -7,6 +7,7 @@
 #include <base/bind.h>
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
@@ -27,16 +28,9 @@ void ModemGobiProxy::SetCarrier(const string &carrier,
                                 Error *error,
                                 const ResultCallback &callback,
                                 int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.SetCarrier(carrier, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error) {
-      CellularError::FromDBusError(e, error);
-    }
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::SetCarrierAsync, callback,
+                     error, &CellularError::FromDBusError, timeout,
+                     carrier);
 }
 
 ModemGobiProxy::Proxy::Proxy(DBus::Connection *connection,

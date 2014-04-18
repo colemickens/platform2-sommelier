@@ -4,6 +4,7 @@
 #include "shill/dbus_objectmanager_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -21,15 +22,8 @@ void DBusObjectManagerProxy::GetManagedObjects(
     Error *error,
     const ManagedObjectsCallback &callback,
     int timeout) {
-  scoped_ptr<ManagedObjectsCallback> cb(new ManagedObjectsCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetManagedObjects(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetManagedObjectsAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 void DBusObjectManagerProxy::set_interfaces_added_callback(

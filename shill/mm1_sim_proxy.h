@@ -71,6 +71,12 @@ class SimProxy : public SimProxyInterface {
 
   Proxy proxy_;
 
+  template<typename TraceMsgT, typename CallT, typename CallbackT,
+      typename... ArgTypes>
+      void BeginCall(
+          const TraceMsgT &trace_msg, const CallT &call, CallbackT &callback,
+          Error *error, int timeout, ArgTypes... rest);
+
   DISALLOW_COPY_AND_ASSIGN(SimProxy);
 };
 

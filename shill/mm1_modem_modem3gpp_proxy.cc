@@ -5,6 +5,7 @@
 #include "shill/mm1_modem_modem3gpp_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -24,30 +25,16 @@ void ModemModem3gppProxy::Register(const std::string &operator_id,
                                    Error *error,
                                    const ResultCallback &callback,
                                    int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Register(operator_id, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::RegisterAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout,
+                     operator_id);
 }
 
 void ModemModem3gppProxy::Scan(Error *error,
                                const DBusPropertyMapsCallback &callback,
                                int timeout) {
-  scoped_ptr<DBusPropertyMapsCallback> cb(
-      new DBusPropertyMapsCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Scan(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ScanAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout);
 }
 
 // ModemModem3gppProxy::Proxy

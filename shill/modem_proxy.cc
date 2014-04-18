@@ -7,6 +7,7 @@
 #include <base/bind.h>
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
@@ -34,42 +35,22 @@ void ModemProxy::set_state_changed_callback(
 void ModemProxy::Enable(bool enable, Error *error,
                         const ResultCallback &callback, int timeout) {
   SLOG(Modem, 2) << __func__ << "(" << enable << ", " << timeout << ")";
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Enable(enable, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::EnableAsync, callback,
+                     error, &CellularError::FromDBusError, timeout,
+                     enable);
 }
 
 void ModemProxy::Disconnect(Error *error, const ResultCallback &callback,
                             int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Disconnect(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::DisconnectAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 void ModemProxy::GetModemInfo(Error *error,
                               const ModemInfoCallback &callback,
                               int timeout) {
-  scoped_ptr<ModemInfoCallback> cb(new ModemInfoCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetInfo(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetInfoAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 ModemProxy::Proxy::Proxy(DBus::Connection *connection,

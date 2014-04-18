@@ -4,8 +4,10 @@
 
 #include "shill/dbus_service_proxy.h"
 
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
@@ -22,14 +24,9 @@ void DBusServiceProxy::GetNameOwner(const string &name,
                                     Error *error,
                                     const StringCallback &callback,
                                     int timeout) {
-  SLOG(DBus, 2) << __func__ << "(" << name << ")";
-  scoped_ptr<StringCallback> cb(new StringCallback(callback));
-  try {
-    proxy_.GetNameOwner(name, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(base::StringPrintf("%s(%s)", __func__, name.c_str()),
+                     proxy_, &Proxy::GetNameOwnerAsync, callback,
+                     error, &FromDBusError, timeout, name);
 }
 
 void DBusServiceProxy::set_name_owner_changed_callback(

@@ -5,6 +5,7 @@
 #include "shill/mm1_modem_modemcdma_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -23,15 +24,9 @@ void ModemModemCdmaProxy::Activate(const std::string &carrier,
                         Error *error,
                         const ResultCallback &callback,
                         int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Activate(carrier, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ActivateAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout,
+                     carrier);
 }
 
 void ModemModemCdmaProxy::ActivateManual(
@@ -39,15 +34,9 @@ void ModemModemCdmaProxy::ActivateManual(
     Error *error,
     const ResultCallback &callback,
     int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.ActivateManual(properties, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ActivateManualAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout,
+                     properties);
 }
 
 void ModemModemCdmaProxy::set_activation_state_callback(

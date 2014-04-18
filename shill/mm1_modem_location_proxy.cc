@@ -5,6 +5,7 @@
 #include "mm1_modem_location_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -25,31 +26,17 @@ void ModemLocationProxy::Setup(uint32_t sources,
                                const ResultCallback &callback,
                                int timeout) {
   SLOG(Modem, 2) << __func__;
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Setup(sources, signal_location, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::SetupAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout,
+                     sources, signal_location);
 }
 
 void ModemLocationProxy::GetLocation(Error *error,
                                      const DBusEnumValueMapCallback &callback,
                                      int timeout) {
   SLOG(Modem, 2) << __func__;
-  scoped_ptr<DBusEnumValueMapCallback> cb(
-      new DBusEnumValueMapCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetLocation(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromMM1DBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetLocationAsync, callback,
+                     error, &CellularError::FromMM1DBusError, timeout);
 }
 
 ModemLocationProxy::Proxy::Proxy(DBus::Connection *connection,

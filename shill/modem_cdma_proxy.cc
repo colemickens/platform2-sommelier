@@ -5,6 +5,7 @@
 #include "shill/modem_cdma_proxy.h"
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -22,46 +23,24 @@ ModemCDMAProxy::~ModemCDMAProxy() {}
 void ModemCDMAProxy::Activate(const string &carrier, Error *error,
                               const ActivationResultCallback &callback,
                               int timeout) {
-  scoped_ptr<ActivationResultCallback>
-      cb(new ActivationResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Activate(carrier, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ActivateAsync, callback,
+                     error, &CellularError::FromDBusError, timeout,
+                     carrier);
 }
 
 void ModemCDMAProxy::GetRegistrationState(
     Error *error,
     const RegistrationStateCallback &callback,
     int timeout) {
-  scoped_ptr<RegistrationStateCallback>
-      cb(new RegistrationStateCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetRegistrationState(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetRegistrationStateAsync,
+                     callback, error, &CellularError::FromDBusError, timeout);
 }
 
 void ModemCDMAProxy::GetSignalQuality(Error *error,
                                       const SignalQualityCallback &callback,
                                       int timeout) {
-  scoped_ptr<SignalQualityCallback> cb(new SignalQualityCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetSignalQuality(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetSignalQualityAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 const string ModemCDMAProxy::MEID() {

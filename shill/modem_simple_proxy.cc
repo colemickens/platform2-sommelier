@@ -7,6 +7,7 @@
 #include <base/bind.h>
 
 #include "shill/cellular_error.h"
+#include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
@@ -29,30 +30,17 @@ ModemSimpleProxy::~ModemSimpleProxy() {}
 void ModemSimpleProxy::GetModemStatus(Error *error,
                                       const DBusPropertyMapCallback &callback,
                                       int timeout) {
-  scoped_ptr<DBusPropertyMapCallback> cb(new DBusPropertyMapCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.GetStatus(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetStatusAsync, callback,
+                     error, &CellularError::FromDBusError, timeout);
 }
 
 void ModemSimpleProxy::Connect(const DBusPropertiesMap &properties,
                                Error *error,
                                const ResultCallback &callback,
                                int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    SLOG(DBus, 2) << __func__;
-    proxy_.Connect(properties, cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    if (error)
-      CellularError::FromDBusError(e, error);
-  }
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ConnectAsync, callback,
+                     error, &CellularError::FromDBusError, timeout,
+                     properties);
 }
 
 ModemSimpleProxy::Proxy::Proxy(DBus::Connection *connection,
