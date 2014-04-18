@@ -200,6 +200,7 @@
         'libraries': [
           '-lbootstat',
           '-lminijail',
+          '-lrootdev',
           '-lrt'
         ],
       },
