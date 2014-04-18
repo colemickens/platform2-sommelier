@@ -48,7 +48,10 @@ void Daemon::Start() {
   DBus::default_dispatcher = dispatcher_.get();
   dispatcher_->attach(NULL);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-  connection_->request_name(kManagerServiceName);
+  CHECK(connection_.get()) << "Failed to create a dbus-connection";
+  CHECK(connection_->acquire_name(kManagerServiceName))
+      << "Failed to acquire D-Bus name " << kManagerServiceName << ". "
+      << "Is another lorgnette instance running?";
   manager_.reset(new Manager(
       base::Bind(&Daemon::PostponeShutdown, base::Unretained(this))));
   manager_->InitDBus(connection_.get());
