@@ -60,6 +60,7 @@ extern const char kEphemeralMountType[];
 extern const char kEphemeralDir[];
 extern const char kGuestMountPath[];
 
+class BootLockbox;
 class ChapsClientFactory;
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
@@ -272,6 +273,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Does not take ownership.
   void set_chaps_client_factory(ChapsClientFactory* factory) {
     chaps_client_factory_ = factory;
+  }
+
+  // Does not take ownership.
+  void set_boot_lockbox(BootLockbox* lockbox) {
+    boot_lockbox_ = lockbox;
   }
 
  protected:
@@ -775,6 +781,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   scoped_ptr<ChapsClientFactory> default_chaps_client_factory_;
   ChapsClientFactory* chaps_client_factory_;
+
+  BootLockbox* boot_lockbox_;
+  scoped_ptr<BootLockbox> default_boot_lockbox_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);

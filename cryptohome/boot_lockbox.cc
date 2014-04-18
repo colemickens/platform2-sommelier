@@ -102,6 +102,14 @@ bool BootLockbox::Verify(const chromeos::SecureBlob& data,
 }
 
 bool BootLockbox::FinalizeBoot() {
+  chromeos::SecureBlob actual_pcr_value;
+  if (tpm_->ReadPCR(kPCRIndex, &actual_pcr_value)) {
+    if (actual_pcr_value.size() == arraysize(kPCRValue) &&
+        memcmp(actual_pcr_value.data(), kPCRValue, arraysize(kPCRValue))) {
+      // The PCR is already not at the initial value, no need to extend again.
+      return true;
+    }
+  }
   return tpm_->ExtendPCR(kPCRIndex,
                          chromeos::SecureBlob(kPCRExtension,
                                               arraysize(kPCRExtension)));

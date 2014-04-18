@@ -390,6 +390,9 @@ class Tpm {
   // Extends the PCR given by |pcr_index| using a SHA-1 hash of |extension|.
   virtual bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension);
 
+  // Reads the current |pcr_value| of the PCR given by |pcr_index|.
+  virtual bool ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value);
+
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
 
   // Tries to connect to the TPM

@@ -30,6 +30,7 @@
 #include "cryptolib.h"
 #include "homedirs.h"
 #include "make_tests.h"
+#include "mock_boot_lockbox.h"
 #include "mock_chaps_client_factory.h"
 #include "mock_crypto.h"
 #include "mock_homedirs.h"
@@ -58,6 +59,7 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
+using ::testing::StrictMock;
 using ::testing::Unused;
 using ::testing::_;
 
@@ -1097,6 +1099,18 @@ TEST_F(MountTest, MountForUserOrderingTest) {
     mount_->UnmountAllForUser(&session);
     EXPECT_FALSE(mount_->UnmountForUser(&session));
   }
+}
+
+TEST_F(MountTest, LockboxGetsFinalized) {
+  StrictMock<MockBootLockbox> lockbox;
+  mount_->set_boot_lockbox(&lockbox);
+  ASSERT_TRUE(DoMountInit());
+  EXPECT_CALL(lockbox, FinalizeBoot()).Times(2).WillRepeatedly(Return(true));
+  UsernamePasskey up("username", SecureBlob("password", 8));
+  Mount::MountArgs args;
+  MountError error = MOUNT_ERROR_NONE;
+  mount_->MountCryptohome(up, args, &error);
+  mount_->MountGuestCryptohome();
 }
 
 // Test setup that initially has no cryptohomes.

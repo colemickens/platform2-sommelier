@@ -23,6 +23,7 @@
 #include <chromeos/utility.h>
 #include <set>
 
+#include "boot_lockbox.h"
 #include "chaps_client_factory.h"
 #include "crypto.h"
 #include "cryptohome_common.h"
@@ -122,7 +123,8 @@ Mount::Mount()
       legacy_mount_(true),
       ephemeral_mount_(false),
       default_chaps_client_factory_(new ChapsClientFactory()),
-      chaps_client_factory_(default_chaps_client_factory_.get()) {
+      chaps_client_factory_(default_chaps_client_factory_.get()),
+      boot_lockbox_(NULL) {
 }
 
 Mount::~Mount() {
@@ -169,6 +171,12 @@ bool Mount::Init(Platform* platform, Crypto* crypto) {
   // Create the shadow root if it doesn't exist
   if (!platform_->DirectoryExists(shadow_root_)) {
     platform_->CreateDirectory(shadow_root_);
+  }
+
+  if (use_tpm_ && !boot_lockbox_) {
+    default_boot_lockbox_.reset(
+        new BootLockbox(Tpm::GetSingleton(), platform_, crypto_));
+    boot_lockbox_ = default_boot_lockbox_.get();
   }
 
   // One-time load of the global system salt (used in generating username
@@ -226,6 +234,11 @@ bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
 bool Mount::MountCryptohome(const Credentials& credentials,
                             const Mount::MountArgs& mount_args,
                             MountError* mount_error) {
+  CHECK(boot_lockbox_ || !use_tpm_);
+  if (boot_lockbox_ && !boot_lockbox_->FinalizeBoot()) {
+    LOG(WARNING) << "Failed to finalize boot lockbox.";
+  }
+
   if (IsMounted()) {
     *mount_error = MOUNT_ERROR_MOUNT_POINT_BUSY;
     return false;
@@ -1186,6 +1199,11 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::MountGuestCryptohome() {
+  CHECK(boot_lockbox_ || !use_tpm_);
+  if (boot_lockbox_ && !boot_lockbox_->FinalizeBoot()) {
+    LOG(WARNING) << "Failed to finalize boot lockbox.";
+  }
+
   std::string guest = chromeos::cryptohome::home::kGuestUserName;
   UsernamePasskey guest_creds(guest.c_str(), chromeos::Blob(0));
   current_user_->Reset();

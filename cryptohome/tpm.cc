@@ -2560,6 +2560,26 @@ bool Tpm::ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) {
   return true;
 }
 
+bool Tpm::ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+    return false;
+  }
+  UINT32 pcr_len = 0;
+  ScopedTssMemory pcr_value_buffer(context_handle);
+  TSS_RESULT result = Tspi_TPM_PcrRead(tpm_handle, pcr_index,
+                                       &pcr_len, pcr_value_buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not read PCR0 value";
+    return false;
+  }
+  SecureBlob tmp(pcr_value_buffer.value(), pcr_len);
+  pcr_value->swap(tmp);
+  return true;
+}
+
 bool Tpm::GetDataAttribute(TSS_HCONTEXT context,
                            TSS_HOBJECT object,
                            TSS_FLAG flag,
