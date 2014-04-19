@@ -11,50 +11,61 @@
 
 set -e -u
 
+CHECK_DELAY=300  # Check every 5 minutes.
 SPOOL_DIR=/var/spool/cron-lite
-LOGGER="logger -p local3.info -t $0"
 
-trap "$LOGGER 'exiting'" EXIT
+log() {
+  logger -p local3.info -t "$@"
+}
+
+trap "log 'exiting'" EXIT
 
 check_and_fix_spool_paths() {
   # Avoid weird spool paths if possible.
   test -L /var/spool && unlink /var/spool
-  test -L $SPOOL_DIR && unlink $SPOOL_DIR
-  mkdir -p $SPOOL_DIR
-  if [ ! -O $SPOOL_DIR -o ! -d $SPOOL_DIR ]; then
-    $LOGGER "Spool directory is damaged. Aborting!"
+  test -L "${SPOOL_DIR}" && unlink "${SPOOL_DIR}"
+  mkdir -p "${SPOOL_DIR}"
+  if [ ! -O "${SPOOL_DIR}" -o ! -d "${SPOOL_DIR}" ]; then
+    log "Spool directory is damaged. Aborting!"
     exit 1
   fi
 }
 
 main() {
-  local delay=$1
-  local name=$2
-  local script=$3
-  local spool_file="$SPOOL_DIR/$name"
+  local delay="$1"
+  local name="$2"
+  local spool_file="${SPOOL_DIR}/${name}"
+  shift 2
 
-  [ -z $delay ] && exit 1
-  [ -z $name ] && exit 1
-  [ -z $script ] && exit 1
+  [ -z "${delay}" ] && exit 1
+  [ -z "${name}" ] && exit 1
+  [ $# -eq 0 ] && exit 1
   check_and_fix_spool_paths
 
   while true; do
     # Allow the sleep to be killed manually without terminating the handler.
-    sleep 300 || true  # Check every 5 minutes.
+    sleep "${CHECK_DELAY}" || true
 
-    [ ! -e $spool_file ] && touch $spool_file
+    [ ! -e "${spool_file}" ] && touch "${spool_file}"
 
-    local last_rotation="$(stat -c "%Y" $spool_file 2>/dev/null || echo 0)"
+    local last_rotation="$(stat -c "%Y" "${spool_file}" 2>/dev/null || echo 0)"
     local now="$(date +%s)"
     local time_diff=$((now - last_rotation))
 
-    if [ $time_diff -gt $delay ]; then
-      rm "$spool_file" || true
-      touch "$spool_file"
-      $LOGGER "running $script for $name"
-      (sh -c "$script" || true; $LOGGER "$name completed") &
+    if [ ${time_diff} -gt ${delay} ]; then
+      rm "${spool_file}" || true
+      touch "${spool_file}"
+      # Make sure to reclaim status info about background processes.
+      # At this point, all background processes should be dead.
+      # We don't actually care about the result though.
+      wait || true
+      log "running $* for ${name}"
+      (
+        timeout -k ${CHECK_DELAY} sh -c '"$@"' -- "$@" || true
+        log "${name} completed"
+      ) &
     fi
   done
 }
 
-main $@
+main "$@"
