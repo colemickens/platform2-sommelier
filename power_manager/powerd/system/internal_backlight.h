@@ -19,7 +19,7 @@ class Clock;
 
 namespace system {
 
-// Controls an LCD or keyboard backlight via sysfs.
+// Controls a panel or keyboard backlight via sysfs.
 class InternalBacklight : public BacklightInterface {
  public:
   // Base names of backlight files within sysfs directories.
@@ -46,6 +46,9 @@ class InternalBacklight : public BacklightInterface {
   bool transition_timer_is_running() const {
     return transition_timer_.IsRunning();
   }
+  base::TimeTicks transition_timer_start_time() const {
+    return transition_timer_start_time_;
+  }
   Clock* clock() { return clock_.get(); }
 
   // Calls HandleTransitionTimeout() as if |transition_timer_| had fired
@@ -61,26 +64,6 @@ class InternalBacklight : public BacklightInterface {
   virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;
 
  private:
-  // Generates FilePaths within |dir_path| for reading and writing
-  // brightness information.
-  static void GetBacklightFilePaths(const base::FilePath& dir_path,
-                                    base::FilePath* actual_brightness_path,
-                                    base::FilePath* brightness_path,
-                                    base::FilePath* max_brightness_path,
-                                    base::FilePath* resume_brightness_path);
-
-  // Looks for the existence of required files and returns the max brightness.
-  // Returns 0 if necessary files are missing.
-  static int64 CheckBacklightFiles(const base::FilePath& dir_path);
-
-  // Reads the value from |path| to |level|.  Returns false on failure.
-  static bool ReadBrightnessLevelFromFile(const base::FilePath& path,
-                                          int64* level);
-
-  // Writes |level| to |path|.  Returns false on failure.
-  static bool WriteBrightnessLevelToFile(const base::FilePath& path,
-                                         int64 level);
-
   // Sets the brightness level appropriately for the current point in the
   // transition.  When the transition is done, stops |transition_timer_|.
   void HandleTransitionTimeout();
@@ -103,6 +86,9 @@ class InternalBacklight : public BacklightInterface {
 
   // Calls HandleTransitionTimeout().
   base::RepeatingTimer<InternalBacklight> transition_timer_;
+
+  // Time at which |transition_timer_| was last started. Used for testing.
+  base::TimeTicks transition_timer_start_time_;
 
   // Times at which the current transition started and is scheduled to end.
   base::TimeTicks transition_start_time_;

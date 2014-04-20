@@ -22,9 +22,40 @@ namespace system {
 
 namespace {
 
+// Reads the value from |path| to |level|. Returns false on failure.
+bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64* level) {
+  DCHECK(level);
+
+  std::string level_str;
+  if (!base::ReadFileToString(path, &level_str)) {
+    LOG(ERROR) << "Unable to read brightness from " << path.value();
+    return false;
+  }
+
+  TrimWhitespaceASCII(level_str, TRIM_TRAILING, &level_str);
+  if (!base::StringToInt64(level_str, level)) {
+    LOG(ERROR) << "Unable to parse brightness \"" << level_str << "\" from "
+               << path.value();
+    return false;
+  }
+
+  return true;
+}
+
+// Writes |level| to |path|. Returns false on failure.
+bool WriteBrightnessLevelToFile(const base::FilePath& path, int64 level) {
+  std::string buf = base::Int64ToString(level);
+  if (file_util::WriteFile(path, buf.data(), buf.size()) == -1) {
+    LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
+               << path.value();
+    return false;
+  }
+  return true;
+}
+
 // When animating a brightness level transition, amount of time in milliseconds
 // to wait between each update.
-const int kTransitionIntervalMs = 30;
+const int kTransitionIntervalMs = 20;
 
 }  // namespace
 
@@ -45,34 +76,50 @@ InternalBacklight::~InternalBacklight() {}
 
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const base::FilePath::StringType& pattern) {
-  base::FilePath dir_path;
-  base::FileEnumerator dir_enumerator(
+  base::FileEnumerator enumerator(
       base_path, false, base::FileEnumerator::DIRECTORIES, pattern);
 
   // Find the backlight interface with greatest granularity (highest max).
-  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
-       check_path = dir_enumerator.Next()) {
-    base::FilePath check_name = check_path.BaseName();
-    std::string str_check_name = check_name.value();
-    if (str_check_name[0] == '.')
+  for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
+       device_path = enumerator.Next()) {
+    if (device_path.BaseName().value()[0] == '.')
       continue;
 
-    int64 max = CheckBacklightFiles(check_path);
-    if (max <= max_brightness_level_)
+    const base::FilePath max_brightness_path =
+        device_path.Append(InternalBacklight::kMaxBrightnessFilename);
+    if (!base::PathExists(max_brightness_path)) {
+      LOG(WARNING) << "Can't find " << max_brightness_path.value();
+      continue;
+    }
+
+    const base::FilePath brightness_path =
+        device_path.Append(InternalBacklight::kBrightnessFilename);
+    if (access(brightness_path.value().c_str(), R_OK | W_OK) != 0) {
+      LOG(WARNING) << "Can't write to " << brightness_path.value();
+      continue;
+    }
+
+    int64 max_level = 0;
+    if (!ReadBrightnessLevelFromFile(max_brightness_path, &max_level))
       continue;
 
-    max_brightness_level_ = max;
-    GetBacklightFilePaths(check_path,
-                          &actual_brightness_path_,
-                          &brightness_path_,
-                          &max_brightness_path_,
-                          &resume_brightness_path_);
+    if (max_level <= max_brightness_level_)
+      continue;
+
+    brightness_path_ = brightness_path;
+    max_brightness_path_ = max_brightness_path;
+    max_brightness_level_ = max_level;
 
     // Technically all screen backlights should implement actual_brightness,
-    // but we'll handle ones that don't.  This allows us to work with keyboard
+    // but we'll handle ones that don't. This allows us to work with keyboard
     // backlights too.
+    actual_brightness_path_ =
+        device_path.Append(InternalBacklight::kActualBrightnessFilename);
     if (!base::PathExists(actual_brightness_path_))
       actual_brightness_path_ = brightness_path_;
+
+    resume_brightness_path_ =
+        device_path.Append(InternalBacklight::kResumeBrightnessFilename);
   }
 
   if (max_brightness_level_ <= 0) {
@@ -99,15 +146,6 @@ int64 InternalBacklight::GetCurrentBrightnessLevel() {
   return current_brightness_level_;
 }
 
-bool InternalBacklight::SetResumeBrightnessLevel(int64 level) {
-  if (resume_brightness_path_.empty()) {
-    LOG(ERROR) << "Cannot find backlight resume brightness file.";
-    return false;
-  }
-
-  return WriteBrightnessLevelToFile(resume_brightness_path_, level);
-}
-
 bool InternalBacklight::SetBrightnessLevel(int64 level,
                                            base::TimeDelta interval) {
   if (brightness_path_.empty()) {
@@ -115,12 +153,13 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
     return false;
   }
 
-  CancelTransition();
-
-  if (level == current_brightness_level_)
+  if (level == current_brightness_level_) {
+    CancelTransition();
     return true;
+  }
 
   if (interval.InMilliseconds() <= kTransitionIntervalMs) {
+    CancelTransition();
     if (!WriteBrightnessLevelToFile(brightness_path_, level))
       return false;
     current_brightness_level_ = level;
@@ -131,84 +170,22 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
   transition_end_time_ = transition_start_time_ + interval;
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
-  transition_timer_.Start(FROM_HERE,
-      base::TimeDelta::FromMilliseconds(kTransitionIntervalMs), this,
-      &InternalBacklight::HandleTransitionTimeout);
+  if (!transition_timer_.IsRunning()) {
+    transition_timer_.Start(FROM_HERE,
+        base::TimeDelta::FromMilliseconds(kTransitionIntervalMs), this,
+        &InternalBacklight::HandleTransitionTimeout);
+    transition_timer_start_time_ = transition_start_time_;
+  }
   return true;
 }
 
-// static
-void InternalBacklight::GetBacklightFilePaths(
-    const base::FilePath& dir_path,
-    base::FilePath* actual_brightness_path,
-    base::FilePath* brightness_path,
-    base::FilePath* max_brightness_path,
-    base::FilePath* resume_brightness_path) {
-  if (actual_brightness_path)
-    *actual_brightness_path = dir_path.Append(kActualBrightnessFilename);
-  if (brightness_path)
-    *brightness_path = dir_path.Append(kBrightnessFilename);
-  if (max_brightness_path)
-    *max_brightness_path = dir_path.Append(kMaxBrightnessFilename);
-  if (resume_brightness_path)
-    *resume_brightness_path = dir_path.Append(kResumeBrightnessFilename);
-}
-
-// static
-int64 InternalBacklight::CheckBacklightFiles(const base::FilePath& dir_path) {
-  base::FilePath actual_brightness_path, brightness_path, max_brightness_path,
-      resume_brightness_path;
-  GetBacklightFilePaths(dir_path,
-                        &actual_brightness_path,
-                        &brightness_path,
-                        &max_brightness_path,
-                        &resume_brightness_path);
-
-  if (!base::PathExists(max_brightness_path)) {
-    LOG(WARNING) << "Can't find " << max_brightness_path.value();
-    return 0;
-  } else if (access(brightness_path.value().c_str(), R_OK | W_OK)) {
-    LOG(WARNING) << "Can't write to " << brightness_path.value();
-    return 0;
-  }
-
-  int64 max_level = 0;
-  if (!ReadBrightnessLevelFromFile(max_brightness_path, &max_level))
-    return 0;
-  return max_level;
-}
-
-// static
-bool InternalBacklight::ReadBrightnessLevelFromFile(const base::FilePath& path,
-                                                    int64* level) {
-  DCHECK(level);
-
-  std::string level_str;
-  if (!base::ReadFileToString(path, &level_str)) {
-    LOG(ERROR) << "Unable to read brightness from " << path.value();
+bool InternalBacklight::SetResumeBrightnessLevel(int64 level) {
+  if (resume_brightness_path_.empty()) {
+    LOG(ERROR) << "Cannot find backlight resume brightness file.";
     return false;
   }
 
-  TrimWhitespaceASCII(level_str, TRIM_TRAILING, &level_str);
-  if (!base::StringToInt64(level_str, level)) {
-    LOG(ERROR) << "Unable to parse brightness \"" << level_str << "\" from "
-               << path.value();
-    return false;
-  }
-
-  return true;
-}
-
-// static
-bool InternalBacklight::WriteBrightnessLevelToFile(const base::FilePath& path,
-                                                   int64 level) {
-  std::string buf = base::Int64ToString(level);
-  if (file_util::WriteFile(path, buf.data(), buf.size()) == -1) {
-    LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
-               << path.value();
-    return false;
-  }
-  return true;
+  return WriteBrightnessLevelToFile(resume_brightness_path_, level);
 }
 
 void InternalBacklight::HandleTransitionTimeout() {

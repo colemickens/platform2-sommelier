@@ -80,7 +80,7 @@ class InternalBacklightTest : public ::testing::Test {
   base::FilePath test_path_;
 };
 
-// A basic test of functionality
+// A basic test of functionality.
 TEST_F(InternalBacklightTest, BasicTest) {
   base::FilePath this_test_path = test_path_.Append("basic_test");
   const int64 kBrightness = 128;
@@ -112,18 +112,14 @@ TEST_F(InternalBacklightTest, NoActualBrightnessTest) {
   EXPECT_EQ(kMaxBrightness, backlight.GetMaxBrightnessLevel());
 }
 
-// Test that we pick the one with the greatest granularity
+// Test that we pick the device with the greatest granularity.
 TEST_F(InternalBacklightTest, GranularityTest) {
-  base::FilePath this_test_path = test_path_.Append("granularity_test");
-
-  // Make sure the middle one is the most granular so we're not just
-  // getting lucky.  Middle in terms of order created and alphabet, since I
-  // don't know how enumaration might be happening.
-  base::FilePath a_path = this_test_path.Append("a");
+  const base::FilePath this_test_path = test_path_.Append("granularity_test");
+  const base::FilePath a_path = this_test_path.Append("a");
   PopulateBacklightDir(a_path, 10, 127, 11);
-  base::FilePath b_path = this_test_path.Append("b");
+  const base::FilePath b_path = this_test_path.Append("b");
   PopulateBacklightDir(b_path, 20, 255, 21);
-  base::FilePath c_path = this_test_path.Append("c");
+  const base::FilePath c_path = this_test_path.Append("c");
   PopulateBacklightDir(c_path, 30, 63, 31);
 
   InternalBacklight backlight;
@@ -132,12 +128,12 @@ TEST_F(InternalBacklightTest, GranularityTest) {
   EXPECT_EQ(255, backlight.GetMaxBrightnessLevel());
 }
 
-// Test ignore directories starting with a "."
+// Test that directories starting with a "." are ignored.
 TEST_F(InternalBacklightTest, NoDotDirsTest) {
   base::FilePath this_test_path = test_path_.Append("no_dot_dirs_test");
 
   // We'll just create one dir and it will have a dot in it.  Then, we can
-  // be sure that we didn't just get luckly...
+  // be sure that we didn't just get lucky...
   base::FilePath my_path = this_test_path.Append(".pwm-backlight");
   PopulateBacklightDir(my_path, 128, 255, 127);
 
@@ -192,6 +188,8 @@ TEST_F(InternalBacklightTest, Transitions) {
   // If the timeout fires at this point, we should still be at the maximum
   // level.
   EXPECT_TRUE(backlight.transition_timer_is_running());
+  EXPECT_EQ(kStartTime.ToInternalValue(),
+            backlight.transition_timer_start_time().ToInternalValue());
   EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
   EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
   EXPECT_EQ(kMaxBrightness, backlight.GetCurrentBrightnessLevel());
@@ -211,6 +209,67 @@ TEST_F(InternalBacklightTest, Transitions) {
   EXPECT_FALSE(backlight.transition_timer_is_running());
   EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
   EXPECT_EQ(kHalfBrightness, backlight.GetCurrentBrightnessLevel());
+}
+
+TEST_F(InternalBacklightTest, InterruptTransition) {
+  // Make the backlight start at its max level.
+  const int kMaxBrightness = 100;
+  base::FilePath backlight_dir = test_path_.Append("backlight");
+  PopulateBacklightDir(
+      backlight_dir, kMaxBrightness, kMaxBrightness, kMaxBrightness);
+  InternalBacklight backlight;
+  backlight.clock()->set_current_time_for_testing(
+      base::TimeTicks::FromInternalValue(10000));
+  ASSERT_TRUE(backlight.Init(test_path_, "*"));
+
+  // Start a one-second transition to 0.
+  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(1);
+  backlight.SetBrightnessLevel(0, kDuration);
+
+  // Let the timer fire after half a second. The backlight should be at half
+  // brightness.
+  backlight.clock()->set_current_time_for_testing(
+      backlight.clock()->GetCurrentTime() + kDuration / 2);
+  EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
+  const int kHalfBrightness = kMaxBrightness / 2;
+  EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
+
+  // If a request to use half brightness arrives at this point, the timer should
+  // be stopped.
+  backlight.SetBrightnessLevel(kHalfBrightness, kDuration);
+  EXPECT_FALSE(backlight.transition_timer_is_running());
+  EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
+
+  // Set the brightness to 0 immediately and start a one-second transition to
+  // the maximum level.
+  backlight.SetBrightnessLevel(0, base::TimeDelta());
+  const base::TimeTicks kInterruptedTransitionStartTime =
+      backlight.clock()->GetCurrentTime();
+  backlight.SetBrightnessLevel(kMaxBrightness, kDuration);
+  EXPECT_TRUE(backlight.transition_timer_is_running());
+  EXPECT_EQ(0, ReadBrightness(backlight_dir));
+
+  // At the halfway point, interrupt the transition with a new request to go to
+  // 75% of the max over a second.
+  backlight.clock()->set_current_time_for_testing(
+      backlight.clock()->GetCurrentTime() + kDuration / 2);
+  EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
+  EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
+  const int kThreeQuartersBrightness =
+      kHalfBrightness + (kMaxBrightness - kHalfBrightness) / 2;
+  backlight.SetBrightnessLevel(kThreeQuartersBrightness, kDuration);
+  EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
+
+  // Since the timer was already running, it shouldn't be restarted.
+  EXPECT_EQ(kInterruptedTransitionStartTime.ToInternalValue(),
+            backlight.transition_timer_start_time().ToInternalValue());
+  EXPECT_TRUE(backlight.transition_timer_is_running());
+
+  // After a second, the backlight should be at 75% and the timer should stop.
+  backlight.clock()->set_current_time_for_testing(
+      backlight.clock()->GetCurrentTime() + kDuration);
+  EXPECT_FALSE(backlight.TriggerTransitionTimeoutForTesting());
+  EXPECT_EQ(kThreeQuartersBrightness, ReadBrightness(backlight_dir));
 }
 
 }  // namespace system
