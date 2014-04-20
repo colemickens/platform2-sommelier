@@ -227,25 +227,15 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
-  // Set the brightness to a low level.
+  // Set the brightness to a lower level.
   observer.Clear();
-  const double kLowPercent = 10.0;
+  const double kLowPercent = 40.0;
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       kLowPercent, BacklightController::TRANSITION_INSTANT));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
-            observer.changes()[0].cause);
-  EXPECT_EQ(controller_.get(), observer.changes()[0].source);
-
-  // Plug the device in.
-  observer.Clear();
-  controller_->HandlePowerSourceChange(POWER_AC);
-  ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_EQ(backlight_.current_level(),
-            PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -428,44 +418,27 @@ TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
-// Test that HandlePowerSourceChange() sets the brightness appropriately
+// Test that HandlePowerSourceChange() uses the same user-set brightness level
 // when the computer is plugged and unplugged.
 TEST_F(InternalBacklightControllerTest, TestPlugAndUnplug) {
   Init(POWER_BATTERY);
 
-  const double kUnpluggedPercent = 40.0;
+  // A custom level set while using battery power should be used after switching
+  // to AC.
+  const double kFirstPercent = 40.0;
   EXPECT_TRUE(controller_->SetUserBrightnessPercent(
-      kUnpluggedPercent, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kUnpluggedPercent), backlight_.current_level());
-
-  const double kPluggedPercent = 60.0;
+      kFirstPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kFirstPercent), backlight_.current_level());
   controller_->HandlePowerSourceChange(POWER_AC);
+  EXPECT_EQ(PercentToLevel(kFirstPercent), backlight_.current_level());
+
+  // Ditto for switching from AC to battery.
+  const double kSecondPercent = 60.0;
   EXPECT_TRUE(controller_->SetUserBrightnessPercent(
-      kPluggedPercent, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kPluggedPercent), backlight_.current_level());
-
+      kSecondPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kSecondPercent), backlight_.current_level());
   controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(PercentToLevel(kUnpluggedPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(PercentToLevel(kPluggedPercent), backlight_.current_level());
-
-  // After requesting a brightness lower than the battery brightness while
-  // on AC and then switching to battery, the screen should stay at the low
-  // level instead of being brightened.
-  const double kNewPluggedPercent = 20.0;
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kNewPluggedPercent, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kNewPluggedPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(PercentToLevel(kNewPluggedPercent), backlight_.current_level());
-
-  // The screen also shouldn't be dimmed in response to a change to AC.
-  const double kNewUnpluggedPercent = 60.0;
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kNewUnpluggedPercent, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kNewUnpluggedPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(PercentToLevel(kNewUnpluggedPercent), backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(kSecondPercent), backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, TestDimming) {

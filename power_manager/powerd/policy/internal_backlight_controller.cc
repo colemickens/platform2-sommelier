@@ -388,6 +388,14 @@ bool InternalBacklightController::SetUserBrightnessPercent(
           << percent << "%";
   user_adjustment_count_++;
   using_policy_brightness_ = false;
+
+  // When the user explicitly requests a specific brightness level, use it for
+  // both AC and battery power.
+  const PowerSource inactive_power_source =
+      power_source_ == POWER_AC ? POWER_BATTERY : POWER_AC;
+  SetExplicitBrightnessPercent(percent, style, BRIGHTNESS_CHANGE_USER_INITIATED,
+                               inactive_power_source);
+
   return SetExplicitBrightnessPercent(percent, style,
                                       BRIGHTNESS_CHANGE_USER_INITIATED,
                                       power_source_);
