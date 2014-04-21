@@ -11,7 +11,6 @@
 
 #include "lockbox.h"
 #include "install_attributes.pb.h"
-#include "tpm_init.h"
 
 namespace cryptohome {
 
@@ -33,11 +32,9 @@ InstallAttributes::InstallAttributes(Tpm* tpm)
     default_attributes_(new SerializedInstallAttributes()),
     default_lockbox_(new Lockbox(tpm, kLockboxIndex)),
     default_platform_(new Platform()),
-    default_tpm_init_(new TpmInit(tpm, default_platform_.get())),
     attributes_(default_attributes_.get()),
     lockbox_(default_lockbox_.get()),
-    platform_(default_platform_.get()),
-    tpm_init_(default_tpm_init_.get()) {
+    platform_(default_platform_.get()) {
   SetTpm(tpm);  // make sure to check TPM status if needed.
   version_ = attributes_->version();  // versioning controlled by pb default.
 }
@@ -103,7 +100,7 @@ bool InstallAttributes::Init() {
     }
 
     set_is_initialized(true);
-    tpm_init_->RemoveTpmOwnerDependency(TpmInit::kInstallAttributes);
+    lockbox_->tpm()->RemoveOwnerDependency(Tpm::kInstallAttributes);
     return true;
   }
 

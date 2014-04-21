@@ -17,7 +17,6 @@
 #include "mock_lockbox.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
-#include "mock_tpm_init.h"
 
 namespace cryptohome {
 using std::string;
@@ -67,9 +66,6 @@ class InstallAttributesTest : public ::testing::Test {
   // Tests a normal OOBE and stashes the data in the ptr.
   void DoOobe(InstallAttributes *install_attrs,
               chromeos::Blob *serialized_data) {
-    NiceMock<MockTpmInit> tpm_init;
-    install_attrs->set_tpm_init(&tpm_init);
-
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Destroy(_))
         .WillOnce(Return(true));
@@ -82,9 +78,7 @@ class InstallAttributesTest : public ::testing::Test {
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Create(_))
         .WillOnce(Return(true));
-      EXPECT_CALL(tpm_init,
-                  RemoveTpmOwnerDependency(
-                      TpmInit::kInstallAttributes))
+      EXPECT_CALL(tpm_, RemoveOwnerDependency(Tpm::kInstallAttributes))
         .Times(1);
     }
     EXPECT_TRUE(install_attrs->Init());

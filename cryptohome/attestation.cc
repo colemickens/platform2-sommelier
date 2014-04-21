@@ -26,7 +26,6 @@
 #include "pkcs11_keystore.h"
 #include "platform.h"
 #include "tpm.h"
-#include "tpm_init.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -225,14 +224,12 @@ Attestation::~Attestation() {
 }
 
 void Attestation::Initialize(Tpm* tpm,
-                             TpmInit* tpm_init,
                              Platform* platform,
                              Crypto* crypto,
                              InstallAttributes* install_attributes) {
   base::AutoLock lock(lock_);
   // Inject dependencies.
   tpm_ = tpm;
-  tpm_init_ = tpm_init;
   platform_ = platform;
   crypto_ = crypto;
   if (install_attributes_ != install_attributes) {
@@ -254,7 +251,7 @@ void Attestation::Initialize(Tpm* tpm,
     FinalizeEndorsementData();
     LOG(INFO) << "Attestation: Valid attestation data exists.";
     // Make sure the owner password is not being held on our account.
-    tpm_init_->RemoveTpmOwnerDependency(TpmInit::kAttestation);
+    tpm_->RemoveOwnerDependency(Tpm::kAttestation);
   }
 }
 
@@ -478,7 +475,7 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to store db.";
     return;
   }
-  tpm_init_->RemoveTpmOwnerDependency(TpmInit::kAttestation);
+  tpm_->RemoveOwnerDependency(Tpm::kAttestation);
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
             << "ms).";
