@@ -9,14 +9,14 @@ include common.mk
 PKG_CONFIG ?= pkg-config
 
 BASE_VER ?= 242728
-PC_DEPS = dbus-1 glib-2.0 nss libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_DEPS = bootstat dbus-1 glib-2.0 nss libchrome-$(BASE_VER) \
+  libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/.. -I$(OUT) -DOS_CHROMEOS -DUSE_NSS -D__STDC_FORMAT_MACROS
 CPPFLAGS += $(PC_CFLAGS)
-LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite \
-	-lmetrics-$(BASE_VER)
+LDLIBS += -lchrome_crypto $(PC_LIBS) -lprotobuf-lite -lmetrics-$(BASE_VER)
 
 # Special logic for generating protobuffer bindings.
 PROTO_PATH = $(SYSROOT)/usr/include/proto
