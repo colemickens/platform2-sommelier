@@ -243,12 +243,6 @@ class Suspender : public SuspendDelayObserver {
   void AnnounceSuspendCompletion(int suspend_id,
                                  const base::TimeDelta& suspend_duration);
 
-  // Emits a D-Bus signal informing other processes that we've suspended or
-  // resumed at |wall_time|.
-  // TODO(derat): Remove this: http://crbug.com/359619.
-  void SendSuspendStateChangedSignal(SuspendState_Type type,
-                                     const base::Time& wall_time);
-
   Delegate* delegate_;  // weak
   DBusSenderInterface* dbus_sender_;  // weak
   DarkResumePolicy* dark_resume_policy_;  // weak

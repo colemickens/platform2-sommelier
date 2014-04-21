@@ -243,25 +243,10 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
 
-  // Just before Suspender suspends the system, it should emit a
-  // SuspendStateChanged signal with the current wall time.
-  SuspendState proto;
-  EXPECT_TRUE(
-      dbus_sender_.GetSentSignal(0, kSuspendStateChangedSignal, &proto));
-  EXPECT_EQ(SuspendState_Type_SUSPEND_TO_MEMORY, proto.type());
-  EXPECT_EQ(kSuspendTime.ToInternalValue(), proto.wall_time());
-
-  // After suspend/resume completes, it should emit a second signal with an
-  // updated timestamp.
-  EXPECT_TRUE(
-      dbus_sender_.GetSentSignal(1, kSuspendStateChangedSignal, &proto));
-  EXPECT_EQ(SuspendState_Type_RESUME, proto.type());
-  EXPECT_EQ(kResumeTime.ToInternalValue(), proto.wall_time());
-
   // A SuspendDone signal should be emitted to announce that the attempt is
   // complete.
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(2, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
   EXPECT_EQ((kResumeTime - kSuspendTime).ToInternalValue(),
             done_proto.suspend_duration());
@@ -321,10 +306,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  // TODO(derat): Stop skipping the SuspendStateChanged signal after it's been
-  // removed: http://crbug.com/359619
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(orig_suspend_id, done_proto.suspend_id());
   EXPECT_FALSE(delegate_.suspend_announced());
 
@@ -344,7 +327,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(2, delegate_.num_suspend_attempts());
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(new_suspend_id, done_proto.suspend_id());
 
   // Explicitly requesting a suspend should cancel the timeout and generate a
@@ -364,7 +347,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(3, delegate_.num_suspend_attempts());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(2, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(final_suspend_id, done_proto.suspend_id());
 
   // Suspend successfully again and check that the number of attempts are
@@ -417,17 +400,15 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
 TEST_F(SuspenderTest, CancelBeforeSuspend) {
   Init();
 
-  // User activity should cancel suspending.  Suspender should manually
-  // emit a PowerStateChanged signal since powerd_suspend didn't run.
-  dbus_sender_.ClearSentSignals();
+  // User activity should cancel suspending.
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
+  dbus_sender_.ClearSentSignals();
   suspender_.HandleUserActivity();
 
-  // Skip the SuspendImminent signal at position 0.
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(test_api_.suspend_id(), done_proto.suspend_id());
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
   EXPECT_FALSE(delegate_.suspend_announced());
@@ -439,11 +420,11 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 
   // The lid being opened should also cancel.
-  dbus_sender_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  dbus_sender_.ClearSentSignals();
   suspender_.HandleLidOpened();
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(JoinActions(kCancel, kRequestCanceled, NULL),
             delegate_.GetActions());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
@@ -452,11 +433,11 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 
   // The request should also be canceled if the system starts shutting down.
-  dbus_sender_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  dbus_sender_.ClearSentSignals();
   suspender_.HandleShutdown();
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(JoinActions(kCancel, kRequestCanceled, NULL),
             delegate_.GetActions());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
@@ -588,7 +569,7 @@ TEST_F(SuspenderTest, SystemClockGoesBackward) {
   dbus_sender_.ClearSentSignals();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(2, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
 }
 
@@ -611,7 +592,7 @@ TEST_F(SuspenderTest, CompletionCallbackStartsNewAttempt) {
   const int kOldSuspendId = test_api_.suspend_id();
   suspender_.OnReadyForSuspend(kOldSuspendId);
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(1, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(kOldSuspendId, done_proto.suspend_id());
 }
 

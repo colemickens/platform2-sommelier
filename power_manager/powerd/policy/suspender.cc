@@ -217,8 +217,6 @@ void Suspender::Suspend() {
   bool success = false;
   const base::Time start_wall_time = clock_->GetCurrentWallTime();
 
-  SendSuspendStateChangedSignal(
-      SuspendState_Type_SUSPEND_TO_MEMORY, clock_->GetCurrentWallTime());
   delegate_->PrepareForSuspend();
 
   do {
@@ -280,8 +278,6 @@ void Suspender::Suspend() {
       LOG(WARNING) << "Giving up after canceled suspend attempt with external "
                    << "wakeup count";
     }
-    SendSuspendStateChangedSignal(
-        SuspendState_Type_RESUME, clock_->GetCurrentWallTime());
   } else {
     LOG(INFO) << "Suspend attempt " << suspend_id_ << " failed; "
               << "will retry in " << retry_delay_.InMilliseconds() << " ms";
@@ -351,14 +347,6 @@ void Suspender::AnnounceSuspendCompletion(
   proto.set_suspend_duration(suspend_duration.ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
   delegate_->SetSuspendAnnounced(false);
-}
-
-void Suspender::SendSuspendStateChangedSignal(SuspendState_Type type,
-                                              const base::Time& wall_time) {
-  SuspendState proto;
-  proto.set_type(type);
-  proto.set_wall_time(wall_time.ToInternalValue());
-  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendStateChangedSignal, proto);
 }
 
 }  // namespace policy

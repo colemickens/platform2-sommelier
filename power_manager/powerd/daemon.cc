@@ -383,12 +383,10 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
     // Undo the earlier call.
     daemon_->SetBacklightsSuspended(false);
-    SendPowerStateChangedSignal("on");
   }
 
   virtual void PrepareForSuspend() {
     daemon_->PrepareForSuspend();
-    SendPowerStateChangedSignal("mem");
   }
 
   virtual SuspendResult Suspend(uint64 wakeup_count,
@@ -424,7 +422,6 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   virtual void HandleSuspendAttemptCompletion(
       bool suspend_was_successful,
       int num_suspend_attempts) OVERRIDE {
-    SendPowerStateChangedSignal("on");
     daemon_->HandleSuspendAttemptCompletion(suspend_was_successful,
                                             num_suspend_attempts);
   }
@@ -443,14 +440,6 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   }
 
  private:
-  // TODO(derat): Remove this: http://crbug.com/359619.
-  void SendPowerStateChangedSignal(const std::string& power_state) {
-    dbus::Signal signal(kPowerManagerInterface, kPowerStateChangedSignal);
-    dbus::MessageWriter writer(&signal);
-    writer.AppendString(power_state);
-    daemon_->powerd_dbus_object_->SendSignal(&signal);
-  }
-
   Daemon* daemon_;  // weak
 
   DISALLOW_COPY_AND_ASSIGN(SuspenderDelegate);
