@@ -289,16 +289,40 @@ TEST(PerfSerializerTest, TestProtoFiles) {
     string perf_data_proto_file =
         GetTestInputFilePath(perf_test_files::kPerfDataProtoFiles[i]);
     LOG(INFO) << "Testing " << perf_data_proto_file;
-    PerfDataProto perf_data_proto;
     std::vector<char> data;
     ASSERT_TRUE(FileToBuffer(perf_data_proto_file, &data));
     string text(data.begin(), data.end());
 
+    PerfDataProto perf_data_proto;
     ASSERT_TRUE(TextFormat::ParseFromString(text, &perf_data_proto));
     LOG(INFO) << perf_data_proto.file_attrs_size();
 
+    // Test deserializing.
     PerfSerializer perf_serializer;
     EXPECT_TRUE(perf_serializer.Deserialize(perf_data_proto));
+  }
+}
+
+TEST(PerfSerializerTest, TestBuildIDs) {
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataProtoFiles);
+       ++i) {
+    string perf_data_file =
+        GetTestInputFilePath(perf_test_files::kPerfDataFiles[i]);
+    LOG(INFO) << "Testing " << perf_data_file;
+
+    // Serialize into a protobuf.
+    PerfSerializer perf_serializer;
+    PerfDataProto perf_data_proto;
+    EXPECT_TRUE(perf_serializer.SerializeFromFile(perf_data_file,
+                                                  &perf_data_proto));
+
+    // Test a file with build ID filenames removed.
+    for (int i = 0; i < perf_data_proto.build_ids_size(); ++i) {
+      perf_data_proto.mutable_build_ids(i)->clear_filename();
+    }
+    PerfSerializer perf_serializer_build_ids;
+    EXPECT_TRUE(perf_serializer_build_ids.Deserialize(perf_data_proto));
   }
 }
 

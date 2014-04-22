@@ -871,9 +871,11 @@ bool PerfSerializer::DeserializeBuildIDEvent(
   event->pid = from.pid();
   memcpy(event->build_id, from.build_id_hash().c_str(), kBuildIDArraySize);
 
-  CHECK_GT(snprintf(event->filename, filename.size() + 1, "%s",
-                    filename.c_str()),
-           0);
+  if (from.has_filename() && !filename.empty()) {
+    CHECK_GT(snprintf(event->filename, filename.size() + 1, "%s",
+                      filename.c_str()),
+             0);
+  }
   return true;
 }
 
