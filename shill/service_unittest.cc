@@ -1792,6 +1792,29 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 
+TEST_F(ServiceTest, SetAutoConnectFullUserUpdatePersists) {
+  // If the user sets the kAutoConnectProperty explicitly, the preference must
+  // be persisted, even if the property was not changed.
+  Error error;
+  ServiceConstRefPtr service_ref(service_);
+  MockProfileRefPtr mock_profile(
+      new MockProfile(control_interface(), metrics(), &mock_manager_));
+  NiceMock<MockStore> storage;
+  service_->set_profile(mock_profile);
+  service_->SetAutoConnect(true);
+
+  EXPECT_CALL(*mock_profile, UpdateService(_));
+  EXPECT_CALL(*mock_profile, GetConstStorage())
+      .WillOnce(Return(&storage));
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(service_ref))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(service_->retain_auto_connect());
+  SetAutoConnectFull(true, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(service_->auto_connect());
+  EXPECT_TRUE(service_->retain_auto_connect());
+}
+
 TEST_F(ServiceTest, ClearAutoConnect) {
   EXPECT_FALSE(service_->auto_connect());
   Error error;

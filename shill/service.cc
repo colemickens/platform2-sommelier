@@ -1282,7 +1282,14 @@ bool Service::GetAutoConnect(Error */*error*/) {
 bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
             << auto_connect() << "->" << connect;
-  RetainAutoConnect();
+  if (!retain_auto_connect_) {
+    RetainAutoConnect();
+    // Irrespective of an actual change in the |kAutoConnectPropety|, we must
+    // flush the current value of the property to the profile.
+    if (IsRemembered()) {
+      SaveToProfile();
+    }
+  }
 
   if (auto_connect() == connect) {
     return false;
