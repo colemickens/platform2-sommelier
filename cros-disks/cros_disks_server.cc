@@ -88,9 +88,7 @@ void CrosDisksServer::Mount(const string& path,
   string mount_path;
 
   if (platform_->GetRealPath(path, &source_path)) {
-    for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
-         manager_iter != mount_managers_.end(); ++manager_iter) {
-      MountManager* manager = *manager_iter;
+    for (const auto& manager : mount_managers_) {
       if (manager->CanMount(source_path)) {
         source_type = manager->GetMountSourceType();
         error_type =
@@ -110,9 +108,7 @@ void CrosDisksServer::Unmount(const string& path,
                               const vector<string>& options,
                               DBus::Error& error) {  // NOLINT
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
-  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
-       manager_iter != mount_managers_.end(); ++manager_iter) {
-    MountManager* manager = *manager_iter;
+  for (const auto& manager : mount_managers_) {
     if (manager->CanUnmount(path)) {
       error_type = manager->Unmount(path, options);
       break;
@@ -130,9 +126,7 @@ void CrosDisksServer::UnmountAll(DBus::Error& error) {  // NOLINT
 }
 
 void CrosDisksServer::DoUnmountAll() {
-  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
-       manager_iter != mount_managers_.end(); ++manager_iter) {
-    MountManager* manager = *manager_iter;
+  for (const auto& manager : mount_managers_) {
     manager->UnmountAll();
   }
 }
@@ -142,10 +136,9 @@ vector<string> CrosDisksServer::DoEnumerateDevices(
   vector<Disk> disks = disk_manager_->EnumerateDisks();
   vector<string> devices;
   devices.reserve(disks.size());
-  for (vector<Disk>::const_iterator disk_iterator = disks.begin();
-       disk_iterator != disks.end(); ++disk_iterator) {
-    if (!auto_mountable_only || disk_iterator->is_auto_mountable()) {
-      devices.push_back(disk_iterator->native_path());
+  for (const auto& disk : disks) {
+    if (!auto_mountable_only || disk.is_auto_mountable()) {
+      devices.push_back(disk.native_path());
     }
   }
   return devices;
@@ -194,17 +187,13 @@ void CrosDisksServer::OnScreenIsUnlocked() {
 }
 
 void CrosDisksServer::OnSessionStarted() {
-  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
-       manager_iter != mount_managers_.end(); ++manager_iter) {
-    MountManager* manager = *manager_iter;
+  for (const auto& manager : mount_managers_) {
     manager->StartSession();
   }
 }
 
 void CrosDisksServer::OnSessionStopped() {
-  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
-       manager_iter != mount_managers_.end(); ++manager_iter) {
-    MountManager* manager = *manager_iter;
+  for (const auto& manager : mount_managers_) {
     manager->StopSession();
   }
 }

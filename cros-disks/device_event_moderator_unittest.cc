@@ -34,11 +34,10 @@ class DeviceEventModeratorTest : public ::testing::Test {
   DeviceEventModeratorTest()
       : moderator_(&event_dispatcher_, &event_source_),
         event1_(DeviceEvent::kDeviceAdded, "1"),
-        event2_(DeviceEvent::kDeviceAdded, "2") {
-    event_list1_.push_back(event1_);
-    event_list2_.push_back(event2_);
-    event_list3_.push_back(event1_);
-    event_list3_.push_back(event2_);
+        event2_(DeviceEvent::kDeviceAdded, "2"),
+        event_list1_({event1_}),
+        event_list2_({event2_}),
+        event_list3_({event1_, event2_}) {
   }
 
  protected:

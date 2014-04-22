@@ -66,12 +66,7 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
   filesystem.set_mounter_type(ExFATMounter::kMounterType);
 
   string target_path = "/media/disk";
-
-  vector<string> options;
-  options.push_back("rw");
-  options.push_back("nodev");
-  options.push_back("noexec");
-  options.push_back("nosuid");
+  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
                                                      target_path, options));
@@ -91,12 +86,7 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
   filesystem.set_mounter_type(ExternalMounter::kMounterType);
 
   string target_path = "/media/disk";
-
-  vector<string> options;
-  options.push_back("rw");
-  options.push_back("nodev");
-  options.push_back("noexec");
-  options.push_back("nosuid");
+  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
                                                      target_path, options));
@@ -115,12 +105,7 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   filesystem.set_mounter_type(NTFSMounter::kMounterType);
 
   string target_path = "/media/disk";
-
-  vector<string> options;
-  options.push_back("rw");
-  options.push_back("nodev");
-  options.push_back("noexec");
-  options.push_back("nosuid");
+  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
                                                      target_path, options));
@@ -140,12 +125,7 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   filesystem.AddExtraMountOption("shortname=mixed");
 
   string target_path = "/media/disk";
-
-  vector<string> options;
-  options.push_back("rw");
-  options.push_back("nodev");
-  options.push_back("noexec");
-  options.push_back("nosuid");
+  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
                                                      target_path, options));
@@ -295,8 +275,7 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
 
 TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
   string source_path = "/dev/nonexistent-path";
-  vector<string> options;
-  options.push_back("invalid-unmount-option");
+  vector<string> options = {"invalid-unmount-option"};
   EXPECT_EQ(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS,
             manager_.DoUnmount(source_path, options));
 }

@@ -65,18 +65,16 @@ string MountInfo::DecodePath(const string& encoded_path) const {
 
 vector<string> MountInfo::GetMountPaths(const string& source_path) const {
   vector<string> mount_paths;
-  for (vector<MountPoint>::const_iterator iter = mount_points_.begin();
-       iter != mount_points_.end(); ++iter) {
-    if (iter->source_path == source_path)
-      mount_paths.push_back(iter->mount_path);
+  for (const auto& mount_point : mount_points_) {
+    if (mount_point.source_path == source_path)
+      mount_paths.push_back(mount_point.mount_path);
   }
   return mount_paths;
 }
 
 bool MountInfo::HasMountPath(const string& mount_path) const {
-  for (vector<MountPoint>::const_iterator iter = mount_points_.begin();
-       iter != mount_points_.end(); ++iter) {
-    if (iter->mount_path == mount_path)
+  for (const auto& mount_point : mount_points_) {
+    if (mount_point.mount_path == mount_path)
       return true;
   }
   return false;

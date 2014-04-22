@@ -70,13 +70,10 @@ TEST_F(MountInfoTest, DecodePath) {
 TEST_F(MountInfoTest, GetMountPaths) {
   EXPECT_TRUE(manager_.RetrieveFromFile(mount_file_));
 
-  vector<string> expected_paths;
-  expected_paths.push_back("/var");
-  expected_paths.push_back("/home");
+  vector<string> expected_paths = {"/var", "/home"};
   EXPECT_TRUE(expected_paths == manager_.GetMountPaths("/dev/sda1"));
 
-  expected_paths.clear();
-  expected_paths.push_back("/media/Test 1");
+  expected_paths = {"/media/Test 1"};
   EXPECT_TRUE(expected_paths == manager_.GetMountPaths("/dev/sdb1"));
 
   expected_paths.clear();

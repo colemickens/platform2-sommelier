@@ -76,12 +76,9 @@ bool DiskManager::Initialize() {
   // Initialize |disks_detected_| with auto-mountable devices that already
   // exist when disk manager starts since there is no udev add event that adds
   // these devices to |disks_detected_|.
-  vector<Disk> disks = EnumerateDisks();
-  for (vector<Disk>::const_iterator disk_iterator = disks.begin();
-       disk_iterator != disks.end(); ++disk_iterator) {
-    if (disk_iterator->is_auto_mountable()) {
-      disks_detected_.insert(
-          std::make_pair(disk_iterator->native_path(), set<string>()));
+  for (const auto& disk : EnumerateDisks()) {
+    if (disk.is_auto_mountable()) {
+      disks_detected_.insert(std::make_pair(disk.native_path(), set<string>()));
     }
   }
 
@@ -189,9 +186,8 @@ void DiskManager::ProcessBlockDeviceEvents(
   } else if (child_disk_removed) {
     if (ContainsKey(disks_detected_, device_path)) {
       set<string>& child_disks = disks_detected_[device_path];
-      for (set<string>::const_iterator child_iter = child_disks.begin();
-           child_iter != child_disks.end(); ++child_iter) {
-        events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, *child_iter));
+      for (const auto& child_disk : child_disks) {
+        events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, child_disk));
       }
     }
   }

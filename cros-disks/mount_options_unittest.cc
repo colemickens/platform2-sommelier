@@ -31,26 +31,23 @@ class MountOptionsTest : public ::testing::Test {
 
 TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
   MountOptions mount_options;
-  vector<string> options;
 
   // default construction
   EXPECT_TRUE(mount_options.IsReadOnlyOptionSet());
 
   // options: ro
-  options.push_back("ro");
+  vector<string> options = {"ro"};
   mount_options.Initialize(options, false, "", "");
   EXPECT_TRUE(mount_options.IsReadOnlyOptionSet());
 
   // options: rw
-  options.clear();
-  options.push_back("rw");
+  options = {"rw"};
   mount_options.Initialize(options, false, "", "");
   EXPECT_FALSE(mount_options.IsReadOnlyOptionSet());
 }
 
 TEST_F(MountOptionsTest, SetReadOnlyOption) {
   MountOptions mount_options;
-  vector<string> options;
   string expected_string_default = "ro";
   string expected_string_initialize = "ro,nodev,noexec,nosuid";
 
@@ -59,14 +56,13 @@ TEST_F(MountOptionsTest, SetReadOnlyOption) {
   EXPECT_EQ(expected_string_default, mount_options.ToString());
 
   // options: ro
-  options.push_back("ro");
+  vector<string> options = {"ro"};
   mount_options.Initialize(options, false, "", "");
   mount_options.SetReadOnlyOption();
   EXPECT_EQ(expected_string_initialize, mount_options.ToString());
 
   // options: rw
-  options.clear();
-  options.push_back("rw");
+  options = {"rw"};
   mount_options.Initialize(options, false, "", "");
   mount_options.SetReadOnlyOption();
   EXPECT_EQ(expected_string_initialize, mount_options.ToString());

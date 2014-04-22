@@ -37,10 +37,7 @@ void MountOptions::Initialize(const vector<string>& options,
   bool option_read_only = false, option_read_write = false;
   string option_user_id, option_group_id;
 
-  for (vector<string>::const_iterator option_iterator = options.begin();
-       option_iterator != options.end(); ++option_iterator) {
-    const string& option = *option_iterator;
-
+  for (const auto& option : options) {
     // Skip early if |option| contains a comma.
     if (option.find(",") != string::npos) {
       LOG(WARNING) << "Ignoring invalid mount option '" << option << "'.";
@@ -124,10 +121,7 @@ pair<unsigned long, string> MountOptions::ToMountFlagsAndData() const {
   vector<string> data;
   data.reserve(options_.size());
 
-  for (vector<string>::const_iterator
-       option_iterator = options_.begin(); option_iterator != options_.end();
-       ++option_iterator) {
-    const string& option = *option_iterator;
+  for (const auto& option : options_) {
     if (option == kOptionReadOnly) {
       flags |= MS_RDONLY;
     } else if (option == kOptionReadWrite) {

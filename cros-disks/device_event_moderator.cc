@@ -62,14 +62,12 @@ void DeviceEventModerator::ProcessDeviceEvents() {
   DeviceEventList events;
   if (event_source_->GetDeviceEvents(&events)) {
     if (is_event_queued_) {
-      for (DeviceEventList::const_iterator event_iter = events.begin();
-           event_iter != events.end(); ++event_iter) {
-        event_queue_.Add(*event_iter);
+      for (const auto& event : events) {
+        event_queue_.Add(event);
       }
     } else {
-      for (DeviceEventList::const_iterator event_iter = events.begin();
-           event_iter != events.end(); ++event_iter) {
-        event_dispatcher_->DispatchDeviceEvent(*event_iter);
+      for (const auto& event : events) {
+        event_dispatcher_->DispatchDeviceEvent(event);
       }
     }
   }

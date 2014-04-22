@@ -1018,11 +1018,8 @@ TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
 // Verifies that MountManager::ExtractMountLabelFromOptions() extracts a mount
 // label from the given options and returns true.
 TEST_F(MountManagerTest, ExtractMountLabelFromOptions) {
-  vector<string> options;
+  vector<string> options = {"ro", "mountlabel=My USB Drive", "noexec"};
   string mount_label;
-  options.push_back("ro");
-  options.push_back("mountlabel=My USB Drive");
-  options.push_back("noexec");
 
   EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
   EXPECT_THAT(options, ElementsAre("ro", "noexec"));
@@ -1053,12 +1050,9 @@ TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel) {
 // Verifies that MountManager::ExtractMountLabelFromOptions() extracts the last
 // mount label from the given options with two mount labels.
 TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels) {
-  vector<string> options;
+  vector<string> options = {"ro", "mountlabel=My USB Drive", "noexec",
+                            "mountlabel=Another Label"};
   string mount_label;
-  options.push_back("ro");
-  options.push_back("mountlabel=My USB Drive");
-  options.push_back("noexec");
-  options.push_back("mountlabel=Another Label");
 
   EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
   EXPECT_THAT(options, ElementsAre("ro", "noexec"));

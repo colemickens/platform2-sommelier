@@ -224,9 +224,8 @@ bool MountManager::UnmountAll() {
   // Make a copy of the mount path cache before iterating through it
   // as Unmount modifies the cache.
   MountPathMap mount_paths_copy = mount_paths_;
-  for (MountPathMap::const_iterator path_iterator = mount_paths_copy.begin();
-       path_iterator != mount_paths_copy.end(); ++path_iterator) {
-    if (Unmount(path_iterator->first, options) != MOUNT_ERROR_NONE) {
+  for (const auto& path_pair : mount_paths_copy) {
+    if (Unmount(path_pair.first, options) != MOUNT_ERROR_NONE) {
       all_umounted = false;
     }
   }
@@ -242,10 +241,9 @@ bool MountManager::GetSourcePathFromCache(const string& mount_path,
                                           string* source_path) const {
   CHECK(source_path) << "Invalid source path argument";
 
-  for (MountPathMap::const_iterator path_iterator = mount_paths_.begin();
-       path_iterator != mount_paths_.end(); ++path_iterator) {
-    if (path_iterator->second == mount_path) {
-      *source_path = path_iterator->first;
+  for (const auto& path_pair : mount_paths_) {
+    if (path_pair.second == mount_path) {
+      *source_path = path_pair.first;
       return true;
     }
   }
@@ -265,9 +263,8 @@ bool MountManager::GetMountPathFromCache(const string& source_path,
 }
 
 bool MountManager::IsMountPathInCache(const string& mount_path) const {
-  for (MountPathMap::const_iterator path_iterator = mount_paths_.begin();
-       path_iterator != mount_paths_.end(); ++path_iterator) {
-    if (path_iterator->second == mount_path)
+  for (const auto& path_pair : mount_paths_) {
+    if (path_pair.second == mount_path)
       return true;
   }
   return false;
@@ -300,11 +297,8 @@ MountErrorType MountManager::GetMountErrorOfReservedMountPath(
 
 set<string> MountManager::GetReservedMountPaths() const {
   set<string> reserved_paths;
-  for (ReservedMountPathMap::const_iterator
-       path_iterator = reserved_mount_paths_.begin();
-       path_iterator != reserved_mount_paths_.end();
-       ++path_iterator) {
-    reserved_paths.insert(path_iterator->first);
+  for (const auto& path_pair : reserved_mount_paths_) {
+    reserved_paths.insert(path_pair.first);
   }
   return reserved_paths;
 }
@@ -346,9 +340,7 @@ bool MountManager::ExtractUnmountOptions(const vector<string>& options,
   CHECK(unmount_flags) << "Invalid unmount flags argument";
 
   *unmount_flags = 0;
-  for (vector<string>::const_iterator option_iterator = options.begin();
-       option_iterator != options.end(); ++option_iterator) {
-    const string& option = *option_iterator;
+  for (const auto& option : options) {
     if (option == kUnmountOptionForce) {
       *unmount_flags |= MNT_FORCE;
     } else if (option == kUnmountOptionLazy) {
