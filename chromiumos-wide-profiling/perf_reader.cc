@@ -546,9 +546,13 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
   }
 
   if (write_callchain) {
-    *array++ = sample.callchain->nr;
-    for (size_t i = 0; i < sample.callchain->nr; ++i)
-      *array++ = sample.callchain->ips[i];
+    if (!sample.callchain) {
+      LOG(ERROR) << "Expecting callchain data, but none was found.";
+    } else {
+      *array++ = sample.callchain->nr;
+      for (size_t i = 0; i < sample.callchain->nr; ++i)
+        *array++ = sample.callchain->ips[i];
+    }
   }
 
   if (write_raw_data) {
@@ -563,11 +567,15 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
   }
 
   if (write_branch_stack) {
-    *array++ = sample.branch_stack->nr;
-    for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
-      *array++ = sample.branch_stack->entries[i].from;
-      *array++ = sample.branch_stack->entries[i].to;
-      memcpy(array++, &sample.branch_stack->entries[i].flags, sizeof(uint64));
+    if (!sample.branch_stack) {
+      LOG(ERROR) << "Expecting branch stack data, but none was found.";
+    } else {
+      *array++ = sample.branch_stack->nr;
+      for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
+        *array++ = sample.branch_stack->entries[i].from;
+        *array++ = sample.branch_stack->entries[i].to;
+        memcpy(array++, &sample.branch_stack->entries[i].flags, sizeof(uint64));
+      }
     }
   }
   return (array - initial_array_ptr) * sizeof(uint64);
