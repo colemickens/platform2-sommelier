@@ -17,30 +17,35 @@ namespace chromeos {
 namespace http {
 
 std::unique_ptr<Response> Get(const std::string& url,
-                              const HeaderList& headers) {
-  return SendRequest(request_type::kGet, url, nullptr, 0, nullptr, headers);
+                              const HeaderList& headers,
+                              std::shared_ptr<Transport> transport) {
+  return SendRequest(request_type::kGet, url, nullptr, 0, nullptr,
+                     headers, transport);
 }
 
 std::string GetAsString(const std::string& url,
-                        const HeaderList& headers) {
-  auto resp = Get(url, headers);
+                        const HeaderList& headers,
+                        std::shared_ptr<Transport> transport) {
+  auto resp = Get(url, headers, transport);
   return resp ? resp->GetDataAsString() : std::string();
 }
 
-std::unique_ptr<Response> Head(const std::string& url) {
-  Request request(url, request_type::kHead);
+std::unique_ptr<Response> Head(const std::string& url,
+                               std::shared_ptr<Transport> transport) {
+  Request request(url, request_type::kHead, transport);
   return request.GetResponse();
 }
 
 std::unique_ptr<Response> PostText(const std::string& url,
                                    const char* data,
                                    const char* mime_type,
-                                   const HeaderList& headers) {
+                                   const HeaderList& headers,
+                                   std::shared_ptr<Transport> transport) {
   if (mime_type == nullptr) {
     mime_type = chromeos::mime::application::kWwwFormUrlEncoded;
   }
 
-  return PostBinary(url, data, strlen(data), mime_type, headers);
+  return PostBinary(url, data, strlen(data), mime_type, headers, transport);
 }
 
 std::unique_ptr<Response> SendRequest(const char * method,
@@ -48,8 +53,9 @@ std::unique_ptr<Response> SendRequest(const char * method,
                                       const void* data,
                                       size_t data_size,
                                       const char* mime_type,
-                                      const HeaderList& headers) {
-  Request request(url, method);
+                                      const HeaderList& headers,
+                                      std::shared_ptr<Transport> transport) {
+  Request request(url, method, transport);
   request.AddHeaders(headers);
   if (data_size > 0) {
     if (mime_type == nullptr) {
@@ -63,38 +69,43 @@ std::unique_ptr<Response> SendRequest(const char * method,
 
 std::unique_ptr<Response> PostBinary(const std::string & url, const void* data,
                                      size_t data_size, const char* mime_type,
-                                     const HeaderList& headers) {
+                                     const HeaderList& headers,
+                                     std::shared_ptr<Transport> transport) {
   return SendRequest(request_type::kPost, url,
-                     data, data_size, mime_type, headers);
+                     data, data_size, mime_type, headers, transport);
 }
 
 std::unique_ptr<Response> PostFormData(const std::string& url,
                                        const FormFieldList& data,
-                                       const HeaderList& headers) {
+                                       const HeaderList& headers,
+                                       std::shared_ptr<Transport> transport) {
   std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
   return PostBinary(url, encoded_data.c_str(), encoded_data.size(),
-                    chromeos::mime::application::kWwwFormUrlEncoded, headers);
+                    chromeos::mime::application::kWwwFormUrlEncoded,
+                    headers, transport);
 }
 
 
 std::unique_ptr<Response> PostJson(const std::string& url,
                                    const base::Value* json,
-                                   const HeaderList& headers) {
+                                   const HeaderList& headers,
+                                   std::shared_ptr<Transport> transport) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
   return PostBinary(url, data.c_str(), data.size(),
-                    mime::application::kJson, headers);
+                    mime::application::kJson, headers, transport);
 }
 
 std::unique_ptr<Response> PatchJson(const std::string& url,
                                     const base::Value* json,
-                                    const HeaderList& headers) {
+                                    const HeaderList& headers,
+                                    std::shared_ptr<Transport> transport) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
   return SendRequest(request_type::kPatch, url, data.c_str(), data.size(),
-                     mime::application::kJson, headers);
+                     mime::application::kJson, headers, transport);
 }
 
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(

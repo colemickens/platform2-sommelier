@@ -5,13 +5,15 @@
 #ifndef BUFFET_DEVICE_INFO_H_
 #define BUFFET_DEVICE_INFO_H_
 
-#include <base/basictypes.h>
-#include <base/time/time.h>
 #include <string>
 #include <map>
 #include <memory>
 
+#include <base/basictypes.h>
+#include <base/time/time.h>
+
 #include "buffet/data_encoding.h"
+#include "buffet/http_transport.h"
 
 namespace base {
   class Value;
@@ -22,7 +24,11 @@ namespace buffet {
 // The DeviceRegistrationInfo class represents device registration information.
   class DeviceRegistrationInfo {
  public:
-   DeviceRegistrationInfo() = default;
+   // Default-constructed uses CURL HTTP transport.
+   DeviceRegistrationInfo();
+   // This constructor allows to pass in a custom HTTP transport
+   // (mainly for testing).
+   DeviceRegistrationInfo(std::shared_ptr<chromeos::http::Transport> transport);
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -113,6 +119,9 @@ namespace buffet {
   std::string device_kind_ = "vendor";
   std::string system_name_ = "coffee_pot";
   std::string display_name_ = "Coffee Pot";
+
+  // HTTP transport used for communications.
+  std::shared_ptr<chromeos::http::Transport> transport_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);
 };

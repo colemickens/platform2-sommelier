@@ -14,3 +14,11 @@ USE=buffet P2_TEST_FILTER="buffet::*" FEATURES=test emerge-<board> platform2
 
 # Deploy the most recently built version of buffet to a DUT:
 cros deploy --board=${BOARD} <remote host> platform2
+
+#To enable additional debug logging in buffet daemon, run it as:
+# buffet --v=<level>, where <level> is verbosity level of debug info:
+#  1 - enable additional tracing of internal object construction and destruction
+#  2 - add tracing of request and response data sent over HTTP (beware of
+#      privacy concerns).
+#  3 - enable low-level CURL tracing for HTTP communication.
+buffet --v=2

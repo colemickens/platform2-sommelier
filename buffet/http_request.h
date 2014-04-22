@@ -5,12 +5,15 @@
 #ifndef BUFFET_HTTP_REQUEST_H_
 #define BUFFET_HTTP_REQUEST_H_
 
-#include <vector>
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 
-#include "buffet/transport_interface.h"
+#include "buffet/http_connection.h"
+#include "buffet/http_transport.h"
 
 namespace chromeos {
 namespace http {
@@ -192,7 +195,7 @@ namespace status_code {
   static const int VersionNotSupported = 505;
 } // namespace status_code
 
-class Response; // Just a forward-declarartion
+class Response; // Just a forward declarartion.
 
 ///////////////////////////////////////////////////////////////////////////////
 // Request class is the main object used to set up and initiate an HTTP
@@ -207,15 +210,11 @@ class Response; // Just a forward-declarartion
 class Request {
  public:
   // The main constructor. |url| specifies the remote host address/path
-  // to send the request to. Optional |method| is the HTTP request verb. If
-  // omitted, "GET" is used.
-  // Uses the default libcurl-based implementation of TransportInterface
-  Request(const std::string& url, const char* method);
-  Request(const std::string& url);
-
-  // Custom constructor that allows non-default implementations
-  // of TransportInterface to be used.
-  Request(std::shared_ptr<TransportInterface> transport);
+  // to send the request to. |method| is the HTTP request verb and
+  // |transport| is the HTTP transport implementation for server communications.
+  Request(const std::string& url, const char* method,
+          std::shared_ptr<Transport> transport);
+  ~Request();
 
   // Gets/Sets "Accept:" header value. The default value is "*/*" if not set.
   void SetAccept(const char* accept_mime_types);
@@ -247,10 +246,6 @@ class Request {
   // All individual ranges will be sent as part of "Range:" HTTP request header.
   void AddRange(uint64_t from_byte, uint64_t to_byte);
 
-  // Gets/Sets an HTTP request verb to be used with request
-  void SetMethod(const char* method);
-  std::string GetMethod() const;
-
   // Returns the request URL
   std::string GetRequestURL() const;
 
@@ -273,7 +268,48 @@ class Request {
   std::string GetErrorMessage() const;
 
  private:
-  std::shared_ptr<TransportInterface> transport_;
+  // Helper function to create an http::Connection and send off request headers.
+  bool SendRequestIfNeeded();
+
+  // Implementation that provides particular HTTP transport.
+  std::shared_ptr<Transport> transport_;
+
+  // An established connection for adding request body. This connection
+  // is maintained by the request object after the headers have been
+  // sent and before the response is requested.
+  std::unique_ptr<Connection> connection_;
+
+  // Full request URL, such as "http://www.host.com/path/to/object"
+  std::string request_url_;
+  // HTTP request verb, such as "GET", "POST", "PUT", ...
+  std::string method_;
+
+  // Referrer URL, if any. Sent to the server via "Referer: " header.
+  std::string referer_;
+  // User agent string, if any. Sent to the server via "User-Agent: " header.
+  std::string user_agent_;
+  // Content type of the request body data.
+  // Sent to the server via "Content-Type: " header.
+  std::string content_type_;
+  // List of acceptable response data types.
+  // Sent to the server via "Accept: " header.
+  std::string accept_ = "*/*";
+
+  // List of optional request headers provided by the caller.
+  // After request has been sent, contains the received response headers.
+  std::map<std::string, std::string> headers_;
+  // List of optional data ranges to request partial content from the server.
+  // Sent to thr server as "Range: " header.
+  std::vector<std::pair<uint64_t, uint64_t>> ranges_;
+
+  // range_value_omitted is used in |ranges_| list to indicate omitted value.
+  // E.g. range (10,range_value_omitted) represents bytes from 10 to the end
+  // of the data stream.
+  static const uint64_t range_value_omitted = (uint64_t)-1;
+
+  // Error message in case request fails completely.
+  std::string error_;
+
   DISALLOW_COPY_AND_ASSIGN(Request);
 };
 
@@ -284,7 +320,8 @@ class Request {
 ///////////////////////////////////////////////////////////////////////////////
 class Response {
  public:
-  Response(std::shared_ptr<TransportInterface> transport);
+  Response(std::unique_ptr<Connection> connection);
+  ~Response();
 
   // Returns true if server returned a success code (status code below 400).
   bool IsSuccessful() const;
@@ -299,7 +336,7 @@ class Response {
   std::string GetContentType() const;
 
   // Returns response data as a byte array
-  std::vector<unsigned char> GetData() const;
+  const std::vector<unsigned char>& GetData() const;
 
   // Returns response data as a string
   std::string GetDataAsString() const;
@@ -308,7 +345,8 @@ class Response {
   std::string GetHeader(const char* header_name) const;
 
  private:
-  std::shared_ptr<TransportInterface> transport_;
+  std::unique_ptr<Connection> connection_;
+  std::vector<unsigned char> response_data_;
   DISALLOW_COPY_AND_ASSIGN(Response);
 };
 

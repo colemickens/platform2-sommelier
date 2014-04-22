@@ -4,8 +4,13 @@
 
 #include "buffet/http_request.h"
 
+#include <base/logging.h>
+
+#include "buffet/http_connection_curl.h"
 #include "buffet/http_transport_curl.h"
+#include "buffet/map_utils.h"
 #include "buffet/mime_utils.h"
+#include "buffet/string_utils.h"
 
 using namespace chromeos;
 using namespace chromeos::http;
@@ -98,167 +103,200 @@ const char response_header::kWwwAuthenticate[]    = "WWW-Authenticate";
 //**************************************************************************
 //********************** Request Class **********************
 //**************************************************************************
-Request::Request(const std::string& url, const char* method) :
-  transport_(new curl::Transport(url, method)) {
+Request::Request(const std::string& url, const char* method,
+                 std::shared_ptr<Transport> transport) :
+    transport_(transport), request_url_(url), method_(method) {
+  VLOG(1) << "http::Request created";
+  if (!transport_)
+    transport_.reset(new http::curl::Transport());
 }
 
-Request::Request(const std::string& url) :
-  transport_(new curl::Transport(url, nullptr)) {
-}
-
-Request::Request(std::shared_ptr<TransportInterface> transport) :
-  transport_(transport) {
+Request::~Request() {
+  VLOG(1) << "http::Request destroyed";
 }
 
 void Request::AddRange(int64_t bytes) {
-  if (transport_)
-    transport_->AddRange(bytes);
+  if (bytes < 0) {
+    ranges_.emplace_back(Request::range_value_omitted, -bytes);
+  } else {
+    ranges_.emplace_back(bytes, Request::range_value_omitted);
+  }
 }
 
 void Request::AddRange(uint64_t from_byte, uint64_t to_byte) {
-  if (transport_)
-    transport_->AddRange(from_byte, to_byte);
+  ranges_.emplace_back(from_byte, to_byte);
 }
 
 std::unique_ptr<Response> Request::GetResponse() {
-  if (transport_) {
-    if (transport_->GetStage() == TransportInterface::Stage::initialized) {
-      if(transport_->Perform())
-        return std::unique_ptr<Response>(new Response(transport_));
-    } else if (transport_->GetStage() ==
-               TransportInterface::Stage::response_received) {
-      return std::unique_ptr<Response>(new Response(transport_));
-    }
-  }
-  return std::unique_ptr<Response>();
+  if (!SendRequestIfNeeded() || !connection_->FinishRequest())
+    return std::unique_ptr<Response>();
+  std::unique_ptr<Response> response(new Response(std::move(connection_)));
+  transport_.reset(); // Indicate that the response has been received
+  return response;
 }
 
 void Request::SetAccept(const char* accept_mime_types) {
-  if (transport_)
-    transport_->SetAccept(accept_mime_types);
+  accept_ = accept_mime_types;
 }
 
 std::string Request::GetAccept() const {
-  return transport_ ? transport_->GetAccept() : std::string();
-}
-
-std::string Request::GetRequestURL() const {
-  return transport_ ? transport_->GetRequestURL() : std::string();
+  return accept_;
 }
 
 void Request::SetContentType(const char* contentType) {
-  if (transport_)
-    transport_->SetContentType(contentType);
+  content_type_ = contentType;
 }
 
 std::string Request::GetContentType() const {
-  return transport_ ? transport_->GetContentType() : std::string();
+  return content_type_;
 }
 
 void Request::AddHeader(const char* header, const char* value) {
-  if (transport_)
-    transport_->AddHeader(header, value);
+  headers_[header] = value;
 }
 
 void Request::AddHeaders(const HeaderList& headers) {
-  for (auto&& pair : headers)
-    AddHeader(pair.first.c_str(), pair.second.c_str());
+  headers_.insert(headers.begin(), headers.end());
 }
 
 bool Request::AddRequestBody(const void* data, size_t size) {
-  return transport_ && transport_->AddRequestBody(data, size);
-}
-
-void Request::SetMethod(const char* method) {
-  if (transport_)
-    transport_->SetMethod(method);
-}
-
-std::string Request::GetMethod() const {
-  return transport_ ? transport_->GetMethod() : std::string();
+  if (!SendRequestIfNeeded())
+    return false;
+  bool ret = connection_->WriteRequestData(data, size);
+  if (!ret)
+    error_ = "Failed to send request data";
+  return ret;
 }
 
 void Request::SetReferer(const char* referer) {
-  if (transport_)
-    transport_->SetReferer(referer);
+  referer_ = referer;
 }
 
 std::string Request::GetReferer() const {
-  return transport_ ? transport_->GetReferer() : std::string();
+  return referer_;
 }
 
 void Request::SetUserAgent(const char* user_agent) {
-  if (transport_)
-    transport_->SetUserAgent(user_agent);
+  user_agent_ = user_agent;
 }
 
 std::string Request::GetUserAgent() const {
-  return transport_ ? transport_->GetUserAgent() : std::string();
+  return user_agent_;
 }
 
 std::string Request::GetErrorMessage() const {
-  if (transport_ &&
-      transport_->GetStage() == TransportInterface::Stage::failed) {
-    return transport_->GetErrorMessage();
-  }
-
-  return std::string();
+  return error_;
 }
 
-//**************************************************************************
-//********************** Response Class **********************
-//**************************************************************************
-Response::Response(std::shared_ptr<TransportInterface> transport) :
-    transport_(transport) {
-}
+bool Request::SendRequestIfNeeded() {
+  if (transport_) {
+    if (!connection_) {
+      chromeos::http::HeaderList headers = MapToVector(headers_);
+      std::vector<std::string> ranges;
+      if (method_ != request_type::kHead) {
+        ranges.reserve(ranges_.size());
+        for (auto p : ranges_) {
+          if (p.first != range_value_omitted ||
+              p.second != range_value_omitted) {
+            std::string range;
+            if (p.first != range_value_omitted) {
+              range = std::to_string(p.first);
+            }
+            range += '-';
+            if (p.second != range_value_omitted) {
+              range += std::to_string(p.second);
+            }
+            ranges.push_back(range);
+          }
+        }
+      }
+      if (!ranges.empty())
+        headers.emplace_back(request_header::kRange,
+                             "bytes=" + string_utils::Join(',', ranges));
 
-bool Response::IsSuccessful() const {
-  if (transport_ &&
-      transport_->GetStage() == TransportInterface::Stage::response_received) {
-    int code = GetStatusCode();
-    return code >= status_code::Continue && code < status_code::BadRequest;
+      headers.emplace_back(request_header::kAccept, GetAccept());
+      if (method_ != request_type::kGet && method_ != request_type::kHead) {
+        if (!content_type_.empty())
+          headers.emplace_back(request_header::kContentType, content_type_);
+      }
+      connection_ = transport_->CreateConnection(transport_, request_url_,
+                                                 method_, headers,
+                                                 user_agent_, referer_,
+                                                 &error_);
+    }
+
+    if (connection_)
+      return true;
+  } else {
+    error_ = "HTTP response already received";
+    LOG(ERROR) << error_;
   }
   return false;
 }
 
+
+//**************************************************************************
+//********************** Response Class **********************
+//**************************************************************************
+Response::Response(std::unique_ptr<Connection> connection) :
+    connection_(std::move(connection)) {
+  VLOG(1) << "http::Response created";
+  // Response object doesn't have streaming interface for response data (yet),
+  // so read the data into a buffer and cache it.
+  if (connection_) {
+    size_t size = static_cast<size_t>(connection_->GetResponseDataSize());
+    response_data_.reserve(size);
+    unsigned char buffer[1024];
+    size_t read = 0;
+    while (connection_->ReadResponseData(buffer, sizeof(buffer), &read) &&
+           read > 0) {
+      response_data_.insert(response_data_.end(), buffer, buffer + read);
+    }
+  }
+}
+
+Response::~Response() {
+  VLOG(1) << "http::Response destroyed";
+}
+
+bool Response::IsSuccessful() const {
+  int code = GetStatusCode();
+  return code >= status_code::Continue && code < status_code::BadRequest;
+}
+
 int Response::GetStatusCode() const {
-  if (!transport_)
+  if (!connection_)
     return -1;
 
-  return transport_->GetResponseStatusCode();
+  return connection_->GetResponseStatusCode();
 }
 
 std::string Response::GetStatusText() const {
-  if (!transport_)
+  if (!connection_)
     return std::string();
 
-  return transport_->GetResponseStatusText();
+  return connection_->GetResponseStatusText();
 }
 
 std::string Response::GetContentType() const {
   return GetHeader(response_header::kContentType);
 }
 
-std::vector<unsigned char> Response::GetData() const {
-  if (transport_)
-    return transport_->GetResponseData();
-
-  return std::vector<unsigned char>();
+const std::vector<unsigned char>& Response::GetData() const {
+  return response_data_;
 }
 
 std::string Response::GetDataAsString() const {
-  if (transport_) {
-    auto data = transport_->GetResponseData();
-    const char* data_buf = reinterpret_cast<const char*>(data.data());
-    return std::string(data_buf, data_buf + data.size());
-  }
+  if (response_data_.empty())
+    return std::string();
 
-  return std::string();
+  const char* data_buf = reinterpret_cast<const char*>(response_data_.data());
+  return std::string(data_buf, data_buf + response_data_.size());
 }
 
 std::string Response::GetHeader(const char* header_name) const {
-  if (transport_)
-    return transport_->GetResponseHeader(header_name);
+  if (connection_)
+    return connection_->GetResponseHeader(header_name);
 
   return std::string();
 }

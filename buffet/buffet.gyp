@@ -34,6 +34,7 @@
         'device_registration_info.cc',
         'exported_property_set.cc',
         'http_request.cc',
+        'http_connection_curl.cc',
         'http_transport_curl.cc',
         'http_utils.cc',
         'async_event_sequencer.cc',
@@ -76,6 +77,7 @@
         'data_encoding_unittest.cc',
         'exported_property_set_unittest.cc',
         'async_event_sequencer_unittest.cc',
+        'http_utils_unittest.cc',
         'mime_utils_unittest.cc',
         'string_utils_unittest.cc',
         'url_utils_unittest.cc'

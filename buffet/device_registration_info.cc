@@ -10,13 +10,14 @@
 #include <base/file_util.h>
 #include <memory>
 
+#include "buffet/data_encoding.h"
+#include "buffet/http_transport_curl.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
-#include "buffet/data_encoding.h"
 #include "buffet/url_utils.h"
 
-using namespace chromeos::http;
+using namespace chromeos;
 using namespace chromeos::data_encoding;
 
 namespace {
@@ -38,9 +39,9 @@ const base::FilePath::CharType kDeviceInfoFilePath[] =
     FILE_PATH_LITERAL("/var/lib/buffet/device_reg_info");
 
 bool GetParamValue(
-  const std::map<std::string, std::shared_ptr<base::Value>>& params,
-  const std::string& param_name,
-  std::string* param_value) {
+    const std::map<std::string, std::shared_ptr<base::Value>>& params,
+    const std::string& param_name,
+    std::string* param_value) {
   auto p = params.find(param_name);
   if (p == params.end())
     return false;
@@ -51,17 +52,17 @@ bool GetParamValue(
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
     const std::string& access_token) {
-  std::string authorization = chromeos::string_utils::Join(' ',
-                                                           access_token_type,
-                                                           access_token);
-  return {request_header::kAuthorization, authorization};
+  std::string authorization = string_utils::Join(' ',
+                                                 access_token_type,
+                                                 access_token);
+  return {http::request_header::kAuthorization, authorization};
 }
 
 std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-  const Response* response, std::string* error_message) {
+    const http::Response* response, std::string* error_message) {
   int code = 0;
-  auto resp = ParseJsonResponse(response, &code, error_message);
-  if (resp && code >= status_code::BadRequest) {
+  auto resp = http::ParseJsonResponse(response, &code, error_message);
+  if (resp && code >= http::status_code::BadRequest) {
     if (error_message) {
       error_message->clear();
       std::string error_code, error;
@@ -80,14 +81,21 @@ std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
 std::string BuildURL(const std::string& url,
                      const std::vector<std::string>& subpaths,
                      const WebParamList& params) {
-  std::string result = chromeos::url::CombineMultiple(url, subpaths);
-  return chromeos::url::AppendQueryParams(result, params);
+  std::string result = url::CombineMultiple(url, subpaths);
+  return url::AppendQueryParams(result, params);
 }
 
 
 } // anonymous namespace
 
 namespace buffet {
+DeviceRegistrationInfo::DeviceRegistrationInfo()
+    : transport_(new http::curl::Transport()){
+}
+
+DeviceRegistrationInfo::DeviceRegistrationInfo(
+    std::shared_ptr<http::Transport> transport) : transport_(transport) {
+}
 
 std::pair<std::string, std::string>
     DeviceRegistrationInfo::GetAuthorizationHeader() const {
@@ -209,12 +217,12 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken() {
     return true;
   }
 
-  auto response = PostFormData(GetOAuthURL("token"), {
+  auto response = http::PostFormData(GetOAuthURL("token"), {
     {"refresh_token", refresh_token_},
     {"client_id", client_id_},
     {"client_secret", client_secret_},
     {"grant_type", "refresh_token"},
-  });
+  }, transport_);
   if (!response)
     return false;
 
@@ -246,13 +254,14 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo() {
   if (!CheckRegistration())
     return std::unique_ptr<base::Value>();
 
-  auto response = Get(GetDeviceURL(), {GetAuthorizationHeader()});
+  auto response = http::Get(GetDeviceURL(),
+                            {GetAuthorizationHeader()}, transport_);
   int status_code = 0;
   std::unique_ptr<base::Value> device_info =
-      ParseJsonResponse(response.get(), &status_code, nullptr);
+      http::ParseJsonResponse(response.get(), &status_code, nullptr);
 
   if (device_info) {
-    if (status_code >= status_code::BadRequest) {
+    if (status_code >= http::status_code::BadRequest) {
       LOG(WARNING) << "Failed to retrieve the device info. Response code = "
                    << status_code;
       return std::unique_ptr<base::Value>();
@@ -332,8 +341,8 @@ std::string DeviceRegistrationInfo::StartRegistration(
   req_json.Set("deviceDraft.commands.base.vendorCommands", vendor_commands);
 
   std::string url = GetServiceURL("registrationTickets", {{"key", api_key_}});
-  auto resp_json = ParseJsonResponse(PostJson(url, &req_json).get(),
-                                     nullptr, error_msg);
+  auto resp_json = http::ParseJsonResponse(
+      http::PostJson(url, &req_json, transport_).get(), nullptr, error_msg);
   if (!resp_json)
     return std::string();
 
@@ -371,32 +380,34 @@ bool DeviceRegistrationInfo::FinishRegistration(
   }
 
   std::string url = GetServiceURL("registrationTickets/" + ticket_id_);
-  std::unique_ptr<Response> response;
+  std::unique_ptr<http::Response> response;
   if (!user_auth_code.empty()) {
     std::string user_access_token;
-    response = PostFormData(GetOAuthURL("token"), {
+    response = http::PostFormData(GetOAuthURL("token"), {
       {"code", user_auth_code},
       {"client_id", client_id_},
       {"client_secret", client_secret_},
       {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
       {"grant_type", "authorization_code"}
-    });
+    }, transport_);
     if (!response)
       return false;
 
-    auto json_resp = ParseOAuthResponse(response.get(), nullptr);
+    std::string error;
+    auto json_resp = ParseOAuthResponse(response.get(), &error);
     if (!json_resp ||
         !json_resp->GetString("access_token", &user_access_token)) {
+      LOG(ERROR) << "Error parsing OAuth response: " << error;
       return false;
     }
 
     base::DictionaryValue user_info;
     user_info.SetString("userEmail", "me");
-    response = PatchJson(url, &user_info,
-                         {BuildAuthHeader("Bearer", user_access_token)});
+    response = http::PatchJson(
+        url, &user_info, {BuildAuthHeader("Bearer", user_access_token)},
+        transport_);
 
-    std::string error;
-    auto json = ParseJsonResponse(response.get(), nullptr, &error);
+    auto json = http::ParseJsonResponse(response.get(), nullptr, &error);
     if (!json) {
       LOG(ERROR) << "Error populating user info: " << error;
       return false;
@@ -407,30 +418,30 @@ bool DeviceRegistrationInfo::FinishRegistration(
   url += "/finalize?key=" + api_key_;
   do {
     LOG(INFO) << "Sending request to: " << url;
-    response = PostBinary(url, nullptr, 0);
+    response = http::PostBinary(url, nullptr, 0, transport_);
     if (response) {
-      if (response->GetStatusCode() == status_code::BadRequest)
+      if (response->GetStatusCode() == http::status_code::BadRequest)
         sleep(1);
     }
   }
   while (response &&
-         response->GetStatusCode() == status_code::BadRequest);
+         response->GetStatusCode() == http::status_code::BadRequest);
   if (response &&
-      response->GetStatusCode() == status_code::Ok) {
-    auto json_resp = ParseJsonResponse(response.get(), nullptr, nullptr);
+      response->GetStatusCode() == http::status_code::Ok) {
+    auto json_resp = http::ParseJsonResponse(response.get(), nullptr, nullptr);
     if (json_resp &&
         json_resp->GetString("robotAccountEmail", &device_robot_account_) &&
         json_resp->GetString("robotAccountAuthorizationCode", &auth_code) &&
         json_resp->GetString("deviceDraft.id", &device_id_)) {
       // Now get access_token and refresh_token
-      response = PostFormData(GetOAuthURL("token"), {
+      response = http::PostFormData(GetOAuthURL("token"), {
         {"code", auth_code},
         {"client_id", client_id_},
         {"client_secret", client_secret_},
         {"redirect_uri", "oob"},
         {"scope", "https://www.googleapis.com/auth/clouddevices"},
         {"grant_type", "authorization_code"}
-      });
+      }, transport_);
       if (!response)
         return false;
 
