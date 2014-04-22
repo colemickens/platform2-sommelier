@@ -1077,15 +1077,15 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   KeyAuthorizationData* auth_data = key_data->add_authorization_data();
   auth_data->set_type(KeyAuthorizationData::KEY_AUTHORIZATION_TYPE_HMACSHA256);
   KeyAuthorizationSecret* auth_secret = auth_data->add_secrets();
-  auth_secret->mutable_usage()->set_sign(true);
-  std::string signing_key = CryptoLib::Base64Decode(kB64SigningKey);
-  auth_secret->set_symmetric_key(signing_key);
-  // Add an encryption secret to ensure matching behavior.
-  auth_secret = auth_data->add_secrets();
+  // Add an encryption secret to ensure later upgrades are viable.
   auth_secret->mutable_usage()->set_encrypt(true);
   std::string cipher_key = CryptoLib::Base64Decode(kB64CipherKey);
   auth_secret->set_symmetric_key(cipher_key);
-
+  // Add the signing key
+  auth_secret = auth_data->add_secrets();
+  auth_secret->mutable_usage()->set_sign(true);
+  std::string signing_key = CryptoLib::Base64Decode(kB64SigningKey);
+  auth_secret->set_symmetric_key(signing_key);
 
   std::string vk_path = "some/path/master.0";
   EXPECT_CALL(*active_vk_, source_file())

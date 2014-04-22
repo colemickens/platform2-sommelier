@@ -262,7 +262,6 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
 bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
                                            const Key& new_key,
                                            const std::string& signature) {
-  const KeyAuthorizationSecret* secret;
   // If the existing key doesn't require authorization, then there's no
   // work to be done.
   //
@@ -276,23 +275,26 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
     return false;
   }
 
-  switch (existing_key_data.authorization_data(0).type()) {
+  const KeyAuthorizationData* existing_auth_data =
+      &existing_key_data.authorization_data(0);
+  const KeyAuthorizationSecret* secret;
+  switch (existing_auth_data->type()) {
   // The data is passed in the clear but authenticated with a shared
   // symmetric secret.
   case KeyAuthorizationData::KEY_AUTHORIZATION_TYPE_HMACSHA256:
     // Ensure there is an accessible signing key. Only a single
     // secret is allowed until there is a reason to support more.
-    if (existing_key_data.authorization_data(0).secrets_size() != 1) {
-      LOG(ERROR) << "Too many keys for KEY_AUTHORIZATION_TYPE_HMACSHA256";
-      return false;
+    secret = NULL;
+    for (int secret_i = 0;
+         secret_i < existing_auth_data->secrets_size();
+         ++secret_i) {
+      secret = &existing_auth_data->secrets(secret_i);
+      if (secret->usage().sign() && !secret->wrapped())
+        break;
+      secret = NULL;  // Clear if the candidate doesn't match.
     }
-    secret = &existing_key_data.authorization_data(0).secrets(0);
-    if (!secret->usage().sign()) {
-      LOG(ERROR) << "Invalid key usage for KEY_AUTHORIZATION_TYPE_HMACSHA256";
-      return false;
-    }
-    if (secret->wrapped()) {
-      LOG(ERROR) << "Authorization secret was not unwrapped as expected";
+    if (!secret) {
+      LOG(ERROR) << "Could not find a valid signing key for HMACSHA256";
       return false;
     }
     break;
