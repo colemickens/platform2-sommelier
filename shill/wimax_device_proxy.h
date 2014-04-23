@@ -75,11 +75,6 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
-  void Invoke(const base::Callback<void(void *, int)> &method,
-              Error *error,
-              const ResultCallback &callback,
-              int timeout);
-
   static void FromDBusError(const DBus::Error &dbus_error, Error *error);
 
   Proxy proxy_;

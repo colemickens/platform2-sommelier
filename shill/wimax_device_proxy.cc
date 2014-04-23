@@ -7,6 +7,7 @@
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
@@ -28,28 +29,22 @@ WiMaxDeviceProxy::~WiMaxDeviceProxy() {}
 void WiMaxDeviceProxy::Enable(Error *error,
                               const ResultCallback &callback,
                               int timeout) {
-  SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
-  Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::Enable,
-              Unretained(&proxy_)),
-         error, callback, timeout);
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::EnableAsync, callback, error,
+                     &FromDBusError, timeout);
 }
 
 void WiMaxDeviceProxy::Disable(Error *error,
                                const ResultCallback &callback,
                                int timeout) {
-  SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
-  Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::Disable,
-              Unretained(&proxy_)),
-         error, callback, timeout);
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::DisableAsync, callback, error,
+                     &FromDBusError, timeout);
 }
 
 void WiMaxDeviceProxy::ScanNetworks(Error *error,
                                     const ResultCallback &callback,
                                     int timeout) {
-  SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
-  Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::ScanNetworks,
-              Unretained(&proxy_)),
-         error, callback, timeout);
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ScanNetworksAsync, callback,
+                     error, &FromDBusError, timeout);
 }
 
 void WiMaxDeviceProxy::Connect(const RpcIdentifier &network,
@@ -57,23 +52,18 @@ void WiMaxDeviceProxy::Connect(const RpcIdentifier &network,
                                Error *error,
                                const ResultCallback &callback,
                                int timeout) {
-  SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
   DBus::Path path = network;
   DBusPropertiesMap args;
   DBusProperties::ConvertKeyValueStoreToMap(parameters, &args);
-  Invoke(Bind((void (Proxy::*)(const DBus::Path &, const DBusPropertiesMap &,
-                               void *, int))&Proxy::Connect,
-              Unretained(&proxy_), path, args),
-         error, callback, timeout);
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::ConnectAsync, callback, error,
+                     &FromDBusError, timeout, path, args);
 }
 
 void WiMaxDeviceProxy::Disconnect(Error *error,
                                   const ResultCallback &callback,
                                   int timeout) {
-  SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
-  Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::Disconnect,
-              Unretained(&proxy_)),
-         error, callback, timeout);
+  BeginAsyncDBusCall(__func__, proxy_, &Proxy::DisconnectAsync, callback, error,
+                     &FromDBusError, timeout);
 }
 
 void WiMaxDeviceProxy::set_networks_changed_callback(
@@ -118,19 +108,6 @@ RpcIdentifiers WiMaxDeviceProxy::Networks(Error *error) {
   RpcIdentifiers rpc_networks;
   DBusProperties::ConvertPathsToRpcIdentifiers(dbus_paths, &rpc_networks);
   return rpc_networks;
-}
-
-void WiMaxDeviceProxy::Invoke(const Callback<void(void *, int)> &method,
-                              Error *error,
-                              const ResultCallback &callback,
-                              int timeout) {
-  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
-  try {
-    method.Run(cb.get(), timeout);
-    cb.release();
-  } catch (const DBus::Error &e) {
-    FromDBusError(e, error);
-  }
 }
 
 // static

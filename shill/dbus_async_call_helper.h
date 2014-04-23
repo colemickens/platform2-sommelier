@@ -35,7 +35,7 @@ void BeginAsyncDBusCall(const TraceMsgT &trace_msg, ProxyT &proxy,
                         Error *error,
                         void(*error_converter)(const DBus::Error &, Error *),
                         int timeout, ArgTypes... call_args) {
-  SLOG(DBus, 2) << trace_msg;
+  SLOG(DBus, 2) << trace_msg << " [timeout=" << timeout << "]";
   auto cb = make_scoped_ptr(new CallbackT(callback));
   try {
     (proxy.*call)(call_args..., cb.get(), timeout);
