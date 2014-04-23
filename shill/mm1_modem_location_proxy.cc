@@ -25,7 +25,6 @@ void ModemLocationProxy::Setup(uint32_t sources,
                                Error *error,
                                const ResultCallback &callback,
                                int timeout) {
-  SLOG(Modem, 2) << __func__;
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::SetupAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout,
                      sources, signal_location);
@@ -34,7 +33,6 @@ void ModemLocationProxy::Setup(uint32_t sources,
 void ModemLocationProxy::GetLocation(Error *error,
                                      const DBusEnumValueMapCallback &callback,
                                      int timeout) {
-  SLOG(Modem, 2) << __func__;
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetLocationAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout);
 }

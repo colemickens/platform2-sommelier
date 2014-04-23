@@ -5,6 +5,7 @@
 #include "shill/modem_proxy.h"
 
 #include <base/bind.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
@@ -13,6 +14,7 @@
 
 using base::Bind;
 using base::Callback;
+using base::StringPrintf;
 using std::string;
 
 namespace shill {
@@ -34,10 +36,10 @@ void ModemProxy::set_state_changed_callback(
 
 void ModemProxy::Enable(bool enable, Error *error,
                         const ResultCallback &callback, int timeout) {
-  SLOG(Modem, 2) << __func__ << "(" << enable << ", " << timeout << ")";
-  BeginAsyncDBusCall(__func__, proxy_, &Proxy::EnableAsync, callback,
-                     error, &CellularError::FromDBusError, timeout,
-                     enable);
+  BeginAsyncDBusCall(StringPrintf("%s(%s)", __func__,
+                                  enable ? "true" : "false"),
+                     proxy_, &Proxy::EnableAsync, callback, error,
+                     &CellularError::FromDBusError, timeout, enable);
 }
 
 void ModemProxy::Disconnect(Error *error, const ResultCallback &callback,

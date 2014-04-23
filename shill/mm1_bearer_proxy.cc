@@ -25,7 +25,6 @@ BearerProxy::~BearerProxy() {}
 void BearerProxy::Connect(Error *error,
                           const ResultCallback &callback,
                           int timeout) {
-  SLOG(Modem, 2) << __func__;
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::ConnectAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout);
 }
@@ -33,7 +32,6 @@ void BearerProxy::Connect(Error *error,
 void BearerProxy::Disconnect(Error *error,
                              const ResultCallback &callback,
                              int timeout) {
-  SLOG(Modem, 2) << __func__;
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::DisconnectAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout);
 }

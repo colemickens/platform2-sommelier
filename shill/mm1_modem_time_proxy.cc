@@ -28,7 +28,6 @@ void ModemTimeProxy::set_network_time_changed_callback(
 void ModemTimeProxy::GetNetworkTime(Error *error,
                                     const StringCallback &callback,
                                     int timeout) {
-  SLOG(Modem, 2) << __func__;
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetNetworkTimeAsync, callback,
                      error,  &CellularError::FromMM1DBusError, timeout);
 }
