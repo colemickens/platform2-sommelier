@@ -229,7 +229,6 @@ bool CellularService::SetApn(const Stringmap &value, Error *error) {
     ClearLastGoodApn();
   }
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
-  SaveToCurrentProfile();
   return true;
 }
 
@@ -237,14 +236,12 @@ void CellularService::SetLastGoodApn(const Stringmap &apn_info) {
   last_good_apn_info_ = apn_info;
   adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
-  SaveToCurrentProfile();
 }
 
 void CellularService::ClearLastGoodApn() {
   last_good_apn_info_.clear();
   adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
-  SaveToCurrentProfile();
 }
 
 void CellularService::OnAfterResume() {
