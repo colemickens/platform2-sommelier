@@ -93,7 +93,7 @@ static void ValidateEventFileContents(const string& file_name,
          "in event file past expected EOF";
 
   (void)close(fd);
-  delete buffer;
+  delete [] buffer;
 }
 
 
