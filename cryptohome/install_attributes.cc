@@ -303,7 +303,7 @@ bool InstallAttributes::SerializeAttributes(chromeos::Blob* out_bytes) {
   return true;
 }
 
-Value* InstallAttributes::GetStatus() {
+base::Value* InstallAttributes::GetStatus() {
   base::DictionaryValue* dv = new base::DictionaryValue();
   dv->SetBoolean("initialized", is_initialized());
   dv->SetInteger("version", version());

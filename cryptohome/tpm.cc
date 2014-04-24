@@ -2092,7 +2092,7 @@ bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
   return ok;
 }
 
-Value* Tpm::GetStatusValue(TpmInit* init) {
+base::Value* Tpm::GetStatusValue(TpmInit* init) {
   base::DictionaryValue* dv = new base::DictionaryValue();
   TpmStatusInfo status;
   GetStatus(true, &status);

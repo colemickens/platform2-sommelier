@@ -109,7 +109,7 @@ class Tpm {
   //
   // Parameters
   //   init - If non-NULL, overrides some of the status values
-  Value* GetStatusValue(TpmInit* init);
+  base::Value* GetStatusValue(TpmInit* init);
 
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE

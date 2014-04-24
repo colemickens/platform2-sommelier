@@ -1710,7 +1710,7 @@ bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
   return true;
 }
 
-Value* Mount::GetStatus() {
+base::Value* Mount::GetStatus() {
   std::string user;
   SerializedVaultKeyset keyset;
   base::DictionaryValue* dv = new base::DictionaryValue();
