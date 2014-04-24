@@ -294,7 +294,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
 void SessionManagerDBusAdaptor::StorePolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  uint8* policy_blob = NULL;
+  const uint8* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
@@ -319,7 +319,7 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
   std::string user_email;
-  uint8* policy_blob = NULL;
+  const uint8* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
@@ -351,7 +351,7 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
   std::string account_id;
-  uint8* policy_blob = NULL;
+  const uint8* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.

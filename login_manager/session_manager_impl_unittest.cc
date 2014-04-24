@@ -705,7 +705,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   string key("key_contents");
   ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(),
                                              &key_file_path));
-  ASSERT_EQ(file_util::WriteFile(key_file_path, key.c_str(), key.size()),
+  ASSERT_EQ(base::WriteFile(key_file_path, key.c_str(), key.size()),
             key.size());
 
   // Start a session, to set up NSSDB for the user.

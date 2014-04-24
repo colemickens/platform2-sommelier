@@ -36,10 +36,10 @@ int GenerateKey(const base::FilePath& file_path,
   base::FilePath nssdb = user_homedir.Append(nss->GetNssdbSubpath());
   PLOG_IF(FATAL, !base::PathExists(nssdb)) << nssdb.value()
                                            << " does not exist!";
-  if (!file_util::VerifyPathControlledByUser(file_path.DirName(),
-                                             nssdb,
-                                             getuid(),
-                                             std::set<gid_t>())) {
+  if (!base::VerifyPathControlledByUser(file_path.DirName(),
+                                        nssdb,
+                                        getuid(),
+                                        std::set<gid_t>())) {
     PLOG(FATAL) << nssdb.value() << " cannot be used by the user!";
   }
   crypto::ScopedPK11Slot slot(nss->OpenUserDB(user_homedir));

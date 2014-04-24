@@ -464,7 +464,7 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
   // To check that we need to access the install attributes here.
   // For more info see: http://crosbug.com/31537
   if (recovery_needed) {
-    if (file_util::WriteFile(serial_recovery_flag_file_, NULL, 0) != 0) {
+    if (base::WriteFile(serial_recovery_flag_file_, NULL, 0) != 0) {
       PLOG(WARNING) << "Failed to write "
                     << serial_recovery_flag_file_.value();
     }

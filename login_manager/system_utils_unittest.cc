@@ -22,7 +22,7 @@ TEST(SystemUtilsTest, CorrectFileWrite) {
   std::string new_data("ho, neighbor");
 
   ASSERT_EQ(old_data.length(),
-            file_util::WriteFile(scratch, old_data.c_str(), old_data.length()));
+            base::WriteFile(scratch, old_data.c_str(), old_data.length()));
 
   SystemUtilsImpl utils;
   ASSERT_TRUE(utils.AtomicFileWrite(scratch, new_data));

@@ -868,7 +868,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
       .Times(AnyNumber());
 
   // Fake the policy file existence.
-  file_util::WriteFile(policy_file_, ".", 1);
+  base::WriteFile(policy_file_, ".", 1);
 
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
@@ -921,7 +921,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
 
 TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   // Fake the policy file existence.
-  file_util::WriteFile(policy_file_, ".", 1);
+  base::WriteFile(policy_file_, ".", 1);
 
   MockNssUtil nss;
   InitService(&nss);

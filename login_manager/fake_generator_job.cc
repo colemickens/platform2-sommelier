@@ -55,9 +55,9 @@ bool FakeGeneratorJob::RunInBackground() {
     PLOG(ERROR) << "Could not create directory " << full_path.DirName().value();
     return false;
   }
-  size_t bytes_written = file_util::WriteFile(full_path,
-                                              key_contents_.c_str(),
-                                              key_contents_.size());
+  size_t bytes_written = base::WriteFile(full_path,
+                                         key_contents_.c_str(),
+                                         key_contents_.size());
   if (bytes_written == key_contents_.size())
     return true;
   PLOG(ERROR) << "Could not write " << filename_;

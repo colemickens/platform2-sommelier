@@ -41,7 +41,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     base::FilePath salt_path = temp_dir_.path().Append("salt");
-    ASSERT_EQ(0, file_util::WriteFile(salt_path, NULL, 0));
+    ASSERT_EQ(0, base::WriteFile(salt_path, NULL, 0));
     chromeos::cryptohome::home::SetSystemSaltPath(salt_path.value());
 
     fake_account_policy_path_ =
@@ -201,8 +201,8 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveSuccess) {
 
   ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
   ASSERT_EQ(policy_blob_.size(),
-            file_util::WriteFile(fake_account_policy_path_,
-                                 policy_blob_.c_str(), policy_blob_.size()));
+            base::WriteFile(fake_account_policy_path_,
+                            policy_blob_.c_str(), policy_blob_.size()));
 
   std::vector<uint8> policy_data;
   EXPECT_TRUE(service_->Retrieve(fake_account_, &policy_data));
@@ -212,8 +212,8 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveSuccess) {
 TEST_F(DeviceLocalAccountPolicyServiceTest, PurgeStaleAccounts) {
   SetupKey();
 
-  ASSERT_TRUE(file_util::WriteFile(fake_account_policy_path_,
-                                   policy_blob_.c_str(), policy_blob_.size()));
+  ASSERT_TRUE(base::WriteFile(fake_account_policy_path_,
+                              policy_blob_.c_str(), policy_blob_.size()));
 
   em::ChromeDeviceSettingsProto device_settings;
   service_->UpdateDeviceSettings(device_settings);

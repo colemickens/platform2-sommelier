@@ -54,7 +54,7 @@ bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
     metrics_lib_.SendEnumToUMA(kLoginPolicyFilesMetric,
                                LoginMetrics::PolicyFilesStatusCode(status),
                                kMaxPolicyFilesValue);
-    bool created = file_util::WriteFile(per_boot_flag_file_, "", 0) == 0;
+    bool created = base::WriteFile(per_boot_flag_file_, "", 0) == 0;
     PLOG_IF(WARNING, !created) << "Can't touch " << per_boot_flag_file_.value();
     return true;
   }
