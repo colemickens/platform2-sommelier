@@ -75,6 +75,8 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   int num_suspend_attempts() const { return num_suspend_attempts_; }
 
   // Delegate implementation:
+  virtual int GetInitialId() OVERRIDE { return 1; }
+
   virtual bool IsLidClosed() OVERRIDE { return lid_closed_; }
 
   virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {

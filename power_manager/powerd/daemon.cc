@@ -333,6 +333,18 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   virtual ~SuspenderDelegate() {}
 
   // Delegate implementation:
+  virtual int GetInitialId() OVERRIDE {
+    // Take powerd's PID modulo 2**15 (/proc/sys/kernel/pid_max is currently
+    // 2**15, but just in case...) and multiply it by 2**16, leaving it able to
+    // fit in a signed 32-bit int. This allows for 2**16 suspend attempts and
+    // suspend delays per powerd run before wrapping or intruding on another
+    // run's ID range (neither of which should be particularly problematic, but
+    // doing this reduces the chances of a confused client that's using stale
+    // IDs from a previous powerd run being able to conflict with the new run's
+    // IDs).
+    return (getpid() % 32768) * 65536 + 1;
+  }
+
   virtual bool IsLidClosed() OVERRIDE {
     return daemon_->input_->QueryLidState() == LID_CLOSED;
   }

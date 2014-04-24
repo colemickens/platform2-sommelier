@@ -30,7 +30,8 @@ class SuspendDelayObserver;
 // time to do last-minute cleanup.
 class SuspendDelayController {
  public:
-  explicit SuspendDelayController(DBusSenderInterface* dbus_sender);
+  SuspendDelayController(DBusSenderInterface* dbus_sender,
+                         int initial_delay_id);
   ~SuspendDelayController();
 
   bool ready_for_suspend() const { return delay_ids_being_waited_on_.empty(); }

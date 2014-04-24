@@ -26,9 +26,10 @@ const int kMaxDelayTimeoutMs = 10000;
 
 }  // namespace
 
-SuspendDelayController::SuspendDelayController(DBusSenderInterface* dbus_sender)
+SuspendDelayController::SuspendDelayController(DBusSenderInterface* dbus_sender,
+                                               int initial_delay_id)
     : dbus_sender_(dbus_sender),
-      next_delay_id_(1),
+      next_delay_id_(initial_delay_id),
       current_suspend_id_(0) {
   DCHECK(dbus_sender_);
 }

@@ -82,6 +82,11 @@ class Suspender : public SuspendDelayObserver {
 
     virtual ~Delegate() {}
 
+    // Returns a initial value for suspend-related IDs that's likely (but not
+    // guaranteed) to yield successive IDs that are unique across all of the
+    // powerd runs during the current boot session.
+    virtual int GetInitialId() = 0;
+
     // Is the lid currently closed?  Returns false if the query fails or if
     // the system doesn't have a lid.
     virtual bool IsLidClosed() = 0;

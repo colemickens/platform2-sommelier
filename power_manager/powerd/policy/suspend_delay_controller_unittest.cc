@@ -49,7 +49,7 @@ class TestObserver : public SuspendDelayObserver {
 class SuspendDelayControllerTest : public ::testing::Test {
  public:
   SuspendDelayControllerTest()
-      : controller_(&dbus_sender_) {
+      : controller_(&dbus_sender_, 1 /* initial_delay_id */) {
     controller_.AddObserver(&observer_);
   }
 

@@ -64,7 +64,10 @@ void Suspender::Init(Delegate *delegate,
   dbus_sender_ = dbus_sender;
   dark_resume_policy_ = dark_resume_policy;
 
-  suspend_delay_controller_.reset(new SuspendDelayController(dbus_sender_));
+  const int initial_id = delegate_->GetInitialId();
+  suspend_id_ = initial_id - 1;
+  suspend_delay_controller_.reset(
+      new SuspendDelayController(dbus_sender_, initial_id));
   suspend_delay_controller_->AddObserver(this);
 
   int64 retry_delay_ms = 0;
