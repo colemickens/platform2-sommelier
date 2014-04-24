@@ -47,6 +47,8 @@ class Time {
 
   virtual time_t GetSecondsSinceEpoch() const;
 
+  static std::string FormatTime(const struct tm &date_time, suseconds_t usec);
+
  protected:
   Time();
 

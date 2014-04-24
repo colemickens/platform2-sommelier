@@ -4,6 +4,7 @@
 
 #include "shill/shill_time.h"
 
+#include <string.h>
 #include <time.h>
 
 #include <base/strings/stringprintf.h>
@@ -48,22 +49,38 @@ int Time::GetTimeOfDay(struct timeval *tv, struct timezone *tz) {
 
 Timestamp Time::GetNow() {
   struct timeval now_monotonic = (const struct timeval) { 0 };
-  GetTimeMonotonic(&now_monotonic);
   struct timeval now_wall_clock = (const struct timeval) { 0 };
-  GetTimeOfDay(&now_wall_clock, NULL);
   struct tm local_time = (const struct tm) { 0 };
+  string wall_clock_string;
+
+  GetTimeMonotonic(&now_monotonic);
+  GetTimeOfDay(&now_wall_clock, NULL);
   localtime_r(&now_wall_clock.tv_sec, &local_time);
-  // There're two levels of formatting -- first most of the timestamp is printed
-  // into |format|, then the resulting string is used to insert the microseconds
-  // (note the %%06u format string).
-  char format[64];
-  size_t length = strftime(format, sizeof(format),
-                           "%Y-%m-%dT%H:%M:%S.%%06u%z", &local_time);
-  string wall_clock = "<unknown>";
-  if (length && length < sizeof(format)) {
-    wall_clock = base::StringPrintf(format, now_wall_clock.tv_usec);
+  wall_clock_string = FormatTime(local_time, now_wall_clock.tv_usec);
+
+  return Timestamp(now_monotonic, wall_clock_string);
+}
+
+// static
+string Time::FormatTime(const struct tm &date_time, suseconds_t usec) {
+  char date_time_string[64];
+  size_t date_time_length;
+  date_time_length = strftime(date_time_string, sizeof(date_time_string),
+                              "%Y-%m-%dT%H:%M:%S %z", &date_time);
+
+  // Stitch in the microseconds, to provider finer resolution than
+  // strftime allows.
+  string full_string = "<unknown>";
+  char *split_pos = static_cast<char *>(
+      memchr(date_time_string, ' ', sizeof(date_time_string)));
+  if (date_time_length && date_time_length < sizeof(date_time_string) &&
+      split_pos) {
+    *split_pos = '\0';
+    full_string =
+        base::StringPrintf("%s.%06ld%s", date_time_string, usec, split_pos+1);
   }
-  return Timestamp(now_monotonic, wall_clock);
+
+  return full_string;
 }
 
 time_t Time::GetSecondsSinceEpoch() const {

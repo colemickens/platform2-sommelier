@@ -679,6 +679,7 @@
             'service_property_change_test.cc',
             'service_under_test.cc',
             'service_unittest.cc',
+            'shill_time_unittest.cc',
             'shill_unittest.cc',
             'shims/certificates.cc',
             'shims/certificates_unittest.cc',
