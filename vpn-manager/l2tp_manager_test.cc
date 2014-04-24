@@ -20,6 +20,7 @@ DECLARE_string(pppd_plugin);
 DECLARE_string(user);
 
 using ::base::FilePath;
+using ::base::StringPrintf;
 using ::chromeos::FindLog;
 using ::chromeos::ProcessMock;
 using ::testing::_;

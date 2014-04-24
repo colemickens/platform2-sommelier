@@ -45,6 +45,7 @@ DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
 using ::base::FilePath;
+using ::base::StringPrintf;
 using ::chromeos::Process;
 using ::chromeos::ProcessImpl;
 
