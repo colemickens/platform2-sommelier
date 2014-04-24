@@ -434,7 +434,7 @@ add_vmodule_pattern "network_portal_detector_impl=1"
 # Turn on logging about external displays being connected and disconnected.
 # Different behavior is seen from different displays and these messages are used
 # to determine what happened within feedback reports.
-add_vmodule_pattern "*output_configurator*=1"
+add_vmodule_pattern "*ui/display/chromeos*=1"
 add_vmodule_pattern "*ash/display*=1"
 
 # Turn on plugin loading failure logging for crbug.com/314301.
