@@ -107,7 +107,7 @@ class FakeFileWatcher : public FileWatcher {
       case kFileChanged:
         // Both kFileAdded and kFileChanged execute this part:
         buf = static_cast<char*>(malloc(event.file_size));
-        file_util::WriteFile(event.filename, buf, event.file_size);
+        base::WriteFile(event.filename, buf, event.file_size);
         free(buf);
         break;
       case kFileRemoved:

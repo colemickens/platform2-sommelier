@@ -36,7 +36,7 @@ using std::tuple;
 using std::vector;
 
 using base::FilePath;
-using file_util::WriteFile;
+using base::WriteFile;
 
 using p2p::common::FakeClock;
 using p2p::testutil::SetExpectedFileSize;
