@@ -35,6 +35,8 @@ using trousers::ScopedTssPcrs;
 using trousers::ScopedTssPolicy;
 
 namespace {
+typedef scoped_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
+
 // A helper to safely concatenate SecureBlobs.
 // TODO(dkrahn): Move this somewhere common - crbug.com/351945
 chromeos::SecureBlob SecureCat(const chromeos::SecureBlob& blob1,
@@ -2241,8 +2243,8 @@ bool Tpm::DecryptIdentityRequest(RSA* pca_key,
     TPM_LOG(ERROR, result) << "Failed to parse identity request.";
     return false;
   }
-  scoped_ptr_malloc<BYTE> scoped_asym_blob(request_parsed.asymBlob);
-  scoped_ptr_malloc<BYTE> scoped_sym_blob(request_parsed.symBlob);
+  ScopedByteArray scoped_asym_blob(request_parsed.asymBlob);
+  ScopedByteArray scoped_sym_blob(request_parsed.symBlob);
 
   // Decrypt the symmetric key.
   unsigned char key_buffer[kDefaultTpmRsaKeyBits / 8];
@@ -2260,7 +2262,7 @@ bool Tpm::DecryptIdentityRequest(RSA* pca_key,
     TPM_LOG(ERROR, result) << "Failed to parse symmetric key.";
     return false;
   }
-  scoped_ptr_malloc<BYTE> scoped_sym_key(symmetric_key.data);
+  ScopedByteArray scoped_sym_key(symmetric_key.data);
 
   // Decrypt the request with the symmetric key.
   SecureBlob proof_serial;
@@ -2284,13 +2286,13 @@ bool Tpm::DecryptIdentityRequest(RSA* pca_key,
     TPM_LOG(ERROR, result) << "Failed to parse identity proof.";
     return false;
   }
-  scoped_ptr_malloc<BYTE> scoped_label(proof.labelArea);
-  scoped_ptr_malloc<BYTE> scoped_binding(proof.identityBinding);
-  scoped_ptr_malloc<BYTE> scoped_endorsement(proof.endorsementCredential);
-  scoped_ptr_malloc<BYTE> scoped_platform(proof.platformCredential);
-  scoped_ptr_malloc<BYTE> scoped_conformance(proof.conformanceCredential);
-  scoped_ptr_malloc<BYTE> scoped_key(proof.identityKey.pubKey.key);
-  scoped_ptr_malloc<BYTE> scoped_parms(proof.identityKey.algorithmParms.parms);
+  ScopedByteArray scoped_label(proof.labelArea);
+  ScopedByteArray scoped_binding(proof.identityBinding);
+  ScopedByteArray scoped_endorsement(proof.endorsementCredential);
+  ScopedByteArray scoped_platform(proof.platformCredential);
+  ScopedByteArray scoped_conformance(proof.conformanceCredential);
+  ScopedByteArray scoped_key(proof.identityKey.pubKey.key);
+  ScopedByteArray scoped_parms(proof.identityKey.algorithmParms.parms);
 
   identity_binding->assign(&proof.identityBinding[0],
                            &proof.identityBinding[proof.identityBindingSize]);
@@ -2320,8 +2322,8 @@ bool Tpm::ConvertPublicKeyToDER(const SecureBlob& public_key,
     TPM_LOG(ERROR, result) << "Failed to parse TPM_PUBKEY.";
     return false;
   }
-  scoped_ptr_malloc<BYTE> scoped_key(parsed.pubKey.key);
-  scoped_ptr_malloc<BYTE> scoped_parms(parsed.algorithmParms.parms);
+  ScopedByteArray scoped_key(parsed.pubKey.key);
+  ScopedByteArray scoped_parms(parsed.algorithmParms.parms);
   TPM_RSA_KEY_PARMS* parms =
       reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
   RSA* rsa = RSA_new();
@@ -2449,8 +2451,7 @@ bool Tpm::MakeIdentity(SecureBlob* identity_public_key_der,
   BYTE* label_ascii =
       const_cast<BYTE*>(reinterpret_cast<const BYTE*>(label_text));
   unsigned int label_size = strlen(label_text);
-  scoped_ptr_malloc<BYTE> label(
-      Trspi_Native_To_UNICODE(label_ascii, &label_size));
+  ScopedByteArray label(Trspi_Native_To_UNICODE(label_ascii, &label_size));
   if (!label.get()) {
     LOG(ERROR) << "MakeIdentity: Failed to create AIK label.";
     return false;
