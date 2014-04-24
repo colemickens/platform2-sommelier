@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "platform.h"
 #include "tpm.h"
 
 namespace cryptohome {
@@ -14,6 +15,7 @@ class StubTpm : public Tpm {
   virtual ~StubTpm() { }
 
   // See tpm.h for comments
+  virtual bool Init(Platform* platform, bool open_key) { return false; }
   virtual bool Connect(TpmRetryAction* retry_action) { return false; }
   virtual bool IsConnected() { return false; }
   virtual bool IsEnabled() const { return false; }
@@ -26,6 +28,7 @@ class StubTpm : public Tpm {
   virtual void Disconnect() { }
   virtual bool GetOwnerPassword(
     chromeos::Blob* owner_password) { return false; }
+  virtual void RemoveOwnerDependency(TpmOwnerDependency dependency) { }
   virtual bool Encrypt(const chromeos::SecureBlob& plaintext,
                        const chromeos::SecureBlob& key,
                        chromeos::SecureBlob* ciphertext,

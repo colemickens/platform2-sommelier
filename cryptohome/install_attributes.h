@@ -18,7 +18,6 @@
 #include "lockbox.h"
 #include "platform.h"
 #include "tpm.h"
-#include "tpm_init.h"
 
 namespace cryptohome {
 
@@ -153,9 +152,6 @@ class InstallAttributes {
 
   virtual Platform* platform() { return platform_; }
 
-  // Sets TpmInit object to remove TPM owner dependency.
-  virtual void set_tpm_init(TpmInit* value) { tpm_init_ = value; }
-
   // Returns whether this is still a first install. Upon finalization,
   // this becomes false.
   virtual bool is_first_install() const { return is_first_install_; }
@@ -206,12 +202,10 @@ class InstallAttributes {
   scoped_ptr<SerializedInstallAttributes> default_attributes_;
   scoped_ptr<Lockbox> default_lockbox_;
   scoped_ptr<Platform> default_platform_;
-  scoped_ptr<TpmInit> default_tpm_init_;
   // Overridable dependency pointer which allow for easy injection.
   SerializedInstallAttributes* attributes_;
   Lockbox* lockbox_;
   Platform* platform_;
-  TpmInit* tpm_init_;
   ObserverList<Observer> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(InstallAttributes);

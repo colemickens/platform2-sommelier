@@ -12,16 +12,20 @@ using testing::Return;
 namespace cryptohome {
 
 MockTpm::MockTpm() {
-  ON_CALL(*this, EncryptBlob(_, _, _, _, _, _))
+  ON_CALL(*this, Encrypt(_, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::Xor));
-  ON_CALL(*this, DecryptBlob(_, _, _, _, _, _))
+  ON_CALL(*this, Decrypt(_, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::Xor));
+  ON_CALL(*this, IsConnected())
+      .WillByDefault(Return(true));
   ON_CALL(*this, Connect(_))
       .WillByDefault(Return(true));
   ON_CALL(*this, GetPublicKey(_, _))
       .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
-  ON_CALL(*this, GetPublicKeyHash(_, _, _))
+  ON_CALL(*this, GetPublicKeyHash(_))
       .WillByDefault(Return(Tpm::Fatal));
+  ON_CALL(*this, Init(_, _))
+      .WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementPublicKey(_))
       .WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementCredential(_))
