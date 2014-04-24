@@ -11,6 +11,8 @@
 #include "cpu_info_parser.h"
 #include "process_with_output.h"
 
+using base::StringPrintf;
+
 namespace {
 
 // Location of quipper on ChromeOS.

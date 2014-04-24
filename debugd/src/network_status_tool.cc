@@ -8,6 +8,8 @@
 
 #include "process_with_output.h"
 
+using base::StringPrintf;
+
 namespace debugd {
 
 NetworkStatusTool::NetworkStatusTool() { }

@@ -6,6 +6,8 @@
 
 #include "process_with_id.h"
 
+using base::StringPrintf;
+
 namespace debugd {
 
 const char* kMemtesterpath = "/usr/sbin/memtester";

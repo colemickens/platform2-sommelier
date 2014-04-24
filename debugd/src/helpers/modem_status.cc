@@ -17,6 +17,7 @@
 
 using base::DictionaryValue;
 using base::ListValue;
+using base::Value;
 
 // These are lifted from modemmanager's XML files, since dbus-c++ currently
 // doesn't emit constants for enums defined in headers.

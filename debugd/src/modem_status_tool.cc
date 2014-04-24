@@ -8,6 +8,7 @@
 
 #include "process_with_output.h"
 
+using base::StringPrintf;
 using std::string;
 
 namespace debugd {

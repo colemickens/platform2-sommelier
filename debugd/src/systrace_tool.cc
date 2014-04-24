@@ -11,6 +11,8 @@
 
 #include "process_with_output.h"
 
+using base::StringPrintf;
+
 namespace debugd {
 
 extern const char *kDebugfsGroup;

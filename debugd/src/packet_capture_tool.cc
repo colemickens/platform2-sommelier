@@ -8,6 +8,8 @@
 
 #include "process_with_id.h"
 
+using base::StringPrintf;
+
 namespace debugd {
 
 PacketCaptureTool::PacketCaptureTool() : SubprocessTool() { }

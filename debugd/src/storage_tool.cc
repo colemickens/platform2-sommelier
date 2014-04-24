@@ -7,6 +7,8 @@
 #include "process_with_output.h"
 #include "process_with_id.h"
 
+using base::StringPrintf;
+
 namespace debugd {
 
 const char* kSmartctl = "/usr/sbin/smartctl";
