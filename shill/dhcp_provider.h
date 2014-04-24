@@ -35,7 +35,8 @@ class ProxyFactory;
 //                                           minimal_config)->Request();
 class DHCPProvider {
  public:
-  static const char kDHCPCDPathFormatLease[];
+  static constexpr char kDHCPCDPathFormatLease[] =
+      "var/lib/dhcpcd/dhcpcd-%s.lease";
 
   virtual ~DHCPProvider();
 

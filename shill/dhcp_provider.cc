@@ -22,8 +22,7 @@ namespace {
 base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const char DHCPProvider::kDHCPCDPathFormatLease[] =
-    "var/lib/dhcpcd/dhcpcd-%s.lease";
+constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
 
 DHCPProvider::DHCPProvider()
     : proxy_factory_(ProxyFactory::GetInstance()),
