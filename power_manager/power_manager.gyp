@@ -1,7 +1,4 @@
 {
-  'variables': {
-    'libbase_ver': 242728,
-  },
   'target_defaults': {
     'variables': {
       'deps': [
