@@ -55,6 +55,7 @@ class DBusManager : public base::SupportsWeakPtr<DBusManager> {
   friend class DBusManagerTest;
   friend class ModemInfoTest;
   friend class ModemManagerTest;
+  friend class PowerManagerTest;
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
   FRIEND_TEST(DBusManagerTest, NameWatchers);

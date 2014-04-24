@@ -7,13 +7,19 @@
 #include <map>
 #include <string>
 
+#include <base/bind.h>
 #include <base/stl_util.h>
+#include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus_manager.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
 
+using base::Bind;
+using base::TimeDelta;
+using base::Unretained;
 using std::map;
 using std::string;
 
@@ -30,10 +36,18 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
 PowerManager::~PowerManager() {
 }
 
+void PowerManager::Start(DBusManager *dbus_manager) {
+  power_manager_name_watcher_.reset(
+      dbus_manager->CreateNameWatcher(
+          power_manager::kPowerManagerServiceName,
+          Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
+          Bind(&PowerManager::OnPowerManagerVanished, Unretained(this))));
+}
+
 bool PowerManager::AddSuspendDelay(
-    const std::string &key,
-    const std::string &description,
-    base::TimeDelta timeout,
+    const string &key,
+    const string &description,
+    TimeDelta timeout,
     const SuspendImminentCallback &imminent_callback,
     const SuspendDoneCallback &done_callback) {
   CHECK(!imminent_callback.is_null());
@@ -46,11 +60,14 @@ bool PowerManager::AddSuspendDelay(
 
   int delay_id = 0;
   if (!power_manager_proxy_->RegisterSuspendDelay(
-           timeout, description, &delay_id)) {
+          timeout, description, &delay_id)) {
     return false;
   }
 
   SuspendDelay delay;
+  delay.key = key;
+  delay.description = description;
+  delay.timeout = timeout;
   delay.imminent_callback = imminent_callback;
   delay.done_callback = done_callback;
   delay.delay_id = delay_id;
@@ -58,13 +75,15 @@ bool PowerManager::AddSuspendDelay(
   return true;
 }
 
-bool PowerManager::RemoveSuspendDelay(const std::string &key) {
+bool PowerManager::RemoveSuspendDelay(const string &key) {
   SuspendDelayMap::const_iterator it = suspend_delays_.find(key);
   if (it == suspend_delays_.end()) {
-    LOG(ERROR) << "Ignoring unregistered key " << key;
+    LOG(ERROR) << "Ignoring unknown key " << key;
     return false;
   }
 
+  // We may attempt to unregister with a stale |delay_id| if powerd has
+  // reappeared behind our back. It is safe to do so.
   if (!power_manager_proxy_->UnregisterSuspendDelay(it->second.delay_id)) {
     return false;
   }
@@ -73,13 +92,14 @@ bool PowerManager::RemoveSuspendDelay(const std::string &key) {
   return true;
 }
 
-bool PowerManager::ReportSuspendReadiness(const std::string &key,
+bool PowerManager::ReportSuspendReadiness(const string &key,
                                           int suspend_id) {
   SuspendDelayMap::const_iterator it = suspend_delays_.find(key);
   if (it == suspend_delays_.end()) {
-    LOG(ERROR) << "Ignoring unregistered key " << key;
+    LOG(ERROR) << "Ignoring unknown key " << key;
     return false;
   }
+
   return power_manager_proxy_->ReportSuspendReadiness(
       it->second.delay_id, suspend_id);
 }
@@ -97,6 +117,8 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
   dispatcher_->PostDelayedTask(suspend_timeout_.callback(),
                                kSuspendTimeoutMilliseconds);
 
+  // Forward the message to all in |suspend_delays_|, whether or not they are
+  // registered.
   for (SuspendDelayMap::const_iterator it = suspend_delays_.begin();
        it != suspend_delays_.end(); ++it) {
     SuspendImminentCallback callback = it->second.imminent_callback;
@@ -109,6 +131,8 @@ void PowerManager::OnSuspendDone(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   suspend_timeout_.Cancel();
   suspending_ = false;
+  // Forward the message to all in |suspend_delays_|, whether or not they are
+  // registered.
   for (SuspendDelayMap::const_iterator it = suspend_delays_.begin();
        it != suspend_delays_.end(); ++it) {
     SuspendDoneCallback callback = it->second.done_callback;
@@ -120,6 +144,35 @@ void PowerManager::OnSuspendDone(int suspend_id) {
 void PowerManager::OnSuspendTimeout(int suspend_id) {
   LOG(ERROR) << "Suspend timed out -- assuming power-on state.";
   OnSuspendDone(suspend_id);
+}
+
+void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
+                                          const string &/*owner*/) {
+  for (SuspendDelayMap::iterator it = suspend_delays_.begin();
+       it != suspend_delays_.end(); ++it) {
+    SuspendDelay &delay = it->second;
+    // Attempt to unregister a stale suspend delay. This guards against a race
+    // where |AddSuspendDelay| managed to register a suspend delay with the
+    // newly appeared powerd instance before this function had a chance to
+    // run.
+    ignore_result(power_manager_proxy_->UnregisterSuspendDelay(delay.delay_id));
+
+    int delay_id = delay.delay_id;
+    if (!power_manager_proxy_->RegisterSuspendDelay(
+            delay.timeout, delay.description, &delay_id)) {
+      // In case of failure, we leave |delay| unchanged.
+      // We will retry re-registering this delay whenever
+      // |OnPowerManagerAppeared| is called next. In the meantime, this |delay|
+      // will be handled as if we had not received a notification for powerd's
+      // restart.
+      continue;
+    }
+    delay.delay_id = delay_id;
+  }
+}
+
+void PowerManager::OnPowerManagerVanished(const string &/*name*/) {
+  LOG(INFO) << "powerd vanished.";
 }
 
 }  // namespace shill

@@ -200,6 +200,7 @@ void Manager::Start() {
 
   power_manager_.reset(
       new PowerManager(dispatcher_, ProxyFactory::GetInstance()));
+  power_manager_->Start(dbus_manager());
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));

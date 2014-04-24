@@ -20,6 +20,8 @@
 
 namespace shill {
 
+class DBusManager;
+class DBusNameWatcher;
 class EventDispatcher;
 class ProxyFactory;
 
@@ -40,11 +42,15 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
+  // Note: |Start| should be called to initialize this object before using it.
   PowerManager(EventDispatcher *dispatcher,
                ProxyFactory *proxy_factory);
   virtual ~PowerManager();
 
   bool suspending() const { return suspending_; }
+
+  // Requires a |DBusManager| that has been |Start|'ed.
+  void Start(DBusManager *dbus_manager);
 
   // Registers a suspend delay with the power manager under the unique name
   // |key|.  See PowerManagerProxyInterface::RegisterSuspendDelay() for
@@ -77,6 +83,9 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // Information about a suspend delay added via AddSuspendDelay().
   struct SuspendDelay {
+    std::string key;
+    std::string description;
+    base::TimeDelta timeout;
     SuspendImminentCallback imminent_callback;
     SuspendDoneCallback done_callback;
     int delay_id;
@@ -89,11 +98,18 @@ class PowerManager : public PowerManagerProxyDelegate {
   // never arrives.
   void OnSuspendTimeout(int suspend_id);
 
+  // These functions track the power_manager daemon appearing/vanishing from the
+  // DBus connection.
+  void OnPowerManagerAppeared(const std::string &name,
+                              const std::string &owner);
+  void OnPowerManagerVanished(const std::string &name);
+
   EventDispatcher *dispatcher_;
 
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.
   const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
+  scoped_ptr<DBusNameWatcher> power_manager_name_watcher_;
   SuspendDelayMap suspend_delays_;
   base::CancelableClosure suspend_timeout_;
 
