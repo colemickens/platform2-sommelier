@@ -5,16 +5,9 @@
 #ifndef CHROMEOS_CRYPTOHOME_H_
 #define CHROMEOS_CRYPTOHOME_H_
 
-#if BASE_VER >= 242728
-#include <base/files/file_path.h>
-#else
-#include <base/file_path.h>
-#endif
 #include <string>
 
-#if BASE_VER >= 242728
-using base::FilePath;
-#endif
+#include <base/files/file_path.h>
 
 namespace chromeos {
 namespace cryptohome {
@@ -24,27 +17,28 @@ const char kGuestUserName[] = "$guest";
 
 // Returns the common prefix under which the mount points for user homes are
 // created.
-FilePath GetUserPathPrefix();
+base::FilePath GetUserPathPrefix();
 
 // Returns the common prefix under which the mount points for root homes are
 // created.
-FilePath GetRootPathPrefix();
+base::FilePath GetRootPathPrefix();
 
 // Returns the path at which the user home for |username| will be mounted.
 // Returns "" for failures.
-FilePath GetUserPath(const std::string& username);
+base::FilePath GetUserPath(const std::string& username);
 
 // Returns the path at which the user home for |hashed_username| will be
 // mounted. Useful when you already have the username hashed.
 // Returns "" for failures.
-FilePath GetHashedUserPath(const std::string& hashed_username);
+base::FilePath GetHashedUserPath(const std::string& hashed_username);
 
 // Returns the path at which the root home for |username| will be mounted.
 // Returns "" for failures.
-FilePath GetRootPath(const std::string& username);
+base::FilePath GetRootPath(const std::string& username);
 
 // Returns the path at which the daemon |daemon| should store per-user data.
-FilePath GetDaemonPath(const std::string& username, const std::string& daemon);
+base::FilePath GetDaemonPath(const std::string& username,
+                             const std::string& daemon);
 
 // Checks whether |sanitized| has the format of a sanitized username.
 bool IsSanitizedUserName(const std::string& sanitized);

@@ -8,16 +8,8 @@
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus.h>
 
-#include "base/logging.h"
-#if BASE_VER >= 242728
-#include "base/strings/stringprintf.h"
-#else
-#include "base/stringprintf.h"
-#endif
-
-#if BASE_VER >= 242728
-using base::StringPrintf;
-#endif
+#include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 namespace chromeos {
 namespace dbus {
@@ -301,8 +293,8 @@ SignalWatcher::~SignalWatcher() {
 }
 
 std::string SignalWatcher::GetDBusMatchString() const {
-  return StringPrintf("type='signal', interface='%s', member='%s'",
-                      interface_.c_str(), signal_.c_str());
+  return base::StringPrintf("type='signal', interface='%s', member='%s'",
+                            interface_.c_str(), signal_.c_str());
 }
 
 /* static */

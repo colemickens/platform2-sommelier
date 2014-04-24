@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "device_policy_impl.h"
+#include "chromeos/policy/device_policy_impl.h"
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
@@ -15,14 +15,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 
-#if BASE_VER >= 242728
-using base::PathExists;
-using base::ReadFileToString;
-#else
-using file_util::PathExists;
-using file_util::ReadFileToString;
-#endif
-
 namespace policy {
 
 namespace {
@@ -31,11 +23,12 @@ const char kPublicKeyPath[] = "/var/lib/whitelist/owner.key";
 
 // Reads the public key used to sign the policy from |key_file| and stores it
 // in |public_key|. Returns true on success.
-bool ReadPublicKeyFromFile(const FilePath& key_file, std::string* public_key) {
-  if (!PathExists(key_file))
+bool ReadPublicKeyFromFile(const base::FilePath& key_file,
+                           std::string* public_key) {
+  if (!base::PathExists(key_file))
     return false;
   public_key->clear();
-  if (!ReadFileToString(key_file, public_key) || public_key->empty()) {
+  if (!base::ReadFileToString(key_file, public_key) || public_key->empty()) {
     LOG(ERROR) << "Could not read public key off disk";
     return false;
   }
@@ -115,7 +108,7 @@ bool DevicePolicyImpl::LoadPolicy() {
   }
 
   std::string polstr;
-  if (!ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
+  if (!base::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
     LOG(ERROR) << "Could not read policy off disk";
     return false;
   }
@@ -444,7 +437,7 @@ bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
 
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
-  if (!PathExists(policy_path_) || !PathExists(keyfile_path_)) {
+  if (!base::PathExists(policy_path_) || !base::PathExists(keyfile_path_)) {
     return false;
   }
 
@@ -468,7 +461,7 @@ bool DevicePolicyImpl::VerifyPolicySignature() {
     std::string policy_data = policy_.policy_data();
     std::string policy_data_signature = policy_.policy_data_signature();
     std::string public_key;
-    if (!ReadPublicKeyFromFile(FilePath(keyfile_path_), &public_key)) {
+    if (!ReadPublicKeyFromFile(base::FilePath(keyfile_path_), &public_key)) {
       LOG(ERROR) << "Could not read owner key off disk";
       return false;
     }

@@ -13,18 +13,9 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#if BASE_VER >= 242728
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#else
-#include <base/string_util.h>
-#include <base/stringprintf.h>
-#endif
 #include <gtest/gtest_prod.h>
-
-#if BASE_VER >= 242728
-using base::StringPrintf;
-#endif
 
 namespace chromeos {
 // Manages a process.  Can create the process, attach to an existing
@@ -53,7 +44,7 @@ class Process {
   // value to the command line to be run.
   inline void AddIntOption(const std::string& option, int value) {
     AddArg(option);
-    AddArg(StringPrintf("%d", value));
+    AddArg(base::StringPrintf("%d", value));
   }
 
   // Redirects stderr and stdout to |output_file|.

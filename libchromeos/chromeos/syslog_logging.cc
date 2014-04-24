@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <chromeos/syslog_logging.h>
+#include "chromeos/syslog_logging.h"
+
+#include <syslog.h>
 
 #include <string>
-#include <syslog.h>
 
 // syslog.h and base/logging.h both try to #define LOG_INFO and LOG_WARNING.
 // We need to #undef at least these two before including base/logging.h.  The
@@ -88,19 +89,11 @@ int GetLogFlags() {
   return flags;
 }
 void InitLog(int init_flags) {
-#if BASE_VER >= 242728
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   settings.dcheck_state =
       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS;
   logging::InitLogging(settings);
-#else
-  logging::InitLogging("/dev/null",
-                       logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
-#endif
   logging::SetLogMessageHandler(HandleMessage);
   SetLogFlags(init_flags);
 }

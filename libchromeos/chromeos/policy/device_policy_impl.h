@@ -9,21 +9,13 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#if BASE_VER >= 242728
 #include <base/files/file_path.h>
-#else
-#include <base/file_path.h>
-#endif
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "device_policy.h"
 
 #pragma GCC visibility push(default)
-
-#if BASE_VER >= 242728
-using base::FilePath;
-#endif
 
 namespace policy {
 
@@ -74,8 +66,8 @@ class DevicePolicyImpl : public DevicePolicy {
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles();
 
-  FilePath policy_path_;
-  FilePath keyfile_path_;
+  base::FilePath policy_path_;
+  base::FilePath keyfile_path_;
 
  private:
   // Verifies that the policy signature is correct.

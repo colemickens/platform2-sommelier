@@ -2,23 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-#include <gtest/gtest.h>
+#include "chromeos/policy/libpolicy.h"
+
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#if BASE_VER >= 242728
 #include <base/files/file_path.h>
-#else
-#include <base/file_path.h>
-#endif
+#include <base/logging.h>
+#include <gtest/gtest.h>
 
-#include <chromeos/policy/device_policy_impl.h>
-#include <chromeos/policy/libpolicy.h>
-
-#if BASE_VER >= 242728
-using base::FilePath;
-#endif
+#include "chromeos/policy/device_policy_impl.h"
 
 namespace policy {
 
@@ -34,8 +27,8 @@ static const char kKeyFile[] = "chromeos/policy/tests/whitelist/owner.key";
 // class.
 class MockDevicePolicyImpl : public DevicePolicyImpl {
  public:
-  MockDevicePolicyImpl(const FilePath& policy_path,
-                       const FilePath& keyfile_path,
+  MockDevicePolicyImpl(const base::FilePath& policy_path,
+                       const base::FilePath& keyfile_path,
                        bool verify_files)
       : verify_files_(verify_files) {
     policy_path_ = policy_path;
@@ -54,8 +47,8 @@ class MockDevicePolicyImpl : public DevicePolicyImpl {
 // Test that a policy file can be verified and parsed correctly. The file
 // contains all possible fields, so reading should succeed for all.
 TEST(PolicyTest, DevicePolicyAllSetTest) {
-  FilePath policy_file(kPolicyFileAllSet);
-  FilePath key_file(kKeyFile);
+  base::FilePath policy_file(kPolicyFileAllSet);
+  base::FilePath key_file(kKeyFile);
   MockDevicePolicyImpl* device_policy =
       new MockDevicePolicyImpl(policy_file, key_file, false);
   PolicyProvider provider(device_policy);
@@ -176,8 +169,8 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
 // Test that a policy file can be verified and parsed correctly. The file
 // contains none of the possible fields, so reading should fail for all.
 TEST(PolicyTest, DevicePolicyNoneSetTest) {
-  FilePath policy_file(kPolicyFileNoneSet);
-  FilePath key_file(kKeyFile);
+  base::FilePath policy_file(kPolicyFileNoneSet);
+  base::FilePath key_file(kKeyFile);
   MockDevicePolicyImpl* device_policy =
       new MockDevicePolicyImpl(policy_file, key_file, false);
   PolicyProvider provider(device_policy);
@@ -224,7 +217,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
 TEST(PolicyTest, DevicePolicyFailure) {
   LOG(INFO) << "Errors expected.";
   // Try loading non-existing protobuf should fail.
-  FilePath non_existing("this_file_is_doof");
+  base::FilePath non_existing("this_file_is_doof");
   MockDevicePolicyImpl* device_policy =
       new MockDevicePolicyImpl(non_existing, non_existing, true);
   PolicyProvider provider(device_policy);

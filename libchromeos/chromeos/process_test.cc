@@ -2,29 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <chromeos/process.h>
-#include <chromeos/process_mock.h>
-#include <chromeos/test_helpers.h>
-
-#include <base/file_util.h>
-#include <gtest/gtest.h>
+#include "chromeos/process.h"
 
 #include <unistd.h>
 
-#if BASE_VER >= 242728
+#include <base/file_util.h>
 #include <base/files/file_path.h>
-#endif
+#include <gtest/gtest.h>
 
-#if BASE_VER >= 242728
-using base::CreateDirectory;
+#include "chromeos/process_mock.h"
+#include "chromeos/test_helpers.h"
+
 using base::FilePath;
-using base::PathExists;
-using base::ReadFileToString;
-#else
-using file_util::CreateDirectory;
-using file_util::PathExists;
-using file_util::ReadFileToString;
-#endif
 
 // This test assumes the following standard binaries are installed.
 static const char kBinBash[] = "/bin/bash";
@@ -72,22 +61,14 @@ class ProcessTest : public ::testing::Test {
   void SetUp() {
     test_path_ = FilePath("test");
     output_file_ = test_path_.Append("fork_out").value();
-#if BASE_VER >= 242728
     base::DeleteFile(test_path_, true);
-#else
-    file_util::Delete(test_path_, true);
-#endif
-    CreateDirectory(test_path_);
+    base::CreateDirectory(test_path_);
     process_.RedirectOutput(output_file_);
     ClearLog();
   }
 
   void TearDown() {
-#if BASE_VER >= 242728
     base::DeleteFile(test_path_, true);
-#else
-    file_util::Delete(test_path_, true);
-#endif
   }
 
  protected:
@@ -138,9 +119,9 @@ TEST_F(ProcessTest, BadOutputFile) {
 TEST_F(ProcessTest, ExistingOutputFile) {
   process_.AddArg(kBinEcho);
   process_.AddArg("hello world");
-  EXPECT_FALSE(PathExists(FilePath(output_file_)));
+  EXPECT_FALSE(base::PathExists(FilePath(output_file_)));
   EXPECT_EQ(0, process_.Run());
-  EXPECT_TRUE(PathExists(FilePath(output_file_)));
+  EXPECT_TRUE(base::PathExists(FilePath(output_file_)));
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
 }
 
@@ -153,7 +134,7 @@ void ProcessTest::CheckStderrCaptured() {
   std::string contents;
   process_.AddArg(kBinCp);
   EXPECT_EQ(1, process_.Run());
-  EXPECT_TRUE(ReadFileToString(FilePath(output_file_), &contents));
+  EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
   EXPECT_NE(std::string::npos, contents.find("missing file operand"));
   EXPECT_EQ("", GetLog());
 }
@@ -170,7 +151,7 @@ TEST_F(ProcessTest, StderrCapturedWhenPreviouslyClosed) {
 }
 
 FilePath ProcessTest::GetFdPath(int fd) {
-  return FilePath(StringPrintf("/proc/self/fd/%d", fd));
+  return FilePath(base::StringPrintf("/proc/self/fd/%d", fd));
 }
 
 TEST_F(ProcessTest, RedirectStderrUsingPipe) {
@@ -184,7 +165,7 @@ TEST_F(ProcessTest, RedirectStderrUsingPipe) {
   EXPECT_GE(pipe_fd, 0);
   EXPECT_EQ(-1, process_.GetPipe(STDOUT_FILENO));
   EXPECT_EQ(-1, process_.GetPipe(STDIN_FILENO));
-  EXPECT_TRUE(ReadFileToString(GetFdPath(pipe_fd), &contents));
+  EXPECT_TRUE(base::ReadFileToString(GetFdPath(pipe_fd), &contents));
   EXPECT_NE(std::string::npos, contents.find("missing file operand"));
   EXPECT_EQ("", GetLog());
 }
@@ -212,7 +193,7 @@ TEST_F(ProcessTest, RedirectStdoutUsingPipe) {
   EXPECT_GE(pipe_fd, 0);
   EXPECT_EQ(-1, process_.GetPipe(STDERR_FILENO));
   EXPECT_EQ(-1, process_.GetPipe(STDIN_FILENO));
-  EXPECT_TRUE(ReadFileToString(GetFdPath(pipe_fd), &contents));
+  EXPECT_TRUE(base::ReadFileToString(GetFdPath(pipe_fd), &contents));
   EXPECT_NE(std::string::npos, contents.find("hello world\n"));
   EXPECT_EQ("", GetLog());
 }
@@ -253,7 +234,7 @@ TEST_F(ProcessTest, WithIllegalUid) {
   process_.SetUid(0);
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
   std::string contents;
-  EXPECT_TRUE(ReadFileToString(FilePath(output_file_), &contents));
+  EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
   EXPECT_NE(std::string::npos,
             contents.find("Unable to set UID to 0: 1\n"));
 }
@@ -264,7 +245,7 @@ TEST_F(ProcessTest, WithIllegalGid) {
   process_.SetGid(0);
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
   std::string contents;
-  EXPECT_TRUE(ReadFileToString(FilePath(output_file_), &contents));
+  EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
   EXPECT_NE(std::string::npos,
             contents.find("Unable to set GID to 0: 1\n"));
 }
