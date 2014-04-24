@@ -19,6 +19,8 @@ using std::tr1::shared_ptr;
 
 namespace shill {
 
+static const char kMetricPrefix[] = "Network.Shill";
+
 // static
 // Our disconnect enumeration values are 0 (System Disconnect) and
 // 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
@@ -29,93 +31,81 @@ namespace shill {
 // Max=2 and NumBuckets=3 gives us the following three buckets:
 // [0-1), [1-2), [2-INT_MAX).  We end up with an extra bucket [2-INT_MAX)
 // that we can safely ignore.
-const char Metrics::kMetricDisconnect[] = "Network.Shill.%s.Disconnect";
+const char Metrics::kMetricDisconnectSuffix[] = "Disconnect";
 const int Metrics::kMetricDisconnectMax = 2;
 const int Metrics::kMetricDisconnectMin = 1;
 const int Metrics::kMetricDisconnectNumBuckets = 3;
 
-const char Metrics::kMetricSignalAtDisconnect[] =
-    "Network.Shill.%s.SignalAtDisconnect";
+const char Metrics::kMetricSignalAtDisconnectSuffix[] = "SignalAtDisconnect";
 const int Metrics::kMetricSignalAtDisconnectMin = 0;
 const int Metrics::kMetricSignalAtDisconnectMax = 200;
 const int Metrics::kMetricSignalAtDisconnectNumBuckets = 40;
 
-const char Metrics::kMetricNetworkApMode[] = "Network.Shill.%s.ApMode";
-const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
+const char Metrics::kMetricNetworkApModeSuffix[] = "ApMode";
+const char Metrics::kMetricNetworkChannelSuffix[] = "Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
-const char Metrics::kMetricNetworkEapInnerProtocol[] =
-    "Network.Shill.%s.EapInnerProtocol";
+const char Metrics::kMetricNetworkEapInnerProtocolSuffix[] = "EapInnerProtocol";
 const int Metrics::kMetricNetworkEapInnerProtocolMax =
     Metrics::kEapInnerProtocolMax;
-const char Metrics::kMetricNetworkEapOuterProtocol[] =
-    "Network.Shill.%s.EapOuterProtocol";
+const char Metrics::kMetricNetworkEapOuterProtocolSuffix[] = "EapOuterProtocol";
 const int Metrics::kMetricNetworkEapOuterProtocolMax =
     Metrics::kEapOuterProtocolMax;
-const char Metrics::kMetricNetworkPhyMode[] = "Network.Shill.%s.PhyMode";
+const char Metrics::kMetricNetworkPhyModeSuffix[] = "PhyMode";
 const int Metrics::kMetricNetworkPhyModeMax = Metrics::kWiFiNetworkPhyModeMax;
-const char Metrics::kMetricNetworkSecurity[] = "Network.Shill.%s.Security";
+const char Metrics::kMetricNetworkSecuritySuffix[] = "Security";
 const int Metrics::kMetricNetworkSecurityMax = Metrics::kWiFiSecurityMax;
 const char Metrics::kMetricNetworkServiceErrors[] =
     "Network.Shill.ServiceErrors";
 const int Metrics::kMetricNetworkServiceErrorsMax = Service::kFailureMax;
-const char Metrics::kMetricNetworkSignalStrength[] =
-     "Network.Shill.%s.SignalStrength";
+const char Metrics::kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
 const int Metrics::kMetricNetworkSignalStrengthMax = 200;
 const int Metrics::kMetricNetworkSignalStrengthMin = 0;
 const int Metrics::kMetricNetworkSignalStrengthNumBuckets = 40;
 
-const char Metrics::kMetricTimeOnlineSeconds[] = "Network.Shill.%s.TimeOnline";
+const char Metrics::kMetricTimeOnlineSecondsSuffix[] = "TimeOnline";
 const int Metrics::kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeOnlineSecondsMin = 1;
 
-const char Metrics::kMetricTimeToConnectMilliseconds[] =
-    "Network.Shill.%s.TimeToConnect";
+const char Metrics::kMetricTimeToConnectMillisecondsSuffix[] = "TimeToConnect";
 const int Metrics::kMetricTimeToConnectMillisecondsMax =
     60 * 1000;  // 60 seconds
 const int Metrics::kMetricTimeToConnectMillisecondsMin = 1;
 const int Metrics::kMetricTimeToConnectMillisecondsNumBuckets = 60;
 
-const char Metrics::kMetricTimeToScanAndConnectMilliseconds[] =
-    "Network.Shill.%s.TimeToScanAndConnect";
+const char Metrics::kMetricTimeToScanAndConnectMillisecondsSuffix[] =
+    "TimeToScanAndConnect";
 
 const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
 
-const char Metrics::kMetricTimeToDisableMilliseconds[] =
-    "Network.Shill.%s.TimeToDisable";
+const char Metrics::kMetricTimeToDisableMillisecondsSuffix[] = "TimeToDisable";
 const int Metrics::kMetricTimeToDisableMillisecondsMax =
     60 * 1000;  // 60 seconds
 const int Metrics::kMetricTimeToDisableMillisecondsMin = 1;
 const int Metrics::kMetricTimeToDisableMillisecondsNumBuckets = 60;
 
-const char Metrics::kMetricTimeToEnableMilliseconds[] =
-    "Network.Shill.%s.TimeToEnable";
+const char Metrics::kMetricTimeToEnableMillisecondsSuffix[] = "TimeToEnable";
 const int Metrics::kMetricTimeToEnableMillisecondsMax =
     60 * 1000;  // 60 seconds
 const int Metrics::kMetricTimeToEnableMillisecondsMin = 1;
 const int Metrics::kMetricTimeToEnableMillisecondsNumBuckets = 60;
 
-const char Metrics::kMetricTimeToInitializeMilliseconds[] =
-    "Network.Shill.%s.TimeToInitialize";
+const char Metrics::kMetricTimeToInitializeMillisecondsSuffix[] =
+    "TimeToInitialize";
 const int Metrics::kMetricTimeToInitializeMillisecondsMax =
     30 * 1000;  // 30 seconds
 const int Metrics::kMetricTimeToInitializeMillisecondsMin = 1;
 const int Metrics::kMetricTimeToInitializeMillisecondsNumBuckets = 30;
 
-const char Metrics::kMetricTimeResumeToReadyMilliseconds[] =
-    "Network.Shill.%s.TimeResumeToReady";
-const char Metrics::kMetricTimeToConfigMilliseconds[] =
-    "Network.Shill.%s.TimeToConfig";
-const char Metrics::kMetricTimeToJoinMilliseconds[] =
-    "Network.Shill.%s.TimeToJoin";
-const char Metrics::kMetricTimeToOnlineMilliseconds[] =
-    "Network.Shill.%s.TimeToOnline";
-const char Metrics::kMetricTimeToPortalMilliseconds[] =
-    "Network.Shill.%s.TimeToPortal";
+const char Metrics::kMetricTimeResumeToReadyMillisecondsSuffix[] =
+    "TimeResumeToReady";
+const char Metrics::kMetricTimeToConfigMillisecondsSuffix[] = "TimeToConfig";
+const char Metrics::kMetricTimeToJoinMillisecondsSuffix[] = "TimeToJoin";
+const char Metrics::kMetricTimeToOnlineMillisecondsSuffix[] = "TimeToOnline";
+const char Metrics::kMetricTimeToPortalMillisecondsSuffix[] = "TimeToPortal";
 
-const char Metrics::kMetricTimeToScanMilliseconds[] =
-    "Network.Shill.%s.TimeToScan";
+const char Metrics::kMetricTimeToScanMillisecondsSuffix[] = "TimeToScan";
 const int Metrics::kMetricTimeToScanMillisecondsMax = 180 * 1000;  // 3 minutes
 const int Metrics::kMetricTimeToScanMillisecondsMin = 1;
 const int Metrics::kMetricTimeToScanMillisecondsNumBuckets = 90;
@@ -124,21 +114,20 @@ const int Metrics::kTimerHistogramMillisecondsMax = 45 * 1000;
 const int Metrics::kTimerHistogramMillisecondsMin = 1;
 const int Metrics::kTimerHistogramNumBuckets = 50;
 
-const char Metrics::kMetricPortalAttempts[] =
-    "Network.Shill.%s.PortalAttempts";
+const char Metrics::kMetricPortalAttemptsSuffix[] = "PortalAttempts";
 const int Metrics::kMetricPortalAttemptsMax =
     PortalDetector::kMaxRequestAttempts;
 const int Metrics::kMetricPortalAttemptsMin = 1;
 const int Metrics::kMetricPortalAttemptsNumBuckets =
     Metrics::kMetricPortalAttemptsMax;
 
-const char Metrics::kMetricPortalAttemptsToOnline[] =
-    "Network.Shill.%s.PortalAttemptsToOnline";
+const char Metrics::kMetricPortalAttemptsToOnlineSuffix[] =
+    "PortalAttemptsToOnline";
 const int Metrics::kMetricPortalAttemptsToOnlineMax = 100;
 const int Metrics::kMetricPortalAttemptsToOnlineMin = 1;
 const int Metrics::kMetricPortalAttemptsToOnlineNumBuckets = 10;
 
-const char Metrics::kMetricPortalResult[] = "Network.Shill.%s.PortalResult";
+const char Metrics::kMetricPortalResultSuffix[] = "PortalResult";
 
 const char Metrics::kMetricFrequenciesConnectedEver[] =
     "Network.Shill.WiFi.FrequenciesConnectedEver";
@@ -163,8 +152,7 @@ const int Metrics::kMetricTerminationActionTimeMillisecondsMax = 10000;
 const int Metrics::kMetricTerminationActionTimeMillisecondsMin = 1;
 
 // static
-const char Metrics::kMetricServiceFixupEntries[] =
-    "Network.Shill.%s.ServiceFixupEntries";
+const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
 
 // static
 const uint16 Metrics::kWiFiBandwidth5MHz = 5;
@@ -186,23 +174,22 @@ const uint16 Metrics::kWiFiFrequency5825 = 5825;
 const char Metrics::kMetricPowerManagerKey[] = "metrics";
 
 // static
-const char Metrics::kMetricLinkMonitorFailure[] =
-    "Network.Shill.%s.LinkMonitorFailure";
-const char Metrics::kMetricLinkMonitorResponseTimeSample[] =
-    "Network.Shill.%s.LinkMonitorResponseTimeSample";
+const char Metrics::kMetricLinkMonitorFailureSuffix[] = "LinkMonitorFailure";
+const char Metrics::kMetricLinkMonitorResponseTimeSampleSuffix[] =
+    "LinkMonitorResponseTimeSample";
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 0;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
     LinkMonitor::kDefaultTestPeriodMilliseconds;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
-const char Metrics::kMetricLinkMonitorSecondsToFailure[] =
-    "Network.Shill.%s.LinkMonitorSecondsToFailure";
+const char Metrics::kMetricLinkMonitorSecondsToFailureSuffix[] =
+    "LinkMonitorSecondsToFailure";
 const int Metrics::kMetricLinkMonitorSecondsToFailureMin = 0;
 const int Metrics::kMetricLinkMonitorSecondsToFailureMax = 7200;
 const int Metrics::kMetricLinkMonitorSecondsToFailureNumBuckets = 50;
-const char Metrics::kMetricLinkMonitorBroadcastErrorsAtFailure[] =
-    "Network.Shill.%s.LinkMonitorBroadcastErrorsAtFailure";
-const char Metrics::kMetricLinkMonitorUnicastErrorsAtFailure[] =
-    "Network.Shill.%s.LinkMonitorUnicastErrorsAtFailure";
+const char Metrics::kMetricLinkMonitorBroadcastErrorsAtFailureSuffix[] =
+    "LinkMonitorBroadcastErrorsAtFailure";
+const char Metrics::kMetricLinkMonitorUnicastErrorsAtFailureSuffix[] =
+    "LinkMonitorUnicastErrorsAtFailure";
 const int Metrics::kMetricLinkMonitorErrorCountMin = 0;
 const int Metrics::kMetricLinkMonitorErrorCountMax =
     LinkMonitor::kFailureThreshold;
@@ -266,11 +253,11 @@ const int Metrics::kMetricVpnUserAuthenticationTypeMax =
     Metrics::kVpnUserAuthenticationTypeMax;
 
 // static
-const char Metrics::kMetricDHCPOptionFailureDetected[] =
-    "Network.Shill.%s.DHCPOptionFailureDetected";
+const char Metrics::kMetricDHCPOptionFailureDetectedSuffix[] =
+    "DHCPOptionFailureDetected";
 
-const char Metrics::kMetricExpiredLeaseLengthSeconds[] =
-    "Network.Shill.%s.ExpiredLeaseLengthSeconds";
+const char Metrics::kMetricExpiredLeaseLengthSecondsSuffix[] =
+    "ExpiredLeaseLengthSeconds";
 const int Metrics::kMetricExpiredLeaseLengthSecondsMax =
     7 * 24 * 60 * 60;  // 7 days
 const int Metrics::kMetricExpiredLeaseLengthSecondsMin = 1;
@@ -554,7 +541,7 @@ void Metrics::NotifyDefaultServiceChanged(const Service *service) {
                                                   Technology::kUnknown;
   if (technology != last_default_technology_) {
     if (last_default_technology_ != Technology::kUnknown) {
-      string histogram = GetFullMetricName(kMetricTimeOnlineSeconds,
+      string histogram = GetFullMetricName(kMetricTimeOnlineSecondsSuffix,
                                            last_default_technology_);
       time_online_timer_->GetElapsedTime(&elapsed_seconds);
       SendToUMA(histogram,
@@ -617,16 +604,17 @@ void Metrics::NotifyServiceStateChanged(const Service &service,
   service.SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
 }
 
-string Metrics::GetFullMetricName(const char *metric_name,
+string Metrics::GetFullMetricName(const char *metric_suffix,
                                   Technology::Identifier technology_id) {
   string technology = Technology::NameFromIdentifier(technology_id);
   technology[0] = base::ToUpperASCII(technology[0]);
-  return base::StringPrintf(metric_name, technology.c_str());
+  return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
+                            metric_suffix);
 }
 
 void Metrics::NotifyServiceDisconnect(const Service &service) {
   Technology::Identifier technology = service.technology();
-  string histogram = GetFullMetricName(kMetricDisconnect, technology);
+  string histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
   SendToUMA(histogram,
             service.explicitly_disconnected(),
             kMetricDisconnectMin,
@@ -639,7 +627,8 @@ void Metrics::NotifySignalAtDisconnect(const Service &service,
   // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
   // seem to handle negative values well.  Now everything's positive.
   Technology::Identifier technology = service.technology();
-  string histogram = GetFullMetricName(kMetricSignalAtDisconnect, technology);
+  string histogram = GetFullMetricName(kMetricSignalAtDisconnectSuffix,
+                                       technology);
   SendToUMA(histogram,
             -signal_strength,
             kMetricSignalAtDisconnectMin,
@@ -698,7 +687,7 @@ void Metrics::NotifyLinkMonitorFailure(
     int seconds_to_failure,
     int broadcast_error_count,
     int unicast_error_count) {
-  string histogram = GetFullMetricName(kMetricLinkMonitorFailure,
+  string histogram = GetFullMetricName(kMetricLinkMonitorFailureSuffix,
                                        technology);
   SendEnumToUMA(histogram, failure, kLinkMonitorFailureMax);
 
@@ -706,22 +695,22 @@ void Metrics::NotifyLinkMonitorFailure(
     if (seconds_to_failure > kMetricLinkMonitorSecondsToFailureMax) {
       seconds_to_failure = kMetricLinkMonitorSecondsToFailureMax;
     }
-    histogram = GetFullMetricName(kMetricLinkMonitorSecondsToFailure,
+    histogram = GetFullMetricName(kMetricLinkMonitorSecondsToFailureSuffix,
                                   technology);
     SendToUMA(histogram,
               seconds_to_failure,
               kMetricLinkMonitorSecondsToFailureMin,
               kMetricLinkMonitorSecondsToFailureMax,
               kMetricLinkMonitorSecondsToFailureNumBuckets);
-    histogram = GetFullMetricName(kMetricLinkMonitorBroadcastErrorsAtFailure,
-                                  technology);
+    histogram = GetFullMetricName(
+        kMetricLinkMonitorBroadcastErrorsAtFailureSuffix, technology);
     SendToUMA(histogram,
               broadcast_error_count,
               kMetricLinkMonitorErrorCountMin,
               kMetricLinkMonitorErrorCountMax,
               kMetricLinkMonitorErrorCountNumBuckets);
-    histogram = GetFullMetricName(kMetricLinkMonitorUnicastErrorsAtFailure,
-                                  technology);
+    histogram = GetFullMetricName(
+        kMetricLinkMonitorUnicastErrorsAtFailureSuffix, technology);
     SendToUMA(histogram,
               unicast_error_count,
               kMetricLinkMonitorErrorCountMin,
@@ -733,8 +722,8 @@ void Metrics::NotifyLinkMonitorFailure(
 void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
     Technology::Identifier technology,
     int response_time_milliseconds) {
-  string histogram = GetFullMetricName(kMetricLinkMonitorResponseTimeSample,
-                                       technology);
+  string histogram = GetFullMetricName(
+      kMetricLinkMonitorResponseTimeSampleSuffix,  technology);
   SendToUMA(histogram,
             response_time_milliseconds,
             kMetricLinkMonitorResponseTimeSampleMin,
@@ -781,8 +770,8 @@ void Metrics::RegisterDevice(int interface_index,
   shared_ptr<DeviceMetrics> device_metrics(new DeviceMetrics);
   devices_metrics_[interface_index] = device_metrics;
   device_metrics->technology = technology;
-  string histogram = GetFullMetricName(kMetricTimeToInitializeMilliseconds,
-                                       technology);
+  string histogram = GetFullMetricName(
+      kMetricTimeToInitializeMillisecondsSuffix, technology);
   device_metrics->initialization_timer.reset(
       new chromeos_metrics::TimerReporter(
           histogram,
@@ -790,7 +779,7 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToInitializeMillisecondsMax,
           kMetricTimeToInitializeMillisecondsNumBuckets));
   device_metrics->initialization_timer->Start();
-  histogram = GetFullMetricName(kMetricTimeToEnableMilliseconds,
+  histogram = GetFullMetricName(kMetricTimeToEnableMillisecondsSuffix,
                                 technology);
   device_metrics->enable_timer.reset(
       new chromeos_metrics::TimerReporter(
@@ -798,7 +787,7 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToEnableMillisecondsMin,
           kMetricTimeToEnableMillisecondsMax,
           kMetricTimeToEnableMillisecondsNumBuckets));
-  histogram = GetFullMetricName(kMetricTimeToDisableMilliseconds,
+  histogram = GetFullMetricName(kMetricTimeToDisableMillisecondsSuffix,
                                 technology);
   device_metrics->disable_timer.reset(
       new chromeos_metrics::TimerReporter(
@@ -806,7 +795,7 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToDisableMillisecondsMin,
           kMetricTimeToDisableMillisecondsMax,
           kMetricTimeToDisableMillisecondsNumBuckets));
-  histogram = GetFullMetricName(kMetricTimeToScanMilliseconds,
+  histogram = GetFullMetricName(kMetricTimeToScanMillisecondsSuffix,
                                 technology);
   device_metrics->scan_timer.reset(
       new chromeos_metrics::TimerReporter(
@@ -814,7 +803,7 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToScanMillisecondsMin,
           kMetricTimeToScanMillisecondsMax,
           kMetricTimeToScanMillisecondsNumBuckets));
-  histogram = GetFullMetricName(kMetricTimeToConnectMilliseconds,
+  histogram = GetFullMetricName(kMetricTimeToConnectMillisecondsSuffix,
                                 technology);
   device_metrics->connect_timer.reset(
       new chromeos_metrics::TimerReporter(
@@ -822,7 +811,7 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToConnectMillisecondsMin,
           kMetricTimeToConnectMillisecondsMax,
           kMetricTimeToConnectMillisecondsNumBuckets));
-  histogram = GetFullMetricName(kMetricTimeToScanAndConnectMilliseconds,
+  histogram = GetFullMetricName(kMetricTimeToScanAndConnectMillisecondsSuffix,
                                 technology);
   device_metrics->scan_connect_timer.reset(
       new chromeos_metrics::TimerReporter(
@@ -1047,7 +1036,7 @@ void Metrics::NotifyCorruptedProfile() {
 
 void Metrics::NotifyDHCPOptionFailure(const Service &service) {
   Technology::Identifier technology = service.technology();
-  string histogram = GetFullMetricName(kMetricDHCPOptionFailureDetected,
+  string histogram = GetFullMetricName(kMetricDHCPOptionFailureDetectedSuffix,
                                        technology);
   SendEnumToUMA(histogram,
                 kDHCPOptionFailure,
@@ -1093,20 +1082,22 @@ bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
 
 void Metrics::InitializeCommonServiceMetrics(const Service &service) {
   Technology::Identifier technology = service.technology();
-  string histogram = GetFullMetricName(kMetricTimeToConfigMilliseconds,
+  string histogram = GetFullMetricName(kMetricTimeToConfigMillisecondsSuffix,
                                        technology);
   AddServiceStateTransitionTimer(
       service,
       histogram,
       Service::kStateConfiguring,
       Service::kStateConnected);
-  histogram = GetFullMetricName(kMetricTimeToPortalMilliseconds, technology);
+  histogram = GetFullMetricName(kMetricTimeToPortalMillisecondsSuffix,
+                                technology);
   AddServiceStateTransitionTimer(
       service,
       histogram,
       Service::kStateConnected,
       Service::kStatePortal);
-  histogram = GetFullMetricName(kMetricTimeToOnlineMilliseconds, technology);
+  histogram = GetFullMetricName(kMetricTimeToOnlineMillisecondsSuffix,
+                                technology);
   AddServiceStateTransitionTimer(
       service,
       histogram,

@@ -297,7 +297,7 @@ void EapCredentials::OutputConnectionMetrics(
   Metrics::EapOuterProtocol outer_protocol =
       Metrics::EapOuterProtocolStringToEnum(eap_);
   metrics->SendEnumToUMA(
-      metrics->GetFullMetricName(Metrics::kMetricNetworkEapOuterProtocol,
+      metrics->GetFullMetricName(Metrics::kMetricNetworkEapOuterProtocolSuffix,
                                  technology),
       outer_protocol,
       Metrics::kMetricNetworkEapOuterProtocolMax);
@@ -305,7 +305,7 @@ void EapCredentials::OutputConnectionMetrics(
   Metrics::EapInnerProtocol inner_protocol =
       Metrics::EapInnerProtocolStringToEnum(inner_eap_);
   metrics->SendEnumToUMA(
-      metrics->GetFullMetricName(Metrics::kMetricNetworkEapInnerProtocol,
+      metrics->GetFullMetricName(Metrics::kMetricNetworkEapInnerProtocolSuffix,
                                  technology),
       inner_protocol,
       Metrics::kMetricNetworkEapInnerProtocolMax);

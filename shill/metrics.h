@@ -267,61 +267,61 @@ class Metrics {
     kDHCPOptionFailureMax
   };
 
-  static const char kMetricDisconnect[];
+  static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
   static const int kMetricDisconnectNumBuckets;
-  static const char kMetricSignalAtDisconnect[];
+  static const char kMetricSignalAtDisconnectSuffix[];
   static const int kMetricSignalAtDisconnectMin;
   static const int kMetricSignalAtDisconnectMax;
   static const int kMetricSignalAtDisconnectNumBuckets;
-  static const char kMetricNetworkApMode[];
-  static const char kMetricNetworkChannel[];
+  static const char kMetricNetworkApModeSuffix[];
+  static const char kMetricNetworkChannelSuffix[];
   static const int kMetricNetworkChannelMax;
-  static const char kMetricNetworkEapInnerProtocol[];
+  static const char kMetricNetworkEapInnerProtocolSuffix[];
   static const int kMetricNetworkEapInnerProtocolMax;
-  static const char kMetricNetworkEapOuterProtocol[];
+  static const char kMetricNetworkEapOuterProtocolSuffix[];
   static const int kMetricNetworkEapOuterProtocolMax;
-  static const char kMetricNetworkPhyMode[];
+  static const char kMetricNetworkPhyModeSuffix[];
   static const int kMetricNetworkPhyModeMax;
-  static const char kMetricNetworkSecurity[];
+  static const char kMetricNetworkSecuritySuffix[];
   static const int kMetricNetworkSecurityMax;
   static const char kMetricNetworkServiceErrors[];
   static const int kMetricNetworkServiceErrorsMax;
-  static const char kMetricNetworkSignalStrength[];
+  static const char kMetricNetworkSignalStrengthSuffix[];
   static const int kMetricNetworkSignalStrengthMin;
   static const int kMetricNetworkSignalStrengthMax;
   static const int kMetricNetworkSignalStrengthNumBuckets;
-  static const char kMetricTimeOnlineSeconds[];
+  static const char kMetricTimeOnlineSecondsSuffix[];
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;
   static const int kMetricTimeOnlineSecondsNumBuckets;
-  static const char kMetricTimeResumeToReadyMilliseconds[];
-  static const char kMetricTimeToConfigMilliseconds[];
-  static const char kMetricTimeToConnectMilliseconds[];
+  static const char kMetricTimeResumeToReadyMillisecondsSuffix[];
+  static const char kMetricTimeToConfigMillisecondsSuffix[];
+  static const char kMetricTimeToConnectMillisecondsSuffix[];
   static const int kMetricTimeToConnectMillisecondsMax;
   static const int kMetricTimeToConnectMillisecondsMin;
   static const int kMetricTimeToConnectMillisecondsNumBuckets;
-  static const char kMetricTimeToScanAndConnectMilliseconds[];
+  static const char kMetricTimeToScanAndConnectMillisecondsSuffix[];
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
-  static const char kMetricTimeToDisableMilliseconds[];
+  static const char kMetricTimeToDisableMillisecondsSuffix[];
   static const int kMetricTimeToDisableMillisecondsMax;
   static const int kMetricTimeToDisableMillisecondsMin;
   static const int kMetricTimeToDisableMillisecondsNumBuckets;
-  static const char kMetricTimeToEnableMilliseconds[];
+  static const char kMetricTimeToEnableMillisecondsSuffix[];
   static const int kMetricTimeToEnableMillisecondsMax;
   static const int kMetricTimeToEnableMillisecondsMin;
   static const int kMetricTimeToEnableMillisecondsNumBuckets;
-  static const char kMetricTimeToInitializeMilliseconds[];
+  static const char kMetricTimeToInitializeMillisecondsSuffix[];
   static const int kMetricTimeToInitializeMillisecondsMax;
   static const int kMetricTimeToInitializeMillisecondsMin;
   static const int kMetricTimeToInitializeMillisecondsNumBuckets;
-  static const char kMetricTimeToJoinMilliseconds[];
-  static const char kMetricTimeToOnlineMilliseconds[];
-  static const char kMetricTimeToPortalMilliseconds[];
-  static const char kMetricTimeToScanMilliseconds[];
+  static const char kMetricTimeToJoinMillisecondsSuffix[];
+  static const char kMetricTimeToOnlineMillisecondsSuffix[];
+  static const char kMetricTimeToPortalMillisecondsSuffix[];
+  static const char kMetricTimeToScanMillisecondsSuffix[];
   static const int kMetricTimeToScanMillisecondsMax;
   static const int kMetricTimeToScanMillisecondsMin;
   static const int kMetricTimeToScanMillisecondsNumBuckets;
@@ -332,7 +332,7 @@ class Metrics {
   // The number of portal detections attempted for each pass.
   // This includes both failure/timeout attempts and successful attempt
   // (if any).
-  static const char kMetricPortalAttempts[];
+  static const char kMetricPortalAttemptsSuffix[];
   static const int kMetricPortalAttemptsMax;
   static const int kMetricPortalAttemptsMin;
   static const int kMetricPortalAttemptsNumBuckets;
@@ -340,13 +340,13 @@ class Metrics {
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
   // and the final successful attempt.
-  static const char kMetricPortalAttemptsToOnline[];
+  static const char kMetricPortalAttemptsToOnlineSuffix[];
   static const int kMetricPortalAttemptsToOnlineMax;
   static const int kMetricPortalAttemptsToOnlineMin;
   static const int kMetricPortalAttemptsToOnlineNumBuckets;
 
   // The result of the portal detection.
-  static const char kMetricPortalResult[];
+  static const char kMetricPortalResultSuffix[];
 
   // Wifi connection frequencies.
   static const char kMetricFrequenciesConnectedEver[];
@@ -360,17 +360,17 @@ class Metrics {
   static const char kMetricPowerManagerKey[];
 
   // LinkMonitor statistics.
-  static const char kMetricLinkMonitorFailure[];
-  static const char kMetricLinkMonitorResponseTimeSample[];
+  static const char kMetricLinkMonitorFailureSuffix[];
+  static const char kMetricLinkMonitorResponseTimeSampleSuffix[];
   static const int kMetricLinkMonitorResponseTimeSampleMin;
   static const int kMetricLinkMonitorResponseTimeSampleMax;
   static const int kMetricLinkMonitorResponseTimeSampleNumBuckets;
-  static const char kMetricLinkMonitorSecondsToFailure[];
+  static const char kMetricLinkMonitorSecondsToFailureSuffix[];
   static const int kMetricLinkMonitorSecondsToFailureMin;
   static const int kMetricLinkMonitorSecondsToFailureMax;
   static const int kMetricLinkMonitorSecondsToFailureNumBuckets;
-  static const char kMetricLinkMonitorBroadcastErrorsAtFailure[];
-  static const char kMetricLinkMonitorUnicastErrorsAtFailure[];
+  static const char kMetricLinkMonitorBroadcastErrorsAtFailureSuffix[];
+  static const char kMetricLinkMonitorUnicastErrorsAtFailureSuffix[];
   static const int kMetricLinkMonitorErrorCountMin;
   static const int kMetricLinkMonitorErrorCountMax;
   static const int kMetricLinkMonitorErrorCountNumBuckets;
@@ -389,7 +389,7 @@ class Metrics {
   static const int kMetricTerminationActionTimeMillisecondsMin;
 
   // WiFiService Entry Fixup.
-  static const char kMetricServiceFixupEntries[];
+  static const char kMetricServiceFixupEntriesSuffix[];
 
   // Cellular specific statistics.
   static const char kMetricCellular3GPPRegistrationDelayedDrop[];
@@ -427,11 +427,11 @@ class Metrics {
   // We have detected that a DHCP server can only deliver leases if
   // we reduce the number of options that we request of it.  This
   // implies an infrastructure issue.
-  static const char kMetricDHCPOptionFailureDetected[];
+  static const char kMetricDHCPOptionFailureDetectedSuffix[];
 
   // The length in seconds of a lease that has expired while the DHCP
   // client was attempting to renew the lease..
-  static const char kMetricExpiredLeaseLengthSeconds[];
+  static const char kMetricExpiredLeaseLengthSecondsSuffix[];
   static const int kMetricExpiredLeaseLengthSecondsMax;
   static const int kMetricExpiredLeaseLengthSecondsMin;
   static const int kMetricExpiredLeaseLengthSecondsNumBuckets;
@@ -499,8 +499,8 @@ class Metrics {
       const Service &service, const std::string &histogram_name,
       Service::ConnectState start_state, Service::ConnectState stop_state);
 
-  // Specializes |metric_name| for the specified |technology_id|.
-  std::string GetFullMetricName(const char *metric_name,
+  // Specializes |metric_suffix| for the specified |technology_id|.
+  std::string GetFullMetricName(const char *metric_suffix,
                                 Technology::Identifier technology_id);
 
   // Notifies this object that the default service has changed.

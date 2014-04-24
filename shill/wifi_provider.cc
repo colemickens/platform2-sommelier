@@ -339,7 +339,7 @@ void WiFiProvider::LoadAndFixupServiceEntries(
             Metrics::kMetricServiceFixupDefaultProfile :
             Metrics::kMetricServiceFixupUserProfile;
     metrics_->SendEnumToUMA(
-        metrics_->GetFullMetricName(Metrics::kMetricServiceFixupEntries,
+        metrics_->GetFullMetricName(Metrics::kMetricServiceFixupEntriesSuffix,
                                     Technology::kWifi),
         profile_type,
         Metrics::kMetricServiceFixupMax);

@@ -391,7 +391,7 @@ void WiFiService::ResetSuspectedCredentialFailures() {
 void WiFiService::InitializeCustomMetrics() const {
   SLOG(Metrics, 2) << __func__ << " for " << unique_name();
   string histogram = metrics()->GetFullMetricName(
-      Metrics::kMetricTimeToJoinMilliseconds,
+      Metrics::kMetricTimeToJoinMillisecondsSuffix,
       technology());
   metrics()->AddServiceStateTransitionTimer(*this,
                                             histogram,
@@ -402,14 +402,14 @@ void WiFiService::InitializeCustomMetrics() const {
 void WiFiService::SendPostReadyStateMetrics(
     int64 time_resume_to_ready_milliseconds) const {
   metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricNetworkChannel,
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkChannelSuffix,
                                    technology()),
       Metrics::WiFiFrequencyToChannel(frequency_),
       Metrics::kMetricNetworkChannelMax);
 
   DCHECK(physical_mode_ < Metrics::kWiFiNetworkPhyModeMax);
   metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricNetworkPhyMode,
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkPhyModeSuffix,
                                    technology()),
       static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode_),
       Metrics::kWiFiNetworkPhyModeMax);
@@ -422,7 +422,7 @@ void WiFiService::SendPostReadyStateMetrics(
       Metrics::WiFiSecurityStringToEnum(security_mode);
   DCHECK(security_uma != Metrics::kWiFiSecurityUnknown);
   metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricNetworkSecurity,
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkSecuritySuffix,
                                    technology()),
       security_uma,
       Metrics::kMetricNetworkSecurityMax);
@@ -435,7 +435,7 @@ void WiFiService::SendPostReadyStateMetrics(
   // cannot represent negative numbers (it stores them but cannot display
   // them), and dBm values of interest start at 0 and go negative from there.
   metrics()->SendToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricNetworkSignalStrength,
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkSignalStrengthSuffix,
                                    technology()),
       -raw_signal_strength_,
       Metrics::kMetricNetworkSignalStrengthMin,
@@ -445,7 +445,7 @@ void WiFiService::SendPostReadyStateMetrics(
   if (time_resume_to_ready_milliseconds > 0) {
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
-            Metrics::kMetricTimeResumeToReadyMilliseconds, technology()),
+            Metrics::kMetricTimeResumeToReadyMillisecondsSuffix, technology()),
         time_resume_to_ready_milliseconds,
         Metrics::kTimerHistogramMillisecondsMin,
         Metrics::kTimerHistogramMillisecondsMax,
@@ -454,7 +454,8 @@ void WiFiService::SendPostReadyStateMetrics(
 
   Metrics::WiFiApMode ap_mode_uma = Metrics::WiFiApModeStringToEnum(mode_);
   metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricNetworkApMode, technology()),
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkApModeSuffix,
+                                   technology()),
       ap_mode_uma,
       Metrics::kWiFiApModeMax);
 }

@@ -589,7 +589,7 @@ void Device::OnIPConfigFailure() {
 void Device::OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
   metrics()->SendToUMA(
       metrics()->GetFullMetricName(
-          Metrics::kMetricExpiredLeaseLengthSeconds, technology()),
+          Metrics::kMetricExpiredLeaseLengthSecondsSuffix, technology()),
       ipconfig->properties().lease_duration_seconds,
       Metrics::kMetricExpiredLeaseLengthSecondsMin,
       Metrics::kMetricExpiredLeaseLengthSecondsMax,
@@ -901,7 +901,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
   portal_attempts_to_online_ += result.num_attempts;
 
   metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricPortalResult, technology()),
+      metrics()->GetFullMetricName(Metrics::kMetricPortalResultSuffix,
+                                   technology()),
       Metrics::PortalDetectionResultToEnum(result),
       Metrics::kPortalResultMax);
 
@@ -910,7 +911,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
 
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
-            Metrics::kMetricPortalAttemptsToOnline, technology()),
+            Metrics::kMetricPortalAttemptsToOnlineSuffix, technology()),
         portal_attempts_to_online_,
         Metrics::kMetricPortalAttemptsToOnlineMin,
         Metrics::kMetricPortalAttemptsToOnlineMax,
@@ -920,7 +921,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
 
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
-            Metrics::kMetricPortalAttempts, technology()),
+            Metrics::kMetricPortalAttemptsSuffix, technology()),
         result.num_attempts,
         Metrics::kMetricPortalAttemptsMin,
         Metrics::kMetricPortalAttemptsMax,
