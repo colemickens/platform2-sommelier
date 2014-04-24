@@ -381,7 +381,7 @@ struct CharStarCopier {
   }
 
  private:
-  scoped_ptr_malloc<char> str_;
+  scoped_ptr<char, base::FreeDeleter> str_;
   DISALLOW_COPY_AND_ASSIGN(CharStarCopier);
 };
 
