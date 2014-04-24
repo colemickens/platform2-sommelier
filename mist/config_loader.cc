@@ -6,7 +6,8 @@
 
 #include <fcntl.h>
 
-#include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/posix/eintr_wrapper.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -40,7 +41,7 @@ bool ConfigLoader::LoadConfig(const FilePath& file_path) {
     return false;
   }
 
-  file_util::ScopedFD scoped_fd(&fd);
+  base::ScopedFD scoped_fd(fd);
   google::protobuf::io::FileInputStream file_stream(fd);
 
   scoped_ptr<Config> config(new Config());

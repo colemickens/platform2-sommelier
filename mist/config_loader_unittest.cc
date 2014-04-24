@@ -52,7 +52,7 @@ class ConfigLoaderTest : public testing::Test {
     if (!base::CreateTemporaryFileInDir(dir, config_file))
       return false;
 
-    if (file_util::WriteFile(*config_file, content.data(), content.size()) !=
+    if (base::WriteFile(*config_file, content.data(), content.size()) !=
         static_cast<int>(content.size())) {
       return false;
     }

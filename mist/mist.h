@@ -7,7 +7,11 @@
 
 #include <base/basictypes.h>
 
+namespace base {
+
 class CommandLine;
+
+}  // namespace base
 
 namespace mist {
 
@@ -18,7 +22,7 @@ class Mist {
 
   // Runs mist with the given command line. Returns the exit code. The ownership
   // of |command_line| is not transferred.
-  int Run(CommandLine* command_line);
+  int Run(base::CommandLine* command_line);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Mist);

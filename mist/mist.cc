@@ -66,7 +66,7 @@ Mist::Mist() {}
 
 Mist::~Mist() {}
 
-int Mist::Run(CommandLine* command_line) {
+int Mist::Run(base::CommandLine* command_line) {
   // Switch: --help
   if (command_line->HasSwitch(kSwitchHelp)) {
     cout << kUsageMessage;
@@ -83,7 +83,7 @@ int Mist::Run(CommandLine* command_line) {
   }
 
   // <command> [<arguments>]
-  CommandLine::StringVector arguments = command_line->GetArgs();
+  base::CommandLine::StringVector arguments = command_line->GetArgs();
   if (arguments.empty()) {
     cout << kUsageMessage;
     return EXIT_SUCCESS;

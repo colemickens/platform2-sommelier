@@ -9,6 +9,6 @@
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
-  return mist::Mist().Run(CommandLine::ForCurrentProcess());
+  base::CommandLine::Init(argc, argv);
+  return mist::Mist().Run(base::CommandLine::ForCurrentProcess());
 }
