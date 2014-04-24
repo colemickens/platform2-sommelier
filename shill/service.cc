@@ -580,7 +580,6 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << bool_it.first;
     Error set_error;
     store_.SetBoolProperty(bool_it.first, bool_it.second, &set_error);
-    OnPropertyChanged(bool_it.first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -593,7 +592,6 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << int_it.first;
     Error set_error;
     store_.SetInt32Property(int_it.first, int_it.second, &set_error);
-    OnPropertyChanged(int_it.first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -606,7 +604,6 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << string_it.first;
     Error set_error;
     store_.SetStringProperty(string_it.first, string_it.second, &set_error);
-    OnPropertyChanged(string_it.first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -619,7 +616,6 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << strings_it.first;
     Error set_error;
     store_.SetStringsProperty(strings_it.first, strings_it.second, &set_error);
-    OnPropertyChanged(strings_it.first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -633,7 +629,6 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     Error set_error;
     store_.SetStringmapProperty(
         stringmap_it.first, stringmap_it.second, &set_error);
-    OnPropertyChanged(stringmap_it.first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -1043,6 +1038,7 @@ void Service::SetProfile(const ProfileRefPtr &p) {
 }
 
 void Service::OnPropertyChanged(const string &property) {
+  SLOG(Service, 1) << __func__ << " " << property;
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged();
   }

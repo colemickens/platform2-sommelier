@@ -2178,4 +2178,45 @@ TEST_F(ServiceTest, GetTethering) {
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
+class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
+ public:
+  ServiceWithMockOnPropertyChanged(ControlInterface *control_interface,
+                                   EventDispatcher *dispatcher,
+                                   Metrics *metrics,
+                                   Manager *manager)
+      : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {}
+  MOCK_METHOD1(OnPropertyChanged, void(const string &property));
+};
+
+TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
+  auto service(make_scoped_refptr(
+      new ServiceWithMockOnPropertyChanged(control_interface(),
+                                           dispatcher(),
+                                           metrics(),
+                                           &mock_manager_)));
+  KeyValueStore args;
+  args.SetString(kUIDataProperty, "terpsichorean ejectamenta");
+  args.SetBool(kSaveCredentialsProperty, false);
+
+  // Calling Configure with different values from before triggers a single
+  // OnPropertyChanged call per property.
+  EXPECT_CALL(*service, OnPropertyChanged(kUIDataProperty)).Times(1);
+  EXPECT_CALL(*service, OnPropertyChanged(kSaveCredentialsProperty)).Times(1);
+  {
+    Error error;
+    service->Configure(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  Mock::VerifyAndClearExpectations(service);
+
+  // Calling Configure with the same values as before should not trigger
+  // OnPropertyChanged().
+  EXPECT_CALL(*service, OnPropertyChanged(_)).Times(0);
+  {
+    Error error;
+    service->Configure(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+}
+
 }  // namespace shill
