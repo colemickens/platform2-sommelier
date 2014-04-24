@@ -748,6 +748,35 @@ bool DeviceInfo::HasOtherAddress(
   return has_other_address && !has_this_address;
 }
 
+bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
+                                       IPAddress *address) {
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return false;
+  }
+  bool has_temporary_address = false;
+  bool has_address = false;
+  for (const auto &local_address : info->ip_addresses) {
+    if (local_address.address.family() != IPAddress::kFamilyIPv6 ||
+        local_address.scope != RT_SCOPE_UNIVERSE) {
+      continue;
+    }
+
+    // Prefer temporary addresses to non-temporary addresses to match the
+    // kernel's preference.
+    bool is_temporary_address = ((local_address.flags & IFA_F_TEMPORARY) != 0);
+    if (has_temporary_address && !is_temporary_address) {
+      continue;
+    }
+
+    *address = local_address.address;
+    has_temporary_address = is_temporary_address;
+    has_address = true;
+  }
+
+  return has_address;
+}
+
 bool DeviceInfo::HasDirectConnectivityTo(
     int interface_index, const IPAddress &address) const {
   SLOG(Device, 3) << __func__ << "(" << interface_index << ")";
@@ -889,6 +918,12 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
     address_list.push_back(AddressData(address, status.flags, status.scope));
     SLOG(Device, 2) << "Add address " << address.ToString()
                     << " for interface " << interface_index;
+  }
+
+  DeviceRefPtr device = GetDevice(interface_index);
+  if (device && address.family() == IPAddress::kFamilyIPv6 &&
+      status.scope == RT_SCOPE_UNIVERSE) {
+    device->OnIPv6AddressChanged();
   }
 }
 

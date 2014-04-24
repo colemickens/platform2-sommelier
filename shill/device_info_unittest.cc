@@ -1069,6 +1069,83 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
               ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
 }
 
+TEST_F(DeviceInfoTest, IPv6AddressChanged) {
+  scoped_refptr<MockDevice> device(new MockDevice(
+      &control_interface_, &dispatcher_, &metrics_, &manager_,
+      "null0", "addr0", kTestDeviceIndex));
+
+  // Device info entry does not exist.
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+
+  device_info_.infos_[kTestDeviceIndex].device = device;
+
+  // Device info entry contains no addresses.
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+
+  IPAddress ipv4_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
+  auto message(make_scoped_ptr(BuildAddressMessage(
+      RTNLMessage::kModeAdd, ipv4_address, 0, 0)));
+
+  EXPECT_CALL(*device, OnIPv6AddressChanged()).Times(0);
+
+  // We should ignore IPv4 addresses.
+  SendMessageToDeviceInfo(*message);
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+
+  IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
+  message.reset(BuildAddressMessage(
+      RTNLMessage::kModeAdd, ipv6_address1, 0, RT_SCOPE_LINK));
+
+  // We should ignore non-SCOPE_UNIVERSE messages for IPv6.
+  SendMessageToDeviceInfo(*message);
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+
+  Mock::VerifyAndClearExpectations(device);
+  IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
+  message.reset(BuildAddressMessage(
+      RTNLMessage::kModeAdd, ipv6_address2, IFA_F_TEMPORARY,
+      RT_SCOPE_UNIVERSE));
+
+  // Add a temporary address.
+  EXPECT_CALL(*device, OnIPv6AddressChanged());
+  SendMessageToDeviceInfo(*message);
+  IPAddress address0(IPAddress::kFamilyUnknown);
+  EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address0));
+  EXPECT_TRUE(address0.Equals(ipv6_address2));
+  Mock::VerifyAndClearExpectations(device);
+
+  IPAddress ipv6_address3(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6_address3.SetAddressFromString(kTestIPAddress3));
+  message.reset(BuildAddressMessage(
+      RTNLMessage::kModeAdd, ipv6_address3, 0, RT_SCOPE_UNIVERSE));
+
+  // Adding a non-temporary address alerts the Device, but does not override
+  // the primary address since the previous one was temporary.
+  EXPECT_CALL(*device, OnIPv6AddressChanged());
+  SendMessageToDeviceInfo(*message);
+  IPAddress address1(IPAddress::kFamilyUnknown);
+  EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address1));
+  EXPECT_TRUE(address1.Equals(ipv6_address2));
+  Mock::VerifyAndClearExpectations(device);
+
+  IPAddress ipv6_address4(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6_address4.SetAddressFromString(kTestIPAddress4));
+  message.reset(BuildAddressMessage(
+      RTNLMessage::kModeAdd, ipv6_address4, IFA_F_TEMPORARY,
+      RT_SCOPE_UNIVERSE));
+
+  // Another temporary address alerts the Device, and will override
+  // the primary address.
+  EXPECT_CALL(*device, OnIPv6AddressChanged());
+  SendMessageToDeviceInfo(*message);
+  IPAddress address2(IPAddress::kFamilyUnknown);
+  EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address2));
+  EXPECT_TRUE(address2.Equals(ipv6_address4));
+}
+
 class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
   DeviceInfoTechnologyTest()

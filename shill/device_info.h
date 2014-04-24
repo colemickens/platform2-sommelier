@@ -105,6 +105,12 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // but has another non-temporary address of the same family.
   virtual bool HasOtherAddress(
       int interface_index, const IPAddress &this_address) const;
+
+  // Get the preferred globally scoped IPv6 address for |interface_index|.
+  // This method returns true and sets |address| if a primary IPv6 address
+  // exists.  Otherwise it returns false and leaves |address| unmodified.
+  bool GetPrimaryIPv6Address(int interface_index, IPAddress *address);
+
   // Returns true if any of the addresses on |interface_index| are on the
   // same network prefix as |address|.
   virtual bool HasDirectConnectivityTo(
@@ -124,6 +130,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   FRIEND_TEST(DeviceInfoTest, CreateDeviceWiMax);
   FRIEND_TEST(DeviceInfoTest, GetUninitializedTechnologies);
   FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
+  FRIEND_TEST(DeviceInfoTest, IPv6AddressChanged);  // For infos_.
   FRIEND_TEST(DeviceInfoTest, RequestLinkStatistics);
   FRIEND_TEST(DeviceInfoTest, StartStop);
 

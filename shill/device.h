@@ -258,6 +258,10 @@ class Device : public base::RefCounted<Device> {
   // Called by the service during Unload() as part of the cleanup sequence.
   virtual void DestroyIPConfigLease(const std::string &name);
 
+  // Called by DeviceInfo when the kernel adds or removes a globally-scoped
+  // IPv6 address from this interface.
+  virtual void OnIPv6AddressChanged() {}
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;
