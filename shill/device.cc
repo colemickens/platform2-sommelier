@@ -70,8 +70,6 @@ const char Device::kIPFlagReversePathFilterEnabled[] = "1";
 // static
 const char Device::kIPFlagReversePathFilterLooseMode[] = "2";
 // static
-const char Device::kStorageIPConfigs[] = "IPConfigs";
-// static
 const char Device::kStoragePowered[] = "Powered";
 // static
 const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
@@ -349,15 +347,6 @@ bool Device::Load(StoreInterface *storage) {
 bool Device::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   storage->SetBool(id, kStoragePowered, enabled_persistent_);
-  if (ipconfig_.get()) {
-    // The _0 is an index into the list of IPConfigs that this device might
-    // have.  We only have one IPConfig right now, and I hope to never have
-    // to support more, as sleffler indicates that associating IPConfigs
-    // with devices is wrong and due to be changed in flimflam anyhow.
-    string suffix = hardware_address_ + "_0";
-    ipconfig_->Save(storage, suffix);
-    storage->SetString(id, kStorageIPConfigs, SerializeIPConfigs(suffix));
-  }
   storage->SetUint64(id, kStorageReceiveByteCount, GetReceiveByteCount());
   storage->SetUint64(id, kStorageTransmitByteCount, GetTransmitByteCount());
   return true;
@@ -666,10 +655,6 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   if (selected_service_.get()) {
     selected_service_->SetFailureSilent(failure_state);
   }
-}
-
-string Device::SerializeIPConfigs(const string &suffix) {
-  return StringPrintf("%s:%s", suffix.c_str(), ipconfig_->type().c_str());
 }
 
 bool Device::SetIPFlag(IPAddress::Family family, const string &flag,

@@ -25,11 +25,6 @@ class MockIPConfig : public IPConfig {
   MOCK_METHOD0(RenewIP, bool(void));
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason reason));
   MOCK_METHOD0(ResetProperties, void(void));
-
-  MOCK_METHOD2(Load, bool(StoreInterface *storage,
-                          const std::string &id_suffix));
-  MOCK_METHOD2(Save, bool(StoreInterface *storage,
-                          const std::string &id_suffix));
   MOCK_METHOD0(EmitChanges, void(void));
 
  private:

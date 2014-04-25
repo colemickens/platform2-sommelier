@@ -488,7 +488,6 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagReversePathFilter[];
   static const char kIPFlagReversePathFilterEnabled[];
   static const char kIPFlagReversePathFilterLooseMode[];
-  static const char kStorageIPConfigs[];
   static const char kStoragePowered[];
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];

@@ -23,7 +23,6 @@ class ControlInterface;
 class Error;
 class IPConfigAdaptorInterface;
 class StaticIPParameters;
-class StoreInterface;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
@@ -149,11 +148,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // static IP parameters were previously applied.
   void RestoreSavedIPParameters(StaticIPParameters *static_ip_parameters);
 
-  // |id_suffix| is used to generate a storage ID that binds this instance
-  // to its associated device.
-  virtual bool Load(StoreInterface *storage, const std::string &id_suffix);
-  virtual bool Save(StoreInterface *storage, const std::string &id_suffix);
-
  protected:
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
@@ -168,10 +162,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   // Notifies registered listeners that the lease has expired.
   virtual void NotifyExpiry();
-
-  // |id_suffix| is appended to the storage id, intended to bind this instance
-  // to its associated device.
-  std::string GetStorageIdentifier(const std::string &id_suffix);
 
  private:
   friend class IPConfigAdaptorInterface;
@@ -190,7 +180,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);
   FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
-  static const char kStorageType[];
   static const char kType[];
 
   void Init();

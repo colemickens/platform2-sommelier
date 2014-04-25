@@ -11,15 +11,12 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/static_ip_parameters.h"
-#include "shill/store_interface.h"
 
 using base::Callback;
 using std::string;
 
 namespace shill {
 
-// static
-const char IPConfig::kStorageType[] = "Method";
 // static
 const char IPConfig::kType[] = "ip";
 // static
@@ -72,15 +69,6 @@ string IPConfig::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }
 
-string IPConfig::GetStorageIdentifier(const string &id_suffix) {
-  string id = GetRpcIdentifier();
-  ControlInterface::RpcIdToStorageId(&id);
-  size_t needle = id.find('_');
-  LOG_IF(ERROR, needle == string::npos) << "No _ in storage id?!?!";
-  id.replace(id.begin() + needle + 1, id.end(), id_suffix);
-  return id;
-}
-
 bool IPConfig::RequestIP() {
   return false;
 }
@@ -110,23 +98,6 @@ void IPConfig::RestoreSavedIPParameters(
     StaticIPParameters *static_ip_parameters) {
   static_ip_parameters->RestoreTo(&properties_);
   EmitChanges();
-}
-
-bool IPConfig::Load(StoreInterface *storage, const string &id_suffix) {
-  const string id = GetStorageIdentifier(id_suffix);
-  if (!storage->ContainsGroup(id)) {
-    LOG(WARNING) << "IPConfig is not available in the persistent store: " << id;
-    return false;
-  }
-  string local_type;
-  storage->GetString(id, kStorageType, &local_type);
-  return local_type == type();
-}
-
-bool IPConfig::Save(StoreInterface *storage, const string &id_suffix) {
-  const string id = GetStorageIdentifier(id_suffix);
-  storage->SetString(id, kStorageType, type());
-  return true;
 }
 
 void IPConfig::UpdateProperties(const Properties &properties) {

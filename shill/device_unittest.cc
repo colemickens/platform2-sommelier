@@ -305,14 +305,10 @@ TEST_F(DeviceTest, Load) {
 TEST_F(DeviceTest, Save) {
   NiceMock<MockStore> storage;
   const string id = device_->GetStorageIdentifier();
-  EXPECT_CALL(storage, SetString(id, Device::kStorageIPConfigs, _))
-      .WillOnce(Return(true));
   EXPECT_CALL(storage, SetBool(id, Device::kStoragePowered, _))
       .WillOnce(Return(true));
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  EXPECT_CALL(*ipconfig.get(), Save(_, _))
-      .WillOnce(Return(true));
   device_->ipconfig_ = ipconfig;
   EXPECT_CALL(storage, SetUint64(id, Device::kStorageReceiveByteCount, _))
       .WillOnce(Return(true));
