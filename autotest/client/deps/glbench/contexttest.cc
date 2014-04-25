@@ -38,6 +38,11 @@ bool ContextTest::TestFunc(uint64_t iterations) {
   CHECK(main_context);
   CHECK(new_context);
 
+  // re-bind VBO on new context
+  interface->MakeCurrent(new_context);
+  SetupGLRendering();
+  interface->MakeCurrent(main_context);
+
   for (uint64_t i = 0 ; i < iterations; ++i) {
     if (!render_func_.is_null())
       render_func_.Run();

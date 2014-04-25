@@ -24,10 +24,10 @@ class GLInterfaceTest : public TestBase {
  protected:
   // Callback for GL rendering function to be run before GLX/EGL calls.
   base::Callback<void(void)> render_func_;
+  void SetupGLRendering();
 
  private:
   // For calling some GL operations before GLX/EGL calls.
-  void SetupGLRendering();
   void RenderGLSimple();
   void CleanupGLRendering();
 
