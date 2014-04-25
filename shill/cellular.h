@@ -29,6 +29,7 @@ namespace shill {
 class CellularCapability;
 class Error;
 class ExternalTask;
+class MobileOperatorInfo;
 class PPPDeviceFactory;
 class ProxyFactory;
 
@@ -140,6 +141,12 @@ class Cellular : public Device, public RPCTaskDelegate {
   void CompleteActivation(Error *error);
 
   const CellularServiceRefPtr &service() const { return service_; }
+  MobileOperatorInfo *home_provider_info() const {
+    return home_provider_info_.get();
+  }
+  MobileOperatorInfo *serving_operator_info() const {
+    return serving_operator_info_.get();
+  }
 
   // Deregisters and destructs the current service and destroys the connection,
   // if any. This also eliminates the circular references between this device
@@ -303,6 +310,11 @@ class Cellular : public Device, public RPCTaskDelegate {
   void set_supported_carriers(const Strings &supported_carriers);
   void set_prl_version(uint16 prl_version);
 
+  // Takes ownership.
+  void set_home_provider_info(MobileOperatorInfo *home_provider_info);
+  // Takes ownership.
+  void set_serving_operator_info(MobileOperatorInfo *serving_operator_info);
+
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class CellularTest;
@@ -410,18 +422,14 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   class MobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
    public:
-    // Both |cellular| and |modem_info| must have lifespan longer than this
-    // object.
-    // In practice, this is enforced:
-    //   (1) |cellular| owns this object.
-    //   (2) |modem_info| is guaranteed to outlive |cellular|.
-    MobileOperatorInfoObserver(Cellular *cellular, ModemInfo *modem_info);
+    // |cellular| must have lifespan longer than this object. In practice this
+    // is enforced because |cellular| owns this object.
+    MobileOperatorInfoObserver(Cellular *cellular);
     virtual ~MobileOperatorInfoObserver();
     virtual void OnOperatorChanged() override;
 
    private:
     Cellular *const cellular_;
-    ModemInfo *const modem_info_;
 
     DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserver);
   };
@@ -504,6 +512,13 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   scoped_ptr<CellularCapability> capability_;
 
+  // Operator info objects. These objects receive updates as we receive
+  // information about the network operators from the SIM or OTA. In turn, they
+  // send out updates through their observer interfaces whenever the identity of
+  // the network operator changes, or any other property of the operator
+  // changes.
+  scoped_ptr<MobileOperatorInfo> home_provider_info_;
+  scoped_ptr<MobileOperatorInfo> serving_operator_info_;
   // Observer object to listen to updates from the operator info objects.
   scoped_ptr<MobileOperatorInfoObserver> mobile_operator_info_observer_;
 

@@ -11,7 +11,6 @@
 #include "shill/cellular_operator_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/mobile_operator_info.h"
 #include "shill/modem_manager.h"
 #include "shill/pending_activation_store.h"
 
@@ -49,9 +48,7 @@ ModemInfo::ModemInfo(ControlInterface *control_interface,
       manager_(manager),
       glib_(glib),
       provider_db_path_(kMobileProviderDBPath),
-      provider_db_(NULL),
-      home_provider_info_(new MobileOperatorInfo(dispatcher)),
-      serving_operator_info_(new MobileOperatorInfo(dispatcher)) {}
+      provider_db_(NULL) {}
 
 ModemInfo::~ModemInfo() {
   Stop();
@@ -63,8 +60,6 @@ void ModemInfo::Start() {
       manager_->storage_path());
   cellular_operator_info_.reset(new CellularOperatorInfo());
   cellular_operator_info_->Load(FilePath(kCellularOperatorInfoPath));
-  home_provider_info_->Init();
-  serving_operator_info_->Init();
 
   // TODO(petkov): Consider initializing the mobile provider database lazily
   // only if a GSM modem needs to be registered.
@@ -100,15 +95,6 @@ void ModemInfo::set_pending_activation_store(
 void ModemInfo::set_cellular_operator_info(
     CellularOperatorInfo *cellular_operator_info) {
   cellular_operator_info_.reset(cellular_operator_info);
-}
-
-void ModemInfo::set_home_provider_info(MobileOperatorInfo *home_provider_info) {
-  home_provider_info_.reset(home_provider_info);
-}
-
-void ModemInfo::set_serving_operator_info(
-    MobileOperatorInfo *serving_operator_info) {
-  serving_operator_info_.reset(serving_operator_info);
 }
 
 void ModemInfo::RegisterModemManager(ModemManager *manager) {

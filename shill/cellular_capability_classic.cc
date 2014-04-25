@@ -281,7 +281,7 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
   if (error.IsSuccess()) {
     if (DBusProperties::GetString(props, "carrier", &prop_value)) {
       cellular()->set_carrier(prop_value);
-      modem_info()->home_provider_info()->UpdateOperatorName(prop_value);
+      cellular()->home_provider_info()->UpdateOperatorName(prop_value);
     }
     if (DBusProperties::GetString(props, "meid", &prop_value)) {
       cellular()->set_meid(prop_value);
@@ -291,7 +291,7 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
     }
     if (DBusProperties::GetString(props, kModemPropertyIMSI, &prop_value)) {
       cellular()->set_imsi(prop_value);
-      modem_info()->home_provider_info()->UpdateIMSI(prop_value);
+      cellular()->home_provider_info()->UpdateIMSI(prop_value);
     }
     if (DBusProperties::GetString(props, "esn", &prop_value)) {
       cellular()->set_esn(prop_value);

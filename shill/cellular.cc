@@ -119,8 +119,10 @@ Cellular::Cellular(ModemInfo *modem_info,
       weak_ptr_factory_(this),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
+      home_provider_info_(new MobileOperatorInfo(modem_info->dispatcher())),
+      serving_operator_info_(new MobileOperatorInfo(modem_info->dispatcher())),
       mobile_operator_info_observer_(
-          new Cellular::MobileOperatorInfoObserver(this, modem_info)),
+          new Cellular::MobileOperatorInfoObserver(this)),
       dbus_owner_(owner),
       dbus_service_(service),
       dbus_path_(path),
@@ -139,16 +141,12 @@ Cellular::Cellular(ModemInfo *modem_info,
       is_ppp_authenticating_(false),
       scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
-  // TODO(pprabhu): This will break when there are multiple modems on the
-  // device. So, split MobileOperatorInfo into a context that contains no
-  // device specific state, and one that does. The context should be owned by
-  // the |modem_info_|, while the latter should be owned by the cellular device.
-  modem_info_->home_provider_info()->Reset();
-  modem_info_->serving_operator_info()->Reset();
-  modem_info_->home_provider_info()->AddObserver(
-      mobile_operator_info_observer_.get());
-  modem_info_->serving_operator_info()->AddObserver(
-      mobile_operator_info_observer_.get());
+  // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the
+  // costly database, and lighter objects that |Cellular| can own.
+  home_provider_info_->Init();
+  serving_operator_info_->Init();
+  home_provider_info()->AddObserver(mobile_operator_info_observer_.get());
+  serving_operator_info()->AddObserver(mobile_operator_info_observer_.get());
   InitCapability(type);
   SLOG(Cellular, 2) << "Cellular device " << this->link_name()
                     << " initialized.";
@@ -164,9 +162,8 @@ Cellular::~Cellular() {
   // may not have been removed.
   manager()->RemoveTerminationAction(FriendlyName());
 
-  modem_info_->home_provider_info()->RemoveObserver(
-      mobile_operator_info_observer_.get());
-  modem_info_->serving_operator_info()->RemoveObserver(
+  home_provider_info()->RemoveObserver(mobile_operator_info_observer_.get());
+  serving_operator_info()->RemoveObserver(
       mobile_operator_info_observer_.get());
 }
 
@@ -1421,6 +1418,15 @@ void Cellular::set_prl_version(uint16 prl_version) {
   adaptor()->EmitUint16Changed(kPRLVersionProperty, prl_version_);
 }
 
+void Cellular::set_home_provider_info(MobileOperatorInfo *home_provider_info) {
+  home_provider_info_.reset(home_provider_info);
+}
+
+void Cellular::set_serving_operator_info(
+    MobileOperatorInfo *serving_operator_info) {
+  serving_operator_info_.reset(serving_operator_info);
+}
+
 void Cellular::UpdateHomeProvider(const MobileOperatorInfo *operator_info) {
   SLOG(Cellular, 3) << __func__;
   // TODO(pprabhu) Change |set_home_provider| to take Stringmap argument and
@@ -1520,10 +1526,8 @@ void Cellular::UpdateServingOperator(
 // /////////////////////////////////////////////////////////////////////////////
 // MobileOperatorInfoObserver implementation.
 Cellular::MobileOperatorInfoObserver::MobileOperatorInfoObserver(
-    Cellular *cellular,
-    ModemInfo *modem_info)
-  : cellular_(cellular),
-    modem_info_(modem_info) {}
+    Cellular *cellular)
+  : cellular_(cellular) {}
 
 Cellular::MobileOperatorInfoObserver::~MobileOperatorInfoObserver() {}
 
@@ -1531,9 +1535,9 @@ void Cellular::MobileOperatorInfoObserver::OnOperatorChanged() {
   SLOG(Cellular, 3) << __func__;
 
   const MobileOperatorInfo *home_provider_info =
-      modem_info_->home_provider_info();
+      cellular_->home_provider_info();
   const MobileOperatorInfo *serving_operator_info =
-      modem_info_->serving_operator_info();
+      cellular_->serving_operator_info();
 
   const bool home_provider_known =
       home_provider_info->IsMobileNetworkOperatorKnown();

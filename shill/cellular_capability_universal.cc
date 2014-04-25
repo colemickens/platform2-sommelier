@@ -1616,7 +1616,7 @@ void CellularCapabilityUniversal::OnSimPathChanged(
     cellular()->set_sim_present(false);
     OnSimIdentifierChanged("");
     OnOperatorIdChanged("");
-    modem_info()->home_provider_info()->Reset();
+    cellular()->home_provider_info()->Reset();
   } else {
     cellular()->set_sim_present(true);
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
@@ -1882,8 +1882,8 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
   registration_state_ = updated_state;
   serving_operator_.SetCode(updated_operator_code);
   serving_operator_.SetName(updated_operator_name);
-  modem_info()->serving_operator_info()->UpdateMCCMNC(updated_operator_code);
-  modem_info()->serving_operator_info()->UpdateOperatorName(
+  cellular()->serving_operator_info()->UpdateMCCMNC(updated_operator_code);
+  cellular()->serving_operator_info()->UpdateOperatorName(
       updated_operator_name);
 
   // Update the carrier name for |serving_operator_|.
@@ -1972,19 +1972,19 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
     OnSpnChanged(value);
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value)) {
     cellular()->set_imsi(value);
-    modem_info()->home_provider_info()->UpdateIMSI(value);
+    cellular()->home_provider_info()->UpdateIMSI(value);
   }
   SetHomeProvider();
 }
 
 void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
   spn_ = spn;
-  modem_info()->home_provider_info()->UpdateOperatorName(spn);
+  cellular()->home_provider_info()->UpdateOperatorName(spn);
 }
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
   cellular()->set_sim_identifier(id);
-  modem_info()->home_provider_info()->UpdateICCID(id);
+  cellular()->home_provider_info()->UpdateICCID(id);
   UpdatePendingActivationState();
 }
 
@@ -1992,7 +1992,7 @@ void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string &operator_id) {
   SLOG(Cellular, 2) << "Operator ID = '" << operator_id << "'";
   operator_id_ = operator_id;
-  modem_info()->home_provider_info()->UpdateMCCMNC(operator_id);
+  cellular()->home_provider_info()->UpdateMCCMNC(operator_id);
 }
 
 OutOfCreditsDetector::OOCType

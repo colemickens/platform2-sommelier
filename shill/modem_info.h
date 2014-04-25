@@ -21,7 +21,6 @@ class EventDispatcher;
 class GLib;
 class Manager;
 class Metrics;
-class MobileOperatorInfo;
 class ModemManager;
 class PendingActivationStore;
 
@@ -52,12 +51,6 @@ class ModemInfo {
     return cellular_operator_info_.get();
   }
   mobile_provider_db *provider_db() const { return provider_db_; }
-  MobileOperatorInfo *home_provider_info() const {
-    return home_provider_info_.get();
-  }
-  MobileOperatorInfo *serving_operator_info() const {
-    return serving_operator_info_.get();
-  }
 
  protected:
   // Write accessors for unit-tests.
@@ -83,10 +76,6 @@ class ModemInfo {
   void set_mobile_provider_db(mobile_provider_db *provider_db) {
     provider_db_ = provider_db;
   }
-  // Takes ownership.
-  void set_home_provider_info(MobileOperatorInfo *home_provider_info);
-  // Takes ownership.
-  void set_serving_operator_info(MobileOperatorInfo *serving_operator_info);
 
  private:
   friend class ModemInfoTest;
@@ -110,13 +99,6 @@ class ModemInfo {
   scoped_ptr<CellularOperatorInfo> cellular_operator_info_;
   std::string provider_db_path_;  // For testing.
   mobile_provider_db *provider_db_;  // Database instance owned by |this|.
-  // Operator info objects. These objects receive updates as we receive
-  // information about the network operators from the SIM or OTA. In turn, they
-  // send out updates through their observer interfaces whenever the identity of
-  // the network operator changes, or any other property of the operator
-  // changes.
-  scoped_ptr<MobileOperatorInfo> home_provider_info_;
-  scoped_ptr<MobileOperatorInfo> serving_operator_info_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemInfo);
 };

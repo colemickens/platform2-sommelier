@@ -414,9 +414,9 @@ void CellularCapabilityCDMA::UpdateOnlinePortal(
       DBusProperties::GetString(properties,
                                 "payment_url_postdata",
                                 &olp_post_data)) {
-    modem_info()->serving_operator_info()->UpdateOnlinePortal(olp_url,
-                                                              olp_method,
-                                                              olp_post_data);
+    cellular()->serving_operator_info()->UpdateOnlinePortal(olp_url,
+                                                            olp_method,
+                                                            olp_post_data);
   }
 }
 

@@ -354,7 +354,7 @@ void CellularCapabilityGSM::GetIMSI(const ResultCallback &callback) {
                                     callback);
     card_proxy_->GetIMSI(&error, cb, kTimeoutDefault);
     if (error.IsFailure()) {
-      modem_info()->home_provider_info()->Reset();
+      cellular()->home_provider_info()->Reset();
       callback.Run(error);
     }
   } else {
@@ -853,8 +853,8 @@ void CellularCapabilityGSM::OnRegistrationInfoSignal(
   registration_state_ = status;
   serving_operator_.SetCode(operator_code);
   serving_operator_.SetName(operator_name);
-  modem_info()->serving_operator_info()->UpdateMCCMNC(operator_code);
-  modem_info()->serving_operator_info()->UpdateOperatorName(operator_name);
+  cellular()->serving_operator_info()->UpdateMCCMNC(operator_code);
+  cellular()->serving_operator_info()->UpdateOperatorName(operator_name);
   UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }
@@ -895,7 +895,7 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
     SLOG(Cellular, 2) << "IMSI: " << imsi;
     cellular()->set_imsi(imsi);
     cellular()->set_sim_present(true);
-    modem_info()->home_provider_info()->UpdateIMSI(imsi);
+    cellular()->home_provider_info()->UpdateIMSI(imsi);
     SetHomeProvider();
     callback.Run(error);
   } else if (!sim_lock_status_.lock_type.empty()) {
@@ -914,7 +914,7 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
           get_imsi_retry_delay_milliseconds_);
     } else {
       LOG(INFO) << "GetIMSI failed - " << error;
-      modem_info()->home_provider_info()->Reset();
+      cellular()->home_provider_info()->Reset();
       callback.Run(error);
     }
   }
@@ -926,7 +926,7 @@ void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,
   if (error.IsSuccess()) {
     SLOG(Cellular, 2) << "SPN: " << spn;
     spn_ = spn;
-    modem_info()->home_provider_info()->UpdateOperatorName(spn);
+    cellular()->home_provider_info()->UpdateOperatorName(spn);
     SetHomeProvider();
   } else {
     SLOG(Cellular, 2) << "GetSPN failed - " << error;
