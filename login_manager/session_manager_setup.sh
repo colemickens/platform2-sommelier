@@ -409,10 +409,6 @@ if use_flag_is_set ozone; then
   # TODO(spang): Fix hardware acceleration.
   OZONE_FLAGS="$OZONE_FLAGS --disable-gpu"
   OZONE_FLAGS="$OZONE_FLAGS --ui-disable-threaded-compositing"
-
-  # TODO(spang): Fix display sizing.
-  OZONE_FLAGS="$OZONE_FLAGS --ash-host-window-bounds=2560x1700"
-  OZONE_FLAGS="$OZONE_FLAGS --force-device-scale-factor=2"
 fi
 
 # On developer systems, set a flag to let the browser know that it is on
