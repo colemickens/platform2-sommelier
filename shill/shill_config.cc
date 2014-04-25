@@ -11,7 +11,7 @@ const char Config::kDefaultRunDirectory[] = RUNDIR;
 // static
 const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
 // static
-const char Config::kDefaultUserStorageFormat[] = RUNDIR "/user_profiles/%s";
+const char Config::kDefaultUserStorageDirectory[] = RUNDIR "/user_profiles/";
 
 Config::Config() {}
 
@@ -25,8 +25,8 @@ std::string Config::GetStorageDirectory() {
   return kDefaultStorageDirectory;
 }
 
-std::string Config::GetUserStorageDirectoryFormat() {
-  return kDefaultUserStorageFormat;
+std::string Config::GetUserStorageDirectory() {
+  return kDefaultUserStorageDirectory;
 }
 
 }  // namespace shill

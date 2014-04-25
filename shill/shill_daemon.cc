@@ -48,7 +48,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            &glib_,
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
-                           config->GetUserStorageDirectoryFormat())),
+                           config->GetUserStorageDirectory())),
       callback80211_metrics_(metrics_.get()) {
 }
 

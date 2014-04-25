@@ -88,11 +88,11 @@ Manager::Manager(ControlInterface *control_interface,
                  GLib *glib,
                  const string &run_directory,
                  const string &storage_directory,
-                 const string &user_storage_format)
+                 const string &user_storage_directory)
     : dispatcher_(dispatcher),
       run_path_(FilePath(run_directory)),
       storage_path_(FilePath(storage_directory)),
-      user_storage_format_(user_storage_format),
+      user_storage_path_(user_storage_directory),
       user_profile_list_path_(FilePath(Profile::kUserProfileListPathname)),
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
@@ -332,7 +332,7 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
                           metrics_,
                           this,
                           ident,
-                          user_storage_format_,
+                          user_storage_path_,
                           true);
   }
 
@@ -405,7 +405,7 @@ void Manager::PushProfileInternal(
                           metrics_,
                           this,
                           ident,
-                          user_storage_format_,
+                          user_storage_path_,
                           connect_profiles_to_rpc_);
     if (!profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
       // |error| will have been populated by InitStorage().
@@ -595,7 +595,7 @@ void Manager::RemoveProfile(const string &name, Error *error) {
                           metrics_,
                           this,
                           ident,
-                          user_storage_format_,
+                          user_storage_path_,
                           false);
   }
 

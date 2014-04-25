@@ -83,7 +83,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           GLib *glib,
           const std::string &run_directory,
           const std::string &storage_directory,
-          const std::string &user_storage_format);
+          const std::string &user_storage_directory);
   virtual ~Manager();
 
   void AddDeviceToBlackList(const std::string &device_name);
@@ -553,7 +553,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   EventDispatcher *dispatcher_;
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
-  const std::string user_storage_format_;
+  const std::string user_storage_path_;
   base::FilePath user_profile_list_path_;  // Changed in tests.
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   scoped_ptr<DBusManager> dbus_manager_;

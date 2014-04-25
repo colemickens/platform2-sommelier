@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
@@ -207,7 +206,7 @@ TEST_F(ProfileTest, GetFriendlyName) {
 TEST_F(ProfileTest, GetStoragePath) {
   static const char kUser[] = "chronos";
   static const char kIdentifier[] = "someprofile";
-  static const char kFormat[] = "/a/place/for/%s";
+  static const char kDirectory[] = "/a/place/for/";
   FilePath path;
   Profile::Identifier id(kIdentifier);
   ProfileRefPtr profile(
@@ -215,11 +214,10 @@ TEST_F(ProfileTest, GetStoragePath) {
   EXPECT_FALSE(profile->GetStoragePath(&path));
   id.user = kUser;
   profile =
-      new Profile(control_interface(), metrics(), manager(), id, kFormat,
+      new Profile(control_interface(), metrics(), manager(), id, kDirectory,
                   false);
   EXPECT_TRUE(profile->GetStoragePath(&path));
-  string suffix = base::StringPrintf("/%s.profile", kIdentifier);
-  EXPECT_EQ(base::StringPrintf(kFormat, kUser) + suffix, path.value());
+  EXPECT_EQ("/a/place/for/chronos/someprofile.profile", path.value());
 }
 
 TEST_F(ProfileTest, ServiceManagement) {
@@ -411,6 +409,8 @@ TEST_F(ProfileTest, MatchesIdentifier) {
 
 TEST_F(ProfileTest, InitStorage) {
   Profile::Identifier id("theUser", "theIdentifier");
+  ASSERT_TRUE(base::CreateDirectory(
+      base::FilePath(storage_path()).Append("theUser")));
 
   // Profile doesn't exist but we wanted it to.
   EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
@@ -445,9 +445,9 @@ TEST_F(ProfileTest, InitStorage) {
                                  Error::kSuccess));
 
   // Corrupt the profile storage.
-  string suffix(base::StringPrintf("/%s.profile", id.identifier.c_str()));
   FilePath final_path(
-      base::StringPrintf(storage_path().c_str(), id.user.c_str()) + suffix);
+      base::StringPrintf("%s/%s/%s.profile", storage_path().c_str(),
+                         id.user.c_str(), id.identifier.c_str()));
   string data = "]corrupt_data[";
   EXPECT_EQ(data.size(),
             file_util::WriteFile(final_path, data.data(), data.size()));

@@ -18,12 +18,12 @@ class Config {
 
   virtual std::string GetRunDirectory();
   virtual std::string GetStorageDirectory();
-  virtual std::string GetUserStorageDirectoryFormat();
+  virtual std::string GetUserStorageDirectory();
 
  private:
   static const char kDefaultRunDirectory[];
   static const char kDefaultStorageDirectory[];
-  static const char kDefaultUserStorageFormat[];
+  static const char kDefaultUserStorageDirectory[];
 
   DISALLOW_COPY_AND_ASSIGN(Config);
 };

@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
@@ -41,12 +40,12 @@ Profile::Profile(ControlInterface *control_interface,
                  Metrics *metrics,
                  Manager *manager,
                  const Identifier &name,
-                 const string &user_storage_format,
+                 const string &user_storage_directory,
                  bool connect_to_rpc)
     : metrics_(metrics),
       manager_(manager),
       name_(name),
-      storage_format_(user_storage_format) {
+      storage_path_(user_storage_directory) {
   if (connect_to_rpc)
     adaptor_.reset(control_interface->CreateProfileAdaptor(this));
 
@@ -343,10 +342,10 @@ bool Profile::GetStoragePath(FilePath *path) {
     LOG(ERROR) << "Non-default profiles cannot be stored globally.";
     return false;
   }
-  FilePath dir(base::StringPrintf(storage_format_.c_str(), name_.user.c_str()));
   // TODO(petkov): Validate the directory permissions, etc.
-  *path = dir.Append(base::StringPrintf("%s.profile",
-                                        name_.identifier.c_str()));
+  *path = storage_path_.Append(
+      base::StringPrintf("%s/%s.profile", name_.user.c_str(),
+                         name_.identifier.c_str()));
   return true;
 }
 

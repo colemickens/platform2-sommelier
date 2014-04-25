@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
+#include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
@@ -60,7 +61,7 @@ class Profile : public base::RefCounted<Profile> {
           Metrics *metrics,
           Manager *manager,
           const Identifier &name,
-          const std::string &user_storage_format,
+          const std::string &user_storage_directory,
           bool connect_to_rpc);
 
   virtual ~Profile();
@@ -223,8 +224,8 @@ class Profile : public base::RefCounted<Profile> {
   // Properties to be gotten via PropertyStore calls.
   Identifier name_;
 
-  // Format string used to generate paths to user profile directories.
-  const std::string storage_format_;
+  // Path to user profile directory.
+  const base::FilePath storage_path_;
 
   // Allows this profile to be backed with on-disk storage.
   scoped_ptr<StoreInterface> storage_;

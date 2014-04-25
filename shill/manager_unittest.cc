@@ -198,11 +198,14 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   bool CreateBackingStoreForService(ScopedTempDir *temp_dir,
+                                    const string &user_identifier,
                                     const string &profile_identifier,
                                     const string &service_name) {
     GLib glib;
     KeyFileStore store(&glib);
-    store.set_path(temp_dir->path().Append(profile_identifier + ".profile"));
+    store.set_path(temp_dir->path().Append(
+        base::StringPrintf("%s/%s.profile", user_identifier.c_str(),
+                           profile_identifier.c_str())));
     return store.Open() &&
         store.SetString(service_name, "rather", "irrelevant") &&
         store.Close();
@@ -846,6 +849,7 @@ TEST_F(ManagerTest, CreateProfile) {
   {
     Error error;
     string path;
+    ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
     manager.CreateProfile(kProfile, &path, &error);
     EXPECT_EQ(Error::kSuccess, error.type());
     EXPECT_EQ("/profile_rpc", path);
@@ -870,6 +874,9 @@ TEST_F(ManagerTest, PopProfileShouldClearMemoryLog) {
                   temp_dir.path().value());
   const char kProfile0[] = "~user/profile0";
   const char kPurgedMessage[] = "This message should be purged";
+
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
+
   // Create a profile and push it on the stack, leave one uncreated
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
@@ -935,6 +942,7 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
 
   // Create a couple of profiles.
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
@@ -975,7 +983,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   ASSERT_EQ(GetEphemeralProfile(&manager), service->profile());
 
   // Create storage for a profile that contains the service storage name.
-  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, kProfile2Id,
+  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile2Id,
                                            kServiceName));
 
   // When we push the profile, the service should move away from the
@@ -988,7 +996,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Insert another profile that should supersede ownership of the service.
   const char kProfile3Id[] = "profile3";
   const string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
-  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, kProfile3Id,
+  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile3Id,
                                            kServiceName));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile3));
   EXPECT_EQ(kProfile3, "~" + service->profile()->GetFriendlyName());
@@ -4070,6 +4078,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   const char kProfile1[] = "~user/profile1";
   string profile_rpc_path;
   Error error;
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
   manager.CreateProfile(kProfile0, &profile_rpc_path, &error);
   manager.PushProfile(kProfile0, &profile_rpc_path, &error);
   manager.CreateProfile(kProfile1, &profile_rpc_path, &error);
@@ -4173,6 +4182,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
   const char kProfile2[] = "~user/profile2";
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.path().Append("user")));
   TestCreateProfile(manager.get(), kProfile0);
   TestCreateProfile(manager.get(), kProfile1);
   TestCreateProfile(manager.get(), kProfile2);
