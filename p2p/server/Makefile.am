@@ -33,6 +33,7 @@ p2p_server_CXXFLAGS = 					\
 	$(AVAHI_CLIENT_CFLAGS)				\
 	$(AVAHI_GLIB_CFLAGS)				\
 	$(LIBCHROME_CFLAGS)				\
+	$(LIBMETRICS_CFLAGS)				\
 	$(NULL)
 
 p2p_server_LDADD = 					\
@@ -40,7 +41,7 @@ p2p_server_LDADD = 					\
 	$(AVAHI_CLIENT_LIBS)				\
 	$(AVAHI_GLIB_LIBS)				\
 	$(LIBCHROME_LIBS)				\
-	-lmetrics					\
+	$(LIBMETRICS_LIBS)				\
 	$(top_builddir)/common/libp2p-util.la		\
 	$(NULL)
 
