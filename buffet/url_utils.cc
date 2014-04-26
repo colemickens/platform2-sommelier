@@ -96,7 +96,9 @@ std::string chromeos::url::GetQueryString(
 chromeos::data_encoding::WebParamList chromeos::url::GetQueryStringParameters(
     const std::string& url) {
   // Extract the query string and remove the leading '?'.
-  std::string query_string = GetQueryString(url, true).substr(1);
+  std::string query_string = GetQueryString(url, true);
+  if (!query_string.empty() && query_string.front() == '?')
+    query_string.erase(query_string.begin());
   return chromeos::data_encoding::WebParamsDecode(query_string);
 }
 

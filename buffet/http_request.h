@@ -305,7 +305,7 @@ class Request {
   // range_value_omitted is used in |ranges_| list to indicate omitted value.
   // E.g. range (10,range_value_omitted) represents bytes from 10 to the end
   // of the data stream.
-  static const uint64_t range_value_omitted = (uint64_t)-1;
+  const uint64_t range_value_omitted = (uint64_t)-1;
 
   // Error message in case request fails completely.
   std::string error_;

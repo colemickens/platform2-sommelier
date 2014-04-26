@@ -73,10 +73,12 @@
       ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
+        'async_event_sequencer_unittest.cc',
         'buffet_testrunner.cc',
         'data_encoding_unittest.cc',
         'exported_property_set_unittest.cc',
-        'async_event_sequencer_unittest.cc',
+        'http_connection_fake.cc',
+        'http_transport_fake.cc',
         'http_utils_unittest.cc',
         'mime_utils_unittest.cc',
         'string_utils_unittest.cc',
