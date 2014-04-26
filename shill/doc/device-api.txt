@@ -494,14 +494,23 @@ Properties	string Address [readonly]
 			This value is for pure informational purposes. It
 			is not guaranteed that it is always present.
 
-		array{object} IPConfigs [readonly]  --DEPRECATED--
+		array{object} IPConfigs [readonly]
 
 			List of IPConfig objects paths. Every object path
 			represents a Layer 3 configuration record for
 			the device.  In shill, for a connected device,
-			this is always a single object path containing
-			the currently used IPConfig.  In the future, use
-			the "IPConfig" property of the Service.
+			the IPv4 configuration is represented in the
+			first object path in this array.  This object is also
+			referenced in the the "IPConfig" property of the
+			connected Service.  If the kernel has assigned a
+			globally scoped IPv6 address to this interface, it
+			is reported as an additional object path in this
+			array.
+
+			Whenever either the IPv4 or IPv6 state changes
+			in a way that modifies the contents of either of
+			these IPConfigs, a PropertyChanged signal will be
+			emitted for the Device's IPConfig property.
 
 		int32 LinkMonitorResponseTime [readonly]
 

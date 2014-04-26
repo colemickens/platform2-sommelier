@@ -89,6 +89,7 @@ class DeviceInfoTest : public Test {
     device_info_.rtnl_handler_ = &rtnl_handler_;
     device_info_.routing_table_ = &routing_table_;
     device_info_.netlink_manager_ = &netlink_manager_;
+    manager_.set_mock_device_info(&device_info_);
   }
 
   IPAddress CreateInterfaceAddress() {

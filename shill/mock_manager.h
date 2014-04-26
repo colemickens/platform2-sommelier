@@ -65,7 +65,15 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string &());
   MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
 
+  // Getter and setter for a mocked device info instance.
+  DeviceInfo *mock_device_info() { return mock_device_info_; }
+  void set_mock_device_info(DeviceInfo *mock_device_info) {
+      mock_device_info_ = mock_device_info;
+  }
+
  private:
+  DeviceInfo *mock_device_info_;
+
   DISALLOW_COPY_AND_ASSIGN(MockManager);
 };
 

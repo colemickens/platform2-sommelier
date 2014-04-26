@@ -109,7 +109,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Get the preferred globally scoped IPv6 address for |interface_index|.
   // This method returns true and sets |address| if a primary IPv6 address
   // exists.  Otherwise it returns false and leaves |address| unmodified.
-  bool GetPrimaryIPv6Address(int interface_index, IPAddress *address);
+  virtual bool GetPrimaryIPv6Address(int interface_index, IPAddress *address);
 
   // Returns true if any of the addresses on |interface_index| are on the
   // same network prefix as |address|.

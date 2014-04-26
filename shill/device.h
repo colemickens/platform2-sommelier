@@ -260,7 +260,7 @@ class Device : public base::RefCounted<Device> {
 
   // Called by DeviceInfo when the kernel adds or removes a globally-scoped
   // IPv6 address from this interface.
-  virtual void OnIPv6AddressChanged() {}
+  virtual void OnIPv6AddressChanged();
 
  protected:
   friend class base::RefCounted<Device>;
@@ -274,12 +274,14 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceHealthCheckerTest, RequestConnectionHealthCheck);
   FRIEND_TEST(DeviceHealthCheckerTest, SetupHealthChecker);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
+  FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, EnableIPv6);
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, Load);
+  FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
@@ -521,6 +523,9 @@ class Device : public base::RefCounted<Device> {
   uint64 GetReceiveByteCountProperty(Error *error);
   uint64 GetTransmitByteCountProperty(Error *error);
 
+  // Emit a property change signal for the "IPConfigs" property of this device.
+  void UpdateIPConfigsProperty();
+
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
   // defaults to true. |enabled_| reflects the real-time state of
@@ -563,6 +568,7 @@ class Device : public base::RefCounted<Device> {
   Metrics *metrics_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
+  IPConfigRefPtr ip6config_;
   ConnectionRefPtr connection_;
   base::WeakPtrFactory<Device> weak_ptr_factory_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;

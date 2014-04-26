@@ -6,7 +6,7 @@
 
 #include <gmock/gmock.h>
 
-using testing::Return;
+using testing::Invoke;
 
 namespace shill {
 
@@ -14,9 +14,10 @@ MockManager::MockManager(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Metrics *metrics,
                          GLib *glib)
-    : Manager(control_interface, dispatcher, metrics, glib, "", "", "") {
+    : Manager(control_interface, dispatcher, metrics, glib, "", "", ""),
+      mock_device_info_(NULL) {
   EXPECT_CALL(*this, device_info())
-      .WillRepeatedly(Return(reinterpret_cast<DeviceInfo *>(NULL)));
+      .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));
 }
 
 MockManager::~MockManager() {}

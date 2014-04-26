@@ -16,6 +16,7 @@
 using base::Bind;
 using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -96,6 +97,19 @@ void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const std::string &name,
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::KeyValueStoreToVariant(value));
+}
+
+void DeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
+    const string &name,
+    const vector<string> &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  vector< ::DBus::Path> paths;
+  vector<string>::const_iterator it;
+  for (it = value.begin(); it != value.end(); ++it) {
+    paths.push_back(*it);
+  }
+
+  PropertyChanged(name, DBusAdaptor::PathsToVariant(paths));
 }
 
 map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(

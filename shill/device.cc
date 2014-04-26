@@ -378,8 +378,43 @@ void Device::DestroyIPConfig() {
   if (ipconfig_.get()) {
     ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
     ipconfig_ = NULL;
+    UpdateIPConfigsProperty();
   }
   DestroyConnection();
+}
+
+void Device::OnIPv6AddressChanged() {
+  IPAddress address(IPAddress::kFamilyIPv6);
+  if (!manager_->device_info()->GetPrimaryIPv6Address(
+          interface_index_, &address)) {
+    if (ip6config_) {
+      ip6config_ = NULL;
+      UpdateIPConfigsProperty();
+    }
+    return;
+  }
+
+  IPConfig::Properties properties;
+  if (!address.IntoString(&properties.address)) {
+    LOG(ERROR) << "Unable to convert IPv6 address into a string!";
+    return;
+  }
+  properties.subnet_prefix = address.prefix();
+
+  if (!ip6config_) {
+    ip6config_ = new IPConfig(control_interface_, link_name_);
+  } else if (properties.address == ip6config_->properties().address &&
+             properties.subnet_prefix ==
+                 ip6config_->properties().subnet_prefix) {
+    SLOG(Device, 2) << __func__ << " primary address for "
+                    << link_name_ << " is unchanged.";
+    return;
+  }
+
+  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.method = kTypeIPv6;
+  ip6config_->set_properties(properties);
+  UpdateIPConfigsProperty();
 }
 
 bool Device::ShouldUseArpGateway() const {
@@ -517,6 +552,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
     StartPortalDetection();
   }
   StartLinkMonitor();
+  UpdateIPConfigsProperty();
 }
 
 void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
@@ -556,6 +592,7 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
 
   ipconfig->ResetProperties();
   OnIPConfigFailure();
+  UpdateIPConfigsProperty();
   DestroyConnection();
 }
 
@@ -915,11 +952,14 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
 }
 
 vector<string> Device::AvailableIPConfigs(Error */*error*/) {
-  if (ipconfig_.get()) {
-    string id = ipconfig_->GetRpcIdentifier();
-    return vector<string>(1, id);
+  vector<string> ipconfigs;
+  if (ipconfig_) {
+    ipconfigs.push_back(ipconfig_->GetRpcIdentifier());
   }
-  return vector<string>();
+  if (ip6config_) {
+    ipconfigs.push_back(ip6config_->GetRpcIdentifier());
+  }
+  return ipconfigs;
 }
 
 string Device::GetRpcConnectionIdentifier() {
@@ -1061,12 +1101,19 @@ void Device::SetEnabledUnchecked(bool enable, Error *error,
     rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
     SLOG(Device, 3) << "Device " << link_name_ << " ipconfig_ "
                     << (ipconfig_ ? "is set." : "is not set.");
+    SLOG(Device, 3) << "Device " << link_name_ << " ip6config_ "
+                    << (ip6config_ ? "is set." : "is not set.");
     SLOG(Device, 3) << "Device " << link_name_ << " connection_ "
                     << (connection_ ? "is set." : "is not set.");
     SLOG(Device, 3) << "Device " << link_name_ << " selected_service_ "
                     << (selected_service_ ? "is set." : "is not set.");
     Stop(error, chained_callback);
   }
+}
+
+void Device::UpdateIPConfigsProperty() {
+  adaptor_->EmitRpcIdentifierArrayChanged(
+      kIPConfigsProperty, AvailableIPConfigs(NULL));
 }
 
 }  // namespace shill

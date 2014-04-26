@@ -47,6 +47,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
+#include "shill/testing.h"
 #include "shill/tethering.h"
 #include "shill/traffic_monitor.h"
 
@@ -59,11 +60,13 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::DefaultValue;
+using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
@@ -187,6 +190,10 @@ class DeviceTest : public PropertyStoreTest {
     return device_->GetLinkMonitorResponseTime(error);
   }
 
+  DeviceMockAdaptor *GetDeviceMockAdaptor() {
+    return dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get());
+  }
+
   void SetManager(Manager *manager) {
     device_->manager_ = manager;
   }
@@ -307,9 +314,6 @@ TEST_F(DeviceTest, Save) {
   const string id = device_->GetStorageIdentifier();
   EXPECT_CALL(storage, SetBool(id, Device::kStoragePowered, _))
       .WillOnce(Return(true));
-  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
-                                                          kDeviceName);
-  device_->ipconfig_ = ipconfig;
   EXPECT_CALL(storage, SetUint64(id, Device::kStorageReceiveByteCount, _))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetUint64(id, Device::kStorageTransmitByteCount, _))
@@ -322,14 +326,6 @@ TEST_F(DeviceTest, StorageIdGeneration) {
   ControlInterface::RpcIdToStorageId(&to_process);
   EXPECT_TRUE(isalpha(to_process[0]));
   EXPECT_EQ(string::npos, to_process.find('/'));
-}
-
-MATCHER(IsNullRefPtr, "") {
-  return !arg;
-}
-
-MATCHER(NotNullRefPtr, "") {
-  return arg;
 }
 
 TEST_F(DeviceTest, SelectedService) {
@@ -409,6 +405,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   SelectService(service);
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
+  device_->set_ipconfig(ipconfig);
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
   EXPECT_CALL(*service, IsConnected())
       .WillRepeatedly(Return(true));
@@ -417,6 +414,11 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
   EXPECT_CALL(*service, OnDHCPSuccess());
   EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string>{ IPConfigMockAdaptor::kRpcId }));
+
   OnIPConfigUpdated(ipconfig.get());
 }
 
@@ -577,7 +579,7 @@ TEST_F(DeviceTest, Stop) {
 
   EXPECT_CALL(*service, state()).
       WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->SetEnabled(false);
@@ -739,6 +741,110 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
   properties.vendor_encapsulated_options = "Some other non-empty value";
   device_->ipconfig_->UpdateProperties(properties);
   EXPECT_FALSE(device_->IsConnectedViaTether());
+}
+
+TEST_F(DeviceTest, AvailableIPConfigs) {
+  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(NULL));
+  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
+            device_->AvailableIPConfigs(NULL));
+  device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
+
+  // We don't really care that the RPC IDs for all IPConfig mock adaptors
+  // are the same, or their ordering.  We just need to see that there are two
+  // of them when both IPv6 and IPv4 IPConfigs are available.
+  EXPECT_EQ(2, device_->AvailableIPConfigs(NULL).size());
+
+  device_->ipconfig_ = NULL;
+  EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
+            device_->AvailableIPConfigs(NULL));
+
+  device_->ip6config_ = NULL;
+  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(NULL));
+}
+
+TEST_F(DeviceTest, OnIPv6AddressChanged) {
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  // An IPv6 clear while ip6config_ is NULL will not emit a change.
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _)).Times(0);
+  device_->OnIPv6AddressChanged();
+  EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  IPAddress address0(IPAddress::kFamilyIPv6);
+  const char kAddress0[] = "fe80::1aa9:5ff:abcd:1234";
+  ASSERT_TRUE(address0.SetAddressFromString(kAddress0));
+
+  // Add an IPv6 address while ip6config_ is NULL.
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address0), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6AddressChanged();
+  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_EQ(kAddress0, device_->ip6config_->properties().address);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // If the IPv6 address does not change, no signal is emitted.
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address0), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _)).Times(0);
+  device_->OnIPv6AddressChanged();
+  EXPECT_EQ(kAddress0, device_->ip6config_->properties().address);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  IPAddress address1(IPAddress::kFamilyIPv6);
+  const char kAddress1[] = "fe80::1aa9:5ff:abcd:5678";
+  ASSERT_TRUE(address1.SetAddressFromString(kAddress1));
+
+  // If the IPv6 address changes, a signal is emitted.
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address1), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6AddressChanged();
+  EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // If the IPv6 prefix changes, a signal is emitted.
+  address1.set_prefix(64);
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address1), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6AddressChanged();
+  EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
+
+  // Return the IPv6 address to NULL.
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
+                                            vector<string>()));
+  device_->OnIPv6AddressChanged();
+  EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

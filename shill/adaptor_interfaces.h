@@ -43,6 +43,8 @@ class DeviceAdaptorInterface {
                                   const Strings &value) = 0;
   virtual void EmitKeyValueStoreChanged(const std::string &name,
                                         const KeyValueStore &value) = 0;
+  virtual void EmitRpcIdentifierArrayChanged(
+      const std::string &name, const std::vector<std::string> &value) = 0;
 };
 
 // These are the functions that an IPConfig adaptor must support
