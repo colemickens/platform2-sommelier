@@ -17,6 +17,7 @@
       '-fno-strict-aliasing',
       '-std=gnu++11',
       '-Woverloaded-virtual',
+      '-Wno-format-nonliteral',  # gcc.gnu.org/bugzilla/show_bug.cgi?id=31843
       '-Wno-missing-field-initializers',  # for LAZY_INSTANCE_INITIALIZER
     ],
     'defines': [
