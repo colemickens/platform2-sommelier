@@ -769,9 +769,15 @@ bool PerfSerializer::SerializeMetadata(PerfDataProto* to) const {
       to_metadata->set_value_md5_prefix(Md5Prefix(full_command_line));
     } else {
       DCHECK(to_metadata);  // Make sure a valid destination metadata was found.
-      to_metadata->set_value(string_metadata_[i].data[0].str);
-      to_metadata->set_value_md5_prefix(
-          Md5Prefix(string_metadata_[i].data[0].str));
+      // In some cases there is a null or empty string metadata value in the
+      // perf data. Make sure not to access |string_metadata_[i].data[0]| if
+      // that is the case.
+      if (!string_metadata_[i].data.empty()) {
+        to_metadata->set_value(string_metadata_[i].data[0].str);
+      } else {
+        to_metadata->set_value(string());
+      }
+      to_metadata->set_value_md5_prefix(Md5Prefix(to_metadata->value()));
     }
   }
   return true;
