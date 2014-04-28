@@ -62,6 +62,7 @@ const char* kPerfDataFiles[] = {
   // Data from other architectures.
   "perf.data.i686",     // 32-bit x86
   "perf.data.armv7",    // ARM v7
+  "perf.data.armv7.perf_3.14",      // ARM v7 obtained using perf 3.14.
 
   // Same as above, obtained from a system running kernel-next.
   "perf.data.singleprocess.next",

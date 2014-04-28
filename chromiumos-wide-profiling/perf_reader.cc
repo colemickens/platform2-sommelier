@@ -1748,9 +1748,19 @@ bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
 
 bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
                                         const BufferWithSize& data) const {
+  if (event_types_.empty()) {
+    return true;
+  }
+
   CheckNoPerfEventAttrPadding();
+
   // There should be an attribute for each event type.
-  CHECK_EQ(event_types_.size(), attrs_.size());
+  if (event_types_.size() != attrs_.size()) {
+    LOG(ERROR) << "Mismatch between number of event type events and attr "
+               << "events: " << event_types_.size() << " vs "
+               << attrs_.size();
+    return false;
+  }
 
   event_desc_num_events num_events = event_types_.size();
   if (!WriteDataToBuffer(&num_events, sizeof(num_events),
@@ -1967,8 +1977,16 @@ size_t PerfReader::GetNumMetadata() const {
 
 size_t PerfReader::GetEventDescMetadataSize() const {
   size_t size = 0;
+  if (event_types_.empty()) {
+    return size;
+  }
   if (metadata_mask_ & (1 << HEADER_EVENT_DESC)) {
-    CHECK_EQ(event_types_.size(), attrs_.size());
+    if (event_types_.size() > 0 && event_types_.size() != attrs_.size()) {
+      LOG(ERROR) << "Mismatch between number of event type events and attr "
+                 << "events: " << event_types_.size() << " vs "
+                 << attrs_.size();
+      return size;
+    }
     size += sizeof(event_desc_num_events) + sizeof(event_desc_attr_size);
     CStringWithLength dummy;
     for (size_t i = 0; i < attrs_.size(); ++i) {
