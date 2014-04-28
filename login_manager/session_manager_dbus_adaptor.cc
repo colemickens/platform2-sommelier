@@ -27,8 +27,7 @@ const char kBindingsPath[] =
   "/usr/share/dbus-1/interfaces/org.chromium.SessionManagerInterface.xml";
 const char kDBusIntrospectableInterface[] =
   "org.freedesktop.DBus.Introspectable";
-const char kDBusIntrospectMethod[] =
-  "org.freedesktop.DBus.Introspectable.Introspect";
+const char kDBusIntrospectMethod[] = "Introspect";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
