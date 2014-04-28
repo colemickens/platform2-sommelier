@@ -67,7 +67,9 @@ std::string Connection::GetResponseHeader(
 }
 
 uint64_t Connection::GetResponseDataSize() const {
-  return response_.GetData().size();
+  // HEAD requests must not return body.
+  return (request_.GetMethod() != request_type::kHead) ?
+      response_.GetData().size() : 0;
 }
 
 bool Connection::ReadResponseData(void* data, size_t buffer_size,
@@ -75,7 +77,8 @@ bool Connection::ReadResponseData(void* data, size_t buffer_size,
   size_t size_to_read = GetResponseDataSize() - response_data_ptr_;
   if (size_to_read > buffer_size)
     size_to_read = buffer_size;
-  memcpy(data, response_.GetData().data() + response_data_ptr_, size_to_read);
+  if (size_to_read > 0)
+    memcpy(data, response_.GetData().data() + response_data_ptr_, size_to_read);
   if (size_read)
     *size_read = size_to_read;
   response_data_ptr_ += size_to_read;

@@ -81,6 +81,9 @@ class ServerRequestResponseBase {
   // Add/retrieve request/response HTTP headers.
   void AddHeaders(const HeaderList& headers);
   std::string GetHeader(const std::string& header_name) const;
+  const std::map<std::string, std::string>& GetHeaders() const {
+    return headers_;
+  }
 
  protected:
   // Data buffer.
