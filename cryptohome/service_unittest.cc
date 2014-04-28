@@ -773,7 +773,7 @@ class ExTest : public ::testing::Test {
     BaseReply reply;
     CHECK(reply_);
     CHECK(reply.ParseFromString(*reply_));
-    free(reply_);
+    delete reply_;
     reply_ = NULL;
     return reply;
   }
