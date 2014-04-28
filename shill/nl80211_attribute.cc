@@ -403,6 +403,18 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
       NestedData(NLA_FLAG, "NL80211_RATE_INFO_40_MHZ_WIDTH", false));
   tx_rates.deeper_nesting.push_back(
       NestedData(NLA_FLAG, "NL80211_RATE_INFO_SHORT_GI", false));
+  tx_rates.deeper_nesting.push_back(
+      NestedData(NLA_U32, "NL80211_RATE_INFO_BITRATE32", false));
+  tx_rates.deeper_nesting.push_back(
+      NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_MCS", false));
+  tx_rates.deeper_nesting.push_back(
+      NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_NSS", false));
+  tx_rates.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80_MHZ_WIDTH", false));
+  tx_rates.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80P80_MHZ_WIDTH", false));
+  tx_rates.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_160_MHZ_WIDTH", false));
 
   NestedData rx_rates(NLA_NESTED, "NL80211_STA_INFO_RX_BITRATE", false);
   rx_rates.deeper_nesting = tx_rates.deeper_nesting;
