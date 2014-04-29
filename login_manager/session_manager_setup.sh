@@ -11,6 +11,8 @@ XTTY=1
 XAUTH_FILE="/var/run/chromelogin.auth"
 xstart.sh ${XUSER} ${XTTY} ${XAUTH_FILE} &
 
+touch -f /mnt/stateful_partition/etc/enable_chromium_coredumps
+
 USE_FLAGS="$(cat /etc/session_manager_use_flags.txt)"
 
 # Returns success if the USE flag passed as its sole parameter was defined.
