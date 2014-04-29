@@ -11,11 +11,12 @@
 
 set -e -u
 
+SCRIPT_NAME="$(basename "$0")"
 CHECK_DELAY=300  # Check every 5 minutes.
 SPOOL_DIR=/var/spool/cron-lite
 
 log() {
-  logger -p local3.info -t "$@"
+  logger -p local3.info -t "${SCRIPT_NAME}" "$@"
 }
 
 trap "log 'exiting'" EXIT
