@@ -53,6 +53,9 @@ namespace {
 // Number of days that the set_current_user_old action uses when updating the
 // home directory timestamp.  ~3 months should be old enough for test purposes.
 const int kSetCurrentUserOldOffsetInDays = 92;
+
+// Five minutes is enough to wait for any TPM operations, sync() calls, etc.
+const int kDefaultTimeoutMs = 300000;
 }
 
 namespace switches {
@@ -541,6 +544,8 @@ int main(int argc, char **argv) {
                               cryptohome::kCryptohomeServicePath,
                               cryptohome::kCryptohomeInterface);
   DCHECK(proxy.gproxy()) << "Failed to acquire proxy";
+  dbus_g_proxy_set_default_timeout(proxy.gproxy(), kDefaultTimeoutMs);
+
   cryptohome::Platform platform;
 
   if (!strcmp(switches::kActions[switches::ACTION_MOUNT], action.c_str())) {

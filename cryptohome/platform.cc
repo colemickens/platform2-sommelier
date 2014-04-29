@@ -52,8 +52,6 @@ using std::string;
 
 namespace {
 
-const char kWorkerThreadName[] = "platform_worker";
-
 class ScopedPath {
  public:
   ScopedPath(cryptohome::Platform* platform, const string& dir)
@@ -75,16 +73,13 @@ bool IsDirectory(const struct stat& file_info) {
  return !!S_ISDIR(file_info.st_mode);
 }
 
-void LazyUnmountAndSyncTask(const std::string& path, bool sync_first) {
-  if (sync_first) {
-    sync();
-  }
-  if (umount2(path.c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
-    if (errno != EBUSY) {
-      PLOG(ERROR) << "Lazy unmount failed!";
-    }
-  }
+void TimedSync() {
+  base::Time start = base::Time::Now();
   sync();
+  base::TimeDelta delta = base::Time::Now() - start;
+  if (delta > base::TimeDelta::FromSeconds(10)) {
+    LOG(WARNING) << "Long sync(): " << delta.InSeconds() << " seconds";
+  }
 }
 
 }  // namespace
@@ -205,7 +200,15 @@ bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
 }
 
 void Platform::LazyUnmountAndSync(const std::string& path, bool sync_first) {
-  PostWorkerTask(base::Bind(LazyUnmountAndSyncTask, path, sync_first));
+  if (sync_first) {
+    TimedSync();
+  }
+  if (umount2(path.c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
+    if (errno != EBUSY) {
+      PLOG(ERROR) << "Lazy unmount failed!";
+    }
+  }
+  TimedSync();
 }
 
 void Platform::GetProcessesWithOpenFiles(
@@ -806,7 +809,7 @@ bool Platform::SyncPath(const std::string& path) {
 }
 
 void Platform::Sync() {
-  sync();
+  TimedSync();
 }
 
 // Encapsulate these helpers to avoid include conflicts.
@@ -876,14 +879,6 @@ bool Platform::WalkPath(const std::string& path,
     }
   }
   return true;
-}
-
-void Platform::PostWorkerTask(const base::Closure& task) {
-  if (!worker_thread_.get()) {
-    worker_thread_.reset(new base::Thread(kWorkerThreadName));
-    worker_thread_->Start();
-  }
-  worker_thread_->message_loop()->PostTask(FROM_HERE, task);
 }
 
 FileEnumerator::FileInfo::FileInfo(

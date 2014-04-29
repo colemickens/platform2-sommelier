@@ -126,8 +126,8 @@ class Platform {
   //   was_busy (OUT) - Set to true on return if the mount point was busy
   virtual bool Unmount(const std::string& path, bool lazy, bool* was_busy);
 
-  // Lazy unmounts |path| asynchronously and then calls sync().  If |sync_first|
-  // is true then it also calls sync() before unmount.
+  // Lazy unmounts |path| and then calls sync().  If |sync_first| is true then
+  // it also calls sync() before unmount.
   //
   // Parameters
   //   path - The path to unmount
@@ -513,7 +513,6 @@ class Platform {
   void PostWorkerTask(const base::Closure& task);
 
   std::string mtab_path_;
-  scoped_ptr<base::Thread> worker_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };
