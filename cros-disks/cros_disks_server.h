@@ -13,6 +13,7 @@
 #include "cros-disks/device_event_queue.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/format_manager_observer_interface.h"
+#include "cros-disks/mount_entry.h"
 #include "cros-disks/session_manager_observer_interface.h"
 
 namespace cros_disks {
@@ -100,6 +101,10 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // neither on the boot device nor virtual, are considered auto-mountable.
   virtual std::vector<std::string> EnumerateAutoMountableDevices(
       DBus::Error& error);  // NOLINT
+
+  // Returns a list of mount entries (<error type, source path, source type,
+  // mount path>) that are currently managed by cros-disks.
+  virtual DBusMountEntries EnumerateMountEntries(DBus::Error& error);  // NOLINT
 
   // Returns properties of a disk device attached to the system.
   virtual DBusDisk GetDeviceProperties(const std::string& device_path,

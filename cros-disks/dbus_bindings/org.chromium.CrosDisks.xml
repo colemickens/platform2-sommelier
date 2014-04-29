@@ -23,6 +23,12 @@
       <tp:member name="DeviceIsReadOnly" type="b"> </tp:member>
       <tp:member name="DeviceSize" type="t"> </tp:member>
     </tp:struct>
+    <tp:struct name="MountEntry" array-name="MountEntries">
+      <tp:member name="Status" type="u"> </tp:member>
+      <tp:member name="SourcePath" type="s"> </tp:member>
+      <tp:member name="SourceType" type="u"> </tp:member>
+      <tp:member name="MountPath" type="s"> </tp:member>
+    </tp:struct>
     <method name="Mount">
       <arg name="path" type="s" direction="in">
       </arg>
@@ -45,6 +51,11 @@
     </method>
     <method name="EnumerateAutoMountableDevices">
       <arg name="devices" type="as" direction="out">
+      </arg>
+    </method>
+    <method name="EnumerateMountEntries">
+      <arg name="mountEntries" type="a(usus)" direction="out"
+           tp:type="MountEntries">
       </arg>
     </method>
     <method name="GetDeviceProperties">

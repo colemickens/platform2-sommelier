@@ -22,6 +22,7 @@
 namespace cros_disks {
 
 class Metrics;
+class MountEntry;
 class Platform;
 
 // A base class for managing mounted filesystems of certain kinds.
@@ -147,6 +148,10 @@ class MountManager {
 
   // Removes |mount_path| from the set of reserved mount paths.
   void UnreserveMountPath(const std::string& mount_path);
+
+  // Gets the mount entries managed by this mount manager. |mount_entries| is
+  // overwritten to return the mount entries.
+  void GetMountEntries(std::vector<MountEntry>* mount_entries);
 
  protected:
   // Type definition of a cache mapping a source path to its mount path of

@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/metrics.h"
+#include "cros-disks/mount_entry.h"
 #include "cros-disks/platform.h"
 
 using std::set;
@@ -1013,6 +1014,43 @@ TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_EQ(MOUNT_ERROR_NONE,
             manager_.GetMountErrorOfReservedMountPath(mount_path_));
+}
+
+// Verifies that MountManager::GetMountEntries() returns the expected list of
+// mount entries under different scenarios.
+TEST_F(MountManagerTest, GetMountEntries) {
+  EXPECT_CALL(manager_, GetMountSourceType())
+      .WillRepeatedly(Return(MOUNT_SOURCE_REMOVABLE_DEVICE));
+
+  vector<MountEntry> mount_entries;
+
+  // No mount entries is returned.
+  manager_.GetMountEntries(&mount_entries);
+  EXPECT_TRUE(mount_entries.empty());
+
+  // Verify that |mount_entries| is overwritten.
+  mount_entries.push_back(
+      MountEntry(MOUNT_ERROR_NONE, "", MOUNT_SOURCE_ARCHIVE, ""));
+  manager_.GetMountEntries(&mount_entries);
+  EXPECT_TRUE(mount_entries.empty());
+
+  // A normal mount entry is returned.
+  EXPECT_TRUE(manager_.AddMountPathToCache(kTestSourcePath, kTestMountPath));
+  manager_.GetMountEntries(&mount_entries);
+  ASSERT_EQ(1, mount_entries.size());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type());
+  EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path());
+  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type());
+  EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path());
+
+  // A reserved mount entry is returned.
+  manager_.ReserveMountPath(kTestMountPath, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
+  manager_.GetMountEntries(&mount_entries);
+  ASSERT_EQ(1, mount_entries.size());
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_entries[0].error_type());
+  EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path());
+  EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type());
+  EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path());
 }
 
 // Verifies that MountManager::ExtractMountLabelFromOptions() extracts a mount

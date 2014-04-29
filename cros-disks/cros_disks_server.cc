@@ -154,6 +154,19 @@ vector<string> CrosDisksServer::EnumerateAutoMountableDevices(
   return DoEnumerateDevices(true);
 }
 
+DBusMountEntries CrosDisksServer::EnumerateMountEntries(
+    DBus::Error& error) {  // NOLINT
+  DBusMountEntries dbus_mount_entries;
+  for (const auto& manager : mount_managers_) {
+    vector<MountEntry> mount_entries;
+    manager->GetMountEntries(&mount_entries);
+    for (const auto& mount_entry : mount_entries) {
+      dbus_mount_entries.push_back(mount_entry.ToDBusFormat());
+    }
+  }
+  return dbus_mount_entries;
+}
+
 DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
                                               DBus::Error& error) {  // NOLINT
   Disk disk;

@@ -18,6 +18,7 @@
 #include <base/strings/string_util.h>
 
 #include "cros-disks/platform.h"
+#include "cros-disks/mount_entry.h"
 
 using base::FilePath;
 using std::pair;
@@ -310,6 +311,21 @@ void MountManager::ReserveMountPath(const string& mount_path,
 
 void MountManager::UnreserveMountPath(const string& mount_path) {
   reserved_mount_paths_.erase(mount_path);
+}
+
+void MountManager::GetMountEntries(vector<MountEntry>* mount_entries) {
+  CHECK(mount_entries);
+
+  mount_entries->clear();
+  for (const auto& entry : mount_paths_) {
+    const string& source_path = entry.first;
+    const string& mount_path = entry.second;
+    MountErrorType error_type = GetMountErrorOfReservedMountPath(mount_path);
+    mount_entries->push_back(MountEntry(error_type,
+                                        source_path,
+                                        GetMountSourceType(),
+                                        mount_path));
+  }
 }
 
 bool MountManager::ExtractMountLabelFromOptions(
