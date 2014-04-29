@@ -4,9 +4,11 @@
 
 #include "buffet/http_transport_fake.h"
 
+#include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 
+#include "buffet/bind_lambda.h"
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
 #include "buffet/mime_utils.h"
@@ -48,6 +50,7 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
     if (error_msg)
       *error_msg = "Failed to send request headers";
   }
+  request_count_++;
   return connection;
 }
 
@@ -59,6 +62,18 @@ static inline std::string GetHandlerMapKey(const std::string& url,
 void Transport::AddHandler(const std::string& url, const std::string& method,
                            const HandlerCallback& handler) {
   handlers_.insert(std::make_pair(GetHandlerMapKey(url, method), handler));
+}
+
+void Transport::AddSimpleReplyHandler(const std::string& url,
+                                      const std::string& method,
+                                      int status_code,
+                                      const std::string& reply_text,
+                                      const std::string& mime_type) {
+  auto handler = [status_code, reply_text, mime_type](
+      const ServerRequest& request, ServerResponse* response) {
+    response->ReplyText(status_code, reply_text, mime_type.c_str());
+  };
+  AddHandler(url, method, base::Bind(handler));
 }
 
 Transport::HandlerCallback Transport::GetHandler(
@@ -90,6 +105,23 @@ std::string ServerRequestResponseBase::GetDataAsString() const {
     return std::string();
   auto chars = reinterpret_cast<const char*>(data_.data());
   return std::string(chars, data_.size());
+}
+
+std::unique_ptr<base::DictionaryValue>
+    ServerRequestResponseBase::GetDataAsJson() const {
+  if (mime::RemoveParameters(GetHeader(request_header::kContentType)) ==
+      mime::application::kJson) {
+    auto value = base::JSONReader::Read(GetDataAsString());
+    if (value) {
+      base::DictionaryValue* dict = nullptr;
+      if (value->GetAsDictionary(&dict)) {
+        return std::unique_ptr<base::DictionaryValue>(dict);
+      } else {
+        delete value;
+      }
+    }
+  }
+  return std::unique_ptr<base::DictionaryValue>();
 }
 
 void ServerRequestResponseBase::AddHeaders(const HeaderList& headers) {
@@ -150,7 +182,19 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
   base::JSONWriter::WriteWithOptions(json,
                                      base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &text);
-  ReplyText(status_code, text, mime::application::kJson);
+  std::string mime_type = mime::AppendParameter(mime::application::kJson,
+                                                mime::parameters::kCharset,
+                                                "utf-8");
+  ReplyText(status_code, text, mime_type.c_str());
+}
+
+void ServerResponse::ReplyJson(int status_code,
+                               const http::FormFieldList& fields) {
+  base::DictionaryValue json;
+  for (auto&& pair : fields) {
+    json.SetString(pair.first, pair.second);
+  }
+  ReplyJson(status_code, &json);
 }
 
 std::string ServerResponse::GetStatusText() const {

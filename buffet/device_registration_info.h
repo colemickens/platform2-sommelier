@@ -22,17 +22,33 @@ namespace base {
 namespace buffet {
 
 // The DeviceRegistrationInfo class represents device registration information.
-  class DeviceRegistrationInfo {
+class DeviceRegistrationInfo {
  public:
-   // Default-constructed uses CURL HTTP transport.
-   DeviceRegistrationInfo();
-   // This constructor allows to pass in a custom HTTP transport
-   // (mainly for testing).
-   DeviceRegistrationInfo(std::shared_ptr<chromeos::http::Transport> transport);
+  // The device registration configuration storage interface.
+  struct StorageInterface {
+    virtual ~StorageInterface() = default;
+    // Load the device registration configuration from storage.
+    // If it fails (e.g. the storage container [file?] doesn't exist), then
+    // it returns empty unique_ptr (aka nullptr).
+    virtual std::unique_ptr<base::Value> Load() = 0;
+    // Save the device registration configuration to storage.
+    // If saved successfully, returns true. Could fail when writing to
+    // physical storage like file system for various reasons (out of disk space,
+    // access permissions, etc).
+    virtual bool Save(const base::Value* config) = 0;
+  };
+  // This is a helper class for unit testing.
+  class TestHelper;
+  // Default-constructed uses CURL HTTP transport.
+  DeviceRegistrationInfo();
+  // This constructor allows to pass in a custom HTTP transport
+  // (mainly for testing).
+  DeviceRegistrationInfo(std::shared_ptr<chromeos::http::Transport> transport,
+                         std::shared_ptr<StorageInterface> storage);
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
-  // Make sure CheckRegistration() is called before this call.
+  // Make sure ValidateAndRefreshAccessToken() is called before this call.
   std::pair<std::string, std::string> GetAuthorizationHeader() const;
 
   // Returns the GCD service request URL. If |subpath| is specified, it is
@@ -122,7 +138,10 @@ namespace buffet {
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;
+  // Serialization interface to save and load device registration info.
+  std::shared_ptr<StorageInterface> storage_;
 
+  friend class TestHelper;
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);
 };
 

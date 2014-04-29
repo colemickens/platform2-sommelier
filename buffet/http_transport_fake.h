@@ -11,6 +11,7 @@
 #include <base/values.h>
 
 #include "buffet/http_transport.h"
+#include "buffet/http_utils.h"
 
 namespace chromeos {
 namespace http {
@@ -44,9 +45,21 @@ class Transport : public http::Transport {
   // The lookup starts with the most specific data pair to the catch-all (*,*).
   void AddHandler(const std::string& url, const std::string& method,
                   const HandlerCallback& handler);
+  // Simple version of AddHandler. AddSimpleReplyHandler just returns the
+  // specified text response of given MIME type.
+  void AddSimpleReplyHandler(const std::string& url,
+                             const std::string& method,
+                             int status_code,
+                             const std::string& reply_text,
+                             const std::string& mime_type);
   // Retrieve a handler for specific |url| and request |method|.
   HandlerCallback GetHandler(const std::string& url,
                              const std::string& method) const;
+
+  // For tests that want to assert on the number of HTTP requests sent,
+  // these methods can be used to do just that.
+  int GetRequestCount() const { return request_count_; }
+  void ResetRequestCount() { request_count_ = 0; }
 
   // Overload from http::Transport
   virtual std::unique_ptr<http::Connection> CreateConnection(
@@ -63,6 +76,8 @@ class Transport : public http::Transport {
 
   // A list of user-supplied request handlers.
   std::map<std::string, HandlerCallback> handlers_;
+  // Counter incremented each time a request is made.
+  int request_count_ = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -77,6 +92,7 @@ class ServerRequestResponseBase {
   void AddData(const void* data, size_t data_size);
   const std::vector<unsigned char>& GetData() const { return data_; }
   std::string GetDataAsString() const;
+  std::unique_ptr<base::DictionaryValue> GetDataAsJson() const;
 
   // Add/retrieve request/response HTTP headers.
   void AddHeaders(const HeaderList& headers);
@@ -148,6 +164,9 @@ public:
                  const char* mime_type);
   // Reply with JSON object. The content type will be "application/json".
   void ReplyJson(int status_code, const base::Value* json);
+  // Special form for JSON response for simple objects that have a flat
+  // list of key-value pairs of string type.
+  void ReplyJson(int status_code, const FormFieldList& fields);
 
   // Specialized overload to send the binary data as an array of simple
   // data elements. Only trivial data types (scalars, POD structures, etc)

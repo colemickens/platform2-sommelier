@@ -93,8 +93,11 @@ std::unique_ptr<Response> PostJson(const std::string& url,
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
+  std::string mime_type = mime::AppendParameter(mime::application::kJson,
+                                                mime::parameters::kCharset,
+                                                "utf-8");
   return PostBinary(url, data.c_str(), data.size(),
-                    mime::application::kJson, headers, transport);
+                    mime_type.c_str(), headers, transport);
 }
 
 std::unique_ptr<Response> PatchJson(const std::string& url,
@@ -104,8 +107,11 @@ std::unique_ptr<Response> PatchJson(const std::string& url,
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
+  std::string mime_type = mime::AppendParameter(mime::application::kJson,
+                                                mime::parameters::kCharset,
+                                                "utf-8");
   return SendRequest(request_type::kPatch, url, data.c_str(), data.size(),
-                     mime::application::kJson, headers, transport);
+                     mime_type.c_str(), headers, transport);
 }
 
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(

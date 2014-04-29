@@ -40,6 +40,8 @@ bool Connection::FinishRequest() {
   CHECK(transport) << "Expecting a fake transport";
   auto handler = transport->GetHandler(request_.GetURL(), request_.GetMethod());
   if (handler.is_null()) {
+    LOG(ERROR) << "Received unexpected " << request_.GetMethod()
+               << " request at " << request_.GetURL();
     response_.ReplyText(status_code::NotFound,
                         "<html><body>Not found</body></html>",
                         mime::text::kHtml);

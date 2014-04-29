@@ -4,13 +4,15 @@
 
 #include "buffet/device_registration_info.h"
 
+#include <base/file_util.h>
+#include <base/files/important_file_writer.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <base/file_util.h>
 #include <memory>
 
 #include "buffet/data_encoding.h"
+#include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
@@ -20,7 +22,9 @@
 using namespace chromeos;
 using namespace chromeos::data_encoding;
 
-namespace {
+namespace buffet {
+namespace storage_keys {
+
 // Persistent keys
 const char kClientId[]      = "client_id";
 const char kClientSecret[]  = "client_secret";
@@ -34,6 +38,11 @@ const char kRobotAccount[]  = "robot_account";
 const char kDeviceKind[]    = "device_kind";
 const char kSystemName[]    = "system_name";
 const char kDisplayName[]   = "display_name";
+
+}  // namespace storage_keys
+}  // namespace buffet
+
+namespace {
 
 const base::FilePath::CharType kDeviceInfoFilePath[] =
     FILE_PATH_LITERAL("/var/lib/buffet/device_reg_info");
@@ -85,21 +94,52 @@ std::string BuildURL(const std::string& url,
   return url::AppendQueryParams(result, params);
 }
 
+class FileStorage : public buffet::DeviceRegistrationInfo::StorageInterface {
+ public:
+  virtual std::unique_ptr<base::Value> Load() override {
+    // TODO(avakulenko): Figure out security implications of storing
+    // this data unencrypted.
+    std::string json;
+    if (!base::ReadFileToString(GetFilePath(), &json))
+      return std::unique_ptr<base::Value>();
 
-} // anonymous namespace
+    return std::unique_ptr<base::Value>(base::JSONReader::Read(json));
+  }
+
+  virtual bool Save(const base::Value* config) {
+    // TODO(avakulenko): Figure out security implications of storing
+    // this data unencrypted.
+    std::string json;
+    base::JSONWriter::WriteWithOptions(config,
+                                       base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                       &json);
+    return base::ImportantFileWriter::WriteFileAtomically(GetFilePath(), json);
+  }
+
+ private:
+  base::FilePath GetFilePath() const{
+    return base::FilePath(kDeviceInfoFilePath);
+  }
+};
+
+}  // anonymous namespace
 
 namespace buffet {
+
 DeviceRegistrationInfo::DeviceRegistrationInfo()
-    : transport_(new http::curl::Transport()){
+    : transport_(new http::curl::Transport()),
+      storage_(new FileStorage()) {
 }
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
-    std::shared_ptr<http::Transport> transport) : transport_(transport) {
+    std::shared_ptr<http::Transport> transport,
+    std::shared_ptr<StorageInterface> storage) : transport_(transport),
+                                                 storage_(storage) {
 }
 
 std::pair<std::string, std::string>
     DeviceRegistrationInfo::GetAuthorizationHeader() const {
-  return BuildAuthHeader(/*"Bearer"*/"OAuth", access_token_);
+  return BuildAuthHeader("Bearer", access_token_);
 }
 
 std::string DeviceRegistrationInfo::GetServiceURL(
@@ -123,13 +163,7 @@ std::string DeviceRegistrationInfo::GetDeviceId() {
 }
 
 bool DeviceRegistrationInfo::Load() {
-  // TODO(avakulenko): Figure out security implications of storing
-  // this data unencrypted.
-  std::string json;
-  if (!base::ReadFileToString(base::FilePath(kDeviceInfoFilePath), &json))
-    return false;
-
-  auto value = std::unique_ptr<base::Value>(base::JSONReader::Read(json));
+  auto value = storage_->Load();
   const base::DictionaryValue* dict = nullptr;
   if (!value || !value->GetAsDictionary(&dict))
     return false;
@@ -137,28 +171,28 @@ bool DeviceRegistrationInfo::Load() {
   // Get the values into temp variables first to make sure we can get
   // all the data correctly before changing the state of this object.
   std::string client_id;
-  if (!dict->GetString(kClientId, &client_id))
+  if (!dict->GetString(storage_keys::kClientId, &client_id))
     return false;
   std::string client_secret;
-  if (!dict->GetString(kClientSecret, &client_secret))
+  if (!dict->GetString(storage_keys::kClientSecret, &client_secret))
     return false;
   std::string api_key;
-  if (!dict->GetString(kApiKey, &api_key))
+  if (!dict->GetString(storage_keys::kApiKey, &api_key))
     return false;
   std::string refresh_token;
-  if (!dict->GetString(kRefreshToken, &refresh_token))
+  if (!dict->GetString(storage_keys::kRefreshToken, &refresh_token))
     return false;
   std::string device_id;
-  if (!dict->GetString(kDeviceId, &device_id))
+  if (!dict->GetString(storage_keys::kDeviceId, &device_id))
     return false;
   std::string oauth_url;
-  if (!dict->GetString(kOAuthURL, &oauth_url))
+  if (!dict->GetString(storage_keys::kOAuthURL, &oauth_url))
     return false;
   std::string service_url;
-  if (!dict->GetString(kServiceURL, &service_url))
+  if (!dict->GetString(storage_keys::kServiceURL, &service_url))
     return false;
   std::string device_robot_account;
-  if (!dict->GetString(kRobotAccount, &device_robot_account))
+  if (!dict->GetString(storage_keys::kRobotAccount, &device_robot_account))
     return false;
 
   client_id_            = client_id;
@@ -173,26 +207,16 @@ bool DeviceRegistrationInfo::Load() {
 }
 
 bool DeviceRegistrationInfo::Save() const {
-  // TODO(avakulenko): Figure out security implications of storing
-  // this data unencrypted.
   base::DictionaryValue dict;
-  dict.SetString(kClientId,     client_id_);
-  dict.SetString(kClientSecret, client_secret_);
-  dict.SetString(kApiKey,       api_key_);
-  dict.SetString(kRefreshToken, refresh_token_);
-  dict.SetString(kDeviceId,     device_id_);
-  dict.SetString(kOAuthURL,     oauth_url_);
-  dict.SetString(kServiceURL,   service_url_);
-  dict.SetString(kRobotAccount, device_robot_account_);
-
-  std::string json;
-  base::JSONWriter::WriteWithOptions(&dict,
-                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                     &json);
-  int count = file_util::WriteFile(base::FilePath(kDeviceInfoFilePath),
-                                   json.data(), static_cast<int>(json.size()));
-
-  return (count > 0);
+  dict.SetString(storage_keys::kClientId,     client_id_);
+  dict.SetString(storage_keys::kClientSecret, client_secret_);
+  dict.SetString(storage_keys::kApiKey,       api_key_);
+  dict.SetString(storage_keys::kRefreshToken, refresh_token_);
+  dict.SetString(storage_keys::kDeviceId,     device_id_);
+  dict.SetString(storage_keys::kOAuthURL,     oauth_url_);
+  dict.SetString(storage_keys::kServiceURL,   service_url_);
+  dict.SetString(storage_keys::kRobotAccount, device_robot_account_);
+  return storage_->Save(&dict);
 }
 
 bool DeviceRegistrationInfo::CheckRegistration() {
@@ -209,7 +233,7 @@ bool DeviceRegistrationInfo::CheckRegistration() {
 }
 
 bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken() {
-  LOG(INFO) << " Checking access token expiration.";
+  LOG(INFO) << "Checking access token expiration.";
   if (!access_token_.empty() &&
       !access_token_expiration_.is_null() &&
       access_token_expiration_ > base::Time::Now()) {
@@ -284,29 +308,29 @@ bool CheckParam(const std::string& param_name,
 std::string DeviceRegistrationInfo::StartRegistration(
     const std::map<std::string, std::shared_ptr<base::Value>>& params,
   std::string* error_msg) {
-  GetParamValue(params, kClientId, &client_id_);
-  GetParamValue(params, kClientSecret, &client_secret_);
-  GetParamValue(params, kApiKey, &api_key_);
-  GetParamValue(params, kDeviceId, &device_id_);
-  GetParamValue(params, kDeviceKind, &device_kind_);
-  GetParamValue(params, kSystemName, &system_name_);
-  GetParamValue(params, kDisplayName, &display_name_);
-  GetParamValue(params, kOAuthURL, &oauth_url_);
-  GetParamValue(params, kServiceURL, &service_url_);
+  GetParamValue(params, storage_keys::kClientId, &client_id_);
+  GetParamValue(params, storage_keys::kClientSecret, &client_secret_);
+  GetParamValue(params, storage_keys::kApiKey, &api_key_);
+  GetParamValue(params, storage_keys::kDeviceId, &device_id_);
+  GetParamValue(params, storage_keys::kDeviceKind, &device_kind_);
+  GetParamValue(params, storage_keys::kSystemName, &system_name_);
+  GetParamValue(params, storage_keys::kDisplayName, &display_name_);
+  GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
+  GetParamValue(params, storage_keys::kServiceURL, &service_url_);
 
-  if (!CheckParam(kClientId, client_id_, error_msg))
+  if (!CheckParam(storage_keys::kClientId, client_id_, error_msg))
     return std::string();
-  if (!CheckParam(kClientSecret, client_secret_, error_msg))
+  if (!CheckParam(storage_keys::kClientSecret, client_secret_, error_msg))
     return std::string();
-  if (!CheckParam(kApiKey, api_key_, error_msg))
+  if (!CheckParam(storage_keys::kApiKey, api_key_, error_msg))
     return std::string();
-  if (!CheckParam(kDeviceKind, device_kind_, error_msg))
+  if (!CheckParam(storage_keys::kDeviceKind, device_kind_, error_msg))
     return std::string();
-  if (!CheckParam(kSystemName, system_name_, error_msg))
+  if (!CheckParam(storage_keys::kSystemName, system_name_, error_msg))
     return std::string();
-  if (!CheckParam(kOAuthURL, oauth_url_, error_msg))
+  if (!CheckParam(storage_keys::kOAuthURL, oauth_url_, error_msg))
     return std::string();
-  if (!CheckParam(kServiceURL, service_url_, error_msg))
+  if (!CheckParam(storage_keys::kServiceURL, service_url_, error_msg))
     return std::string();
 
   std::vector<std::pair<std::string, std::vector<std::string>>> commands = {
@@ -416,18 +440,9 @@ bool DeviceRegistrationInfo::FinishRegistration(
 
   std::string auth_code;
   url += "/finalize?key=" + api_key_;
-  do {
-    LOG(INFO) << "Sending request to: " << url;
-    response = http::PostBinary(url, nullptr, 0, transport_);
-    if (response) {
-      if (response->GetStatusCode() == http::status_code::BadRequest)
-        sleep(1);
-    }
-  }
-  while (response &&
-         response->GetStatusCode() == http::status_code::BadRequest);
-  if (response &&
-      response->GetStatusCode() == http::status_code::Ok) {
+  LOG(INFO) << "Sending request to: " << url;
+  response = http::PostBinary(url, nullptr, 0, transport_);
+  if (response && response->IsSuccessful()) {
     auto json_resp = http::ParseJsonResponse(response.get(), nullptr, nullptr);
     if (json_resp &&
         json_resp->GetString("robotAccountEmail", &device_robot_account_) &&
@@ -463,8 +478,9 @@ bool DeviceRegistrationInfo::FinishRegistration(
 
       Save();
     }
+    return true;
   }
-  return true;
+  return false;
 }
 
 }  // namespace buffet

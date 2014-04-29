@@ -125,7 +125,8 @@ TEST(HttpUtils, SendRequest_Headers) {
         {request_header::kIfMatch, "*"},
       }, transport);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::application::kJson, response->GetContentType());
+  EXPECT_EQ(mime::application::kJson,
+            mime::RemoveParameters(response->GetContentType()));
   auto json = ParseJsonResponse(response.get(), nullptr, nullptr);
   std::string value;
   EXPECT_TRUE(json->GetString("method", &value));
@@ -261,12 +262,13 @@ TEST(HttpUtils, PostFormData) {
 TEST(HttpUtils, PostPatchJson) {
   auto JsonHandler = [](const fake::ServerRequest& request,
                         fake::ServerResponse* response) {
-    EXPECT_EQ(mime::application::kJson,
-              request.GetHeader(request_header::kContentType));
-    base::DictionaryValue json;
-    json.SetString("method", request.GetMethod());
-    json.SetString("data", request.GetDataAsString());
-    response->ReplyJson(status_code::Ok, &json);
+    auto mime_type = mime::RemoveParameters(
+        request.GetHeader(request_header::kContentType));
+    EXPECT_EQ(mime::application::kJson, mime_type);
+    response->ReplyJson(status_code::Ok, {
+      {"method", request.GetMethod()},
+      {"data", request.GetDataAsString()},
+    });
   };
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, "*", base::Bind(JsonHandler));
@@ -298,10 +300,8 @@ TEST(HttpUtils, PostPatchJson) {
 TEST(HttpUtils, ParseJsonResponse) {
   auto JsonHandler = [](const fake::ServerRequest& request,
                         fake::ServerResponse* response) {
-    base::DictionaryValue json;
-    json.SetString("data", request.GetFormField("value"));
     int status_code = std::stoi(request.GetFormField("code"));
-    response->ReplyJson(status_code, &json);
+    response->ReplyJson(status_code, {{"data", request.GetFormField("value")}});
   };
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(JsonHandler));

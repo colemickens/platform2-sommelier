@@ -76,6 +76,7 @@
         'async_event_sequencer_unittest.cc',
         'buffet_testrunner.cc',
         'data_encoding_unittest.cc',
+        'device_registration_info_unittest.cc',
         'exported_property_set_unittest.cc',
         'http_connection_fake.cc',
         'http_transport_fake.cc',
