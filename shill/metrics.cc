@@ -266,14 +266,14 @@ const int Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets =
 
 // static
 const char Metrics::kMetricWifiAutoConnectableServices[] =
-    "Network.Shill.wifi.AutoConnectableServices";
+    "Network.Shill.WiFi.AutoConnectableServices";
 const int Metrics::kMetricWifiAutoConnectableServicesMax = 50;
 const int Metrics::kMetricWifiAutoConnectableServicesMin = 1;
 const int Metrics::kMetricWifiAutoConnectableServicesNumBuckets = 10;
 
 // static
 const char Metrics::kMetricWifiAvailableBSSes[] =
-    "Network.Shill.wifi.AvailableBSSesAtConnect";
+    "Network.Shill.WiFi.AvailableBSSesAtConnect";
 const int Metrics::kMetricWifiAvailableBSSesMax = 50;
 const int Metrics::kMetricWifiAvailableBSSesMin = 1;
 const int Metrics::kMetricWifiAvailableBSSesNumBuckets = 10;
