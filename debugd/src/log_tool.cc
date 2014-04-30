@@ -142,7 +142,7 @@ static const Log common_logs[] = {
               " /var/log/messages" },
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
-  { "touchpad_activity", "/opt/google/touchpad/generate_userfeedback alt" },
+  { "touchpad_activity", "/opt/google/input/cmt_feedback alt" },
   { "touch_fw_version", "grep -E"
               " 'synaptics: Touchpad model|chromeos-touch-[a-z]*-update'"
               " /var/log/messages | tail -n 20" },
