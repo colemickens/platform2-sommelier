@@ -5,6 +5,7 @@
 #include "buffet/http_transport_fake.h"
 
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
