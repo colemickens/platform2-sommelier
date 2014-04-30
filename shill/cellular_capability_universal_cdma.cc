@@ -184,28 +184,8 @@ bool CellularCapabilityUniversalCDMA::IsActivated() const {
   return (activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED);
 }
 
-void CellularCapabilityUniversalCDMA::UpdateStorageIdentifier() {
-  if (!cellular()->service().get())
-    return;
-
-  // Lookup the unique identifier assigned to the current network and base the
-  // service's storage identifier on it.
-  const CellularOperatorInfo::CellularOperator *provider =
-      modem_info()->cellular_operator_info()->GetCellularOperatorBySID(
-          UintToString(sid_));
-  if (!provider || provider->identifier().empty())
-    // Don't update the identifier if a better one could not be built. The
-    // default identifier initialized in cellular_service.cc still applies
-    // here.
-    return;
-  cellular()->service()->SetStorageIdentifier(
-      string(shill::kTypeCellular) + "_" + cellular()->address() +
-      "_" + provider->identifier());
-}
-
 void CellularCapabilityUniversalCDMA::OnServiceCreated() {
   SLOG(Cellular, 2) << __func__;
-  UpdateStorageIdentifier();
   UpdateServiceActivationStateProperty();
   UpdateServingOperator();
   HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);

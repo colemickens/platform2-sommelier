@@ -79,7 +79,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         device_adaptor_(NULL),
         cellular_(new Cellular(&modem_info_,
                                "",
-                               kMachineAddress,
+                               "00:01:02:03:04:05",
                                0,
                                Cellular::kTypeUniversal,
                                "",
@@ -212,7 +212,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   static const char kActiveBearerPathPrefix[];
   static const char kImei[];
   static const char kInactiveBearerPathPrefix[];
-  static const char kMachineAddress[];
   static const char kSimPath[];
   static const uint32 kAccessTechnologies;
   static const char kTestMobileProviderDBPath[];
@@ -343,8 +342,6 @@ const char CellularCapabilityUniversalTest::kActiveBearerPathPrefix[] =
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
 const char CellularCapabilityUniversalTest::kInactiveBearerPathPrefix[] =
     "/bearer/inactive";
-const char CellularCapabilityUniversalTest::kMachineAddress[] =
-    "TestMachineAddress";
 const char CellularCapabilityUniversalTest::kSimPath[] = "/foo/sim";
 const uint32 CellularCapabilityUniversalTest::kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE |
@@ -1562,61 +1559,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_info_);
   EXPECT_TRUE(cellular_->provider_requires_roaming());
-}
-
-TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
-  CellularOperatorInfo::CellularOperator provider;
-
-  ClearService();
-  EXPECT_FALSE(cellular_->service().get());
-  capability_->UpdateStorageIdentifier();
-  EXPECT_FALSE(cellular_->service().get());
-
-  SetService();
-  EXPECT_TRUE(cellular_->service().get());
-
-  const string prefix = "cellular_" + string(kMachineAddress) + "_";
-
-  // |capability_->operator_id_| is "".
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(prefix + cellular_->service()->friendly_name(),
-            cellular_->service()->GetStorageIdentifier());
-
-  // GetCellularOperatorByMCCMNC returns NULL.
-  capability_->operator_id_ = "1";
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-      GetCellularOperatorByMCCMNC(capability_->operator_id_))
-      .WillOnce(Return(nullptr));
-
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(prefix + cellular_->service()->friendly_name(),
-            cellular_->service()->GetStorageIdentifier());
-  Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
-
-  // |cellular_->imsi_| is not ""
-  cellular_->set_imsi("TESTIMSI");
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-      GetCellularOperatorByMCCMNC(capability_->operator_id_))
-      .WillOnce(Return(nullptr));
-
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(prefix + "TESTIMSI", cellular_->service()->storage_identifier_);
-  Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
-
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-      GetCellularOperatorByMCCMNC(capability_->operator_id_))
-      .Times(2)
-      .WillRepeatedly(Return(&provider));
-
-  // |provider.identifier_| is "".
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(prefix + "TESTIMSI", cellular_->service()->storage_identifier_);
-
-  // Success.
-  provider.identifier_ = "testidentifier";
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(prefix + "testidentifier",
-            cellular_->service()->storage_identifier_);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {

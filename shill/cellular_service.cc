@@ -131,7 +131,7 @@ CellularService::CellularService(ModemInfo *modem_info,
 
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetStorageIdentifier(string(kTypeCellular) + "_" +
-                       cellular_->address() + "_" +  friendly_name());
+                       cellular_->address() + "_" + friendly_name());
   // Assume we are not performing any out-of-credits detection.
   // The capability can reinitialize with the appropriate type later.
   InitOutOfCreditsDetection(OutOfCreditsDetector::OOCTypeNone);
@@ -382,6 +382,7 @@ void CellularService::SetState(ConnectState new_state) {
 }
 
 void CellularService::SetStorageIdentifier(const string &identifier) {
+  SLOG(Cellular, 3) << __func__ << ": " << identifier;
   storage_identifier_ = identifier;
   std::replace_if(storage_identifier_.begin(),
                   storage_identifier_.end(),

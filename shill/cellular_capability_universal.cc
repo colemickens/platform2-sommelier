@@ -647,32 +647,6 @@ void CellularCapabilityUniversal::ReleaseProxies() {
   sim_proxy_.reset();
 }
 
-void CellularCapabilityUniversal::UpdateStorageIdentifier() {
-  if (!cellular()->service().get())
-    return;
-
-  // Lookup the unique identifier assigned to the current network and base the
-  // service's storage identifier on it.
-  const string kPrefix =
-      string(shill::kTypeCellular) + "_" + cellular()->address() + "_";
-  string storage_id;
-  if (!operator_id_.empty()) {
-    const CellularOperatorInfo::CellularOperator *provider =
-        modem_info()->cellular_operator_info()->GetCellularOperatorByMCCMNC(
-            operator_id_);
-    if (provider && !provider->identifier().empty()) {
-      storage_id = kPrefix + provider->identifier();
-    }
-  }
-  // If the above didn't work, append IMSI, if available.
-  if (storage_id.empty() && !cellular()->imsi().empty()) {
-    storage_id = kPrefix + cellular()->imsi();
-  }
-  if (!storage_id.empty()) {
-    cellular()->service()->SetStorageIdentifier(storage_id);
-  }
-}
-
 void CellularCapabilityUniversal::UpdateServiceActivationState() {
   if (!cellular()->service().get())
     return;
@@ -713,7 +687,6 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
 }
 
 void CellularCapabilityUniversal::OnServiceCreated() {
-  UpdateStorageIdentifier();
   UpdateServiceActivationState();
   UpdateServingOperator();
   UpdateOLP();

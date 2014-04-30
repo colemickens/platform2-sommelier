@@ -358,8 +358,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
-  FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
   FRIEND_TEST(CellularTest, CreateService);
@@ -409,6 +407,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StopModemCallbackFail);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StopPPPOnTermination);
+  FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -562,6 +561,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   // ///////////////////////////////////////////////////////////////////////////
 
   ModemInfo *modem_info_;
+  const Type type_;
   ProxyFactory *proxy_factory_;
   PPPDeviceFactory *ppp_device_factory_;
 

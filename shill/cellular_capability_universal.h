@@ -130,9 +130,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Post-payment activation handlers.
   virtual void UpdatePendingActivationState();
 
-  // Updates the storage identifier used for the current cellular service.
-  virtual void UpdateStorageIdentifier();
-
   // Returns the operator-specific form of |mdn|, which is passed to the online
   // payment portal of a cellular operator.
   std::string GetMdnForOLP(
@@ -181,8 +178,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityUniversalCDMATest;
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOLP);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
-              UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               ActivationWaitForRegisterTimeout);
@@ -241,7 +236,6 @@ class CellularCapabilityUniversal : public CellularCapability {
               UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,

@@ -17,6 +17,7 @@ void MockMobileOperatorInfo::SetEmptyDefaultsForProperties() {
   ON_CALL(*this, mccmnc()).WillByDefault(ReturnRef(empty_mccmnc_));
   ON_CALL(*this, operator_name())
       .WillByDefault(ReturnRef(empty_operator_name_));
+  ON_CALL(*this, uuid()).WillByDefault(ReturnRef(empty_uuid_));
 }
 
 }  // namespace shill

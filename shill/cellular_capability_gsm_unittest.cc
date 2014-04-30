@@ -712,18 +712,6 @@ TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
 }
 
-TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
-  SetService();
-  capability_->OnServiceCreated();
-  EXPECT_EQ(string(kTypeCellular) + "_" + kAddress + "_" +
-            cellular_->service()->friendly_name(),
-            cellular_->service()->GetStorageIdentifier());
-  cellular_->set_imsi(kIMSI);
-  capability_->OnServiceCreated();
-  EXPECT_EQ(string(kTypeCellular) + "_" + kAddress + "_" + kIMSI,
-            cellular_->service()->GetStorageIdentifier());
-}
-
 MATCHER_P(KeyValueStoreEq, value, "") {
   bool match = value.bool_properties() == arg.bool_properties() &&
       value.int_properties() == arg.int_properties() &&

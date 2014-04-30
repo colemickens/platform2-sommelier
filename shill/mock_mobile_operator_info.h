@@ -24,6 +24,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
 
   MOCK_CONST_METHOD0(mccmnc, const std::string &());
   MOCK_CONST_METHOD0(operator_name, const std::string &());
+  MOCK_CONST_METHOD0(uuid, const std::string &());
 
   // Sets up the mock object to return empty strings/vectors etc for all
   // propeties.
@@ -32,6 +33,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
  private:
   std::string empty_mccmnc_;
   std::string empty_operator_name_;
+  std::string empty_uuid_;
 };
 
 }  // namespace shill

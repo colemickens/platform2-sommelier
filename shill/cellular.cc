@@ -134,6 +134,7 @@ Cellular::Cellular(ModemInfo *modem_info,
       sim_present_(false),
       prl_version_(0),
       modem_info_(modem_info),
+      type_(type),
       proxy_factory_(proxy_factory),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       allow_roaming_(false),
@@ -622,7 +623,48 @@ void Cellular::CreateService() {
   CHECK(!service_.get());
   service_ = new CellularService(modem_info_, this);
   capability_->OnServiceCreated();
+
+  // Storage identifier must be set only once, and before registering the
+  // service with the manager, since we key off of this identifier to
+  // determine the profile to load.
+  // TODO(pprabhu) Make profile matching more robust (crbug.com/369755)
+  string service_id;
+  if (home_provider_info_->IsMobileNetworkOperatorKnown() &&
+      !home_provider_info_->uuid().empty()){
+    service_id = home_provider_info_->uuid();
+  } else if (serving_operator_info_->IsMobileNetworkOperatorKnown() &&
+             !serving_operator_info_->uuid().empty()) {
+    service_id = serving_operator_info_->uuid();
+  } else {
+    switch (type_) {
+      case kTypeGSM:
+      case kTypeUniversal:
+        if (!sim_identifier().empty()) {
+          service_id = sim_identifier();
+        }
+        break;
+
+      case kTypeCDMA:
+      case kTypeUniversalCDMA:
+        if (!meid().empty()) {
+          service_id = meid();
+        }
+        break;
+
+      default:
+        NOTREACHED();
+    }
+  }
+
+  if (!service_id.empty()) {
+    string storage_id = base::StringPrintf(
+        "%s_%s_%s",
+        kTypeCellular, address().c_str(), service_id.c_str());
+    service()->SetStorageIdentifier(storage_id);
+  }
+
   manager()->RegisterService(service_);
+
   // We might have missed a property update because the service wasn't created
   // ealier.
   UpdateScanning();

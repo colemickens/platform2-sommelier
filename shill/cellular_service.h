@@ -143,7 +143,6 @@ class CellularService : public Service {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
   FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);

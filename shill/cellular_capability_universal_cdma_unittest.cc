@@ -578,45 +578,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, SetupConnectProperties) {
   EXPECT_STREQ("#777", map["number"].reader().get_string());
 }
 
-TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateStorageIdentifier) {
-  ClearService();
-  EXPECT_FALSE(cellular_->service().get());
-  capability_->UpdateStorageIdentifier();
-  EXPECT_FALSE(cellular_->service().get());
-
-  SetService();
-  EXPECT_TRUE(cellular_->service().get());
-
-  const string kPrefix =
-      string(shill::kTypeCellular) + "_" + string(kMachineAddress) + "_";
-
-  // GetCellularOperatorBySID returns NULL.
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(_))
-      .WillOnce(Return(nullptr));
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(kPrefix + cellular_->service()->friendly_name(),
-            cellular_->service()->GetStorageIdentifier());
-  Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
-
-  CellularOperatorInfo::CellularOperator provider;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(_))
-      .Times(2)
-      .WillRepeatedly(Return(&provider));
-
-  // |provider.identifier_| is empty.
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(kPrefix + cellular_->service()->friendly_name(),
-            cellular_->service()->GetStorageIdentifier());
-
-  // Success.
-  provider.identifier_ = "testidentifier";
-  capability_->UpdateStorageIdentifier();
-  EXPECT_EQ(kPrefix + "testidentifier",
-            cellular_->service()->GetStorageIdentifier());
-}
-
 TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
        UpdatePendingActivationState) {
   capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;

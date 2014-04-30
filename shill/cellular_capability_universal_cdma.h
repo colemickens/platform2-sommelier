@@ -73,9 +73,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   // Post-payment activation handlers.
   virtual void UpdatePendingActivationState() override;
 
-  // Updates the storage identifier used for the current cellular service.
-  virtual void UpdateStorageIdentifier() override;
-
  private:
   friend class CellularCapabilityUniversalCDMATest;
   FRIEND_TEST(CellularCapabilityUniversalCDMADispatcherTest,
@@ -92,8 +89,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
               UpdateServiceActivationStateProperty);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
-              UpdateStorageIdentifier);
 
   // CDMA property change handlers
   virtual void OnModemCDMAPropertiesChanged(
