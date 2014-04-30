@@ -2481,6 +2481,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
                                               band_info.c_str(),
                                               is_short_gi ? " short GI" : "",
                                               nss_info.c_str()));
+      metrics()->NotifyWifiTxBitrate(rate/10);
     }
   }
 }

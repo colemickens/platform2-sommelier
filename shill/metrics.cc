@@ -289,6 +289,12 @@ const int Metrics::kMetricServicesOnSameNetworkNumBuckets = 10;
 const char Metrics::kMetricUserInitiatedEvents[] =
     "Network.Shill.UserInitatedEvents";
 
+const char Metrics::kMetricWifiTxBitrate[] =
+    "Network.Shill.WiFi.TransmitBitrateMbps";
+const int Metrics::kMetricWifiTxBitrateMax = 7000;
+const int Metrics::kMetricWifiTxBitrateMin = 1;
+const int Metrics::kMetricWifiTxBitrateNumBuckets = 100;
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1096,6 +1102,14 @@ void Metrics::NotifyUserInitiatedEvent(int event) {
   SendEnumToUMA(kMetricUserInitiatedEvents,
                 event,
                 kUserInitiatedEventMax);
+}
+
+void Metrics::NotifyWifiTxBitrate(int bitrate) {
+  SendToUMA(kMetricWifiTxBitrate,
+            bitrate,
+            kMetricWifiTxBitrateMin,
+            kMetricWifiTxBitrateMax,
+            kMetricWifiTxBitrateNumBuckets);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

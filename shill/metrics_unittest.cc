@@ -771,6 +771,16 @@ TEST_F(MetricsTest, NotifyUserInitiatedEvent) {
   metrics_.NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
 }
 
+TEST_F(MetricsTest, NotifyWifiTxBitrate) {
+  EXPECT_CALL(library_,
+      SendToUMA(Metrics::kMetricWifiTxBitrate,
+                1,
+                Metrics::kMetricWifiTxBitrateMin,
+                Metrics::kMetricWifiTxBitrateMax,
+                Metrics::kMetricWifiTxBitrateNumBuckets));
+  metrics_.NotifyWifiTxBitrate(1);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

@@ -2895,6 +2895,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
 
   EXPECT_NE(kSignalValue, endpoint->signal_strength());
   EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
+  EXPECT_CALL(*metrics(), NotifyWifiTxBitrate(kBitrate/10));
   AttributeListConstRefPtr station_info_prime;
   ReportReceivedStationInfo(new_station);
   EXPECT_EQ(kSignalValue, endpoint->signal_strength());
@@ -2961,6 +2962,8 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
 
   new_vht_station.attributes()->SetNestedAttributeHasAValue(
       NL80211_ATTR_STA_INFO);
+
+  EXPECT_CALL(*metrics(), NotifyWifiTxBitrate(kVhtBitrate/10));
 
   ReportReceivedStationInfo(new_vht_station);
 

@@ -469,6 +469,12 @@ class Metrics {
   // Metric for user-initiated events.
   static const char kMetricUserInitiatedEvents[];
 
+  // Wifi TX bitrate in Mbps.
+  static const char kMetricWifiTxBitrate[];
+  static const int kMetricWifiTxBitrateMax;
+  static const int kMetricWifiTxBitrateMin;
+  static const int kMetricWifiTxBitrateNumBuckets;
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -637,6 +643,9 @@ class Metrics {
   // Notifies this object about number of services associated to the
   // currently connected network.
   virtual void NotifyServicesOnSameNetwork(int num_services);
+
+  // Notifies this object about WIFI TX bitrate in Mbps.
+  virtual void NotifyWifiTxBitrate(int bitrate);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();
