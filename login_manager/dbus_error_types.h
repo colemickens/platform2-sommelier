@@ -24,7 +24,7 @@ static const char kUnknownPid[] = INTERFACE ".UnknownPid";
 static const char kVerifyFail[] = INTERFACE ".VerifyFail";
 
 #undef INTERFACE
-}  // dbus_error
+}  // namespace dbus_error
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_DBUS_ERROR_TYPES_H_

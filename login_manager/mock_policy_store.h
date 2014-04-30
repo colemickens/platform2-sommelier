@@ -7,7 +7,7 @@
 
 #include "login_manager/policy_store.h"
 
-namespace login_manager{
+namespace login_manager {
 class MockPolicyStore : public PolicyStore {
  public:
   MockPolicyStore();

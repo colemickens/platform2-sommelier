@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "device_local_account_policy_service.h"
+#include "login_manager/device_local_account_policy_service.h"
 
 #include <algorithm>
 
@@ -94,6 +94,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
 
   scoped_ptr<DeviceLocalAccountPolicyService> service_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(DeviceLocalAccountPolicyServiceTest);
 };
 

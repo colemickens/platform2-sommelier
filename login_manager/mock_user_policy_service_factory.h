@@ -7,6 +7,8 @@
 
 #include "login_manager/user_policy_service_factory.h"
 
+#include <string>
+
 namespace login_manager {
 
 class MockUserPolicyServiceFactory : public UserPolicyServiceFactory {

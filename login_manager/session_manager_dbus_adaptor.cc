@@ -393,7 +393,6 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::LockScreen(
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
-
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenShown(

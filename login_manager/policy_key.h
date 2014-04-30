@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_OWNER_KEY_H_
 #define LOGIN_MANAGER_OWNER_KEY_H_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

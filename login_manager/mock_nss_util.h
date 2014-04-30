@@ -9,6 +9,8 @@
 
 #include <unistd.h>
 
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
@@ -68,7 +70,7 @@ class MockNssUtil : public NssUtil {
 
 class CheckPublicKeyUtil : public MockNssUtil {
  public:
-  CheckPublicKeyUtil(bool expected);
+  explicit CheckPublicKeyUtil(bool expected);
   virtual ~CheckPublicKeyUtil();
  private:
   DISALLOW_COPY_AND_ASSIGN(CheckPublicKeyUtil);

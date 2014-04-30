@@ -9,6 +9,9 @@
 
 #include <unistd.h>
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 namespace base {

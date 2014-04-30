@@ -79,7 +79,6 @@ class LivenessCheckerImplTest : public ::testing::Test {
   scoped_ptr<LivenessCheckerImpl> checker_;
 
  private:
-
   void Respond(dbus::MethodCall* method_call,
                int timeout_ms,
                dbus::ObjectProxy::ResponseCallback callback) {

@@ -202,6 +202,7 @@ class SessionManagerImplTest : public ::testing::Test {
   static const pid_t kDummyPid;
   static const char kNothing[];
   static const char kSaneEmail[];
+
  private:
   void ExpectSessionBoilerplate(const string& email_string,
                                 bool guest,
@@ -725,7 +726,7 @@ class SessionManagerImplStaticTest : public ::testing::Test {
   bool ValidateEmail(const string& email_address) {
     return SessionManagerImpl::ValidateEmail(email_address);
   }
- };
+};
 
 TEST_F(SessionManagerImplStaticTest, EmailAddressTest) {
   const char valid[] = "user_who+we.like@some-where.com";

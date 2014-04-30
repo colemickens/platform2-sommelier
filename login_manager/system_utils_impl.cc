@@ -87,9 +87,9 @@ bool SystemUtilsImpl::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
   base::TimeDelta elapsed;
   int ret;
 
-  DCHECK(timeout.InSeconds() >= 0);
-  DCHECK(timeout.InSeconds() <=
-         static_cast<int64>(std::numeric_limits<int>::max()));
+  DCHECK_GE(timeout.InSeconds(), 0);
+  DCHECK_LE(timeout.InSeconds(),
+            static_cast<int64>(std::numeric_limits<int>::max()));
   alarm(static_cast<int32>(timeout.InSeconds()));
   do {
     errno = 0;

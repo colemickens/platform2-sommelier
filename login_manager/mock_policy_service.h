@@ -7,6 +7,8 @@
 
 #include "login_manager/policy_service.h"
 
+#include <vector>
+
 #include <gmock/gmock.h>
 
 namespace login_manager {

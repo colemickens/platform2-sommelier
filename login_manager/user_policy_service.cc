@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "user_policy_service.h"
+#include "login_manager/user_policy_service.h"
 
 #include <sys/stat.h>
 
+#include <string>
 #include <vector>
 
 #include <base/file_util.h>
@@ -49,8 +50,7 @@ void UserPolicyService::PersistKeyCopy() {
 
     const std::vector<uint8>& key = scoped_policy_key_->public_key_der();
     system_utils_->AtomicFileWrite(key_copy_path_,
-                                   std::string(key.begin(),
-                                               key.end()));
+                                   std::string(key.begin(), key.end()));
     mode = S_IRUSR | S_IRGRP | S_IROTH;
     chmod(key_copy_path_.value().c_str(), mode);
   } else {

@@ -36,9 +36,9 @@ class PolicyService {
  public:
   // Flags determining what do to with new keys in Store().
   enum KeyInstallFlags {
-    KEY_ROTATE = 1,      // Existing key may be rotated.
-    KEY_INSTALL_NEW = 2, // Allow to install a key if none is present.
-    KEY_CLOBBER = 4,     // OK to replace the existing key without any checks.
+    KEY_ROTATE = 1,       // Existing key may be rotated.
+    KEY_INSTALL_NEW = 2,  // Allow to install a key if none is present.
+    KEY_CLOBBER = 4,      // OK to replace the existing key without any checks.
   };
 
   // Wraps a policy service error with code and message.

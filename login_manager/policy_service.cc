@@ -204,7 +204,7 @@ void PolicyService::OnPolicyPersisted(Completion* completion, bool status) {
   } else {
     std::string msg = "Failed to persist policy to disk.";
     LOG(ERROR) << msg;
-    if (completion){
+    if (completion) {
       Error error(dbus_error::kSigEncodeFail, msg);
       completion->ReportFailure(error);
     }

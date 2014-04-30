@@ -172,4 +172,4 @@ bool DeviceLocalAccountPolicyService::IsValidAccountKey(
   return chromeos::cryptohome::home::IsSanitizedUserName(str);
 }
 
-}  // namespace
+}  // namespace login_manager

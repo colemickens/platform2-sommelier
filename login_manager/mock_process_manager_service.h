@@ -7,6 +7,9 @@
 
 #include "login_manager/process_manager_service_interface.h"
 
+#include <string>
+#include <vector>
+
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 

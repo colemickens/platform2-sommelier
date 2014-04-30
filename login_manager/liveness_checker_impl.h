@@ -20,7 +20,7 @@ class MessageLoopProxy;
 namespace dbus {
 class ObjectProxy;
 class Response;
-}  // namespace base
+}  // namespace dbus
 
 namespace login_manager {
 class ProcessManagerServiceInterface;

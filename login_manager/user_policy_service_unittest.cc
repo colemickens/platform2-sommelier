@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "user_policy_service.h"
+#include "login_manager/user_policy_service.h"
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

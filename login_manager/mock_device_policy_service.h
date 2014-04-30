@@ -7,6 +7,9 @@
 
 #include "login_manager/device_policy_service.h"
 
+#include <string>
+#include <vector>
+
 #include <crypto/scoped_nss_types.h>
 
 #include "login_manager/chrome_device_policy.pb.h"

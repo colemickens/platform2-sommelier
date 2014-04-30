@@ -16,8 +16,8 @@ namespace login_manager {
 // alive.
 class LivenessChecker {
  public:
-  LivenessChecker() {};
-  virtual ~LivenessChecker() {};
+  LivenessChecker() {}
+  virtual ~LivenessChecker() {}
 
   // Begin sending periodic liveness pings to the browser.
   virtual void Start() = 0;

@@ -5,10 +5,13 @@
 #ifndef LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_
 #define LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_
 
-#include "login_manager/upstart_signal_emitter.h"
+#include <string>
+#include <vector>
 
 #include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
+
+#include "login_manager/upstart_signal_emitter.h"
 
 namespace login_manager {
 

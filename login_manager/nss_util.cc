@@ -77,6 +77,7 @@ class NssUtilImpl : public NssUtil {
   virtual bool Sign(const uint8* data, int data_len,
                     std::vector<uint8>* OUT_signature,
                     RSAPrivateKey* key) OVERRIDE;
+
  private:
   static const uint16 kKeySizeInBits;
   static const char kNssdbSubpath[];
@@ -226,7 +227,7 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {
   ScopedSECKEYPublicKey public_key(SECKEY_ExtractPublicKey(spki));
   SECKEY_DestroySubjectPublicKeyInfo(spki);  // Done with spki.
   if (!public_key.get())
-   return false;
+    return false;
   return true;
 }
 

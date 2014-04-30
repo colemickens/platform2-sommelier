@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_DEVICE_POLICY_SERVICE_H_
 
 #include <string>
+#include <vector>
 
 #include <dbus/dbus-glib-lowlevel.h>
 

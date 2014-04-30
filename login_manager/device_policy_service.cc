@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "device_policy_service.h"
+#include "login_manager/device_policy_service.h"
 
 #include <secmodt.h>
+
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/file_util.h>
@@ -112,7 +114,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   scoped_ptr<RSAPrivateKey> signing_key(
       GetOwnerKeyForGivenUser(pub_key, slot, &error));
   if (!signing_key.get())
-   return false;
+    return false;
 
   if (mitigator_->Mitigating()) {
     // Mitigating: Depending on whether the public key is still present, either

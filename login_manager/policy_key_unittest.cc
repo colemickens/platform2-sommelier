@@ -4,6 +4,7 @@
 
 #include "login_manager/policy_key.h"
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

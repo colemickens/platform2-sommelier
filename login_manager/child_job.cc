@@ -56,12 +56,12 @@ bool ChildJobInterface::Subprocess::ForkAndExec(char const** argv) {
 }
 
 void ChildJobInterface::Subprocess::KillEverything(int signal) {
-  DCHECK(pid_ > 0);
+  DCHECK_GT(pid_, 0);
   system_->kill(-pid_, desired_uid_, signal);
 }
 
 void ChildJobInterface::Subprocess::Kill(int signal) {
-  DCHECK(pid_ > 0);
+  DCHECK_GT(pid_, 0);
   system_->kill(pid_, desired_uid_, signal);
 }
 

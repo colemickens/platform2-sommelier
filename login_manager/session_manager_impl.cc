@@ -619,4 +619,4 @@ PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
   return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
 }
 
-}  // namespace login_manage
+}  // namespace login_manager
