@@ -169,7 +169,7 @@ bool CellularCapabilityUniversalCDMA::IsServiceActivationRequired() const {
   if (!modem_info()->cellular_operator_info())
     return false;
 
-  const CellularService::OLP *olp =
+  const CellularOperatorInfo::OLP *olp =
       modem_info()->cellular_operator_info()->GetOLPBySID(UintToString(sid_));
   if (!olp)
     return false;
@@ -190,7 +190,6 @@ void CellularCapabilityUniversalCDMA::OnServiceCreated() {
   UpdateServingOperator();
   HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);
   UpdatePendingActivationState();
-  UpdateOLP();
 }
 
 void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
@@ -206,36 +205,32 @@ void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
   cellular()->service()->SetActivationState(activation_state);
 }
 
-void CellularCapabilityUniversalCDMA::UpdateOLP() {
+void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
   SLOG(Cellular, 2) << __func__;
 
-  const CellularOperatorInfo *cellular_operator_info =
-      modem_info()->cellular_operator_info();
-  if (!cellular_operator_info)
+  // In this case, the Home Provider is trivial. All information comes from the
+  // Serving Operator.
+  if (!cellular()->serving_operator_info()->IsMobileNetworkOperatorKnown()) {
     return;
+  }
 
-  string sid_string = UintToString(sid_);
-  const CellularOperatorInfo::CellularOperator *cellular_operator =
-      cellular_operator_info->GetCellularOperatorBySID(sid_string);
-  if (!cellular_operator)
+  const vector<MobileOperatorInfo::OnlinePortal> &olp_list =
+      cellular()->serving_operator_info()->olp_list();
+  if (olp_list.empty()) {
     return;
+  }
 
-  const CellularService::OLP *result =
-      cellular_operator_info->GetOLPBySID(sid_string);
-  if (!result)
-    return;
-
-  CellularService::OLP olp;
-  olp.CopyFrom(*result);
-  string post_data = olp.GetPostData();
+  if (olp_list.size() > 1) {
+    SLOG(Cellular, 1) << "Found multiple online portals. Choosing the first.";
+  }
+  string post_data = olp_list[0].post_data;
   ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", cellular()->esn());
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
-                               GetMdnForOLP(*cellular_operator));
+  ReplaceSubstringsAfterOffset(
+      &post_data, 0, "${mdn}",
+      GetMdnForOLP(cellular()->serving_operator_info()));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", cellular()->meid());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", "GOG2");
-  olp.SetPostData(post_data);
-  if (cellular()->service().get())
-    cellular()->service()->SetOLP(olp);
+  cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
 void CellularCapabilityUniversalCDMA::GetProperties() {
@@ -356,7 +351,7 @@ void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(uint32 error) {
   cellular()->service()->SetActivationState(
       GetActivationStateString(activation_state_));
   cellular()->service()->set_error(GetActivationErrorString(error));
-  UpdateOLP();
+  UpdateServiceOLP();
 }
 
 // static

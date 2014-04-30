@@ -105,6 +105,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
   // Helper method to extract the online portal information from properties.
   void UpdateOnlinePortal(const DBusPropertiesMap &properties);
+  virtual void UpdateServiceOLP() override;
 
   bool activation_starting_;
   ResultCallback pending_activation_callback_;
@@ -112,7 +113,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   uint32 activation_state_;
   uint32 registration_state_evdo_;
   uint32 registration_state_1x_;
-  CellularService::OLP olp_;
   std::string usage_url_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);

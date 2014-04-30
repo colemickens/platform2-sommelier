@@ -31,9 +31,6 @@ const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 
 // TODO(petkov): Add these to system_api/dbus/service_constants.h
 namespace {
-const char kKeyOLPURL[] = "url";
-const char kKeyOLPMethod[] = "method";
-const char kKeyOLPPostData[] = "postdata";
 const char kCellularPPPUsernameProperty[] = "Cellular.PPP.Username";
 const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
 }  // namespace
@@ -52,50 +49,6 @@ static bool GetNonEmptyField(const Stringmap &stringmap,
     return true;
   }
   return false;
-}
-
-CellularService::OLP::OLP() {
-  SetURL("");
-  SetMethod("");
-  SetPostData("");
-}
-
-CellularService::OLP::~OLP() {}
-
-void CellularService::OLP::CopyFrom(const OLP &olp) {
-  dict_ = olp.dict_;
-}
-
-bool CellularService::OLP::Equals(const OLP &olp) const {
-  return dict_ == olp.dict_;
-}
-
-const string &CellularService::OLP::GetURL() const {
-  return dict_.find(kKeyOLPURL)->second;
-}
-
-void CellularService::OLP::SetURL(const string &url) {
-  dict_[kKeyOLPURL] = url;
-}
-
-const string &CellularService::OLP::GetMethod() const {
-  return dict_.find(kKeyOLPMethod)->second;
-}
-
-void CellularService::OLP::SetMethod(const string &method) {
-  dict_[kKeyOLPMethod] = method;
-}
-
-const string &CellularService::OLP::GetPostData() const {
-  return dict_.find(kKeyOLPPostData)->second;
-}
-
-void CellularService::OLP::SetPostData(const string &post_data) {
-  dict_[kKeyOLPPostData] = post_data;
-}
-
-const Stringmap &CellularService::OLP::ToDict() const {
-  return dict_;
 }
 
 CellularService::CellularService(ModemInfo *modem_info,
@@ -121,7 +74,7 @@ CellularService::CellularService(ModemInfo *modem_info,
   HelpRegisterDerivedBool(kOutOfCreditsProperty,
                           &CellularService::IsOutOfCredits,
                           NULL);
-  store->RegisterConstStringmap(kPaymentPortalProperty, &olp_.ToDict());
+  store->RegisterConstStringmap(kPaymentPortalProperty, &olp_);
   store->RegisterConstString(kRoamingStateProperty, &roaming_state_);
   store->RegisterConstStringmap(kServingOperatorProperty,
                                 &serving_operator_.ToDict());
@@ -414,13 +367,19 @@ void CellularService::SetActivationState(const string &state) {
   SetConnectableFull(state != kActivationStateNotActivated);
 }
 
-void CellularService::SetOLP(const OLP &olp) {
-  if (olp_.Equals(olp)) {
+void CellularService::SetOLP(const string &url,
+                             const string &method,
+                             const string &post_data) {
+  Stringmap olp;
+  olp[kPaymentPortalURL] = url;
+  olp[kPaymentPortalMethod] = method;
+  olp[kPaymentPortalPostData] = post_data;
+
+  if (olp_ == olp) {
     return;
   }
-  olp_.CopyFrom(olp);
-  adaptor()->EmitStringmapChanged(kPaymentPortalProperty,
-                                  olp.ToDict());
+  olp_ = olp;
+  adaptor()->EmitStringmapChanged(kPaymentPortalProperty, olp);
 }
 
 void CellularService::SetUsageURL(const string &url) {

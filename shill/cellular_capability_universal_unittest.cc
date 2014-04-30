@@ -31,6 +31,7 @@
 #include "shill/mock_mm1_modem_proxy.h"
 #include "shill/mock_mm1_modem_simple_proxy.h"
 #include "shill/mock_mm1_sim_proxy.h"
+#include "shill/mock_mobile_operator_info.h"
 #include "shill/mock_modem_info.h"
 #include "shill/mock_pending_activation_store.h"
 #include "shill/mock_profile.h"
@@ -74,6 +75,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
+        mock_home_provider_info_(new MockMobileOperatorInfo(dispatcher)),
+        mock_serving_operator_info_(new MockMobileOperatorInfo(dispatcher)),
         proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL),
@@ -187,6 +190,13 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   void SetSimpleProxy() {
     capability_->modem_simple_proxy_.reset(modem_simple_proxy_.release());
+  }
+
+  void SetMockMobileOperatorInfoObjects() {
+    CHECK(mock_home_provider_info_);
+    CHECK(mock_serving_operator_info_);
+    cellular_->set_home_provider_info(mock_home_provider_info_.release());
+    cellular_->set_serving_operator_info(mock_serving_operator_info_.release());
   }
 
   void ReleaseCapabilityProxies() {
@@ -306,6 +316,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   scoped_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   scoped_ptr<mm1::MockSimProxy> sim_proxy_;
   scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
+  scoped_ptr<MockMobileOperatorInfo> mock_home_provider_info_;
+  scoped_ptr<MockMobileOperatorInfo> mock_serving_operator_info_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
@@ -1562,71 +1574,91 @@ TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
-  CellularOperatorInfo::CellularOperator cellular_operator;
+  const string kVzwUUID = "vzw";
+  const string kFooUUID = "foo";
+  MockMobileOperatorInfo mock_operator_info(&dispatcher_);
 
+  mock_operator_info.SetEmptyDefaultsForProperties();
+  EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kVzwUUID));
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnknown;
 
-  cellular_operator.identifier_ = "vzw";
   cellular_->set_mdn("");
-  EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("0000000000", capability_->GetMdnForOLP(&mock_operator_info));
   cellular_->set_mdn("0123456789");
-  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(&mock_operator_info));
   cellular_->set_mdn("10123456789");
-  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(&mock_operator_info));
+
   cellular_->set_mdn("1021232333");
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
-  EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("0000000000", capability_->GetMdnForOLP(&mock_operator_info));
+  Mock::VerifyAndClearExpectations(&mock_operator_info);
 
-  cellular_operator.identifier_ = "foo";
+  mock_operator_info.SetEmptyDefaultsForProperties();
+  EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kFooUUID));
+
   cellular_->set_mdn("");
-  EXPECT_EQ("", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("", capability_->GetMdnForOLP(&mock_operator_info));
   cellular_->set_mdn("0123456789");
-  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(&mock_operator_info));
   cellular_->set_mdn("10123456789");
-  EXPECT_EQ("10123456789", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("10123456789", capability_->GetMdnForOLP(&mock_operator_info));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
-  CellularOperatorInfo::CellularOperator cellular_operator;
+TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
+  const MobileOperatorInfo::OnlinePortal kOlp {
+      "http://testurl",
+      "POST",
+      "imei=${imei}&imsi=${imsi}&mdn=${mdn}&min=${min}&iccid=${iccid}"};
+  const vector<MobileOperatorInfo::OnlinePortal> kOlpList {kOlp};
+  const string kUuidVzw = "vzw";
+  const string kUuidFoo = "foo";
 
-  CellularService::OLP test_olp;
-  test_olp.SetURL("http://testurl");
-  test_olp.SetMethod("POST");
-  test_olp.SetPostData("imei=${imei}&imsi=${imsi}&mdn=${mdn}&"
-                       "min=${min}&iccid=${iccid}");
-
+  MockMobileOperatorInfo *home_provider_info = mock_home_provider_info_.get();
+  SetMockMobileOperatorInfoObjects();
   cellular_->set_imei("1");
   cellular_->set_imsi("2");
   cellular_->set_mdn("10123456789");
   cellular_->set_min("5");
   cellular_->set_sim_identifier("6");
-  capability_->operator_id_ = "123456";
 
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-      GetCellularOperatorByMCCMNC(capability_->operator_id_))
-      .WillRepeatedly(Return(&cellular_operator));
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-      GetOLPByMCCMNC(capability_->operator_id_))
-      .WillRepeatedly(Return(&test_olp));
-
+  home_provider_info->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*home_provider_info, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*home_provider_info, olp_list())
+      .WillRepeatedly(ReturnRef(kOlpList));
+  EXPECT_CALL(*home_provider_info, uuid())
+      .WillOnce(ReturnRef(kUuidVzw));
   SetService();
-  cellular_operator.identifier_ = "vzw";
-  capability_->UpdateOLP();
-  const CellularService::OLP &vzw_olp = cellular_->service()->olp();
-  EXPECT_EQ("http://testurl", vzw_olp.GetURL());
-  EXPECT_EQ("POST", vzw_olp.GetMethod());
+  capability_->UpdateServiceOLP();
+  // Copy to simplify assertions below.
+  Stringmap vzw_olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", vzw_olp[kPaymentPortalURL]);
+  EXPECT_EQ("POST", vzw_olp[kPaymentPortalMethod]);
   EXPECT_EQ("imei=1&imsi=2&mdn=0123456789&min=5&iccid=6",
-            vzw_olp.GetPostData());
+            vzw_olp[kPaymentPortalPostData]);
+  Mock::VerifyAndClearExpectations(home_provider_info);
 
-  cellular_operator.identifier_ = "foo";
-  capability_->UpdateOLP();
-  const CellularService::OLP &olp = cellular_->service()->olp();
-  EXPECT_EQ("http://testurl", olp.GetURL());
-  EXPECT_EQ("POST", olp.GetMethod());
+  home_provider_info->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*home_provider_info, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*home_provider_info, olp_list())
+      .WillRepeatedly(ReturnRef(kOlpList));
+  EXPECT_CALL(*home_provider_info, uuid())
+      .WillOnce(ReturnRef(kUuidFoo));
+  capability_->UpdateServiceOLP();
+  // Copy to simplify assertions below.
+  Stringmap olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", olp[kPaymentPortalURL]);
+  EXPECT_EQ("POST", olp[kPaymentPortalMethod]);
   EXPECT_EQ("imei=1&imsi=2&mdn=10123456789&min=5&iccid=6",
-            olp.GetPostData());
+            olp[kPaymentPortalPostData]);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsMdnValid) {
@@ -1695,7 +1727,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   cellular_->set_sim_identifier("");
   cellular_->set_mdn("0000000000");
-  CellularService::OLP olp;
+  CellularOperatorInfo::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
 
@@ -2042,9 +2074,9 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   cellular_->set_mdn("0000000000");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
-  CellularService::OLP olp;
+  CellularOperatorInfo::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
-      .WillOnce(Return((const CellularService::OLP *)NULL))
+      .WillOnce(Return((const CellularOperatorInfo::OLP *)NULL))
       .WillRepeatedly(Return(&olp));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 

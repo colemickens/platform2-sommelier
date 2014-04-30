@@ -6,6 +6,7 @@
 #define SHILL_MOCK_MOBILE_OPERATOR_INFO_H_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -23,6 +24,8 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_CONST_METHOD0(IsMobileNetworkOperatorKnown, bool());
 
   MOCK_CONST_METHOD0(mccmnc, const std::string &());
+  MOCK_CONST_METHOD0(olp_list,
+                     const std::vector<MobileOperatorInfo::OnlinePortal> &());
   MOCK_CONST_METHOD0(operator_name, const std::string &());
   MOCK_CONST_METHOD0(uuid, const std::string &());
 
@@ -32,6 +35,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
 
  private:
   std::string empty_mccmnc_;
+  std::vector<MobileOperatorInfo::OnlinePortal> empty_olp_list_;
   std::string empty_operator_name_;
   std::string empty_uuid_;
 };

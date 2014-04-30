@@ -622,11 +622,16 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
 }
 
 string CellularCapabilityUniversal::GetMdnForOLP(
-    const CellularOperatorInfo::CellularOperator &cellular_operator) const {
+    const MobileOperatorInfo *operator_info) const {
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
   // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
   const string &mdn = cellular()->mdn();
-  if (cellular_operator.identifier() == kVzwIdentifier) {
+  if (!operator_info->IsMobileNetworkOperatorKnown()) {
+    // Can't make any carrier specific modifications.
+    return mdn;
+  }
+
+  if (operator_info->uuid() == kVzwIdentifier) {
     // subscription_state_ is the definitive indicator of whether we need
     // activation. The OLP expects an all zero MDN in that case.
     if (subscription_state_ == kSubscriptionStateUnprovisioned || mdn.empty()) {
@@ -689,7 +694,6 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
 void CellularCapabilityUniversal::OnServiceCreated() {
   UpdateServiceActivationState();
   UpdateServingOperator();
-  UpdateOLP();
 
   // WORKAROUND:
   // E362 modems on Verizon network does not properly redirect when a SIM
@@ -871,42 +875,37 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   InitAPNList();
 }
 
-void CellularCapabilityUniversal::UpdateOLP() {
+void CellularCapabilityUniversal::UpdateServiceOLP() {
   SLOG(Cellular, 3) << __func__;
 
-  // TODO(armansito): Do this mapping in MobileOperator (See crbug.com/298408).
-  const CellularOperatorInfo *cellular_operator_info =
-      modem_info()->cellular_operator_info();
-  if (!cellular_operator_info)
+  // OLP is based off of the Home Provider.
+  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
     return;
+  }
 
-  const CellularOperatorInfo::CellularOperator *cellular_operator =
-      cellular_operator_info->GetCellularOperatorByMCCMNC(operator_id_);
-  if (!cellular_operator)
+  const vector<MobileOperatorInfo::OnlinePortal> &olp_list =
+      cellular()->home_provider_info()->olp_list();
+  if (olp_list.empty()) {
     return;
+  }
 
-  const CellularService::OLP *result =
-      cellular_operator_info->GetOLPByMCCMNC(operator_id_);
-  if (!result)
-    return;
-
-  CellularService::OLP olp;
-  olp.CopyFrom(*result);
-  string post_data = olp.GetPostData();
+  if (olp_list.size() > 1) {
+    SLOG(Cellular, 1) << "Found multiple online portals. Choosing the first.";
+  }
+  string post_data = olp_list[0].post_data;
   ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}",
                                cellular()->sim_identifier());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", cellular()->imei());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", cellular()->imsi());
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
-                               GetMdnForOLP(*cellular_operator));
+                               GetMdnForOLP(cellular()->home_provider_info()));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", cellular()->min());
 
   // TODO(armansito): Define constants for the OEM IDs in MobileOperator
   // (See crbug.com/298408).
   string oem_id = (cellular()->model_id() == kE362ModelId) ? "GOG3" : "QUA";
   ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", oem_id);
-  olp.SetPostData(post_data);
-  cellular()->service()->SetOLP(olp);
+  cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
@@ -1063,7 +1062,7 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   if (!modem_info()->cellular_operator_info())
     return false;
 
-  const CellularService::OLP *olp =
+  const CellularOperatorInfo::OLP *olp =
       modem_info()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
   if (!olp)
     return false;

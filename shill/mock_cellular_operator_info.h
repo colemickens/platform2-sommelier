@@ -19,12 +19,13 @@ class MockCellularOperatorInfo : public CellularOperatorInfo {
   virtual ~MockCellularOperatorInfo();
 
   MOCK_METHOD1(Load, bool(const base::FilePath &info_file_path));
-  MOCK_CONST_METHOD1(GetOLPByMCCMNC,
-                     const CellularService::OLP *(const std::string &mccmnc));
+  MOCK_CONST_METHOD1(
+      GetOLPByMCCMNC,
+      const CellularOperatorInfo::OLP *(const std::string &mccmnc));
   MOCK_CONST_METHOD1(GetCellularOperatorByMCCMNC,
                      const CellularOperator *(const std::string &mccmnc));
   MOCK_CONST_METHOD1(GetOLPBySID,
-                     const CellularService::OLP *(const std::string &sid));
+                     const CellularOperatorInfo::OLP *(const std::string &sid));
   MOCK_CONST_METHOD1(GetCellularOperatorBySID,
                      const CellularOperator *(const std::string &sid));
 };

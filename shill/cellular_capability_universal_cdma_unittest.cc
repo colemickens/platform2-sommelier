@@ -28,6 +28,7 @@
 #include "shill/mock_mm1_modem_proxy.h"
 #include "shill/mock_mm1_modem_simple_proxy.h"
 #include "shill/mock_mm1_sim_proxy.h"
+#include "shill/mock_mobile_operator_info.h"
 #include "shill/mock_modem_info.h"
 #include "shill/mock_pending_activation_store.h"
 #include "shill/nice_mock_control.h"
@@ -58,6 +59,8 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
+        mock_home_provider_info_(new MockMobileOperatorInfo(dispatcher)),
+        mock_serving_operator_info_(new MockMobileOperatorInfo(dispatcher)),
         cellular_(new Cellular(&modem_info_,
                                "",
                                kMachineAddress,
@@ -106,6 +109,13 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
   void SetSimpleProxy() {
     capability_->modem_simple_proxy_.reset(modem_simple_proxy_.release());
+  }
+
+  void SetMockMobileOperatorInfoObjects() {
+    CHECK(mock_home_provider_info_);
+    CHECK(mock_serving_operator_info_);
+    cellular_->set_home_provider_info(mock_home_provider_info_.release());
+    cellular_->set_serving_operator_info(mock_serving_operator_info_.release());
   }
 
  protected:
@@ -173,6 +183,8 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   scoped_ptr<mm1::MockSimProxy> sim_proxy_;
   scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
   TestProxyFactory proxy_factory_;
+  scoped_ptr<MockMobileOperatorInfo> mock_home_provider_info_;
+  scoped_ptr<MockMobileOperatorInfo> mock_serving_operator_info_;
   CellularRefPtr cellular_;
   MockCellularService *service_;
 };
@@ -342,41 +354,54 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
 
 }
 
-TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOLP) {
-  CellularOperatorInfo::CellularOperator cellular_operator;
-  CellularService::OLP test_olp;
-  test_olp.SetURL("http://testurl");
-  test_olp.SetMethod("POST");
-  test_olp.SetPostData("esn=${esn}&mdn=${mdn}&meid=${meid}");
+TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
+  const MobileOperatorInfo::OnlinePortal kOlp {
+      "http://testurl",
+      "POST",
+      "esn=${esn}&mdn=${mdn}&meid=${meid}"};
+  const vector<MobileOperatorInfo::OnlinePortal> kOlpList {kOlp};
+  const string kUuidVzw = "vzw";
+  const string kUuidFoo = "foo";
 
+  MockMobileOperatorInfo *serving_operator_info =
+      mock_serving_operator_info_.get();
+  SetMockMobileOperatorInfoObjects();
   cellular_->set_esn("0");
   cellular_->set_mdn("10123456789");
   cellular_->set_meid("4");
-  capability_->sid_ = 1;
 
-  string sid_string = base::StringPrintf("%u", capability_->sid_);
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(sid_string))
-      .WillRepeatedly(Return(&cellular_operator));
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetOLPBySID(sid_string))
-      .WillRepeatedly(Return(&test_olp));
 
+  serving_operator_info->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*serving_operator_info, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*serving_operator_info, olp_list())
+      .WillRepeatedly(ReturnRef(kOlpList));
+  EXPECT_CALL(*serving_operator_info, uuid())
+      .WillOnce(ReturnRef(kUuidVzw));
   SetService();
+  capability_->UpdateServiceOLP();
+  // Copy to simplify assertions below.
+  Stringmap vzw_olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", vzw_olp[kPaymentPortalURL]);
+  EXPECT_EQ("POST", vzw_olp[kPaymentPortalMethod]);
+  EXPECT_EQ("esn=0&mdn=0123456789&meid=4",
+            vzw_olp[kPaymentPortalPostData]);
+  Mock::VerifyAndClearExpectations(serving_operator_info);
 
-  cellular_operator.identifier_ = "vzw";
-  capability_->UpdateOLP();
-  const CellularService::OLP &vzw_olp = cellular_->service()->olp();
-  EXPECT_EQ("http://testurl", vzw_olp.GetURL());
-  EXPECT_EQ("POST", vzw_olp.GetMethod());
-  EXPECT_EQ("esn=0&mdn=0123456789&meid=4", vzw_olp.GetPostData());
-
-  cellular_operator.identifier_ = "foo";
-  capability_->UpdateOLP();
-  const CellularService::OLP &olp = cellular_->service()->olp();
-  EXPECT_EQ("http://testurl", olp.GetURL());
-  EXPECT_EQ("POST", olp.GetMethod());
-  EXPECT_EQ("esn=0&mdn=10123456789&meid=4", olp.GetPostData());
+  serving_operator_info->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*serving_operator_info, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*serving_operator_info, olp_list())
+      .WillRepeatedly(ReturnRef(kOlpList));
+  EXPECT_CALL(*serving_operator_info, uuid())
+      .WillOnce(ReturnRef(kUuidFoo));
+  capability_->UpdateServiceOLP();
+  // Copy to simplify assertions below.
+  Stringmap olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", olp[kPaymentPortalURL]);
+  EXPECT_EQ("POST", olp[kPaymentPortalMethod]);
+  EXPECT_EQ("esn=0&mdn=10123456789&meid=4",
+            olp[kPaymentPortalPostData]);
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
@@ -425,9 +450,9 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, IsServiceActivationRequired) {
-  CellularService::OLP olp;
+  CellularOperatorInfo::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
-      .WillOnce(Return((const CellularService::OLP *)NULL))
+      .WillOnce(Return((const CellularOperatorInfo::OLP *)NULL))
       .WillRepeatedly(Return(&olp));
   capability_->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
@@ -443,7 +468,7 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, IsServiceActivationRequired) {
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest,
        UpdateServiceActivationStateProperty) {
-  CellularService::OLP olp;
+  CellularOperatorInfo::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
       .WillRepeatedly(Return(&olp));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),

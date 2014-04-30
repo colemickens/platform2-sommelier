@@ -123,4 +123,15 @@ bool CellularCapability::ShouldDetectOutOfCredit() const {
   return false;
 }
 
+void CellularCapability::OnOperatorChanged() {
+  SLOG(Cellular, 3) << __func__;
+  if (cellular()->service()) {
+    UpdateServiceOLP();
+  }
+}
+
+void CellularCapability::UpdateServiceOLP() {
+  SLOG(Cellular, 3) << __func__;
+}
+
 }  // namespace shill

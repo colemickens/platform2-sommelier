@@ -95,7 +95,6 @@ bool CellularCapabilityCDMA::AllowRoaming() {
 
 void CellularCapabilityCDMA::OnServiceCreated() {
   SLOG(Cellular, 2) << __func__;
-  cellular()->service()->SetOLP(olp_);
   cellular()->service()->SetUsageURL(usage_url_);
   UpdateServingOperator();
   HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
@@ -110,26 +109,36 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
     cellular()->set_home_provider(oper);
   }
 
-  uint16 prl_version;
   DBusProperties::GetUint32(
       properties, "activation_state", &activation_state_);
-  UpdateOnlinePortal(properties);
-  if (DBusProperties::GetUint16(properties, "prl_version", &prl_version))
-    cellular()->set_prl_version(prl_version);
   // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
   // match flimflam. In the future, get these from an alternative source (e.g.,
   // database, carrier-specific properties, etc.).
-  string payment;
-  if (DBusProperties::GetString(properties, "payment_url", &payment)) {
-    olp_.SetURL(payment);
+  UpdateOnlinePortal(properties);
+  uint16 prl_version;
+  if (DBusProperties::GetUint16(properties, "prl_version", &prl_version))
+    cellular()->set_prl_version(prl_version);
+}
+
+void CellularCapabilityCDMA::UpdateServiceOLP() {
+  SLOG(Cellular, 3) << __func__;
+  // All OLP changes are routed up to the Home Provider.
+  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
+    return;
   }
-  if (DBusProperties::GetString(properties, "payment_url_method", &payment)) {
-    olp_.SetMethod(payment);
+
+  const vector<MobileOperatorInfo::OnlinePortal> &olp_list =
+      cellular()->home_provider_info()->olp_list();
+  if (olp_list.empty()) {
+    return;
   }
-  if (DBusProperties::GetString(properties, "payment_url_postdata", &payment)) {
-    olp_.SetPostData(payment);
+
+  if (olp_list.size() > 1) {
+    SLOG(Cellular, 1) << "Found multiple online portals. Choosing the first.";
   }
-  DBusProperties::GetString(properties, "usage_url", &usage_url_);
+  cellular()->service()->SetOLP(olp_list[0].url,
+                                olp_list[0].method,
+                                olp_list[0].post_data);
 }
 
 void CellularCapabilityCDMA::SetupConnectProperties(
@@ -360,22 +369,6 @@ void CellularCapabilityCDMA::OnActivationStateChangedSignal(
   if (DBusProperties::GetString(status_changes, "min", &prop_value))
     cellular()->set_min(prop_value);
 
-  string payment;
-  if (DBusProperties::GetString(status_changes, "payment_url", &payment)) {
-    olp_.SetURL(payment);
-  }
-  if (DBusProperties::GetString(
-          status_changes, "payment_url_method", &payment)) {
-    olp_.SetMethod(payment);
-  }
-  if (DBusProperties::GetString(
-          status_changes, "payment_url_postdata", &payment)) {
-    olp_.SetPostData(payment);
-  }
-  if (cellular()->service().get()) {
-    cellular()->service()->SetOLP(olp_);
-  }
-
   UpdateOnlinePortal(status_changes);
   activation_state_ = activation_state;
   HandleNewActivationState(activation_error);
@@ -404,7 +397,7 @@ void CellularCapabilityCDMA::UpdateOnlinePortal(
       DBusProperties::GetString(properties,
                                 "payment_url_postdata",
                                 &olp_post_data)) {
-    cellular()->serving_operator_info()->UpdateOnlinePortal(olp_url,
+    cellular()->home_provider_info()->UpdateOnlinePortal(olp_url,
                                                             olp_method,
                                                             olp_post_data);
   }

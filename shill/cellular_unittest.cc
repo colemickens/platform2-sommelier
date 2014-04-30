@@ -751,21 +751,6 @@ TEST_F(CellularTest, StartLinked) {
   device_->SelectService(NULL);
 }
 
-TEST_F(CellularTest, CreateService) {
-  SetCellularType(Cellular::kTypeCDMA);
-  static const char kPaymentURL[] = "https://payment.url";
-  static const char kUsageURL[] = "https://usage.url";
-  device_->home_provider_.SetName(kTestCarrier);
-  GetCapabilityCDMA()->olp_.SetURL(kPaymentURL);
-  GetCapabilityCDMA()->usage_url_ = kUsageURL;
-  device_->CreateService();
-  ASSERT_TRUE(device_->service_.get());
-  EXPECT_EQ(kPaymentURL, device_->service_->olp().GetURL());
-  EXPECT_EQ(kUsageURL, device_->service_->usage_url());
-  EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
-  ASSERT_FALSE(device_->service_->activate_over_non_cellular_network());
-}
-
 TEST_F(CellularTest, ServiceFriendlyName) {
   // Test that the name created for the service is sensible under different
   // scenarios w.r.t. information about the mobile network operator.
@@ -776,6 +761,8 @@ TEST_F(CellularTest, ServiceFriendlyName) {
   const string home_provider_name {"HomeProviderName"};
   const string serving_operator_name {"ServingOperatorName"};
   SetCellularType(Cellular::kTypeCDMA);
+  // We are not testing the behaviour of capabilities here.
+  device_->mobile_operator_info_observer_->set_capability(NULL);
 
   // (1) Service created, MNO not known => Default name.
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
@@ -926,6 +913,8 @@ TEST_F(CellularTest, StorageIdentifier) {
   const string kSimIdentifier = "12345123451234512345";
 
   SetCellularType(Cellular::kTypeCDMA);
+  // We are not testing the behaviour of capabilities here.
+  device_->mobile_operator_info_observer_->set_capability(NULL);
   ON_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillByDefault(Return(false));
 
@@ -1154,7 +1143,7 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
 
   // Service activation is needed
   device_->set_mdn("0000000000");
-  CellularService::OLP olp;
+  CellularOperatorInfo::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),

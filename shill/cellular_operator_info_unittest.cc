@@ -227,7 +227,7 @@ TEST_F(CellularOperatorInfoTest, GetCellularOperators) {
 TEST_F(CellularOperatorInfoTest, GetOLPByMCCMNC) {
   EXPECT_TRUE(info_.Load(info_file_path_));
 
-  const CellularService::OLP *olp = NULL;
+  const CellularOperatorInfo::OLP *olp = NULL;
   EXPECT_TRUE((olp = info_.GetOLPByMCCMNC("000001")));
   EXPECT_EQ("https://testurl", olp->GetURL());
   EXPECT_EQ("POST", olp->GetMethod());
@@ -255,7 +255,7 @@ TEST_F(CellularOperatorInfoTest, GetOLPByMCCMNC) {
 TEST_F(CellularOperatorInfoTest, GetOLPBySID) {
   EXPECT_TRUE(info_.Load(info_file_path_));
 
-  const CellularService::OLP *olp = NULL;
+  const CellularOperatorInfo::OLP *olp = NULL;
   EXPECT_TRUE((olp = info_.GetOLPBySID("1")));
   EXPECT_EQ("https://testurl", olp->GetURL());
   EXPECT_EQ("POST", olp->GetMethod());

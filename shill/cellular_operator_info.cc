@@ -11,6 +11,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/logging.h"
 
@@ -20,6 +21,50 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+CellularOperatorInfo::OLP::OLP() {
+  SetURL("");
+  SetMethod("");
+  SetPostData("");
+}
+
+CellularOperatorInfo::OLP::~OLP() {}
+
+void CellularOperatorInfo::OLP::CopyFrom(const OLP &olp) {
+  dict_ = olp.dict_;
+}
+
+bool CellularOperatorInfo::OLP::Equals(const OLP &olp) const {
+  return dict_ == olp.dict_;
+}
+
+const string &CellularOperatorInfo::OLP::GetURL() const {
+  return dict_.find(kPaymentPortalURL)->second;
+}
+
+void CellularOperatorInfo::OLP::SetURL(const string &url) {
+  dict_[kPaymentPortalURL] = url;
+}
+
+const string &CellularOperatorInfo::OLP::GetMethod() const {
+  return dict_.find(kPaymentPortalMethod)->second;
+}
+
+void CellularOperatorInfo::OLP::SetMethod(const string &method) {
+  dict_[kPaymentPortalMethod] = method;
+}
+
+const string &CellularOperatorInfo::OLP::GetPostData() const {
+  return dict_.find(kPaymentPortalPostData)->second;
+}
+
+void CellularOperatorInfo::OLP::SetPostData(const string &post_data) {
+  dict_[kPaymentPortalPostData] = post_data;
+}
+
+const Stringmap &CellularOperatorInfo::OLP::ToDict() const {
+  return dict_;
+}
 
 namespace {
 
@@ -470,7 +515,7 @@ class CellularOperatorInfoImpl {
       LOG(ERROR) << "Badly formed \"apn\" entry.";
       return false;
     }
-    CellularService::OLP *olp = new CellularService::OLP();
+    CellularOperatorInfo::OLP *olp = new CellularOperatorInfo::OLP();
     olp->SetMethod(fields[0]);
     olp->SetURL(fields[1]);
     olp->SetPostData(fields[2]);
@@ -605,7 +650,7 @@ const ConstOperatorVector *CellularOperatorInfo::GetCellularOperators(
   return providers;
 }
 
-const CellularService::OLP *
+const CellularOperatorInfo::OLP *
 CellularOperatorInfo::GetOLPByMCCMNC(const string &mccmnc) const {
   SLOG(Cellular, 2) << __func__ << "(" << FormattedMCCMNC(mccmnc) << ")";
 
@@ -627,7 +672,7 @@ CellularOperatorInfo::GetOLPByMCCMNC(const string &mccmnc) const {
   return provider->olp_list_[index];
 }
 
-const CellularService::OLP *
+const CellularOperatorInfo::OLP *
 CellularOperatorInfo::GetOLPBySID(const string &sid) const {
   SLOG(Cellular, 2) << __func__ << "(" << FormattedSID(sid) << ")";
 

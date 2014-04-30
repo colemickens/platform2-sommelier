@@ -70,6 +70,34 @@ class CellularOperatorInfo {
     std::string password;
   };
 
+  // TODO(pprabhu) This is a temporary addition to CellularOperatorInfo, to make
+  // it easy to transition the rest of the code away from using ::OLP.
+  // CellularOperatorInfo is soon going away anyway.
+  class OLP {
+   public:
+    OLP();
+    ~OLP();
+
+    void CopyFrom(const OLP &olp);
+    bool Equals(const OLP &olp) const;
+
+    const std::string &GetURL() const;
+    void SetURL(const std::string &url);
+
+    const std::string &GetMethod() const;
+    void SetMethod(const std::string &method);
+
+    const std::string &GetPostData() const;
+    void SetPostData(const std::string &post_data);
+
+    const Stringmap &ToDict() const;
+
+   private:
+    Stringmap dict_;
+
+    DISALLOW_COPY_AND_ASSIGN(OLP);
+  };
+
   // This class contains all the necessary information for shill to register
   // with and establish a connection to a mobile network.
   class CellularOperator {
@@ -115,7 +143,7 @@ class CellularOperatorInfo {
     // All Online Payment Portal URLs associated with this carrier entry. There
     // are usually multiple OLPs based on access technology and it is up to the
     // application to use the appropriate one.
-    const ScopedVector<CellularService::OLP> &olp_list() const {
+    const ScopedVector<CellularOperatorInfo::OLP> &olp_list() const {
         return olp_list_;
     }
 
@@ -149,7 +177,7 @@ class CellularOperatorInfo {
     std::vector<std::string> sid_list_;
     std::vector<LocalizedName> name_list_;
     ScopedVector<MobileAPN> apn_list_;
-    ScopedVector<CellularService::OLP> olp_list_;
+    ScopedVector<CellularOperatorInfo::OLP> olp_list_;
     std::map<std::string, uint32> mccmnc_to_olp_idx_;
     std::map<std::string, uint32> sid_to_olp_idx_;
     bool is_primary_;
@@ -187,12 +215,13 @@ class CellularOperatorInfo {
 
   // Gets the online payment portal info of the operator with MCCMNC |mccmnc|.
   // If found, returns a pointer to the matching OLP.
-  virtual const CellularService::OLP *GetOLPByMCCMNC(
+  virtual const CellularOperatorInfo::OLP *GetOLPByMCCMNC(
       const std::string &mccmnc) const;
 
   // Gets the online payment portal info of the operator with SID |sid|.
   // If found, returns a pointer to the matching OLP.
-  virtual const CellularService::OLP *GetOLPBySID(const std::string &sid) const;
+  virtual const CellularOperatorInfo::OLP *GetOLPBySID(
+        const std::string &sid) const;
 
   // Returns a list of all operators.
   const ScopedVector<CellularOperator> &operators() const;

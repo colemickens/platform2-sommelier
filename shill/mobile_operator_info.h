@@ -168,7 +168,7 @@ class MobileOperatorInfo {
   // All Online Payment Portal URLs associated with this carrier entry. There
   // are usually multiple OLPs based on access technology and it is up to the
   // application to use the appropriate one.
-  const std::vector<OnlinePortal> &olp_list() const;
+  virtual const std::vector<OnlinePortal> &olp_list() const;
 
   // The number to dial for automatic activation.
   const std::string &activation_code() const;

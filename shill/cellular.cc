@@ -143,13 +143,16 @@ Cellular::Cellular(ModemInfo *modem_info,
       is_ppp_authenticating_(false),
       scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds) {
   RegisterProperties();
+  InitCapability(type);
+
   // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the
   // costly database, and lighter objects that |Cellular| can own.
+  // crbug.com/363874
   home_provider_info_->Init();
   serving_operator_info_->Init();
   home_provider_info()->AddObserver(mobile_operator_info_observer_.get());
   serving_operator_info()->AddObserver(mobile_operator_info_observer_.get());
-  InitCapability(type);
+
   SLOG(Cellular, 2) << "Cellular device " << this->link_name()
                     << " initialized.";
 }
@@ -167,6 +170,9 @@ Cellular::~Cellular() {
   home_provider_info()->RemoveObserver(mobile_operator_info_observer_.get());
   serving_operator_info()->RemoveObserver(
       mobile_operator_info_observer_.get());
+  // Explicitly delete the observer to ensure that it is destroyed before the
+  // handle to |capability_| that it holds.
+  mobile_operator_info_observer_.reset();
 }
 
 bool Cellular::Load(StoreInterface *storage) {
@@ -380,6 +386,7 @@ void Cellular::InitCapability(Type type) {
       break;
     default: NOTREACHED();
   }
+  mobile_operator_info_observer_->set_capability(capability_.get());
 }
 
 void Cellular::Activate(const string &carrier,
@@ -1578,12 +1585,20 @@ void Cellular::UpdateServingOperator(
 // MobileOperatorInfoObserver implementation.
 Cellular::MobileOperatorInfoObserver::MobileOperatorInfoObserver(
     Cellular *cellular)
-  : cellular_(cellular) {}
+  : cellular_(cellular),
+    capability_(NULL) {}
 
 Cellular::MobileOperatorInfoObserver::~MobileOperatorInfoObserver() {}
 
 void Cellular::MobileOperatorInfoObserver::OnOperatorChanged() {
   SLOG(Cellular, 3) << __func__;
+
+  // Give the capabilities a chance to hook in and update their state.
+  // Some tests set |capability_| to NULL avoid having to expect the full
+  // behaviour caused by this call.
+  if (capability_) {
+    capability_->OnOperatorChanged();
+  }
 
   const MobileOperatorInfo *home_provider_info =
       cellular_->home_provider_info();

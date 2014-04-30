@@ -178,18 +178,24 @@ TEST_F(CellularServiceTest, SetServingOperator) {
 }
 
 TEST_F(CellularServiceTest, SetOLP) {
+  const char kMethod[] = "GET";
+  const char kURL[] = "payment.url";
+  const char kPostData[] = "post_man";
+  Stringmap olp;
+
+  service_->SetOLP("", "", "");
+  olp = service_->olp();  // Copy to simplify assertions below.
+  EXPECT_EQ("", olp[kPaymentPortalURL]);
+  EXPECT_EQ("", olp[kPaymentPortalMethod]);
+  EXPECT_EQ("", olp[kPaymentPortalPostData]);
+
   EXPECT_CALL(*adaptor_,
               EmitStringmapChanged(kPaymentPortalProperty, _));
-  static const char kURL[] = "payment.url";
-  static const char kMethod[] = "GET";
-  CellularService::OLP olp;
-  service_->SetOLP(olp);
-  olp.SetURL(kURL);
-  olp.SetMethod(kMethod);
-  service_->SetOLP(olp);
-  EXPECT_EQ(kURL, service_->olp().GetURL());
-  EXPECT_EQ(kMethod, service_->olp().GetMethod());
-  service_->SetOLP(olp);
+  service_->SetOLP(kURL, kMethod, kPostData);
+  olp = service_->olp();  // Copy to simplify assertions below.
+  EXPECT_EQ(kURL, olp[kPaymentPortalURL]);
+  EXPECT_EQ(kMethod, olp[kPaymentPortalMethod]);
+  EXPECT_EQ(kPostData, olp[kPaymentPortalPostData]);
 }
 
 TEST_F(CellularServiceTest, SetUsageURL) {

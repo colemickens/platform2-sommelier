@@ -125,15 +125,14 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Updates the online payment portal information, if any, for the cellular
   // provider.
-  virtual void UpdateOLP();
+  virtual void UpdateServiceOLP() override;
 
   // Post-payment activation handlers.
   virtual void UpdatePendingActivationState();
 
   // Returns the operator-specific form of |mdn|, which is passed to the online
   // payment portal of a cellular operator.
-  std::string GetMdnForOLP(
-      const CellularOperatorInfo::CellularOperator &cellular_operator) const;
+  std::string GetMdnForOLP(const MobileOperatorInfo *operator_info) const;
 
  private:
   struct ModemModes {
@@ -177,7 +176,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               ActivationWaitForRegisterTimeout);
@@ -236,7 +234,7 @@ class CellularCapabilityUniversal : public CellularCapability {
               UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateOperatorInfoViaOperatorId);

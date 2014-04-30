@@ -424,10 +424,18 @@ class Cellular : public Device, public RPCTaskDelegate {
     // is enforced because |cellular| owns this object.
     MobileOperatorInfoObserver(Cellular *cellular);
     virtual ~MobileOperatorInfoObserver();
+
+    void set_capability(CellularCapability *capability) {
+      capability_ = capability;
+    }
+
+    // Inherited from MobileOperatorInfo::Observer
     virtual void OnOperatorChanged() override;
 
    private:
     Cellular *const cellular_;
+    // Owned by |Cellular|.
+    CellularCapability *capability_;
 
     DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserver);
   };

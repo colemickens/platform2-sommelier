@@ -27,33 +27,6 @@ class OutOfCreditsDetector;
 
 class CellularService : public Service {
  public:
-  // Online payment portal.
-  // TODO(armansito): Move this to CellularOperatorInfo.
-  class OLP {
-   public:
-    OLP();
-    ~OLP();
-
-    void CopyFrom(const OLP &olp);
-    bool Equals(const OLP &olp) const;
-
-    const std::string &GetURL() const;
-    void SetURL(const std::string &url);
-
-    const std::string &GetMethod() const;
-    void SetMethod(const std::string &method);
-
-    const std::string &GetPostData() const;
-    void SetPostData(const std::string &post_data);
-
-    const Stringmap &ToDict() const;
-
-   private:
-    Stringmap dict_;
-
-    DISALLOW_COPY_AND_ASSIGN(OLP);
-  };
-
   CellularService(ModemInfo *modem_info,
                   const CellularRefPtr &device);
   virtual ~CellularService();
@@ -83,8 +56,10 @@ class CellularService : public Service {
       return activation_state_;
   }
 
-  void SetOLP(const OLP &olp);
-  const OLP &olp() const { return olp_; }
+  void SetOLP(const std::string &url,
+              const std::string &method,
+              const std::string &post_data);
+  const Stringmap &olp() const { return olp_; }
 
   void SetUsageURL(const std::string &url);
   const std::string &usage_url() const { return usage_url_; }
@@ -216,7 +191,7 @@ class CellularService : public Service {
   Cellular::Operator serving_operator_;
   std::string network_technology_;
   std::string roaming_state_;
-  OLP olp_;
+  Stringmap olp_;
   std::string usage_url_;
   Stringmap apn_info_;
   Stringmap last_good_apn_info_;

@@ -68,7 +68,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   // Inherited from CellularCapabilityUniversal.
   virtual void InitProxies() override;
   virtual void ReleaseProxies() override;
-  virtual void UpdateOLP() override;
+  virtual void UpdateServiceOLP() override;
 
   // Post-payment activation handlers.
   virtual void UpdatePendingActivationState() override;
@@ -85,7 +85,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
               OnCDMARegistrationChanged);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOLP);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
               UpdateServiceActivationStateProperty);
