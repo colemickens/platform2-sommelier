@@ -243,7 +243,7 @@ bool WriteStringToBuffer(const CStringWithLength& src,
   }
 
   memset(buffer.ptr + *offset, 0, src.len * kDestUnitSize);
-  CHECK_GT(snprintf(buffer.ptr + *offset, src.len, "%s", src.str.c_str()), 0);
+  snprintf(buffer.ptr + *offset, src.len, "%s", src.str.c_str());
   *offset += src.len;
   return true;
 }
