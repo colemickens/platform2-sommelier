@@ -23,7 +23,7 @@ const char* kGlesHeader =
     "#endif\n";
 
 FilePath *g_base_path = new FilePath();
-double g_initial_temperature = GetMachineTemperature();
+double g_initial_temperature = -1000.0;
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
 void SetBasePathFromArgv0(const char* argv0, const char* relative) {
@@ -62,14 +62,12 @@ void *MmapFile(const char* name, size_t* length) {
 bool read_int_from_file(FilePath filename, int *value) {
   FILE *fd = fopen(filename.value().c_str(), "r");
   if (!fd) {
-    printf("Error: could not open file for reading. (%s)\n",
-            filename.value().c_str());
     return false;
   }
   int count = fscanf(fd, "%d", value);
   if (count != 1) {
     printf("Error: could not read integer from file. (%s)\n",
-                filename.value().c_str());
+           filename.value().c_str());
     if(count != 1)
       return false;
   }
@@ -85,8 +83,11 @@ double get_temperature_critical() {
   if (!read_int_from_file(filename, &temperature_mCelsius)) {
     // spring is special :-(.
     filename = FilePath("/sys/devices/virtual/hwmon/hwmon1/temp1_crit");
-    if (!read_int_from_file(filename, &temperature_mCelsius))
-      return -1000.0;
+    if (!read_int_from_file(filename, &temperature_mCelsius)) {
+      // 85'C is the minimum observed critical temperature so far.
+      printf("Warning: guessing critical temperature as 85'C.\n");
+      return 85.0;
+    }
   }
   double temperature_Celsius = 0.001 * temperature_mCelsius;
   // Simple sanity check for reasonable critical temperatures.
@@ -95,21 +96,45 @@ double get_temperature_critical() {
   return temperature_Celsius;
 }
 
+
 // Returns currently measured temperature.
 // TODO(ihf): update this based on the outcome of crbug.com/356422.
 double get_temperature_input() {
-  FilePath filename = FilePath("/sys/class/hwmon/hwmon0/temp1_input");
+  FilePath filenames[] = {
+      FilePath("/sys/class/hwmon/hwmon0/temp1_input"),
+      FilePath("/sys/class/hwmon/hwmon1/temp1_input"),
+      FilePath("/sys/devices/platform/coretemp.0/temp1_input"),
+      FilePath("/sys/devices/platform/coretemp.0/temp2_input"),
+      FilePath("/sys/devices/platform/coretemp.0/temp3_input"),
+      FilePath("/sys/devices/virtual/hwmon/hwmon0/temp1_input"),
+      FilePath("/sys/devices/virtual/hwmon/hwmon0/temp2_input"),
+      FilePath("/sys/devices/virtual/hwmon/hwmon1/temp1_input"),
+      FilePath("/sys/devices/virtual/hwmon/hwmon2/temp1_input"),
+      FilePath("/sys/devices/virtual/hwmon/hwmon3/temp1_input"),
+      FilePath("/sys/devices/virtual/hwmon/hwmon4/temp1_input"),
+  };
+
   int temperature_mCelsius = 0;
-  if (!read_int_from_file(filename, &temperature_mCelsius)) {
-    // spring is special :-(.
-    filename = FilePath("/sys/devices/virtual/hwmon/hwmon1/temp1_input");
-    if (!read_int_from_file(filename, &temperature_mCelsius))
-      return -1000.0;
+  int max_temperature_mCelsius = -1000000.0;
+  for (unsigned int i = 0; i < sizeof(filenames) / sizeof(FilePath); i++) {
+    if (read_int_from_file(filenames[i], &temperature_mCelsius)) {
+      // Hack: Ignore values outside of 10'C...150'C for now.
+      if (temperature_mCelsius < 10000 || temperature_mCelsius > 150000) {
+        printf("Warning: ignoring temperature reading of %d m'C.\n",
+               temperature_mCelsius);
+      } else {
+        max_temperature_mCelsius = std::max(max_temperature_mCelsius,
+                                            temperature_mCelsius);
+      }
+    }
   }
-  double temperature_Celsius = 0.001 * temperature_mCelsius;
-  // Simple sanity check for reasonable temperatures.
-  assert(temperature_Celsius >= 10.0);
-  assert(temperature_Celsius <= 150.0);
+
+  double temperature_Celsius = 0.001 * max_temperature_mCelsius;
+  if (temperature_Celsius < 10.0 || temperature_Celsius > 150.0) {
+    printf("Warning: ignoring temperature reading of %f'C.\n",
+           temperature_Celsius);
+  }
+
   return temperature_Celsius;
 }
 
