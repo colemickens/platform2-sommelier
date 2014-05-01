@@ -123,6 +123,7 @@ Service::Service(ControlInterface *control_interface,
       error_details_(kErrorDetailsNone),
       previous_error_serial_number_(0),
       explicitly_disconnected_(false),
+      is_in_user_connect_(false),
       priority_(kPriorityNone),
       crypto_algorithm_(kCryptoNone),
       key_rotation_(false),
@@ -287,6 +288,11 @@ void Service::UserInitiatedDisconnect(Error *error) {
   explicitly_disconnected_ = true;
 }
 
+void Service::UserInitiatedConnect(Error *error) {
+  Connect(error, "D-Bus RPC");
+  is_in_user_connect_ = true;
+}
+
 void Service::ActivateCellularModem(const string &/*carrier*/,
                                     Error *error,
                                     const ResultCallback &/*callback*/) {
@@ -335,6 +341,13 @@ void Service::SetState(ConnectState state) {
   LOG(INFO) << "Service " << unique_name_ << ": state "
             << ConnectStateToString(state_) << " -> "
             << ConnectStateToString(state);
+
+  // Metric reporting for result of user-initiated connection attempt.
+  if (is_in_user_connect_ && ((state == kStateConnected) ||
+      (state == kStateFailure) || (state == kStateIdle))) {
+    ReportUserInitiatedConnectionResult(state);
+    is_in_user_connect_ = false;
+  }
 
   if (state == kStateFailure) {
     NoteDisconnectEvent();
@@ -913,6 +926,33 @@ void Service::NoteDisconnectEvent() {
   if (events->size() >= threshold) {
     diagnostics_reporter_->OnConnectivityEvent();
   }
+}
+
+void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
+  // Report stats for wifi only for now.
+  if (technology_ != Technology::kWifi)
+    return;
+
+  int result;
+  switch (state) {
+    case kStateConnected:
+      result = Metrics::kUserInitiatedConnectionResultSuccess;
+      break;
+    case kStateFailure:
+      result = Metrics::kUserInitiatedConnectionResultFailure;
+      break;
+    case kStateIdle:
+      // This assumes the device specific class (wifi, cellular) will advance
+      // the service's state from idle to other state after connection attempt
+      // is initiated for the given service.
+      result = Metrics::kUserInitiatedConnectionResultAborted;
+      break;
+    default:
+      return;
+  }
+
+  metrics_->NotifyUserInitiatedConnectionResult(
+      Metrics::kMetricWifiUserInitiatedConnectionResult, result);
 }
 
 bool Service::HasRecentConnectionIssues() {

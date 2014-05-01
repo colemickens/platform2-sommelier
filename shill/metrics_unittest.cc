@@ -781,6 +781,16 @@ TEST_F(MetricsTest, NotifyWifiTxBitrate) {
   metrics_.NotifyWifiTxBitrate(1);
 }
 
+TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
+                    Metrics::kUserInitiatedConnectionResultSuccess,
+                    Metrics::kUserInitiatedConnectionResultMax));
+  metrics_.NotifyUserInitiatedConnectionResult(
+      Metrics::kMetricWifiUserInitiatedConnectionResult,
+      Metrics::kUserInitiatedConnectionResultSuccess);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

@@ -778,6 +778,61 @@ TEST_F(ServiceTest, StateResetAfterFailure) {
   EXPECT_EQ(Service::kStateConnected, service_->state());
 }
 
+TEST_F(ServiceTest, UserInitiatedConnectionResult) {
+  service_->technology_ = Technology::kWifi;
+  Error error;
+  // User-initiated connection attempt succeed.
+  service_->SetState(Service::kStateIdle);
+  service_->UserInitiatedConnect(&error);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
+      Metrics::kMetricWifiUserInitiatedConnectionResult,
+      Metrics::kUserInitiatedConnectionResultSuccess));
+  service_->SetState(Service::kStateConnected);
+  Mock::VerifyAndClearExpectations(metrics());
+
+  // User-initiated connection attempt failed.
+  service_->SetState(Service::kStateIdle);
+  service_->UserInitiatedConnect(&error);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
+      Metrics::kMetricWifiUserInitiatedConnectionResult,
+      Metrics::kUserInitiatedConnectionResultFailure));
+  service_->SetState(Service::kStateFailure);
+  Mock::VerifyAndClearExpectations(metrics());
+
+  // User-initiated connection attempt aborted.
+  service_->SetState(Service::kStateIdle);
+  service_->UserInitiatedConnect(&error);
+  service_->SetState(Service::kStateAssociating);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
+      Metrics::kMetricWifiUserInitiatedConnectionResult,
+      Metrics::kUserInitiatedConnectionResultAborted));
+  service_->SetState(Service::kStateIdle);
+  Mock::VerifyAndClearExpectations(metrics());
+
+  // No metric reporting for other state transition.
+  service_->SetState(Service::kStateIdle);
+  service_->UserInitiatedConnect(&error);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
+  service_->SetState(Service::kStateAssociating);
+  service_->SetState(Service::kStateConfiguring);
+  Mock::VerifyAndClearExpectations(metrics());
+
+  // No metric reporting for non-user-initiated connection.
+  service_->SetState(Service::kStateIdle);
+  service_->Connect(&error, "in test");
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
+  service_->SetState(Service::kStateConnected);
+  Mock::VerifyAndClearExpectations(metrics());
+
+  // No metric reporting for other technology.
+  service_->technology_ = Technology::kCellular;
+  service_->SetState(Service::kStateIdle);
+  service_->UserInitiatedConnect(&error);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
+  service_->SetState(Service::kStateConnected);
+  Mock::VerifyAndClearExpectations(metrics());
+}
+
 TEST_F(ServiceTest, ActivateCellularModem) {
   ResultCallback callback =
       Bind(&ServiceTest::TestCallback, Unretained(this));

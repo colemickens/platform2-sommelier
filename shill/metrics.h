@@ -278,6 +278,13 @@ class Metrics {
     kUserInitiatedEventMax
   };
 
+  enum UserInitiatedConnectionResult {
+    kUserInitiatedConnectionResultSuccess = 0,
+    kUserInitiatedConnectionResultFailure = 1,
+    kUserInitiatedConnectionResultAborted = 2,
+    kUserInitiatedConnectionResultMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -475,6 +482,9 @@ class Metrics {
   static const int kMetricWifiTxBitrateMin;
   static const int kMetricWifiTxBitrateNumBuckets;
 
+  // User-initiated wifi connection attempt result.
+  static const char kMetricWifiUserInitiatedConnectionResult[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -646,6 +656,11 @@ class Metrics {
 
   // Notifies this object about WIFI TX bitrate in Mbps.
   virtual void NotifyWifiTxBitrate(int bitrate);
+
+  // Notifies this object about the result of user-initiated connection
+  // attempt.
+  virtual void NotifyUserInitiatedConnectionResult(const std::string &name,
+                                                   int result);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();

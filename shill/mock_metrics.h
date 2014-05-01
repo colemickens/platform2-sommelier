@@ -47,6 +47,8 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyServicesOnSameNetwork, void(int num_service));
   MOCK_METHOD1(NotifyUserInitiatedEvent, void(int event));
   MOCK_METHOD1(NotifyWifiTxBitrate, void(int bitrate));
+  MOCK_METHOD2(NotifyUserInitiatedConnectionResult,
+               void(const std::string &name, int result));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

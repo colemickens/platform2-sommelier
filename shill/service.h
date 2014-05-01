@@ -163,6 +163,9 @@ class Service : public base::RefCounted<Service> {
   // for auto-connect until a subsequent call to Connect, or Load.  Do not
   // override this method.
   virtual void UserInitiatedDisconnect(Error *error);
+  // Connect to this service via Connect(). This function indicates that the
+  // connection attempt is user-initiated.
+  virtual void UserInitiatedConnect(Error *error);
 
   // The default implementation returns the error kInvalidArguments.
   virtual void ActivateCellularModem(const std::string &carrier,
@@ -619,6 +622,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, StateResetAfterFailure);
   FRIEND_TEST(ServiceTest, UniqueAttributes);
   FRIEND_TEST(ServiceTest, Unload);
+  FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
@@ -722,6 +726,10 @@ class Service : public base::RefCounted<Service> {
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
 
+  // Report the result of user-initiated connection attempt to UMA stats.
+  // Currently only report stats for wifi service.
+  void ReportUserInitiatedConnectionResult(ConnectState state);
+
   // Linearize security parameters (crypto algorithm, key rotation, endpoint
   // authentication) for comparison.
   uint16 SecurityLevel();
@@ -746,6 +754,7 @@ class Service : public base::RefCounted<Service> {
   std::string previous_error_;
   int32 previous_error_serial_number_;
   bool explicitly_disconnected_;
+  bool is_in_user_connect_;
   int32 priority_;
   uint8 crypto_algorithm_;
   bool key_rotation_;
