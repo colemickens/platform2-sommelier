@@ -4,15 +4,14 @@
 
 #include "buffet/device_registration_info.h"
 
-#include <base/file_util.h>
-#include <base/files/important_file_writer.h>
-#include <base/json/json_reader.h>
+#include <memory>
+
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <memory>
 
 #include "buffet/data_encoding.h"
 #include "buffet/device_registration_storage_keys.h"
+#include "buffet/storage_impls.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
@@ -94,41 +93,15 @@ std::string BuildURL(const std::string& url,
   return url::AppendQueryParams(result, params);
 }
 
-class FileStorage : public buffet::DeviceRegistrationInfo::StorageInterface {
- public:
-  virtual std::unique_ptr<base::Value> Load() override {
-    // TODO(avakulenko): Figure out security implications of storing
-    // this data unencrypted.
-    std::string json;
-    if (!base::ReadFileToString(GetFilePath(), &json))
-      return std::unique_ptr<base::Value>();
-
-    return std::unique_ptr<base::Value>(base::JSONReader::Read(json));
-  }
-
-  virtual bool Save(const base::Value* config) {
-    // TODO(avakulenko): Figure out security implications of storing
-    // this data unencrypted.
-    std::string json;
-    base::JSONWriter::WriteWithOptions(config,
-                                       base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                       &json);
-    return base::ImportantFileWriter::WriteFileAtomically(GetFilePath(), json);
-  }
-
- private:
-  base::FilePath GetFilePath() const{
-    return base::FilePath(kDeviceInfoFilePath);
-  }
-};
-
 }  // anonymous namespace
 
 namespace buffet {
 
 DeviceRegistrationInfo::DeviceRegistrationInfo()
     : transport_(new http::curl::Transport()),
-      storage_(new FileStorage()) {
+      // TODO(avakulenko): Figure out security implications of storing
+      // this data unencrypted.
+      storage_(new FileStorage(base::FilePath(kDeviceInfoFilePath))) {
 }
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(

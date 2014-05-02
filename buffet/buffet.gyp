@@ -41,6 +41,7 @@
         'async_event_sequencer.cc',
         'manager.cc',
         'mime_utils.cc',
+        'storage_impls.cc',
         'string_utils.cc',
         'url_utils.cc'
       ],

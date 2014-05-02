@@ -14,6 +14,7 @@
 
 #include "buffet/data_encoding.h"
 #include "buffet/http_transport.h"
+#include "buffet/storage_interface.h"
 
 namespace base {
   class Value;
@@ -24,19 +25,6 @@ namespace buffet {
 // The DeviceRegistrationInfo class represents device registration information.
 class DeviceRegistrationInfo {
  public:
-  // The device registration configuration storage interface.
-  struct StorageInterface {
-    virtual ~StorageInterface() = default;
-    // Load the device registration configuration from storage.
-    // If it fails (e.g. the storage container [file?] doesn't exist), then
-    // it returns empty unique_ptr (aka nullptr).
-    virtual std::unique_ptr<base::Value> Load() = 0;
-    // Save the device registration configuration to storage.
-    // If saved successfully, returns true. Could fail when writing to
-    // physical storage like file system for various reasons (out of disk space,
-    // access permissions, etc).
-    virtual bool Save(const base::Value* config) = 0;
-  };
   // This is a helper class for unit testing.
   class TestHelper;
   // Default-constructed uses CURL HTTP transport.

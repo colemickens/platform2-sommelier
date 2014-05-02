@@ -12,30 +12,13 @@
 #include "buffet/http_request.h"
 #include "buffet/http_transport_fake.h"
 #include "buffet/mime_utils.h"
+#include "buffet/storage_impls.h"
 
 using namespace buffet;
 using namespace chromeos;
 using namespace chromeos::http;
 
 namespace {
-// StorageInterface for testing. Just stores the values in memory.
-class MemStorage : public DeviceRegistrationInfo::StorageInterface {
- public:
-  virtual std::unique_ptr<base::Value> Load() override {
-    return std::unique_ptr<base::Value>(cache_->DeepCopy());
-  }
-
-  virtual bool Save(const base::Value* config) {
-    cache_.reset(config->DeepCopy());
-    ++save_count_;
-    return true;
-  }
-
-  int save_count_ = 0;
-
-private:
-  std::unique_ptr<base::Value> cache_;
-};
 
 namespace test_data {
 
@@ -332,10 +315,10 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
   transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
                         base::Bind(OAuth2Handler));
 
-  storage->save_count_ = 0;
+  storage->reset_save_count();
   DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg.get());
   EXPECT_TRUE(dev_reg->FinishRegistration(""));
-  EXPECT_EQ(1, storage->save_count_); // The device info must have been saved.
+  EXPECT_EQ(1, storage->save_count()); // The device info must have been saved.
   EXPECT_EQ(2, transport->GetRequestCount());
 
   // Validate the device info saved to storage...
@@ -401,9 +384,9 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
   transport->AddHandler(ticket_url, request_type::kPatch,
                         base::Bind(email_patch_handler));
 
-  storage->save_count_ = 0;
+  storage->reset_save_count();
   DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg.get());
   EXPECT_TRUE(dev_reg->FinishRegistration(test_data::kUserAccountAuthCode));
-  EXPECT_EQ(1, storage->save_count_); // The device info must have been saved.
+  EXPECT_EQ(1, storage->save_count()); // The device info must have been saved.
   EXPECT_EQ(4, transport->GetRequestCount());
 }
