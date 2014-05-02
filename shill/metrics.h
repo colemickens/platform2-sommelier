@@ -262,9 +262,20 @@ class Metrics {
     kVpnUserAuthenticationTypeMax
   };
 
-  enum DHCPOptionFailure {
-    kDHCPOptionFailure = 1,
-    kDHCPOptionFailureMax
+  enum DHCPOptionFailureTechnology {
+    kDHCPOptionFailureTechnologyCellular = 0,
+    kDHCPOptionFailureTechnologyEthernet,
+    kDHCPOptionFailureTechnologyEthernetEap,
+    kDHCPOptionFailureTechnologyWifi,
+    kDHCPOptionFailureTechnologyWiMax,
+    kDHCPOptionFailureTechnologyVPN,
+    kDHCPOptionFailureTechnologyUnknown,
+    kDHCPOptionFailureTechnologyMax
+  };
+
+  enum UserInitiatedEvent {
+    kUserInitiatedEventWifiScan = 0,
+    kUserInitiatedEventMax
   };
 
   static const char kMetricDisconnectSuffix[];
@@ -427,7 +438,7 @@ class Metrics {
   // We have detected that a DHCP server can only deliver leases if
   // we reduce the number of options that we request of it.  This
   // implies an infrastructure issue.
-  static const char kMetricDHCPOptionFailureDetectedSuffix[];
+  static const char kMetricDHCPOptionFailureDetected[];
 
   // The length in seconds of a lease that has expired while the DHCP
   // client was attempting to renew the lease..
@@ -454,6 +465,9 @@ class Metrics {
   static const int kMetricServicesOnSameNetworkMax;
   static const int kMetricServicesOnSameNetworkMin;
   static const int kMetricServicesOnSameNetworkNumBuckets;
+
+  // Metric for user-initiated events.
+  static const char kMetricUserInitiatedEvents[];
 
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
@@ -629,6 +643,9 @@ class Metrics {
 
   // Notifies this object about a service with DHCP infrastructure problems.
   virtual void NotifyDHCPOptionFailure(const Service &service);
+
+  // Notifies this object about user-initiated event.
+  virtual void NotifyUserInitiatedEvent(int event);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

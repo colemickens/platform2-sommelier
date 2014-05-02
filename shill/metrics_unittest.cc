@@ -724,6 +724,35 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
+TEST_F(MetricsTest, NotifyDHCPOptionFailure) {
+  EXPECT_CALL(*service_, technology()).
+      WillOnce(Return(Technology::kWifi));
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricDHCPOptionFailureDetected,
+                    Metrics::kDHCPOptionFailureTechnologyWifi,
+                    Metrics::kDHCPOptionFailureTechnologyMax));
+  metrics_.NotifyDHCPOptionFailure(*service_);
+  Mock::VerifyAndClearExpectations(service_);
+
+  EXPECT_CALL(*service_, technology()).
+      WillOnce(Return(Technology::kCellular));
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricDHCPOptionFailureDetected,
+                    Metrics::kDHCPOptionFailureTechnologyCellular,
+                    Metrics::kDHCPOptionFailureTechnologyMax));
+  metrics_.NotifyDHCPOptionFailure(*service_);
+  Mock::VerifyAndClearExpectations(service_);
+
+  EXPECT_CALL(*service_, technology()).
+      WillOnce(Return(Technology::kUnknown));
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricDHCPOptionFailureDetected,
+                    Metrics::kDHCPOptionFailureTechnologyUnknown,
+                    Metrics::kDHCPOptionFailureTechnologyMax));
+  metrics_.NotifyDHCPOptionFailure(*service_);
+  Mock::VerifyAndClearExpectations(service_);
+}
+
 TEST_F(MetricsTest, NotifyServicesOnSameNetwork) {
   EXPECT_CALL(library_,
       SendToUMA(Metrics::kMetricServicesOnSameNetwork,
@@ -732,6 +761,14 @@ TEST_F(MetricsTest, NotifyServicesOnSameNetwork) {
                 Metrics::kMetricServicesOnSameNetworkMax,
                 Metrics::kMetricServicesOnSameNetworkNumBuckets));
   metrics_.NotifyServicesOnSameNetwork(1);
+}
+
+TEST_F(MetricsTest, NotifyUserInitiatedEvent) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricUserInitiatedEvents,
+                    Metrics::kUserInitiatedEventWifiScan,
+                    Metrics::kUserInitiatedEventMax));
+  metrics_.NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
 }
 
 #ifndef NDEBUG

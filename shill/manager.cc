@@ -2006,6 +2006,7 @@ void Manager::RequestScan(Device::ScanType scan_type,
     for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
          it != wifi_devices.end();
          ++it) {
+      metrics_->NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
       (*it)->Scan(scan_type, error, __func__);
     }
   } else {

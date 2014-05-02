@@ -1566,7 +1566,33 @@ TEST_F(ManagerTest, RequestScan) {
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
     EXPECT_CALL(*mock_devices_[1], Scan(_, _, _)).Times(0);
+    EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
+        Metrics::kUserInitiatedEventWifiScan)).Times(1);
     manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
+    manager()->DeregisterDevice(mock_devices_[0].get());
+    manager()->DeregisterDevice(mock_devices_[1].get());
+    Mock::VerifyAndClearExpectations(mock_devices_[0]);
+    Mock::VerifyAndClearExpectations(mock_devices_[1]);
+
+    manager()->RegisterDevice(mock_devices_[0].get());
+    EXPECT_CALL(*mock_devices_[0], technology())
+        .WillRepeatedly(Return(Technology::kWifi));
+    EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
+        Metrics::kUserInitiatedEventWifiScan)).Times(1);
+    EXPECT_CALL(*mock_devices_[0], Scan(Device::kFullScan, _, _));
+    manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
+    manager()->DeregisterDevice(mock_devices_[0].get());
+    Mock::VerifyAndClearExpectations(mock_devices_[0]);
+
+    manager()->RegisterDevice(mock_devices_[0].get());
+    EXPECT_CALL(*mock_devices_[0], technology())
+        .WillRepeatedly(Return(Technology::kUnknown));
+    EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
+        Metrics::kUserInitiatedEventWifiScan)).Times(0);
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _, _)).Times(0);
+    manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
+    manager()->DeregisterDevice(mock_devices_[0].get());
+    Mock::VerifyAndClearExpectations(mock_devices_[0]);
   }
 
   {

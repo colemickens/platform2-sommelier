@@ -45,6 +45,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyWifiAutoConnectableServices, void(int num_service));
   MOCK_METHOD1(NotifyWifiAvailableBSSes, void(int num_bss));
   MOCK_METHOD1(NotifyServicesOnSameNetwork, void(int num_service));
+  MOCK_METHOD1(NotifyUserInitiatedEvent, void(int event));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);
