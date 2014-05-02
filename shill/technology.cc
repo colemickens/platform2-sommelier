@@ -105,20 +105,18 @@ bool Technology::GetTechnologyVectorFromString(
   if (!technologies_string.empty())
     base::SplitString(technologies_string, ',', &technology_parts);
 
-  for (vector<string>::iterator it = technology_parts.begin();
-       it != technology_parts.end();
-       ++it) {
-    Technology::Identifier identifier = Technology::IdentifierFromName(*it);
+  for (const auto &name : technology_parts) {
+    Technology::Identifier identifier = Technology::IdentifierFromName(name);
 
     if (identifier == Technology::kUnknown) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            *it + " is an unknown technology name");
+                            name + " is an unknown technology name");
       return false;
     }
 
     if (ContainsKey(seen, identifier)) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            *it + " is duplicated in the list");
+                            name + " is duplicated in the list");
       return false;
     }
     seen.insert(identifier);

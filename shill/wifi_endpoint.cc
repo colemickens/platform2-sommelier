@@ -160,13 +160,10 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
   }
   if (!vendor_information_.oui_set.empty()) {
     vector<string> oui_vector;
-    set<uint32_t>::const_iterator it;
-    for (it = vendor_information_.oui_set.begin();
-         it != vendor_information_.oui_set.end();
-         ++it) {
+    for (auto oui : vendor_information_.oui_set) {
       oui_vector.push_back(
           StringPrintf("%02x-%02x-%02x",
-              *it >> 16, (*it >> 8) & 0xff, *it & 0xff));
+              oui >> 16, (oui >> 8) & 0xff, oui & 0xff));
     }
     vendor_information[kVendorOUIListProperty] =
         JoinString(oui_vector, ' ');
@@ -377,13 +374,11 @@ void WiFiEndpoint::ParseKeyManagementMethods(
       security_method_properties.
       find(WPASupplicant::kSecurityMethodPropertyKeyManagement)->second.
       operator vector<string>();
-  for (vector<string>::const_iterator it = key_management_vec.begin();
-       it != key_management_vec.end();
-       ++it) {
-    if (EndsWith(*it, WPASupplicant::kKeyManagementMethodSuffixEAP, true)) {
+  for (const auto &method : key_management_vec) {
+    if (EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixEAP, true)) {
       key_management_methods->insert(kKeyManagement802_1x);
     } else if (
-        EndsWith(*it, WPASupplicant::kKeyManagementMethodSuffixPSK, true)) {
+        EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixPSK, true)) {
       key_management_methods->insert(kKeyManagementPSK);
     }
   }

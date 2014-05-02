@@ -137,10 +137,9 @@ void DeviceInfo::Stop() {
 vector<string> DeviceInfo::GetUninitializedTechnologies() const {
   set<string> unique_technologies;
   set<Technology::Identifier> initialized_technologies;
-  for (map<int, Info>::const_iterator it = infos_.begin(); it != infos_.end();
-       ++it) {
-    Technology::Identifier technology = it->second.technology;
-    if (it->second.device) {
+  for (const auto &info : infos_) {
+    Technology::Identifier technology = info.second.technology;
+    if (info.second.device) {
       // If there is more than one device for a technology and at least
       // one of them has been initialized, make sure that it doesn't get
       // listed as uninitialized.
@@ -709,16 +708,15 @@ void DeviceInfo::FlushAddresses(int interface_index) const {
   if (!info) {
     return;
   }
-  const vector<AddressData> &addresses = info->ip_addresses;
-  vector<AddressData>::const_iterator iter;
-  for (iter = addresses.begin(); iter != addresses.end(); ++iter) {
-    if (iter->address.family() == IPAddress::kFamilyIPv4 ||
-        (iter->scope == RT_SCOPE_UNIVERSE &&
-         (iter->flags & ~IFA_F_TEMPORARY) == 0)) {
+  for (const auto &address_info : info->ip_addresses) {
+    if (address_info.address.family() == IPAddress::kFamilyIPv4 ||
+        (address_info.scope == RT_SCOPE_UNIVERSE &&
+         (address_info.flags & ~IFA_F_TEMPORARY) == 0)) {
       SLOG(Device, 2) << __func__ << ": removing ip address "
-                      << iter->address.ToString()
+                      << address_info.address.ToString()
                       << " from interface " << interface_index;
-      rtnl_handler_->RemoveInterfaceAddress(interface_index, iter->address);
+      rtnl_handler_->RemoveInterfaceAddress(interface_index,
+                                            address_info.address);
     }
   }
 }

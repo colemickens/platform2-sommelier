@@ -505,8 +505,7 @@ void Connection::AttachBinder(Binder *binder) {
 void Connection::DetachBinder(Binder *binder) {
   SLOG(Connection, 2) << __func__ << "(" << binder->name() << ")" << " @ "
                       << interface_name_;
-  for (deque<Binder *>::iterator it = binders_.begin();
-       it != binders_.end(); ++it) {
+  for (auto it = binders_.begin(); it != binders_.end(); ++it) {
     if (binder == *it) {
       binders_.erase(it);
       return;

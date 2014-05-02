@@ -174,9 +174,8 @@ int main(int argc, char** argv) {
     base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceBlackList),
                       ',', &device_list);
 
-    vector<string>::iterator i;
-    for (i = device_list.begin(); i != device_list.end(); ++i) {
-      daemon.AddDeviceToBlackList(*i);
+    for (const auto &device : device_list) {
+      daemon.AddDeviceToBlackList(device);
     }
   }
 

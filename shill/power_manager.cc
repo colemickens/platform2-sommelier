@@ -119,9 +119,8 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
 
   // Forward the message to all in |suspend_delays_|, whether or not they are
   // registered.
-  for (SuspendDelayMap::const_iterator it = suspend_delays_.begin();
-       it != suspend_delays_.end(); ++it) {
-    SuspendImminentCallback callback = it->second.imminent_callback;
+  for (const auto &delay : suspend_delays_) {
+    SuspendImminentCallback callback = delay.second.imminent_callback;
     CHECK(!callback.is_null());
     callback.Run(suspend_id);
   }
@@ -133,9 +132,8 @@ void PowerManager::OnSuspendDone(int suspend_id) {
   suspending_ = false;
   // Forward the message to all in |suspend_delays_|, whether or not they are
   // registered.
-  for (SuspendDelayMap::const_iterator it = suspend_delays_.begin();
-       it != suspend_delays_.end(); ++it) {
-    SuspendDoneCallback callback = it->second.done_callback;
+  for (const auto &delay : suspend_delays_) {
+    SuspendDoneCallback callback = delay.second.done_callback;
     CHECK(!callback.is_null());
     callback.Run(suspend_id);
   }
@@ -148,9 +146,8 @@ void PowerManager::OnSuspendTimeout(int suspend_id) {
 
 void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
                                           const string &/*owner*/) {
-  for (SuspendDelayMap::iterator it = suspend_delays_.begin();
-       it != suspend_delays_.end(); ++it) {
-    SuspendDelay &delay = it->second;
+  for (auto &delay_entry : suspend_delays_) {
+    SuspendDelay &delay = delay_entry.second;
     // Attempt to unregister a stale suspend delay. This guards against a race
     // where |AddSuspendDelay| managed to register a suspend delay with the
     // newly appeared powerd instance before this function had a chance to

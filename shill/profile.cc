@@ -223,8 +223,8 @@ bool Profile::IsValidIdentifierToken(const string &token) {
   if (token.empty()) {
     return false;
   }
-  for (string::const_iterator it = token.begin(); it != token.end(); ++it) {
-    if (!IsAsciiAlpha(*it) && !IsAsciiDigit(*it)) {
+  for (auto chr : token) {
+    if (!IsAsciiAlpha(chr) && !IsAsciiDigit(chr)) {
       return false;
     }
   }
@@ -283,9 +283,7 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
 
   vector<string> profile_lines;
   base::SplitStringDontTrim(profile_data, '\n', &profile_lines);
-  vector<string>::const_iterator it;
-  for (it = profile_lines.begin(); it != profile_lines.end(); ++it) {
-    const string &line = *it;
+  for (const auto &line : profile_lines) {
     if (line.empty()) {
       // This will be the case on the last line, so let's not complain about it.
       continue;
@@ -314,9 +312,8 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
 bool Profile::SaveUserProfileList(const FilePath &path,
                                   const vector<ProfileRefPtr> &profiles) {
   vector<string> lines;
-  vector<ProfileRefPtr>::const_iterator it;
-  for (it = profiles.begin(); it != profiles.end(); ++it) {
-    Identifier &id = (*it)->name_;
+  for (const auto &profile : profiles) {
+    Identifier &id = profile->name_;
     if (id.user.empty()) {
       continue;
     }
@@ -359,15 +356,13 @@ vector<string> Profile::EnumerateAvailableServices(Error *error) {
 }
 
 vector<string> Profile::EnumerateEntries(Error */*error*/) {
-  set<string> groups(storage_->GetGroups());
   vector<string> service_groups;
 
   // Filter this list down to only entries that correspond
   // to a technology.  (wifi_*, etc)
-  for (set<string>::iterator it = groups.begin();
-       it != groups.end(); ++it) {
-    if (Technology::IdentifierFromStorageGroup(*it) != Technology::kUnknown)
-      service_groups.push_back(*it);
+  for (const auto &group : storage_->GetGroups()) {
+    if (Technology::IdentifierFromStorageGroup(group) != Technology::kUnknown)
+      service_groups.push_back(group);
   }
 
   return service_groups;

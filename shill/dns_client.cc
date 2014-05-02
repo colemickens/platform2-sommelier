@@ -87,11 +87,9 @@ bool DNSClient::Start(const string &hostname, Error *error) {
     memset(&options, 0, sizeof(options));
 
     vector<struct in_addr> server_addresses;
-    for (vector<string>::iterator it = dns_servers_.begin();
-         it != dns_servers_.end();
-         ++it) {
+    for (const auto &server : dns_servers_) {
       struct in_addr addr;
-      if (inet_aton(it->c_str(), &addr) != 0) {
+      if (inet_aton(server.c_str(), &addr) != 0) {
         server_addresses.push_back(addr);
       }
     }

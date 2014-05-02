@@ -74,16 +74,14 @@ void HookTable::Run(int timeout_ms,
   // Otherwise, if the first action completes inline, its call to
   // ActionComplete() will cause the |done| callback to be invoked before the
   // rest of the actions get started.
-  for (HookTableMap::iterator it = hook_table_.begin();
-       it != hook_table_.end(); ++it) {
-    HookAction *action = &it->second;
+  for (auto &hook_entry : hook_table_) {
+    HookAction *action = &hook_entry.second;
     action->started = true;
     action->completed = false;
   }
   // Now start the actions.
-  for (HookTableMap::iterator it = hook_table_.begin();
-       it != hook_table_.end(); ++it) {
-    it->second.start.Run();
+  for (auto &hook_entry : hook_table_) {
+    hook_entry.second.start.Run();
   }
 }
 

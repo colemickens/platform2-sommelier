@@ -97,35 +97,33 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   const StoreInterface *storage = profile->GetConstStorage();
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
-  set<string> groups = storage->GetGroupsWithProperties(args);
   bool created_hidden_service = false;
-  for (set<string>::const_iterator it = groups.begin(); it != groups.end();
-       ++it) {
+  for (const auto &group : storage->GetGroupsWithProperties(args)) {
     string ssid_hex;
     vector<uint8_t> ssid_bytes;
-    if (!storage->GetString(*it, WiFiService::kStorageSSID, &ssid_hex) ||
+    if (!storage->GetString(group, WiFiService::kStorageSSID, &ssid_hex) ||
         !base::HexStringToBytes(ssid_hex, &ssid_bytes)) {
-      SLOG(WiFi, 2) << "Storage group " << *it << " is missing valid \""
+      SLOG(WiFi, 2) << "Storage group " << group << " is missing valid \""
                     << WiFiService::kStorageSSID << "\" property";
       continue;
     }
     string network_mode;
-    if (!storage->GetString(*it, WiFiService::kStorageMode, &network_mode) ||
+    if (!storage->GetString(group, WiFiService::kStorageMode, &network_mode) ||
         network_mode.empty()) {
-      SLOG(WiFi, 2) << "Storage group " << *it << " is missing \""
+      SLOG(WiFi, 2) << "Storage group " << group << " is missing \""
                     <<  WiFiService::kStorageMode << "\" property";
       continue;
     }
     string security;
-    if (!storage->GetString(*it, WiFiService::kStorageSecurity, &security) ||
+    if (!storage->GetString(group, WiFiService::kStorageSecurity, &security) ||
         !WiFiService::IsValidSecurityMethod(security)) {
-      SLOG(WiFi, 2) << "Storage group " << *it << " has missing or invalid \""
+      SLOG(WiFi, 2) << "Storage group " << group << " has missing or invalid \""
                     <<  WiFiService::kStorageSecurity << "\" property";
       continue;
     }
     bool is_hidden = false;
-    if (!storage->GetBool(*it, WiFiService::kStorageHiddenSSID, &is_hidden)) {
-      SLOG(WiFi, 2) << "Storage group " << *it << " is missing \""
+    if (!storage->GetBool(group, WiFiService::kStorageHiddenSSID, &is_hidden)) {
+      SLOG(WiFi, 2) << "Storage group " << group << " is missing \""
                     << WiFiService::kStorageHiddenSSID << "\" property";
       continue;
     }
@@ -429,12 +427,10 @@ WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t> &ssid,
 WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t> &ssid,
                                             const string &mode,
                                             const string &security) const {
-  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if ((*it)->ssid() == ssid && (*it)->mode() == mode &&
-        (*it)->IsSecurityMatch(security)) {
-      return *it;
+  for (const auto &service : services_) {
+    if (service->ssid() == ssid && service->mode() == mode &&
+        service->IsSecurityMatch(security)) {
+      return service;
     }
   }
   return NULL;
@@ -443,11 +439,9 @@ WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t> &ssid,
 ByteArrays WiFiProvider::GetHiddenSSIDList() {
   // Create a unique set of hidden SSIDs.
   set<ByteArray> hidden_ssids_set;
-  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if ((*it)->hidden_ssid() && (*it)->IsRemembered()) {
-      hidden_ssids_set.insert((*it)->ssid());
+  for (const auto &service : services_) {
+    if (service->hidden_ssid() && service->IsRemembered()) {
+      hidden_ssids_set.insert(service->ssid());
     }
   }
   SLOG(WiFi, 2) << "Found " << hidden_ssids_set.size() << " hidden services";

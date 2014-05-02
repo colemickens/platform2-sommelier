@@ -23,13 +23,12 @@ bool CryptoROT47::Encrypt(const string &plaintext, string *ciphertext) {
   const char kRotMax = kRotMin + kRotSize - 1;
 
   *ciphertext = plaintext;
-  for (string::iterator ch = ciphertext->begin();
-       ch != ciphertext->end(); ++ch) {
-    if (*ch < kRotMin || *ch > kRotMax) {
+  for (auto &ch : *ciphertext) {
+    if (ch < kRotMin || ch > kRotMax) {
       continue;
     }
-    int rot = *ch + kRotHalf;
-    *ch = (rot > kRotMax) ? rot - kRotSize : rot;
+    int rot = ch + kRotHalf;
+    ch = (rot > kRotMax) ? rot - kRotSize : rot;
   }
   return true;
 }

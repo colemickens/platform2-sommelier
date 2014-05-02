@@ -144,9 +144,8 @@ ssize_t MemoryLog::FlushToFile(const FilePath &file_path) {
                  << strerror(errno);
   }
   ssize_t bytes_written = 0;
-  std::deque<std::string>::iterator it;
-  for (it = log_.begin(); it != log_.end(); it++) {
-    bytes_written += fwrite(it->c_str(), 1, it->size(), f);
+  for (const auto &entry : log_) {
+    bytes_written += fwrite(entry.c_str(), 1, entry.size(), f);
     if (ferror(f)) {
       LOG(ERROR) << "Write to memory log dump file failed.";
       return -1;
@@ -170,9 +169,8 @@ void MemoryLog::ShrinkToTargetSize(size_t number_bytes) {
 }
 
 bool MemoryLog::TestContainsMessageWithText(const char *msg) {
-  std::deque<std::string>::const_iterator it;
-  for (it = log_.begin(); it != log_.end(); ++it) {
-    if (it->find(msg) != std::string::npos) {
+  for (const auto &entry : log_) {
+    if (entry.find(msg) != std::string::npos) {
       return true;
     }
   }

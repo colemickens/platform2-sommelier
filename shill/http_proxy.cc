@@ -241,18 +241,17 @@ bool HTTPProxy::ParseClientRequest() {
   string host;
   bool found_via = false;
   bool found_connection = false;
-  for (vector<string>::iterator it = client_headers_.begin();
-       it != client_headers_.end(); ++it) {
-    if (StartsWithASCII(*it, "Host:", false)) {
-      host = it->substr(5);
-    } else if (StartsWithASCII(*it, "Via:", false)) {
+  for (auto &header : client_headers_) {
+    if (StartsWithASCII(header, "Host:", false)) {
+      host = header.substr(5);
+    } else if (StartsWithASCII(header, "Via:", false)) {
       found_via = true;
-      (*it).append(StringPrintf(", %s shill-proxy", client_version_.c_str()));
-    } else if (StartsWithASCII(*it, "Connection:", false)) {
+      header.append(StringPrintf(", %s shill-proxy", client_version_.c_str()));
+    } else if (StartsWithASCII(header, "Connection:", false)) {
       found_connection = true;
-      (*it).assign("Connection: close");
-    } else if (StartsWithASCII(*it, "Proxy-Connection:", false)) {
-      (*it).assign("Proxy-Connection: close");
+      header.assign("Connection: close");
+    } else if (StartsWithASCII(header, "Proxy-Connection:", false)) {
+      header.assign("Proxy-Connection: close");
     }
   }
 
@@ -267,9 +266,8 @@ bool HTTPProxy::ParseClientRequest() {
   // Assemble the request as it will be sent to the server.
   client_data_.Clear();
   if (!LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
-    for (vector<string>::iterator it = client_headers_.begin();
-         it != client_headers_.end(); ++it) {
-      client_data_.Append(ByteString(*it + "\r\n", false));
+    for (const auto &header : client_headers_) {
+      client_data_.Append(ByteString(header + "\r\n", false));
     }
     client_data_.Append(ByteString(string("\r\n"), false));
   }

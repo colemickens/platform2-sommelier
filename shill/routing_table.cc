@@ -113,22 +113,18 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   SLOG(Route, 2) << __func__ << " index " << interface_index
                  << " family " << IPAddress::GetAddressFamilyName(family);
 
-  base::hash_map<int, vector<RoutingTableEntry> >::iterator table =
-    tables_.find(interface_index);
-
+  Tables::iterator table = tables_.find(interface_index);
   if (table == tables_.end()) {
     SLOG(Route, 2) << __func__ << " no table";
     return false;
   }
 
-  vector<RoutingTableEntry>::iterator nent;
-
-  for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
-    if (nent->dst.IsDefault() && nent->dst.family() == family) {
-      *entry = &(*nent);
+  for (auto &nent : table->second) {
+    if (nent.dst.IsDefault() && nent.dst.family() == family) {
+      *entry = &nent;
       SLOG(Route, 2) << __func__ << ": found"
-                     << " gateway " << nent->gateway.ToString()
-                     << " metric " << nent->metric;
+                     << " gateway " << nent.gateway.ToString()
+                     << " metric " << nent.metric;
       return true;
     }
   }
@@ -182,30 +178,28 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
   IPAddress::Family address_family = ipconfig->properties().address_family;
   const vector<IPConfig::Route> &routes = ipconfig->properties().routes;
 
-  for (vector<IPConfig::Route>::const_iterator it = routes.begin();
-       it != routes.end();
-       ++it) {
+  for (const auto &route : routes) {
     SLOG(Route, 3) << "Installing route:"
-                   << " Destination: " << it->host
-                   << " Netmask: " << it->netmask
-                   << " Gateway: " << it->gateway;
+                   << " Destination: " << route.host
+                   << " Netmask: " << route.netmask
+                   << " Gateway: " << route.gateway;
     IPAddress destination_address(address_family);
     IPAddress source_address(address_family);  // Left as default.
     IPAddress gateway_address(address_family);
-    if (!destination_address.SetAddressFromString(it->host)) {
+    if (!destination_address.SetAddressFromString(route.host)) {
       LOG(ERROR) << "Failed to parse host "
-                 << it->host;
+                 << route.host;
       ret = false;
       continue;
     }
-    if (!gateway_address.SetAddressFromString(it->gateway)) {
+    if (!gateway_address.SetAddressFromString(route.gateway)) {
       LOG(ERROR) << "Failed to parse gateway "
-                 << it->gateway;
+                 << route.gateway;
       ret = false;
       continue;
     }
     destination_address.set_prefix(
-        IPAddress::GetPrefixLengthFromMask(address_family, it->netmask));
+        IPAddress::GetPrefixLengthFromMask(address_family, route.netmask));
     if (!AddRoute(interface_index,
                   RoutingTableEntry(destination_address,
                                     source_address,
@@ -222,17 +216,13 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
 void RoutingTable::FlushRoutes(int interface_index) {
   SLOG(Route, 2) << __func__;
 
-  base::hash_map<int, vector<RoutingTableEntry> >::iterator table =
-    tables_.find(interface_index);
-
+  auto table = tables_.find(interface_index);
   if (table == tables_.end()) {
     return;
   }
 
-  vector<RoutingTableEntry>::iterator nent;
-
-  for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
-    ApplyRoute(interface_index, *nent, RTNLMessage::kModeDelete, 0);
+  for (const auto &nent : table->second) {
+    ApplyRoute(interface_index, nent, RTNLMessage::kModeDelete, 0);
   }
   table->second.clear();
 }
@@ -240,14 +230,11 @@ void RoutingTable::FlushRoutes(int interface_index) {
 void RoutingTable::FlushRoutesWithTag(int tag) {
   SLOG(Route, 2) << __func__;
 
-  base::hash_map<int, vector<RoutingTableEntry> >::iterator table;
-  for (table = tables_.begin(); table != tables_.end(); ++table) {
-    vector<RoutingTableEntry>::iterator nent;
-
-    for (nent = table->second.begin(); nent != table->second.end();) {
+  for (auto &table : tables_) {
+    for (auto nent = table.second.begin(); nent != table.second.end();) {
       if (nent->tag == tag) {
-        ApplyRoute(table->first, *nent, RTNLMessage::kModeDelete, 0);
-        nent = table->second.erase(nent);
+        ApplyRoute(table.first, *nent, RTNLMessage::kModeDelete, 0);
+        nent = table.second.erase(nent);
       } else {
         ++nent;
       }
@@ -385,9 +372,8 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
     return;
   }
 
-  vector<RoutingTableEntry> &table = tables_[interface_index];
-  vector<RoutingTableEntry>::iterator nent;
-  for (nent = table.begin(); nent != table.end(); ++nent) {
+  TableEntryVector &table = tables_[interface_index];
+  for (auto nent = table.begin(); nent != table.end(); ++nent)  {
     if (nent->dst.Equals(entry.dst) &&
         nent->src.Equals(entry.src) &&
         nent->gateway.Equals(entry.gateway) &&

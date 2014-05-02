@@ -191,8 +191,7 @@ Stringmap *CellularService::GetUserSpecifiedApn() {
 }
 
 Stringmap *CellularService::GetLastGoodApn() {
-  Stringmap::iterator it =
-      last_good_apn_info_.find(kApnProperty);
+  Stringmap::iterator it = last_good_apn_info_.find(kApnProperty);
   if (it == last_good_apn_info_.end() || it->second.empty())
     return NULL;
   return &last_good_apn_info_;

@@ -31,6 +31,10 @@ struct RoutingTableEntry;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
+  typedef std::vector<RoutingTableEntry> TableEntryVector;
+  typedef base::hash_map<int, TableEntryVector> Tables;  // NOLINT
+  // NOLINT above: hash_map from base, no need to #include <hash_map>.
+
   struct Query {
     // Callback::Run(interface_index, entry)
     typedef base::Callback<void(int, const RoutingTableEntry &)> Callback;
@@ -147,8 +151,7 @@ class RoutingTable {
   static const char kRouteFlushPath4[];
   static const char kRouteFlushPath6[];
 
-  base::hash_map<int, std::vector<RoutingTableEntry> > tables_; // NOLINT
-  // NOLINT above: hash_map from base, no need to #include <hash_map>.
+  Tables tables_;
 
   base::Callback<void(const RTNLMessage &)> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;

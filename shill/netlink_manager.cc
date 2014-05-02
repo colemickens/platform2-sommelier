@@ -384,9 +384,8 @@ bool NetlinkManager::RemoveBroadcastHandler(
 
 bool NetlinkManager::FindBroadcastHandler(const NetlinkMessageHandler &handler)
     const {
-  list<NetlinkMessageHandler>::const_iterator i;
-  for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
-    if ((*i).Equals(handler)) {
+  for (const auto &broadcast_handler : broadcast_handlers_) {
+    if (broadcast_handler.Equals(handler)) {
       return true;
     }
   }

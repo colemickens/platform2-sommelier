@@ -116,9 +116,8 @@ void RTNLHandler::Stop() {
 }
 
 void RTNLHandler::AddListener(RTNLListener *to_add) {
-  std::vector<RTNLListener *>::iterator it;
-  for (it = listeners_.begin(); it != listeners_.end(); ++it) {
-    if (to_add == *it)
+  for (const auto &listener : listeners_) {
+    if (to_add == listener)
       return;
   }
   listeners_.push_back(to_add);
@@ -126,8 +125,7 @@ void RTNLHandler::AddListener(RTNLListener *to_add) {
 }
 
 void RTNLHandler::RemoveListener(RTNLListener *to_remove) {
-  std::vector<RTNLListener *>::iterator it;
-  for (it = listeners_.begin(); it != listeners_.end(); ++it) {
+  for (auto it = listeners_.begin(); it != listeners_.end(); ++it) {
     if (to_remove == *it) {
       listeners_.erase(it);
       return;
@@ -179,9 +177,8 @@ void RTNLHandler::RequestDump(int request_flags) {
 }
 
 void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
-  std::vector<RTNLListener *>::iterator it;
-  for (it = listeners_.begin(); it != listeners_.end(); ++it) {
-    (*it)->NotifyEvent(type, msg);
+  for (const auto &listener : listeners_) {
+    listener->NotifyEvent(type, msg);
   }
 }
 

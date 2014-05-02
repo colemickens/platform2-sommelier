@@ -158,10 +158,8 @@ void ScopeLogger::SetScopeEnabled(Scope scope, bool enabled) {
   CHECK_LT(scope, kNumScopes);
 
   if (scope_enabled_[scope] != enabled) {
-    ScopeEnableChangedCallbacks &callbacks = log_scope_callbacks_[scope];
-    ScopeEnableChangedCallbacks::iterator it;
-    for (it = callbacks.begin(); it != callbacks.end(); ++it) {
-      (*it).Run(enabled);
+    for (const auto &callback : log_scope_callbacks_[scope]) {
+      callback.Run(enabled);
     }
   }
 

@@ -109,26 +109,23 @@ void WiMaxProvider::OnNetworksChanged() {
   SLOG(WiMax, 2) << __func__;
   // Collects a set of live networks from all devices.
   set<RpcIdentifier> live_networks;
-  for (map<string, WiMaxRefPtr>::const_iterator it = devices_.begin();
-       it != devices_.end(); ++it) {
-    const set<RpcIdentifier> &networks = it->second->networks();
+  for (const auto &device : devices_) {
+    const set<RpcIdentifier> &networks = device.second->networks();
     live_networks.insert(networks.begin(), networks.end());
   }
   // Removes dead networks from |networks_|.
-  for (map<RpcIdentifier, NetworkInfo>::iterator it = networks_.begin();
-       it != networks_.end(); ) {
+  for (auto it = networks_.begin(); it != networks_.end(); ) {
     const RpcIdentifier &path = it->first;
     if (ContainsKey(live_networks, path)) {
       ++it;
     } else {
       LOG(INFO) << "WiMAX network disappeared: " << path;
-      networks_.erase(it++);
+      it = networks_.erase(it);
     }
   }
   // Retrieves network info into |networks_| for the live networks.
-  for (set<RpcIdentifier>::const_iterator it = live_networks.begin();
-       it != live_networks.end(); ++it) {
-    RetrieveNetworkInfo(*it);
+  for (const auto &network : live_networks) {
+    RetrieveNetworkInfo(network);
   }
   // Stops dead and starts live services based on the current |networks_|.
   StopDeadServices();
@@ -220,9 +217,7 @@ void WiMaxProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   bool created = false;
   const StoreInterface *storage = profile->GetConstStorage();
   set<string> groups = storage->GetGroupsWithKey(Service::kStorageType);
-  for (set<string>::const_iterator it = groups.begin();
-       it != groups.end(); ++it) {
-    const string &storage_id = *it;
+  for (const auto &storage_id : groups) {
     string type;
     if (!storage->GetString(storage_id, Service::kStorageType, &type) ||
         type != Technology::NameFromIdentifier(Technology::kWiMax)) {
@@ -270,9 +265,7 @@ WiMaxRefPtr WiMaxProvider::SelectCarrier(
 void WiMaxProvider::OnDevicesChanged(const RpcIdentifiers &devices) {
   SLOG(WiMax, 2) << __func__;
   DestroyDeadDevices(devices);
-  for (RpcIdentifiers::const_iterator it = devices.begin();
-       it != devices.end(); ++it) {
-    const RpcIdentifier &path = *it;
+  for (const auto &path : devices) {
     string link_name = GetLinkName(path);
     if (!link_name.empty()) {
       CreateDevice(link_name, path);
@@ -319,25 +312,23 @@ void WiMaxProvider::CreateDevice(const string &link_name,
 
 void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
   SLOG(WiMax, 2) << __func__ << "(" << live_devices.size() << ")";
-  for (map<string, RpcIdentifier>::iterator it = pending_devices_.begin();
-       it != pending_devices_.end(); ) {
+  for (auto it = pending_devices_.begin(); it != pending_devices_.end(); ) {
     if (find(live_devices.begin(), live_devices.end(), it->second) ==
         live_devices.end()) {
       LOG(INFO) << "Forgetting pending device: " << it->second;
-      pending_devices_.erase(it++);
+      it = pending_devices_.erase(it);
     } else {
       ++it;
     }
   }
-  for (map<string, WiMaxRefPtr>::iterator it = devices_.begin();
-       it != devices_.end(); ) {
+  for (auto it = devices_.begin(); it != devices_.end(); ) {
     if (find(live_devices.begin(), live_devices.end(), it->second->path()) ==
         live_devices.end()) {
       LOG(INFO) << "Destroying device: " << it->first;
       const WiMaxRefPtr &device = it->second;
       device->OnDeviceVanished();
       manager_->device_info()->DeregisterDevice(device);
-      devices_.erase(it++);
+      it = devices_.erase(it);
     } else {
       ++it;
     }
@@ -414,18 +405,16 @@ WiMaxServiceRefPtr WiMaxProvider::CreateService(const WiMaxNetworkId &id,
 
 void WiMaxProvider::StartLiveServices() {
   SLOG(WiMax, 2) << __func__ << "(" << networks_.size() << ")";
-  for (map<RpcIdentifier, NetworkInfo>::const_iterator nit = networks_.begin();
-       nit != networks_.end(); ++nit) {
-    const RpcIdentifier &path = nit->first;
-    const NetworkInfo &info = nit->second;
+  for (const auto &nit : networks_) {
+    const RpcIdentifier &path = nit.first;
+    const NetworkInfo &info = nit.second;
 
     // Creates the default service for the network, if not already created.
     GetUniqueService(info.id, info.name)->set_is_default(true);
 
     // Starts services for this live network.
-    for (map<string, WiMaxServiceRefPtr>::const_iterator it = services_.begin();
-         it != services_.end(); ++it) {
-      const WiMaxServiceRefPtr &service = it->second;
+    for (const auto &entry : services_) {
+      const WiMaxServiceRefPtr &service = entry.second;
       if (service->network_id() != info.id || service->IsStarted()) {
         continue;
       }

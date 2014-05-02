@@ -1141,7 +1141,6 @@ void Metrics::UpdateServiceStateTransitionMetrics(
     Service::ConnectState new_state) {
   const char *state_string = Service::ConnectStateToString(new_state);
   SLOG(Metrics, 5) << __func__ << ": new_state=" << state_string;
-  TimerReportersList::iterator it;
   TimerReportersList &start_timers = service_metrics->start_on_state[new_state];
   for (auto &start_timer : start_timers) {
     SLOG(Metrics, 5) << "Starting timer for " << start_timer->histogram_name()

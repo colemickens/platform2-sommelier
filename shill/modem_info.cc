@@ -81,9 +81,8 @@ void ModemInfo::Stop() {
 }
 
 void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
-  for (ModemManagers::iterator it = modem_managers_.begin();
-       it != modem_managers_.end(); ++it) {
-    (*it)->OnDeviceInfoAvailable(link_name);
+  for (const auto &manager : modem_managers_) {
+    manager->OnDeviceInfoAvailable(link_name);
   }
 }
 

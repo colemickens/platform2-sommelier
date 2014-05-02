@@ -113,10 +113,8 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore &args,
 
 bool VPNProvider::OnDeviceInfoAvailable(const string &link_name,
                                         int interface_index) {
-  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if ((*it)->driver()->ClaimInterface(link_name, interface_index)) {
+  for (const auto &service : services_) {
+    if (service->driver()->ClaimInterface(link_name, interface_index)) {
       return true;
     }
   }
@@ -125,8 +123,7 @@ bool VPNProvider::OnDeviceInfoAvailable(const string &link_name,
 }
 
 void VPNProvider::RemoveService(VPNServiceRefPtr service) {
-  vector<VPNServiceRefPtr>::iterator it;
-  it = std::find(services_.begin(), services_.end(), service);
+  const auto it = std::find(services_.begin(), services_.end(), service);
   if (it != services_.end()) {
     services_.erase(it);
   }
@@ -135,30 +132,28 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
 void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   SLOG(VPN, 2) << __func__;
   const StoreInterface *storage = profile->GetConstStorage();
-  set<string> groups =
-      storage->GetGroupsWithKey(kProviderTypeProperty);
-  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
-    if (!StartsWithASCII(*it, "vpn_", false)) {
+  for (const auto &group : storage->GetGroupsWithKey(kProviderTypeProperty)) {
+    if (!StartsWithASCII(group, "vpn_", false)) {
       continue;
     }
 
     string type;
-    if (!storage->GetString(*it, kProviderTypeProperty, &type)) {
-      LOG(ERROR) << "Group " << *it << " is missing the "
+    if (!storage->GetString(group, kProviderTypeProperty, &type)) {
+      LOG(ERROR) << "Group " << group << " is missing the "
                  << kProviderTypeProperty << " property.";
       continue;
     }
 
     string name;
-    if (!storage->GetString(*it, kNameProperty, &name)) {
-      LOG(ERROR) << "Group " << *it << " is missing the "
+    if (!storage->GetString(group, kNameProperty, &name)) {
+      LOG(ERROR) << "Group " << group << " is missing the "
                  << kNameProperty << " property.";
       continue;
     }
 
     string host;
-    if (!storage->GetString(*it, kProviderHostProperty, &host)) {
-      LOG(ERROR) << "Group " << *it << " is missing the "
+    if (!storage->GetString(group, kProviderHostProperty, &host)) {
+      LOG(ERROR) << "Group " << group << " is missing the "
                  << kProviderHostProperty << " property.";
       continue;
     }
@@ -167,20 +162,20 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
     if (service != NULL) {
       // If the service already exists, it does not need to be configured,
       // since PushProfile would have already called ConfigureService on it.
-      SLOG(VPN, 2) << "Service already exists " << *it;
+      SLOG(VPN, 2) << "Service already exists " << group;
       continue;
     }
 
     Error error;
-    service = CreateService(type, name, *it, &error);
+    service = CreateService(type, name, group, &error);
 
     if (service == NULL) {
-      LOG(ERROR) << "Could not create service for " << *it;
+      LOG(ERROR) << "Could not create service for " << group;
       continue;
     }
 
     if (!profile->ConfigureService(service)) {
-      LOG(ERROR) << "Could not configure service for " << *it;
+      LOG(ERROR) << "Could not configure service for " << group;
       continue;
     }
   }
@@ -242,13 +237,11 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
 VPNServiceRefPtr VPNProvider::FindService(const string &type,
                                           const string &name,
                                           const string &host) const {
-  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if (type == (*it)->driver()->GetProviderType() &&
-        name == (*it)->friendly_name() &&
-        host == (*it)->driver()->GetHost()) {
-      return *it;
+  for (const auto &service : services_) {
+    if (type == service->driver()->GetProviderType() &&
+        name == service->friendly_name() &&
+        host == service->driver()->GetHost()) {
+      return service;
     }
   }
   return NULL;
@@ -273,9 +266,8 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(
 }
 
 bool VPNProvider::HasActiveService() const {
-  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end(); ++it) {
-    if ((*it)->IsConnecting() || (*it)->IsConnected()) {
+  for (const auto &service : services_) {
+    if (service->IsConnecting() || service->IsConnected()) {
       return true;
     }
   }

@@ -81,9 +81,8 @@ void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const vector<string> &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   vector< ::DBus::Path> paths;
-  vector<string>::const_iterator it;
-  for (it = value.begin(); it != value.end(); ++it) {
-    paths.push_back(*it);
+  for (const auto &element : value) {
+    paths.push_back(element);
   }
 
   PropertyChanged(name, DBusAdaptor::PathsToVariant(paths));
@@ -367,17 +366,13 @@ map<string, ::DBus::Variant> ManagerDBusAdaptor::GetNetworksForGeolocation(
     ::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__;
   map<string, ::DBus::Variant> networks;
-  map<string, GeolocationInfos> geoinfo_map =
-      manager_->GetNetworksForGeolocation();
-  for (map<string, GeolocationInfos>::iterator it = geoinfo_map.begin();
-       it != geoinfo_map.end(); ++it) {
+  for (const auto &network : manager_->GetNetworksForGeolocation()) {
     Stringmaps value;
     // Convert GeolocationInfos to their Stringmaps equivalent.
-    for(GeolocationInfos::const_iterator geoinfo_it = it->second.begin();
-        geoinfo_it != it->second.end(); ++geoinfo_it) {
-      value.push_back(geoinfo_it->properties());
+    for(const auto &info : network.second) {
+      value.push_back(info.properties());
     }
-    networks[it->first] = StringmapsToVariant(value);
+    networks[network.first] = StringmapsToVariant(value);
   }
   return networks;
 }

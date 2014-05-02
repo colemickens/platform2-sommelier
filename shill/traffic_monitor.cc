@@ -71,29 +71,28 @@ void TrafficMonitor::BuildIPPortToTxQueueLength(
     IPPortToTxQueueLengthMap *tx_queue_lengths) {
   SLOG(Link, 3) << __func__;
   string device_ip_address = device_->ipconfig()->properties().address;
-  vector<SocketInfo>::const_iterator it;
-  for (it = socket_infos.begin(); it != socket_infos.end(); ++it) {
-    SLOG(Link, 4) << "SocketInfo(IP=" << it->local_ip_address().ToString()
-                  << ", TX=" << it->transmit_queue_value()
-                  << ", State=" << it->connection_state()
-                  << ", TimerState=" << it->timer_state();
-    if (it->local_ip_address().ToString() != device_ip_address ||
-        it->transmit_queue_value() == 0 ||
-        it->connection_state() != SocketInfo::kConnectionStateEstablished ||
-        (it->timer_state() != SocketInfo::kTimerStateRetransmitTimerPending &&
-         it->timer_state() !=
+  for (const auto &info : socket_infos) {
+    SLOG(Link, 4) << "SocketInfo(IP=" << info.local_ip_address().ToString()
+                  << ", TX=" << info.transmit_queue_value()
+                  << ", State=" << info.connection_state()
+                  << ", TimerState=" << info.timer_state();
+    if (info.local_ip_address().ToString() != device_ip_address ||
+        info.transmit_queue_value() == 0 ||
+        info.connection_state() != SocketInfo::kConnectionStateEstablished ||
+        (info.timer_state() != SocketInfo::kTimerStateRetransmitTimerPending &&
+         info.timer_state() !=
             SocketInfo::kTimerStateZeroWindowProbeTimerPending)) {
       SLOG(Link, 4) << "Connection Filtered.";
       continue;
     }
-    SLOG(Link, 3) << "Monitoring connection: TX=" << it->transmit_queue_value()
-                  << " TimerState=" << it->timer_state();
+    SLOG(Link, 3) << "Monitoring connection: TX=" << info.transmit_queue_value()
+                  << " TimerState=" << info.timer_state();
 
     string local_ip_port =
         StringPrintf("%s:%d",
-                     it->local_ip_address().ToString().c_str(),
-                     it->local_port());
-    (*tx_queue_lengths)[local_ip_port] = it->transmit_queue_value();
+                     info.local_ip_address().ToString().c_str(),
+                     info.local_port());
+    (*tx_queue_lengths)[local_ip_port] = info.transmit_queue_value();
   }
 }
 
@@ -113,14 +112,11 @@ bool TrafficMonitor::IsCongestedTxQueues() {
     SLOG(Link, 3) << __func__ << ": No interesting socket info";
     ResetCongestedTxQueuesStatsWithLogging();
   } else {
-    IPPortToTxQueueLengthMap::iterator old_tx_queue_it;
-    for (old_tx_queue_it = old_tx_queue_lengths_.begin();
-         old_tx_queue_it != old_tx_queue_lengths_.end();
-         ++old_tx_queue_it) {
+    for (const auto &length_entry : old_tx_queue_lengths_) {
       IPPortToTxQueueLengthMap::iterator curr_tx_queue_it =
-          curr_tx_queue_lengths.find(old_tx_queue_it->first);
+          curr_tx_queue_lengths.find(length_entry.first);
       if (curr_tx_queue_it == curr_tx_queue_lengths.end() ||
-          curr_tx_queue_it->second < old_tx_queue_it->second) {
+          curr_tx_queue_it->second < length_entry.second) {
         congested_tx_queues = false;
         // TODO(armansito): If we had a false positive earlier, we may
         // want to correct it here by invoking a "connection back to normal
@@ -171,14 +167,13 @@ bool TrafficMonitor::IsDnsFailing() {
     const int64 kDnsTimedOutLowerThresholdSeconds =
         kDnsTimedOutThresholdSeconds - kSamplingIntervalMilliseconds / 1000;
     string device_ip_address = device_->ipconfig()->properties().address;
-    vector<ConnectionInfo>::const_iterator it;
-    for (it = connection_infos.begin(); it != connection_infos.end(); ++it) {
-      if (it->protocol() != IPPROTO_UDP ||
-          it->time_to_expire_seconds() > kDnsTimedOutThresholdSeconds ||
-          it->time_to_expire_seconds() <= kDnsTimedOutLowerThresholdSeconds ||
-          !it->is_unreplied() ||
-          it->original_source_ip_address().ToString() != device_ip_address ||
-          it->original_destination_port() != kDnsPort)
+    for (const auto &info : connection_infos) {
+      if (info.protocol() != IPPROTO_UDP ||
+          info.time_to_expire_seconds() > kDnsTimedOutThresholdSeconds ||
+          info.time_to_expire_seconds() <= kDnsTimedOutLowerThresholdSeconds ||
+          !info.is_unreplied() ||
+          info.original_source_ip_address().ToString() != device_ip_address ||
+          info.original_destination_port() != kDnsPort)
         continue;
 
       ++accummulated_dns_failures_samples_;

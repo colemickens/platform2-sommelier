@@ -329,14 +329,12 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   // WiFi callbacks expect notifications even if the device is disabled.
   DropConnection();
   StopScanTimer();
-  for (EndpointMap::iterator it = endpoint_by_rpcid_.begin();
-       it != endpoint_by_rpcid_.end(); ++it) {
-    provider_->OnEndpointRemoved(it->second);
+  for (const auto &endpoint : endpoint_by_rpcid_) {
+    provider_->OnEndpointRemoved(endpoint.second);
   }
   endpoint_by_rpcid_.clear();
-  for (ReverseServiceMap::const_iterator it = rpcid_by_service_.begin();
-       it != rpcid_by_service_.end(); ++it) {
-    RemoveNetwork(it->second);
+  for (const auto &map_entry : rpcid_by_service_) {
+    RemoveNetwork(map_entry.second);
   }
   rpcid_by_service_.clear();
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
@@ -1034,8 +1032,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
 
 string WiFi::FindNetworkRpcidForService(
     const WiFiService *service, Error *error) {
-  ReverseServiceMap::const_iterator rpcid_it =
-      rpcid_by_service_.find(service);
+  ReverseServiceMap::const_iterator rpcid_it = rpcid_by_service_.find(service);
   if (rpcid_it == rpcid_by_service_.end()) {
     const string error_message =
         StringPrintf(
@@ -1538,13 +1535,13 @@ bool WiFi::SanitizeSSID(string *ssid) {
 // static
 string WiFi::LogSSID(const string &ssid) {
   string out;
-  for (string::const_iterator it = ssid.begin(); it != ssid.end(); ++it) {
+  for (const auto &chr : ssid) {
     // Replace '[' and ']' (in addition to non-printable characters) so that
     // it's easy to match the right substring through a non-greedy regex.
-    if (*it == '[' || *it == ']' || !g_ascii_isprint(*it)) {
-      base::StringAppendF(&out, "\\x%02x", *it);
+    if (chr == '[' || chr == ']' || !g_ascii_isprint(chr)) {
+      base::StringAppendF(&out, "\\x%02x", chr);
     } else {
-      out += *it;
+      out += chr;
     }
   }
   return StringPrintf("[SSID=%s]", out.c_str());
@@ -1594,11 +1591,9 @@ void WiFi::DisassociateFromService(const WiFiServiceRefPtr &service) {
 
 vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
   vector<GeolocationInfo> objects;
-  for (EndpointMap::const_iterator it = endpoint_by_rpcid_.begin();
-      it != endpoint_by_rpcid_.end();
-      ++it) {
+  for (const auto &endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
-    WiFiEndpointRefPtr endpoint = it->second;
+    const WiFiEndpointRefPtr &endpoint = endpoint_entry.second;
     geoinfo.AddField(kGeoMacAddressProperty, endpoint->bssid_string());
     geoinfo.AddField(kGeoSignalStrengthProperty,
                 StringPrintf("%d", endpoint->signal_strength()));

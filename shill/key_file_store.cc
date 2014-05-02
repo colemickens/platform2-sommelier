@@ -138,9 +138,9 @@ set<string> KeyFileStore::GetGroups() const {
 set<string> KeyFileStore::GetGroupsWithKey(const string &key) const {
   set<string> groups = GetGroups();
   set<string> groups_with_key;
-  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
-    if (glib_->KeyFileHasKey(key_file_, (*it).c_str(), key.c_str(), NULL)) {
-      groups_with_key.insert(*it);
+  for (const auto &group : groups) {
+    if (glib_->KeyFileHasKey(key_file_, group.c_str(), key.c_str(), NULL)) {
+      groups_with_key.insert(group);
     }
   }
   return groups_with_key;
@@ -150,9 +150,9 @@ set<string> KeyFileStore::GetGroupsWithProperties(
      const KeyValueStore &properties) const {
   set<string> groups = GetGroups();
   set<string> groups_with_properties;
-  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
-    if (DoesGroupMatchProperties(*it, properties)) {
-      groups_with_properties.insert(*it);
+  for (const auto &group : groups) {
+    if (DoesGroupMatchProperties(group, properties)) {
+      groups_with_properties.insert(group);
     }
   }
   return groups_with_properties;
@@ -339,9 +339,8 @@ bool KeyFileStore::SetStringList(const string &group,
                                  const vector<string> &value) {
   CHECK(key_file_);
   vector<const char *> list;
-  for (vector<string>::const_iterator it = value.begin();
-       it != value.end(); ++it) {
-    list.push_back(it->c_str());
+  for (const auto &string_entry : value) {
+    list.push_back(string_entry.c_str());
   }
   glib_->KeyFileSetStringList(key_file_,
                               group.c_str(),
@@ -372,32 +371,21 @@ bool KeyFileStore::SetCryptedString(const string &group,
 bool KeyFileStore::DoesGroupMatchProperties(
     const string &group, const KeyValueStore &properties) const {
   map<string, bool>::const_iterator bool_it;
-  for (bool_it = properties.bool_properties().begin();
-       bool_it != properties.bool_properties().end();
-       ++bool_it) {
+  for (const auto &property : properties.bool_properties()) {
     bool value;
-    if (!GetBool(group, bool_it->first, &value) ||
-        value != bool_it->second) {
+    if (!GetBool(group, property.first, &value) || value != property.second) {
       return false;
     }
   }
-  map<string, int32>::const_iterator int_it;
-  for (int_it = properties.int_properties().begin();
-       int_it != properties.int_properties().end();
-       ++int_it) {
+  for (const auto &property : properties.int_properties()) {
     int value;
-    if (!GetInt(group, int_it->first, &value) ||
-        value != int_it->second) {
+    if (!GetInt(group, property.first, &value) || value != property.second) {
       return false;
     }
   }
-  map<string, string>::const_iterator string_it;
-  for (string_it = properties.string_properties().begin();
-       string_it != properties.string_properties().end();
-       ++string_it) {
+  for (const auto &property : properties.string_properties()) {
     string value;
-    if (!GetString(group, string_it->first, &value) ||
-        value != string_it->second) {
+    if (!GetString(group, property.first, &value) || value != property.second) {
       return false;
     }
   }

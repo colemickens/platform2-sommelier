@@ -132,3 +132,12 @@ To keep the shill source code consistent, please follow the conventions below:
   Test that the property changes are handled correctly by adding test
   cases similar to those in CellularServiceTest.PropertyChanges, and
   CellularServiceTest.CustomSetterNoopChange.
+
+- When performing trivial iteration through a container, prefer using
+  range based for loops, preferably:
+
+     for (const auto &element : container) {
+
+  Remove "const" where necessary if the element will be modified during
+  the loop.  Removal of the "const" and reference for trivial types is
+  allowed but not necessary.

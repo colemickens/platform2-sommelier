@@ -104,9 +104,8 @@ void DeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const vector<string> &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   vector< ::DBus::Path> paths;
-  vector<string>::const_iterator it;
-  for (it = value.begin(); it != value.end(); ++it) {
-    paths.push_back(*it);
+  for (const auto &element : value) {
+    paths.push_back(element);
   }
 
   PropertyChanged(name, DBusAdaptor::PathsToVariant(paths));

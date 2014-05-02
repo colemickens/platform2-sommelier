@@ -139,10 +139,9 @@ void EapCredentials::PopulateSupplicantProperties(
         append_uint32(WPASupplicant::kDefaultEngine);
   }
 
-  vector<KeyVal>::iterator it;
-  for (it = propertyvals.begin(); it != propertyvals.end(); ++it) {
-    if (strlen((*it).second) > 0) {
-      (*params)[(*it).first].writer().append_string((*it).second);
+  for (const auto &keyval : propertyvals) {
+    if (strlen(keyval.second) > 0) {
+      (*params)[keyval.first].writer().append_string(keyval.second);
     }
   }
 }

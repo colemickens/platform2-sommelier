@@ -670,11 +670,10 @@ void WiFiService::UpdateFromEndpoints() {
     representative_endpoint = current_endpoint_;
   } else  {
     int16 best_signal = std::numeric_limits<int16>::min();
-    for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.begin();
-         i != endpoints_.end(); ++i) {
-      if ((*i)->signal_strength() >= best_signal) {
-        best_signal = (*i)->signal_strength();
-        representative_endpoint = *i;
+    for (const auto &endpoint : endpoints_) {
+      if (endpoint->signal_strength() >= best_signal) {
+        best_signal = endpoint->signal_strength();
+        representative_endpoint = endpoint;
       }
     }
   }
@@ -689,9 +688,8 @@ void WiFiService::UpdateFromEndpoints() {
 
   SetWiFi(wifi);
 
-  for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.begin();
-       i != endpoints_.end(); ++i) {
-    if ((*i)->ieee80211w_required()) {
+  for (const auto &endpoint : endpoints_) {
+    if (endpoint->ieee80211w_required()) {
       // Never reset ieee80211w_required_ to false, so we track whether we have
       // ever seen an AP that requires 802.11w.
       ieee80211w_required_ = true;
@@ -789,12 +787,11 @@ Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
   // Find weakest cipher (across endpoints) of the strongest ciphers
   // (per endpoint).
   Service::CryptoAlgorithm cipher = Service::kCryptoAes;
-  for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints.begin();
-       i != endpoints.end(); ++i) {
+  for (const auto &endpoint : endpoints) {
     Service::CryptoAlgorithm endpoint_cipher;
-    if ((*i)->has_rsn_property()) {
+    if (endpoint->has_rsn_property()) {
       endpoint_cipher = Service::kCryptoAes;
-    } else if ((*i)->has_wpa_property()) {
+    } else if (endpoint->has_wpa_property()) {
       endpoint_cipher = Service::kCryptoRc4;
     } else {
       // We could be in the Dynamic WEP case here. But that's okay,
@@ -982,9 +979,7 @@ bool WiFiService::ParseStorageIdentifier(const string &storage_name,
 bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
   bool fixed_entry = false;
   set<string> groups = storage->GetGroups();
-  for (set<string>::const_iterator it = groups.begin(); it != groups.end();
-       ++it) {
-    const string &id = *it;
+  for (const auto &id : groups) {
     string device_address, network_mode, security;
     if (!ParseStorageIdentifier(id, &device_address,
                                 &network_mode, &security)) {

@@ -33,8 +33,7 @@ void CryptoProvider::Init() {
 }
 
 string CryptoProvider::Encrypt(const string &plaintext) {
-  for (Cryptos::iterator it = cryptos_.begin(); it != cryptos_.end(); ++it) {
-    CryptoInterface *crypto = *it;
+  for (auto crypto : cryptos_) {
     string ciphertext;
     if (crypto->Encrypt(plaintext, &ciphertext)) {
       const string prefix = crypto->GetID() + ":";
@@ -46,8 +45,7 @@ string CryptoProvider::Encrypt(const string &plaintext) {
 }
 
 string CryptoProvider::Decrypt(const string &ciphertext) {
-  for (Cryptos::iterator it = cryptos_.begin(); it != cryptos_.end(); ++it) {
-    CryptoInterface *crypto = *it;
+  for (auto crypto : cryptos_) {
     const string prefix = crypto->GetID() + ":";
     if (StartsWithASCII(ciphertext, prefix, true)) {
       string to_decrypt = ciphertext;
