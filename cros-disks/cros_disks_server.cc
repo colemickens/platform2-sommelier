@@ -182,14 +182,6 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
 
 void CrosDisksServer::OnFormatCompleted(const string& device_path,
                                         FormatErrorType error_type) {
-  // TODO(benchan): Deprecate the FormattingFinished signal once Chrome
-  // switches to observe the FormatCompleted signal instead.
-  if (error_type != FORMAT_ERROR_NONE) {
-    FormattingFinished("!" + device_path);
-    LOG(ERROR) << "Failed to format '" << device_path << "'";
-  } else {
-    FormattingFinished(device_path);
-  }
   FormatCompleted(error_type, device_path);
 }
 

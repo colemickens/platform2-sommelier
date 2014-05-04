@@ -137,9 +137,5 @@
       <arg name="device" type="s" direction="out">
       </arg>
     </signal>
-    <signal name="FormattingFinished">
-      <arg name="device" type="s" direction="out">
-      </arg>
-    </signal>
   </interface>
 </node>
