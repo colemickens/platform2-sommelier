@@ -46,9 +46,12 @@ mno {
     mccmnc : "311480"
     mobile_apn {
       apn : "vzwinternet"
+      plan : POSTPAID
       localized_name {
         name : "4G LTE Contract"
       }
+      dns : "66.174.92.14"
+      dns : "69.78.96.14"
     }
     sid : "2"
     sid : "4"
