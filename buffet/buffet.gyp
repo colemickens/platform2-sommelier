@@ -29,7 +29,6 @@
       'sources': [
         'data_encoding.cc',
         'dbus_constants.cc',
-        'dbus_manager.cc',
         'dbus_utils.cc',
         'device_registration_info.cc',
         'exported_object_manager.cc',

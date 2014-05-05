@@ -16,7 +16,6 @@
 #include <dbus/values_util.h>
 
 #include "buffet/dbus_constants.h"
-#include "buffet/dbus_manager.h"
 #include "buffet/data_encoding.h"
 
 using namespace buffet::dbus_constants;
@@ -32,8 +31,8 @@ dbus::ObjectProxy* GetBuffetDBusProxy(dbus::Bus *bus,
 }
 
 bool CallTestMethod(dbus::ObjectProxy* proxy) {
-  dbus::MethodCall method_call(buffet::dbus_constants::kRootInterface,
-                               buffet::dbus_constants::kRootTestMethod);
+  dbus::MethodCall method_call(buffet::dbus_constants::kManagerInterface,
+                               buffet::dbus_constants::kManagerTestMethod);
   scoped_ptr<dbus::Response> response(
     proxy->CallMethodAndBlock(&method_call, default_timeout_ms));
   if (!response) {
@@ -178,7 +177,7 @@ bool CallManagerUpdateState(dbus::ObjectProxy* proxy,
 
 void usage() {
   std::cerr << "Possible commands:" << std::endl;
-  std::cerr << "  " << kRootTestMethod << std::endl;
+  std::cerr << "  " << kManagerTestMethod << std::endl;
   std::cerr << "  " << kManagerCheckDeviceRegistered << std::endl;
   std::cerr << "  " << kManagerGetDeviceInfo << std::endl;
   std::cerr << "  " << kManagerStartRegisterDevice
@@ -208,9 +207,9 @@ int main(int argc, char** argv) {
   std::string command = args.front();
   args.erase(args.begin());
   bool success = false;
-  if (command.compare(kRootTestMethod) == 0) {
+  if (command.compare(kManagerTestMethod) == 0) {
     auto proxy = GetBuffetDBusProxy(
-        bus, buffet::dbus_constants::kRootServicePath);
+        bus, buffet::dbus_constants::kManagerServicePath);
     success = CallTestMethod(proxy);
   } else if (command.compare(kManagerCheckDeviceRegistered) == 0 ||
              command.compare("cr") == 0) {

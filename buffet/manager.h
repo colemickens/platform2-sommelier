@@ -58,6 +58,9 @@ class Manager {
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   scoped_ptr<dbus::Response> HandleUpdateState(
       dbus::MethodCall* method_call);
+  // Handles calls to org.chromium.Buffet.Manager.Test()
+  scoped_ptr<::dbus::Response> HandleTestMethod(
+      ::dbus::MethodCall* method_call);
 
   dbus::Bus* bus_;
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.

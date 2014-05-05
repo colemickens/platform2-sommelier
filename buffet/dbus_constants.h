@@ -12,12 +12,8 @@ namespace dbus_constants {
 // The service name claimed by the Buffet daemon.
 extern const char kServiceName[];
 
-// Interface implemented by the object at kRootServicePath.
-extern const char kRootInterface[];
+// The object at this path implements the ObjectManager interface.
 extern const char kRootServicePath[];
-
-// Methods exposed as part of kRootInterface.
-extern const char kRootTestMethod[];
 
 // Interface implemented by the object at kManagerServicePath.
 extern const char kManagerInterface[];
@@ -29,6 +25,7 @@ extern const char kManagerGetDeviceInfo[];
 extern const char kManagerStartRegisterDevice[];
 extern const char kManagerFinishRegisterDevice[];
 extern const char kManagerUpdateStateMethod[];
+extern const char kManagerTestMethod[];
 
 }  // namespace dbus_constants
 

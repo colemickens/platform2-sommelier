@@ -6,13 +6,13 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/json/json_writer.h>
+#include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
-#include <base/json/json_writer.h>
 
 #include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_constants.h"
-#include "buffet/dbus_manager.h"
 #include "buffet/dbus_utils.h"
 
 using buffet::dbus_utils::GetBadArgsError;
@@ -92,6 +92,14 @@ void Manager::Init(const OnInitFinish& cb) {
           dbus_constants::kManagerInterface,
           dbus_constants::kManagerUpdateStateMethod,
           "Failed exporting UpdateState method",
+          true));
+  exported_object_->ExportMethod(
+      dbus_constants::kManagerInterface, dbus_constants::kManagerTestMethod,
+      dbus_utils::GetExportableDBusMethod(
+          base::Bind(&Manager::HandleTestMethod, base::Unretained(this))),
+      sequencer->GetExportHandler(
+          dbus_constants::kManagerInterface, dbus_constants::kManagerTestMethod,
+          "Failed exporting TestMethod method",
           true));
   properties_.reset(new Properties(bus_));
   // TODO(wiley): Initialize all properties appropriately before claiming
@@ -240,6 +248,12 @@ scoped_ptr<dbus::Response> Manager::HandleUpdateState(
 
   // Send back our response.
   return dbus::Response::FromMethodCall(method_call);
+}
+
+scoped_ptr<dbus::Response> Manager::HandleTestMethod(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received call to test method.";
+  return scoped_ptr<dbus::Response>();
 }
 
 }  // namespace buffet

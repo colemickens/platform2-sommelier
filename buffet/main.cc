@@ -12,10 +12,10 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <dbus/bus.h>
 #include <sysexits.h>
 
 #include "buffet/async_event_sequencer.h"
-#include "buffet/dbus_manager.h"
 #include "buffet/manager.h"
 
 using buffet::dbus_utils::AsyncEventSequencer;
@@ -87,8 +87,6 @@ void TakeServiceOwnership(scoped_refptr<dbus::Bus> bus, bool success) {
 void EnterMainLoop(base::MessageLoopForIO* message_loop,
                    scoped_refptr<dbus::Bus> bus) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  buffet::DBusManager dbus_manager(bus.get());
-  dbus_manager.Init(sequencer->GetHandler("DBusManager.Init() failed.", true));
   buffet::Manager manager(bus.get());
   manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));
   sequencer->OnAllTasksCompletedCall(
