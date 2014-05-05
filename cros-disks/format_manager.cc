@@ -49,6 +49,7 @@ FormatManager::~FormatManager() {
 }
 
 FormatErrorType FormatManager::StartFormatting(const string& device_path,
+                                               const string& device_file,
                                                const string& filesystem) {
   // Check if the file system is supported for formatting
   if (!IsFilesystemSupported(filesystem)) {
@@ -81,7 +82,7 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
     process->AddStringOption("-F", "32");
     process->AddStringOption("-n", kDefaultLabel);
   }
-  process->AddArg(device_path);
+  process->AddArg(device_file);
   if (!process->Start()) {
     LOG(WARNING) << "Cannot start a process for formatting '"
                  << device_path << "' as filesystem '" << filesystem << "'";
@@ -116,12 +117,6 @@ void FormatManager::FormattingFinished(pid_t pid, int status) {
   }
   if (observer_)
     observer_->OnFormatCompleted(device_path, error_type);
-}
-
-FormatErrorType FormatManager::StopFormatting(const string& device_path) {
-  // TODO(sidor): implement
-  // When the cancel button is hit
-  return FORMAT_ERROR_INTERNAL;
 }
 
 string FormatManager::GetFormatProgramPath(const string& filesystem) const {

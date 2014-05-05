@@ -29,10 +29,8 @@ class FormatManager {
 
   // Starts a formatting process of a given device.
   FormatErrorType StartFormatting(const std::string& device_path,
+                                  const std::string& device_file,
                                   const std::string& filesystem);
-
-  // Stops a formatting process of a given device.
-  FormatErrorType StopFormatting(const std::string& device_path);
 
   // Handles a terminated formatting process.
   void FormattingFinished(pid_t pid, int status);

@@ -66,7 +66,9 @@ bool CrosDisksServer::FormatDevice(const string& path,
     error_type = FORMAT_ERROR_DEVICE_NOT_ALLOWED;
   } else {
     error_type =
-       format_manager_->StartFormatting(disk.device_file(), filesystem_type);
+       format_manager_->StartFormatting(path,
+                                        disk.device_file(),
+                                        filesystem_type);
   }
 
   if (error_type != FORMAT_ERROR_NONE) {
