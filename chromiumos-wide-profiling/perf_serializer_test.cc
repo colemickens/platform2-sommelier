@@ -128,8 +128,10 @@ TEST(PerfSerializerTest, Test1Cycle) {
     LOG(INFO) << "Testing " << input_perf_data;
     input_perf_reader.ReadFile(input_perf_data);
 
-    // For every other perf data file, discard unused events.
-    bool discard = (i % 2 == 0);
+    // Discard unused events for a pseudorandom selection of half the test data
+    // files. The selection is based on the Md5sum prefix, so that the files can
+    // be moved around in the |kPerfDataFiles| list.
+    bool discard = (Md5Prefix(test_file) % 2 == 0);
 
     SerializeAndDeserialize(input_perf_data, output_perf_data, false, discard);
     output_perf_reader.ReadFile(output_perf_data);
