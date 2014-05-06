@@ -27,6 +27,7 @@
       'target_name': 'buffet_common',
       'type': 'static_library',
       'sources': [
+        'any.cc',
         'async_event_sequencer.cc',
         'data_encoding.cc',
         'dbus_constants.cc',
@@ -75,6 +76,8 @@
       ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
+        'any_unittest.cc',
+        'any_internal_impl_unittest.cc',
         'async_event_sequencer_unittest.cc',
         'buffet_testrunner.cc',
         'data_encoding_unittest.cc',
