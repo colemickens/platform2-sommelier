@@ -14,6 +14,7 @@ message Filter {
     ICCID = 2;
     SID = 3;
     OPERATOR_NAME = 4;
+    MCCMNC = 5;
   };
   required Type type = 1;
   // A regular expression specifying the values that are *accepted* by this
@@ -51,10 +52,10 @@ message OnlinePortal {
     GET = 1;
     POST = 2;
   }
-  // Some OnlinePortals are only valid for a restricted set of SIDs. Use this
-  // filter to specify the SID range. The OnlinePortal is assumed to apply to
-  // all SIDs if the filter is not provided.
-  optional Filter sid_filter = 1;
+  // Some OnlinePortals are only valid for a restricted set of SIDs/MCCMNCs etc.
+  // Use this filter to restrict when the OnlinePortal is valid.
+  // The OnlinePortal is assumed to be valid if the filter is not provided.
+  optional Filter olp_filter = 1;
   required Method method = 2;
   required string url = 3;
   optional string post_data = 4;

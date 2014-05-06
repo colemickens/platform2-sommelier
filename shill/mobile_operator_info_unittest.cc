@@ -1013,6 +1013,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     mccmnc_list_.clear();
     mccmnc_list_.push_back("200001");
     mccmnc_list_.push_back("200002");
+    mccmnc_list_.push_back("200003");
 
     operator_name_list_.clear();
     operator_name_list_.push_back({"name200001", "en"});
@@ -1033,6 +1034,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     sid_list_.clear();
     sid_list_.push_back("200123");
     sid_list_.push_back("200234");
+    sid_list_.push_back("200345");
   }
 
   // Use this function to pre-populate all the data members of this object with
@@ -1289,6 +1291,59 @@ TEST_F(MobileOperatorInfoDataTest, ResetClearsInformation) {
   VerifyMNOWithUUID("uuid200001");
   PopulateMNOData();
   VerifyDatabaseData();
+}
+
+TEST_F(MobileOperatorInfoDataTest, FilteredOLP) {
+  // We only check basic filter matching, using the fact that the regex matching
+  // code is shared with the MVNO filtering, and is already well tested.
+  // (1) None of the filters match.
+  ExpectEventCount(1);
+  operator_info_->UpdateMCCMNC("200001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid200001");
+
+  ASSERT_EQ(1, operator_info_->olp_list().size());
+  // Just check that the filtered OLPs are not in the list.
+  EXPECT_NE("olp@mccmnc", operator_info_->olp_list()[0].url);
+  EXPECT_NE("olp@sid", operator_info_->olp_list()[0].url);
+
+  // (2) MCCMNC filter matches.
+  ExpectEventCount(1);
+  operator_info_->Reset();
+  VerifyEventCount();
+  VerifyNoMatch();
+
+  ExpectEventCount(1);
+  operator_info_->UpdateMCCMNC("200003");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid200001");
+
+  ASSERT_EQ(2, operator_info_->olp_list().size());
+  EXPECT_NE("olp@sid", operator_info_->olp_list()[0].url);
+  bool found_olp_by_mccmnc = false;
+  for (const auto &olp : operator_info_->olp_list()) {
+    found_olp_by_mccmnc |= ("olp@mccmnc" == olp.url);
+  }
+  EXPECT_TRUE(found_olp_by_mccmnc);
+
+  // (3) SID filter matches.
+  ExpectEventCount(1);
+  operator_info_->Reset();
+  VerifyEventCount();
+  VerifyNoMatch();
+
+  ExpectEventCount(1);
+  operator_info_->UpdateSID("200345");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid200001");
+
+  ASSERT_EQ(2, operator_info_->olp_list().size());
+  EXPECT_NE("olp@mccmnc", operator_info_->olp_list()[0].url);
+  bool found_olp_by_sid = false;
+  for (const auto &olp : operator_info_->olp_list()) {
+    found_olp_by_sid |= ("olp@sid" == olp.url);
+  }
+  EXPECT_TRUE(found_olp_by_sid);
 }
 
 class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {

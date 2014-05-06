@@ -88,6 +88,7 @@ class MobileOperatorInfoImpl {
 
   bool UpdateMNO();
   bool UpdateMVNO();
+  bool FilterMatches(const shill::mobile_operator_db::Filter &filter);
   // Reloads the information about M[V]NO from the database.
   void RefreshDBInformation();
   void ClearDBInformation();
@@ -180,6 +181,7 @@ class MobileOperatorInfoImpl {
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   ScopedVector<MobileOperatorInfo::MobileAPN> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
+  std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
   std::string activation_code_;
   bool requires_roaming_;
   // These fields store the data obtained from the Update* methods.

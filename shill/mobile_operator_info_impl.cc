@@ -588,78 +588,10 @@ bool MobileOperatorInfoImpl::UpdateMVNO() {
   for (const auto &candidate_mvno : current_mno_->mvno()) {
     bool passed_all_filters = true;
     for (const auto &filter : candidate_mvno.mvno_filter()) {
-      string to_match;
-      switch (filter.type()) {
-        case mobile_operator_db::Filter_Type_IMSI:
-          to_match = user_imsi_;
-          break;
-        case mobile_operator_db::Filter_Type_ICCID:
-          to_match = user_iccid_;
-          break;
-        case mobile_operator_db::Filter_Type_SID:
-          to_match = user_sid_;
-          break;
-        case mobile_operator_db::Filter_Type_OPERATOR_NAME:
-          to_match = user_operator_name_;
-          break;
-        default:
-          to_match.clear();
-          SLOG(Cellular, 1) << "Unknown filter type [" << filter.type()
-                            << "]";
-          break;
-      }
-      if (to_match.empty()) {
-        // Not enough information to pass this filter.
+      if (!FilterMatches(filter)) {
         passed_all_filters = false;
         break;
       }
-      DCHECK(filter.has_regex());
-
-      // Must use GNU regex implementation, since C++11 implementation is
-      // incomplete.
-      regex_t filter_regex;
-      string filter_regex_str = filter.regex();
-
-      // |regexec| matches the given regular expression to a substring of the
-      // given query string. Ensure that |filter_regex_str| uses anchors to
-      // accept only a full match.
-      if (filter_regex_str.front() != '^') {
-        filter_regex_str = "^" + filter_regex_str;
-      }
-      if (filter_regex_str.back() != '$') {
-        filter_regex_str = filter_regex_str + "$";
-      }
-
-      int regcomp_error = regcomp(&filter_regex,
-                                  filter_regex_str.c_str(),
-                                  REG_EXTENDED | REG_NOSUB);
-      if(regcomp_error) {
-        LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. "
-                     << "Error returned: "
-                     << GetRegError(regcomp_error, &filter_regex) << ". "
-                     << "Skipping current MVNO.";
-        passed_all_filters = false;
-        regfree(&filter_regex);
-        break;
-      }
-
-      int regexec_error = regexec(&filter_regex,
-                                  to_match.c_str(),
-                                  0,
-                                  NULL,
-                                  0);
-      if (regexec_error) {
-        string error_string;
-        error_string = GetRegError(regcomp_error, &filter_regex);
-        LOG(WARNING) << "Could not match string " << to_match << " "
-                     << "against regexp " << filter.regex() << ". "
-                     << "Error returned: " << error_string << ". "
-                     << "Skipping current MVNO.";
-        passed_all_filters = false;
-        regfree(&filter_regex);
-        break;
-      }
-      regfree(&filter_regex);
     }
     if (passed_all_filters) {
       if (current_mvno_ == &candidate_mvno) {
@@ -678,6 +610,82 @@ bool MobileOperatorInfoImpl::UpdateMVNO() {
     return true;
   }
   return false;
+}
+
+bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {
+  DCHECK(filter.has_regex());
+  string to_match;
+  switch (filter.type()) {
+    case mobile_operator_db::Filter_Type_IMSI:
+      to_match = user_imsi_;
+      break;
+    case mobile_operator_db::Filter_Type_ICCID:
+      to_match = user_iccid_;
+      break;
+    case mobile_operator_db::Filter_Type_SID:
+      to_match = user_sid_;
+      break;
+    case mobile_operator_db::Filter_Type_OPERATOR_NAME:
+      to_match = user_operator_name_;
+      break;
+    case mobile_operator_db::Filter_Type_MCCMNC:
+      to_match = user_mccmnc_;
+      break;
+    default:
+      SLOG(Cellular, 1) << "Unknown filter type [" << filter.type()
+                        << "]";
+      return false;
+  }
+  // |to_match| can be empty if we have no *user provided* information of the
+  // correct type.
+  if (to_match.empty()) {
+    SLOG(Cellular, 2) << "Nothing to match against (filter: "
+                      << filter.regex() << ").";
+    return false;
+  }
+
+  // Must use GNU regex implementation, since C++11 implementation is
+  // incomplete.
+  regex_t filter_regex;
+  string filter_regex_str = filter.regex();
+
+  // |regexec| matches the given regular expression to a substring of the
+  // given query string. Ensure that |filter_regex_str| uses anchors to
+  // accept only a full match.
+  if (filter_regex_str.front() != '^') {
+    filter_regex_str = "^" + filter_regex_str;
+  }
+  if (filter_regex_str.back() != '$') {
+    filter_regex_str = filter_regex_str + "$";
+  }
+
+  int regcomp_error = regcomp(&filter_regex,
+                              filter_regex_str.c_str(),
+                              REG_EXTENDED | REG_NOSUB);
+  if(regcomp_error) {
+    LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. "
+                 << "Error returned: "
+                 << GetRegError(regcomp_error, &filter_regex) << ". ";
+    regfree(&filter_regex);
+    return false;
+  }
+
+  int regexec_error = regexec(&filter_regex,
+                              to_match.c_str(),
+                              0,
+                              NULL,
+                              0);
+  if (regexec_error) {
+    string error_string;
+    error_string = GetRegError(regcomp_error, &filter_regex);
+    SLOG(Cellular, 2) << "Could not match string " << to_match << " "
+                      << "against regexp " << filter.regex() << ". "
+                      << "Error returned: " << error_string << ". ";
+    regfree(&filter_regex);
+    return false;
+  }
+  regfree(&filter_regex);
+  return true;
 }
 
 void MobileOperatorInfoImpl::RefreshDBInformation() {
@@ -712,6 +720,7 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   HandleOperatorNameUpdate();
   apn_list_.clear();
   olp_list_.clear();
+  raw_olp_list_.clear();
   HandleOnlinePortalUpdate();
   activation_code_.clear();
   requires_roaming_ = false;
@@ -741,14 +750,10 @@ void MobileOperatorInfoImpl::ReloadData(const Data &data) {
   }
 
   if (data.olp_size() > 0) {
-    olp_list_.clear();
+    raw_olp_list_.clear();
+    // Copy the olp list so we can mutate it.
     for (const auto &olp : data.olp()) {
-      // TODO(pprabhu): Support SID filters.
-      // Is this supported in the old way of doing things?
-      olp_list_.push_back(MobileOperatorInfo::OnlinePortal {
-          olp.url(),
-          (olp.method() == olp.GET) ? "GET" : "POST",
-          olp.post_data()});
+      raw_olp_list_.push_back(olp);
     }
     HandleOnlinePortalUpdate();
   }
@@ -885,7 +890,24 @@ void MobileOperatorInfoImpl::HandleSIDUpdate() {
   }
 }
 
+// Warning: Currently, an MCCMNC/SID update by itself does not result into
+// recomputation of the |olp_list_|. This means that if the new MCCMNC/SID
+// causes an online portal filter to match, we'll miss that.
+// This won't be a problem if either the MNO or the MVNO changes, since data is
+// reloaded then.
+// This is a corner case that we don't expect to hit, since MCCMNC doesn't
+// really change in a running system.
 void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
+  // Always recompute |olp_list_|. We don't expect this list to be big.
+  olp_list_.clear();
+  for (const auto &raw_olp : raw_olp_list_) {
+    if (!raw_olp.has_olp_filter() || FilterMatches(raw_olp.olp_filter())) {
+      olp_list_.push_back(MobileOperatorInfo::OnlinePortal {
+            raw_olp.url(),
+            (raw_olp.method() == raw_olp.GET) ? "GET" : "POST",
+            raw_olp.post_data()});
+    }
+  }
   if (!user_olp_empty_) {
     bool append_user_olp = true;
     for (const auto &olp : olp_list_) {
