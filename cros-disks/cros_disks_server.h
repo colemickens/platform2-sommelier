@@ -67,13 +67,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                       const std::vector<std::string>& options,
                       DBus::Error& error);  // NOLINT
 
-  // A method for asynchronous formatting device using specified file system.
-  // Assumes device path is valid (should it be invalid singal
-  // FormattingFinished(false) will be sent)
-  // Return true if formatting is successfully INITIALIZED, rather than finished
-  virtual bool FormatDevice(const std::string& device_path,
-      const std::string& filesystem, ::DBus::Error &error);  // NOLINT
-
   // A method for checking if the daemon is running. Always returns true.
   virtual bool IsAlive(DBus::Error& error);  // NOLINT
 

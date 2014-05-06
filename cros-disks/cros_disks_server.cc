@@ -51,13 +51,6 @@ void CrosDisksServer::Format(const string& path,
                              const string& filesystem_type,
                              const vector<string>& options,
                              DBus::Error &error) {  // NOLINT
-  FormatDevice(path, filesystem_type, error);
-}
-
-// TODO(benchan): Remove this method after Chrome switches to use Format().
-bool CrosDisksServer::FormatDevice(const string& path,
-                                   const string& filesystem_type,
-                                   DBus::Error &error) {  // NOLINT
   FormatErrorType error_type = FORMAT_ERROR_NONE;
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
@@ -75,9 +68,7 @@ bool CrosDisksServer::FormatDevice(const string& path,
     LOG(ERROR) << "Could not format device '" << path
                << "' as filesystem '" << filesystem_type << "'";
     FormatCompleted(error_type, path);
-    return false;
   }
-  return true;
 }
 
 void CrosDisksServer::Mount(const string& path,
