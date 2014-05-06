@@ -291,37 +291,6 @@ mno {
 
 mno {
   data {
-    uuid : "reliance"
-    country : "in"
-    localized_name {
-      name : "Reliance Netconnect"
-    }
-    sid : "14655"
-    sid : "14656"
-    sid : "14657"
-    sid : "14658"
-    sid : "14659"
-    sid : "14660"
-    sid : "14661"
-    sid : "14662"
-    sid : "14663"
-    sid : "14664"
-    sid : "14665"
-    sid : "14666"
-    sid : "14667"
-    sid : "14668"
-    sid : "14669"
-    sid : "14670"
-    sid : "14671"
-    sid : "14672"
-    sid : "14673"
-    sid : "14674"
-    sid : "14675"
-  }
-}
-
-mno {
-  data {
     uuid : "mts"
     country : "in"
     localized_name {
