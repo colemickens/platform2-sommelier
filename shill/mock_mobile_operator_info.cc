@@ -18,6 +18,8 @@ void MockMobileOperatorInfo::SetEmptyDefaultsForProperties() {
   ON_CALL(*this, olp_list()).WillByDefault(ReturnRef(empty_olp_list_));
   ON_CALL(*this, operator_name())
       .WillByDefault(ReturnRef(empty_operator_name_));
+  ON_CALL(*this, country())
+      .WillByDefault(ReturnRef(empty_country_));
   ON_CALL(*this, uuid()).WillByDefault(ReturnRef(empty_uuid_));
 }
 

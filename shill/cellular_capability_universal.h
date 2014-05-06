@@ -205,7 +205,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Reset);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ScanFailure);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
@@ -235,9 +234,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceOLP);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOperatorInfo);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdateOperatorInfoViaOperatorId);
   FRIEND_TEST(CellularCapabilityUniversalTimerTest, CompleteActivation);
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest,
@@ -286,23 +282,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_PowerDown(const ResultCallback &callback);
   void Stop_PowerDownCompleted(const ResultCallback &callback,
                                const Error &error);
-
-  // Methods used in acquiring information related to the carrier;
-
-  // Updates the Universal operator name and country based on a newly
-  // obtained network id.
-  void UpdateOperatorInfo();
-
-  // Sets the upper level information about the home cellular provider from the
-  // modem's IMSI and SPN.
-  void SetHomeProvider();
-
-  // Updates the serving operator on the active service.
-  void UpdateServingOperator();
-
-  // Initializes the |apn_list| property based on the current
-  // |home_provider_info_|.
-  void InitAPNList();
 
   // Updates |active_bearer_| to match the currently active bearer.
   void UpdateActiveBearer();

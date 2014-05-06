@@ -82,12 +82,28 @@ class CellularCapabilityTest : public testing::Test {
     capability_->proxy_factory_ = NULL;
   }
 
-  void SetService() {
-    cellular_->service_ = new CellularService(&modem_info_, cellular_);
-  }
+  void CreateService() {
+    // The following constants are never directly accessed by the tests.
+    const char kStorageIdentifier[] = "default_test_storage_id";
+    const char kFriendlyServiceName[] = "default_test_service_name";
+    const char kOperatorCode[] = "10010";
+    const char kOperatorName[] = "default_test_operator_name";
+    const char kOperatorCountry[] = "us";
 
-  void InitProviderDB() {
-    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
+    // Simulate all the side-effects of Cellular::CreateService
+    auto service = new CellularService(&modem_info_, cellular_);
+    service->SetStorageIdentifier(kStorageIdentifier);
+    service->SetFriendlyName(kFriendlyServiceName);
+
+    Cellular::Operator oper;
+    oper.SetCode(kOperatorCode);
+    oper.SetName(kOperatorName);
+    oper.SetCountry(kOperatorCountry);
+
+    service->SetServingOperator(oper);
+
+    cellular_->set_home_provider(oper);
+    cellular_->service_ = service;
   }
 
   CellularCapabilityGSM *GetGsmCapability() {
@@ -364,12 +380,75 @@ MATCHER(HasNoApn, "") {
 
 TEST_F(CellularCapabilityTest, TryApns) {
   static const string kLastGoodApn("remembered.apn");
+  static const string kLastGoodUsername("remembered.user");
   static const string kSuppliedApn("my.apn");
   static const string kTmobileApn1("epc.tmobile.com");
   static const string kTmobileApn2("wap.voicestream.com");
   static const string kTmobileApn3("internet2.voicestream.com");
   static const string kTmobileApn4("internet3.voicestream.com");
+  const Stringmaps kDatabaseApnList {{{ kApnProperty, kTmobileApn1 }},
+                                     {{ kApnProperty, kTmobileApn2 }},
+                                     {{ kApnProperty, kTmobileApn3 }},
+                                     {{ kApnProperty, kTmobileApn4 }}};
 
+
+  CreateService();
+  // Supply the database APNs to |cellular_| object.
+  cellular_->set_apn_list(kDatabaseApnList);
+  ProfileRefPtr profile(new NiceMock<MockProfile>(
+      modem_info_.control_interface(), modem_info_.metrics(),
+      modem_info_.manager()));
+  cellular_->service()->set_profile(profile);
+
+  Error error;
+  Stringmap apn_info;
+  DBusPropertiesMap props;
+  CellularCapabilityGSM *gsm_capability = GetGsmCapability();
+
+  apn_info[kApnProperty] = kLastGoodApn;
+  apn_info[kApnUsernameProperty] = kLastGoodUsername;
+  cellular_->service()->SetLastGoodApn(apn_info);
+  props.clear();
+  EXPECT_TRUE(props.find(kApnProperty) == props.end());
+  gsm_capability->SetupConnectProperties(&props);
+  // We expect the list to contain the last good APN, plus
+  // the 4 APNs from the mobile provider info database.
+  EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(kApnUsernameProperty) == props.end());
+  EXPECT_EQ(kLastGoodUsername,
+            props[kApnUsernameProperty].reader().get_string());
+
+  apn_info.clear();
+  props.clear();
+  apn_info[kApnProperty] = kSuppliedApn;
+  // Setting the APN has the side effect of clearing the LastGoodApn,
+  // so the try list will have 5 elements, with the first one being
+  // the supplied APN.
+  cellular_->service()->SetApn(apn_info, &error);
+  EXPECT_TRUE(props.find(kApnProperty) == props.end());
+  gsm_capability->SetupConnectProperties(&props);
+  EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kSuppliedApn, props[kApnProperty].reader().get_string());
+
+  apn_info.clear();
+  props.clear();
+  apn_info[kApnProperty] = kLastGoodApn;
+  apn_info[kApnUsernameProperty] = kLastGoodUsername;
+  // Now when LastGoodAPN is set, it will be the one selected.
+  cellular_->service()->SetLastGoodApn(apn_info);
+  EXPECT_TRUE(props.find(kApnProperty) == props.end());
+  gsm_capability->SetupConnectProperties(&props);
+  // We expect the list to contain the last good APN, plus
+  // the user-supplied APN, plus the 4 APNs from the mobile
+  // provider info database.
+  EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
+  EXPECT_FALSE(props.find(kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
+
+  // Now try all the given APNs.
   using testing::InSequence;
   {
     InSequence dummy;
@@ -381,36 +460,8 @@ TEST_F(CellularCapabilityTest, TryApns) {
     EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn4), _, _, _));
     EXPECT_CALL(*simple_proxy_, Connect(HasNoApn(), _, _, _));
   }
-  CellularCapabilityGSM *gsm_capability = GetGsmCapability();
-  SetService();
-  cellular_->set_imsi("310240123456789");
-  InitProviderDB();
-  gsm_capability->SetHomeProvider();
-  ProfileRefPtr profile(new NiceMock<MockProfile>(
-      modem_info_.control_interface(), modem_info_.metrics(),
-      modem_info_.manager()));
-  cellular_->service()->set_profile(profile);
-
-  Error error;
-  Stringmap apn_info;
-  DBusPropertiesMap props;
-  apn_info[kApnProperty] = kSuppliedApn;
-  cellular_->service()->SetApn(apn_info, &error);
-
-  apn_info.clear();
-  apn_info[kApnProperty] = kLastGoodApn;
-  cellular_->service()->SetLastGoodApn(apn_info);
-
-  capability_->SetupConnectProperties(&props);
-  // We expect the list to contain the last good APN, plus
-  // the user-supplied APN, plus the 4 APNs from the mobile
-  // provider info database.
-  EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
-
   SetSimpleProxy();
-  capability_->Connect(props, &error, ResultCallback());
+  gsm_capability->Connect(props, &error, ResultCallback());
   Error cerror(Error::kInvalidApn);
   gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(5, gsm_capability->apn_try_list_.size());

@@ -90,7 +90,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // Inherited from CellularCapabilityClassic.
   virtual void InitProxies() override;
   virtual void ReleaseProxies() override;
-  virtual void UpdateStatus(const DBusPropertiesMap &properties) override;
 
   // Initializes properties, such as IMSI, which are required before the device
   // is enabled.
@@ -111,17 +110,12 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, EnterPIN);
   FRIEND_TEST(CellularCapabilityGSMTest, UnblockPIN);
   FRIEND_TEST(CellularCapabilityGSMTest, ChangePIN);
-  FRIEND_TEST(CellularCapabilityGSMTest, InitAPNList);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResult);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
-  FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
-  FRIEND_TEST(CellularCapabilityGSMTest, SetHomeProvider);
-  FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, OnDBusPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
@@ -159,21 +153,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   static const int64 kGetIMSIRetryDelayMilliseconds;
 
   void SetAccessTechnology(uint32 access_technology);
-
-  // Sets the upper level information about the home cellular provider from the
-  // modem's IMSI and SPN.
-  void SetHomeProvider();
-
-  // Updates the GSM operator name and country based on a newly obtained network
-  // id.
-  void UpdateOperatorInfo();
-
-  // Updates the serving operator on the active service.
-  void UpdateServingOperator();
-
-  // Initializes the |apn_list| property based on the current
-  // |home_provider_info_|.
-  void InitAPNList();
 
   Stringmap ParseScanResult(const GSMScanResult &result);
 

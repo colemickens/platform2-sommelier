@@ -68,15 +68,14 @@ MATCHER_P(HasApn, expected_apn, "") {
 class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
   CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
-      : modem_info_(NULL, dispatcher, NULL, NULL, NULL),
+      : dispatcher_(dispatcher),
+        modem_info_(NULL, dispatcher, NULL, NULL, NULL),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
-        mock_home_provider_info_(new MockMobileOperatorInfo(dispatcher)),
-        mock_serving_operator_info_(new MockMobileOperatorInfo(dispatcher)),
         proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL),
@@ -89,7 +88,9 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                "",
                                "",
                                &proxy_factory_)),
-        service_(new MockCellularService(&modem_info_, cellular_)) {
+        service_(new MockCellularService(&modem_info_, cellular_)),
+        mock_home_provider_info_(NULL),
+        mock_serving_operator_info_(NULL) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
   }
@@ -112,18 +113,36 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     ON_CALL(*modem_info_.mock_pending_activation_store(),
             GetActivationState(PendingActivationStore::kIdentifierICCID, _))
         .WillByDefault(Return(PendingActivationStore::kStateUnknown));
+
+    SetMockMobileOperatorInfoObjects();
   }
 
   virtual void TearDown() {
     capability_->proxy_factory_ = NULL;
   }
 
-  void InitProviderDB() {
-    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
-  }
+  void CreateService() {
+    // The following constants are never directly accessed by the tests.
+    const char kStorageIdentifier[] = "default_test_storage_id";
+    const char kFriendlyServiceName[] = "default_test_service_name";
+    const char kOperatorCode[] = "10010";
+    const char kOperatorName[] = "default_test_operator_name";
+    const char kOperatorCountry[] = "us";
 
-  void SetService() {
-    cellular_->service_ = new CellularService(&modem_info_, cellular_);
+    // Simulate all the side-effects of Cellular::CreateService
+    auto service = new CellularService(&modem_info_, cellular_);
+    service->SetStorageIdentifier(kStorageIdentifier);
+    service->SetFriendlyName(kFriendlyServiceName);
+
+    Cellular::Operator oper;
+    oper.SetCode(kOperatorCode);
+    oper.SetName(kOperatorName);
+    oper.SetCountry(kOperatorCountry);
+
+    service->SetServingOperator(oper);
+
+    cellular_->set_home_provider(oper);
+    cellular_->service_ = service;
   }
 
   void ClearService() {
@@ -193,10 +212,12 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   void SetMockMobileOperatorInfoObjects() {
-    CHECK(mock_home_provider_info_);
-    CHECK(mock_serving_operator_info_);
-    cellular_->set_home_provider_info(mock_home_provider_info_.release());
-    cellular_->set_serving_operator_info(mock_serving_operator_info_.release());
+    CHECK(!mock_home_provider_info_);
+    CHECK(!mock_serving_operator_info_);
+    mock_home_provider_info_ = new MockMobileOperatorInfo(dispatcher_);
+    mock_serving_operator_info_ = new MockMobileOperatorInfo(dispatcher_);
+    cellular_->set_home_provider_info(mock_home_provider_info_);
+    cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
   void ReleaseCapabilityProxies() {
@@ -309,6 +330,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     DBusPropertiesMap inactive_bearer_properties_;
   };
 
+  EventDispatcher *dispatcher_;
   MockModemInfo modem_info_;
   scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
@@ -316,14 +338,16 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   scoped_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   scoped_ptr<mm1::MockSimProxy> sim_proxy_;
   scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
-  scoped_ptr<MockMobileOperatorInfo> mock_home_provider_info_;
-  scoped_ptr<MockMobileOperatorInfo> mock_serving_operator_info_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
   MockCellularService *service_;  // owned by cellular_
   DBusPathCallback connect_callback_;  // saved for testing connect operations
+
+  // Set when required and passed to |cellular_|. Owned by |cellular_|.
+  MockMobileOperatorInfo *mock_home_provider_info_;
+  MockMobileOperatorInfo *mock_serving_operator_info_;
 };
 
 // Most of our tests involve using a real EventDispatcher object.
@@ -787,8 +811,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(1);
 
-  InitProviderDB();
-
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
 
@@ -947,12 +969,10 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
-  InitProviderDB();
   capability_->InitProxies();
 
-  SetService();
+  CreateService();
   cellular_->set_imsi("310240123456789");
-  capability_->SetHomeProvider();
   cellular_->set_modem_state(Cellular::kModemStateConnected);
   SetRegistrationDroppedUpdateTimeout(0);
 
@@ -1102,12 +1122,10 @@ TEST_F(CellularCapabilityUniversalMainTest, IsRegistered) {
 
 TEST_F(CellularCapabilityUniversalMainTest,
        UpdateRegistrationStateModemNotConnected) {
-  InitProviderDB();
   capability_->InitProxies();
-  SetService();
+  CreateService();
 
   cellular_->set_imsi("310240123456789");
-  capability_->SetHomeProvider();
   cellular_->set_modem_state(Cellular::kModemStateRegistered);
   SetRegistrationDroppedUpdateTimeout(0);
 
@@ -1253,11 +1271,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(0);
-  InitProviderDB();
 
-  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
   EXPECT_FALSE(capability_->sim_proxy_.get());
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties, vector<string>());
@@ -1267,15 +1281,16 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Updating the SIM
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID, _))
-      .Times(2);
   DBusPropertiesMap new_properties;
   const char kCountry[] = "us";
   const char kNewImsi[] = "310240123456789";
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
   const char kOperatorName[] = "Custom SPN";
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(PendingActivationStore::kIdentifierICCID, _))
+      .Times(2);
+  EXPECT_CALL(*mock_home_provider_info_, UpdateIMSI(kNewImsi)).Times(2);
   new_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kNewImsi);
   new_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer().
       append_string(kSimIdentifier);
@@ -1288,17 +1303,12 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
-  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ(kOperatorIdentifier, cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, cellular_->apn_list().size());
 
   new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
       append_string(kOperatorName);
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
                                        new_properties,
                                        vector<string>());
-  EXPECT_EQ(kOperatorName, cellular_->home_provider().GetName());
   EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
@@ -1497,82 +1507,6 @@ TEST_F(CellularCapabilityUniversalMainTest, AllowRoaming) {
   EXPECT_TRUE(capability_->AllowRoaming());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
-  static const char kTestCarrier[] = "The Cellular Carrier";
-  static const char kCountry[] = "us";
-  static const char kCode[] = "310160";
-
-  EXPECT_FALSE(capability_->home_provider_info_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  // No mobile provider DB available.
-  capability_->SetHomeProvider();
-  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  InitProviderDB();
-
-  // IMSI and Operator Code not available.
-  capability_->SetHomeProvider();
-  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  // Operator Code available.
-  capability_->operator_id_ = "310240";
-  capability_->SetHomeProvider();
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
-  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ("310240", cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, cellular_->apn_list().size());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  cellular_->home_provider_.SetName("");
-  cellular_->home_provider_.SetCountry("");
-  cellular_->home_provider_.SetCode("");
-
-  // IMSI available
-  cellular_->set_imsi("310240123456789");
-  capability_->operator_id_.clear();
-  capability_->SetHomeProvider();
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
-  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, cellular_->apn_list().size());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  Cellular::Operator oper;
-  cellular_->set_home_provider(oper);
-  capability_->spn_ = kTestCarrier;
-  capability_->SetHomeProvider();
-  EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
-  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  static const char kCubic[] = "Cubic";
-  capability_->spn_ = kCubic;
-  capability_->SetHomeProvider();
-  EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
-  EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(cellular_->provider_requires_roaming());
-
-  static const char kCUBIC[] = "CUBIC";
-  capability_->spn_ = kCUBIC;
-  capability_->home_provider_info_ = NULL;
-  capability_->SetHomeProvider();
-  EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
-  EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(cellular_->provider_requires_roaming());
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   const string kVzwUUID = "vzw";
   const string kFooUUID = "foo";
@@ -1620,22 +1554,20 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
   const string kUuidVzw = "vzw";
   const string kUuidFoo = "foo";
 
-  MockMobileOperatorInfo *home_provider_info = mock_home_provider_info_.get();
-  SetMockMobileOperatorInfoObjects();
   cellular_->set_imei("1");
   cellular_->set_imsi("2");
   cellular_->set_mdn("10123456789");
   cellular_->set_min("5");
   cellular_->set_sim_identifier("6");
 
-  home_provider_info->SetEmptyDefaultsForProperties();
-  EXPECT_CALL(*home_provider_info, IsMobileNetworkOperatorKnown())
+  mock_home_provider_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*home_provider_info, olp_list())
+  EXPECT_CALL(*mock_home_provider_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
-  EXPECT_CALL(*home_provider_info, uuid())
+  EXPECT_CALL(*mock_home_provider_info_, uuid())
       .WillOnce(ReturnRef(kUuidVzw));
-  SetService();
+  CreateService();
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
   Stringmap vzw_olp = cellular_->service()->olp();
@@ -1643,14 +1575,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
   EXPECT_EQ("POST", vzw_olp[kPaymentPortalMethod]);
   EXPECT_EQ("imei=1&imsi=2&mdn=0123456789&min=5&iccid=6",
             vzw_olp[kPaymentPortalPostData]);
-  Mock::VerifyAndClearExpectations(home_provider_info);
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
 
-  home_provider_info->SetEmptyDefaultsForProperties();
-  EXPECT_CALL(*home_provider_info, IsMobileNetworkOperatorKnown())
+  mock_home_provider_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*home_provider_info, olp_list())
+  EXPECT_CALL(*mock_home_provider_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
-  EXPECT_CALL(*home_provider_info, uuid())
+  EXPECT_CALL(*mock_home_provider_info_, uuid())
       .WillOnce(ReturnRef(kUuidFoo));
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
@@ -2019,45 +1951,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
-}
-
-TEST_F(CellularCapabilityUniversalMainTest, UpdateOperatorInfo) {
-  static const char kOperatorName[] = "Swisscom";
-  InitProviderDB();
-  capability_->serving_operator_.SetCode("22801");
-  SetService();
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
-  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
-  EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
-
-  static const char kTestOperator[] = "Testcom";
-  capability_->serving_operator_.SetName(kTestOperator);
-  capability_->serving_operator_.SetCountry("");
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ(kTestOperator, capability_->serving_operator_.GetName());
-  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
-  EXPECT_EQ(kTestOperator, cellular_->service()->serving_operator().GetName());
-}
-
-TEST_F(CellularCapabilityUniversalMainTest, UpdateOperatorInfoViaOperatorId) {
-  static const char kOperatorName[] = "Swisscom";
-  static const char kOperatorId[] = "22801";
-  InitProviderDB();
-  capability_->serving_operator_.SetCode("");
-  SetService();
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ("", capability_->serving_operator_.GetName());
-  EXPECT_EQ("", capability_->serving_operator_.GetCountry());
-  EXPECT_EQ("", cellular_->service()->serving_operator().GetName());
-
-  capability_->operator_id_ = kOperatorId;
-
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ(kOperatorId, capability_->serving_operator_.GetCode());
-  EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
-  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
-  EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {

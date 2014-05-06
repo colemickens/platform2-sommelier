@@ -27,7 +27,14 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_CONST_METHOD0(olp_list,
                      const std::vector<MobileOperatorInfo::OnlinePortal> &());
   MOCK_CONST_METHOD0(operator_name, const std::string &());
+  MOCK_CONST_METHOD0(country, const std::string &());
   MOCK_CONST_METHOD0(uuid, const std::string &());
+
+  MOCK_METHOD1(UpdateMCCMNC, void(const std::string &));
+  MOCK_METHOD1(UpdateSID, void(const std::string &));
+  MOCK_METHOD1(UpdateIMSI, void(const std::string &));
+  MOCK_METHOD1(UpdateNID, void(const std::string &));
+  MOCK_METHOD1(UpdateOperatorName, void(const std::string &));
 
   // Sets up the mock object to return empty strings/vectors etc for all
   // propeties.
@@ -37,6 +44,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   std::string empty_mccmnc_;
   std::vector<MobileOperatorInfo::OnlinePortal> empty_olp_list_;
   std::string empty_operator_name_;
+  std::string empty_country_;
   std::string empty_uuid_;
 };
 

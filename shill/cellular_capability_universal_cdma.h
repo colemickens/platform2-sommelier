@@ -86,7 +86,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
               OnCDMARegistrationChanged);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP);
-  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
               UpdateServiceActivationStateProperty);
 
@@ -111,9 +110,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   static std::string GetActivationStateString(uint32 state);
   static std::string GetActivationErrorString(uint32 error);
-
-  void UpdateOperatorInfo();
-  void UpdateServingOperator();
 
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
   // TODO(armansito): Should probably call this |weak_ptr_factory_| after

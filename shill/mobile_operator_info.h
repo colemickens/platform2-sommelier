@@ -145,7 +145,7 @@ class MobileOperatorInfo {
   virtual const std::string &uuid() const;
 
   virtual const std::string &operator_name() const;
-  const std::string &country() const;
+  virtual const std::string &country() const;
   virtual const std::string &mccmnc() const;
   const std::string &sid() const;
   const std::string &nid() const;
@@ -189,13 +189,13 @@ class MobileOperatorInfo {
   // Both MCCMNC and SID correspond to operator code in the different
   // technologies. They are never to be used together. If you want to use SID
   // after MCCMNC (or vice-versa), ensure a call to |Reset| to clear state.
-  void UpdateMCCMNC(const std::string &mccmnc);
-  void UpdateSID(const std::string &sid);
+  virtual void UpdateMCCMNC(const std::string &mccmnc);
+  virtual void UpdateSID(const std::string &sid);
 
-  void UpdateIMSI(const std::string &imsi);
+  virtual void UpdateIMSI(const std::string &imsi);
   void UpdateICCID(const std::string &iccid);
-  void UpdateNID(const std::string &nid);
-  void UpdateOperatorName(const std::string &operator_name);
+  virtual void UpdateNID(const std::string &nid);
+  virtual void UpdateOperatorName(const std::string &operator_name);
   void UpdateOnlinePortal(const std::string &url,
                           const std::string &method,
                           const std::string &post_data);

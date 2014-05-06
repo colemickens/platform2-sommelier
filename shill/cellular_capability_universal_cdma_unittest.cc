@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
@@ -35,6 +36,7 @@
 #include "shill/proxy_factory.h"
 
 using base::StringPrintf;
+using base::UintToString;
 using std::string;
 using std::vector;
 using testing::Invoke;
@@ -49,7 +51,8 @@ namespace shill {
 class CellularCapabilityUniversalCDMATest : public testing::Test {
  public:
   CellularCapabilityUniversalCDMATest(EventDispatcher *dispatcher)
-      : capability_(NULL),
+      : dispatcher_(dispatcher),
+        capability_(NULL),
         device_adaptor_(NULL),
         modem_info_(NULL, dispatcher, NULL, NULL, NULL),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
@@ -59,8 +62,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
-        mock_home_provider_info_(new MockMobileOperatorInfo(dispatcher)),
-        mock_serving_operator_info_(new MockMobileOperatorInfo(dispatcher)),
         cellular_(new Cellular(&modem_info_,
                                "",
                                kMachineAddress,
@@ -71,7 +72,9 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
                                "",
                                &proxy_factory_)),
         service_(new MockCellularService(&modem_info_,
-                                         cellular_)) {}
+                                         cellular_)),
+        mock_home_provider_info_(NULL),
+        mock_serving_operator_info_(NULL) {}
 
   virtual ~CellularCapabilityUniversalCDMATest() {
     cellular_->service_ = NULL;
@@ -112,10 +115,12 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   void SetMockMobileOperatorInfoObjects() {
-    CHECK(mock_home_provider_info_);
-    CHECK(mock_serving_operator_info_);
-    cellular_->set_home_provider_info(mock_home_provider_info_.release());
-    cellular_->set_serving_operator_info(mock_serving_operator_info_.release());
+    CHECK(!mock_home_provider_info_);
+    CHECK(!mock_serving_operator_info_);
+    mock_home_provider_info_ = new MockMobileOperatorInfo(dispatcher_);
+    mock_serving_operator_info_ = new MockMobileOperatorInfo(dispatcher_);
+    cellular_->set_home_provider_info(mock_home_provider_info_);
+    cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
  protected:
@@ -170,7 +175,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
     CellularCapabilityUniversalCDMATest *test_;
   };
 
-
+  EventDispatcher *dispatcher_;
   CellularCapabilityUniversalCDMA *capability_;
   NiceMock<DeviceMockAdaptor> *device_adaptor_;
   MockModemInfo modem_info_;
@@ -183,10 +188,12 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   scoped_ptr<mm1::MockSimProxy> sim_proxy_;
   scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
   TestProxyFactory proxy_factory_;
-  scoped_ptr<MockMobileOperatorInfo> mock_home_provider_info_;
-  scoped_ptr<MockMobileOperatorInfo> mock_serving_operator_info_;
   CellularRefPtr cellular_;
   MockCellularService *service_;
+
+  // Set when required and passed to |cellular_|. Owned by |cellular_|.
+  MockMobileOperatorInfo *mock_home_provider_info_;
+  MockMobileOperatorInfo *mock_serving_operator_info_;
 };
 
 // static
@@ -251,107 +258,24 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, OnCDMARegistrationChanged) {
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
             capability_->cdma_evdo_registration_state_);
 
-  EXPECT_EQ("", capability_->provider_.GetCode());
-  EXPECT_EQ("", capability_->provider_.GetName());
-  EXPECT_EQ("", capability_->provider_.GetCountry());
-
-  CellularOperatorInfo::CellularOperator *provider =
-      new CellularOperatorInfo::CellularOperator();
-
-  provider->country_ = "us";
-  provider->is_primary_ = true;
-  provider->name_list_.push_back(
-      CellularOperatorInfo::LocalizedName("Test", ""));
-
-  scoped_ptr<const CellularOperatorInfo::CellularOperator> ptr(provider);
-
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID("2"))
-      .WillOnce(Return(ptr.get()));
-
+  const unsigned kSid = 2;
+  const unsigned kNid = 1;
+  SetMockMobileOperatorInfoObjects();
+  EXPECT_CALL(*mock_serving_operator_info_, UpdateSID(UintToString(kSid)));
+  EXPECT_CALL(*mock_serving_operator_info_, UpdateNID(UintToString(kNid)));
   capability_->OnCDMARegistrationChanged(
       MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
       MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-      2,
-      0);
-  EXPECT_EQ(2, capability_->sid_);
-  EXPECT_EQ(0, capability_->nid_);
+      kSid,
+      kNid);
+  EXPECT_EQ(kSid, capability_->sid_);
+  EXPECT_EQ(kNid, capability_->nid_);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
             capability_->cdma_1x_registration_state_);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
             capability_->cdma_evdo_registration_state_);
 
   EXPECT_TRUE(capability_->IsRegistered());
-  EXPECT_EQ("2", capability_->provider_.GetCode());
-  EXPECT_EQ("Test", capability_->provider_.GetName());
-  EXPECT_EQ("us", capability_->provider_.GetCountry());
-}
-
-TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
-  EXPECT_EQ("", capability_->provider_.GetCode());
-  EXPECT_EQ("", capability_->provider_.GetName());
-  EXPECT_EQ("", capability_->provider_.GetCountry());
-  EXPECT_TRUE(capability_->activation_code_.empty());
-
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ("", capability_->provider_.GetCode());
-  EXPECT_EQ("", capability_->provider_.GetName());
-  EXPECT_EQ("", capability_->provider_.GetCountry());
-  EXPECT_TRUE(capability_->activation_code_.empty());
-
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ("", capability_->provider_.GetCode());
-  EXPECT_EQ("", capability_->provider_.GetName());
-  EXPECT_EQ("", capability_->provider_.GetCountry());
-  EXPECT_TRUE(capability_->activation_code_.empty());
-
-  capability_->sid_ = 1;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(_))
-      .WillOnce(Return((const CellularOperatorInfo::CellularOperator *)NULL));
-
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ("1", capability_->provider_.GetCode());
-  EXPECT_EQ("", capability_->provider_.GetName());
-  EXPECT_EQ("", capability_->provider_.GetCountry());
-  EXPECT_TRUE(capability_->activation_code_.empty());
-
-  CellularOperatorInfo::CellularOperator *provider =
-      new CellularOperatorInfo::CellularOperator();
-
-  provider->country_ = "us";
-  provider->is_primary_ = true;
-  provider->activation_code_ = "1234";
-  provider->name_list_.push_back(
-      CellularOperatorInfo::LocalizedName("Test", ""));
-
-  scoped_ptr<const CellularOperatorInfo::CellularOperator> ptr(provider);
-
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(_))
-      .WillOnce(Return(ptr.get()));
-
-  capability_->UpdateOperatorInfo();
-
-  EXPECT_EQ("1", capability_->provider_.GetCode());
-  EXPECT_EQ("Test", capability_->provider_.GetName());
-  EXPECT_EQ("us", capability_->provider_.GetCountry());
-  EXPECT_EQ("1234", capability_->activation_code_);
-  EXPECT_EQ("1", cellular_->service()->serving_operator().GetCode());
-  EXPECT_EQ("Test", cellular_->service()->serving_operator().GetName());
-  EXPECT_EQ("us", cellular_->service()->serving_operator().GetCountry());
-
-  capability_->sid_ = 1;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-              GetCellularOperatorBySID(_))
-      .WillOnce(Return(nullptr));
-
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ("1", capability_->provider_.GetCode());
-  EXPECT_EQ("", capability_->provider_.GetName());
-  EXPECT_EQ("", capability_->provider_.GetCountry());
-  EXPECT_TRUE(capability_->activation_code_.empty());
-
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
@@ -363,20 +287,18 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
   const string kUuidVzw = "vzw";
   const string kUuidFoo = "foo";
 
-  MockMobileOperatorInfo *serving_operator_info =
-      mock_serving_operator_info_.get();
   SetMockMobileOperatorInfoObjects();
   cellular_->set_esn("0");
   cellular_->set_mdn("10123456789");
   cellular_->set_meid("4");
 
 
-  serving_operator_info->SetEmptyDefaultsForProperties();
-  EXPECT_CALL(*serving_operator_info, IsMobileNetworkOperatorKnown())
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*serving_operator_info, olp_list())
+  EXPECT_CALL(*mock_serving_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
-  EXPECT_CALL(*serving_operator_info, uuid())
+  EXPECT_CALL(*mock_serving_operator_info_, uuid())
       .WillOnce(ReturnRef(kUuidVzw));
   SetService();
   capability_->UpdateServiceOLP();
@@ -386,14 +308,14 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
   EXPECT_EQ("POST", vzw_olp[kPaymentPortalMethod]);
   EXPECT_EQ("esn=0&mdn=0123456789&meid=4",
             vzw_olp[kPaymentPortalPostData]);
-  Mock::VerifyAndClearExpectations(serving_operator_info);
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
 
-  serving_operator_info->SetEmptyDefaultsForProperties();
-  EXPECT_CALL(*serving_operator_info, IsMobileNetworkOperatorKnown())
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*serving_operator_info, olp_list())
+  EXPECT_CALL(*mock_serving_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
-  EXPECT_CALL(*serving_operator_info, uuid())
+  EXPECT_CALL(*mock_serving_operator_info_, uuid())
       .WillOnce(ReturnRef(kUuidFoo));
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.

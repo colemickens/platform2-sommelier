@@ -337,19 +337,13 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
   FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOLP);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdateOperatorInfoViaOperatorId);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateRegistrationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -357,7 +351,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
   FRIEND_TEST(CellularTest, CreateService);
@@ -376,8 +369,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, EstablishLinkDHCP);
   FRIEND_TEST(CellularTest, EstablishLinkPPP);
   FRIEND_TEST(CellularTest, EstablishLinkStatic);
+  FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
+  FRIEND_TEST(CellularTest, HomeProviderServingOperator);
   FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
   FRIEND_TEST(CellularTest, LinkEventUpWithoutPPP);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
@@ -399,7 +394,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);
-  FRIEND_TEST(CellularTest, ServiceFriendlyName);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);

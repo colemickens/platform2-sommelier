@@ -77,9 +77,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
   void HandleNewActivationState(uint32 error);
 
-  // Updates the serving operator on the active service.
-  void UpdateServingOperator();
-
   static std::string GetActivationStateString(uint32 state);
   static std::string GetActivationErrorString(uint32 error);
 

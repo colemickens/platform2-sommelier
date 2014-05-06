@@ -33,10 +33,6 @@ namespace {
 const char kPhoneNumber[] = "#777";
 const char kPropertyConnectNumber[] = "number";
 
-string FormattedSID(const string &sid) {
-  return "[SID=" + sid + "]";
-}
-
 }  // namespace
 
 CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
@@ -187,7 +183,6 @@ bool CellularCapabilityUniversalCDMA::IsActivated() const {
 void CellularCapabilityUniversalCDMA::OnServiceCreated() {
   SLOG(Cellular, 2) << __func__;
   UpdateServiceActivationStateProperty();
-  UpdateServingOperator();
   HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);
   UpdatePendingActivationState();
 }
@@ -243,54 +238,6 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   DBusPropertiesMap properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEMCDMA));
   OnModemCDMAPropertiesChanged(properties, vector<string>());
-}
-
-void CellularCapabilityUniversalCDMA::UpdateOperatorInfo() {
-  SLOG(Cellular, 2) << __func__;
-
-  if (sid_ == 0 || !modem_info()->cellular_operator_info()) {
-    SLOG(Cellular, 2) << "No provider is currently available.";
-    provider_.SetCode("");
-    return;
-  }
-
-  string sid = UintToString(sid_);
-  const CellularOperatorInfo::CellularOperator *provider =
-      modem_info()->cellular_operator_info()->GetCellularOperatorBySID(sid);
-  if (!provider) {
-    SLOG(Cellular, 2) << "CDMA provider with "
-                      << FormattedSID(sid)
-                      << " not found.";
-    // If a matching provider is not found, shill should update the
-    // Cellular.ServingOperator property to to display the Sid.
-    provider_.SetCode(sid);
-    provider_.SetCountry("");
-    provider_.SetName("");
-    activation_code_.clear();
-  } else {
-    if (!provider->name_list().empty()) {
-      provider_.SetName(provider->name_list()[0].name);
-    }
-    provider_.SetCode(sid);
-    provider_.SetCountry(provider->country());
-
-    activation_code_ = provider->activation_code();
-  }
-
-  // TODO(armansito): The CDMA interface only returns information about the
-  // current serving carrier, so for now both the home provider and the
-  // serving operator will be the same in case of roaming. We should figure
-  // out if there is a way to (and whether or not it is necessary to)
-  // determine if we're roaming.
-  cellular()->set_home_provider(provider_);
-  UpdateServingOperator();
-}
-
-void CellularCapabilityUniversalCDMA::UpdateServingOperator() {
-  SLOG(Cellular, 2) << __func__;
-  if (cellular()->service().get()) {
-    cellular()->service()->SetServingOperator(cellular()->home_provider());
-  }
 }
 
 void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
@@ -572,7 +519,6 @@ void CellularCapabilityUniversalCDMA::OnCDMARegistrationChanged(
   nid_ = nid;
   cellular()->serving_operator_info()->UpdateSID(UintToString(sid));
   cellular()->serving_operator_info()->UpdateNID(UintToString(nid));
-  UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }
 

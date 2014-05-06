@@ -310,6 +310,11 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
   callback.Run(error);
 }
 
+void CellularCapabilityClassic::UpdateStatus(
+    const DBusPropertiesMap &properties) {
+  SLOG(Cellular, 3) << __func__;
+}
+
 void CellularCapabilityClassic::OnGetModemInfoReply(
     const ResultCallback &callback,
     const ModemHardwareInfo &info,

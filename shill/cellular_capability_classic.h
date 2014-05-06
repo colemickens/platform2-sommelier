@@ -93,7 +93,9 @@ class CellularCapabilityClassic : public CellularCapability {
   void FinishDisable(const ResultCallback &callback);
   virtual void InitProxies();
   virtual void ReleaseProxies();
-  virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
+
+  // Default implementation is no-op.
+  virtual void UpdateStatus(const DBusPropertiesMap &properties);
 
   // Runs the next task in a list.
   // Precondition: |tasks| is not empty.

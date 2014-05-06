@@ -96,7 +96,6 @@ bool CellularCapabilityCDMA::AllowRoaming() {
 void CellularCapabilityCDMA::OnServiceCreated() {
   SLOG(Cellular, 2) << __func__;
   cellular()->service()->SetUsageURL(usage_url_);
-  UpdateServingOperator();
   HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
 
@@ -318,13 +317,6 @@ void CellularCapabilityCDMA::GetRegistrationState() {
       Bind(&CellularCapabilityCDMA::OnGetRegistrationStateReply,
            weak_ptr_factory_.GetWeakPtr());
   proxy_->GetRegistrationState(NULL, callback, kTimeoutDefault);
-}
-
-void CellularCapabilityCDMA::UpdateServingOperator() {
-  SLOG(Cellular, 2) << __func__;
-  if (cellular()->service().get()) {
-    cellular()->service()->SetServingOperator(cellular()->home_provider());
-  }
 }
 
 void CellularCapabilityCDMA::OnActivateReply(

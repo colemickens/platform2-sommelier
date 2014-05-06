@@ -19,6 +19,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_log.h"
+#include "shill/mock_mobile_operator_info.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/mock_modem_info.h"
@@ -61,7 +62,9 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                "",
                                "",
-                               &proxy_factory_)) {
+                               &proxy_factory_)),
+        mock_home_provider_info_(NULL),
+        mock_serving_operator_info_(NULL) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
   }
@@ -94,10 +97,6 @@ class CellularCapabilityGSMTest : public testing::Test {
   void InvokeGetIMSI(Error *error, const GSMIdentifierCallback &callback,
                      int timeout) {
     callback.Run(kIMSI, Error());
-  }
-  void InvokeGetIMSI2(Error *error, const GSMIdentifierCallback &callback,
-                      int timeout) {
-    callback.Run("310240123456789", Error());
   }
   void InvokeGetIMSIFails(Error *error, const GSMIdentifierCallback &callback,
                           int timeout) {
@@ -241,8 +240,37 @@ class CellularCapabilityGSMTest : public testing::Test {
     capability_->registration_state_ = state;
   }
 
-  void SetService() {
-    cellular_->service_ = new CellularService(&modem_info_, cellular_);
+  void CreateService() {
+    // The following constants are never directly accessed by the tests.
+    const char kStorageIdentifier[] = "default_test_storage_id";
+    const char kFriendlyServiceName[] = "default_test_service_name";
+    const char kOperatorCode[] = "10010";
+    const char kOperatorName[] = "default_test_operator_name";
+    const char kOperatorCountry[] = "us";
+
+    // Simulate all the side-effects of Cellular::CreateService
+    auto service = new CellularService(&modem_info_, cellular_);
+    service->SetStorageIdentifier(kStorageIdentifier);
+    service->SetFriendlyName(kFriendlyServiceName);
+
+    Cellular::Operator oper;
+    oper.SetCode(kOperatorCode);
+    oper.SetName(kOperatorName);
+    oper.SetCountry(kOperatorCountry);
+
+    service->SetServingOperator(oper);
+
+    cellular_->set_home_provider(oper);
+    cellular_->service_ = service;
+  }
+
+  void SetMockMobileOperatorInfoObjects() {
+    CHECK(!mock_home_provider_info_);
+    CHECK(!mock_serving_operator_info_);
+    mock_home_provider_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    mock_serving_operator_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    cellular_->set_home_provider_info(mock_home_provider_info_);
+    cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
   void SetupCommonProxiesExpectations() {
@@ -295,6 +323,10 @@ class CellularCapabilityGSMTest : public testing::Test {
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
+
+  // Set when required and passed to |cellular_|. Owned by |cellular_|.
+  MockMobileOperatorInfo *mock_home_provider_info_;
+  MockMobileOperatorInfo *mock_serving_operator_info_;
 };
 
 const char CellularCapabilityGSMTest::kAddress[] = "1122334455";
@@ -326,24 +358,20 @@ TEST_F(CellularCapabilityGSMTest, GetIMEI) {
 }
 
 TEST_F(CellularCapabilityGSMTest, GetIMSI) {
+  SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*card_proxy_, GetIMSI(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetIMSI))
-      .WillOnce(Invoke(this,
-                       &CellularCapabilityGSMTest::InvokeGetIMSI2));
-  EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
+                       &CellularCapabilityGSMTest::InvokeGetIMSI));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetCardProxy();
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
   EXPECT_TRUE(cellular_->imsi().empty());
   EXPECT_FALSE(cellular_->sim_present());
+  EXPECT_CALL(*mock_home_provider_info_, UpdateIMSI(kIMSI));
   capability_->GetIMSI(callback);
   EXPECT_EQ(kIMSI, cellular_->imsi());
   EXPECT_TRUE(cellular_->sim_present());
-  cellular_->set_imsi("");
-  InitProviderDB();
-  capability_->GetIMSI(callback);
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
 }
 
 // In this test, the call to the proxy's GetIMSI() will always indicate failure,
@@ -419,7 +447,7 @@ TEST_F(CellularCapabilityGSMTest, GetSignalQuality) {
       .WillOnce(Invoke(this,
                        &CellularCapabilityGSMTest::InvokeGetSignalQuality));
   SetNetworkProxy();
-  SetService();
+  CreateService();
   EXPECT_EQ(0, cellular_->service()->strength());
   capability_->GetSignalQuality();
   EXPECT_EQ(kStrength, cellular_->service()->strength());
@@ -555,39 +583,11 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
 TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
   capability_->SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, capability_->access_technology_);
-  SetService();
+  CreateService();
   SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
   capability_->SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, capability_->access_technology_);
   EXPECT_EQ(kNetworkTechnologyGprs, cellular_->service()->network_technology());
-}
-
-TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
-  static const char kOperatorName[] = "Swisscom";
-  InitProviderDB();
-  capability_->serving_operator_.SetCode("22801");
-  SetService();
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
-  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
-  EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
-
-  static const char kTestOperator[] = "Testcom";
-  capability_->serving_operator_.SetName(kTestOperator);
-  capability_->serving_operator_.SetCountry("");
-  capability_->UpdateOperatorInfo();
-  EXPECT_EQ(kTestOperator, capability_->serving_operator_.GetName());
-  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
-  EXPECT_EQ(kTestOperator, cellular_->service()->serving_operator().GetName());
-}
-
-TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
-  InitProviderDB();
-  DBusPropertiesMap props;
-  cellular_->set_imsi("310240123456789");
-  props[CellularCapability::kModemPropertyIMSI].writer().append_string("");
-  capability_->UpdateStatus(props);
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
 }
 
 TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
@@ -601,56 +601,6 @@ TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
   EXPECT_TRUE(capability_->AllowRoaming());
 }
 
-TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
-  static const char kCountry[] = "us";
-  static const char kCode[] = "310160";
-  cellular_->set_imsi("310240123456789");
-
-  EXPECT_FALSE(capability_->home_provider_info_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  capability_->SetHomeProvider();  // No mobile provider DB available.
-  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
-  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  InitProviderDB();
-  capability_->SetHomeProvider();
-  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
-  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_EQ(4, cellular_->apn_list().size());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  Cellular::Operator oper;
-  cellular_->set_home_provider(oper);
-  capability_->spn_ = kTestCarrier;
-  capability_->SetHomeProvider();
-  EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
-  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-
-  static const char kCubic[] = "Cubic";
-  capability_->spn_ = kCubic;
-  capability_->SetHomeProvider();
-  EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
-  EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(cellular_->provider_requires_roaming());
-
-  static const char kCUBIC[] = "CUBIC";
-  capability_->spn_ = kCUBIC;
-  capability_->home_provider_info_ = NULL;
-  capability_->SetHomeProvider();
-  EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
-  EXPECT_EQ("", cellular_->home_provider().GetCode());
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_TRUE(cellular_->provider_requires_roaming());
-}
-
 namespace {
 
 MATCHER(SizeIs4, "") {
@@ -658,22 +608,6 @@ MATCHER(SizeIs4, "") {
 }
 
 }  // namespace
-
-TEST_F(CellularCapabilityGSMTest, InitAPNList) {
-  Stringmaps apn_list;
-  InitProviderDB();
-  capability_->home_provider_info_ =
-      mobile_provider_lookup_by_name(modem_info_.provider_db(), "T-Mobile");
-  ASSERT_TRUE(capability_->home_provider_info_);
-  EXPECT_EQ(0, cellular_->apn_list().size());
-  EXPECT_CALL(*device_adaptor_,
-              EmitStringmapsChanged(kCellularApnListProperty, SizeIs4()));
-  capability_->InitAPNList();
-  apn_list = cellular_->apn_list();
-  EXPECT_EQ(4, apn_list.size());
-  EXPECT_EQ("wap.voicestream.com", apn_list[1][kApnProperty]);
-  EXPECT_EQ("Web2Go/t-zones", apn_list[1][kApnNameProperty]);
-}
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
@@ -800,74 +734,6 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);
-}
-
-TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
-  static const string kTmobileApn("epc.tmobile.com");
-  static const string kLastGoodApn("remembered.apn");
-  static const string kLastGoodUsername("remembered.user");
-  static const string kSuppliedApn("my.apn");
-
-  SetService();
-  cellular_->set_imsi("310240123456789");
-  InitProviderDB();
-  capability_->SetHomeProvider();
-  DBusPropertiesMap props;
-  capability_->SetupConnectProperties(&props);
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kTmobileApn, props[kApnProperty].reader().get_string());
-
-  ProfileRefPtr profile(new NiceMock<MockProfile>(
-      modem_info_.control_interface(), modem_info_.metrics(),
-      modem_info_.manager()));
-  cellular_->service()->set_profile(profile);
-  Stringmap apn_info;
-  apn_info[kApnProperty] = kLastGoodApn;
-  apn_info[kApnUsernameProperty] = kLastGoodUsername;
-  cellular_->service()->SetLastGoodApn(apn_info);
-  props.clear();
-  EXPECT_TRUE(props.find(kApnProperty) == props.end());
-  capability_->SetupConnectProperties(&props);
-  // We expect the list to contain the last good APN, plus
-  // the 4 APNs from the mobile provider info database.
-  EXPECT_EQ(5, capability_->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
-  EXPECT_FALSE(props.find(kApnUsernameProperty) == props.end());
-  EXPECT_EQ(kLastGoodUsername,
-            props[kApnUsernameProperty].reader().get_string());
-
-  Error error;
-  apn_info.clear();
-  props.clear();
-  apn_info[kApnProperty] = kSuppliedApn;
-  // Setting the APN has the side effect of clearing the LastGoodApn,
-  // so the try list will have 5 elements, with the first one being
-  // the supplied APN.
-  cellular_->service()->SetApn(apn_info, &error);
-  EXPECT_TRUE(props.find(kApnProperty) == props.end());
-  capability_->SetupConnectProperties(&props);
-  EXPECT_EQ(5, capability_->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kSuppliedApn, props[kApnProperty].reader().get_string());
-
-  apn_info.clear();
-  props.clear();
-  apn_info[kApnProperty] = kLastGoodApn;
-  apn_info[kApnUsernameProperty] = kLastGoodUsername;
-  // Now when LastGoodAPN is set, it will be the one selected.
-  cellular_->service()->SetLastGoodApn(apn_info);
-  EXPECT_TRUE(props.find(kApnProperty) == props.end());
-  capability_->SetupConnectProperties(&props);
-  // We expect the list to contain the last good APN, plus
-  // the user-supplied APN, plus the 4 APNs from the mobile
-  // provider info database.
-  EXPECT_EQ(6, capability_->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
-  EXPECT_FALSE(props.find(kApnUsernameProperty) == props.end());
-  EXPECT_EQ(kLastGoodUsername,
-            props[kApnUsernameProperty].reader().get_string());
 }
 
 TEST_F(CellularCapabilityGSMTest, StartModemSuccess) {

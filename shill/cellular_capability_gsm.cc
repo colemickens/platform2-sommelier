@@ -210,13 +210,6 @@ void CellularCapabilityGSM::ReleaseProxies() {
 
 void CellularCapabilityGSM::OnServiceCreated() {
   cellular()->service()->SetActivationState(kActivationStateActivated);
-  UpdateServingOperator();
-}
-
-void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
-  if (ContainsKey(properties, kModemPropertyIMSI)) {
-    SetHomeProvider();
-  }
 }
 
 // Create the list of APNs to try, in the following order:
@@ -422,123 +415,6 @@ void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
   SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;
 
   callback.Run(Error());
-}
-
-void CellularCapabilityGSM::SetHomeProvider() {
-  string imsi = cellular()->imsi();
-  SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi
-                    << " SPN: " << spn_ << ")";
-  // TODO(petkov): The test for NULL provider_db should be done by
-  // mobile_provider_lookup_best_match.
-  if (imsi.empty() || !modem_info()->provider_db()) {
-    return;
-  }
-  mobile_provider *provider_info =
-      mobile_provider_lookup_best_match(
-          modem_info()->provider_db(), spn_.c_str(), imsi.c_str());
-  if (!provider_info) {
-    SLOG(Cellular, 2) << "GSM provider not found.";
-    return;
-  }
-  home_provider_info_ = provider_info;
-  cellular()->set_provider_requires_roaming(provider_info->requires_roaming);
-  Cellular::Operator oper;
-  if (provider_info->networks && provider_info->networks[0]) {
-    oper.SetCode(provider_info->networks[0]);
-  }
-  if (*provider_info->country) {
-    oper.SetCountry(provider_info->country);
-  }
-  if (spn_.empty()) {
-    const char *name = mobile_provider_get_name(provider_info);
-    if (name) {
-      oper.SetName(name);
-    }
-  } else {
-    oper.SetName(spn_);
-  }
-  cellular()->set_home_provider(oper);
-  bool roaming_required = cellular()->provider_requires_roaming();
-  SLOG(Cellular, 2) << "Home provider: " << oper.GetCode() << ", "
-                    << oper.GetName() << ", " << oper.GetCountry()
-                    << (roaming_required ? ", roaming required" : "");
-  InitAPNList();
-}
-
-void CellularCapabilityGSM::UpdateOperatorInfo() {
-  SLOG(Cellular, 2) << __func__;
-  const string &network_id = serving_operator_.GetCode();
-  if (!network_id.empty()) {
-    SLOG(Cellular, 2) << "Looking up network id: " << network_id;
-    mobile_provider *provider =
-        mobile_provider_lookup_by_network(modem_info()->provider_db(),
-                                          network_id.c_str());
-    if (provider) {
-      if (serving_operator_.GetName().empty()) {
-        const char *provider_name = mobile_provider_get_name(provider);
-        if (provider_name && *provider_name) {
-          serving_operator_.SetName(provider_name);
-        }
-      }
-      if (*provider->country) {
-        serving_operator_.SetCountry(provider->country);
-      }
-      SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
-                        << ", country: " << serving_operator_.GetCountry();
-    } else {
-      SLOG(Cellular, 2) << "GSM provider not found.";
-    }
-  }
-  UpdateServingOperator();
-}
-
-void CellularCapabilityGSM::UpdateServingOperator() {
-  SLOG(Cellular, 2) << __func__;
-  if (cellular()->service().get()) {
-    cellular()->service()->SetServingOperator(serving_operator_);
-  }
-}
-
-void CellularCapabilityGSM::InitAPNList() {
-  SLOG(Cellular, 2) << __func__;
-  Stringmaps apn_list;
-  if (!home_provider_info_) {
-    return;
-  }
-  for (int i = 0; i < home_provider_info_->num_apns; ++i) {
-    Stringmap props;
-    mobile_apn *apn = home_provider_info_->apns[i];
-    if (apn->value) {
-      props[kApnProperty] = apn->value;
-    }
-    if (apn->username) {
-      props[kApnUsernameProperty] = apn->username;
-    }
-    if (apn->password) {
-      props[kApnPasswordProperty] = apn->password;
-    }
-    // Find the first localized and non-localized name, if any.
-    const localized_name *lname = NULL;
-    const localized_name *name = NULL;
-    for (int j = 0; j < apn->num_names; ++j) {
-      if (apn->names[j]->lang) {
-        if (!lname) {
-          lname = apn->names[j];
-        }
-      } else if (!name) {
-        name = apn->names[j];
-      }
-    }
-    if (name) {
-      props[kApnNameProperty] = name->name;
-    }
-    if (lname) {
-      props[kApnLocalizedNameProperty] = lname->name;
-      props[kApnLanguageProperty] = lname->lang;
-    }
-    apn_list.push_back(props);
-  }
-  cellular()->set_apn_list(apn_list);
 }
 
 // always called from an async context
@@ -820,7 +696,6 @@ void CellularCapabilityGSM::OnRegistrationInfoSignal(
   serving_operator_.SetName(operator_name);
   cellular()->serving_operator_info()->UpdateMCCMNC(operator_code);
   cellular()->serving_operator_info()->UpdateOperatorName(operator_name);
-  UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }
 
@@ -861,7 +736,6 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
     cellular()->set_imsi(imsi);
     cellular()->set_sim_present(true);
     cellular()->home_provider_info()->UpdateIMSI(imsi);
-    SetHomeProvider();
     callback.Run(error);
   } else if (!sim_lock_status_.lock_type.empty()) {
     SLOG(Cellular, 2) << "GetIMSI failed - SIM lock in place.";
@@ -892,7 +766,6 @@ void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,
     SLOG(Cellular, 2) << "SPN: " << spn;
     spn_ = spn;
     cellular()->home_provider_info()->UpdateOperatorName(spn);
-    SetHomeProvider();
   } else {
     SLOG(Cellular, 2) << "GetSPN failed - " << error;
   }

@@ -693,7 +693,6 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
 
 void CellularCapabilityUniversal::OnServiceCreated() {
   UpdateServiceActivationState();
-  UpdateServingOperator();
 
   // WORKAROUND:
   // E362 modems on Verizon network does not properly redirect when a SIM
@@ -823,58 +822,6 @@ void CellularCapabilityUniversal::GetProperties() {
   OnModem3GPPPropertiesChanged(properties, vector<string>());
 }
 
-void CellularCapabilityUniversal::SetHomeProvider() {
-  const string &imsi = cellular()->imsi();
-  SLOG(Cellular, 3) << __func__ << "(IMSI: " << imsi
-          << " SPN: " << spn_ << ")";
-
-  if (!modem_info()->provider_db())
-    return;
-
-  // MCCMNC can be determined either from IMSI or Operator Code. Use whichever
-  // one is available. If both were reported by the SIM, use IMSI.
-  const string &network_id = imsi.empty() ? operator_id_ : imsi;
-  mobile_provider *provider_info = mobile_provider_lookup_best_match(
-      modem_info()->provider_db(),
-      spn_.c_str(),
-      network_id.c_str());
-  if (!provider_info) {
-    SLOG(Cellular, 2) << "3GPP provider not found.";
-    return;
-  }
-
-  // Even if |provider_info| is the same as |home_provider_info_|, it is
-  // possible that the |spn_| has changed.  Run all the code below.
-  home_provider_info_ = provider_info;
-  cellular()->set_provider_requires_roaming(
-      home_provider_info_->requires_roaming);
-  Cellular::Operator oper;
-  // If Operator ID is available, use that as network code, otherwise
-  // use what was returned from the database.
-  if (!operator_id_.empty()) {
-    oper.SetCode(operator_id_);
-  } else if (provider_info->networks && provider_info->networks[0]) {
-    oper.SetCode(provider_info->networks[0]);
-  }
-  if (*provider_info->country) {
-    oper.SetCountry(provider_info->country);
-  }
-  if (spn_.empty()) {
-    const char *name = mobile_provider_get_name(provider_info);
-    if (name) {
-      oper.SetName(name);
-    }
-  } else {
-    oper.SetName(spn_);
-  }
-  cellular()->set_home_provider(oper);
-  bool roaming_required = cellular()->provider_requires_roaming();
-  SLOG(Cellular, 2) << "Home provider: " << oper.GetCode() << ", "
-                    << oper.GetName() << ", " << oper.GetCountry()
-                    << (roaming_required ? ", roaming required" : "");
-  InitAPNList();
-}
-
 void CellularCapabilityUniversal::UpdateServiceOLP() {
   SLOG(Cellular, 3) << __func__;
 
@@ -908,67 +855,6 @@ void CellularCapabilityUniversal::UpdateServiceOLP() {
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
-void CellularCapabilityUniversal::UpdateOperatorInfo() {
-  SLOG(Cellular, 3) << __func__;
-  // TODO(armansito): Use CellularOperatorInfo here instead of
-  // mobile_provider_db.
-
-  // Sometimes the modem fails to acquire the operator code OTA, in which case
-  // |serving_operator_| may not have an operator ID (sometimes due to service
-  // activation being required or broken modem firmware). Use |operator_id_| as
-  // a fallback when available. |operator_id_| is retrieved from the SIM card.
-  if (serving_operator_.GetCode().empty() && !operator_id_.empty()) {
-    SLOG(Cellular, 2) << "Assuming operator '" << operator_id_
-                      << "' as serving operator.";
-    serving_operator_.SetCode(operator_id_);
-  } else if (!serving_operator_.GetCode().empty() && operator_id_.empty()) {
-    // Sometimes the SIM may fail to report an operator code. Since we build
-    // the APN list based on home provider, report that the serving operator
-    // is the home provider.
-    // TODO(armansito): This is clearly not the best behavior for the roaming
-    // case: we are now reporting that the roaming carrier is the same as the
-    // home carrier. While this is not preferable, we don't have any home
-    // provider to report either way, so this won't hurt the user experience.
-    // This is a quick fix needed for the M31 release (crbug.com/306310).
-    // Remove it with a better approach for M32 (crbug.com/298408).
-    SLOG(Cellular, 2) << "Home provider is unknown but serving operator is. "
-                      << "Reporting serving operator as home provider.";
-    operator_id_ = serving_operator_.GetCode();
-    SetHomeProvider();
-  }
-
-  const string &network_id = serving_operator_.GetCode();
-  if (!network_id.empty()) {
-    SLOG(Cellular, 2) << "Looking up network id: " << network_id;
-    mobile_provider *provider =
-        mobile_provider_lookup_by_network(modem_info()->provider_db(),
-                                          network_id.c_str());
-    if (provider) {
-      if (serving_operator_.GetName().empty()) {
-        const char *provider_name = mobile_provider_get_name(provider);
-        if (provider_name && *provider_name) {
-          serving_operator_.SetName(provider_name);
-        }
-      }
-      if (*provider->country) {
-        serving_operator_.SetCountry(provider->country);
-      }
-      SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
-                        << ", country: " << serving_operator_.GetCountry();
-    } else {
-      SLOG(Cellular, 2) << "GSM provider not found.";
-    }
-  }
-  UpdateServingOperator();
-}
-
-void CellularCapabilityUniversal::UpdateServingOperator() {
-  SLOG(Cellular, 3) << __func__;
-  if (cellular()->service().get()) {
-    cellular()->service()->SetServingOperator(serving_operator_);
-  }
-}
-
 void CellularCapabilityUniversal::UpdateActiveBearer() {
   SLOG(Cellular, 3) << __func__;
 
@@ -993,48 +879,6 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
 
   if (!active_bearer_)
     SLOG(Cellular, 2) << "No active bearer found.";
-}
-
-void CellularCapabilityUniversal::InitAPNList() {
-  SLOG(Cellular, 3) << __func__;
-  Stringmaps apn_list;
-  if (!home_provider_info_) {
-    return;
-  }
-  for (int i = 0; i < home_provider_info_->num_apns; ++i) {
-    Stringmap props;
-    mobile_apn *apn = home_provider_info_->apns[i];
-    if (apn->value) {
-      props[kApnProperty] = apn->value;
-    }
-    if (apn->username) {
-      props[kApnUsernameProperty] = apn->username;
-    }
-    if (apn->password) {
-      props[kApnPasswordProperty] = apn->password;
-    }
-    // Find the first localized and non-localized name, if any.
-    const localized_name *lname = NULL;
-    const localized_name *name = NULL;
-    for (int j = 0; j < apn->num_names; ++j) {
-      if (apn->names[j]->lang) {
-        if (!lname) {
-          lname = apn->names[j];
-        }
-      } else if (!name) {
-        name = apn->names[j];
-      }
-    }
-    if (name) {
-      props[kApnNameProperty] = name->name;
-    }
-    if (lname) {
-      props[kApnLocalizedNameProperty] = lname->name;
-      props[kApnLanguageProperty] = lname->lang;
-    }
-    apn_list.push_back(props);
-  }
-  cellular()->set_apn_list(apn_list);
 }
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
@@ -1811,9 +1655,6 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
   cellular()->serving_operator_info()->UpdateOperatorName(
       updated_operator_name);
 
-  // Update the carrier name for |serving_operator_|.
-  UpdateOperatorInfo();
-
   cellular()->HandleNewRegistrationState();
 
   // If the modem registered with the network and the current ICCID is pending
@@ -1896,7 +1737,6 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
     cellular()->set_imsi(value);
     cellular()->home_provider_info()->UpdateIMSI(value);
   }
-  SetHomeProvider();
 }
 
 void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
