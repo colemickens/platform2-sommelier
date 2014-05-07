@@ -50,13 +50,13 @@ CPPFLAGS += -DUSE_OPENGLES
 SOURCES_COMMON += egl_stuff.cc
 SOURCES_SYNCCONTROLTEST += synccontroltest_egl.cc
 SOURCES_TEARTEST += teartest_egl.cc
-LDLIBS += -lGLESv2 -lX11 -lEGL
+LDLIBS += -lGLESv2 -lX11 -lEGL -lrt
 else ifeq ($(GRAPHICS_BACKEND),OPENGL)
 CPPFLAGS += -DUSE_OPENGL
 SOURCES_COMMON += glx_stuff.cc
 SOURCES_SYNCCONTROLTEST += synccontroltest_glx.cc
 SOURCES_TEARTEST += teartest_glx.cc
-LDLIBS += -lGL -lX11
+LDLIBS += -lGL -lX11 -lrt
 endif
 
 OBJS_COMMON = $(SOURCES_COMMON:.cc=.o)
