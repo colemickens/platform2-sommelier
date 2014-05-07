@@ -700,7 +700,6 @@ TEST_F(CellularTest, StartGSMRegister) {
       .WillOnce(Return(MM_MODEM_GSM_FACILITY_SIM));
   EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  static const char kNetworkID[] = "22803";
   EXPECT_CALL(*gsm_network_proxy_,
               GetRegistrationInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationInfo));

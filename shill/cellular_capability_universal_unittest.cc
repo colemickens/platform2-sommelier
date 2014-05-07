@@ -1282,7 +1282,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
 
   // Updating the SIM
   DBusPropertiesMap new_properties;
-  const char kCountry[] = "us";
   const char kNewImsi[] = "310240123456789";
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";

@@ -601,14 +601,6 @@ TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
   EXPECT_TRUE(capability_->AllowRoaming());
 }
 
-namespace {
-
-MATCHER(SizeIs4, "") {
-  return arg.size() == 4;
-}
-
-}  // namespace
-
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
