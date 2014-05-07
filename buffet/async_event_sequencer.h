@@ -41,23 +41,31 @@ class AsyncEventSequencer : public base::RefCounted<AsyncEventSequencer> {
                                const std::string& method_name,
                                bool success)> ExportHandler;
   typedef base::Callback<void(bool all_succeeded)> CompletionAction;
+  typedef base::Callback<void(void)> CompletionTask;
 
   AsyncEventSequencer();
+
   // Get a Finished handler callback.  Each callback is "unique" in the sense
   // that subsequent calls to GetHandler() will create new handlers
   // which will need to be called before completion actions are run.
   Handler GetHandler(const std::string& descriptive_message,
                      bool failure_is_fatal);
+
   // Like GetHandler except with a signature tailored to
   // ExportedObject's ExportMethod callback requirements.  Will also assert
   // that the passed interface/method names from ExportedObject are correct.
   ExportHandler GetExportHandler(
       const std::string& interface_name, const std::string& method_name,
       const std::string& descriptive_message, bool failure_is_fatal);
+
   // Once all handlers obtained via GetHandler have run,
   // we'll run each CompletionAction, then discard our references.
   // No more handlers may be obtained after this call.
   void OnAllTasksCompletedCall(std::vector<CompletionAction> actions);
+
+  // Wrap a CompletionTask with a function that discards the result.
+  // This CompletionTask retains no references to the AsyncEventSequencer.
+  CompletionAction WrapCompletionTask(const CompletionTask& task);
 
  private:
   // We'll partially bind this function before giving it back via

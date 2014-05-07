@@ -95,9 +95,10 @@ class ExportedPropertyBase {
 class ExportedPropertySet {
  public:
   typedef base::Callback<void(bool success)> OnInitFinish;
+  typedef base::Callback<void(dbus::MessageWriter* writer)> PropertyWriter;
 
   ExportedPropertySet(dbus::Bus* bus, const dbus::ObjectPath& path);
-  virtual ~ExportedPropertySet();
+  virtual ~ExportedPropertySet() = default;
 
   // Claims the method associated with the org.freedesktop.DBus.Properties
   // interface.  This needs to be done after all properties are initialized to
@@ -105,8 +106,11 @@ class ExportedPropertySet {
   // are exported to the DBus object.  |cb| will be called on the origin
   // thread.
   void Init(const OnInitFinish& cb);
-  base::Callback<void(dbus::MessageWriter* writer)> GetPropertyWriter(
-      const std::string& interface);
+
+  // Return a callback that knows how to write this property set's properties
+  // to a message.  This writer retains a weak pointer to this, and must
+  // only be invoked on the same thread as the rest of ExportedPropertySet.
+  PropertyWriter GetPropertyWriter(const std::string& interface);
 
  protected:
   void RegisterProperty(const std::string& interface_name,

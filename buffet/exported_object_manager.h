@@ -69,14 +69,16 @@ namespace dbus_utils {
 //     Properties my_properties_;
 //     ExampleObjectManager* object_manager_;
 //   };
-class ExportedObjectManager {
+class ExportedObjectManager
+    : public base::SupportsWeakPtr<ExportedObjectManager> {
  public:
   // Writes a dictionary of property name to property value variants to writer.
   typedef base::Callback<void(dbus::MessageWriter* writer)> PropertyWriter;
   typedef base::Callback<void(bool success)> OnInitFinish;
   typedef std::map<std::string, PropertyWriter> InterfaceProperties;
 
-  ExportedObjectManager(dbus::Bus* bus, const dbus::ObjectPath& path);
+  ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
+                        const dbus::ObjectPath& path);
 
   // Registers methods implementing the ObjectManager interface on the object
   // exported on the path given in the constructor. Must be called on the
@@ -104,9 +106,6 @@ class ExportedObjectManager {
   // Tracks all objects currently known to the ExportedObjectManager.
   std::map<dbus::ObjectPath, InterfaceProperties> registered_objects_;
 
-  // We're going to register DBus callbacks that will outlive ourselves.
-  // These callbacks get scheduled on the origin thread.
-  base::WeakPtrFactory<ExportedObjectManager> weak_ptr_factory_;
   friend class ExportedObjectManagerTest;
   DISALLOW_COPY_AND_ASSIGN(ExportedObjectManager);
 };

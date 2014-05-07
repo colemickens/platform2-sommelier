@@ -12,10 +12,9 @@ namespace buffet {
 
 namespace dbus_utils {
 
-ExportedObjectManager::ExportedObjectManager(dbus::Bus* bus,
+ExportedObjectManager::ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
                                              const dbus::ObjectPath& path)
-    : bus_(bus), exported_object_(bus->GetExportedObject(path)),
-      weak_ptr_factory_(this) {}
+    : bus_(bus), exported_object_(bus->GetExportedObject(path)) {}
 
 void ExportedObjectManager::Init(const OnInitFinish& cb) {
   bus_->AssertOnOriginThread();
@@ -25,12 +24,13 @@ void ExportedObjectManager::Init(const OnInitFinish& cb) {
       dbus::kObjectManagerInterface,
       dbus::kObjectManagerGetManagedObjects,
       base::Bind(&ExportedObjectManager::HandleGetManagedObjects,
-                 weak_ptr_factory_.GetWeakPtr()),
+                 AsWeakPtr()),
       sequencer->GetExportHandler(
           dbus::kObjectManagerInterface,
           dbus::kObjectManagerGetManagedObjects,
           "Failed exporting GetManagedObjects method of ObjectManager",
           false));
+  sequencer->OnAllTasksCompletedCall({cb});
 }
 
 void ExportedObjectManager::ClaimInterface(

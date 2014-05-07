@@ -16,9 +16,12 @@
 #include <sysexits.h>
 
 #include "buffet/async_event_sequencer.h"
+#include "buffet/dbus_constants.h"
+#include "buffet/exported_object_manager.h"
 #include "buffet/manager.h"
 
 using buffet::dbus_utils::AsyncEventSequencer;
+using buffet::dbus_utils::ExportedObjectManager;
 
 namespace {
 
@@ -87,7 +90,11 @@ void TakeServiceOwnership(scoped_refptr<dbus::Bus> bus, bool success) {
 void EnterMainLoop(base::MessageLoopForIO* message_loop,
                    scoped_refptr<dbus::Bus> bus) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  buffet::Manager manager(bus.get());
+  ExportedObjectManager object_manager(
+      bus, dbus::ObjectPath(buffet::dbus_constants::kRootServicePath));
+  buffet::Manager manager(bus, object_manager.AsWeakPtr());
+  object_manager.Init(
+      sequencer->GetHandler("ObjectManager.Init() failed.", true));
   manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));
   sequencer->OnAllTasksCompletedCall(
       {base::Bind(&TakeServiceOwnership, bus)});

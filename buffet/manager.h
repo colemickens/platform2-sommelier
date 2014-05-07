@@ -10,6 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <base/values.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
@@ -20,7 +21,9 @@
 
 namespace buffet {
 
-class DBusManager;
+namespace dbus_utils {
+class ExportedObjectManager;
+}  // namespace dbus_utils
 
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
@@ -29,7 +32,8 @@ class Manager {
  public:
   typedef base::Callback<void(bool success)> OnInitFinish;
 
-  explicit Manager(dbus::Bus* bus);
+  Manager(scoped_refptr<dbus::Bus> bus,
+          base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager);
   ~Manager();
   void Init(const OnInitFinish& cb);
 
@@ -64,8 +68,9 @@ class Manager {
   scoped_ptr<::dbus::Response> HandleTestMethod(
       ::dbus::MethodCall* method_call);
 
-  dbus::Bus* bus_;
+  scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
+  base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager_;
   scoped_ptr<Properties> properties_;
 
   DeviceRegistrationInfo device_info_;

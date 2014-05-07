@@ -40,6 +40,16 @@ void AsyncEventSequencer::OnAllTasksCompletedCall(
   PossiblyRunCompletionActions();
 }
 
+namespace {
+void IgnoreSuccess(const AsyncEventSequencer::CompletionTask& task,
+                   bool /*success*/) { task.Run(); }
+}  // namespace
+
+AsyncEventSequencer::CompletionAction AsyncEventSequencer::WrapCompletionTask(
+    const CompletionTask& task) {
+  return base::Bind(&IgnoreSuccess, task);
+}
+
 void AsyncEventSequencer::HandleFinish(int registration_number,
                                        const std::string& error_message,
                                        bool failure_is_fatal, bool success) {

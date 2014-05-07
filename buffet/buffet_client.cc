@@ -14,6 +14,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <dbus/object_manager.h>
 #include <dbus/values_util.h>
 
 #include "buffet/dbus_constants.h"
@@ -34,6 +35,7 @@ void usage() {
   std::cerr << "  " << kManagerFinishRegisterDevice
                     << " device_id" << std::endl;
   std::cerr << "  " << kManagerUpdateStateMethod << std::endl;
+  std::cerr << "  " << dbus::kObjectManagerGetManagedObjects << std::endl;
 }
 
 class BuffetHelperProxy {
@@ -45,6 +47,9 @@ class BuffetHelperProxy {
     manager_proxy_ = bus_->GetObjectProxy(
         kServiceName,
         dbus::ObjectPath(kManagerServicePath));
+    root_proxy_ = bus_->GetObjectProxy(
+        kServiceName,
+        dbus::ObjectPath(kRootServicePath));
     return EX_OK;
   }
 
@@ -226,9 +231,29 @@ class BuffetHelperProxy {
     return EX_OK;
   }
 
+  int CallRootGetManagedObjects(const CommandLine::StringVector& args) {
+    if (!args.empty()) {
+      std::cerr << "Invalid number of arguments for "
+                << dbus::kObjectManagerGetManagedObjects << std::endl;
+      usage();
+      return EX_USAGE;
+    }
+    dbus::MethodCall method_call(
+        dbus::kObjectManagerInterface, dbus::kObjectManagerGetManagedObjects);
+    scoped_ptr<dbus::Response> response(
+        root_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
+    if (!response) {
+      std::cout << "Failed to receive a response." << std::endl;
+      return EX_UNAVAILABLE;
+    }
+    std::cout << response->ToString() << std::endl;
+    return EX_OK;
+  }
+
  private:
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* manager_proxy_{nullptr};  // NOLINT - initializer list
+  dbus::ObjectProxy* root_proxy_{nullptr};  // NOLINT - initializer list
 };
 
 }  // namespace
@@ -270,6 +295,8 @@ int main(int argc, char** argv) {
   } else if (command.compare(kManagerUpdateStateMethod) == 0 ||
              command.compare("us") == 0) {
     err = helper.CallManagerUpdateState(args);
+  } else if (command.compare(dbus::kObjectManagerGetManagedObjects) == 0) {
+    err = helper.CallRootGetManagedObjects(args);
   } else {
     std::cerr << "Unknown command: " << command << std::endl;
     usage();

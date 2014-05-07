@@ -18,18 +18,26 @@
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_utils.h"
 #include "buffet/error.h"
+#include "buffet/exported_object_manager.h"
 
+using buffet::dbus_utils::AsyncEventSequencer;
 using buffet::dbus_utils::GetBadArgsError;
 using buffet::dbus_utils::GetDBusError;
 
 namespace buffet {
 
-Manager::Manager(dbus::Bus* bus)
+Manager::Manager(
+    scoped_refptr<dbus::Bus> bus,
+    base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager)
     : bus_(bus),
       exported_object_(bus->GetExportedObject(
-          dbus::ObjectPath(dbus_constants::kManagerServicePath))) { }
+          dbus::ObjectPath(dbus_constants::kManagerServicePath))),
+      object_manager_(object_manager) { }
 
 Manager::~Manager() {
+  object_manager_->ReleaseInterface(
+      dbus::ObjectPath(dbus_constants::kManagerServicePath),
+      dbus_constants::kManagerInterface);
   // Prevent the properties object from making calls to the exported object.
   properties_.reset(nullptr);
   // Unregister ourselves from the Bus.  This prevents the bus from calling
@@ -41,8 +49,8 @@ Manager::~Manager() {
 }
 
 void Manager::Init(const OnInitFinish& cb) {
-  scoped_refptr<dbus_utils::AsyncEventSequencer> sequencer(
-      new dbus_utils::AsyncEventSequencer());
+  scoped_refptr<AsyncEventSequencer> sequencer(
+      new AsyncEventSequencer());
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
       dbus_constants::kManagerCheckDeviceRegistered,
@@ -112,7 +120,14 @@ void Manager::Init(const OnInitFinish& cb) {
   properties_->state_.SetValue("{}");
   properties_->Init(
       sequencer->GetHandler("Manager properties export failed.", true));
-  sequencer->OnAllTasksCompletedCall({cb});
+  auto claim_interface_task = sequencer->WrapCompletionTask(
+      base::Bind(&dbus_utils::ExportedObjectManager::ClaimInterface,
+                 object_manager_->AsWeakPtr(),
+                 dbus::ObjectPath(dbus_constants::kManagerServicePath),
+                 dbus_constants::kManagerInterface,
+                 properties_->GetPropertyWriter(
+                     dbus_constants::kManagerInterface)));
+  sequencer->OnAllTasksCompletedCall({claim_interface_task, cb});
   device_info_.Load();
 }
 

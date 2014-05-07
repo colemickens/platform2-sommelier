@@ -51,7 +51,12 @@ void ExportedPropertySet::Init(const OnInitFinish& cb) {
   sequencer->OnAllTasksCompletedCall({cb});
 }
 
-ExportedPropertySet::~ExportedPropertySet() { }
+ExportedPropertySet::PropertyWriter ExportedPropertySet::GetPropertyWriter(
+    const std::string& interface) {
+  return base::Bind(&ExportedPropertySet::WritePropertiesDictToMessage,
+                    weak_ptr_factory_.GetWeakPtr(),
+                    interface);
+}
 
 void ExportedPropertySet::RegisterProperty(
     const std::string& interface_name,
