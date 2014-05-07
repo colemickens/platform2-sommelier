@@ -969,7 +969,7 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   KeyValueStore args;
   args.SetString(kEapIdentityProperty, "legit_identity");
   args.SetString(kEapPasswordProperty, "legit_password");
-  args.SetString(kEAPEAPProperty, "PEAP");
+  args.SetString(kEapMethodProperty, "PEAP");
   args.SetString(kGuidProperty, guid);
   Error error;
 

@@ -67,9 +67,9 @@ bool ProfileDBusPropertyExporter::LoadEapServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
   LoadString(properties, EapCredentials::kStorageEapCACertID,
-             kEapCaCertIDProperty);
-  LoadString(properties, EapCredentials::kStorageEapCertID, kEAPCertIDProperty);
-  LoadString(properties, EapCredentials::kStorageEapKeyID, kEAPKeyIDProperty);
+             kEapCaCertIdProperty);
+  LoadString(properties, EapCredentials::kStorageEapCertID, kEapCertIdProperty);
+  LoadString(properties, EapCredentials::kStorageEapKeyID, kEapKeyIdProperty);
   return true;
 }
 

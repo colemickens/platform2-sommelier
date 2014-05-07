@@ -211,16 +211,16 @@ TEST_F(EapCredentialsTest, ConnectableUsingPassphrase) {
 TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapAnonymousIdentityProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEAPCertIDProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapCertIdProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      kEAPClientCertProperty));
+      kEapClientCertProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapIdentityProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEAPKeyIDProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyIdProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyMgmtProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapPasswordProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEAPPINProperty));
+  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapPinProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapPrivateKeyProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
@@ -230,16 +230,16 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   // that it should, than to test all the cases it should return FALSE in.
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapCaCertProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapCaCertIDProperty));
+      kEapCaCertIdProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapCaCertNssProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapCaCertPemProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEAPEAPProperty));
+  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapMethodProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapPhase2AuthProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapUseSystemCAsProperty));
+      kEapUseSystemCasProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapRemoteCertificationProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(

@@ -346,7 +346,7 @@ TEST_F(ServiceTest, SetProperty) {
     ::DBus::Variant eap;
     eap.writer().append_string("eap eep eip!");
     EXPECT_FALSE(DBusAdaptor::SetProperty(service2_->mutable_store(),
-                                          kEAPEAPProperty,
+                                          kEapMethodProperty,
                                           eap,
                                           &error));
     ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
@@ -354,7 +354,7 @@ TEST_F(ServiceTest, SetProperty) {
     // Now plumb in eap credentials, and try again.
     service2_->SetEapCredentials(new EapCredentials());
     EXPECT_TRUE(DBusAdaptor::SetProperty(service2_->mutable_store(),
-                                         kEAPEAPProperty,
+                                         kEapMethodProperty,
                                          eap,
                                          &error));
   }
@@ -1221,7 +1221,7 @@ TEST_F(ServiceTest, RecheckPortal) {
 
   service_->state_ = Service::kStatePortal;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
-  service_->OnPropertyChanged(kEAPKeyIDProperty);
+  service_->OnPropertyChanged(kEapKeyIdProperty);
 }
 
 TEST_F(ServiceTest, SetCheckPortal) {
@@ -1389,21 +1389,21 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
                                                  &mock_manager_));
   string eap_credential_properties[] = {
       kEapAnonymousIdentityProperty,
-      kEAPCertIDProperty,
-      kEAPClientCertProperty,
+      kEapCertIdProperty,
+      kEapClientCertProperty,
       kEapIdentityProperty,
-      kEAPKeyIDProperty,
+      kEapKeyIdProperty,
       kEapPasswordProperty,
-      kEAPPINProperty,
+      kEapPinProperty,
       kEapPrivateKeyProperty,
       kEapPrivateKeyPasswordProperty
   };
   string eap_non_credential_properties[] = {
-      kEapCaCertIDProperty,
+      kEapCaCertIdProperty,
       kEapCaCertNssProperty,
-      kEAPEAPProperty,
+      kEapMethodProperty,
       kEapPhase2AuthProperty,
-      kEapUseSystemCAsProperty
+      kEapUseSystemCasProperty
   };
   // While this is not an 802.1x-based service, none of these property
   // changes should cause a call to set_eap().

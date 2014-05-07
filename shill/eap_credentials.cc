@@ -163,10 +163,10 @@ void EapCredentials::PopulateWiMaxProperties(KeyValueStore *params) const {
 void EapCredentials::InitPropertyStore(PropertyStore *store) {
   // Authentication properties.
   store->RegisterString(kEapAnonymousIdentityProperty, &anonymous_identity_);
-  store->RegisterString(kEAPCertIDProperty, &cert_id_);
-  store->RegisterString(kEAPClientCertProperty, &client_cert_);
+  store->RegisterString(kEapCertIdProperty, &cert_id_);
+  store->RegisterString(kEapClientCertProperty, &client_cert_);
   store->RegisterString(kEapIdentityProperty, &identity_);
-  store->RegisterString(kEAPKeyIDProperty, &key_id_);
+  store->RegisterString(kEapKeyIdProperty, &key_id_);
   HelpRegisterDerivedString(store,
                             kEapKeyMgmtProperty,
                             &EapCredentials::GetKeyManagement,
@@ -176,7 +176,7 @@ void EapCredentials::InitPropertyStore(PropertyStore *store) {
                                      &EapCredentials::SetEapPassword,
                                      NULL,
                                      &password_);
-  store->RegisterString(kEAPPINProperty, &pin_);
+  store->RegisterString(kEapPinProperty, &pin_);
   store->RegisterString(kEapPrivateKeyProperty, &private_key_);
   HelpRegisterWriteOnlyDerivedString(store,
                                      kEapPrivateKeyPasswordProperty,
@@ -186,26 +186,26 @@ void EapCredentials::InitPropertyStore(PropertyStore *store) {
 
   // Non-authentication properties.
   store->RegisterStrings(kEapCaCertPemProperty, &ca_cert_pem_);
-  store->RegisterString(kEapCaCertIDProperty, &ca_cert_id_);
+  store->RegisterString(kEapCaCertIdProperty, &ca_cert_id_);
   store->RegisterString(kEapCaCertNssProperty, &ca_cert_nss_);
   store->RegisterString(kEapCaCertProperty, &ca_cert_);
-  store->RegisterString(kEAPEAPProperty, &eap_);
+  store->RegisterString(kEapMethodProperty, &eap_);
   store->RegisterString(kEapPhase2AuthProperty, &inner_eap_);
   store->RegisterString(kEapSubjectMatchProperty, &subject_match_);
-  store->RegisterBool(kEapUseSystemCAsProperty, &use_system_cas_);
+  store->RegisterBool(kEapUseSystemCasProperty, &use_system_cas_);
 }
 
 // static
 bool EapCredentials::IsEapAuthenticationProperty(const string property) {
   return
       property == kEapAnonymousIdentityProperty ||
-      property == kEAPCertIDProperty ||
-      property == kEAPClientCertProperty ||
+      property == kEapCertIdProperty ||
+      property == kEapClientCertProperty ||
       property == kEapIdentityProperty ||
-      property == kEAPKeyIDProperty ||
+      property == kEapKeyIdProperty ||
       property == kEapKeyMgmtProperty ||
       property == kEapPasswordProperty ||
-      property == kEAPPINProperty ||
+      property == kEapPinProperty ||
       property == kEapPrivateKeyProperty ||
       property == kEapPrivateKeyPasswordProperty;
 }

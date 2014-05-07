@@ -176,9 +176,9 @@ TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
   EXPECT_EQ(hidden_ssid, GetBoolProperty(&props, kWifiHiddenSsid));
   EXPECT_EQ(mode, GetStringProperty(&props, kModeProperty));
   EXPECT_EQ(security, GetStringProperty(&props, kSecurityProperty));
-  EXPECT_EQ(ca_cert_id, GetStringProperty(&props, kEapCaCertIDProperty));
-  EXPECT_EQ(cert_id, GetStringProperty(&props, kEAPCertIDProperty));
-  EXPECT_EQ(key_id, GetStringProperty(&props, kEAPKeyIDProperty));
+  EXPECT_EQ(ca_cert_id, GetStringProperty(&props, kEapCaCertIdProperty));
+  EXPECT_EQ(cert_id, GetStringProperty(&props, kEapCertIdProperty));
+  EXPECT_EQ(key_id, GetStringProperty(&props, kEapKeyIdProperty));
 }
 
 }  // namespace shill
