@@ -5,17 +5,16 @@
 #include "debug_daemon.h"
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 
 namespace debugd {
 
-static const char* kDebugDaemonService = "org.chromium.debugd";
-static const char* kDebugDaemonPath = "/org/chromium/debugd";
-
 DebugDaemon::DebugDaemon(DBus::Connection* connection,
                          DBus::BusDispatcher* dispatcher)
-  : DBus::ObjectAdaptor(*connection, kDebugDaemonPath),
-    dbus_(connection), dispatcher_(dispatcher) { }
+    : DBus::ObjectAdaptor(*connection, kDebugdServicePath),
+      dbus_(connection),
+      dispatcher_(dispatcher) {}
 
 bool DebugDaemon::Init() {
   crash_sender_tool_ = new CrashSenderTool();
@@ -37,8 +36,8 @@ bool DebugDaemon::Init() {
   storage_tool_ = new StorageTool();
   memory_tool_ = new MemtesterTool();
   wimax_status_tool_ = new WiMaxStatusTool();
-  if (!dbus_->acquire_name(kDebugDaemonService)) {
-    LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugDaemonService;
+  if (!dbus_->acquire_name(kDebugdServiceName)) {
+    LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugdServiceName;
     return false;
   }
   return true;
