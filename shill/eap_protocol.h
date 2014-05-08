@@ -19,6 +19,7 @@ struct ALIGNAS(1) Ieee8021xHdr {
 };
 
 enum IeeeEapolVersion {
+  kIeee8021xEapolVersion1 = 1,
   kIeee8021xEapolVersion2 = 2
 };
 

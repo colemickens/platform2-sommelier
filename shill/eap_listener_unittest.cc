@@ -222,7 +222,7 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
   // We're partially initializing this field, just making sure at least one
   // part of it is incorrect.
   uint8 bad_payload[sizeof(kEapPacketPayload)] = {
-    eap_protocol::kIeee8021xEapolVersion2 - 1
+    eap_protocol::kIeee8021xEapolVersion1 - 1
   };
   recvfrom_reply_data_ = ByteString(bad_payload, sizeof(bad_payload));
   EXPECT_CALL(*sockets_,

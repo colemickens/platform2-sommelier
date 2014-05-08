@@ -106,7 +106,7 @@ void EapListener::ReceiveRequest(int fd) {
     return;
   }
 
-  if (payload.onex_header.version < eap_protocol::kIeee8021xEapolVersion2 ||
+  if (payload.onex_header.version < eap_protocol::kIeee8021xEapolVersion1 ||
       payload.onex_header.type != eap_protocol::kIIeee8021xTypeEapPacket ||
       payload.eap_header.code != eap_protocol::kEapCodeRequest) {
     LOG(INFO) << "Packet is not a valid EAP request";
