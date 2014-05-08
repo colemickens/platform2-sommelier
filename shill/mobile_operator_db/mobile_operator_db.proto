@@ -63,8 +63,7 @@ message OnlinePortal {
 
 message Data {
   // A unique identifier for this M[V]NO.
-  // If not provided, application logic will construct one.
-  optional string uuid = 1;
+  required string uuid = 1;
 
   enum ProviderType {
     GSM = 1;

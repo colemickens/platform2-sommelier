@@ -5,9 +5,11 @@
 
 import logging
 import os
+import re
 import sys
 import tempfile
 import textwrap
+import uuid
 
 from xml.etree import ElementTree
 from xml.dom import minidom
@@ -434,6 +436,7 @@ class ServiceProvidersConverter(object):
     def _SpewData(self, node):
         self._SpewMessageBegin(u'data')
 
+        self._SpewString(u'uuid', str(uuid.uuid4()))
         country_node = node.find(u'country')
         self._SpewString(u'country', country_node.get(u'code'))
 

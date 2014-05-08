@@ -730,7 +730,8 @@ void MobileOperatorInfoImpl::ReloadData(const Data &data) {
   SLOG(Cellular, 3) << __func__;
   // |uuid_| is *always* overwritten. An MNO and MVNO should not share the
   // |uuid_|.
-  uuid_ = GenerateUUID(data);
+  CHECK(data.has_uuid());
+  uuid_ = data.uuid();
 
   if (data.has_country()) {
     country_ = data.country();
@@ -794,37 +795,6 @@ void MobileOperatorInfoImpl::ReloadData(const Data &data) {
   if (data.has_activation_code()) {
     activation_code_ = data.activation_code();
   }
-}
-
-string MobileOperatorInfoImpl::GenerateUUID(
-    const mobile_operator_db::Data &data) const {
-  string uuid;
-  if (data.has_uuid()) {
-    uuid = data.uuid();
-  } else {
-    // Generate a reliably reproducible and hopefully unique uid from other
-    // information.
-    if (data.mccmnc_size() > 0) {
-      uuid += data.mccmnc(0);
-    }
-    if (data.localized_name_size() > 0) {
-      DCHECK(data.localized_name(0).has_name());
-      uuid += data.localized_name(0).name();
-    }
-    if (data.mobile_apn_size() > 0) {
-      DCHECK(data.mobile_apn(0).has_apn());
-      uuid += data.mobile_apn(0).apn();
-    }
-    if (data.sid_size() > 0) {
-      uuid += data.sid(0);
-    }
-    if (data.nid_size() > 0) {
-      uuid += data.nid(0);
-    }
-  }
-  replace_if(uuid.begin(), uuid.end(),
-             &MobileOperatorInfoImpl::UuidIllegalChar, '_');
-  return uuid;
 }
 
 void MobileOperatorInfoImpl::HandleMCCMNCUpdate() {
@@ -937,10 +907,6 @@ void MobileOperatorInfoImpl::NotifyOperatorChanged() {
 bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
   return IsMobileNetworkOperatorKnown() ||
          IsMobileVirtualNetworkOperatorKnown();
-}
-
-bool MobileOperatorInfoImpl::UuidIllegalChar(char a) {
-  return (!isalnum(a) && a != '_');
 }
 
 }  // namespace shill

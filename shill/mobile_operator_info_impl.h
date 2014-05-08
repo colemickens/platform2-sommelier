@@ -99,7 +99,6 @@ class MobileOperatorInfoImpl {
   // This allows MVNOs to overwrite information obtained from the corresponding
   // MNO.
   void ReloadData(const mobile_operator_db::Data &data);
-  std::string GenerateUUID(const mobile_operator_db::Data &data) const;
   // Append candidates recognized by |mccmnc| to the candidate list.
   bool AppendToCandidatesByMCCMNC(const std::string &mccmnc);
   bool AppendToCandidatesBySID(const std::string &sid);
@@ -122,9 +121,6 @@ class MobileOperatorInfoImpl {
   void HandleOperatorNameUpdate();
   void HandleSIDUpdate();
   void HandleOnlinePortalUpdate();
-
-  // Some characters are not allowed in |uuid_|.
-  static bool UuidIllegalChar(char a);
 
   // Accessor functions for testing purpose only.
   mobile_operator_db::MobileOperatorDB *database() {
