@@ -17,7 +17,7 @@ namespace {
 // Here:
 //    http://server.com/path/to/object - is the URL of the object,
 //    ?k=v&foo=bar                     - URL query string
-//    #fragment                        - URL framgment string
+//    #fragment                        - URL fragment string
 // If |exclude_fragment| is true, the function returns the start character and
 // the length of the query string alone. If it is false, the query string length
 // will include both the query string and the fragment.
@@ -50,7 +50,9 @@ bool GetQueryStringPos(const std::string& url, bool exclude_fragment,
 }
 }  // anonymous namespace
 
-std::string chromeos::url::TrimOffQueryString(std::string* url) {
+namespace buffet {
+
+std::string url::TrimOffQueryString(std::string* url) {
   size_t query_pos;
   if (!GetQueryStringPos(*url, false, &query_pos, nullptr))
     return std::string();
@@ -59,12 +61,12 @@ std::string chromeos::url::TrimOffQueryString(std::string* url) {
   return query_string;
 }
 
-std::string chromeos::url::Combine(
+std::string url::Combine(
     const std::string& url, const std::string& subpath) {
   return CombineMultiple(url, {subpath});
 }
 
-std::string chromeos::url::CombineMultiple(
+std::string url::CombineMultiple(
     const std::string& url, const std::vector<std::string>& parts) {
   std::string result = url;
   if (!parts.empty()) {
@@ -83,7 +85,7 @@ std::string chromeos::url::CombineMultiple(
   return result;
 }
 
-std::string chromeos::url::GetQueryString(
+std::string url::GetQueryString(
     const std::string& url, bool remove_fragment) {
   std::string query_string;
   size_t query_pos, query_len;
@@ -93,22 +95,22 @@ std::string chromeos::url::GetQueryString(
   return query_string;
 }
 
-chromeos::data_encoding::WebParamList chromeos::url::GetQueryStringParameters(
+data_encoding::WebParamList url::GetQueryStringParameters(
     const std::string& url) {
   // Extract the query string and remove the leading '?'.
   std::string query_string = GetQueryString(url, true);
   if (!query_string.empty() && query_string.front() == '?')
     query_string.erase(query_string.begin());
-  return chromeos::data_encoding::WebParamsDecode(query_string);
+  return data_encoding::WebParamsDecode(query_string);
 }
 
-std::string chromeos::url::GetQueryStringValue(
+std::string url::GetQueryStringValue(
     const std::string& url, const std::string& name) {
   return GetQueryStringValue(GetQueryStringParameters(url), name);
 }
 
-std::string chromeos::url::GetQueryStringValue(
-    const chromeos::data_encoding::WebParamList& params,
+std::string url::GetQueryStringValue(
+    const data_encoding::WebParamList& params,
     const std::string& name) {
   for (auto&& pair : params) {
     if (name.compare(pair.first) == 0)
@@ -117,7 +119,7 @@ std::string chromeos::url::GetQueryStringValue(
   return std::string();
 }
 
-std::string chromeos::url::RemoveQueryString(
+std::string url::RemoveQueryString(
     const std::string& url, bool remove_fragment_too) {
   size_t query_pos, query_len;
   if (!GetQueryStringPos(url, !remove_fragment_too, &query_pos, &query_len))
@@ -130,14 +132,14 @@ std::string chromeos::url::RemoveQueryString(
   return result;
 }
 
-std::string chromeos::url::AppendQueryParam(
+std::string url::AppendQueryParam(
     const std::string& url, const std::string& name, const std::string& value) {
   return AppendQueryParams(url, {{name, value}});
 }
 
-std::string chromeos::url::AppendQueryParams(
+std::string url::AppendQueryParams(
     const std::string& url,
-    const chromeos::data_encoding::WebParamList& params) {
+    const data_encoding::WebParamList& params) {
   if (params.empty())
     return url;
   size_t query_pos, query_len;
@@ -149,16 +151,17 @@ std::string chromeos::url::AppendQueryParams(
   } else if (query_len > 1) {
     result += '&';
   }
-  result += chromeos::data_encoding::WebParamsEncode(params);
+  result += data_encoding::WebParamsEncode(params);
   if (fragment_pos < url.size()) {
     result += url.substr(fragment_pos);
   }
   return result;
 }
 
-bool chromeos::url::HasQueryString(const std::string& url) {
+bool url::HasQueryString(const std::string& url) {
   size_t query_pos, query_len;
   GetQueryStringPos(url, true, &query_pos, &query_len);
   return (query_len > 0);
 }
 
+}  // namespace buffet

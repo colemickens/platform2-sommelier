@@ -16,7 +16,7 @@
 #include "buffet/mime_utils.h"
 #include "buffet/url_utils.h"
 
-namespace chromeos {
+namespace buffet {
 
 using http::fake::Transport;
 using http::fake::ServerRequestResponseBase;
@@ -257,4 +257,4 @@ std::string ServerResponse::GetStatusText() const {
   return std::string();
 }
 
-}  // namespace chromeos
+}  // namespace buffet

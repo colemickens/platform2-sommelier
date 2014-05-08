@@ -14,12 +14,12 @@
 
 #include "buffet/http_connection.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 namespace curl {
 
 // This is a libcurl-based implementation of http::Connection.
-class Connection : public chromeos::http::Connection {
+class Connection : public http::Connection {
  public:
   Connection(CURL* curl_handle, const std::string& method,
              std::shared_ptr<http::Transport> transport);
@@ -81,6 +81,6 @@ class Connection : public chromeos::http::Connection {
 
 }  // namespace curl
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_CONNECTION_CURL_H_

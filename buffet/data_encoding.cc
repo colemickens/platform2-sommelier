@@ -23,16 +23,16 @@ inline int HexToDec(int hex) {
   return dec;
 }
 
-} // namespace
+}  // namespace
 
 /////////////////////////////////////////////////////////////////////////
-namespace chromeos {
+namespace buffet {
 namespace data_encoding {
 
 std::string UrlEncode(const char* data, bool encodeSpaceAsPlus) {
   std::string result;
 
-  while(*data) {
+  while (*data) {
     char c = *data++;
     // According to RFC3986 (http://www.faqs.org/rfcs/rfc3986.html),
     // section 2.3. - Unreserved Characters
@@ -47,7 +47,8 @@ std::string UrlEncode(const char* data, bool encodeSpaceAsPlus) {
       // 'application/x-www-form-urlencoded'
       result += '+';
     } else {
-      base::StringAppendF(&result, "%%%02X", (unsigned char)c); // Encode as %NN
+      base::StringAppendF(&result, "%%%02X",
+                          static_cast<unsigned char>(c));  // Encode as %NN
     }
   }
   return result;
@@ -62,7 +63,7 @@ std::string UrlDecode(const char* data) {
     // so it is safe to access data[0] and data[1] without overrunning the buf.
     if (c == '%' &&
         (part1 = HexToDec(data[0])) >= 0 && (part2 = HexToDec(data[1])) >= 0) {
-      c = char((part1 << 4) | part2);
+      c = static_cast<char>((part1 << 4) | part2);
       data += 2;
     } else if (c == '+') {
       c = ' ';
@@ -96,5 +97,5 @@ WebParamList WebParamsDecode(const std::string& data) {
   return result;
 }
 
-} // namespace data_encoding
-} // namespace chromeos
+}  // namespace data_encoding
+}  // namespace buffet

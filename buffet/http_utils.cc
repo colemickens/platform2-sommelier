@@ -13,7 +13,7 @@
 #include "buffet/mime_utils.h"
 #include "buffet/data_encoding.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 
 const char kErrorDomainJSON[] = "json_parser";
@@ -48,7 +48,7 @@ std::unique_ptr<Response> PostText(const std::string& url,
                                    std::shared_ptr<Transport> transport,
                                    ErrorPtr* error) {
   if (mime_type == nullptr) {
-    mime_type = chromeos::mime::application::kWwwFormUrlEncoded;
+    mime_type = mime::application::kWwwFormUrlEncoded;
   }
 
   return PostBinary(url, data, strlen(data), mime_type, headers, transport,
@@ -67,7 +67,7 @@ std::unique_ptr<Response> SendRequest(const char * method,
   request.AddHeaders(headers);
   if (data_size > 0) {
     if (mime_type == nullptr) {
-      mime_type = chromeos::mime::application::kOctet_stream;
+      mime_type = mime::application::kOctet_stream;
     }
     request.SetContentType(mime_type);
     if (!request.AddRequestBody(data, data_size, error))
@@ -90,9 +90,9 @@ std::unique_ptr<Response> PostFormData(const std::string& url,
                                        const HeaderList& headers,
                                        std::shared_ptr<Transport> transport,
                                        ErrorPtr* error) {
-  std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
+  std::string encoded_data = data_encoding::WebParamsEncode(data);
   return PostBinary(url, encoded_data.c_str(), encoded_data.size(),
-                    chromeos::mime::application::kWwwFormUrlEncoded,
+                    mime::application::kWwwFormUrlEncoded,
                     headers, transport, error);
 }
 
@@ -164,4 +164,4 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
 }
 
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet

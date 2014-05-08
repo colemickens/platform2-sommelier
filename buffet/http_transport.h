@@ -14,7 +14,7 @@
 
 #include "buffet/error.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 
 typedef std::vector<std::pair<std::string, std::string>> HeaderList;
@@ -49,6 +49,6 @@ class Transport {
 };
 
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_TRANSPORT_H_

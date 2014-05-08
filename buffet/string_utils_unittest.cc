@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace chromeos;
+using namespace buffet;  // NOLINT(build/namespaces)
 
 TEST(StringUtils, Split) {
   std::vector<std::string> parts;

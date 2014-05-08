@@ -7,15 +7,15 @@
 
 #include "buffet/error.h"
 
-using chromeos::Error;
+using buffet::Error;
 
 namespace {
 
-chromeos::ErrorPtr GenerateNetworkError() {
+buffet::ErrorPtr GenerateNetworkError() {
   return Error::Create("network", "not_found", "Resource not found");
 }
 
-chromeos::ErrorPtr GenerateHttpError() {
+buffet::ErrorPtr GenerateHttpError() {
   auto inner = GenerateNetworkError();
   return Error::Create("HTTP", "404", "Not found", std::move(inner));
 }

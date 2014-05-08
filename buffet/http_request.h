@@ -17,7 +17,7 @@
 #include "buffet/http_transport.h"
 #include "buffet/error.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 
 // HTTP request verbs
@@ -346,6 +346,6 @@ class Response {
 };
 
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_REQUEST_H_

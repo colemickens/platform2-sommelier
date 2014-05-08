@@ -17,7 +17,7 @@ namespace base {
   class DictionaryValue;
 }  // namespace base
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 
 extern const char kErrorDomainJSON[];
@@ -176,6 +176,6 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
     const Response* response, int* status_code, ErrorPtr* error);
 
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_UTILS_H_

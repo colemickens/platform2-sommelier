@@ -10,7 +10,7 @@
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 namespace fake {
 
@@ -91,4 +91,4 @@ bool Connection::ReadResponseData(void* data, size_t buffer_size,
 
 }  // namespace fake
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet

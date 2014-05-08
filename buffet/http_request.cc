@@ -12,7 +12,7 @@
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 
 // request_type
@@ -184,7 +184,7 @@ std::string Request::GetUserAgent() const {
 bool Request::SendRequestIfNeeded(ErrorPtr* error) {
   if (transport_) {
     if (!connection_) {
-      chromeos::http::HeaderList headers = MapToVector(headers_);
+      http::HeaderList headers = MapToVector(headers_);
       std::vector<std::string> ranges;
       if (method_ != request_type::kHead) {
         ranges.reserve(ranges_.size());
@@ -221,7 +221,7 @@ bool Request::SendRequestIfNeeded(ErrorPtr* error) {
     if (connection_)
       return true;
   } else {
-    Error::AddTo(error, chromeos::http::curl::kErrorDomain,
+    Error::AddTo(error, http::curl::kErrorDomain,
                  "request_already_received", "HTTP response already received");
   }
   return false;
@@ -294,4 +294,4 @@ std::string Response::GetHeader(const char* header_name) const {
 }
 
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet

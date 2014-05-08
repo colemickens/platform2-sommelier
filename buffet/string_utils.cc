@@ -6,9 +6,11 @@
 
 #include <algorithm>
 #include <string.h>
+#include <utility>
+
 #include <base/strings/string_util.h>
 
-namespace chromeos {
+namespace buffet {
 namespace string_utils {
 
 std::vector<std::string> Split(const std::string& str,
@@ -33,7 +35,8 @@ std::vector<std::string> Split(const std::string& str,
   }
 
   if (trim_whitespaces) {
-    std::for_each(tokens.begin(), tokens.end(), [](std::string& str) {
+    std::for_each(tokens.begin(), tokens.end(),
+                  [](std::string& str) {  // NOLINT(runtime/references)
       TrimWhitespaceASCII(str, TRIM_ALL, &str); });
   }
 
@@ -83,5 +86,5 @@ std::string Join(const std::string& delimiter,
   return str1 + delimiter + str2;
 }
 
-} // namespace string_utils
-} // namespace chromeos
+}  // namespace string_utils
+}  // namespace buffet

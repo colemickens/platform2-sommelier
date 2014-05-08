@@ -9,7 +9,7 @@
 
 #include "buffet/http_transport.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 namespace curl {
 
@@ -42,6 +42,6 @@ class Transport : public http::Transport {
 
 }  // namespace curl
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_TRANSPORT_CURL_H_

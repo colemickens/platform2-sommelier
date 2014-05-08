@@ -6,9 +6,10 @@
 #define BUFFET_MAP_UTILS_H_
 
 #include <map>
+#include <utility>
 #include <vector>
 
-namespace chromeos {
+namespace buffet {
 
 // Given an STL map returns a vector containing all keys from the map
 template<typename T>
@@ -41,6 +42,6 @@ std::vector<std::pair<typename T::key_type,
   return vector;
 }
 
-} // namespace chromeos
+}  // namespace buffet
 
-#endif // BUFFET_MAP_UTILS_H_
+#endif  // BUFFET_MAP_UTILS_H_

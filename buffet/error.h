@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 
-namespace chromeos {
+namespace buffet {
 
 class Error;  // Forward declaration.
 
@@ -66,6 +66,6 @@ class Error {
   DISALLOW_COPY_AND_ASSIGN(Error);
 };
 
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_ERROR_H_

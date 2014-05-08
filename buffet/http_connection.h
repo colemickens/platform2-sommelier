@@ -13,7 +13,7 @@
 #include "buffet/error.h"
 #include "buffet/http_transport.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -79,6 +79,6 @@ class Connection {
 };
 
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_CONNECTION_H_

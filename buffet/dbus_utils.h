@@ -21,7 +21,7 @@ scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
                                            const std::string& message);
 
 scoped_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                        const chromeos::Error* error);
+                                        const Error* error);
 
 
 dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(

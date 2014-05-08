@@ -16,7 +16,7 @@
 #include "buffet/http_transport.h"
 #include "buffet/http_utils.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 namespace fake {
 
@@ -218,6 +218,6 @@ class ServerResponse : public ServerRequestResponseBase {
 
 }  // namespace fake
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_TRANSPORT_FAKE_H_

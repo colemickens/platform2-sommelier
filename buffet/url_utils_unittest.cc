@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace chromeos;
+using namespace buffet;  // NOLINT(build/namespaces)
 
 TEST(UrlUtils, Combine) {
   EXPECT_EQ("http://sample.org/path",

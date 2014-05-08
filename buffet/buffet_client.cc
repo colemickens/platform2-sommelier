@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
+#include <iostream>  // NOLINT(readability/streams)
 #include <string>
 #include <sysexits.h>
 
@@ -130,7 +130,7 @@ class BuffetHelperProxy {
     std::map<std::string, std::shared_ptr<base::Value>> params;
 
     if (!args.empty()) {
-      auto key_values = chromeos::data_encoding::WebParamsDecode(args.front());
+      auto key_values = buffet::data_encoding::WebParamsDecode(args.front());
       for (auto&& pair : key_values) {
         params.insert(std::make_pair(
           pair.first, std::shared_ptr<base::Value>(

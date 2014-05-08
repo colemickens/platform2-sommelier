@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace chromeos::data_encoding;
+using namespace buffet::data_encoding;  // NOLINT(build/namespaces)
 
 TEST(data_encoding, UrlEncoding) {
   std::string test = "\"http://sample/path/0014.html \"";
@@ -20,7 +20,6 @@ TEST(data_encoding, UrlEncoding) {
   EXPECT_EQ("%22http%3A%2F%2Fsample%2Fpath%2F0014.html%20%22",
             encoded);
   EXPECT_EQ(test, UrlDecode(encoded.c_str()));
-
 }
 
 TEST(data_encoding, WebParamsEncoding) {

@@ -6,8 +6,8 @@
 
 #include <base/logging.h>
 
-using chromeos::Error;
-using chromeos::ErrorPtr;
+using buffet::Error;
+using buffet::ErrorPtr;
 
 ErrorPtr Error::Create(const std::string& domain,
                        const std::string& code,

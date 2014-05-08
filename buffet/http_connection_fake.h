@@ -14,12 +14,12 @@
 #include "buffet/http_connection.h"
 #include "buffet/http_transport_fake.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 namespace fake {
 
 // This is a fake implementation of http::Connection for unit testing.
-class Connection : public chromeos::http::Connection {
+class Connection : public http::Connection {
  public:
   Connection(const std::string& url, const std::string& method,
              std::shared_ptr<http::Transport> transport);
@@ -57,6 +57,6 @@ class Connection : public chromeos::http::Connection {
 
 }  // namespace fake
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet
 
 #endif  // BUFFET_HTTP_CONNECTION_FAKE_H_

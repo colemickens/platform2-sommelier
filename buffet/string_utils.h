@@ -6,9 +6,10 @@
 #define BUFFET_STRING_UTILS_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
-namespace chromeos {
+namespace buffet {
 namespace string_utils {
 
 // Treats the string as a delimited list of substrings and returns the array
@@ -35,7 +36,7 @@ std::string Join(char delimiter,
 std::string Join(const std::string& delimiter,
                  const std::string& str1, const std::string& str2);
 
-} // namespace string_utils
-} // namespace chromeos
+}  // namespace string_utils
+}  // namespace buffet
 
-#endif // BUFFET_STRING_UTILS_H_
+#endif  // BUFFET_STRING_UTILS_H_

@@ -38,7 +38,7 @@ scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
 }
 
 scoped_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                        const chromeos::Error* error) {
+                                        const Error* error) {
   std::string message;
   while (error) {
     // Format error string as "domain/code:message".

@@ -10,7 +10,7 @@
 #include "buffet/http_transport_curl.h"
 #include "buffet/string_utils.h"
 
-namespace chromeos {
+namespace buffet {
 namespace http {
 namespace curl {
 
@@ -223,4 +223,4 @@ size_t Connection::header_callback(char* ptr, size_t size,
 
 }  // namespace curl
 }  // namespace http
-}  // namespace chromeos
+}  // namespace buffet

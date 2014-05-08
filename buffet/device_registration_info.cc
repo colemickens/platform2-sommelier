@@ -20,8 +20,6 @@
 #include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
-using namespace chromeos;  // NOLINT(build/namespaces)
-
 const char buffet::kErrorDomainOAuth2[] = "oauth2";
 const char buffet::kErrorDomainGCD[] = "gcd";
 const char buffet::kErrorDomainGCDServer[] = "gcd_server";
@@ -66,27 +64,27 @@ bool GetParamValue(
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
     const std::string& access_token) {
-  std::string authorization = string_utils::Join(' ',
-                                                 access_token_type,
-                                                 access_token);
+  std::string authorization =
+      buffet::string_utils::Join(' ', access_token_type, access_token);
   // Linter doesn't like the ; after } on the following line...
-  return {http::request_header::kAuthorization, authorization};  // NOLINT
+  return {buffet::http::request_header::kAuthorization,
+          authorization};  // NOLINT
 }
 
 std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-    const http::Response* response, ErrorPtr* error) {
+    const buffet::http::Response* response, buffet::ErrorPtr* error) {
   int code = 0;
-  auto resp = http::ParseJsonResponse(response, &code, error);
-  if (resp && code >= http::status_code::BadRequest) {
+  auto resp = buffet::http::ParseJsonResponse(response, &code, error);
+  if (resp && code >= buffet::http::status_code::BadRequest) {
     if (error) {
       std::string error_code, error_message;
       if (resp->GetString("error", &error_code) &&
           resp->GetString("error_description", &error_message)) {
-        Error::AddTo(error, buffet::kErrorDomainOAuth2, error_code,
-                     error_message);
+        buffet::Error::AddTo(error, buffet::kErrorDomainOAuth2, error_code,
+                             error_message);
       } else {
-        Error::AddTo(error, buffet::kErrorDomainOAuth2,
-                     "unexpected_response", "Unexpected OAuth error");
+        buffet::Error::AddTo(error, buffet::kErrorDomainOAuth2,
+                             "unexpected_response", "Unexpected OAuth error");
       }
     }
     return std::unique_ptr<base::DictionaryValue>();
@@ -94,12 +92,12 @@ std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
   return resp;
 }
 
-inline void SetUnexpectedError(ErrorPtr* error) {
-  Error::AddTo(error, buffet::kErrorDomainGCD, "unexpected_response",
-               "Unexpected GCD error");
+inline void SetUnexpectedError(buffet::ErrorPtr* error) {
+  buffet::Error::AddTo(error, buffet::kErrorDomainGCD, "unexpected_response",
+                       "Unexpected GCD error");
 }
 
-void ParseGCDError(const base::DictionaryValue* json, ErrorPtr* error) {
+void ParseGCDError(const base::DictionaryValue* json, buffet::ErrorPtr* error) {
   if (!error)
     return;
 
@@ -122,8 +120,8 @@ void ParseGCDError(const base::DictionaryValue* json, ErrorPtr* error) {
     std::string error_code, error_message;
     if (error_object->GetString("reason", &error_code) &&
         error_object->GetString("message", &error_message)) {
-      Error::AddTo(error, buffet::kErrorDomainGCDServer,
-                    error_code, error_message);
+      buffet::Error::AddTo(error, buffet::kErrorDomainGCDServer,
+                           error_code, error_message);
     } else {
       SetUnexpectedError(error);
     }
@@ -132,9 +130,9 @@ void ParseGCDError(const base::DictionaryValue* json, ErrorPtr* error) {
 
 std::string BuildURL(const std::string& url,
                      const std::vector<std::string>& subpaths,
-                     const data_encoding::WebParamList& params) {
-  std::string result = url::CombineMultiple(url, subpaths);
-  return url::AppendQueryParams(result, params);
+                     const buffet::data_encoding::WebParamList& params) {
+  std::string result = buffet::url::CombineMultiple(url, subpaths);
+  return buffet::url::AppendQueryParams(result, params);
 }
 
 }  // anonymous namespace

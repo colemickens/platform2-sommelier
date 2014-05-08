@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_DATA_ENCODING__H_
-#define BUFFET_DATA_ENCODING__H_
+#ifndef BUFFET_DATA_ENCODING_H_
+#define BUFFET_DATA_ENCODING_H_
 
-#include <vector>
 #include <string>
+#include <utility>
+#include <vector>
 
-namespace chromeos {
+namespace buffet {
 namespace data_encoding {
 
 typedef std::vector<std::pair<std::string, std::string>> WebParamList;
@@ -39,7 +40,7 @@ inline std::string WebParamsEncode(const WebParamList& params) {
 // content encoding.
 WebParamList WebParamsDecode(const std::string& data);
 
-} // namespace data_encoding
-} // namespace chromeos
+}  // namespace data_encoding
+}  // namespace buffet
 
-#endif // BUFFET_DATA_ENCODING__H_
+#endif  // BUFFET_DATA_ENCODING_H_

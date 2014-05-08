@@ -15,8 +15,8 @@
 #include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
-using namespace chromeos;        // NOLINT(build/namespaces)
-using namespace chromeos::http;  // NOLINT(build/namespaces)
+using namespace buffet;        // NOLINT(build/namespaces)
+using namespace buffet::http;  // NOLINT(build/namespaces)
 
 static const char kFakeUrl[] = "http://localhost";
 static const char kEchoUrl[] = "http://localhost/echo";

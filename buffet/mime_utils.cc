@@ -9,11 +9,11 @@
 
 #include "buffet/string_utils.h"
 
-using namespace chromeos;
+namespace buffet {
 
-//***************************************************************************
-//******************************* MIME types ********************************
-//***************************************************************************
+// ***************************************************************************
+// ******************************* MIME types ********************************
+// ***************************************************************************
 const char mime::types::kApplication[]             = "application";
 const char mime::types::kAudio[]                   = "audio";
 const char mime::types::kImage[]                   = "image";
@@ -39,9 +39,9 @@ const char mime::application::kJson[]              = "application/json";
 const char mime::application::kWwwFormUrlEncoded[] =
     "application/x-www-form-urlencoded";
 
-//***************************************************************************
-//**************************** Utility Functions ****************************
-//***************************************************************************
+// ***************************************************************************
+// **************************** Utility Functions ****************************
+// ***************************************************************************
 static std::string EncodeParam(const std::string& param) {
   // If the string contains one of "tspecials" characters as
   // specified in RFC 1521, enclose it in quotes.
@@ -58,9 +58,9 @@ static std::string DecodeParam(const std::string& param) {
   return param;
 }
 
-//***************************************************************************
-//******************** Main MIME manipulation functions *********************
-//***************************************************************************
+// ***************************************************************************
+// ******************** Main MIME manipulation functions *********************
+// ***************************************************************************
 
 bool mime::Split(const std::string& mime_string,
                  std::string* type, std::string* subtype,
@@ -72,7 +72,7 @@ bool mime::Split(const std::string& mime_string,
   if (!mime::Split(parts.front(), type, subtype))
     return false;
 
-  if(parameters) {
+  if (parameters) {
     parameters->clear();
     parameters->reserve(parts.size() - 1);
     for (size_t i = 1; i < parts.size(); i++) {
@@ -89,10 +89,10 @@ bool mime::Split(const std::string& mime_string,
   std::string mime = mime::RemoveParameters(mime_string);
   auto types = string_utils::SplitAtFirst(mime, '/');
 
-  if(type)
+  if (type)
     *type = types.first;
 
-  if(subtype)
+  if (subtype)
     *subtype = types.second;
 
   return !types.first.empty() && !types.second.empty();
@@ -146,9 +146,11 @@ std::string mime::AppendParameter(const std::string& mime_string,
 std::string mime::GetParameterValue(const std::string& mime_string,
                                     const std::string& paramName) {
   mime::Parameters params = mime::GetParameters(mime_string);
-  for(auto&& pair : params) {
+  for (auto&& pair : params) {
     if (base::strcasecmp(pair.first.c_str(), paramName.c_str()) == 0)
       return pair.second;
   }
   return std::string();
 }
+
+}  // namespace buffet

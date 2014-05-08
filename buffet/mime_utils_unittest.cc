@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace chromeos;
+using namespace buffet;  // NOLINT(build/namespaces)
 
 TEST(MimeUtils, Combine) {
   std::string mime_string = mime::Combine(mime::types::kText, "xml");

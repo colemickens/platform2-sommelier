@@ -127,7 +127,7 @@ scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
 
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
 
-  chromeos::ErrorPtr error;
+  buffet::ErrorPtr error;
   bool registered = device_info_.CheckRegistration(&error);
   // If it fails due to any reason other than 'device not registered',
   // treat it as a real error and report it to the caller.
@@ -162,7 +162,7 @@ scoped_ptr<dbus::Response> Manager::HandleGetDeviceInfo(
   LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
 
   std::string device_info_str;
-  chromeos::ErrorPtr error;
+  buffet::ErrorPtr error;
   auto device_info = device_info_.GetDeviceInfo(&error);
   if (!device_info)
     return GetDBusError(method_call, error.get());
@@ -207,7 +207,7 @@ scoped_ptr<dbus::Response> Manager::HandleStartRegisterDevice(
 
   LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
 
-  chromeos::ErrorPtr error;
+  buffet::ErrorPtr error;
   std::string id = device_info_.StartRegistration(params, &error);
   if (id.empty())
     return GetDBusError(method_call, error.get());
@@ -238,7 +238,7 @@ scoped_ptr<dbus::Response> Manager::HandleFinishRegisterDevice(
   }
 
   LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
-  chromeos::ErrorPtr error;
+  buffet::ErrorPtr error;
   if (!device_info_.FinishRegistration(user_auth_code, &error))
     return GetDBusError(method_call, error.get());
 

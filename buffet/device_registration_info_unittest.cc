@@ -15,8 +15,7 @@
 #include "buffet/storage_impls.h"
 
 using namespace buffet;          // NOLINT(build/namespaces)
-using namespace chromeos;        // NOLINT(build/namespaces)
-using namespace chromeos::http;  // NOLINT(build/namespaces)
+using namespace buffet::http;    // NOLINT(build/namespaces)
 
 namespace {
 

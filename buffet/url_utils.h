@@ -5,12 +5,14 @@
 #ifndef BUFFET_URL_UTILS_H_
 #define BUFFET_URL_UTILS_H_
 
-#include <base/basictypes.h>
 #include <string>
 #include <vector>
+
+#include <base/basictypes.h>
+
 #include "buffet/data_encoding.h"
 
-namespace chromeos {
+namespace buffet {
 
 namespace url {
 
@@ -23,7 +25,7 @@ std::string CombineMultiple(
     const std::vector<std::string>& parts) WARN_UNUSED_RESULT;
 
 // Removes the query string/fragment from |url| and returns the query string.
-// This method actiually modifies |url|. So, if you call it on this:
+// This method actually modifies |url|. So, if you call it on this:
 //    http://www.test.org/?foo=bar
 // it will modify |url| to "http://www.test.org/" and return "?foo=bar"
 std::string TrimOffQueryString(std::string* url);
@@ -34,7 +36,7 @@ std::string TrimOffQueryString(std::string* url);
 // Here:
 //    http://server.com/path/to/object - is the URL of the object,
 //    ?k=v&foo=bar                     - URL query string
-//    #fragment                        - URL framgment string
+//    #fragment                        - URL fragment string
 // If |remove_fragment| is true, the function returns the query string without
 // the fragment. Otherwise the fragment is included as part of the result.
 std::string GetQueryString(const std::string& url, bool remove_fragment);
@@ -69,7 +71,7 @@ std::string AppendQueryParams(
 // Checks if the URL has query parameters.
 bool HasQueryString(const std::string& url);
 
-} // namespace url
-} // namespace chromeos
+}  // namespace url
+}  // namespace buffet
 
-#endif // BUFFET_URL_UTILS_H_
+#endif  // BUFFET_URL_UTILS_H_

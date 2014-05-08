@@ -38,7 +38,7 @@ class DeviceRegistrationInfo {
   DeviceRegistrationInfo();
   // This constructor allows to pass in a custom HTTP transport
   // (mainly for testing).
-  DeviceRegistrationInfo(std::shared_ptr<chromeos::http::Transport> transport,
+  DeviceRegistrationInfo(std::shared_ptr<http::Transport> transport,
                          std::shared_ptr<StorageInterface> storage);
 
   // Returns the authorization HTTP header that can be used to talk
@@ -50,7 +50,7 @@ class DeviceRegistrationInfo {
   // appended to the base URL which is normally
   //    https://www.googleapis.com/clouddevices/v1/".
   // If |params| are specified, each key-value pair is formatted using
-  // chromeos::data_encoding::WebParamsEncode() and appended to URL as a query
+  // data_encoding::WebParamsEncode() and appended to URL as a query
   // string.
   // So, calling:
   //    GetServiceURL("ticket", {{"key","apiKey"}})
@@ -58,34 +58,34 @@ class DeviceRegistrationInfo {
   //    https://www.googleapis.com/clouddevices/v1/ticket?key=apiKey
   std::string GetServiceURL(
       const std::string& subpath = {},
-      const chromeos::data_encoding::WebParamList& params = {}) const;
+      const data_encoding::WebParamList& params = {}) const;
 
   // Returns a service URL to access the registered device on GCD server.
   // The base URL used to construct the full URL looks like this:
   //    https://www.googleapis.com/clouddevices/v1/devices/<device_id>/
   std::string GetDeviceURL(
     const std::string& subpath = {},
-    const chromeos::data_encoding::WebParamList& params = {}) const;
+    const data_encoding::WebParamList& params = {}) const;
 
   // Similar to GetServiceURL, GetOAuthURL() returns a URL of OAuth 2.0 server.
   // The base URL used is https://accounts.google.com/o/oauth2/.
   std::string GetOAuthURL(
     const std::string& subpath = {},
-    const chromeos::data_encoding::WebParamList& params = {}) const;
+    const data_encoding::WebParamList& params = {}) const;
 
   // Returns the registered device ID (GUID) or empty string if failed
-  std::string GetDeviceId(chromeos::ErrorPtr* error);
+  std::string GetDeviceId(ErrorPtr* error);
 
   // Loads the device registration information from cache.
   bool Load();
 
   // Checks for the valid device registration as well as refreshes
   // the device access token, if available.
-  bool CheckRegistration(chromeos::ErrorPtr* error);
+  bool CheckRegistration(ErrorPtr* error);
 
   // Gets the full device description JSON object, or nullptr if
   // the device is not registered or communication failure.
-  std::unique_ptr<base::Value> GetDeviceInfo(chromeos::ErrorPtr* error);
+  std::unique_ptr<base::Value> GetDeviceInfo(ErrorPtr* error);
 
   // Starts device registration procedure. |params| are a list of
   // key-value pairs of device information, such as client_id, client_secret,
@@ -93,21 +93,21 @@ class DeviceRegistrationInfo {
   // is used when possible. Returns a device claim ID on success.
   std::string StartRegistration(
     const std::map<std::string, std::shared_ptr<base::Value>>& params,
-    chromeos::ErrorPtr* error);
+    ErrorPtr* error);
 
   // Finalizes the device registration. If |user_auth_code| is provided, then
   // the device record is populated with user email on user's behalf. Otherwise
   // the user is responsible to issue a PATCH request to provide a valid
   // email address before calling FinishRegistration.
   bool FinishRegistration(const std::string& user_auth_code,
-                          chromeos::ErrorPtr* error);
+                          ErrorPtr* error);
 
  private:
   // Saves the device registration to cache.
   bool Save() const;
 
   // Makes sure the access token is available and up-to-date.
-  bool ValidateAndRefreshAccessToken(chromeos::ErrorPtr* error);
+  bool ValidateAndRefreshAccessToken(ErrorPtr* error);
 
   // Persistent data. Some of default values for testing purposes are used.
   // TODO(avakulenko): remove these default values in the future.
@@ -133,7 +133,7 @@ class DeviceRegistrationInfo {
   std::string display_name_ = "Coffee Pot";
 
   // HTTP transport used for communications.
-  std::shared_ptr<chromeos::http::Transport> transport_;
+  std::shared_ptr<http::Transport> transport_;
   // Serialization interface to save and load device registration info.
   std::shared_ptr<StorageInterface> storage_;
 

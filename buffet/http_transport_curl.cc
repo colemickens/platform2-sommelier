@@ -9,12 +9,11 @@
 #include "buffet/http_connection_curl.h"
 #include "buffet/http_request.h"
 
-using chromeos::http::curl::Transport;
-using chromeos::Error;
+namespace buffet {
+namespace http {
+namespace curl {
 
-namespace chromeos {
-
-const char http::curl::kErrorDomain[] = "http_transport";
+const char kErrorDomain[] = "http_transport";
 
 Transport::Transport() {
   VLOG(1) << "curl::Transport created";
@@ -77,4 +76,6 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
   return connection;
 }
 
-}  // namespace chromeos
+}  // namespace curl
+}  // namespace http
+}  // namespace buffet
