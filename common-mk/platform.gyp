@@ -15,6 +15,11 @@
       'conditions': [
         ['USE_cros_host == 0', {
           'conditions': [
+            ['USE_attestation == 1', {
+              'dependencies': [
+                '<(DEPTH)/platform2/attestation/attestation.gyp:*',
+              ],
+            }],
             ['USE_buffet == 1', {
               'dependencies': [
                 '<(DEPTH)/platform2/buffet/buffet.gyp:*',
@@ -64,7 +69,6 @@
             ['USE_tpm == 1', {
               'dependencies': [
                 '<(DEPTH)/platform/chaps/chaps.gyp:*',
-                '<(DEPTH)/platform2/attestation/attestation.gyp:*',
               ],
             }],
             ['USE_vpn == 1', {

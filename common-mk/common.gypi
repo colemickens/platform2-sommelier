@@ -14,6 +14,7 @@
 
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
+    'USE_attestation%': 0,
     'USE_buffet%': 0,
     'USE_cellular%': 0,
     'USE_crash_reporting%': 0,
