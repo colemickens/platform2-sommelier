@@ -5,6 +5,8 @@
 #include "buffet/device_registration_info.h"
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include <base/json/json_writer.h>
 #include <base/values.h>
@@ -18,8 +20,12 @@
 #include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
-using namespace chromeos;
-using namespace chromeos::data_encoding;
+using namespace chromeos;  // NOLINT(build/namespaces)
+
+const char buffet::kErrorDomainOAuth2[] = "oauth2";
+const char buffet::kErrorDomainGCD[] = "gcd";
+const char buffet::kErrorDomainGCDServer[] = "gcd_server";
+const char buffet::kErrorDomainBuffet[] = "buffet";
 
 namespace buffet {
 namespace storage_keys {
@@ -63,22 +69,24 @@ std::pair<std::string, std::string> BuildAuthHeader(
   std::string authorization = string_utils::Join(' ',
                                                  access_token_type,
                                                  access_token);
-  return {http::request_header::kAuthorization, authorization};
+  // Linter doesn't like the ; after } on the following line...
+  return {http::request_header::kAuthorization, authorization};  // NOLINT
 }
 
 std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-    const http::Response* response, std::string* error_message) {
+    const http::Response* response, ErrorPtr* error) {
   int code = 0;
-  auto resp = http::ParseJsonResponse(response, &code, error_message);
+  auto resp = http::ParseJsonResponse(response, &code, error);
   if (resp && code >= http::status_code::BadRequest) {
-    if (error_message) {
-      error_message->clear();
-      std::string error_code, error;
+    if (error) {
+      std::string error_code, error_message;
       if (resp->GetString("error", &error_code) &&
-          resp->GetString("error_description", &error)) {
-        *error_message = error_code + " (" + error + ")";
+          resp->GetString("error_description", &error_message)) {
+        Error::AddTo(error, buffet::kErrorDomainOAuth2, error_code,
+                     error_message);
       } else {
-        *error_message = "Unexpected OAuth error";
+        Error::AddTo(error, buffet::kErrorDomainOAuth2,
+                     "unexpected_response", "Unexpected OAuth error");
       }
     }
     return std::unique_ptr<base::DictionaryValue>();
@@ -86,9 +94,45 @@ std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
   return resp;
 }
 
+inline void SetUnexpectedError(ErrorPtr* error) {
+  Error::AddTo(error, buffet::kErrorDomainGCD, "unexpected_response",
+               "Unexpected GCD error");
+}
+
+void ParseGCDError(const base::DictionaryValue* json, ErrorPtr* error) {
+  if (!error)
+    return;
+
+  const base::Value* list_value = nullptr;
+  const base::ListValue* error_list = nullptr;
+  if (!json->Get("error.errors", &list_value) ||
+      !list_value->GetAsList(&error_list)) {
+    SetUnexpectedError(error);
+    return;
+  }
+
+  for (size_t i = 0; i < error_list->GetSize(); i++) {
+    const base::Value* error_value = nullptr;
+    const base::DictionaryValue* error_object = nullptr;
+    if (!error_list->Get(i, &error_value) ||
+        !error_value->GetAsDictionary(&error_object)) {
+      SetUnexpectedError(error);
+      continue;
+    }
+    std::string error_code, error_message;
+    if (error_object->GetString("reason", &error_code) &&
+        error_object->GetString("message", &error_message)) {
+      Error::AddTo(error, buffet::kErrorDomainGCDServer,
+                    error_code, error_message);
+    } else {
+      SetUnexpectedError(error);
+    }
+  }
+}
+
 std::string BuildURL(const std::string& url,
                      const std::vector<std::string>& subpaths,
-                     const WebParamList& params) {
+                     const data_encoding::WebParamList& params) {
   std::string result = url::CombineMultiple(url, subpaths);
   return url::AppendQueryParams(result, params);
 }
@@ -116,23 +160,26 @@ std::pair<std::string, std::string>
 }
 
 std::string DeviceRegistrationInfo::GetServiceURL(
-    const std::string& subpath, const WebParamList& params) const {
+    const std::string& subpath,
+    const data_encoding::WebParamList& params) const {
   return BuildURL(service_url_, {subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceURL(
-    const std::string& subpath, const WebParamList& params) const {
+    const std::string& subpath,
+    const data_encoding::WebParamList& params) const {
   CHECK(!device_id_.empty()) << "Must have a valid device ID";
   return BuildURL(service_url_, {"devices", device_id_, subpath}, params);
 }
 
-std::string DeviceRegistrationInfo::GetOAuthURL(const std::string& subpath,
-                                    const WebParamList& params) const {
+std::string DeviceRegistrationInfo::GetOAuthURL(
+    const std::string& subpath,
+    const data_encoding::WebParamList& params) const {
   return BuildURL(oauth_url_, {subpath}, params);
 }
 
-std::string DeviceRegistrationInfo::GetDeviceId() {
-  return CheckRegistration() ? device_id_ : std::string();
+std::string DeviceRegistrationInfo::GetDeviceId(ErrorPtr* error) {
+  return CheckRegistration(error) ? device_id_ : std::string();
 }
 
 bool DeviceRegistrationInfo::Load() {
@@ -192,20 +239,22 @@ bool DeviceRegistrationInfo::Save() const {
   return storage_->Save(&dict);
 }
 
-bool DeviceRegistrationInfo::CheckRegistration() {
+bool DeviceRegistrationInfo::CheckRegistration(ErrorPtr* error) {
   LOG(INFO) << "Checking device registration record.";
   if (refresh_token_.empty() ||
       device_id_.empty() ||
       device_robot_account_.empty()) {
     LOG(INFO) << "No valid device registration record found.";
+    Error::AddTo(error, kErrorDomainGCD, "device_not_registered",
+                 "No valid device registration record found");
     return false;
   }
 
   LOG(INFO) << "Device registration record found.";
-  return ValidateAndRefreshAccessToken();
+  return ValidateAndRefreshAccessToken(error);
 }
 
-bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken() {
+bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(ErrorPtr* error) {
   LOG(INFO) << "Checking access token expiration.";
   if (!access_token_.empty() &&
       !access_token_expiration_.is_null() &&
@@ -219,16 +268,13 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken() {
     {"client_id", client_id_},
     {"client_secret", client_secret_},
     {"grant_type", "refresh_token"},
-  }, transport_);
+  }, transport_, error);
   if (!response)
     return false;
 
-  std::string error;
-  auto json = ParseOAuthResponse(response.get(), &error);
-  if (!json) {
-    LOG(ERROR) << "Unable to refresh access token: " << error;
+  auto json = ParseOAuthResponse(response.get(), error);
+  if (!json)
     return false;
-  }
 
   int expires_in = 0;
   if (!json->GetString("access_token", &access_token_) ||
@@ -236,6 +282,8 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken() {
       access_token_.empty() ||
       expires_in <= 0) {
     LOG(ERROR) << "Access token unavailable.";
+    Error::AddTo(error, kErrorDomainOAuth2, "unexpected_server_response",
+                 "Access token unavailable");
     return false;
   }
 
@@ -247,40 +295,41 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken() {
   return true;
 }
 
-std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo() {
-  if (!CheckRegistration())
+std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
+    ErrorPtr* error) {
+  if (!CheckRegistration(error))
     return std::unique_ptr<base::Value>();
 
   auto response = http::Get(GetDeviceURL(),
-                            {GetAuthorizationHeader()}, transport_);
+                            {GetAuthorizationHeader()}, transport_, error);
   int status_code = 0;
-  std::unique_ptr<base::Value> device_info =
-      http::ParseJsonResponse(response.get(), &status_code, nullptr);
-
-  if (device_info) {
+  std::unique_ptr<base::DictionaryValue> json =
+      http::ParseJsonResponse(response.get(), &status_code, error);
+  if (json) {
     if (status_code >= http::status_code::BadRequest) {
       LOG(WARNING) << "Failed to retrieve the device info. Response code = "
                    << status_code;
+      ParseGCDError(json.get(), error);
       return std::unique_ptr<base::Value>();
     }
   }
-  return device_info;
+  return std::unique_ptr<base::Value>(json.release());
 }
 
 bool CheckParam(const std::string& param_name,
                 const std::string& param_value,
-                std::string* error_msg) {
+                ErrorPtr* error) {
   if (!param_value.empty())
     return true;
 
-  if (error_msg)
-    *error_msg = "Parameter " + param_name + " not specified";
+  Error::AddTo(error, kErrorDomainBuffet, "missing_parameter",
+               "Parameter " + param_name + " not specified");
   return false;
 }
 
 std::string DeviceRegistrationInfo::StartRegistration(
     const std::map<std::string, std::shared_ptr<base::Value>>& params,
-  std::string* error_msg) {
+    ErrorPtr* error) {
   GetParamValue(params, storage_keys::kClientId, &client_id_);
   GetParamValue(params, storage_keys::kClientSecret, &client_secret_);
   GetParamValue(params, storage_keys::kApiKey, &api_key_);
@@ -291,19 +340,19 @@ std::string DeviceRegistrationInfo::StartRegistration(
   GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
   GetParamValue(params, storage_keys::kServiceURL, &service_url_);
 
-  if (!CheckParam(storage_keys::kClientId, client_id_, error_msg))
+  if (!CheckParam(storage_keys::kClientId, client_id_, error))
     return std::string();
-  if (!CheckParam(storage_keys::kClientSecret, client_secret_, error_msg))
+  if (!CheckParam(storage_keys::kClientSecret, client_secret_, error))
     return std::string();
-  if (!CheckParam(storage_keys::kApiKey, api_key_, error_msg))
+  if (!CheckParam(storage_keys::kApiKey, api_key_, error))
     return std::string();
-  if (!CheckParam(storage_keys::kDeviceKind, device_kind_, error_msg))
+  if (!CheckParam(storage_keys::kDeviceKind, device_kind_, error))
     return std::string();
-  if (!CheckParam(storage_keys::kSystemName, system_name_, error_msg))
+  if (!CheckParam(storage_keys::kSystemName, system_name_, error))
     return std::string();
-  if (!CheckParam(storage_keys::kOAuthURL, oauth_url_, error_msg))
+  if (!CheckParam(storage_keys::kOAuthURL, oauth_url_, error))
     return std::string();
-  if (!CheckParam(storage_keys::kServiceURL, service_url_, error_msg))
+  if (!CheckParam(storage_keys::kServiceURL, service_url_, error))
     return std::string();
 
   std::vector<std::pair<std::string, std::vector<std::string>>> commands = {
@@ -339,19 +388,15 @@ std::string DeviceRegistrationInfo::StartRegistration(
 
   std::string url = GetServiceURL("registrationTickets", {{"key", api_key_}});
   auto resp_json = http::ParseJsonResponse(
-      http::PostJson(url, &req_json, transport_).get(), nullptr, error_msg);
+      http::PostJson(url, &req_json, transport_, error).get(), nullptr, error);
   if (!resp_json)
     return std::string();
 
-  const base::DictionaryValue* resp_dict = nullptr;
-  if (!resp_json->GetAsDictionary(&resp_dict)) {
-    if (error_msg)
-      *error_msg = "Invalid response received";
+  if (!resp_json->GetString("id", &ticket_id_)) {
+    Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
+                 "Device ID missing");
     return std::string();
   }
-
-  if (!resp_dict->GetString("id", &ticket_id_))
-    return std::string();
 
   std::string auth_url = GetOAuthURL("auth", {
     {"scope", "https://www.googleapis.com/auth/clouddevices"},
@@ -370,90 +415,103 @@ std::string DeviceRegistrationInfo::StartRegistration(
 }
 
 bool DeviceRegistrationInfo::FinishRegistration(
-    const std::string& user_auth_code) {
+    const std::string& user_auth_code, ErrorPtr* error) {
   if (ticket_id_.empty()) {
     LOG(ERROR) << "Finish registration without ticket ID";
+    Error::AddTo(error, kErrorDomainBuffet, "registration_not_started",
+                 "Device registration not started");
     return false;
   }
 
   std::string url = GetServiceURL("registrationTickets/" + ticket_id_);
   std::unique_ptr<http::Response> response;
   if (!user_auth_code.empty()) {
-    std::string user_access_token;
     response = http::PostFormData(GetOAuthURL("token"), {
       {"code", user_auth_code},
       {"client_id", client_id_},
       {"client_secret", client_secret_},
       {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
       {"grant_type", "authorization_code"}
-    }, transport_);
+    }, transport_, error);
     if (!response)
       return false;
 
-    std::string error;
-    auto json_resp = ParseOAuthResponse(response.get(), &error);
-    if (!json_resp ||
-        !json_resp->GetString("access_token", &user_access_token)) {
-      LOG(ERROR) << "Error parsing OAuth response: " << error;
+    auto json_resp = ParseOAuthResponse(response.get(), error);
+    if (!json_resp)
+      return false;
+
+    std::string user_access_token;
+    std::string token_type;
+    if (!json_resp->GetString("access_token", &user_access_token) ||
+        !json_resp->GetString("token_type", &token_type)) {
+      Error::AddTo(error, kErrorDomainOAuth2, "unexpected_response",
+                   "User access_token is missing in response");
       return false;
     }
 
     base::DictionaryValue user_info;
     user_info.SetString("userEmail", "me");
     response = http::PatchJson(
-        url, &user_info, {BuildAuthHeader("Bearer", user_access_token)},
-        transport_);
+        url, &user_info, {BuildAuthHeader(token_type, user_access_token)},
+        transport_, error);
 
-    auto json = http::ParseJsonResponse(response.get(), nullptr, &error);
-    if (!json) {
-      LOG(ERROR) << "Error populating user info: " << error;
+    auto json = http::ParseJsonResponse(response.get(), nullptr, error);
+    if (!json)
       return false;
-    }
   }
 
   std::string auth_code;
   url += "/finalize?key=" + api_key_;
   LOG(INFO) << "Sending request to: " << url;
-  response = http::PostBinary(url, nullptr, 0, transport_);
-  if (response && response->IsSuccessful()) {
-    auto json_resp = http::ParseJsonResponse(response.get(), nullptr, nullptr);
-    if (json_resp &&
-        json_resp->GetString("robotAccountEmail", &device_robot_account_) &&
-        json_resp->GetString("robotAccountAuthorizationCode", &auth_code) &&
-        json_resp->GetString("deviceDraft.id", &device_id_)) {
-      // Now get access_token and refresh_token
-      response = http::PostFormData(GetOAuthURL("token"), {
-        {"code", auth_code},
-        {"client_id", client_id_},
-        {"client_secret", client_secret_},
-        {"redirect_uri", "oob"},
-        {"scope", "https://www.googleapis.com/auth/clouddevices"},
-        {"grant_type", "authorization_code"}
-      }, transport_);
-      if (!response)
-        return false;
-
-      json_resp = ParseOAuthResponse(response.get(), nullptr);
-      int expires_in = 0;
-      if (!json_resp ||
-          !json_resp->GetString("access_token", &access_token_) ||
-          !json_resp->GetString("refresh_token", &refresh_token_) ||
-          !json_resp->GetInteger("expires_in", &expires_in) ||
-          access_token_.empty() ||
-          refresh_token_.empty() ||
-          expires_in <= 0) {
-        LOG(ERROR) << "Access token unavailable";
-        return false;
-      }
-
-      access_token_expiration_ = base::Time::Now() +
-                                 base::TimeDelta::FromSeconds(expires_in);
-
-      Save();
-    }
-    return true;
+  response = http::PostBinary(url, nullptr, 0, transport_, error);
+  if (!response)
+    return false;
+  auto json_resp = http::ParseJsonResponse(response.get(), nullptr, error);
+  if (!json_resp)
+    return false;
+  if (!response->IsSuccessful()) {
+    ParseGCDError(json_resp.get(), error);
+    return false;
   }
-  return false;
+  if (!json_resp->GetString("robotAccountEmail", &device_robot_account_) ||
+      !json_resp->GetString("robotAccountAuthorizationCode", &auth_code) ||
+      !json_resp->GetString("deviceDraft.id", &device_id_)) {
+    Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
+                 "Device account missing in response");
+    return false;
+  }
+
+  // Now get access_token and refresh_token
+  response = http::PostFormData(GetOAuthURL("token"), {
+    {"code", auth_code},
+    {"client_id", client_id_},
+    {"client_secret", client_secret_},
+    {"redirect_uri", "oob"},
+    {"scope", "https://www.googleapis.com/auth/clouddevices"},
+    {"grant_type", "authorization_code"}
+  }, transport_, error);
+  if (!response)
+    return false;
+
+  json_resp = ParseOAuthResponse(response.get(), error);
+  int expires_in = 0;
+  if (!json_resp ||
+      !json_resp->GetString("access_token", &access_token_) ||
+      !json_resp->GetString("refresh_token", &refresh_token_) ||
+      !json_resp->GetInteger("expires_in", &expires_in) ||
+      access_token_.empty() ||
+      refresh_token_.empty() ||
+      expires_in <= 0) {
+    Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
+                  "Device access_token missing in response");
+    return false;
+  }
+
+  access_token_expiration_ = base::Time::Now() +
+                             base::TimeDelta::FromSeconds(expires_in);
+
+  Save();
+  return true;
 }
 
 }  // namespace buffet

@@ -27,9 +27,10 @@ class Connection : public chromeos::http::Connection {
 
   // Overrides from http::Connection.
   // See http_connection.h for description of these methods.
-  virtual bool SendHeaders(const HeaderList& headers) override;
-  virtual bool WriteRequestData(const void* data, size_t size) override;
-  virtual bool FinishRequest() override;
+  virtual bool SendHeaders(const HeaderList& headers, ErrorPtr* error) override;
+  virtual bool WriteRequestData(const void* data, size_t size,
+                                ErrorPtr* error) override;
+  virtual bool FinishRequest(ErrorPtr* error) override;
 
   virtual int GetResponseStatusCode() const override;
   virtual std::string GetResponseStatusText() const override;
@@ -38,12 +39,9 @@ class Connection : public chromeos::http::Connection {
      const std::string& header_name) const override;
   virtual uint64_t GetResponseDataSize() const override;
   virtual bool ReadResponseData(void* data, size_t buffer_size,
-                                size_t* size_read) override;
-  virtual std::string GetErrorMessage() const override;
+                                size_t* size_read, ErrorPtr* error) override;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(Connection);
-
   // Request and response objects passed to the user-provided request handler
   // callback. The request object contains all the request information.
   // The response object is the server response that is created by
@@ -53,10 +51,12 @@ class Connection : public chromeos::http::Connection {
 
   // Internal read data pointer needed for ReadResponseData() implementation.
   size_t response_data_ptr_ = 0;
+
+  DISALLOW_COPY_AND_ASSIGN(Connection);
 };
 
 }  // namespace fake
 }  // namespace http
 }  // namespace chromeos
 
-#endif // BUFFET_HTTP_CONNECTION_FAKE_H_
+#endif  // BUFFET_HTTP_CONNECTION_FAKE_H_

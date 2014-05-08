@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+#include <vector>
+
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -12,8 +15,8 @@
 #include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
-using namespace chromeos;
-using namespace chromeos::http;
+using namespace chromeos;        // NOLINT(build/namespaces)
+using namespace chromeos::http;  // NOLINT(build/namespaces)
 
 static const char kFakeUrl[] = "http://localhost";
 static const char kEchoUrl[] = "http://localhost/echo";
@@ -40,11 +43,11 @@ TEST(HttpUtils, SendRequest_BinaryData) {
                         base::Bind(EchoDataHandler));
 
   // Test binary data round-tripping.
-  std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
+  std::vector<unsigned char> custom_data({0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F});
   auto response = http::SendRequest(request_type::kPost, kEchoUrl,
                                     custom_data.data(), custom_data.size(),
                                     mime::application::kOctet_stream,
-                                    HeaderList(), transport);
+                                    HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::application::kOctet_stream, response->GetContentType());
   EXPECT_EQ(custom_data.size(), response->GetData().size());
@@ -56,13 +59,13 @@ TEST(HttpUtils, SendRequest_Post) {
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
   // Test binary data round-tripping.
-  std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
+  std::vector<unsigned char> custom_data({0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F});
 
   // Check the correct HTTP method used.
   auto response = http::SendRequest(request_type::kPost, kMethodEchoUrl,
                                     custom_data.data(), custom_data.size(),
                                     mime::application::kOctet_stream,
-                                    HeaderList(), transport);
+                                    HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kPost, response->GetDataAsString());
@@ -74,7 +77,7 @@ TEST(HttpUtils, SendRequest_Get) {
 
   auto response = http::SendRequest(request_type::kGet, kMethodEchoUrl,
                                     nullptr, 0, nullptr,
-                                    HeaderList(), transport);
+                                    HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
@@ -86,7 +89,7 @@ TEST(HttpUtils, SendRequest_Put) {
 
   auto response = http::SendRequest(request_type::kPut, kMethodEchoUrl,
                                     nullptr, 0, nullptr,
-                                    HeaderList(), transport);
+                                    HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kPut, response->GetDataAsString());
@@ -97,7 +100,7 @@ TEST(HttpUtils, SendRequest_NotFound) {
   // Test failed response (URL not found).
   auto response = http::SendRequest(request_type::kGet, "http://blah.com",
                                     nullptr, 0, nullptr,
-                                    HeaderList(), transport);
+                                    HeaderList(), transport, nullptr);
   EXPECT_FALSE(response->IsSuccessful());
   EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
 }
@@ -123,7 +126,7 @@ TEST(HttpUtils, SendRequest_Headers) {
       mime::application::kOctet_stream, {
         {request_header::kCookie, "flavor=vanilla"},
         {request_header::kIfMatch, "*"},
-      }, transport);
+      }, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::application::kJson,
             mime::RemoveParameters(response->GetContentType()));
@@ -161,15 +164,16 @@ TEST(HttpUtils, Get) {
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
   // Make sure Get/GetAsString actually do the GET request
-  auto response = http::Get(kMethodEchoUrl, transport);
+  auto response = http::Get(kMethodEchoUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
-  EXPECT_EQ(request_type::kGet, http::GetAsString(kMethodEchoUrl, transport));
+  EXPECT_EQ(request_type::kGet,
+            http::GetAsString(kMethodEchoUrl, transport, nullptr));
 
   for (std::string data : {"blah", "some data", ""}) {
     std::string url = url::AppendQueryParam(kFakeUrl, "test", data);
-    EXPECT_EQ(data, http::GetAsString(url, transport));
+    EXPECT_EQ(data, http::GetAsString(url, transport, nullptr));
   }
 }
 
@@ -186,10 +190,10 @@ TEST(HttpUtils, Head) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kHead, base::Bind(HeadHandler));
 
-  auto response = http::Head(kFakeUrl, transport);
+  auto response = http::Head(kFakeUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ("", response->GetDataAsString()); // Must not have actual body.
+  EXPECT_EQ("", response->GetDataAsString());  // Must not have actual body.
   EXPECT_EQ("4", response->GetHeader(request_header::kContentLength));
 }
 
@@ -205,7 +209,7 @@ TEST(HttpUtils, PostBinary) {
 
     // Sum up all the bytes.
     int sum = std::accumulate(data.begin(), data.end(), 0);
-    EXPECT_EQ(32640, sum); // sum(i, i => [0, 255]) = 32640.
+    EXPECT_EQ(32640, sum);  // sum(i, i => [0, 255]) = 32640.
     response->ReplyText(status_code::Ok, "", mime::text::kPlain);
   };
 
@@ -218,7 +222,7 @@ TEST(HttpUtils, PostBinary) {
   std::generate(data.begin(), data.end(), [&counter]() { return ++counter; });
 
   auto response = http::PostBinary(kFakeUrl, data.data(), data.size(),
-                                   transport);
+                                   transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
 }
 
@@ -239,7 +243,7 @@ TEST(HttpUtils, PostText) {
   transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(PostHandler));
 
   auto response = http::PostText(kFakeUrl, fake_data.c_str(),
-                                 mime::text::kPlain, transport);
+                                 mime::text::kPlain, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(fake_data, response->GetDataAsString());
@@ -253,7 +257,7 @@ TEST(HttpUtils, PostFormData) {
   auto response = http::PostFormData(kFakeUrl, {
                       {"key", "value"},
                       {"field", "field value"},
-                  }, transport);
+                  }, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(mime::application::kWwwFormUrlEncoded, response->GetContentType());
   EXPECT_EQ("key=value&field=field+value", response->GetDataAsString());
@@ -279,7 +283,7 @@ TEST(HttpUtils, PostPatchJson) {
   std::string value;
 
   // Test POST
-  auto response = http::PostJson(kFakeUrl, &json, transport);
+  auto response = http::PostJson(kFakeUrl, &json, transport, nullptr);
   auto resp_json = http::ParseJsonResponse(response.get(), nullptr, nullptr);
   EXPECT_NE(nullptr, resp_json.get());
   EXPECT_TRUE(resp_json->GetString("method", &value));
@@ -288,7 +292,7 @@ TEST(HttpUtils, PostPatchJson) {
   EXPECT_EQ("{\"key1\":\"val1\",\"key2\":\"val2\"}", value);
 
   // Test PATCH
-  response = http::PatchJson(kFakeUrl, &json, transport);
+  response = http::PatchJson(kFakeUrl, &json, transport, nullptr);
   resp_json = http::ParseJsonResponse(response.get(), nullptr, nullptr);
   EXPECT_NE(nullptr, resp_json.get());
   EXPECT_TRUE(resp_json->GetString("method", &value));
@@ -312,7 +316,7 @@ TEST(HttpUtils, ParseJsonResponse) {
     auto response = http::PostFormData(kFakeUrl, {
                       {"code", pair.first},
                       {"value", pair.second},
-                    }, transport);
+                    }, transport, nullptr);
     int code = 0;
     auto json = http::ParseJsonResponse(response.get(), &code, nullptr);
     EXPECT_NE(nullptr, json.get());
@@ -322,8 +326,8 @@ TEST(HttpUtils, ParseJsonResponse) {
     EXPECT_EQ(pair.second, value);
   }
 
-  // Test invalid (non-JSON) reponse.
-  auto response = http::Get("http://bad.url", transport);
+  // Test invalid (non-JSON) response.
+  auto response = http::Get("http://bad.url", transport, nullptr);
   EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
   EXPECT_EQ(mime::text::kHtml, response->GetContentType());
   int code = 0;

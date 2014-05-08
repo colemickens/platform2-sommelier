@@ -10,13 +10,14 @@
 
 #include <base/basictypes.h>
 
+#include "buffet/error.h"
 #include "buffet/http_transport.h"
 
 namespace chromeos {
 namespace http {
 
 ///////////////////////////////////////////////////////////////////////////////
-// Connection class is the base class for HTTP comminication session.
+// Connection class is the base class for HTTP communication session.
 // It abstracts the implementation of underlying transport library (ex libcurl).
 // When the Connection-derived class is constructed, it is pre-set up with
 // basic initialization information necessary to initiate the server request
@@ -25,22 +26,24 @@ namespace http {
 // would not probably initiate the physical connection until SendHeaders
 // is called.
 // You normally shouldn't worry about using this class directly.
-// http::Request and http::Response classes use it for communictaion.
+// http::Request and http::Response classes use it for communication.
 ///////////////////////////////////////////////////////////////////////////////
 class Connection {
  public:
-  Connection(std::shared_ptr<Transport> transport) : transport_(transport) {}
+  explicit Connection(std::shared_ptr<Transport> transport)
+      : transport_(transport) {}
   virtual ~Connection() = default;
 
   // Called by http::Request to initiate the connection with the server.
   // This normally opens the socket and sends the request headers.
-  virtual bool SendHeaders(const HeaderList& headers) = 0;
+  virtual bool SendHeaders(const HeaderList& headers, ErrorPtr* error) = 0;
   // If needed, this function can be called to send the request body data.
   // This function can be called repeatedly until all data is sent.
-  virtual bool WriteRequestData(const void* data, size_t size) = 0;
+  virtual bool WriteRequestData(const void* data, size_t size,
+                                ErrorPtr* error) = 0;
   // This function is called when all the data is sent off and it's time
   // to receive the response data.
-  virtual bool FinishRequest() = 0;
+  virtual bool FinishRequest(ErrorPtr* error) = 0;
 
   // Returns the HTTP status code (e.g. 200 for success).
   virtual int GetResponseStatusCode() const = 0;
@@ -63,9 +66,7 @@ class Connection {
   // |read_size| is the amount of data actually read, which could be less than
   // the size requested or 0 if there is no more data available.
   virtual bool ReadResponseData(void* data, size_t buffer_size,
-                                size_t* size_read) = 0;
-  // Returns additional error information if any of the above functions fail.
-  virtual std::string GetErrorMessage() const = 0;
+                                size_t* size_read, ErrorPtr* error) = 0;
 
  protected:
   // |transport_| is mainly used to keep the object alive as long as the
@@ -77,7 +78,7 @@ class Connection {
   DISALLOW_COPY_AND_ASSIGN(Connection);
 };
 
-} // namespace http
-} // namespace chromeos
+}  // namespace http
+}  // namespace chromeos
 
-#endif // BUFFET_HTTP_CONNECTION_H_
+#endif  // BUFFET_HTTP_CONNECTION_H_

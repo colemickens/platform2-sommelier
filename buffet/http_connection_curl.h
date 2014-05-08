@@ -27,9 +27,10 @@ class Connection : public chromeos::http::Connection {
 
   // Overrides from http::Connection.
   // See http_connection.h for description of these methods.
-  virtual bool SendHeaders(const HeaderList& headers) override;
-  virtual bool WriteRequestData(const void* data, size_t size) override;
-  virtual bool FinishRequest() override;
+  virtual bool SendHeaders(const HeaderList& headers, ErrorPtr* error) override;
+  virtual bool WriteRequestData(const void* data, size_t size,
+                                ErrorPtr* error) override;
+  virtual bool FinishRequest(ErrorPtr* error) override;
 
   virtual int GetResponseStatusCode() const override;
   virtual std::string GetResponseStatusText() const override;
@@ -38,8 +39,7 @@ class Connection : public chromeos::http::Connection {
      const std::string& header_name) const override;
   virtual uint64_t GetResponseDataSize() const override;
   virtual bool ReadResponseData(void* data, size_t buffer_size,
-                                size_t* size_read) override;
-  virtual std::string GetErrorMessage() const override;
+                                size_t* size_read, ErrorPtr* error) override;
 
  protected:
   // Write data callback. Used by CURL when receiving response data.
@@ -65,11 +65,9 @@ class Connection : public chromeos::http::Connection {
   // After request has been sent, contains the received response headers.
   std::map<std::string, std::string> headers_;
 
-  // CURL error message in case request fails completely.
-  std::string error_;
   // HTTP protocol version, such as HTTP/1.1
   std::string protocol_version_;
-  // Reponse status text, such as "OK" for 200, or "Forbidden" for 403
+  // Response status text, such as "OK" for 200, or "Forbidden" for 403
   std::string status_text_;
   // Flag used when parsing response headers to separate the response status
   // from the rest of response headers.
@@ -85,4 +83,4 @@ class Connection : public chromeos::http::Connection {
 }  // namespace http
 }  // namespace chromeos
 
-#endif // BUFFET_HTTP_CONNECTION_CURL_H_
+#endif  // BUFFET_HTTP_CONNECTION_CURL_H_

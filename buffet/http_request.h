@@ -8,12 +8,14 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/basictypes.h>
 
 #include "buffet/http_connection.h"
 #include "buffet/http_transport.h"
+#include "buffet/error.h"
 
 namespace chromeos {
 namespace http {
@@ -31,7 +33,7 @@ namespace request_type {
   extern const char kConnect[];
   extern const char kCopy[];   // Not a standard HTTP/1.1 request method
   extern const char kMove[];   // Not a standard HTTP/1.1 request method
-} // namespace request_type
+}  // namespace request_type
 
 // HTTP request header names
 namespace request_header {
@@ -74,7 +76,7 @@ namespace request_header {
   extern const char kUserAgent[];
   extern const char kVia[];
   extern const char kWarning[];
-} // namespace request_header
+}  // namespace request_header
 
 // HTTP response header names
 namespace response_header {
@@ -107,7 +109,7 @@ namespace response_header {
   extern const char kVia[];
   extern const char kWarning[];
   extern const char kWwwAuthenticate[];
-} // namespace response_header
+}  // namespace response_header
 
 // HTTP request status (error) codes
 namespace status_code {
@@ -128,7 +130,7 @@ namespace status_code {
   static const int NoContent = 204;
   // Request completed, but clear form
   static const int ResetContent = 205;
-  // Partial GET furfilled
+  // Partial GET fulfilled
   static const int PartialContent = 206;
 
   // Server couldn't decide what to return
@@ -193,9 +195,9 @@ namespace status_code {
   static const int GatewayTimeout = 504;
   // HTTP version not supported
   static const int VersionNotSupported = 505;
-} // namespace status_code
+}  // namespace status_code
 
-class Response; // Just a forward declarartion.
+class Response;  // Just a forward declaration.
 
 ///////////////////////////////////////////////////////////////////////////////
 // Request class is the main object used to set up and initiate an HTTP
@@ -204,7 +206,7 @@ class Response; // Just a forward declarartion.
 // referer URL and so on.
 //
 // Once everything is setup, GetResponse() method is used to send the request
-// and obtain the server response. The returned Response onject can be
+// and obtain the server response. The returned Response object can be
 // used to inspect the response code, HTTP headers and/or response body.
 ///////////////////////////////////////////////////////////////////////////////
 class Request {
@@ -232,7 +234,7 @@ class Request {
   void RemoveHeader(const char* header);
 
   // Adds a request body. This is not to be used with GET method
-  bool AddRequestBody(const void* data, size_t size);
+  bool AddRequestBody(const void* data, size_t size, ErrorPtr* error);
 
   // Makes a request for a subrange of data. Specifies a partial range with
   // either from beginning of the data to the specified offset (if |bytes| is
@@ -259,17 +261,13 @@ class Request {
 
   // Sends the request to the server and returns the response object.
   // In case the server couldn't be reached for whatever reason, returns
-  // empty unique_ptr (null). Calling GetErrorMessage() provides additional
-  // information in such as case.
-  std::unique_ptr<Response> GetResponse();
-
-  // If the request failed before reaching the server, returns additional
-  // information about the error occurred.
-  std::string GetErrorMessage() const;
+  // empty unique_ptr (null). In such a case, the additional error information
+  // can be returned through the optional supplied |error| parameter.
+  std::unique_ptr<Response> GetResponse(ErrorPtr* error);
 
  private:
   // Helper function to create an http::Connection and send off request headers.
-  bool SendRequestIfNeeded();
+  bool SendRequestIfNeeded(ErrorPtr* error);
 
   // Implementation that provides particular HTTP transport.
   std::shared_ptr<Transport> transport_;
@@ -299,16 +297,13 @@ class Request {
   // After request has been sent, contains the received response headers.
   std::map<std::string, std::string> headers_;
   // List of optional data ranges to request partial content from the server.
-  // Sent to thr server as "Range: " header.
+  // Sent to the server as "Range: " header.
   std::vector<std::pair<uint64_t, uint64_t>> ranges_;
 
   // range_value_omitted is used in |ranges_| list to indicate omitted value.
   // E.g. range (10,range_value_omitted) represents bytes from 10 to the end
   // of the data stream.
   const uint64_t range_value_omitted = (uint64_t)-1;
-
-  // Error message in case request fails completely.
-  std::string error_;
 
   DISALLOW_COPY_AND_ASSIGN(Request);
 };
@@ -320,7 +315,7 @@ class Request {
 ///////////////////////////////////////////////////////////////////////////////
 class Response {
  public:
-  Response(std::unique_ptr<Connection> connection);
+  explicit Response(std::unique_ptr<Connection> connection);
   ~Response();
 
   // Returns true if server returned a success code (status code below 400).
@@ -350,7 +345,7 @@ class Response {
   DISALLOW_COPY_AND_ASSIGN(Response);
 };
 
-} // namespace http
-} // namespace chromeos
+}  // namespace http
+}  // namespace chromeos
 
-#endif // BUFFET_HTTP_REQUEST_H_
+#endif  // BUFFET_HTTP_REQUEST_H_

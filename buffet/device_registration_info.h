@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_DEVICE_INFO_H_
-#define BUFFET_DEVICE_INFO_H_
+#ifndef BUFFET_DEVICE_REGISTRATION_INFO_H_
+#define BUFFET_DEVICE_REGISTRATION_INFO_H_
 
 #include <string>
 #include <map>
 #include <memory>
+#include <utility>
 
 #include <base/basictypes.h>
 #include <base/time/time.h>
 
 #include "buffet/data_encoding.h"
+#include "buffet/error.h"
 #include "buffet/http_transport.h"
 #include "buffet/storage_interface.h"
 
@@ -21,6 +23,11 @@ namespace base {
 }  // namespace base
 
 namespace buffet {
+
+extern const char kErrorDomainOAuth2[];
+extern const char kErrorDomainGCD[];
+extern const char kErrorDomainGCDServer[];
+extern const char kErrorDomainBuffet[];
 
 // The DeviceRegistrationInfo class represents device registration information.
 class DeviceRegistrationInfo {
@@ -67,18 +74,18 @@ class DeviceRegistrationInfo {
     const chromeos::data_encoding::WebParamList& params = {}) const;
 
   // Returns the registered device ID (GUID) or empty string if failed
-  std::string GetDeviceId();
+  std::string GetDeviceId(chromeos::ErrorPtr* error);
 
   // Loads the device registration information from cache.
   bool Load();
 
   // Checks for the valid device registration as well as refreshes
   // the device access token, if available.
-  bool CheckRegistration();
+  bool CheckRegistration(chromeos::ErrorPtr* error);
 
   // Gets the full device description JSON object, or nullptr if
   // the device is not registered or communication failure.
-  std::unique_ptr<base::Value> GetDeviceInfo();
+  std::unique_ptr<base::Value> GetDeviceInfo(chromeos::ErrorPtr* error);
 
   // Starts device registration procedure. |params| are a list of
   // key-value pairs of device information, such as client_id, client_secret,
@@ -86,20 +93,21 @@ class DeviceRegistrationInfo {
   // is used when possible. Returns a device claim ID on success.
   std::string StartRegistration(
     const std::map<std::string, std::shared_ptr<base::Value>>& params,
-    std::string* error_msg);
+    chromeos::ErrorPtr* error);
 
   // Finalizes the device registration. If |user_auth_code| is provided, then
   // the device record is populated with user email on user's behalf. Otherwise
   // the user is responsible to issue a PATCH request to provide a valid
   // email address before calling FinishRegistration.
-  bool FinishRegistration(const std::string& user_auth_code);
+  bool FinishRegistration(const std::string& user_auth_code,
+                          chromeos::ErrorPtr* error);
 
  private:
   // Saves the device registration to cache.
   bool Save() const;
 
   // Makes sure the access token is available and up-to-date.
-  bool ValidateAndRefreshAccessToken();
+  bool ValidateAndRefreshAccessToken(chromeos::ErrorPtr* error);
 
   // Persistent data. Some of default values for testing purposes are used.
   // TODO(avakulenko): remove these default values in the future.
@@ -135,4 +143,4 @@ class DeviceRegistrationInfo {
 
 }  // namespace buffet
 
-#endif  // BUFFET_DEVICE_INFO_H_
+#endif  // BUFFET_DEVICE_REGISTRATION_INFO_H_

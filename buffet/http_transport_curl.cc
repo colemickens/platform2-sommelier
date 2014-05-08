@@ -9,8 +9,12 @@
 #include "buffet/http_connection_curl.h"
 #include "buffet/http_request.h"
 
-using namespace chromeos;
-using namespace chromeos::http::curl;
+using chromeos::http::curl::Transport;
+using chromeos::Error;
+
+namespace chromeos {
+
+const char http::curl::kErrorDomain[] = "http_transport";
 
 Transport::Transport() {
   VLOG(1) << "curl::Transport created";
@@ -27,12 +31,12 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
     const HeaderList& headers,
     const std::string& user_agent,
     const std::string& referer,
-    std::string* error_msg) {
+    ErrorPtr* error) {
   CURL* curl_handle = curl_easy_init();
   if (!curl_handle) {
     LOG(ERROR) << "Failed to initialize CURL";
-    if (error_msg)
-      *error_msg = "Failed to initialize CURL";
+    Error::AddTo(error, http::curl::kErrorDomain, "curl_init_failed",
+                 "Failed to initialize CURL");
     return std::unique_ptr<http::Connection>();
   }
 
@@ -67,10 +71,10 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
   std::unique_ptr<http::Connection> connection(
       new http::curl::Connection(curl_handle, method, transport));
   CHECK(connection) << "Unable to create Connection object";
-  if (!connection->SendHeaders(headers)) {
+  if (!connection->SendHeaders(headers, error)) {
     connection.reset();
-    if (error_msg)
-      *error_msg = "Failed to send request headers";
   }
   return connection;
 }
+
+}  // namespace chromeos

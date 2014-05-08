@@ -5,11 +5,15 @@
 #ifndef BUFFET_HTTP_TRANSPORT_CURL_H_
 #define BUFFET_HTTP_TRANSPORT_CURL_H_
 
+#include <string>
+
 #include "buffet/http_transport.h"
 
 namespace chromeos {
 namespace http {
 namespace curl {
+
+extern const char kErrorDomain[];
 
 ///////////////////////////////////////////////////////////////////////////////
 // An implementation of http::Transport that uses libcurl for
@@ -30,14 +34,14 @@ class Transport : public http::Transport {
       const HeaderList& headers,
       const std::string& user_agent,
       const std::string& referer,
-      std::string* error_msg) override;
+      ErrorPtr* error) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);
 };
 
-} // namespace curl
-} // namespace http
-} // namespace chromeos
+}  // namespace curl
+}  // namespace http
+}  // namespace chromeos
 
-#endif // BUFFET_HTTP_TRANSPORT_CURL_H_
+#endif  // BUFFET_HTTP_TRANSPORT_CURL_H_

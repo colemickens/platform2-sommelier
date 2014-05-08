@@ -4,6 +4,8 @@
 
 #include "buffet/http_transport_fake.h"
 
+#include <utility>
+
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
@@ -14,8 +16,12 @@
 #include "buffet/mime_utils.h"
 #include "buffet/url_utils.h"
 
-using namespace chromeos;
-using namespace chromeos::http::fake;
+namespace chromeos {
+
+using http::fake::Transport;
+using http::fake::ServerRequestResponseBase;
+using http::fake::ServerRequest;
+using http::fake::ServerResponse;
 
 Transport::Transport() {
   VLOG(1) << "fake::Transport created";
@@ -32,7 +38,7 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
     const HeaderList& headers,
     const std::string& user_agent,
     const std::string& referer,
-    std::string* error_msg) {
+    ErrorPtr* error) {
   HeaderList headers_copy = headers;
   if (!user_agent.empty()) {
     headers_copy.push_back(std::make_pair(http::request_header::kUserAgent,
@@ -45,11 +51,8 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
   std::unique_ptr<http::Connection> connection(
       new http::fake::Connection(url, method, transport));
   CHECK(connection) << "Unable to create Connection object";
-  if (!connection->SendHeaders(headers_copy)) {
+  if (!connection->SendHeaders(headers_copy, error))
     connection.reset();
-    if (error_msg)
-      *error_msg = "Failed to send request headers";
-  }
   request_count_++;
   return connection;
 }
@@ -253,3 +256,5 @@ std::string ServerResponse::GetStatusText() const {
   }
   return std::string();
 }
+
+}  // namespace chromeos

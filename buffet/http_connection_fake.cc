@@ -10,8 +10,9 @@
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
 
-using namespace chromeos;
-using namespace chromeos::http::fake;
+namespace chromeos {
+namespace http {
+namespace fake {
 
 Connection::Connection(const std::string& url, const std::string& method,
                        std::shared_ptr<http::Transport> transport) :
@@ -23,20 +24,21 @@ Connection::~Connection() {
   VLOG(1) << "fake::Connection destroyed";
 }
 
-bool Connection::SendHeaders(const HeaderList& headers) {
+bool Connection::SendHeaders(const HeaderList& headers, ErrorPtr* error) {
   request_.AddHeaders(headers);
   return true;
 }
 
-bool Connection::WriteRequestData(const void* data, size_t size) {
+bool Connection::WriteRequestData(const void* data, size_t size,
+                                  ErrorPtr* error) {
   request_.AddData(data, size);
   return true;
 }
 
-bool Connection::FinishRequest() {
+bool Connection::FinishRequest(ErrorPtr* error) {
   request_.AddHeaders({{request_header::kContentLength,
                       std::to_string(request_.GetData().size())}});
-  fake::Transport* transport = dynamic_cast<fake::Transport*>(transport_.get());
+  fake::Transport* transport = static_cast<fake::Transport*>(transport_.get());
   CHECK(transport) << "Expecting a fake transport";
   auto handler = transport->GetHandler(request_.GetURL(), request_.GetMethod());
   if (handler.is_null()) {
@@ -75,7 +77,7 @@ uint64_t Connection::GetResponseDataSize() const {
 }
 
 bool Connection::ReadResponseData(void* data, size_t buffer_size,
-                                  size_t* size_read) {
+                                  size_t* size_read, ErrorPtr* error) {
   size_t size_to_read = GetResponseDataSize() - response_data_ptr_;
   if (size_to_read > buffer_size)
     size_to_read = buffer_size;
@@ -87,6 +89,6 @@ bool Connection::ReadResponseData(void* data, size_t buffer_size,
   return true;
 }
 
-std::string Connection::GetErrorMessage() const {
-  return std::string();
-}
+}  // namespace fake
+}  // namespace http
+}  // namespace chromeos

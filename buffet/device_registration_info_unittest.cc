@@ -14,9 +14,9 @@
 #include "buffet/mime_utils.h"
 #include "buffet/storage_impls.h"
 
-using namespace buffet;
-using namespace chromeos;
-using namespace chromeos::http;
+using namespace buffet;          // NOLINT(build/namespaces)
+using namespace chromeos;        // NOLINT(build/namespaces)
+using namespace chromeos::http;  // NOLINT(build/namespaces)
 
 namespace {
 
@@ -102,10 +102,10 @@ void OAuth2Handler(const fake::ServerRequest& request,
       json.SetString("token_type", "Bearer");
       json.SetString("refresh_token", test_data::kRefreshToken);
     } else {
-      ASSERT_TRUE(false); // Unexpected authorization code.
+      FAIL() << "Unexpected authorization code";
     }
   } else {
-    ASSERT_TRUE(false); // Unexpected grant type.
+    FAIL() << "Unexpected grant type";
   }
   json.SetInteger("expires_in", 3600);
   response->ReplyJson(status_code::Ok, &json);
@@ -209,7 +209,7 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
 
 TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
   EXPECT_TRUE(dev_reg->Load());
-  EXPECT_FALSE(dev_reg->CheckRegistration());
+  EXPECT_FALSE(dev_reg->CheckRegistration(nullptr));
   EXPECT_EQ(0, transport->GetRequestCount());
 
   SetDefaultDeviceRegistration(&data);
@@ -219,7 +219,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
   transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
                         base::Bind(OAuth2Handler));
   transport->ResetRequestCount();
-  EXPECT_TRUE(dev_reg->CheckRegistration());
+  EXPECT_TRUE(dev_reg->CheckRegistration(nullptr));
   EXPECT_EQ(1, transport->GetRequestCount());
 }
 
@@ -233,7 +233,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   transport->AddHandler(dev_reg->GetDeviceURL(), request_type::kGet,
                         base::Bind(DeviceInfoHandler));
   transport->ResetRequestCount();
-  auto device_info = dev_reg->GetDeviceInfo();
+  auto device_info = dev_reg->GetDeviceInfo(nullptr);
   EXPECT_EQ(2, transport->GetRequestCount());
   EXPECT_NE(nullptr, device_info.get());
   base::DictionaryValue* dict = nullptr;
@@ -252,7 +252,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
                         base::Bind(OAuth2Handler));
   transport->AddHandler(dev_reg->GetDeviceURL(), request_type::kGet,
                         base::Bind(DeviceInfoHandler));
-  std::string id = dev_reg->GetDeviceId();
+  std::string id = dev_reg->GetDeviceId(nullptr);
   EXPECT_EQ(test_data::kDeviceId, id);
 }
 
@@ -317,8 +317,8 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
 
   storage->reset_save_count();
   DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg.get());
-  EXPECT_TRUE(dev_reg->FinishRegistration(""));
-  EXPECT_EQ(1, storage->save_count()); // The device info must have been saved.
+  EXPECT_TRUE(dev_reg->FinishRegistration("", nullptr));
+  EXPECT_EQ(1, storage->save_count());  // The device info must have been saved.
   EXPECT_EQ(2, transport->GetRequestCount());
 
   // Validate the device info saved to storage...
@@ -386,7 +386,8 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
 
   storage->reset_save_count();
   DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg.get());
-  EXPECT_TRUE(dev_reg->FinishRegistration(test_data::kUserAccountAuthCode));
-  EXPECT_EQ(1, storage->save_count()); // The device info must have been saved.
+  EXPECT_TRUE(dev_reg->FinishRegistration(test_data::kUserAccountAuthCode,
+                                          nullptr));
+  EXPECT_EQ(1, storage->save_count());  // The device info must have been saved.
   EXPECT_EQ(4, transport->GetRequestCount());
 }

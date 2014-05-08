@@ -5,7 +5,10 @@
 #ifndef BUFFET_HTTP_TRANSPORT_FAKE_H_
 #define BUFFET_HTTP_TRANSPORT_FAKE_H_
 
+#include <map>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/values.h>
@@ -69,15 +72,15 @@ class Transport : public http::Transport {
       const HeaderList& headers,
       const std::string& user_agent,
       const std::string& referer,
-      std::string* error_msg) override;
+      ErrorPtr* error) override;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(Transport);
-
   // A list of user-supplied request handlers.
   std::map<std::string, HandlerCallback> handlers_;
   // Counter incremented each time a request is made.
   int request_count_ = 0;
+
+  DISALLOW_COPY_AND_ASSIGN(Transport);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -129,8 +132,6 @@ class ServerRequest : public ServerRequestResponseBase {
   std::string GetFormField(const std::string& field_name) const;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ServerRequest);
-
   // Request URL (without query string or URL fragment).
   std::string url_;
   // Request method
@@ -140,20 +141,22 @@ class ServerRequest : public ServerRequestResponseBase {
   // Flag used on first request to GetFormField to parse the body of HTTP POST
   // request with application/x-www-form-urlencoded content.
   mutable bool form_fields_parsed_ = false;
+
+  DISALLOW_COPY_AND_ASSIGN(ServerRequest);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // A container class that encapsulates all the HTTP server response information.
 // The request handler will use this class to provide a response to the caller.
-// Call the Reply() or the approriate ReplyNNN() specialization to provide
+// Call the Reply() or the appropriate ReplyNNN() specialization to provide
 // the response data. Additional calls to AddHeaders() can be made to provide
 // custom response headers. The Reply-methods will already provide the
-// followig response headers:
+// following response headers:
 //    Content-Length
 //    Content-Type
 ///////////////////////////////////////////////////////////////////////////////
 class ServerResponse : public ServerRequestResponseBase {
-public:
+ public:
   ServerResponse() = default;
 
   // Generic reply method.
@@ -207,14 +210,14 @@ public:
   std::string GetProtocolVersion() const { return protocol_version_; }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ServerResponse);
-
   int status_code_ = 0;
   std::string protocol_version_ = "HTTP/1.1";
+
+  DISALLOW_COPY_AND_ASSIGN(ServerResponse);
 };
 
-} // namespace fake
-} // namespace http
-} // namespace chromeos
+}  // namespace fake
+}  // namespace http
+}  // namespace chromeos
 
-#endif // BUFFET_HTTP_TRANSPORT_FAKE_H_
+#endif  // BUFFET_HTTP_TRANSPORT_FAKE_H_

@@ -7,9 +7,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/basictypes.h>
+
+#include "buffet/error.h"
 
 namespace chromeos {
 namespace http {
@@ -39,13 +42,13 @@ class Transport {
       const HeaderList& headers,
       const std::string& user_agent,
       const std::string& referer,
-      std::string* error_msg) = 0;
+      ErrorPtr* error) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);
 };
 
-} // namespace http
-} // namespace chromeos
+}  // namespace http
+}  // namespace chromeos
 
-#endif // BUFFET_HTTP_TRANSPORT_H_
+#endif  // BUFFET_HTTP_TRANSPORT_H_

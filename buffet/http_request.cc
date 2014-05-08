@@ -12,8 +12,8 @@
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
 
-using namespace chromeos;
-using namespace chromeos::http;
+namespace chromeos {
+namespace http {
 
 // request_type
 const char request_type::kOptions[]               = "OPTIONS";
@@ -100,9 +100,9 @@ const char response_header::kVia[]                = "Via";
 const char response_header::kWarning[]            = "Warning";
 const char response_header::kWwwAuthenticate[]    = "WWW-Authenticate";
 
-//**************************************************************************
-//********************** Request Class **********************
-//**************************************************************************
+// ***********************************************************
+// ********************** Request Class **********************
+// ***********************************************************
 Request::Request(const std::string& url, const char* method,
                  std::shared_ptr<Transport> transport) :
     transport_(transport), request_url_(url), method_(method) {
@@ -127,11 +127,11 @@ void Request::AddRange(uint64_t from_byte, uint64_t to_byte) {
   ranges_.emplace_back(from_byte, to_byte);
 }
 
-std::unique_ptr<Response> Request::GetResponse() {
-  if (!SendRequestIfNeeded() || !connection_->FinishRequest())
+std::unique_ptr<Response> Request::GetResponse(ErrorPtr* error) {
+  if (!SendRequestIfNeeded(error) || !connection_->FinishRequest(error))
     return std::unique_ptr<Response>();
   std::unique_ptr<Response> response(new Response(std::move(connection_)));
-  transport_.reset(); // Indicate that the response has been received
+  transport_.reset();  // Indicate that the response has been received
   return response;
 }
 
@@ -159,13 +159,10 @@ void Request::AddHeaders(const HeaderList& headers) {
   headers_.insert(headers.begin(), headers.end());
 }
 
-bool Request::AddRequestBody(const void* data, size_t size) {
-  if (!SendRequestIfNeeded())
+bool Request::AddRequestBody(const void* data, size_t size, ErrorPtr* error) {
+  if (!SendRequestIfNeeded(error))
     return false;
-  bool ret = connection_->WriteRequestData(data, size);
-  if (!ret)
-    error_ = "Failed to send request data";
-  return ret;
+  return connection_->WriteRequestData(data, size, error);
 }
 
 void Request::SetReferer(const char* referer) {
@@ -184,11 +181,7 @@ std::string Request::GetUserAgent() const {
   return user_agent_;
 }
 
-std::string Request::GetErrorMessage() const {
-  return error_;
-}
-
-bool Request::SendRequestIfNeeded() {
+bool Request::SendRequestIfNeeded(ErrorPtr* error) {
   if (transport_) {
     if (!connection_) {
       chromeos::http::HeaderList headers = MapToVector(headers_);
@@ -222,24 +215,23 @@ bool Request::SendRequestIfNeeded() {
       connection_ = transport_->CreateConnection(transport_, request_url_,
                                                  method_, headers,
                                                  user_agent_, referer_,
-                                                 &error_);
+                                                 error);
     }
 
     if (connection_)
       return true;
   } else {
-    error_ = "HTTP response already received";
-    LOG(ERROR) << error_;
+    Error::AddTo(error, chromeos::http::curl::kErrorDomain,
+                 "request_already_received", "HTTP response already received");
   }
   return false;
 }
 
-
-//**************************************************************************
-//********************** Response Class **********************
-//**************************************************************************
-Response::Response(std::unique_ptr<Connection> connection) :
-    connection_(std::move(connection)) {
+// ************************************************************
+// ********************** Response Class **********************
+// ************************************************************
+Response::Response(std::unique_ptr<Connection> connection)
+    : connection_(std::move(connection)) {
   VLOG(1) << "http::Response created";
   // Response object doesn't have streaming interface for response data (yet),
   // so read the data into a buffer and cache it.
@@ -248,8 +240,8 @@ Response::Response(std::unique_ptr<Connection> connection) :
     response_data_.reserve(size);
     unsigned char buffer[1024];
     size_t read = 0;
-    while (connection_->ReadResponseData(buffer, sizeof(buffer), &read) &&
-           read > 0) {
+    while (connection_->ReadResponseData(buffer, sizeof(buffer),
+                                         &read, nullptr) && read > 0) {
       response_data_.insert(response_data_.end(), buffer, buffer + read);
     }
   }
@@ -301,3 +293,5 @@ std::string Response::GetHeader(const char* header_name) const {
   return std::string();
 }
 
+}  // namespace http
+}  // namespace chromeos

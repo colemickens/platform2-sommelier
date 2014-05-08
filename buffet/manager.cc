@@ -4,6 +4,9 @@
 
 #include "buffet/manager.h"
 
+#include <map>
+#include <string>
+
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/json/json_writer.h>
@@ -14,8 +17,10 @@
 #include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_utils.h"
+#include "buffet/error.h"
 
 using buffet::dbus_utils::GetBadArgsError;
+using buffet::dbus_utils::GetDBusError;
 
 namespace buffet {
 
@@ -122,13 +127,26 @@ scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
 
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
 
-  bool registered = device_info_.CheckRegistration();
+  chromeos::ErrorPtr error;
+  bool registered = device_info_.CheckRegistration(&error);
+  // If it fails due to any reason other than 'device not registered',
+  // treat it as a real error and report it to the caller.
+  if (!registered &&
+      !error->HasError(kErrorDomainGCD, "device_not_registered")) {
+    return GetDBusError(method_call, error.get());
+  }
 
+  std::string device_id;
+  if (registered) {
+    device_id = device_info_.GetDeviceId(&error);
+    if (device_id.empty())
+      return GetDBusError(method_call, error.get());
+  }
   // Send back our response.
   scoped_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
-  writer.AppendString(registered ? device_info_.GetDeviceId() : std::string());
+  writer.AppendString(device_id);
   return response.Pass();
 }
 
@@ -144,9 +162,12 @@ scoped_ptr<dbus::Response> Manager::HandleGetDeviceInfo(
   LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
 
   std::string device_info_str;
-  std::unique_ptr<base::Value> device_info = device_info_.GetDeviceInfo();
-  if (device_info)
-    base::JSONWriter::Write(device_info.get(), &device_info_str);
+  chromeos::ErrorPtr error;
+  auto device_info = device_info_.GetDeviceInfo(&error);
+  if (!device_info)
+    return GetDBusError(method_call, error.get());
+
+  base::JSONWriter::Write(device_info.get(), &device_info_str);
 
   // Send back our response.
   scoped_ptr<dbus::Response> response(
@@ -186,10 +207,10 @@ scoped_ptr<dbus::Response> Manager::HandleStartRegisterDevice(
 
   LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
 
-  std::string error_msg;
-  std::string id = device_info_.StartRegistration(params, &error_msg);
-  if(id.empty())
-    return GetBadArgsError(method_call, error_msg);
+  chromeos::ErrorPtr error;
+  std::string id = device_info_.StartRegistration(params, &error);
+  if (id.empty())
+    return GetDBusError(method_call, error.get());
 
   // Send back our response.
   scoped_ptr<dbus::Response> response(
@@ -217,13 +238,19 @@ scoped_ptr<dbus::Response> Manager::HandleFinishRegisterDevice(
   }
 
   LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
-  bool success = device_info_.FinishRegistration(user_auth_code);
+  chromeos::ErrorPtr error;
+  if (!device_info_.FinishRegistration(user_auth_code, &error))
+    return GetDBusError(method_call, error.get());
+
+  std::string device_id = device_info_.GetDeviceId(&error);
+  if (device_id.empty())
+    return GetDBusError(method_call, error.get());
 
   // Send back our response.
   scoped_ptr<dbus::Response> response(
     dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
-  writer.AppendString(success ? device_info_.GetDeviceId() : std::string());
+  writer.AppendString(device_id);
   return response.Pass();
 }
 

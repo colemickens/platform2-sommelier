@@ -7,10 +7,12 @@
 #include <base/logging.h>
 
 #include "buffet/http_request.h"
+#include "buffet/http_transport_curl.h"
 #include "buffet/string_utils.h"
 
-using namespace chromeos;
-using namespace chromeos::http::curl;
+namespace chromeos {
+namespace http {
+namespace curl {
 
 static int curl_trace(CURL *handle, curl_infotype type,
                       char *data, size_t size, void *userp) {
@@ -54,12 +56,13 @@ Connection::~Connection() {
   VLOG(1) << "curl::Connection destroyed";
 }
 
-bool Connection::SendHeaders(const HeaderList& headers) {
+bool Connection::SendHeaders(const HeaderList& headers, ErrorPtr* error) {
   headers_.insert(headers.begin(), headers.end());
   return true;
 }
 
-bool Connection::WriteRequestData(const void* data, size_t size) {
+bool Connection::WriteRequestData(const void* data, size_t size,
+                                  ErrorPtr* error) {
   if (size > 0) {
     auto data_ptr = reinterpret_cast<const unsigned char*>(data);
     request_data_.insert(request_data_.end(), data_ptr, data_ptr + size);
@@ -67,7 +70,7 @@ bool Connection::WriteRequestData(const void* data, size_t size) {
   return true;
 }
 
-bool Connection::FinishRequest() {
+bool Connection::FinishRequest(ErrorPtr* error) {
   if (VLOG_IS_ON(3)) {
     curl_easy_setopt(curl_handle_, CURLOPT_DEBUGFUNCTION, curl_trace);
     curl_easy_setopt(curl_handle_, CURLOPT_VERBOSE, 1L);
@@ -118,8 +121,8 @@ bool Connection::FinishRequest() {
   if (header_list)
     curl_slist_free_all(header_list);
   if (ret != CURLE_OK) {
-    error_ = curl_easy_strerror(ret);
-    LOG(ERROR) << "CURL request failed: " << error_;
+    Error::AddTo(error, http::curl::kErrorDomain, std::to_string(ret),
+                 curl_easy_strerror(ret));
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
       << GetResponseStatusText() << ")";
@@ -131,7 +134,7 @@ bool Connection::FinishRequest() {
 }
 
 int Connection::GetResponseStatusCode() const {
-  long status_code = 0;
+  long status_code = 0;  // NOLINT(runtime/int) - curl expects a long here.
   curl_easy_getinfo(curl_handle_, CURLINFO_RESPONSE_CODE, &status_code);
   return status_code;
 }
@@ -155,7 +158,7 @@ uint64_t Connection::GetResponseDataSize() const {
 }
 
 bool Connection::ReadResponseData(void* data, size_t buffer_size,
-                                  size_t* size_read) {
+                                  size_t* size_read, ErrorPtr* error) {
   size_t size_to_read = response_data_.size() - response_data_ptr_;
   if (size_to_read > buffer_size)
     size_to_read = buffer_size;
@@ -164,10 +167,6 @@ bool Connection::ReadResponseData(void* data, size_t buffer_size,
     *size_read = size_to_read;
   response_data_ptr_ += size_to_read;
   return true;
-}
-
-std::string Connection::GetErrorMessage() const {
-  return error_;
 }
 
 size_t Connection::write_callback(char* ptr, size_t size,
@@ -199,7 +198,7 @@ size_t Connection::header_callback(char* ptr, size_t size,
                                    size_t num, void* data) {
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t hdr_len = size * num;
-  std::string header(ptr, int(hdr_len));
+  std::string header(ptr, hdr_len);
   // Remove newlines at the end of header line.
   while (!header.empty() && (header.back() == '\r' || header.back() == '\n')) {
     header.pop_back();
@@ -221,3 +220,7 @@ size_t Connection::header_callback(char* ptr, size_t size,
   }
   return hdr_len;
 }
+
+}  // namespace curl
+}  // namespace http
+}  // namespace chromeos
