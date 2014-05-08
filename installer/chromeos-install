@@ -603,14 +603,17 @@ copy_partition() {
     ;;
   ${ROOTFS_A_PART}|${ROOTFS_B_PART})
     # Always copy from ROOT_A for rootfs partitions.
+    part_size=$(partsize ${src} ${ROOTFS_A_PART})
     src_offset=$(partoffset ${src} ${ROOTFS_A_PART})
     write_partition ${part_num} ${part_size} ${dst_offset} \
       ${src_offset} ${src} ${dst}
     ;;
   ${KERNEL_A_PART}|${KERNEL_B_PART})
     if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_FALSE} ]; then
+      part_size=$(partsize ${src} ${KERNEL_A_PART})
       src_offset=$(partoffset ${src} ${KERNEL_A_PART})
     else
+      part_size=$(partsize ${src} ${KERNEL_B_PART})
       src_offset=$(partoffset ${src} ${KERNEL_B_PART})
     fi
     write_partition ${part_num} ${part_size} ${dst_offset} \
