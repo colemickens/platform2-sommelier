@@ -79,6 +79,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNClientCertIdProperty, Property::kCredential },
   { kOpenVPNCompLZOProperty, 0 },
   { kOpenVPNCompNoAdaptProperty, 0 },
+  { kOpenVPNIgnoreDefaultRouteProperty, 0 },
   { kOpenVPNKeyDirectionProperty, 0 },
   { kOpenVPNNsCertTypeProperty, 0 },
   { kOpenVPNOTPProperty,
@@ -394,10 +395,9 @@ void OpenVPNDriver::Notify(const string &reason,
   StopConnectTimeout();
 }
 
-// static
 void OpenVPNDriver::ParseIPConfiguration(
     const map<string, string> &configuration,
-    IPConfig::Properties *properties) {
+    IPConfig::Properties *properties) const {
   ForeignOptions foreign_options;
   RouteOptions routes;
   properties->address_family = IPAddress::kFamilyIPv4;
@@ -433,7 +433,12 @@ void OpenVPNDriver::ParseIPConfiguration(
         properties->peer_address = value;
       }
     } else if (LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
-      properties->gateway = value;
+      if (const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {
+        SLOG(VPN, 2) << "Ignoring default route parameter as requested by "
+                     << "configuration.";
+      } else {
+        properties->gateway = value;
+      }
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {
       properties->trusted_ip = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {

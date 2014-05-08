@@ -173,9 +173,6 @@ class OpenVPNDriver : public VPNDriver,
   static const int kReconnectOfflineTimeoutSeconds;
   static const int kReconnectTLSErrorTimeoutSeconds;
 
-  static void ParseIPConfiguration(
-      const std::map<std::string, std::string> &configuration,
-      IPConfig::Properties *properties);
   static void ParseForeignOptions(const ForeignOptions &options,
                                   IPConfig::Properties *properties);
   static void ParseForeignOption(const std::string &option,
@@ -211,6 +208,9 @@ class OpenVPNDriver : public VPNDriver,
   void InitLoggingOptions(std::vector<std::vector<std::string>> *options);
 
   void InitEnvironment(std::vector<std::string> *environment);
+  void ParseIPConfiguration(
+      const std::map<std::string, std::string> &configuration,
+      IPConfig::Properties *properties) const;
   bool ParseLSBRelease(std::map<std::string, std::string> *lsb_release);
 
   bool SpawnOpenVPN();

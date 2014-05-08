@@ -626,18 +626,18 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   map<string, string> config;
   IPConfig::Properties props;
 
-  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  driver_->ParseIPConfiguration(config, &props);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ(32, props.subnet_prefix);
 
   props.subnet_prefix = 18;
-  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  driver_->ParseIPConfiguration(config, &props);
   EXPECT_EQ(18, props.subnet_prefix);
 
   // An "ifconfig_remote" parameter that looks like a netmask should be
   // applied to the subnet prefix instead of to the peer address.
   config["ifconfig_remotE"] = "255.255.0.0";
-  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  driver_->ParseIPConfiguration(config, &props);
   EXPECT_EQ(16, props.subnet_prefix);
   EXPECT_EQ("", props.peer_address);
 
@@ -658,7 +658,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   config["route_gateway_2"] = kGateway2;
   config["route_gateway_1"] = kGateway1;
   config["foo"] = "bar";
-  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  driver_->ParseIPConfiguration(config, &props);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ("4.5.6.7", props.address);
   EXPECT_EQ("1.2.255.255", props.broadcast_address);
@@ -679,6 +679,15 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(kNetmask2, props.routes[1].netmask);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
   EXPECT_FALSE(props.blackhole_ipv6);
+
+  // If the driver is configured to ignore the gateway provided, it will
+  // not set the "gateway" property for the properties, however the
+  // explicitly supplied routes should still be set.
+  SetArg(kOpenVPNIgnoreDefaultRouteProperty, "some value");
+  IPConfig::Properties props_without_gateway;
+  driver_->ParseIPConfiguration(config, &props_without_gateway);
+  EXPECT_EQ(kGateway1, props_without_gateway.routes[0].gateway);
+  EXPECT_EQ("", props_without_gateway.gateway);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
