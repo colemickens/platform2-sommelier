@@ -1507,7 +1507,7 @@ TEST_F(CellularCapabilityUniversalMainTest, AllowRoaming) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
-  const string kVzwUUID = "vzw";
+  const string kVzwUUID = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kFooUUID = "foo";
   MockMobileOperatorInfo mock_operator_info(&dispatcher_);
 
@@ -1550,7 +1550,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
       "POST",
       "imei=${imei}&imsi=${imsi}&mdn=${mdn}&min=${min}&iccid=${iccid}"};
   const vector<MobileOperatorInfo::OnlinePortal> kOlpList {kOlp};
-  const string kUuidVzw = "vzw";
+  const string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kUuidFoo = "foo";
 
   cellular_->set_imei("1");

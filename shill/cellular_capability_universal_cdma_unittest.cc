@@ -284,7 +284,7 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
       "POST",
       "esn=${esn}&mdn=${mdn}&meid=${meid}"};
   const vector<MobileOperatorInfo::OnlinePortal> kOlpList {kOlp};
-  const string kUuidVzw = "vzw";
+  const string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kUuidFoo = "foo";
 
   SetMockMobileOperatorInfoObjects();

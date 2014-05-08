@@ -26,7 +26,7 @@
 #
 mno {
   data {
-    uuid:"vzw"
+    uuid : "c83d6597-dc91-4d48-a3a7-d86b80123751"
     country : "us"
     localized_name {
       name : "Verizon Wireless"
@@ -301,7 +301,7 @@ mno {
 
 mno {
   data {
-    uuid : "mts"
+    uuid : "d9d788e1-7838-4167-aa96-d0926cb6ebad"
     country : "in"
     localized_name {
       name : "MTS"
@@ -314,7 +314,7 @@ mno {
 
 mno {
   data {
-    uuid : "tata"
+    uuid : "9f88594c-1dee-4e0e-9174-a6cc7e3c3569"
     country : "in"
     localized_name {
       name : "Tata Docomo Photon"

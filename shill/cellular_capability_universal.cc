@@ -75,7 +75,7 @@ namespace {
 const char kPhoneNumber[] = "*99#";
 
 // This identifier is specified in the cellular_operator_info file.
-const char kVzwIdentifier[] = "vzw";
+const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 
 string AccessTechnologyToString(uint32 access_technologies) {
