@@ -4,28 +4,27 @@
 
 include common.mk
 
-ifeq ($(ARCH), x86)
-	CFLAGS += -DHAS_VAAPI -I$(SYSROOT)/usr/include
-	LDLIBS += -L$(SYSROOT)/usr/lib -lva-x11 -lX11 -lva
-else
-ifeq ($(ARCH), amd64)
-	CFLAGS += -DHAS_VAAPI -I$(SYSROOT)/usr/include
-	LDLIBS += -L$(SYSROOT)/usr/lib64 -lva-x11 -lX11 -lva
+PC_DEPS =
+
+USE_VAAPI ?= $(if $(filter $(ARCH),amd64 x86),yes,no)
+ifeq ($(USE_VAAPI),yes)
+  CPPFLAGS += -DHAS_VAAPI
+  PC_DEPS += libva-x11
+  VAAPI_OBJS = util_vaapi.o
 endif
-endif
+
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
+CPPFLAGS += $(PC_CFLAGS)
+LDLIBS += $(PC_LIBS)
 
 CC_BINARY(avtest_label_detect): \
 	detect_hw_video_acc.o \
 	detect_webcam.o \
 	util.o \
 	util_v4l2.o \
-	main.o
-
-ifeq ($(ARCH), x86)
-CC_BINARY(avtest_label_detect): util_vaapi.o
-endif
-ifeq ($(ARCH), amd64)
-CC_BINARY(avtest_label_detect): util_vaapi.o
-endif
+	main.o \
+	$(VAAPI_OBJS)
 
 all: CC_BINARY(avtest_label_detect)
