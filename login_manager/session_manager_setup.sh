@@ -396,7 +396,8 @@ if use_flag_is_set gpu_sandbox_start_after_initialization; then
 fi
 
 VIDEO_FLAGS=
-if is_board peach_pit || is_board peach_pi; then
+if is_board peach_pit || is_board peach_pi ||
+   is_board nyan || is_board nyan_big || is_board nyan_blaze; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
 fi
 
