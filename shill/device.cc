@@ -25,6 +25,7 @@
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
 #include "shill/dns_client.h"
+#include "shill/dns_client_factory.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -75,6 +76,16 @@ const char Device::kStoragePowered[] = "Powered";
 const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
 // static
 const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
+// static
+const char Device::kFallbackDnsTestHostname[] = "www.gstatic.com";
+// static
+const char* Device::kFallbackDnsServers[] = {
+    "8.8.8.8",
+    "8.8.8.4"
+};
+
+// static
+const int Device::kDNSTimeoutMilliseconds = 5000;
 
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -99,8 +110,11 @@ Device::Device(ControlInterface *control_interface,
       manager_(manager),
       weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      dns_client_factory_(DNSClientFactory::GetInstance()),
       portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
                                      weak_ptr_factory_.GetWeakPtr())),
+      dns_client_callback_(Bind(&Device::DNSClientCallback,
+                                weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
       portal_attempts_to_online_(0),
       receive_byte_offset_(0),
@@ -867,6 +881,39 @@ void Device::OnLinkMonitorGatewayChange() {
   manager_->ReportServicesOnSameNetwork(connection_id);
 }
 
+void Device::PerformFallbackDNSTest() {
+  // Return if DNS client already running.
+  if(fallback_dns_test_client_.get()) {
+    return;
+  }
+
+  // Send DNS request to Google's DNS server.
+  vector<string> dns_servers(std::begin(kFallbackDnsServers),
+                             std::end(kFallbackDnsServers));
+  fallback_dns_test_client_.reset(
+      dns_client_factory_->CreateDNSClient(IPAddress::kFamilyIPv4,
+                                           connection_->interface_name(),
+                                           dns_servers,
+                                           kDNSTimeoutMilliseconds,
+                                           dispatcher_,
+                                           dns_client_callback_));
+  Error error;
+  if (!fallback_dns_test_client_->Start(kFallbackDnsTestHostname, &error)) {
+    LOG(ERROR) << __func__ << ": Failed to start DNS client "
+                                << error.message();
+    fallback_dns_test_client_.reset();
+  }
+}
+
+void Device::DNSClientCallback(const Error &error, const IPAddress& ip) {
+  int result = Metrics::kDNSTestResultFailure;
+  if (error.IsSuccess()) {
+    result = Metrics::kDNSTestResultSuccess;
+  }
+  metrics()->NotifyFallbackDNSTestResult(result);
+  fallback_dns_test_client_.reset();
+}
+
 void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 
@@ -922,10 +969,11 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
 
   portal_attempts_to_online_ += result.num_attempts;
 
+  int portal_status = Metrics::PortalDetectionResultToEnum(result);
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricPortalResultSuffix,
                                    technology()),
-      Metrics::PortalDetectionResultToEnum(result),
+      portal_status,
       Metrics::kPortalResultMax);
 
   if (result.status == PortalDetector::kStatusSuccess) {
@@ -948,6 +996,14 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
         Metrics::kMetricPortalAttemptsMin,
         Metrics::kMetricPortalAttemptsMax,
         Metrics::kMetricPortalAttemptsNumBuckets);
+
+    // Perform fallback DNS test if the portal failure is DNS related.
+    // The test will send a  DNS request to Google's DNS server to determine
+    // if the DNS failure is due to bad DNS server settings.
+    if ((portal_status == Metrics::kPortalResultDNSFailure) ||
+        (portal_status == Metrics::kPortalResultDNSTimeout)) {
+      PerformFallbackDNSTest();
+    }
   }
 }
 

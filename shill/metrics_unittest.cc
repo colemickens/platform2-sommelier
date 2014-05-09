@@ -791,6 +791,14 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
       Metrics::kUserInitiatedConnectionResultSuccess);
 }
 
+TEST_F(MetricsTest, NotifyFallbackDNSTestResult) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricFallbackDNSTestResult,
+                    Metrics::kDNSTestResultSuccess,
+                    Metrics::kDNSTestResultMax));
+  metrics_.NotifyFallbackDNSTestResult(Metrics::kDNSTestResultSuccess);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

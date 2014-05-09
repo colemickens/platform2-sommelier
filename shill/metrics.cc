@@ -289,14 +289,20 @@ const int Metrics::kMetricServicesOnSameNetworkNumBuckets = 10;
 const char Metrics::kMetricUserInitiatedEvents[] =
     "Network.Shill.UserInitiatedEvents";
 
+// static
 const char Metrics::kMetricWifiTxBitrate[] =
     "Network.Shill.WiFi.TransmitBitrateMbps";
 const int Metrics::kMetricWifiTxBitrateMax = 7000;
 const int Metrics::kMetricWifiTxBitrateMin = 1;
 const int Metrics::kMetricWifiTxBitrateNumBuckets = 100;
 
+// static
 const char Metrics::kMetricWifiUserInitiatedConnectionResult[] =
     "Network.Shill.WiFi.UserInitiatedConnectionResult";
+
+// static
+const char Metrics::kMetricFallbackDNSTestResult[] =
+    "Network.Shill.FallbackDNSTestResult";
 
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
@@ -1120,6 +1126,12 @@ void Metrics::NotifyUserInitiatedConnectionResult(const string &name,
   SendEnumToUMA(name,
                 result,
                 kUserInitiatedConnectionResultMax);
+}
+
+void Metrics::NotifyFallbackDNSTestResult(int result) {
+  SendEnumToUMA(kMetricFallbackDNSTestResult,
+                result,
+                kDNSTestResultMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

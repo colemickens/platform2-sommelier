@@ -285,6 +285,12 @@ class Metrics {
     kUserInitiatedConnectionResultMax
   };
 
+  enum DNSTestResult {
+    kDNSTestResultSuccess = 0,
+    kDNSTestResultFailure,
+    kDNSTestResultMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -485,6 +491,9 @@ class Metrics {
   // User-initiated wifi connection attempt result.
   static const char kMetricWifiUserInitiatedConnectionResult[];
 
+  // DNS test result.
+  static const char kMetricFallbackDNSTestResult[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -670,6 +679,9 @@ class Metrics {
 
   // Notifies this object about user-initiated event.
   virtual void NotifyUserInitiatedEvent(int event);
+
+  // Notifies this object about the result of the fallback DNS test.
+  virtual void NotifyFallbackDNSTestResult(int result);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

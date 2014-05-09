@@ -30,6 +30,8 @@ namespace shill {
 class ControlInterface;
 class DHCPProvider;
 class DeviceAdaptorInterface;
+class DNSClient;
+class DNSClientFactory;
 class Endpoint;
 class Error;
 class EventDispatcher;
@@ -493,6 +495,9 @@ class Device : public base::RefCounted<Device> {
   static const char kStoragePowered[];
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];
+  static const char kFallbackDnsTestHostname[];
+  static const char* kFallbackDnsServers[];
+  static const int kDNSTimeoutMilliseconds;
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
@@ -525,6 +530,12 @@ class Device : public base::RefCounted<Device> {
 
   // Emit a property change signal for the "IPConfigs" property of this device.
   void UpdateIPConfigsProperty();
+
+  // Perform fallback DNS test by sending DNS request to Google's DNS server.
+  void PerformFallbackDNSTest();
+
+  // Callback for DNS Client.
+  void DNSClientCallback(const Error &error, const IPAddress &ip);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -574,8 +585,14 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
   scoped_ptr<LinkMonitor> link_monitor_;
+  // DNS Client for performing fallback DNS test when portal detector failed
+  // due to DNS failure.
+  scoped_ptr<DNSClient> fallback_dns_test_client_;
+  DNSClientFactory *dns_client_factory_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
+  base::Callback<void(const Error &, const IPAddress &)>
+      dns_client_callback_;
   Technology::Identifier technology_;
   // The number of portal detection attempts from Connected to Online state.
   // This includes all failure/timeout attempts and the final successful
