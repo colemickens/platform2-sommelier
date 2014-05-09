@@ -30,6 +30,6 @@ class ByteIdentifier {
   DISALLOW_COPY_AND_ASSIGN(ByteIdentifier);
 };
 
-}  // wimax_manager
+}  // namespace wimax_manager
 
 #endif  // WIMAX_MANAGER_BYTE_IDENTIFIER_H_

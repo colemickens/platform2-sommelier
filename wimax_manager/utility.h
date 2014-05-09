@@ -31,6 +31,6 @@ void RemoveKeysFromMap(std::map<KeyType, ValueType> *m,
   }
 }
 
-}  // wimax_manager
+}  // namespace wimax_manager
 
 #endif  // WIMAX_MANAGER_UTILITY_H_

@@ -43,7 +43,7 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
 
   // Overrides PropertiesAdaptor::on_set_property to handle
   // org.freedesktop.DBus.Properties.Set calls.
-  virtual void on_set_property(DBus::InterfaceAdaptor& interface,
+  virtual void on_set_property(DBus::InterfaceAdaptor& interface,  // NOLINT
       const std::string& property, const DBus::Variant& value);
 
   Device *device_;

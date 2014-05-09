@@ -6,6 +6,7 @@
 #define WIMAX_MANAGER_POWER_MANAGER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/time/time.h>
