@@ -1,0 +1,726 @@
+#!/usr/bin/python
+
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""A code generator for TPM 2.0 structures and commands.
+
+The generator takes as input a structures file as emitted by the
+extract_structures.sh script and a commands file as emitted by the
+extract_commands.sh script.  It outputs valid C++ into tpm_generated.{h,cc}.
+
+The input grammar is documented in the extract_* scripts. Sample input for
+structures looks like this:
+_BEGIN_TYPES
+_OLD_TYPE UINT32
+_NEW_TYPE TPM_HANDLE
+_END
+_BEGIN_CONSTANTS
+_CONSTANTS (UINT32) TPM_SPEC
+_TYPE UINT32
+_NAME TPM_SPEC_FAMILY
+_VALUE 0x322E3000
+_NAME TPM_SPEC_LEVEL
+_VALUE 00
+_END
+_BEGIN_STRUCTURES
+_STRUCTURE TPMS_TIME_INFO
+_TYPE UINT64
+_NAME time
+_TYPE TPMS_CLOCK_INFO
+_NAME clockInfo
+_END
+
+Sample input for commands looks like this:
+_BEGIN
+_INPUT_START TPM2_Startup
+_TYPE TPMI_ST_COMMAND_TAG
+_NAME tag
+_COMMENT TPM_ST_NO_SESSIONS
+_TYPE UINT32
+_NAME commandSize
+_TYPE TPM_CC
+_NAME commandCode
+_COMMENT TPM_CC_Startup {NV}
+_TYPE TPM_SU
+_NAME startupType
+_COMMENT TPM_SU_CLEAR or TPM_SU_STATE
+_OUTPUT_START TPM2_Startup
+_TYPE TPM_ST
+_NAME tag
+_COMMENT see clause 8
+_TYPE UINT32
+_NAME responseSize
+_TYPE TPM_RC
+_NAME responseCode
+_END
+"""
+
+import argparse
+import re
+
+
+_COPYRIGHT_HEADER = ('// Copyright (c) 2014 The Chromium OS Authors. All '
+                     'rights reserved.\n// Use of this source code is '
+                     'governed by a BSD-style license that can be found\n'
+                     '// in the LICENSE file.\n\n// THIS CODE IS GENERATED - '
+                     'DO NOT MODIFY!\n')
+_HEADER_FILE_GUARD_HEADER = '\n#ifndef %(name)s\n#define %(name)s\n'
+_HEADER_FILE_GUARD_FOOTER = '\n#endif  // %(name)s\n'
+_HEADER_FILE_INCLUDES = ('\n#include <stdint.h>\n\n'
+                         '#include <string>\n\n'
+                         '#include <base/callback_forward.h>\n')
+_LOCAL_INCLUDE = '\n#include "%(filename)s"\n\n'
+_NAMESPACE_BEGIN = '\nnamespace Trunks {\n\n'
+_NAMESPACE_END = '\n}  // namespace Trunks\n'
+_CLASS_BEGIN = '\nclass Tpm {\n public:\n'
+_CLASS_END = '};\n'
+_OUTPUT_FILE_H = 'tpm_generated.h'
+_OUTPUT_FILE_CC = 'tpm_generated.cc'
+
+
+class Typedef(object):
+  """Represents a TPM typedef."""
+
+  _TYPEDEF = 'typedef %(old_type)s %(new_type)s;\n'
+
+  def __init__(self, old_type, new_type):
+    self.old_type = old_type
+    self.new_type = new_type
+
+  def OutputForward(self, out_file, defined_types, typemap):
+    """Outputs a typedef definition, forward declaration does not apply."""
+    self.Output(out_file, defined_types, typemap)
+
+  def Output(self, out_file, defined_types, typemap):
+    """Writes a typedef definition to |out_file|.
+
+    Any outstanding dependencies will be forward declared.
+
+    Args:
+      out_file: The output file.
+      defined_types: A set of types for which definitions have already been
+        generated.
+      typemap: A dict mapping type names to the corresponding object.
+    """
+    if self.new_type in defined_types:
+      return
+    # Make sure the dependency is already defined.
+    if self.old_type not in defined_types:
+      typemap[self.old_type].OutputForward(out_file, defined_types, typemap)
+    out_file.write(self._TYPEDEF % {'old_type': self.old_type,
+                                    'new_type': self.new_type})
+    defined_types.add(self.new_type)
+
+
+class Constant(object):
+  """Represents a TPM constant."""
+
+  _CONSTANT = 'const %(type)s %(name)s = %(value)s;\n'
+
+  def __init__(self, const_type, name, value):
+    self.const_type = const_type
+    self.name = name
+    self.value = value
+
+  def Output(self, out_file, defined_types, typemap):
+    """Writes a constant definition to |out_file|.
+
+    Any outstanding dependencies will be forward declared.
+
+    Args:
+      out_file: The output file.
+      defined_types: A set of types for which definitions have already been
+        generated.
+      typemap: A dict mapping type names to the corresponding object.
+    """
+    # Make sure the dependency is already defined.
+    if self.const_type not in defined_types:
+      typemap[self.const_type].OutputForward(out_file, defined_types, typemap)
+    out_file.write(self._CONSTANT % {'type': self.const_type,
+                                     'name': self.name,
+                                     'value': self.value})
+
+
+class Structure(object):
+  """Represents a TPM structure or union."""
+
+  _STRUCTURE = 'struct %(name)s {\n'
+  _STRUCTURE_FORWARD = 'struct %(name)s;\n'
+  _UNION = 'union %(name)s {\n'
+  _UNION_FORWARD = 'union %(name)s;\n'
+  _STRUCTURE_END = '};\n\n'
+  _STRUCTURE_FIELD = '  %(type)s %(name)s;\n'
+
+  def __init__(self, name, is_union):
+    self.name = name
+    self.is_union = is_union
+    self.fields = []
+    self.depends_on = []
+    self.forwarded = False
+
+  def AddField(self, field_name, field_type):
+    """Adds a field for this struct."""
+    self.fields.append((field_name, field_type))
+
+  def AddDependency(self, required_type):
+    """Adds an explicit dependency on another type.
+
+    This is used in cases where there is an additional dependency other than the
+    field types, which are implicit dependencies.  For example, a field like
+    FIELD_TYPE value[sizeof(OTHER_TYPE)] would need OTHER_TYPE to be already
+    declared.
+
+    Args:
+      required_type: The type this structure depends on.
+    """
+    self.depends_on.append(required_type)
+
+  def _GetFieldTypes(self):
+    return set([field[0] for field in self.fields])
+
+  def OutputForward(self, out_file, unused_defined_types, unused_typemap):
+    """Writes a structure forward declaration to |out_file|."""
+    if self.forwarded:
+      return
+    if self.is_union:
+      out_file.write(self._UNION_FORWARD % {'name': self.name})
+    else:
+      out_file.write(self._STRUCTURE_FORWARD % {'name': self.name})
+    self.forwarded = True
+
+  def Output(self, out_file, defined_types, typemap):
+    """Writes a structure definition to |out_file|.
+
+    Any outstanding dependencies will be defined.
+
+    Args:
+      out_file: The output file.
+      defined_types: A set of types for which definitions have already been
+        generated.
+      typemap: A dict mapping type names to the corresponding object.
+    """
+    if self.name in defined_types:
+      return
+    # Make sure any dependencies are already defined.
+    for field_type in self._GetFieldTypes():
+      if field_type not in defined_types:
+        typemap[field_type].Output(out_file, defined_types, typemap)
+    for required_type in self.depends_on:
+      if required_type not in defined_types:
+        typemap[required_type].Output(out_file, defined_types, typemap)
+    if self.is_union:
+      out_file.write(self._UNION % {'name': self.name})
+    else:
+      out_file.write(self._STRUCTURE % {'name': self.name})
+    for field in self.fields:
+      out_file.write(self._STRUCTURE_FIELD % {'type': field[0],
+                                              'name': field[1]})
+    out_file.write(self._STRUCTURE_END)
+    defined_types.add(self.name)
+
+
+class Define(object):
+  """Represents a preprocessor define."""
+
+  _DEFINE = '#if !defined(%(name)s)\n#define %(name)s %(value)s\n#endif\n'
+
+  def __init__(self, name, value):
+    self.name = name
+    self.value = value
+
+  def Output(self, out_file):
+    """Writes a preprocessor define to |out_file|."""
+    out_file.write(self._DEFINE % {'name': self.name, 'value': self.value})
+
+
+class StructureParser(object):
+  """Structure definition parser.
+
+  The input text file is extracted from the PDF file containing the TPM
+  structures specification from the Trusted Computing Group. The syntax
+  of the text file is defined by extract_structures.sh.
+
+  - Parses typedefs to a list of Typedef objects.
+  - Parses constants to a list of Constant objects.
+  - Parses structs and unions to a list of Structure objects.
+  - Parses defines to a list of Define objects.
+
+  The parser also creates 'typemap' dict which maps every type to its generator
+  object.  This typemap helps manage type dependencies.
+  """
+
+  # Compile regular expressions.
+  _BEGIN_TYPES_RE = re.compile(r'^_BEGIN_TYPES$')
+  _BEGIN_CONSTANTS_RE = re.compile(r'^_BEGIN_CONSTANTS$')
+  _BEGIN_STRUCTURES_RE = re.compile(r'^_BEGIN_STRUCTURES$')
+  _BEGIN_UNIONS_RE = re.compile(r'^_BEGIN_UNIONS$')
+  _BEGIN_DEFINES_RE = re.compile(r'^_BEGIN_DEFINES$')
+  _END_RE = re.compile(r'^_END$')
+  _OLD_TYPE_RE = re.compile(r'^_OLD_TYPE\s+(\w+)$')
+  _NEW_TYPE_RE = re.compile(r'^_NEW_TYPE\s+(\w+)$')
+  _CONSTANTS_SECTION_RE = re.compile(r'^_CONSTANTS.* (\w+)$')
+  _STRUCTURE_SECTION_RE = re.compile(r'^_STRUCTURE\s+(\w+)$')
+  _UNION_SECTION_RE = re.compile(r'^_UNION\s+(\w+)$')
+  _TYPE_RE = re.compile(r'^_TYPE\s+(\w+)$')
+  _NAME_RE = re.compile(r'^_NAME\s+([a-zA-Z0-9_()\[\]/\*\+\-]+)$')
+  _VALUE_RE = re.compile(r'^_VALUE\s+(.+)$')
+  _SIZEOF_RE = re.compile(r'^.*sizeof\(([a-zA-Z0-9_]*)\).*$')
+
+  def __init__(self, in_file):
+    self._line = None
+    self._in_file = in_file
+
+  def _NextLine(self):
+    try:
+      self._line = self._in_file.next()
+    except StopIteration:
+      self._line = None
+
+  def Parse(self):
+    """Parse everything in a structures file.
+
+    Returns:
+      Lists of objects and a type-map as described in the class documentation.
+      Returns these in the following order: types, constants, structs, defines,
+      typemap.
+    """
+
+    self._NextLine()
+    types = []
+    constants = []
+    structs = []
+    defines = []
+    typemap = {}
+    while self._line:
+      if self._BEGIN_TYPES_RE.search(self._line):
+        types += self._ParseTypes(typemap)
+      elif self._BEGIN_CONSTANTS_RE.search(self._line):
+        constants += self._ParseConstants(types, typemap)
+      elif self._BEGIN_STRUCTURES_RE.search(self._line):
+        structs += self._ParseStructures(self._STRUCTURE_SECTION_RE, typemap)
+      elif self._BEGIN_UNIONS_RE.search(self._line):
+        structs += self._ParseStructures(self._UNION_SECTION_RE, typemap)
+      elif self._BEGIN_DEFINES_RE.search(self._line):
+        defines += self._ParseDefines()
+      else:
+        print 'Invalid file format: %s' % self._line
+        break
+      self._NextLine()
+    # Empty structs not handled by the extractor.
+    self._AddEmptyStruct('TPMU_SYM_DETAILS', True, structs, typemap)
+    # Defines which are used in TPM 2.0 Part 2 but not defined there.
+    defines.append(Define(
+        'MAX_CAP_DATA', '(MAX_CAP_BUFFER-sizeof(TPM_CAP)-sizeof(UINT32))'))
+    defines.append(Define(
+        'MAX_CAP_ALGS', '(TPM_ALG_LAST - TPM_ALG_FIRST + 1)'))
+    defines.append(Define(
+        'MAX_CAP_HANDLES', '(MAX_CAP_DATA/sizeof(TPM_HANDLE))'))
+    defines.append(Define(
+        'MAX_CAP_CC', '((TPM_CC_LAST - TPM_CC_FIRST) + 1)'))
+    defines.append(Define(
+        'MAX_TPM_PROPERTIES', '(MAX_CAP_DATA/sizeof(TPMS_TAGGED_PROPERTY))'))
+    defines.append(Define(
+        'MAX_PCR_PROPERTIES', '(MAX_CAP_DATA/sizeof(TPMS_TAGGED_PCR_SELECT))'))
+    defines.append(Define(
+        'MAX_ECC_CURVES', '(MAX_CAP_DATA/sizeof(TPM_ECC_CURVE))'))
+    defines.append(Define('HASH_COUNT', '3'))
+    return types, constants, structs, defines, typemap
+
+  def _AddEmptyStruct(self, name, is_union, structs, typemap):
+    """Adds an empty Structure object to |structs| and |typemap|."""
+    s = Structure(name, is_union)
+    structs.append(s)
+    typemap[name] = s
+    return
+
+  def _ParseTypes(self, typemap):
+    """Parses a typedefs section.
+
+    The current line should be _BEGIN_TYPES and the method will stop parsing
+    when an _END line is found.
+
+    Args:
+      typemap: A dictionary to which parsed types are added.
+
+    Returns:
+      A list of Typedef objects.
+    """
+    types = []
+    self._NextLine()
+    while not self._END_RE.search(self._line):
+      match = self._OLD_TYPE_RE.search(self._line)
+      if not match:
+        print 'Invalid old type: %s' % self._line
+        return types
+      old_type = match.group(1)
+      self._NextLine()
+      match = self._NEW_TYPE_RE.search(self._line)
+      if not match:
+        print 'Invalid new type: %s' % self._line
+        return types
+      new_type = match.group(1)
+      t = Typedef(old_type, new_type)
+      types.append(t)
+      typemap[new_type] = t
+      self._NextLine()
+    return types
+
+  def _ParseConstants(self, types, typemap):
+    """Parses a constants section.
+
+    The current line should be _BEGIN_CONSTANTS and the method will stop parsing
+    when an _END line is found.
+
+    Args:
+      types: A typedef will be appended for each constant group.
+      typemap: A dictionary to which parsed types are added.
+
+    Returns:
+      A list of Constant objects.
+    """
+    constants = []
+    self._NextLine()
+    while not self._END_RE.search(self._line):
+      match = self._CONSTANTS_SECTION_RE.search(self._line)
+      if not match:
+        print 'Invalid constants section: %s' % self._line
+        return constants
+      constant_typename = match.group(1)
+      self._NextLine()
+      match = self._TYPE_RE.search(self._line)
+      if not match:
+        print 'Invalid constants type: %s' % self._line
+        return constants
+      constant_type = match.group(1)
+      # Create a typedef for the constant group name (e.g. TPM_RC).
+      typedef = Typedef(constant_type, constant_typename)
+      typemap[constant_typename] = typedef
+      types.append(typedef)
+      self._NextLine()
+      match = self._NAME_RE.search(self._line)
+      if not match:
+        print 'Invalid constant name: %s' % self._line
+        return constants
+      while match:
+        name = match.group(1)
+        self._NextLine()
+        match = self._VALUE_RE.search(self._line)
+        if not match:
+          print 'Invalid constant value: %s' % self._line
+          return constants
+        value = match.group(1)
+        constants.append(Constant(constant_typename, name, value))
+        self._NextLine()
+        match = self._NAME_RE.search(self._line)
+    return constants
+
+  def _ParseStructures(self, section_re, typemap):
+    """Parses structures / unions.
+
+    The current line should be _BEGIN_STRUCTURES or _BEGIN_UNIONS and the method
+    will stop parsing when an _END line is found.
+
+    Args:
+      section_re: The regular expression to use for matching section tokens.
+      typemap: A dictionary to which parsed types are added.
+
+    Returns:
+      A list of Structure objects.
+    """
+    structures = []
+    is_union = section_re == self._UNION_SECTION_RE
+    self._NextLine()
+    while not self._END_RE.search(self._line):
+      match = section_re.search(self._line)
+      if not match:
+        print 'Invalid structure section: %s' % self._line
+        return structures
+      current_structure = Structure(match.group(1), is_union)
+      self._NextLine()
+      match = self._TYPE_RE.search(self._line)
+      if not match:
+        print 'Invalid field type: %s' % self._line
+        return structures
+      while match:
+        field_type = match.group(1)
+        self._NextLine()
+        match = self._NAME_RE.search(self._line)
+        if not match:
+          print 'Invalid field name: %s' % self._line
+          return structures
+        field_name = match.group(1)
+        # If the field name includes 'sizeof(SOME_TYPE)', record the dependency
+        # on SOME_TYPE.
+        match = self._SIZEOF_RE.search(field_name)
+        if match:
+          current_structure.AddDependency(match.group(1))
+        # Manually change unfortunate names.
+        if field_name == 'xor':
+          field_name = 'xor_'
+        current_structure.AddField(field_type, field_name)
+        self._NextLine()
+        match = self._TYPE_RE.search(self._line)
+      structures.append(current_structure)
+      typemap[current_structure.name] = current_structure
+    return structures
+
+  def _ParseDefines(self):
+    """Parses preprocessor defines.
+
+    The current line should be _BEGIN_DEFINES and the method will stop parsing
+    when an _END line is found.
+
+    Returns:
+      A list of Define objects.
+    """
+    defines = []
+    self._NextLine()
+    while not self._END_RE.search(self._line):
+      match = self._NAME_RE.search(self._line)
+      if not match:
+        print 'Invalid name: %s' % self._line
+        return defines
+      name = match.group(1)
+      self._NextLine()
+      match = self._VALUE_RE.search(self._line)
+      if not match:
+        print 'Invalid value: %s' % self._line
+        return defines
+      value = match.group(1)
+      defines.append(Define(name, value))
+      self._NextLine()
+    return defines
+
+
+class Command(object):
+  """Represents a TPM command."""
+
+  def __init__(self, name):
+    self.name = name
+    self.command_code = ''
+    self.request_args = None
+    self.response_args = None
+
+  def OutputDeclarations(self, out_file):
+    self._OutputCallbackSignature(out_file)
+    self._OutputMethodSignature(out_file)
+
+  def _OutputMethodSignature(self, out_file):
+    args = self._ArgList(self.request_args)
+    if args:
+      args += ','
+    args += '\n      const %sResponse& callback' % self._MethodName()
+    out_file.write('  void %s(%s);\n' % (self._MethodName(), args))
+
+  def _OutputCallbackSignature(self, out_file):
+    args = self._ArgList(self.response_args)
+    if args:
+      args = ',' + args
+    args = '\n      TPM_RC response_code' + args
+    out_file.write('  typedef base::Callback<void(%s)> %sResponse;\n' %
+                   (args, self._MethodName()))
+
+  def _MethodName(self):
+    if not self.name.startswith('TPM2_'):
+      return self.name
+    return self.name[5:]
+
+  def _ArgList(self, args):
+    if args:
+      arg_list = ['%s %s' % (a['type'], a['name']) for a in args]
+      return '\n      ' + ',\n      '.join(arg_list)
+    return ''
+
+
+class CommandParser(object):
+  """Command definition parser.
+
+  The input text file is extracted from the PDF file containing the TPM
+  command specification from the Trusted Computing Group. The syntax
+  of the text file is defined by extract_commands.sh.
+  """
+
+  # Regular expressions to pull relevant bits from annotated lines.
+  _INPUT_START_RE = re.compile(r'^_INPUT_START\s+(\w+)$')
+  _OUTPUT_START_RE = re.compile(r'^_OUTPUT_START\s+(\w+)$')
+  _TYPE_RE = re.compile(r'^_TYPE\s+(\w+)$')
+  _NAME_RE = re.compile(r'^_NAME\s+(\w+)$')
+  # Pull the command code from a comment like: _COMMENT TPM_CC_Startup {NV}.
+  _COMMENT_CC_RE = re.compile(r'^_COMMENT\s+(TPM_CC_\w+).*$')
+  _COMMENT_RE = re.compile(r'^_COMMENT\s+(.*)')
+  # Args which are handled internally by the generated method.
+  _INTERNAL_ARGS = ('tag', 'Tag', 'commandSize', 'commandCode', 'responseSize',
+                    'responseCode')
+
+  def __init__(self, in_file):
+    self._line = None
+    self._in_file = in_file
+
+  def _NextLine(self):
+    try:
+      self._line = self._in_file.next()
+    except StopIteration:
+      self._line = None
+
+  def Parse(self):
+    """Parses everything in a commands file.
+
+    Returns:
+      A list of extracted Command objects.
+    """
+
+    commands = []
+    self._NextLine()
+    if self._line != '_BEGIN\n':
+      print 'Invalid format for first line: %s\n' % self._line
+      return commands
+    self._NextLine()
+
+    while self._line != '_END\n':
+      cmd = self._ParseCommand()
+      if not cmd:
+        break
+      commands.append(cmd)
+    return commands
+
+  def _ParseCommand(self):
+    """Parses inputs and outputs for a single TPM command."""
+    match = self._INPUT_START_RE.search(self._line)
+    if not match:
+      print 'Cannot match command input from line: %s\n' % self._line
+      return None
+    name = match.group(1)
+    cmd = Command(name)
+    self._NextLine()
+    cmd.request_args = self._ParseCommandArgs(cmd)
+    match = self._OUTPUT_START_RE.search(self._line)
+    if not match or match.group(1) != name:
+      print 'Cannot match command output from line: %s\n' % self._line
+      return None
+    self._NextLine()
+    cmd.response_args = self._ParseCommandArgs(cmd)
+    if not cmd.command_code:
+      print 'Command code not found for %s' % name
+      return None
+    return cmd
+
+  def _ParseCommandArgs(self, cmd):
+    """Parses a set of arguments."""
+    args = []
+    command_code = None
+    match = self._TYPE_RE.search(self._line)
+    while match:
+      arg_type = match.group(1)
+      self._NextLine()
+      match = self._NAME_RE.search(self._line)
+      if not match:
+        print 'Cannot match argument name from line: %s\n' % self._line
+        break
+      arg_name = match.group(1)
+      self._NextLine()
+      match = self._COMMENT_CC_RE.search(self._line)
+      if match:
+        cmd.command_code = match.group(1)
+      match = self._COMMENT_RE.search(self._line)
+      if match:
+        description = match.group(1)
+        self._NextLine()
+      else:
+        description = ''
+      if arg_name not in self._INTERNAL_ARGS:
+        args.append({'type': arg_type,
+                     'name': arg_name,
+                     'command_code': command_code,
+                     'description': description})
+      match = self._TYPE_RE.search(self._line)
+    return args
+
+
+def GenerateHeader(types, constants, structs, defines, typemap, commands):
+  """Generates a header file with declarations for all given generator objects.
+
+  Args:
+    types: A list of Typedef objects.
+    constants: A list of Constant objects.
+    structs: A list of Structure objects.
+    defines: A list of Define objects.
+    typemap: A dict mapping type names to the corresponding object.
+    commands: A list of Command objects.
+  """
+  out_file = open(_OUTPUT_FILE_H, 'w')
+  out_file.write(_COPYRIGHT_HEADER)
+  guard_name = 'TRUNKS_%s_' % _OUTPUT_FILE_H.upper().replace('.', '_')
+  out_file.write(_HEADER_FILE_GUARD_HEADER % {'name': guard_name})
+  out_file.write(_HEADER_FILE_INCLUDES)
+  out_file.write(_NAMESPACE_BEGIN)
+  # These types are built-in or defined by <stdint.h>; they serve as base cases
+  # when defining type dependencies.
+  defined_types = set(['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
+                       'uint32_t', 'int32_t', 'uint64_t', 'int64_t'])
+  # Generate defines.  These must be generated before any other code.
+  for define in defines:
+    define.Output(out_file)
+  out_file.write('\n')
+  # Generate typedefs.  These are declared before structs because they are not
+  # likely to depend on structs and when they do a simple forward declaration
+  # for the struct can be generated.  This improves the readability of the
+  # generated code.
+  for typedef in types:
+    typedef.Output(out_file, defined_types, typemap)
+  out_file.write('\n')
+  # Generate constant definitions.  Again, generated before structs to improve
+  # readability.
+  for constant in constants:
+    constant.Output(out_file, defined_types, typemap)
+  out_file.write('\n')
+  # Generate structs.  All non-struct dependencies should be already declared.
+  for struct in structs:
+    struct.Output(out_file, defined_types, typemap)
+  # Generate a declaration for a 'Tpm' class, which includes one method for
+  # every TPM 2.0 command.
+  out_file.write(_CLASS_BEGIN)
+  for command in commands:
+    command.OutputDeclarations(out_file)
+  out_file.write(_CLASS_END)
+  out_file.write(_NAMESPACE_END)
+  out_file.write(_HEADER_FILE_GUARD_FOOTER % {'name': guard_name})
+  out_file.close()
+
+
+def GenerateImplementation(types, structs, typemap, commands):
+  """Generates implementation code for each command.
+
+  Args:
+    types: A list of Typedef objects.
+    structs: A list of Structure objects.
+    typemap: A dict mapping type names to the corresponding object.
+    commands: A list of Command objects.
+  """
+  out_file = open(_OUTPUT_FILE_CC, 'w')
+  out_file.write(_COPYRIGHT_HEADER)
+  out_file.write(_LOCAL_INCLUDE % {'filename': _OUTPUT_FILE_H})
+  out_file.write(_NAMESPACE_BEGIN)
+  # TODO(dkrahn): Generate implementation of the 'Tpm' class.
+  _ = types, structs, typemap, commands
+  out_file.write(_NAMESPACE_END)
+  out_file.close()
+
+
+def main():
+  parser = argparse.ArgumentParser(description='TPM 2.0 code generator')
+  parser.add_argument('structures_file')
+  parser.add_argument('commands_file')
+  args = parser.parse_args()
+  structure_parser = StructureParser(open(args.structures_file))
+  types, constants, structs, defines, typemap = structure_parser.Parse()
+  command_parser = CommandParser(open(args.commands_file))
+  commands = command_parser.Parse()
+  GenerateHeader(types, constants, structs, defines, typemap, commands)
+  GenerateImplementation(types, structs, typemap, commands)
+  print 'Processed %d commands.' % len(commands)
+
+
+if __name__ == '__main__':
+  main()
