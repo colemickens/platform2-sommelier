@@ -895,9 +895,11 @@ void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
 
 void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
   SLOG(Cellular, 3) << __func__;
-  dispatcher_->PostTask(
+  // If there was an outstanding task, it will get replaced.
+  notify_operator_changed_task_.Reset(
       Bind(&MobileOperatorInfoImpl::NotifyOperatorChanged,
            weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(notify_operator_changed_task_.callback());
 }
 
 void MobileOperatorInfoImpl::NotifyOperatorChanged() {

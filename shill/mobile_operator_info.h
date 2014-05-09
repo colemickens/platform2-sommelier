@@ -72,10 +72,10 @@ class MobileOperatorInfo {
 
   // These functions can be called before Init to read non default database
   // file(s).
-  std::string GetLogPrefix(const char *func) const;
   void ClearDatabasePaths();
   void AddDatabasePath(const base::FilePath &absolute_path);
 
+  std::string GetLogPrefix(const char *func) const;
   bool Init();
 
   // Add/remove observers to subscribe to notifications.

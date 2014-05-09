@@ -38,8 +38,37 @@ using std::string;
 using std::vector;
 using testing::Mock;
 using testing::Test;
+using testing::Values;
+using testing::WithParamInterface;
 
+// The tests run from the fixture |MobileOperatorInfoMainTest| and
+// |MobileOperatorDataTest| can be run in two modes:
+//   - strict event checking: We check that an event is raised for each update
+//     to the state of the object.
+//   - non-strict event checking: We check that a single event is raised as a
+//     result of many updates to the object.
+// The first case corresponds to a very aggressive event loop, that dispatches
+// events as soon as they are posted; the second one corresponds to an
+// over-crowded event loop that only dispatches events just before we verify
+// that events were raised.
+//
+// We use ::testing::WithParamInterface to templatize the test fixtures to do
+// string/non-strict event checking. When writing test cases using these
+// fixtures, use the |Update*|, |ExpectEventCount|, |VerifyEventCount| functions
+// provided by the fixture, and write the test as if event checking is strict.
+//
+// For |MobileOperatorObserverTest|, only the strict event checking case makes
+// sense, so we only instantiate that.
 namespace shill {
+
+namespace {
+
+enum EventCheckingPolicy {
+  kEventCheckingPolicyStrict,
+  kEventCheckingPolicyNonStrict
+};
+
+}  // namespace
 
 class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
  public:
@@ -162,9 +191,13 @@ TEST_F(MobileOperatorInfoInitTest, InitWithObserver) {
   EXPECT_TRUE(operator_info_->Init());
 }
 
-class MobileOperatorInfoMainTest : public MobileOperatorInfoInitTest {
+class MobileOperatorInfoMainTest
+    : public MobileOperatorInfoInitTest,
+      public WithParamInterface<EventCheckingPolicy> {
  public:
-  MobileOperatorInfoMainTest() : MobileOperatorInfoInitTest() {}
+  MobileOperatorInfoMainTest()
+      : MobileOperatorInfoInitTest(),
+        event_checking_policy_(GetParam()) {}
 
   virtual void SetUp() {
     operator_info_->ClearDatabasePaths();
@@ -196,6 +229,11 @@ class MobileOperatorInfoMainTest : public MobileOperatorInfoInitTest {
   }
 
   void ExpectEventCount(int count) {
+    // In case we're running in the non-strict event checking mode, we only
+    // expect one overall event to be raised for all the updates.
+    if (event_checking_policy_ == kEventCheckingPolicyNonStrict) {
+      count = (count > 0) ? 1 : 0;
+    }
     EXPECT_CALL(observer_, OnOperatorChanged()).Times(count);
   }
 
@@ -211,14 +249,61 @@ class MobileOperatorInfoMainTest : public MobileOperatorInfoInitTest {
     VerifyNoMatch();
   }
 
+  // Use these wrappers to send updates to |operator_info_|. These wrappers
+  // optionally run the dispatcher if we want strict checking of the number of
+  // events raised.
+  void UpdateMCCMNC(const std::string &mccmnc) {
+    operator_info_->UpdateMCCMNC(mccmnc);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void UpdateSID(const std::string &sid) {
+    operator_info_->UpdateSID(sid);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void UpdateIMSI(const std::string &imsi) {
+    operator_info_->UpdateIMSI(imsi);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void UpdateICCID(const std::string &iccid) {
+    operator_info_->UpdateICCID(iccid);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void UpdateNID(const std::string &nid) {
+    operator_info_->UpdateNID(nid);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void UpdateOperatorName(const std::string &operator_name) {
+    operator_info_->UpdateOperatorName(operator_name);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void UpdateOnlinePortal(const std::string &url,
+                          const std::string &method,
+                          const std::string &post_data) {
+    operator_info_->UpdateOnlinePortal(url, method, post_data);
+    DispatchPendingEventsIfStrict();
+  }
+
+  void DispatchPendingEventsIfStrict() {
+    if (event_checking_policy_ == kEventCheckingPolicyStrict) {
+      dispatcher_.DispatchPendingEvents();
+    }
+  }
+
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
   MockMobileOperatorInfoObserver observer_;
+  const EventCheckingPolicy event_checking_policy_;
 
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoMainTest);
 };
 
-TEST_F(MobileOperatorInfoMainTest, InitialConditions) {
+TEST_P(MobileOperatorInfoMainTest, InitialConditions) {
   // - Initialize a new object.
   // - Verify that all initial values of properties are reasonable.
   EXPECT_FALSE(operator_info_->IsMobileNetworkOperatorKnown());
@@ -238,135 +323,135 @@ TEST_F(MobileOperatorInfoMainTest, InitialConditions) {
   EXPECT_FALSE(operator_info_->requires_roaming());
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNC) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNC) {
   // message: Has an MNO with no MVNO.
   // match by: MCCMNC.
   // verify: Observer event, uuid.
 
   ExpectEventCount(0);
-  operator_info_->UpdateMCCMNC("101999");  // No match.
+  UpdateMCCMNC("101999");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("101001");
+  UpdateMCCMNC("101001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid101");
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("101999");
+  UpdateMCCMNC("101999");
   VerifyEventCount();
   VerifyNoMatch();
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleOptions) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleOptions) {
   // message: Has an MNO with no MCCMNC.
   // match by: One of the MCCMNCs of the multiple ones in the MNO.
   // verify: Observer event, uuid.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("102002");
+  UpdateMCCMNC("102002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid102");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByOperatorName) {
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorName) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName.
   // verify: Observer event, uuid.
   ExpectEventCount(0);
-  operator_info_->UpdateOperatorName("name103999");  // No match.
+  UpdateOperatorName("name103999");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name103");
+  UpdateOperatorName("name103");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid103");
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name103999");  // No match.
+  UpdateOperatorName("name103999");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByOperatorNameWithLang) {
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameWithLang) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName.
   // verify: Observer event, fields.
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name105");
+  UpdateOperatorName("name105");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid105");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleOptions) {
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleOptions) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName, one of the multiple present in the MNO.
   // verify: Observer event, fields.
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name104002");
+  UpdateOperatorName("name104002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid104");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCAndOperatorName) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndOperatorName) {
   // message: Has MNOs with no MVNO.
   // match by: MCCMNC finds two candidates, Name narrows down to one.
   // verify: Observer event, fields.
   // This is merely a MCCMNC update.
   ExpectEventCount(0);
-  operator_info_->UpdateMCCMNC("106001");
+  UpdateMCCMNC("106001");
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name106002");
+  UpdateOperatorName("name106002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid106002");
 
   ResetOperatorInfo();
   // Try updates in reverse order.
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name106001");
+  UpdateOperatorName("name106001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid106001");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByOperatorNameAndMCCMNC) {
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAndMCCMNC) {
   // message: Has MNOs with no MVNO.
   // match by: OperatorName finds two, MCCMNC narrows down to one.
   // verify: Observer event, fields.
   // This is merely an OperatorName update.
   ExpectEventCount(0);
-  operator_info_->UpdateOperatorName("name107");
+  UpdateOperatorName("name107");
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("107002");
+  UpdateMCCMNC("107002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid107002");
 
   ResetOperatorInfo();
   // Try updates in reverse order.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("107001");
+  UpdateMCCMNC("107001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid107001");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
   // message: Has MNOs with no MVNO.
   // match by: First MCCMNC finds one. Then, OperatorName matches another.
   // verify: MCCMNC match prevails. No change on OperatorName update.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("108001");
+  UpdateMCCMNC("108001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid108001");
 
   // An event is sent for the updated OperatorName.
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name108002");  // Does not match.
+  UpdateOperatorName("name108002");  // Does not match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid108001");
   EXPECT_EQ("name108002", operator_info_->operator_name());
@@ -376,12 +461,12 @@ TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
   // match by: First OperatorName finds one, then MCCMNC overrides it.
   // verify: Two events, MCCMNC one overriding the OperatorName one.
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name108001");
+  UpdateOperatorName("name108001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid108001");
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("108002");
+  UpdateMCCMNC("108002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid108002");
   // Name should remain unchanged though.
@@ -393,65 +478,65 @@ TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
   // verify: No MNO, since MCCMNC is given precedence.
   ResetOperatorInfo();
   ExpectEventCount(0);
-  operator_info_->UpdateMCCMNC("108999");  // Does not match.
-  operator_info_->UpdateOperatorName("name108001");
+  UpdateMCCMNC("108999");  // Does not match.
+  UpdateOperatorName("name108001");
   VerifyEventCount();
   VerifyNoMatch();
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByIMSI) {
+TEST_P(MobileOperatorInfoMainTest, MNOByIMSI) {
   // message: Has MNO with no MVNO.
   // match by: MCCMNC part of IMSI of length 5 / 6.
   ExpectEventCount(0);
-  operator_info_->UpdateIMSI("109");  // Too short.
+  UpdateIMSI("109");  // Too short.
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(0);
-  operator_info_->UpdateIMSI("109995432154321");  // No match.
+  UpdateIMSI("109995432154321");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
   ResetOperatorInfo();
   // Short MCCMNC match.
   ExpectEventCount(1);
-  operator_info_->UpdateIMSI("109015432154321");  // First 5 digits match.
+  UpdateIMSI("109015432154321");  // First 5 digits match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid10901");
 
   ResetOperatorInfo();
   // Long MCCMNC match.
   ExpectEventCount(1);
-  operator_info_->UpdateIMSI("10900215432154321");  // First 6 digits match.
+  UpdateIMSI("10900215432154321");  // First 6 digits match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid109002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
   // message: Has MNOs with no MVNO.
   // match by: One matches MCCMNC, then one matches a different MCCMNC substring
   //    of IMSI
   // verify: Observer event for the first match, all fields. Second Update
   // ignored.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("110001");
+  UpdateMCCMNC("110001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
 
   // MNO remains unchanged on a mismatched IMSI update.
   ExpectEventCount(0);
-  operator_info_->UpdateIMSI("1100025432154321");  // First 6 digits match.
+  UpdateIMSI("1100025432154321");  // First 6 digits match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
 
   // MNO remains uncnaged on an invalid IMSI update.
   ExpectEventCount(0);
-  operator_info_->UpdateIMSI("1100035432154321");  // Prefix does not match.
+  UpdateIMSI("1100035432154321");  // Prefix does not match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
 
   ExpectEventCount(0);
-  operator_info_->UpdateIMSI("110");  // Too small.
+  UpdateIMSI("110");  // Too small.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
 
@@ -459,126 +544,126 @@ TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
   // Same as above, but this time, match with IMSI, followed by a contradictory
   // MCCMNC update. The second update should override the first one.
   ExpectEventCount(1);
-  operator_info_->UpdateIMSI("1100025432154321");  // First 6 digits match.
+  UpdateIMSI("1100025432154321");  // First 6 digits match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110002");
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("110001");
+  UpdateMCCMNC("110001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOUchangedBySecondaryUpdates) {
+TEST_P(MobileOperatorInfoMainTest, MNOUchangedBySecondaryUpdates) {
   // This test verifies that only some updates affect the MNO.
   // message: Has MNOs with no MVNO.
   // match by: First matches the MCCMNC. Later, MNOs with a different MCCMNC
   //    matchs the given SID, NID, ICCID.
   // verify: Only one Observer event, on the first MCCMNC match.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("111001");
+  UpdateMCCMNC("111001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid111001");
 
   ExpectEventCount(1);  // NID change event.
-  operator_info_->UpdateNID("111202");
+  UpdateNID("111202");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid111001");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNODefaultMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNODefaultMatch) {
   // message: MNO with one MVNO (no filter).
   // match by: MNO matches by MCCMNC.
   // verify: Observer event for MVNO match. Uuid match the MVNO.
   // second update: ICCID.
   // verify: No observer event, match remains unchanged.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("112001");
+  UpdateMCCMNC("112001");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid112002");
 
   ExpectEventCount(0);
-  operator_info_->UpdateICCID("112002");
+  UpdateICCID("112002");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid112002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNONameMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNONameMatch) {
   // message: MNO with one MVNO (name filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by fist name update,
   //           then MVNO matches by name.
   // verify: Two Observer events: MNO followed by MVNO.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("113001");
+  UpdateMCCMNC("113001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name113999");  // No match.
+  UpdateOperatorName("name113999");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
   EXPECT_EQ("name113999", operator_info_->operator_name());
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name113002");
+  UpdateOperatorName("name113002");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid113002");
   EXPECT_EQ("name113002", operator_info_->operator_name());
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNONameMalformedRegexMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNONameMalformedRegexMatch) {
   // message: MNO with one MVNO (name filter with a malformed regex).
   // match by: MNO matches by MCCMNC.
   //           MVNO does not match
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("114001");
-  operator_info_->UpdateOperatorName("name[");
+  UpdateMCCMNC("114001");
+  UpdateOperatorName("name[");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid114001");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNONameSubexpressionRegexMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNONameSubexpressionRegexMatch) {
   // message: MNO with one MVNO (name filter with simple regex).
   // match by: MNO matches by MCCMNC.
   //           MVNO does not match with a name whose subexpression matches the
   //           regex.
   ExpectEventCount(2);  // One event for just the name update.
-  operator_info_->UpdateMCCMNC("115001");
-  operator_info_->UpdateOperatorName("name115_ExtraCrud");
+  UpdateMCCMNC("115001");
+  UpdateOperatorName("name115_ExtraCrud");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid115001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);  // One event for just the name update.
-  operator_info_->UpdateMCCMNC("115001");
-  operator_info_->UpdateOperatorName("ExtraCrud_name115");
+  UpdateMCCMNC("115001");
+  UpdateOperatorName("ExtraCrud_name115");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid115001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);  // One event for just the name update.
-  operator_info_->UpdateMCCMNC("115001");
-  operator_info_->UpdateOperatorName("ExtraCrud_name115_ExtraCrud");
+  UpdateMCCMNC("115001");
+  UpdateOperatorName("ExtraCrud_name115_ExtraCrud");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid115001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);  // One event for just the name update.
-  operator_info_->UpdateMCCMNC("115001");
-  operator_info_->UpdateOperatorName("name_ExtraCrud_115");
+  UpdateMCCMNC("115001");
+  UpdateOperatorName("name_ExtraCrud_115");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid115001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("115001");
-  operator_info_->UpdateOperatorName("name115");
+  UpdateMCCMNC("115001");
+  UpdateOperatorName("name115");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid115002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNONameRegexMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNONameRegexMatch) {
   // message: MNO with one MVNO (name filter with non-trivial regex).
   // match by: MNO matches by MCCMNC.
   //           MVNO fails to match several times with different strings.
@@ -586,151 +671,151 @@ TEST_F(MobileOperatorInfoMainTest, MVNONameRegexMatch) {
 
   // Make sure we're not taking the regex literally!
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("116001");
-  operator_info_->UpdateOperatorName("name[a-zA-Z_]*116[0-9]{0,3}");
+  UpdateMCCMNC("116001");
+  UpdateOperatorName("name[a-zA-Z_]*116[0-9]{0,3}");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid116001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("116001");
-  operator_info_->UpdateOperatorName("name[a-zA-Z_]116[0-9]");
+  UpdateMCCMNC("116001");
+  UpdateOperatorName("name[a-zA-Z_]116[0-9]");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid116001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("116001");
-  operator_info_->UpdateOperatorName("nameb*1167");
+  UpdateMCCMNC("116001");
+  UpdateOperatorName("nameb*1167");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid116001");
 
   // Success!
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("116001");
-  operator_info_->UpdateOperatorName("name116");
+  UpdateMCCMNC("116001");
+  UpdateOperatorName("name116");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid116002");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("116001");
-  operator_info_->UpdateOperatorName("nameSomeWord116");
+  UpdateMCCMNC("116001");
+  UpdateOperatorName("nameSomeWord116");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid116002");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("116001");
-  operator_info_->UpdateOperatorName("name116567");
+  UpdateMCCMNC("116001");
+  UpdateOperatorName("name116567");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid116002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNONameMatchMultipleFilters) {
+TEST_P(MobileOperatorInfoMainTest, MVNONameMatchMultipleFilters) {
   // message: MNO with one MVNO with two name filters.
   // match by: MNO matches by MCCMNC.
   //           MVNO first fails on the second filter alone.
   //           MVNO fails on the first filter alone.
   //           MVNO matches on both filters.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("117001");
-  operator_info_->UpdateOperatorName("nameA_crud");
+  UpdateMCCMNC("117001");
+  UpdateOperatorName("nameA_crud");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid117001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("117001");
-  operator_info_->UpdateOperatorName("crud_nameB");
+  UpdateMCCMNC("117001");
+  UpdateOperatorName("crud_nameB");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid117001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("117001");
-  operator_info_->UpdateOperatorName("crud_crud");
+  UpdateMCCMNC("117001");
+  UpdateOperatorName("crud_crud");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid117001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("117001");
-  operator_info_->UpdateOperatorName("nameA_nameB");
+  UpdateMCCMNC("117001");
+  UpdateOperatorName("nameA_nameB");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid117002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
   // message: MNO with one MVNO (imsi filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by fist imsi update,
   //           then MVNO matches by imsi.
   // verify: Two Observer events: MNO followed by MVNO.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("118001");
+  UpdateMCCMNC("118001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid118001");
 
   ExpectEventCount(0);
-  operator_info_->UpdateIMSI("1180011234512345");  // No match.
+  UpdateIMSI("1180011234512345");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid118001");
 
   ExpectEventCount(1);
-  operator_info_->UpdateIMSI("1180015432154321");
+  UpdateIMSI("1180015432154321");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid118002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
   // message: MNO with one MVNO (iccid filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by fist iccid update,
   //           then MVNO matches by iccid.
   // verify: Two Observer events: MNO followed by MVNO.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("119001");
+  UpdateMCCMNC("119001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid119001");
 
   ExpectEventCount(0);
-  operator_info_->UpdateICCID("119987654321");  // No match.
+  UpdateICCID("119987654321");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid119001");
 
   ExpectEventCount(1);
-  operator_info_->UpdateICCID("119123456789");
+  UpdateICCID("119123456789");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid119002");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNOSIDMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNOSIDMatch) {
   // message: MNO with one MVNO (sid filter).
   // match by: MNO matches by SID,
   //           MVNO fails to match by fist sid update,
   //           then MVNO matches by sid.
   // verify: Two Observer events: MNO followed by MVNO.
   ExpectEventCount(0);
-  operator_info_->UpdateSID("120999");  // No match.
+  UpdateSID("120999");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("120001");  // Only MNO matches.
+  UpdateSID("120001");  // Only MNO matches.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid120001");
   EXPECT_EQ("120001", operator_info_->sid());
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("120002");  // MVNO matches as well.
+  UpdateSID("120002");  // MVNO matches as well.
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid120002");
   EXPECT_EQ("120002", operator_info_->sid());
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNOAllMatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNOAllMatch) {
   // message: MNO with following MVNOS:
   //   - one with no filter.
   //   - one with name filter.
@@ -743,76 +828,76 @@ TEST_F(MobileOperatorInfoMainTest, MVNOAllMatch) {
   //   - give super set information that does not match any MVNO correctly,
   //     verify that the MNO matches.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("121001");
+  UpdateMCCMNC("121001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid121001");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("121001");
-  operator_info_->UpdateOperatorName("name121003");
+  UpdateMCCMNC("121001");
+  UpdateOperatorName("name121003");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid121003");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("121001");
-  operator_info_->UpdateIMSI("1210045432154321");
+  UpdateMCCMNC("121001");
+  UpdateIMSI("1210045432154321");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid121004");
 
   ResetOperatorInfo();
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("121001");
-  operator_info_->UpdateICCID("121005123456789");
+  UpdateMCCMNC("121001");
+  UpdateICCID("121005123456789");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid121005");
 
   ResetOperatorInfo();
   ExpectEventCount(3);
-  operator_info_->UpdateMCCMNC("121001");
-  operator_info_->UpdateOperatorName("name121006");
+  UpdateMCCMNC("121001");
+  UpdateOperatorName("name121006");
   VerifyMNOWithUUID("uuid121001");
-  operator_info_->UpdateICCID("121006123456789");
+  UpdateICCID("121006123456789");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid121006");
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNOMatchAndMismatch) {
+TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndMismatch) {
   // message: MNO with one MVNO with name filter.
   // match by: MNO matches by MCCMNC
   //           MVNO matches by name.
   //           Second name update causes the MVNO to not match again.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("113001");
+  UpdateMCCMNC("113001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name113002");
+  UpdateOperatorName("name113002");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid113002");
   EXPECT_EQ("name113002", operator_info_->operator_name());
 
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name113999");  // No match.
+  UpdateOperatorName("name113999");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
   EXPECT_EQ("name113999", operator_info_->operator_name());
 }
 
-TEST_F(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
+TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
   // message: MVNO with name filter.
   // verify;
   //   - match MVNO by name.
   //   - Reset object, verify Observer event, and not match.
   //   - match MVNO by name again.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("113001");
+  UpdateMCCMNC("113001");
   VerifyEventCount();
   ExpectEventCount(1);
   VerifyMNOWithUUID("uuid113001");
-  operator_info_->UpdateOperatorName("name113002");
+  UpdateOperatorName("name113002");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid113002");
   EXPECT_EQ("name113002", operator_info_->operator_name());
@@ -823,11 +908,11 @@ TEST_F(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("113001");
+  UpdateMCCMNC("113001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName("name113002");
+  UpdateOperatorName("name113002");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid113002");
   EXPECT_EQ("name113002", operator_info_->operator_name());
@@ -837,40 +922,40 @@ TEST_F(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
 // updates follow the same code paths, and so we can get away with not testing
 // all the scenarios we test above for MCCMNC. Instead, we only do basic testing
 // to make sure that SID upates operator as MCCMNC updates do.
-TEST_F(MobileOperatorInfoMainTest, MNOBySID) {
+TEST_P(MobileOperatorInfoMainTest, MNOBySID) {
   // message: Has an MNO with no MVNO.
   // match by: SID.
   // verify: Observer event, uuid.
 
   ExpectEventCount(0);
-  operator_info_->UpdateSID("1229");  // No match.
+  UpdateSID("1229");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("1221");
+  UpdateSID("1221");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid1221");
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("1229");  // No Match.
+  UpdateSID("1229");  // No Match.
   VerifyEventCount();
   VerifyNoMatch();
 }
 
-TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
   // message: Has an MNO with no MVNO.
   // match by: SID / MCCMNC alternately.
   // verify: Observer event, uuid.
 
   ExpectEventCount(0);
-  operator_info_->UpdateMCCMNC("123999");  // NO match.
-  operator_info_->UpdateSID("1239");  // No match.
+  UpdateMCCMNC("123999");  // NO match.
+  UpdateSID("1239");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("123001");
+  UpdateMCCMNC("123001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid123001");
 
@@ -880,7 +965,7 @@ TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("1232");
+  UpdateSID("1232");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid1232");
 
@@ -890,7 +975,7 @@ TEST_F(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("123001");
+  UpdateMCCMNC("123001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid123001");
 }
@@ -1083,12 +1168,13 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoDataTest);
 };
 
-TEST_F(MobileOperatorInfoDataTest, MNODetailedInformation) {
+
+TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {
   // message: MNO with all the information filled in.
   // match by: MNO matches by MCCMNC
   // verify: All information is correctly loaded.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("200001");
+  UpdateMCCMNC("200001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
 
@@ -1096,12 +1182,12 @@ TEST_F(MobileOperatorInfoDataTest, MNODetailedInformation) {
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, MVNOInheritsInformation) {
+TEST_P(MobileOperatorInfoDataTest, MVNOInheritsInformation) {
   // message: MVNO with name filter.
   // verify: All the missing fields are carried over to the MVNO from MNO.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200201");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200201");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200201");
 
@@ -1109,13 +1195,13 @@ TEST_F(MobileOperatorInfoDataTest, MVNOInheritsInformation) {
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, MVNOOverridesInformation) {
+TEST_P(MobileOperatorInfoDataTest, MVNOOverridesInformation) {
   // match by: MNO matches by MCCMNC, MVNO by name.
   // verify: All information is correctly loaded.
   //         The MVNO in this case overrides the information provided by MNO.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200101");
 
@@ -1123,20 +1209,20 @@ TEST_F(MobileOperatorInfoDataTest, MVNOOverridesInformation) {
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
+TEST_P(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
   // message: MVNO.
   // - do not match MNO with mccmnc/name
   // - on different updates, verify no events.
   ExpectEventCount(0);
-  operator_info_->UpdateMCCMNC("200999");  // No match.
-  operator_info_->UpdateOperatorName("name200001");  // matches MNO
-  operator_info_->UpdateOperatorName("name200101");  // matches MVNO filter.
-  operator_info_->UpdateSID("200999");  // No match.
+  UpdateMCCMNC("200999");  // No match.
+  UpdateOperatorName("name200001");  // matches MNO
+  UpdateOperatorName("name200101");  // matches MVNO filter.
+  UpdateSID("200999");  // No match.
   VerifyEventCount();
   VerifyNoMatch();
 }
 
-TEST_F(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
+TEST_P(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   // - match MVNO.
   // - send updates to properties and verify events are raised and values of
   //   updated properties override the ones provided by the database.
@@ -1148,17 +1234,17 @@ TEST_F(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
 
   // Determine MVNO.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200101");
 
   // Send updates.
   ExpectEventCount(1);
-  operator_info_->UpdateOnlinePortal(olp_url, olp_method, olp_post_data);
-  operator_info_->UpdateIMSI(imsi);
+  UpdateOnlinePortal(olp_url, olp_method, olp_post_data);
+  UpdateIMSI(imsi);
   // No event raised because imsi is not exposed.
-  operator_info_->UpdateICCID(iccid);
+  UpdateICCID(iccid);
   // No event raised because ICCID is not exposed.
 
   VerifyEventCount();
@@ -1170,7 +1256,7 @@ TEST_F(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
+TEST_P(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
   // message: MVNO.
   // - First send updates that don't identify an MNO.
   // - Then identify an MNO and MVNO.
@@ -1185,16 +1271,16 @@ TEST_F(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
 
   // Send updates.
   ExpectEventCount(0);
-  operator_info_->UpdateSID(sid);
-  operator_info_->UpdateOnlinePortal(olp_url, olp_method, olp_post_data);
-  operator_info_->UpdateIMSI(imsi);
-  operator_info_->UpdateICCID(iccid);
+  UpdateSID(sid);
+  UpdateOnlinePortal(olp_url, olp_method, olp_post_data);
+  UpdateIMSI(imsi);
+  UpdateICCID(iccid);
   VerifyEventCount();
 
   // Determine MVNO.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200101");
 
@@ -1208,15 +1294,15 @@ TEST_F(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
   VerifyUserData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
+TEST_P(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
   // - match MVNO.
   // - send redundant updates to properties.
   // - Verify no events, no updates to properties.
 
   // Identify MVNO.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200101");
 
@@ -1228,14 +1314,14 @@ TEST_F(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
   // raise these redundant events (since no public information about the object
   // changed), but I haven't invested in doing so yet.
   ExpectEventCount(1);
-  operator_info_->UpdateOperatorName(operator_info_->operator_name());
-  operator_info_->UpdateOnlinePortal("someother@random.com", "GET", "");
+  UpdateOperatorName(operator_info_->operator_name());
+  UpdateOnlinePortal("someother@random.com", "GET", "");
   VerifyEventCount();
   PopulateMVNOData();
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
+TEST_P(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
   // message: MVNO.
   // - First send updates that don't identify MVNO, but match the data.
   // - Then idenityf an MNO and MVNO.
@@ -1243,13 +1329,13 @@ TEST_F(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
 
   // Send redundant updates.
   ExpectEventCount(2);
-  operator_info_->UpdateSID(operator_info_->sid());
-  operator_info_->UpdateOperatorName(operator_info_->operator_name());
-  operator_info_->UpdateOnlinePortal("someother@random.com", "GET", "");
+  UpdateSID(operator_info_->sid());
+  UpdateOperatorName(operator_info_->operator_name());
+  UpdateOnlinePortal("someother@random.com", "GET", "");
 
   // Identify MVNO.
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200101");
 
@@ -1257,11 +1343,11 @@ TEST_F(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, ResetClearsInformation) {
+TEST_P(MobileOperatorInfoDataTest, ResetClearsInformation) {
   // Repeatedly reset the object and check M[V]NO identification and data.
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200201");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200201");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200201");
   PopulateMNOData();
@@ -1273,8 +1359,8 @@ TEST_F(MobileOperatorInfoDataTest, ResetClearsInformation) {
   VerifyNoMatch();
 
   ExpectEventCount(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid200101");
   PopulateMVNOData();
@@ -1286,19 +1372,19 @@ TEST_F(MobileOperatorInfoDataTest, ResetClearsInformation) {
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("200001");
+  UpdateMCCMNC("200001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
   PopulateMNOData();
   VerifyDatabaseData();
 }
 
-TEST_F(MobileOperatorInfoDataTest, FilteredOLP) {
+TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
   // We only check basic filter matching, using the fact that the regex matching
   // code is shared with the MVNO filtering, and is already well tested.
   // (1) None of the filters match.
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("200001");
+  UpdateMCCMNC("200001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
 
@@ -1314,7 +1400,7 @@ TEST_F(MobileOperatorInfoDataTest, FilteredOLP) {
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateMCCMNC("200003");
+  UpdateMCCMNC("200003");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
 
@@ -1333,7 +1419,7 @@ TEST_F(MobileOperatorInfoDataTest, FilteredOLP) {
   VerifyNoMatch();
 
   ExpectEventCount(1);
-  operator_info_->UpdateSID("200345");
+  UpdateSID("200345");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
 
@@ -1367,14 +1453,14 @@ class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserverTest);
 };
 
-TEST_F(MobileOperatorInfoObserverTest, NoObserver) {
+TEST_P(MobileOperatorInfoObserverTest, NoObserver) {
   // - Don't add any observers, and then cause an MVNO update to occur.
   // - Verify no crash.
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
 }
 
-TEST_F(MobileOperatorInfoObserverTest, MultipleObservers) {
+TEST_P(MobileOperatorInfoObserverTest, MultipleObservers) {
   // - Add two observers, and then cause an MVNO update to occur.
   // - Verify both observers are notified.
   operator_info_->AddObserver(&observer_);
@@ -1382,21 +1468,21 @@ TEST_F(MobileOperatorInfoObserverTest, MultipleObservers) {
 
   EXPECT_CALL(observer_, OnOperatorChanged()).Times(2);
   EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyMVNOWithUUID("uuid200101");
 
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(MobileOperatorInfoObserverTest, LateObserver) {
+TEST_P(MobileOperatorInfoObserverTest, LateObserver) {
   // - Add one observer, and verify it gets an MVNO update.
   operator_info_->AddObserver(&observer_);
 
   EXPECT_CALL(observer_, OnOperatorChanged()).Times(2);
   EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(0);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyMVNOWithUUID("uuid200101");
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&observer_);
@@ -1415,8 +1501,8 @@ TEST_F(MobileOperatorInfoObserverTest, LateObserver) {
 
   EXPECT_CALL(observer_, OnOperatorChanged()).Times(2);
   EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyMVNOWithUUID("uuid200101");
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&observer_);
@@ -1435,8 +1521,8 @@ TEST_F(MobileOperatorInfoObserverTest, LateObserver) {
 
   EXPECT_CALL(observer_, OnOperatorChanged()).Times(0);
   EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(2);
-  operator_info_->UpdateMCCMNC("200001");
-  operator_info_->UpdateOperatorName("name200101");
+  UpdateMCCMNC("200001");
+  UpdateOperatorName("name200101");
   VerifyMVNOWithUUID("uuid200101");
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&observer_);
@@ -1451,4 +1537,16 @@ TEST_F(MobileOperatorInfoObserverTest, LateObserver) {
   Mock::VerifyAndClearExpectations(&second_observer_);
 }
 
+INSTANTIATE_TEST_CASE_P(MobileOperatorInfoMainTestInstance,
+                        MobileOperatorInfoMainTest,
+                        Values(kEventCheckingPolicyStrict,
+                               kEventCheckingPolicyNonStrict));
+INSTANTIATE_TEST_CASE_P(MobileOperatorInfoDataTestInstance,
+                        MobileOperatorInfoDataTest,
+                        Values(kEventCheckingPolicyStrict,
+                               kEventCheckingPolicyNonStrict));
+// It only makes sense to do strict checking here.
+INSTANTIATE_TEST_CASE_P(MobileOperatorInfoObserverTestInstance,
+                        MobileOperatorInfoObserverTest,
+                        Values(kEventCheckingPolicyStrict));
 }  // namespace shill

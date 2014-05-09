@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
@@ -144,6 +145,7 @@ class MobileOperatorInfoImpl {
   // the observer is likely to outlive this object. We do enforce removal of all
   // observers before this object is destroyed.
   ObserverList<MobileOperatorInfo::Observer> observers_;
+  base::CancelableClosure notify_operator_changed_task_;
 
   scoped_ptr<mobile_operator_db::MobileOperatorDB> database_;
   StringToMNOListMap mccmnc_to_mnos_;
