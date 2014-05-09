@@ -688,6 +688,12 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   driver_->ParseIPConfiguration(config, &props_without_gateway);
   EXPECT_EQ(kGateway1, props_without_gateway.routes[0].gateway);
   EXPECT_EQ("", props_without_gateway.gateway);
+
+  // A pushed redirect flag should override the IgnoreDefaultRoute property.
+  config["redirect_gateway"] = "def1";
+  IPConfig::Properties props_with_override;
+  driver_->ParseIPConfiguration(config, &props_with_override);
+  EXPECT_EQ("192.168.1.1", props_with_override.gateway);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {

@@ -45,6 +45,8 @@ const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
 const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
 const char kOpenVPNIfconfigNetmask[] = "ifconfig_netmask";
 const char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
+const char kOpenVPNRedirectGateway[] = "redirect_gateway";
+const char kOpenVPNRedirectPrivate[] = "redirect_private";
 const char kOpenVPNRouteOptionPrefix[] = "route_";
 const char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 const char kOpenVPNTrustedIP[] = "trusted_ip";
@@ -400,6 +402,8 @@ void OpenVPNDriver::ParseIPConfiguration(
     IPConfig::Properties *properties) const {
   ForeignOptions foreign_options;
   RouteOptions routes;
+  bool is_gateway_route_required = false;
+
   properties->address_family = IPAddress::kFamilyIPv4;
   if (!properties->subnet_prefix) {
     properties->subnet_prefix =
@@ -432,13 +436,11 @@ void OpenVPNDriver::ParseIPConfiguration(
       } else {
         properties->peer_address = value;
       }
+    } else if (LowerCaseEqualsASCII(key, kOpenVPNRedirectGateway) ||
+               LowerCaseEqualsASCII(key, kOpenVPNRedirectPrivate)) {
+      is_gateway_route_required = true;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
-      if (const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {
-        SLOG(VPN, 2) << "Ignoring default route parameter as requested by "
-                     << "configuration.";
-      } else {
-        properties->gateway = value;
-      }
+      properties->gateway = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {
       properties->trusted_ip = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {
@@ -465,6 +467,17 @@ void OpenVPNDriver::ParseIPConfiguration(
   }
   ParseForeignOptions(foreign_options, properties);
   SetRoutes(routes, properties);
+
+  if (const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {
+    if (is_gateway_route_required) {
+      LOG(INFO) << "Configuration request to ignore default route is "
+                << "overridden by the remote server.";
+    } else {
+      SLOG(VPN, 2) << "Ignoring default route parameter as requested by "
+                   << "configuration.";
+      properties->gateway.clear();
+    }
+  }
 }
 
 // static
