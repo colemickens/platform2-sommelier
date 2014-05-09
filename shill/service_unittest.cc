@@ -35,6 +35,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
+#include "shill/testing.h"
 
 using base::Bind;
 using base::Unretained;
@@ -687,13 +688,11 @@ TEST_F(ServiceTest, State) {
       Service::ConnectFailureToString(Service::kFailureUnknown));
   EXPECT_EQ(unknown_error, service_->error());
 
-  ServiceRefPtr service_ref(service_);
-
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(kStateProperty, _)).Times(6);
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(kErrorProperty, _)).Times(4);
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   // A second state change shouldn't cause another update
@@ -703,7 +702,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
   EXPECT_TRUE(service_->has_ever_connected_);
 
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_TRUE(service_->IsFailed());
   EXPECT_GT(service_->failed_time_, 0);
@@ -715,7 +714,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(out_of_range_error, service_->error());
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
 
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsFailed());
   EXPECT_EQ(service_->failed_time_, 0);
@@ -723,7 +722,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
   EXPECT_GT(service_->previous_error_serial_number_, 0);
 
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetFailureSilent(Service::kFailurePinMissing);
   EXPECT_TRUE(service_->IsFailed());
   EXPECT_GT(service_->failed_time_, 0);
@@ -743,10 +742,10 @@ TEST_F(ServiceTest, State) {
   NiceMock<MockStore> storage;
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   EXPECT_CALL(*mock_profile, GetConstStorage())
       .WillOnce(Return(&storage));
-  EXPECT_CALL(*mock_profile, UpdateService(service_ref));
+  EXPECT_CALL(*mock_profile, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_TRUE(service_->has_ever_connected_);
   service_->set_profile(NULL);  // Break reference cycle.
@@ -757,7 +756,7 @@ TEST_F(ServiceTest, State) {
   service_->state_ = Service::kStateIdle;  // Skips state change logic.
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   EXPECT_CALL(*mock_profile, GetConstStorage()).
       WillOnce(Return(static_cast<StoreInterface *>(NULL)));
   service_->SetState(Service::kStateConnected);
@@ -1181,7 +1180,6 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
 }
 
 TEST_F(ServiceTest, IsRemembered) {
-  ServiceConstRefPtr service_ref(service_);
   service_->set_profile(NULL);
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(_)).Times(0);
   EXPECT_FALSE(service_->IsRemembered());
@@ -1189,7 +1187,7 @@ TEST_F(ServiceTest, IsRemembered) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
   service_->set_profile(profile);
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(service_ref))
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
      .WillOnce(Return(true))
      .WillOnce(Return(false));
   EXPECT_FALSE(service_->IsRemembered());
@@ -1257,21 +1255,23 @@ TEST_F(ServiceTest, OnPropertyChanged) {
 
 
 TEST_F(ServiceTest, RecheckPortal) {
-  ServiceRefPtr service_ref(service_);
   service_->state_ = Service::kStateIdle;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStatePortal;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
+      .Times(1);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStateConnected;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
+      .Times(1);
   service_->OnPropertyChanged(kProxyConfigProperty);
 
   service_->state_ = Service::kStateOnline;
-  EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
+      .Times(1);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
   service_->state_ = Service::kStatePortal;
@@ -1280,7 +1280,6 @@ TEST_F(ServiceTest, RecheckPortal) {
 }
 
 TEST_F(ServiceTest, SetCheckPortal) {
-  ServiceRefPtr service_ref(service_);
   {
     Error error;
     service_->SetCheckPortal("false", &error);
@@ -1851,7 +1850,6 @@ TEST_F(ServiceTest, SetAutoConnectFullUserUpdatePersists) {
   // If the user sets the kAutoConnectProperty explicitly, the preference must
   // be persisted, even if the property was not changed.
   Error error;
-  ServiceConstRefPtr service_ref(service_);
   MockProfileRefPtr mock_profile(
       new MockProfile(control_interface(), metrics(), &mock_manager_));
   NiceMock<MockStore> storage;
@@ -1861,7 +1859,7 @@ TEST_F(ServiceTest, SetAutoConnectFullUserUpdatePersists) {
   EXPECT_CALL(*mock_profile, UpdateService(_));
   EXPECT_CALL(*mock_profile, GetConstStorage())
       .WillOnce(Return(&storage));
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(service_ref))
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
       .WillOnce(Return(false));
   EXPECT_FALSE(service_->retain_auto_connect());
   SetAutoConnectFull(true, &error);

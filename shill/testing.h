@@ -51,6 +51,13 @@ MATCHER(NotNullRefPtr, "") {
   return arg.get();
 }
 
+// Use this matcher instead of passing RefPtrs directly into the arguments
+// of EXPECT_CALL() because otherwise we may create un-cleaned-up references at
+// system teardown.
+MATCHER_P(IsRefPtrTo, ref_address, "") {
+  return arg.get() == ref_address;
+}
+
 }  // namespace shill
 
 #endif  // SHILL_TESTING_H_
