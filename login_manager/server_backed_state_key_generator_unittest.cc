@@ -159,6 +159,7 @@ TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoSuccess) {
   std::map<std::string, std::string> params;
   EXPECT_TRUE(ServerBackedStateKeyGenerator::ParseMachineInfo(
       "\"serial_number\"=\"fake-machine-serial-number\"\n"
+      "# This is a comment.\n"
       "root_disk_serial_number=fake-disk-serial-number\n",
       &params));
   EXPECT_EQ(2, params.size());

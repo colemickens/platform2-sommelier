@@ -73,20 +73,27 @@ bool ServerBackedStateKeyGenerator::ParseMachineInfo(
     const std::string& data,
     std::map<std::string, std::string>* params) {
   params->clear();
+
+  // Parse the name-value pairs list. The return value of
+  // SplitStringIntoKeyValuePairs is deliberately ignored in order to handle
+  // comment lines (those start with a #) emitted by dump_vpd_log.
   base::StringPairs pairs;
-  if (!base::SplitStringIntoKeyValuePairs(data, '=', '\n', &pairs))
-    return false;
+  base::SplitStringIntoKeyValuePairs(data, '=', '\n', &pairs);
 
   for (base::StringPairs::const_iterator pair(pairs.begin());
        pair != pairs.end();
        ++pair) {
     std::string name;
     base::TrimString(pair->first, kTrimChars, &name);
+    if (name.empty())
+      continue;
+
     std::string value;
     base::TrimString(pair->second, kTrimChars, &value);
     (*params)[name] = value;
   }
-  return true;
+
+  return !params->empty();
 }
 
 bool ServerBackedStateKeyGenerator::InitMachineInfo(
