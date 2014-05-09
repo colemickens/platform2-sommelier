@@ -267,7 +267,7 @@ void Service::AutoConnect() {
 
 void Service::Connect(Error */*error*/, const char *reason) {
   LOG(INFO) << "Connect to service " << unique_name() <<": " << reason;
-  explicitly_disconnected_ = false;
+  ClearExplicitlyDisconnected();
   // Clear any failure state from a previous connect attempt.
   if (state() == kStateFailure)
     SetState(kStateIdle);
@@ -484,7 +484,7 @@ bool Service::Load(StoreInterface *storage) {
     OnEapCredentialsChanged();
   }
 
-  explicitly_disconnected_ = false;
+  ClearExplicitlyDisconnected();
 
   return true;
 }
@@ -493,7 +493,7 @@ bool Service::Unload() {
   auto_connect_ = IsAutoConnectByDefault();
   retain_auto_connect_ = false;
   check_portal_ = kCheckPortalAuto;
-  explicitly_disconnected_ = false;
+  ClearExplicitlyDisconnected();
   guid_ = "";
   has_ever_connected_ = false;
   priority_ = kPriorityNone;
@@ -1097,7 +1097,7 @@ void Service::OnAfterResume() {
   auto_connect_cooldown_milliseconds_  = 0;
   reenable_auto_connect_task_.Cancel();
   // Forget if the user disconnected us, we might be able to connect now.
-  explicitly_disconnected_ = false;
+  ClearExplicitlyDisconnected();
 }
 
 string Service::GetIPConfigRpcIdentifier(Error *error) const {
@@ -1649,6 +1649,13 @@ bool Service::ShouldUseMinimalDHCPConfig() {
       dhcp_option_failure_state_ == kDHCPOptionFailureConfirmed ||
       dhcp_option_failure_state_ == kDHCPOptionFailureRetestMinimalRequest ||
       dhcp_option_failure_state_ == kDHCPOptionFailureRetestGotNoReply;
+}
+
+void Service::ClearExplicitlyDisconnected() {
+  if (explicitly_disconnected_) {
+    explicitly_disconnected_ = false;
+    manager_->UpdateService(this);
+  }
 }
 
 }  // namespace shill

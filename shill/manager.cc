@@ -408,8 +408,10 @@ void Manager::PushProfileInternal(
 
   profiles_.push_back(profile);
 
-  // Offer each registered Service the opportunity to join this new Profile.
   for (ServiceRefPtr &service : services_) {
+    service->ClearExplicitlyDisconnected();
+
+    // Offer each registered Service the opportunity to join this new Profile.
     if (profile->ConfigureService(service)) {
       LOG(INFO) << "(Re-)configured service " << service->unique_name()
                 << " from new profile.";
@@ -467,6 +469,7 @@ void Manager::PopProfileInternal() {
   ProfileRefPtr active_profile = profiles_.back();
   profiles_.pop_back();
   for (auto it = services_.begin(); it != services_.end();) {
+    (*it)->ClearExplicitlyDisconnected();
     if (IsServiceEphemeral(*it)) {
       // Not affected, since the EphemeralProfile isn't on the stack.
       // Not logged, since ephemeral services aren't that interesting.

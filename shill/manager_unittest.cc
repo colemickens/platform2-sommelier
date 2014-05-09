@@ -990,6 +990,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // When we push the profile, the service should move away from the
   // ephemeral profile to this new profile since it has an entry for
   // this service.
+  EXPECT_CALL(*service, ClearExplicitlyDisconnected());
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile2));
   EXPECT_NE(GetEphemeralProfile(&manager), service->profile());
   EXPECT_EQ(kProfile2, "~" + service->profile()->GetFriendlyName());
@@ -999,6 +1000,9 @@ TEST_F(ManagerTest, PushPopProfile) {
   const string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
   ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile3Id,
                                            kServiceName));
+  // We don't verify this expectation inline, since this would clear other
+  // recurring expectations on the service.
+  EXPECT_CALL(*service, ClearExplicitlyDisconnected());
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile3));
   EXPECT_EQ(kProfile3, "~" + service->profile()->GetFriendlyName());
 
@@ -1009,20 +1013,24 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_EQ(Error::kNotSupported, TestPopProfile(&manager, kProfile0));
 
   // Popping the top profile should succeed.
+  EXPECT_CALL(*service, ClearExplicitlyDisconnected());
   EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kProfile3));
 
   // Moreover the service should have switched profiles to profile 2.
   EXPECT_EQ(kProfile2, "~" + service->profile()->GetFriendlyName());
 
   // Popping the top profile should succeed.
+  EXPECT_CALL(*service, ClearExplicitlyDisconnected());
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
 
   // The service should now revert to the ephemeral profile.
   EXPECT_EQ(GetEphemeralProfile(&manager), service->profile());
 
   // Pop the remaining two profiles off the stack.
+  EXPECT_CALL(*service, ClearExplicitlyDisconnected()).Times(2);
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
+  Mock::VerifyAndClearExpectations(service);
 
   // Next pop should fail with "stack is empty".
   EXPECT_EQ(Error::kNotFound, TestPopAnyProfile(&manager));

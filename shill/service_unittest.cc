@@ -107,6 +107,10 @@ class ServiceTest : public PropertyStoreTest {
     power_manager_->suspending_ = suspending;
   }
 
+  bool GetExplicitlyDisconnected() const {
+    return service_->explicitly_disconnected_;
+  }
+
   void SetExplicitlyDisconnected(bool explicitly) {
     service_->explicitly_disconnected_ = explicitly;
   }
@@ -2270,6 +2274,19 @@ TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
     service->Configure(args, &error);
     EXPECT_TRUE(error.IsSuccess());
   }
+}
+
+TEST_F(ServiceTest, ClearExplicitlyDisconnected) {
+  EXPECT_FALSE(GetExplicitlyDisconnected());
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
+  service_->ClearExplicitlyDisconnected();
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  SetExplicitlyDisconnected(true);
+  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  service_->ClearExplicitlyDisconnected();
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+  EXPECT_FALSE(GetExplicitlyDisconnected());
 }
 
 }  // namespace shill

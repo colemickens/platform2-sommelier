@@ -434,6 +434,10 @@ class Service : public base::RefCounted<Service> {
   // Called by the device to test for historical DHCP issues.
   virtual bool ShouldUseMinimalDHCPConfig();
 
+  // Called by the manager to clear remembered state of being explicitly
+  // disconnected.
+  virtual void ClearExplicitlyDisconnected();
+
   EapCredentials *mutable_eap() { return eap_.get(); }
 
   PropertyStore *mutable_store() { return &store_; }

@@ -67,6 +67,8 @@ class MockService : public Service {
   MOCK_METHOD0(OnDHCPFailure, void());
   MOCK_METHOD0(OnDHCPSuccess, void());
   MOCK_METHOD0(ShouldUseMinimalDHCPConfig, bool());
+  MOCK_METHOD0(ClearExplicitlyDisconnected, void());
+
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
   bool FauxSave(StoreInterface *store);
