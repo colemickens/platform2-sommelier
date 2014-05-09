@@ -14327,17 +14327,17 @@ mno {
     mccmnc : "310560"
     mccmnc : "310680"
     mobile_apn {
-      apn : "wap.cingular"
-      plan : POSTPAID
-      localized_name {
-        name : "MEdia Net (phones)"
-      }
-    }
-    mobile_apn {
       apn : "Broadband"
       plan : POSTPAID
       localized_name {
         name : "LaptopConnect (data cards)"
+      }
+    }
+    mobile_apn {
+      apn : "wap.cingular"
+      plan : POSTPAID
+      localized_name {
+        name : "MEdia Net (phones)"
       }
     }
     mobile_apn {
