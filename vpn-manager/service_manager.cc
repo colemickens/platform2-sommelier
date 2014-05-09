@@ -4,6 +4,8 @@
 
 #include "vpn-manager/service_manager.h"
 
+#include <vector>
+
 #include <arpa/inet.h>  // for inet_ntop and inet_pton
 #include <netdb.h>  // for getaddrinfo
 
@@ -18,10 +20,10 @@ using base::FilePath;
 
 namespace vpn_manager {
 
-const FilePath *ServiceManager::temp_path_ = NULL;
+const FilePath* ServiceManager::temp_path_ = NULL;
 const char ServiceManager::kDefaultTempBasePath[] = "/var/run/l2tpipsec_vpn";
 const char ServiceManager::kPersistentSubdir[] = "current";
-const char *ServiceManager::temp_base_path_ =
+const char* ServiceManager::temp_base_path_ =
     ServiceManager::kDefaultTempBasePath;
 
 ServiceManager::ServiceManager(const std::string& service_name)
@@ -119,7 +121,7 @@ void ServiceManager::WriteFdToSyslog(int fd,
 
 bool ServiceManager::ResolveNameToSockAddr(const std::string& name,
                                            struct sockaddr* address) {
-  struct addrinfo *address_info;
+  struct addrinfo* address_info;
   int s = getaddrinfo(name.c_str(), NULL, NULL, &address_info);
   if (s != 0) {
     LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
@@ -134,7 +136,7 @@ bool ServiceManager::ConvertIPStringToSockAddr(
     const std::string& address_text,
     struct sockaddr* address) {
   struct addrinfo hint_info = {};
-  struct addrinfo *address_info;
+  struct addrinfo* address_info;
   hint_info.ai_flags = AI_NUMERICHOST;
   int s = getaddrinfo(address_text.c_str(), NULL, &hint_info, &address_info);
   if (s != 0) {
@@ -153,14 +155,14 @@ bool ServiceManager::ConvertSockAddrToIPString(
   switch (address.sa_family) {
     case AF_INET:
       if (!inet_ntop(AF_INET, &reinterpret_cast<const sockaddr_in*>(
-              &address)->sin_addr, str, INET6_ADDRSTRLEN)) {
+              &address)->sin_addr, str, sizeof(str))) {
         PLOG(ERROR) << "inet_ntop failed";
         return false;
       }
       break;
     case AF_INET6:
       if (!inet_ntop(AF_INET6, &reinterpret_cast<const sockaddr_in6*>(
-              &address)->sin6_addr, str, INET6_ADDRSTRLEN)) {
+              &address)->sin6_addr, str, sizeof(str))) {
         PLOG(ERROR) << "inet_ntop failed";
         return false;
       }

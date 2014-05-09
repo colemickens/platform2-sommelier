@@ -30,7 +30,8 @@
 // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
 // authentication for the IPsec SA.  Default StrongS/WAN setup is
 // to only propose SHA1.
-DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5", "esp proposals");
+DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5",
+              "esp proposals");
 // Windows RRAS requires modp1024 dh-group.  Strongswan's
 // default is modp1536 which it does not support.
 DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
@@ -222,7 +223,7 @@ bool IpsecManager::ReadCertificateSubject(const FilePath& filepath,
   return true;
 }
 
-bool IpsecManager::FormatIpsecSecret(std::string *formatted) {
+bool IpsecManager::FormatIpsecSecret(std::string* formatted) {
   std::string secret_mode;
   std::string secret;
   if (psk_file_.empty()) {
@@ -308,7 +309,7 @@ void IpsecManager::KillCurrentlyRunning() {
 bool IpsecManager::StartStarter() {
   KillCurrentlyRunning();
   LOG(INFO) << "Starting starter";
-  Process *starter = starter_daemon_->CreateProcess();
+  Process* starter = starter_daemon_->CreateProcess();
   starter->AddArg(IPSEC_STARTER);
   starter->AddArg("--nofork");
   starter->RedirectUsingPipe(STDERR_FILENO, false);
@@ -419,8 +420,8 @@ bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
   return chown(file_path.value().c_str(), getuid(), ipsec_group_) == 0;
 }
 
-bool IpsecManager::WriteConfigFile(
-    const std::string &output_name, const std::string &contents) {
+bool IpsecManager::WriteConfigFile(const std::string& output_name,
+                                   const std::string& contents) {
   FilePath temp_file = temp_path()->Append(output_name);
   base::DeleteFile(temp_file, false);
   if (base::PathExists(temp_file)) {
@@ -438,8 +439,8 @@ bool IpsecManager::WriteConfigFile(
   return MakeSymbolicLink(output_name, temp_file);
 }
 
-bool IpsecManager::MakeSymbolicLink(const std::string &output_name,
-                                    const FilePath &source_path) {
+bool IpsecManager::MakeSymbolicLink(const std::string& output_name,
+                                    const FilePath& source_path) {
   FilePath symlink_path = persistent_path_.Append(output_name);
   // Use unlink to remove the symlink directly since base::DeleteFile
   // cannot delete dangling symlinks.

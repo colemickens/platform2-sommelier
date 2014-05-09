@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef _VPN_MANAGER_L2TP_MANAGER_H_
-#define _VPN_MANAGER_L2TP_MANAGER_H_
+#ifndef VPN_MANAGER_L2TP_MANAGER_H_
+#define VPN_MANAGER_L2TP_MANAGER_H_
+
+#include <string>
 
 #include <sys/socket.h>
 
@@ -99,4 +101,4 @@ class L2tpManager : public ServiceManager {
 
 }  // namespace vpn_manager
 
-#endif  // _VPN_MANAGER_L2TP_MANAGER_H_
+#endif  // VPN_MANAGER_L2TP_MANAGER_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef _VPN_MANAGER_DAEMON_MOCK_H_
-#define _VPN_MANAGER_DAEMON_MOCK_H_
+#ifndef VPN_MANAGER_DAEMON_MOCK_H_
+#define VPN_MANAGER_DAEMON_MOCK_H_
 
 #include <gmock/gmock.h>
 
@@ -17,7 +17,7 @@ class DaemonMock : public Daemon {
   virtual ~DaemonMock() {}
 
   MOCK_METHOD0(ClearProcess, void());
-  MOCK_METHOD0(CreateProcess, chromeos::Process *());
+  MOCK_METHOD0(CreateProcess, chromeos::Process*());
   MOCK_METHOD0(FindProcess, bool());
   MOCK_METHOD0(IsRunning, bool());
   MOCK_METHOD0(Terminate, bool());
@@ -26,4 +26,4 @@ class DaemonMock : public Daemon {
 
 }  // namespace vpn_manager
 
-#endif  // _VPN_MANAGER_DAEMON_MOCK_H_
+#endif  // VPN_MANAGER_DAEMON_MOCK_H_

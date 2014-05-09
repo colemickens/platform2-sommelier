@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef _VPN_MANAGER_DAEMON_H_
-#define _VPN_MANAGER_DAEMON_H_
+#ifndef VPN_MANAGER_DAEMON_H_
+#define VPN_MANAGER_DAEMON_H_
 
 #include <string>
 
@@ -23,7 +23,7 @@ namespace vpn_manager {
 // object destructor.
 class Daemon {
  public:
-  explicit Daemon(const std::string &pid_file);
+  explicit Daemon(const std::string& pid_file);
   virtual ~Daemon();
 
   // Clear any reference to a process, terminating the process if it is
@@ -33,7 +33,7 @@ class Daemon {
   // Replace the current process with a new process instance.  Returns
   // the new process.  The process pointer returned is still owned by
   // this object.
-  virtual chromeos::Process *CreateProcess();
+  virtual chromeos::Process* CreateProcess();
 
   // Find a process associated with the process-id file.  If one is found,
   // replace the current |process_| instance with this result.  Returns
@@ -56,7 +56,7 @@ class Daemon {
 
   // Replace the current process with |process|.  Any previous process
   // will be terminated if it is not the same process id as |process|.
-  void SetProcess(chromeos::Process *process);
+  void SetProcess(chromeos::Process* process);
 
   // Give daemon time to shut down cleanly after a SIGTERM before killing it
   // in a more decisive fashion.
@@ -73,4 +73,4 @@ class Daemon {
 
 }  // namespace vpn_manager
 
-#endif  // _VPN_MANAGER_DAEMON_H_
+#endif  // VPN_MANAGER_DAEMON_H_

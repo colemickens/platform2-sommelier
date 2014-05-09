@@ -20,7 +20,8 @@ namespace vpn_manager {
 // static
 const int Daemon::kTerminationTimeoutSeconds = 2;
 
-Daemon::Daemon(const std::string &pid_file) : pid_file_(pid_file) {}
+Daemon::Daemon(const std::string& pid_file) : pid_file_(pid_file) {}
+
 Daemon::~Daemon() {
   ClearProcess();
 }
@@ -29,8 +30,8 @@ void Daemon::ClearProcess() {
   SetProcess(NULL);
 }
 
-chromeos::Process *Daemon::CreateProcess() {
-  chromeos::Process *process = new ProcessImpl;
+chromeos::Process* Daemon::CreateProcess() {
+  chromeos::Process* process = new ProcessImpl;
   SetProcess(process);
   return process;
 }
@@ -51,20 +52,16 @@ bool Daemon::FindProcess() {
 }
 
 bool Daemon::IsRunning() {
-  return
-      process_.get() &&
-      process_->pid() != 0 &&
-      Process::ProcessExists(process_->pid());
+  return process_ && process_->pid() != 0 &&
+         Process::ProcessExists(process_->pid());
 }
 
 pid_t Daemon::GetPid() const {
-  if (!process_.get())
-    return 0;
-  return process_->pid();
+  return process_ ? process_->pid() : 0;
 }
 
-void Daemon::SetProcess(chromeos::Process *process) {
-  if (process_.get()) {
+void Daemon::SetProcess(chromeos::Process* process) {
+  if (process_) {
     // If we are re-assigning the same pid, do not terminate the process.
     // Otherwise, we should kill the previous process if it is still running.
     if (process && process_->pid() == process->pid())
@@ -79,7 +76,7 @@ void Daemon::SetProcess(chromeos::Process *process) {
 
 bool Daemon::Terminate() {
   bool result =
-      !IsRunning() ||process_->Kill(SIGTERM, kTerminationTimeoutSeconds);
+      !IsRunning() || process_->Kill(SIGTERM, kTerminationTimeoutSeconds);
   ClearProcess();  // This will send a SIGKILL if we failed above.
   base::DeleteFile(base::FilePath(pid_file_), false);
   return result;

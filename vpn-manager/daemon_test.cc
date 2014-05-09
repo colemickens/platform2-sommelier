@@ -46,7 +46,7 @@ class DaemonTest : public ::testing::Test {
   }
 
  protected:
-  void WritePidFile(const string &pid) {
+  void WritePidFile(const string& pid) {
     if (file_util::WriteFile(pid_file_path_, pid.c_str(), pid.size()) < 0) {
       LOG(ERROR) << "Unable to create " << pid_file_path_.value();
     }
@@ -59,15 +59,15 @@ class DaemonTest : public ::testing::Test {
     CHECK(real_process_->Start());
   }
 
-  const string &GetPidFile() {
+  const string& GetPidFile() {
     return daemon_->pid_file_;
   }
 
-  Process *GetProcess() {
+  Process* GetProcess() {
     return daemon_->process_.get();
   }
 
-  void SetProcess(Process *process) {
+  void SetProcess(Process* process) {
     daemon_->SetProcess(process);
   }
 
@@ -131,7 +131,7 @@ TEST_F(DaemonTest, IsRunningAndGetPid) {
 TEST_F(DaemonTest, SetProcessFromNull) {
   EXPECT_EQ(NULL, GetProcess());
   SetProcess(NULL);  // Should be a no-op.
-  ProcessMock *process0 = new ProcessMock;
+  ProcessMock* process0 = new ProcessMock;
   SetProcess(process0);  // Passes ownership.
   EXPECT_EQ(process0, GetProcess());
   // Called during destructor.
@@ -139,7 +139,7 @@ TEST_F(DaemonTest, SetProcessFromNull) {
 }
 
 TEST_F(DaemonTest, SetProcessToNullFromNotRunning) {
-  ProcessMock *process = new ProcessMock;
+  ProcessMock* process = new ProcessMock;
   EXPECT_CALL(*process, Release()).Times(0);
   EXPECT_CALL(*process, pid()).WillOnce(Return(0));
   SetProcess(process);  // Passes ownership.
@@ -149,7 +149,7 @@ TEST_F(DaemonTest, SetProcessToNullFromNotRunning) {
 
 TEST_F(DaemonTest, SetProcessToNullFromRunning) {
   MakeRealProcess();
-  ProcessMock *process = new ProcessMock;
+  ProcessMock* process = new ProcessMock;
   EXPECT_CALL(*process, Release()).Times(0);
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(1);
@@ -160,11 +160,11 @@ TEST_F(DaemonTest, SetProcessToNullFromRunning) {
 
 TEST_F(DaemonTest, SetProcessToDifferentPid) {
   MakeRealProcess();
-  ProcessMock *process0 = new ProcessMock;
+  ProcessMock* process0 = new ProcessMock;
   EXPECT_CALL(*process0, Release()).Times(0);
   EXPECT_CALL(*process0, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process0, Kill(SIGKILL, _)).Times(1);
-  ProcessMock *process1 = new ProcessMock;
+  ProcessMock* process1 = new ProcessMock;
   EXPECT_CALL(*process1, Release()).Times(0);
   EXPECT_CALL(*process1, pid()).WillOnce(Return(2));
   SetProcess(process0);  // Passes ownership.
@@ -176,10 +176,10 @@ TEST_F(DaemonTest, SetProcessToDifferentPid) {
 }
 
 TEST_F(DaemonTest, SetProcessToSamePid) {
-  ProcessMock *process0 = new ProcessMock;
+  ProcessMock* process0 = new ProcessMock;
   EXPECT_CALL(*process0, Release()).Times(1);
   EXPECT_CALL(*process0, pid()).WillOnce(Return(1));
-  ProcessMock *process1 = new ProcessMock;
+  ProcessMock* process1 = new ProcessMock;
   EXPECT_CALL(*process1, Release()).Times(0);
   EXPECT_CALL(*process1, pid()).WillOnce(Return(1));
   SetProcess(process0);  // Passes ownership.
@@ -198,7 +198,7 @@ TEST_F(DaemonTest, TerminateNoProcess) {
 }
 
 TEST_F(DaemonTest, TerminateDeadProcess) {
-  ProcessMock *process = new ProcessMock;
+  ProcessMock* process = new ProcessMock;
   EXPECT_CALL(*process, pid()).Times(2).WillRepeatedly(Return(0));
   EXPECT_CALL(*process, Kill(SIGTERM, _)).Times(0);
   SetProcess(process);  // Passes ownership.
@@ -210,7 +210,7 @@ TEST_F(DaemonTest, TerminateDeadProcess) {
 
 TEST_F(DaemonTest, TerminateLiveProcess) {
   MakeRealProcess();
-  ProcessMock *process = new ProcessMock;
+  ProcessMock* process = new ProcessMock;
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGTERM, _))
       .WillOnce(InvokeWithoutArgs(this, &DaemonTest::KillRealProcess));
@@ -227,7 +227,7 @@ TEST_F(DaemonTest, Destructor) {
   // This doesn't directly unit-test the Daemon class, but it does illuminate
   // a side effect of the destruction of the underlying Process it holds.
   MakeRealProcess();
-  ProcessMock *process = new ProcessMock;
+  ProcessMock* process = new ProcessMock;
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(1);
   SetProcess(process);  // Passes ownership.

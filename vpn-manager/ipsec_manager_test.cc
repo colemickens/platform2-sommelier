@@ -66,7 +66,7 @@ class IpsecManagerTest : public ::testing::Test {
     WriteFile(xauth_credentials_file_,
               base::StringPrintf("%s\n%s\n",
                                  kXauthUser, kXauthPassword).c_str());
-    const char *srcvar = getenv("SRC");
+    const char* srcvar = getenv("SRC");
     FilePath srcdir = srcvar ? FilePath(srcvar) : cwd;
     base::CopyFile(srcdir.Append("testdata/cacert.der"),
                    FilePath(server_ca_file_));
@@ -85,7 +85,7 @@ class IpsecManagerTest : public ::testing::Test {
   // Creates a ProcessMock that will be handed to to the IpsecManager when
   // it creates a process.  The caller owns this mock and is responsible for
   // disposing of it (since the IpsecManager assumes the Daemon owns it).
-  ProcessMock *SetStartStarterExpectations();
+  ProcessMock* SetStartStarterExpectations();
 
  protected:
   static const char kXauthUser[];
@@ -116,8 +116,8 @@ class IpsecManagerTest : public ::testing::Test {
   std::string ipsec_up_file_;
   // These mock daemons are owned by the ipsec instance and tracked here only
   // for expectations.
-  DaemonMock *starter_daemon_;
-  DaemonMock *charon_daemon_;
+  DaemonMock* starter_daemon_;
+  DaemonMock* charon_daemon_;
   base::ScopedTempDir temp_dir_;
 };
 
@@ -143,12 +143,12 @@ void IpsecManagerTest::DoInitialize(
 }
 
 
-ProcessMock *IpsecManagerTest::SetStartStarterExpectations() {
+ProcessMock* IpsecManagerTest::SetStartStarterExpectations() {
   EXPECT_CALL(*starter_daemon_, FindProcess());
   EXPECT_CALL(*charon_daemon_, FindProcess());
   EXPECT_CALL(*starter_daemon_, ClearProcess());
   EXPECT_CALL(*charon_daemon_, ClearProcess());
-  ProcessMock *process = new ProcessMock;
+  ProcessMock* process = new ProcessMock;
   // Does not pass ownership.
   EXPECT_CALL(*starter_daemon_, CreateProcess())
       .WillOnce(Return(process));

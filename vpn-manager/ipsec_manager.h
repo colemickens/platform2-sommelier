@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef _VPN_MANAGER_IPSEC_MANAGER_H_
-#define _VPN_MANAGER_IPSEC_MANAGER_H_
+#ifndef VPN_MANAGER_IPSEC_MANAGER_H_
+#define VPN_MANAGER_IPSEC_MANAGER_H_
 
 #include <string>
 #include <sys/socket.h>
@@ -79,10 +79,10 @@ class IpsecManager : public ServiceManager {
   bool FormatXauthSecret(std::string* formatted);
   bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
-  bool WriteConfigFile(const std::string &output_name,
-                       const std::string &contents);
-  bool MakeSymbolicLink(const std::string &output_name,
-                        const base::FilePath &source_path);
+  bool WriteConfigFile(const std::string& output_name,
+                       const std::string& contents);
+  bool MakeSymbolicLink(const std::string& output_name,
+                        const base::FilePath& source_path);
   bool WriteConfigFiles();
   bool CreateIpsecRunDirectory();
   std::string FormatStrongswanConfigFile();
@@ -149,4 +149,4 @@ class IpsecManager : public ServiceManager {
 
 }  // namespace vpn_manager
 
-#endif  // _VPN_MANAGER_IPSEC_MANAGER_H_
+#endif  // VPN_MANAGER_IPSEC_MANAGER_H_

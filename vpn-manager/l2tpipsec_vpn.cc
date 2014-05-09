@@ -41,7 +41,7 @@ static bool s_terminate_request = false;
 
 void HandleSignal(int sig_num) {
   LOG(INFO) << "Caught signal " << sig_num;
-  switch(sig_num) {
+  switch (sig_num) {
     case SIGTERM:
     case SIGINT:
       s_terminate_request = true;
@@ -105,7 +105,7 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
       l2tp->ProcessOutput();
     if (poll_inputs[2].revents & POLLIN)
       l2tp->ProcessPppOutput();
-  } while(!ipsec->was_stopped() && !s_terminate_request);
+  } while (!ipsec->was_stopped() && !s_terminate_request);
 }
 
 int main(int argc, char* argv[]) {
