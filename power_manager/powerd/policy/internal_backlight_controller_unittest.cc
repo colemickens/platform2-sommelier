@@ -40,8 +40,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
         report_initial_power_source_(true),
         default_min_visible_level_(1),
         default_als_steps_("50.0 -1 400\n90.0 100 -1"),
-        default_no_als_ac_brightness_(80.0),
-        default_no_als_battery_brightness_(60.0),
+        default_no_als_ac_brightness_("80.0"),
+        default_no_als_battery_brightness_("60.0"),
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_) {
   }
@@ -52,9 +52,9 @@ class InternalBacklightControllerTest : public ::testing::Test {
   virtual void Init(PowerSource power_source) {
     prefs_.SetInt64(kMinVisibleBacklightLevelPref, default_min_visible_level_);
     prefs_.SetString(kInternalBacklightAlsStepsPref, default_als_steps_);
-    prefs_.SetDouble(kInternalBacklightNoAlsAcBrightnessPref,
+    prefs_.SetString(kInternalBacklightNoAlsAcBrightnessPref,
                      default_no_als_ac_brightness_);
-    prefs_.SetDouble(kInternalBacklightNoAlsBatteryBrightnessPref,
+    prefs_.SetString(kInternalBacklightNoAlsBatteryBrightnessPref,
                      default_no_als_battery_brightness_);
     backlight_.set_max_level(max_backlight_level_);
     backlight_.set_current_level(initial_backlight_level_);
@@ -102,8 +102,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
   // Default values for prefs.  Applied when Init() is called.
   int64 default_min_visible_level_;
   std::string default_als_steps_;
-  double default_no_als_ac_brightness_;
-  double default_no_als_battery_brightness_;
+  std::string default_no_als_ac_brightness_;
+  std::string default_no_als_battery_brightness_;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;
@@ -547,20 +547,40 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensor) {
   pass_light_sensor_ = false;
   report_initial_power_source_ = false;
   report_initial_als_reading_ = false;
-  default_no_als_ac_brightness_ = 95.0;
-  default_no_als_battery_brightness_ = 75.0;
+  default_no_als_ac_brightness_ = "95.0";
+  default_no_als_battery_brightness_ = "75.0";
   Init(POWER_AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // The brightness percentages from the "no ALS" prefs should be used as
   // starting points when there's no ALS.
   controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(PercentToLevel(default_no_als_ac_brightness_),
-            backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(95.0), backlight_.current_level());
 
   controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(PercentToLevel(default_no_als_battery_brightness_),
-            backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
+}
+
+TEST_F(InternalBacklightControllerTest, NoAmbientLightSensorMultipleDefaults) {
+  // Test that different default brightness percentages can be specified for
+  // different maximum brightness levels (http://crosbug.com/p/28715).
+  pass_light_sensor_ = false;
+  report_initial_power_source_ = false;
+  report_initial_als_reading_ = false;
+  max_backlight_level_ = 400;
+  default_no_als_ac_brightness_ = "40.0 300\n50.0 400";
+  default_no_als_battery_brightness_ = "20.0 400\n30.0 300";
+  Init(POWER_AC);
+  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
+
+  // The default percentages corresponding to a maximum level of 400 should be
+  // used on both AC and battery.
+  controller_->HandlePowerSourceChange(POWER_AC);
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
+
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(20.0), backlight_.current_level());
+
 }
 
 TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {

@@ -66,7 +66,8 @@ extern const char kPowerSupplyFullFactorPref[];
 extern const char kInternalBacklightAlsStepsPref[];
 
 // Starting internal backlight brightness while on line and battery power for
-// systems lacking an ambient light sensor.
+// systems lacking an ambient light sensor. See
+// powerd/policy/internal_backlight_controller.cc for details.
 extern const char kInternalBacklightNoAlsAcBrightnessPref[];
 extern const char kInternalBacklightNoAlsBatteryBrightnessPref[];
 
