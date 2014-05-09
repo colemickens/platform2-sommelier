@@ -25,6 +25,7 @@
     'USE_gdmwimax%': 0,
     'USE_lorgnette%': 0,
     'USE_passive_metrics%': 0,
+    'USE_power_management%': 0,
     'USE_profile%': 0,
     'USE_shill%': 0,
     'USE_tcmalloc%': 0,

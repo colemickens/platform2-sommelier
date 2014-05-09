@@ -9,7 +9,6 @@
         '<(DEPTH)/platform/libchromeos/libchromeos-271506.gyp:*',
         '<(DEPTH)/platform/metrics/libmetrics-271506.gyp:*',
         '<(DEPTH)/platform/metrics/metrics.gyp:*',
-        '<(DEPTH)/platform/power_manager/power_manager.gyp:*',
         '<(DEPTH)/platform/system_api/system_api.gyp:*',
       ],
       'conditions': [
@@ -59,6 +58,11 @@
             ['USE_lorgnette == 1', {
               'dependencies': [
                 '<(DEPTH)/platform/lorgnette/lorgnette.gyp:*',
+              ],
+            }],
+            ['USE_power_management == 1', {
+              'dependencies': [
+                '<(DEPTH)/platform/power_manager/power_manager.gyp:*',
               ],
             }],
             ['USE_profile == 1', {
