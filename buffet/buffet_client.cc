@@ -19,7 +19,7 @@
 #include "buffet/dbus_constants.h"
 #include "buffet/data_encoding.h"
 
-using namespace buffet::dbus_constants;
+using namespace buffet::dbus_constants;  // NOLINT(build/namespaces)
 
 namespace {
 static const int default_timeout_ms = 1000;
@@ -228,10 +228,10 @@ class BuffetHelperProxy {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* manager_proxy_{nullptr};
+  dbus::ObjectProxy* manager_proxy_{nullptr};  // NOLINT - initializer list
 };
 
-} // namespace
+}  // namespace
 
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);

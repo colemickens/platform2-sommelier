@@ -54,10 +54,10 @@ void AsyncEventSequencer::HandleDBusMethodExported(
     const std::string& expected_method_name,
     const std::string& actual_interface_name,
     const std::string& actual_method_name, bool success) {
-  CHECK(expected_method_name == actual_method_name)
+  CHECK_EQ(expected_method_name, actual_method_name)
       << "Exported DBus method '" << actual_method_name << "' "
       << "but expected '" << expected_method_name << "'";
-  CHECK(expected_interface_name == actual_interface_name)
+  CHECK_EQ(expected_interface_name, actual_interface_name)
       << "Exported method DBus interface '" << actual_interface_name << "' "
       << "but expected '" << expected_interface_name << "'";
   finish_handler.Run(success);
@@ -67,7 +67,7 @@ void AsyncEventSequencer::HandleDBusMethodExported(
 void AsyncEventSequencer::RetireRegistration(int registration_number) {
   const size_t handlers_retired = outstanding_registrations_.erase(
       registration_number);
-  CHECK(handlers_retired == 1)
+  CHECK_EQ(1, handlers_retired)
       << "Tried to retire invalid handler " << registration_number << ")";
 }
 

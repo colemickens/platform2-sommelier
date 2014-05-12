@@ -28,38 +28,38 @@ class LambdaAdapter;
 // R(...)
 template <typename Lambda, typename R, typename... Args>
 class LambdaAdapter<Lambda, R(Lambda::*)(Args... args)> {
-public:
+ public:
   typedef R(RunType)(Args...);
   LambdaAdapter(Lambda lambda) : lambda_(lambda) {}
   R Run(Args... args) { return lambda_(args...); }
 
-private:
+ private:
   Lambda lambda_;
 };
 
 // R(...) const
 template <typename Lambda, typename R, typename... Args>
 class LambdaAdapter<Lambda, R(Lambda::*)(Args... args) const> {
-public:
+ public:
   typedef R(RunType)(Args...);
   LambdaAdapter(Lambda lambda) : lambda_(lambda) {}
   R Run(Args... args) { return lambda_(args...); }
 
-private:
+ private:
   Lambda lambda_;
 };
 
 template <typename Lambda>
 class RunnableAdapter : public LambdaAdapter<Lambda,
                                              decltype(&Lambda::operator())> {
-public:
+ public:
   explicit RunnableAdapter(Lambda lambda) :
       LambdaAdapter<Lambda, decltype(&Lambda::operator())>(lambda) {
   }
 };
 
 
-} // namespace internal
-} // namespace base
+}  // namespace internal
+}  // namespace base
 
-#endif // BUFFET_BIND_LAMBDA_H_
+#endif  // BUFFET_BIND_LAMBDA_H_

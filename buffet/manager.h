@@ -5,12 +5,14 @@
 #ifndef BUFFET_MANAGER_H_
 #define BUFFET_MANAGER_H_
 
+#include <memory>
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
-#include <memory>
 
 #include "buffet/dbus_constants.h"
 #include "buffet/exported_property_set.h"
@@ -27,7 +29,7 @@ class Manager {
  public:
   typedef base::Callback<void(bool success)> OnInitFinish;
 
-  Manager(dbus::Bus* bus);
+  explicit Manager(dbus::Bus* bus);
   ~Manager();
   void Init(const OnInitFinish& cb);
 
@@ -35,7 +37,7 @@ class Manager {
   struct Properties: public dbus_utils::ExportedPropertySet {
    public:
     dbus_utils::ExportedProperty<std::string> state_;
-    Properties(dbus::Bus* bus)
+    explicit Properties(dbus::Bus* bus)
         : dbus_utils::ExportedPropertySet(
               bus, dbus::ObjectPath(dbus_constants::kManagerServicePath)) {
       RegisterProperty(dbus_constants::kManagerInterface, "State", &state_);

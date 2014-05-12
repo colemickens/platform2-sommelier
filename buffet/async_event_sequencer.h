@@ -19,7 +19,7 @@ namespace dbus_utils {
 
 // A helper class for coordinating the multiple async tasks.  A consumer
 // may grab any number of callbacks via Get*Handler() and schedule a list
-// of completion actions to take.  When all handlers obtained bia Get*Handler()
+// of completion actions to take.  When all handlers obtained via Get*Handler()
 // have been called, the AsyncEventSequencer will call its CompletionActions.
 //
 // Usage:
@@ -79,11 +79,11 @@ class AsyncEventSequencer : public base::RefCounted<AsyncEventSequencer> {
                        const std::string& error_message);
   void PossiblyRunCompletionActions();
 
-  bool started_{false};
-  int registration_counter_{0};
+  bool started_{false};          // NOLINT - initializer list
+  int registration_counter_{0};  // NOLINT - initializer list
   std::set<int> outstanding_registrations_;
   std::vector<CompletionAction> completion_actions_;
-  bool had_failures_{false};
+  bool had_failures_{false};     // NOLINT - initializer list
   // Ref counted objects have private destructors.
   ~AsyncEventSequencer();
   friend class base::RefCounted<AsyncEventSequencer>;

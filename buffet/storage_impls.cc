@@ -4,6 +4,8 @@
 
 #include "buffet/storage_impls.h"
 
+#include <string>
+
 #include <base/files/important_file_writer.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>

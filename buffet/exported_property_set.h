@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <dbus/exported_object.h>
@@ -168,7 +169,7 @@ class ExportedProperty : public ExportedPropertyBase {
 
  private:
   OnUpdateCallback on_update_;
-  T value_{};
+  T value_{};  // NOLINT - initializer list
 
   DISALLOW_COPY_AND_ASSIGN(ExportedProperty);
 };

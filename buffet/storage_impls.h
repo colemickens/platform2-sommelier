@@ -16,7 +16,7 @@ namespace buffet {
 // Persists the given Value to an atomically written file.
 class FileStorage : public StorageInterface {
  public:
-  FileStorage(const base::FilePath& file_path);
+  explicit FileStorage(const base::FilePath& file_path);
   virtual ~FileStorage() = default;
   virtual std::unique_ptr<base::Value> Load() override;
   virtual bool Save(const base::Value* config) override;
