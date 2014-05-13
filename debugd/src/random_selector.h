@@ -43,6 +43,15 @@ class RandomSelector {
   // Get the next randomly picked string in |next|.
   void GetNext(std::string* next);
 
+  // Removes an entry from the current odds container. If the entry is not found
+  // in |odds_|, this function has no effect.
+  void Remove(const std::string& key);
+
+  // Returns the number of string entries.
+  size_t GetNumStrings() const {
+    return odds_.size();
+  }
+
  private:
   // Get a floating point number between |min| and |max|.
   virtual float GetFloatBetween(float min, float max);

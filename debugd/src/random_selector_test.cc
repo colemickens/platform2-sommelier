@@ -111,3 +111,20 @@ TEST(RandomSelector, SetOddsFromFileTest) {
   GenerateResults(odds.size(), &random_selector, &results);
   CheckResultsAgainstOdds(odds, results);
 }
+
+// Ensure RandomSelector is able to delete odds that it has previously stored.
+TEST(RandomSelector, RemoveEntriesTest) {
+  RandomSelector random_selector;
+  random_selector.SetOddsFromFile(std::string(kOddsFilename));
+  std::string key;
+
+  // Get a key and verify.
+  random_selector.GetNext(&key);
+  EXPECT_FALSE(key.empty());
+  size_t old_size = random_selector.GetNumStrings();
+  EXPECT_GT(old_size, 0);
+
+  // Remove the key.
+  random_selector.Remove(key);
+  EXPECT_EQ(old_size - 1, random_selector.GetNumStrings());
+}

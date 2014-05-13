@@ -67,6 +67,13 @@ void RandomSelector::GetNext(std::string* next) {
   GetKeyOf(random, next);
 }
 
+void RandomSelector::Remove(const std::string& key) {
+  std::map<std::string, float>::iterator iter = odds_.find(key);
+  if (iter != odds_.end()) {
+    odds_.erase(iter);
+  }
+}
+
 float RandomSelector::GetFloatBetween(float min, float max) {
   CHECK_GT(max, min);
   float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
