@@ -95,10 +95,14 @@ int main(int argc, char *argv[]) {
 
   // Parse output.
   while (fgets(outbuf, sizeof(outbuf), out)) {
-    if (sscanf(outbuf, "From %s icmp_seq=", ipbuf) == 1)
+    if (sscanf(outbuf, "From %127s icmp_seq=", ipbuf) == 1) {
+      // If there is a colon after the ip, strip it.
+      char* last_char = ipbuf + strlen(ipbuf) - 1;
+      if (*last_char == ':')
+        *last_char = '\0';
       continue;
 
-    else if (sscanf(outbuf,
+    } else if (sscanf(outbuf,
                     "%d packets transmitted, %d received, %d%% packet loss,"
                     " time %dms",
                     &sent, &recvd, &loss, &time) == 4)
