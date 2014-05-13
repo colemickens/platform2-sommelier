@@ -2054,9 +2054,6 @@ TEST_F(CellularCapabilityUniversalMainTest, GetOutOfCreditsDetectionType) {
   cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
   EXPECT_EQ(OutOfCreditsDetector::OOCTypeSubscriptionState,
             capability_->GetOutOfCreditsDetectionType());
-  cellular_->set_model_id(CellularCapabilityUniversal::kE362ModelId);
-  EXPECT_EQ(OutOfCreditsDetector::OOCTypeActivePassive,
-            capability_->GetOutOfCreditsDetectionType());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {

@@ -1759,8 +1759,6 @@ CellularCapabilityUniversal::GetOutOfCreditsDetectionType() const {
   const string &model_id = cellular()->model_id();
   if (model_id == kALT3100ModelId) {
     return OutOfCreditsDetector::OOCTypeSubscriptionState;
-  } else if (model_id == kE362ModelId) {
-    return OutOfCreditsDetector::OOCTypeActivePassive;
   } else {
     return OutOfCreditsDetector::OOCTypeNone;
   }
