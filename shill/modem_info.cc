@@ -5,7 +5,7 @@
 #include "shill/modem_info.h"
 
 #include <base/files/file_path.h>
-#include <mm/mm-modem.h>
+#include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
 
 #include "shill/cellular_operator_info.h"
@@ -17,18 +17,9 @@
 using base::FilePath;
 using std::string;
 
-// TODO(rochberg): Fix modemmanager-next-interfaces ebuild to include
-// these so that we can simply include ModemManager.h and use these
-// defines
-#define MM_DBUS_PATH    "/org/freedesktop/ModemManager1"
-#define MM_DBUS_SERVICE "org.freedesktop.ModemManager1"
-
 namespace shill {
 
 namespace {
-
-const char kCromoService[] = "org.chromium.ModemManager";
-const char kCromoPath[] = "/org/chromium/ModemManager";
 
 const char kCellularOperatorInfoPath[] =
     "/usr/share/shill/cellular_operator_info";
@@ -66,9 +57,14 @@ void ModemInfo::Start() {
   provider_db_ = mobile_provider_open_db(provider_db_path_.c_str());
   PLOG_IF(WARNING, !provider_db_)
       << "Unable to load mobile provider database: ";
+
+  RegisterModemManager(new ModemManagerClassic(cromo::kCromoServiceName,
+                                               cromo::kCromoServicePath,
+                                               this));
   RegisterModemManager(
-      new ModemManagerClassic(kCromoService, kCromoPath, this));
-  RegisterModemManager(new ModemManager1(MM_DBUS_SERVICE, MM_DBUS_PATH, this));
+      new ModemManager1(modemmanager::kModemManager1ServiceName,
+                        modemmanager::kModemManager1ServicePath,
+                        this));
 }
 
 void ModemInfo::Stop() {
