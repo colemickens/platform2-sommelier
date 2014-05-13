@@ -56,7 +56,7 @@ int perform_capture(char *device, char *output_file) {
       continue;
     }
     ++packet_count;
-    pcap_dump((u_char *)dumper, &header, packet);
+    pcap_dump(reinterpret_cast<u_char*>(dumper), &header, packet);
   }
 
   pcap_close(pcap);

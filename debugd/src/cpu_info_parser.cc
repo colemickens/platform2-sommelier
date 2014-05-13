@@ -4,8 +4,9 @@
 
 #include "cpu_info_parser.h"
 
-#include <fstream>
+#include <fstream>  // NOLINT
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_split.h>

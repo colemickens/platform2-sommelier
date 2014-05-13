@@ -4,8 +4,8 @@
 //
 // This is an example of a tool. See </src/example_tool.cc>.
 
-#ifndef EXAMPLE_TOOL_H
-#define EXAMPLE_TOOL_H
+#ifndef EXAMPLE_TOOL_H_
+#define EXAMPLE_TOOL_H_
 
 #include <string>
 
@@ -19,11 +19,12 @@ class ExampleTool {
   ExampleTool();
   ~ExampleTool();
 
-  std::string GetExample(DBus::Error& error); // NOLINT
+  std::string GetExample(DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ExampleTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // !EXAMPLE_TOOL_H
+#endif  // EXAMPLE_TOOL_H_

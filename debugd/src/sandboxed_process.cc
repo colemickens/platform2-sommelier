@@ -63,4 +63,4 @@ void SandboxedProcess::SandboxAs(const std::string& user,
   group_ = group;
 }
 
-};  // namespace debugd
+}  // namespace debugd

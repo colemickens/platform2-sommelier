@@ -19,7 +19,7 @@ StorageTool::StorageTool() { }
 StorageTool::~StorageTool() { }
 
 std::string StorageTool::Smartctl(const std::string& option,
-                                  DBus::Error& error) {
+                                  DBus::Error* error) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath("storage", &path))
     return "<path too long>";
@@ -55,7 +55,7 @@ std::string StorageTool::Smartctl(const std::string& option,
 }
 
 std::string StorageTool::Start(const DBus::FileDescriptor& outfd,
-                               DBus::Error& error) {
+                               DBus::Error* error) {
   ProcessWithId* p = CreateProcess(false);
   if (!p)
     return "";
@@ -70,4 +70,4 @@ std::string StorageTool::Start(const DBus::FileDescriptor& outfd,
   return p->id();
 }
 
-};  // namespace debugd
+}  // namespace debugd

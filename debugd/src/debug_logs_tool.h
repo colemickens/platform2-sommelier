@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DEBUG_LOGS_TOOL_H
-#define DEBUG_LOGS_TOOL_H
+#ifndef DEBUG_LOGS_TOOL_H_
+#define DEBUG_LOGS_TOOL_H_
 
 #include <string>
 
@@ -17,11 +17,12 @@ class DebugLogsTool {
   DebugLogsTool();
   ~DebugLogsTool();
 
-  void GetDebugLogs(const DBus::FileDescriptor& fd, DBus::Error& error);
+  void GetDebugLogs(const DBus::FileDescriptor& fd, DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DebugLogsTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // DEBUG_LOGS_TOOL_H
+#endif  // DEBUG_LOGS_TOOL_H_

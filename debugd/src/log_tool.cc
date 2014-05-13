@@ -4,6 +4,8 @@
 
 #include "log_tool.h"
 
+#include <vector>
+
 #include <glib.h>
 
 #include <base/base64.h>
@@ -217,7 +219,7 @@ bool GetNamedLogFrom(const string& name, const struct Log* logs,
   return false;
 }
 
-string LogTool::GetLog(const string& name, DBus::Error& error) { // NOLINT
+string LogTool::GetLog(const string& name, DBus::Error* error) {
   string result;
      GetNamedLogFrom(name, common_logs, &result)
   || GetNamedLogFrom(name, extra_logs, &result)
@@ -230,14 +232,14 @@ void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
     (*map)[logs[i].name] = Run(logs[i]);
 }
 
-LogTool::LogMap LogTool::GetAllLogs(DBus::Error& error) { // NOLINT
+LogTool::LogMap LogTool::GetAllLogs(DBus::Error* error) {
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(extra_logs, &result);
   return result;
 }
 
-LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error& error) { // NOLINT
+LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error* error) {
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(feedback_logs, &result);
@@ -245,7 +247,7 @@ LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error& error) { // NOLINT
   return result;
 }
 
-LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error& error) {  // NOLINT
+LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error* error) {
   LogMap result;
   for (size_t i = 0; user_logs[i].name; ++i)
     result[user_logs[i].name] = user_logs[i].command;
@@ -260,4 +262,4 @@ void LogTool::AnonymizeLogMap(LogMap* log_map) {
   }
 }
 
-};  // namespace debugd
+}  // namespace debugd

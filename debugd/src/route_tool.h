@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ROUTE_TOOL_H
-#define ROUTE_TOOL_H
+#ifndef ROUTE_TOOL_H_
+#define ROUTE_TOOL_H_
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
@@ -17,13 +19,13 @@ class RouteTool {
   RouteTool();
   ~RouteTool();
 
-  std::vector<std::string> GetRoutes(const std::map<std::string,
-                                                     DBus::Variant>& options,
-                                      DBus::Error& error);
+  std::vector<std::string> GetRoutes(
+      const std::map<std::string, DBus::Variant>& options, DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RouteTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // ROUTE_TOOL_H
+#endif  // ROUTE_TOOL_H_

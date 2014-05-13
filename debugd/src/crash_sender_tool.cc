@@ -12,7 +12,7 @@ CrashSenderTool::CrashSenderTool() { }
 
 CrashSenderTool::~CrashSenderTool() { }
 
-void CrashSenderTool::UploadCrashes(DBus::Error& error) {  // NOLINT
+void CrashSenderTool::UploadCrashes(DBus::Error* error) {
   ProcessWithId* p = CreateProcess(false);
   // TODO(jorgelo): This mount namespace shuffling should be handled by
   // minijail.  See http://crbug.com/376987 for details.
@@ -24,4 +24,4 @@ void CrashSenderTool::UploadCrashes(DBus::Error& error) {  // NOLINT
   p->Run();
 }
 
-};  // namespace debugd
+}  // namespace debugd

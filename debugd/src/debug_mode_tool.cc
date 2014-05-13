@@ -24,16 +24,16 @@ const char* const kSupplicantPath = "/fi/w1/wpa_supplicant1";
 const char* const kSupplicantService = "fi.w1.wpa_supplicant1";
 const char* const kSupplicantIface = "fi.w1.wpa_supplicant1";
 
-class ManagerProxy
-    : public org::chromium::flimflam::Manager_proxy,
-      public DBus::ObjectProxy {
-  public:
-    ManagerProxy(DBus::Connection* connection, const char* path,
-                 const char* service) :
-        DBus::ObjectProxy(*connection, path, service) { }
-    virtual ~ManagerProxy() { }
-    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
-    virtual void StateChanged(const std::string&) { }
+class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
+                     public DBus::ObjectProxy {
+ public:
+  ManagerProxy(DBus::Connection* connection,
+               const char* path,
+               const char* service)
+      : DBus::ObjectProxy(*connection, path, service) {}
+  virtual ~ManagerProxy() {}
+  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
+  virtual void StateChanged(const std::string&) {}
 };
 
 #if USE_CELLULAR
@@ -44,40 +44,40 @@ const char* const kDBusListNames = "ListNames";
 
 const char* const kModemManager = "ModemManager";
 
-class ModemManagerProxy
-    : public org::freedesktop::ModemManager_proxy,
-      public DBus::ObjectProxy {
-  public:
-    ModemManagerProxy(DBus::Connection* connection, const char* path,
-                      const char* service) :
-        DBus::ObjectProxy(*connection, path, service) { }
-    virtual ~ModemManagerProxy() { }
-    virtual void DeviceAdded(const DBus::Path&) { }
-    virtual void DeviceRemoved(const DBus::Path&) { }
+class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
+                          public DBus::ObjectProxy {
+ public:
+  ModemManagerProxy(DBus::Connection* connection,
+                    const char* path,
+                    const char* service)
+      : DBus::ObjectProxy(*connection, path, service) {}
+  virtual ~ModemManagerProxy() {}
+  virtual void DeviceAdded(const DBus::Path&) {}
+  virtual void DeviceRemoved(const DBus::Path&) {}
 };
 
-class ModemManager1Proxy
-    : public org::freedesktop::ModemManager1_proxy,
-      public DBus::ObjectProxy {
-  public:
-    ModemManager1Proxy(DBus::Connection* connection, const char* path,
-                       const char* service) :
-        DBus::ObjectProxy(*connection, path, service) { }
-    virtual ~ModemManager1Proxy() { }
-    virtual void DeviceAdded(const DBus::Path&) { }
-    virtual void DeviceRemoved(const DBus::Path&) { }
+class ModemManager1Proxy : public org::freedesktop::ModemManager1_proxy,
+                           public DBus::ObjectProxy {
+ public:
+  ModemManager1Proxy(DBus::Connection* connection,
+                     const char* path,
+                     const char* service)
+      : DBus::ObjectProxy(*connection, path, service) {}
+  virtual ~ModemManager1Proxy() {}
+  virtual void DeviceAdded(const DBus::Path&) {}
+  virtual void DeviceRemoved(const DBus::Path&) {}
 };
 
 #endif  // USE_CELLULAR
 
-class PropertiesProxy
-    : public org::freedesktop::DBus::Properties_proxy,
-      public DBus::ObjectProxy {
-  public:
-    PropertiesProxy(DBus::Connection* connection, const char* path,
-                    const char* service) :
-        DBus::ObjectProxy(*connection, path, service) { }
-    virtual ~PropertiesProxy() { }
+class PropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
+                        public DBus::ObjectProxy {
+ public:
+  PropertiesProxy(DBus::Connection* connection,
+                  const char* path,
+                  const char* service)
+      : DBus::ObjectProxy(*connection, path, service) {}
+  virtual ~PropertiesProxy() {}
 };
 
 DebugModeTool::DebugModeTool(DBus::Connection* connection)

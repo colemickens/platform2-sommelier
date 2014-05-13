@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PACKET_CAPTURE_TOOL_H
-#define PACKET_CAPTURE_TOOL_H
+#ifndef PACKET_CAPTURE_TOOL_H_
+#define PACKET_CAPTURE_TOOL_H_
 
+#include <map>
 #include <string>
 
 #include <base/basictypes.h>
@@ -19,13 +20,13 @@ class ProcessWithId;
 class PacketCaptureTool : public SubprocessTool {
  public:
   PacketCaptureTool();
-  ~PacketCaptureTool();
+  virtual ~PacketCaptureTool();
 
   std::string Start(
       const DBus::FileDescriptor& status_fd,
       const DBus::FileDescriptor& output_fd,
       const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error); // NOLINT
+      DBus::Error* error);
 
  private:
   static bool AddValidatedStringOption(
@@ -37,6 +38,6 @@ class PacketCaptureTool : public SubprocessTool {
   DISALLOW_COPY_AND_ASSIGN(PacketCaptureTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // !PACKET_CAPTURE_TOOL_H
+#endif  // PACKET_CAPTURE_TOOL_H_

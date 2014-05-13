@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ANONYMIZER_TOOL_H
-#define ANONYMIZER_TOOL_H
+#ifndef ANONYMIZER_TOOL_H_
+#define ANONYMIZER_TOOL_H_
 
 #include <map>
 #include <string>
@@ -16,7 +16,7 @@ namespace debugd {
 class AnonymizerTool {
  public:
   AnonymizerTool();
-  virtual ~AnonymizerTool();
+  ~AnonymizerTool();
 
   // Returns an anonymized version of |input|. PII-sensitive data (such as MAC
   // addresses) in |input| is replaced with unique identifiers.
@@ -38,6 +38,6 @@ class AnonymizerTool {
   DISALLOW_COPY_AND_ASSIGN(AnonymizerTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // ANONYMIZER_TOOL_H
+#endif  // ANONYMIZER_TOOL_H_

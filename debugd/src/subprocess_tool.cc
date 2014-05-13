@@ -4,15 +4,19 @@
 
 #include "subprocess_tool.h"
 
-#include <dbus-c++/dbus.h>
 #include <signal.h>
+
+#include <dbus-c++/dbus.h>
 
 #include "process_with_id.h"
 
 namespace debugd {
 
-const char* kErrorNoSuchProcess =
-    "org.chromium.debugd.error.NoSuchProcess";
+namespace {
+
+const char kErrorNoSuchProcess[] = "org.chromium.debugd.error.NoSuchProcess";
+
+}  // namespace
 
 SubprocessTool::SubprocessTool() { }
 SubprocessTool::~SubprocessTool() { }
@@ -27,9 +31,9 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandbox) {
   return p;
 }
 
-void SubprocessTool::Stop(const std::string& handle, DBus::Error& error) {
+void SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
   if (processes_.count(handle) != 1) {
-    error.set(kErrorNoSuchProcess, handle.c_str());
+    error->set(kErrorNoSuchProcess, handle.c_str());
     return;
   }
   ProcessWithId* p = processes_[handle];
@@ -39,4 +43,4 @@ void SubprocessTool::Stop(const std::string& handle, DBus::Error& error) {
   delete p;
 }
 
-};  // namespace debugd
+}  // namespace debugd

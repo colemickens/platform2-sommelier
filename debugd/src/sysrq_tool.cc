@@ -15,18 +15,18 @@ SysrqTool::SysrqTool() { }
 
 SysrqTool::~SysrqTool() { }
 
-void SysrqTool::LogKernelTaskStates(DBus::Error& error) { // NOLINT
+void SysrqTool::LogKernelTaskStates(DBus::Error* error) {
   int sysrq_trigger = open("/proc/sysrq-trigger", O_WRONLY | O_CLOEXEC);
   if (sysrq_trigger < 0) {
-    error.set(kErrorSysrq, "open");
+    error->set(kErrorSysrq, "open");
     return;
   }
   ssize_t written = write(sysrq_trigger, "t", 1);
   close(sysrq_trigger);
   if (written < 1) {
-    error.set(kErrorSysrq, "write");
+    error->set(kErrorSysrq, "write");
     return;
   }
 }
 
-};  // namespace debugd
+}  // namespace debugd

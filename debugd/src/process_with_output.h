@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PROCESS_WITH_OUTPUT_H
-#define PROCESS_WITH_OUTPUT_H
+#ifndef PROCESS_WITH_OUTPUT_H_
+#define PROCESS_WITH_OUTPUT_H_
 
 #include <string>
 #include <vector>
@@ -24,11 +24,12 @@ class ProcessWithOutput : public SandboxedProcess {
   virtual bool Init();
   bool GetOutput(std::string* output);
   bool GetOutputLines(std::vector<std::string>* output);
+
  private:
   base::FilePath outfile_path_;
   FILE *outfile_;
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // PROCESS_WITH_OUTPUT_H
+#endif  // PROCESS_WITH_OUTPUT_H_

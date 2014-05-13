@@ -15,7 +15,7 @@ namespace debugd {
 NetworkStatusTool::NetworkStatusTool() { }
 NetworkStatusTool::~NetworkStatusTool() { }
 
-std::string NetworkStatusTool::GetNetworkStatus(DBus::Error& error) { // NOLINT
+std::string NetworkStatusTool::GetNetworkStatus(DBus::Error* error) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath("network_status", &path))
     return "";
@@ -29,4 +29,4 @@ std::string NetworkStatusTool::GetNetworkStatus(DBus::Error& error) { // NOLINT
   return out;
 }
 
-};  // namespace debugd
+}  // namespace debugd

@@ -48,4 +48,4 @@ bool ProcessWithOutput::GetOutput(std::string* output) {
   return base::ReadFileToString(outfile_path_, output);
 }
 
-};  // namespace debugd
+}  // namespace debugd

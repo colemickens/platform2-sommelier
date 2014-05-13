@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SUBPROCESS_TOOL_H
-#define SUBPROCESS_TOOL_H
+#ifndef SUBPROCESS_TOOL_H_
+#define SUBPROCESS_TOOL_H_
 
 #include <map>
 #include <string>
@@ -21,12 +21,14 @@ class SubprocessTool {
   virtual ~SubprocessTool();
 
   virtual ProcessWithId* CreateProcess(bool sandbox);
-  virtual void Stop(const std::string& handle, DBus::Error& error);
+  virtual void Stop(const std::string& handle, DBus::Error* error);
+
  private:
   std::map<std::string, ProcessWithId*> processes_;
+
   DISALLOW_COPY_AND_ASSIGN(SubprocessTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // SUBPROCESS_TOOL_H
+#endif  // SUBPROCESS_TOOL_H_

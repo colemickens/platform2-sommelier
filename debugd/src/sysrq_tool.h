@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SYSRQ_TOOL_H
-#define SYSRQ_TOOL_H
+#ifndef SYSRQ_TOOL_H_
+#define SYSRQ_TOOL_H_
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
@@ -15,11 +15,12 @@ class SysrqTool {
   SysrqTool();
   ~SysrqTool();
 
-  void LogKernelTaskStates(DBus::Error& error); // NOLINT
+  void LogKernelTaskStates(DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SysrqTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // SYSRQ_TOOL_H
+#endif  // SYSRQ_TOOL_H_

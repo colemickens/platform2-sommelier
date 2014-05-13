@@ -17,7 +17,7 @@ DebugLogsTool::DebugLogsTool() { }
 DebugLogsTool::~DebugLogsTool() { }
 
 void DebugLogsTool::GetDebugLogs(const DBus::FileDescriptor& fd,
-                                 DBus::Error& error) {
+                                 DBus::Error* error) {
   chromeos::ProcessImpl p;
   p.AddArg(kTar);
   p.AddArg("-c");
@@ -27,4 +27,4 @@ void DebugLogsTool::GetDebugLogs(const DBus::FileDescriptor& fd,
   p.Run();
 }
 
-};  // namespace debugd
+}  // namespace debugd

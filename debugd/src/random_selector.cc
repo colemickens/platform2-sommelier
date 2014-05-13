@@ -4,7 +4,7 @@
 
 #include "random_selector.h"
 
-#include <fstream>
+#include <fstream>  // NOLINT
 #include <map>
 #include <cstdlib>
 #include <string>

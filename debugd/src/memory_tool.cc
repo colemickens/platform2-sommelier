@@ -10,14 +10,19 @@ using base::StringPrintf;
 
 namespace debugd {
 
-const char* kMemtesterpath = "/usr/sbin/memtester";
+namespace {
+
+const char kMemtesterpath[] = "/usr/sbin/memtester";
+
+}  // namespace
 
 MemtesterTool::MemtesterTool() { }
+
 MemtesterTool::~MemtesterTool() { }
 
 std::string MemtesterTool::Start(const DBus::FileDescriptor& outfd,
                                  const uint32_t& memory,
-                                 DBus::Error& error) {
+                                 DBus::Error* error) {
   ProcessWithId* p = CreateProcess(false);
   if (!p)
     return "";
@@ -32,4 +37,4 @@ std::string MemtesterTool::Start(const DBus::FileDescriptor& outfd,
   return p->id();
 }
 
-};  // namespace debugd
+}  // namespace debugd

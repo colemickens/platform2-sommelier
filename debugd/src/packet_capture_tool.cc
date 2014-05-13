@@ -20,7 +20,7 @@ std::string PacketCaptureTool::Start(
     const DBus::FileDescriptor& status_fd,
     const DBus::FileDescriptor& output_fd,
     const std::map<std::string, DBus::Variant>& options,
-    DBus::Error& error) {
+    DBus::Error* error) {
   std::string exec_path;
   if (!SandboxedProcess::GetHelperPath("capture_utility.sh", &exec_path))
     return "<path too long>";
@@ -38,7 +38,7 @@ std::string PacketCaptureTool::Start(
   }
   AddValidatedStringOption(options, "ht_location", "--ht-location", p);
   AddValidatedStringOption(
-      options, "monitor_connection_on","--monitor-connection-on", p);
+      options, "monitor_connection_on", "--monitor-connection-on", p);
 
   // Pass the output fd of the pcap as a command line option to the child
   // process.
@@ -75,4 +75,4 @@ bool PacketCaptureTool::AddValidatedStringOption(
   return true;
 }
 
-};  // namespace debugd
+}  // namespace debugd

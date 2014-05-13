@@ -16,7 +16,7 @@ namespace debugd {
 ModemStatusTool::ModemStatusTool() { }
 ModemStatusTool::~ModemStatusTool() { }
 
-std::string ModemStatusTool::GetModemStatus(DBus::Error& error) { // NOLINT
+std::string ModemStatusTool::GetModemStatus(DBus::Error* error) {
   if (!USE_CELLULAR)
     return "";
 

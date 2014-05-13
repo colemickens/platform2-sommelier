@@ -21,49 +21,49 @@ using base::Value;
 const char* kFlimflamPath = "/";
 const char* kFlimflamService = "org.chromium.flimflam";
 
-class DeviceProxy
-    : public org::chromium::flimflam::Device_proxy,
-      public DBus::ObjectProxy {
-  public:
-    DeviceProxy(DBus::Connection& connection, const char* path, // NOLINT
-                const char* service) :
-        DBus::ObjectProxy(connection, path, service) { }
-    virtual ~DeviceProxy() { }
-    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
+class DeviceProxy : public org::chromium::flimflam::Device_proxy,
+                    public DBus::ObjectProxy {
+ public:
+  DeviceProxy(DBus::Connection& connection,  // NOLINT
+              const char* path,
+              const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  virtual ~DeviceProxy() {}
+  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
 };
 
-class IPConfigProxy
-    : public org::chromium::flimflam::IPConfig_proxy,
-      public DBus::ObjectProxy {
-  public:
-    IPConfigProxy(DBus::Connection& connection, const char* path, // NOLINT
-                const char* service) :
-        DBus::ObjectProxy(connection, path, service) { }
-    virtual ~IPConfigProxy() { }
-    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
+class IPConfigProxy : public org::chromium::flimflam::IPConfig_proxy,
+                      public DBus::ObjectProxy {
+ public:
+  IPConfigProxy(DBus::Connection& connection,  // NOLINT
+                const char* path,
+                const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  virtual ~IPConfigProxy() {}
+  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
 };
 
-class ManagerProxy
-    : public org::chromium::flimflam::Manager_proxy,
-      public DBus::ObjectProxy {
-  public:
-    ManagerProxy(DBus::Connection& connection, const char* path, // NOLINT
-                 const char* service) :
-        DBus::ObjectProxy(connection, path, service) { }
-    virtual ~ManagerProxy() { }
-    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
-    virtual void StateChanged(const std::string&) { }
+class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
+                     public DBus::ObjectProxy {
+ public:
+  ManagerProxy(DBus::Connection& connection,  // NOLINT
+               const char* path,
+               const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  virtual ~ManagerProxy() {}
+  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
+  virtual void StateChanged(const std::string&) {}
 };
 
-class ServiceProxy
-    : public org::chromium::flimflam::Service_proxy,
-      public DBus::ObjectProxy {
-  public:
-    ServiceProxy(DBus::Connection& connection, const char* path, // NOLINT
-                 const char* service) :
-        DBus::ObjectProxy(connection, path, service) { }
-    virtual ~ServiceProxy() { }
-    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
+class ServiceProxy : public org::chromium::flimflam::Service_proxy,
+                     public DBus::ObjectProxy {
+ public:
+  ServiceProxy(DBus::Connection& connection,  // NOLINT
+               const char* path,
+               const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  virtual ~ServiceProxy() {}
+  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
 };
 
 Value* GetService(DBus::Connection& conn, DBus::Path& path) { // NOLINT

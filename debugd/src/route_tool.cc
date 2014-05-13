@@ -16,10 +16,8 @@ const char* kRoute = "/sbin/route";
 RouteTool::RouteTool() { }
 RouteTool::~RouteTool() { }
 
-std::vector<std::string> RouteTool::GetRoutes(const std::map<std::string,
-                                                             DBus::Variant>&
-                                                  options,
-                                              DBus::Error& error) {
+std::vector<std::string> RouteTool::GetRoutes(
+    const std::map<std::string, DBus::Variant>& options, DBus::Error* error) {
   std::vector<std::string> result;
   ProcessWithOutput p;
   if (!p.Init())
@@ -35,4 +33,4 @@ std::vector<std::string> RouteTool::GetRoutes(const std::map<std::string,
   return result;
 }
 
-};  // namespace debugd
+}  // namespace debugd

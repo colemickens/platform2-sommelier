@@ -149,4 +149,4 @@ string AnonymizerTool::AnonymizeCustomPattern(
   return result;
 }
 
-};  // namespace debugd
+}  // namespace debugd

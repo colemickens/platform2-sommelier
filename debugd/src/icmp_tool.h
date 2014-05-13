@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ICMP_TOOL_H
-#define ICMP_TOOL_H
+#ifndef ICMP_TOOL_H_
+#define ICMP_TOOL_H_
 
+#include <map>
 #include <string>
 
 #include <base/basictypes.h>
@@ -22,10 +23,11 @@ class ICMPTool {
       const std::string& host,
       const std::map<std::string, std::string>& options,
       DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ICMPTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // ICMP_TOOL_H
+#endif  // ICMP_TOOL_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRASH_SENDER_TOOL_H
-#define CRASH_SENDER_TOOL_H
+#ifndef CRASH_SENDER_TOOL_H_
+#define CRASH_SENDER_TOOL_H_
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
@@ -15,9 +15,9 @@ namespace debugd {
 class CrashSenderTool : public SubprocessTool {
  public:
   CrashSenderTool();
-  ~CrashSenderTool();
+  virtual ~CrashSenderTool();
 
-  void UploadCrashes(DBus::Error& error);  // NOLINT
+  void UploadCrashes(DBus::Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CrashSenderTool);
@@ -25,4 +25,4 @@ class CrashSenderTool : public SubprocessTool {
 
 }  // namespace debugd
 
-#endif  // CRASH_SENDER_TOOL_H
+#endif  // CRASH_SENDER_TOOL_H_

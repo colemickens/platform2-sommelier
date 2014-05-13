@@ -103,21 +103,22 @@ int main(int argc, char *argv[]) {
       continue;
 
     } else if (sscanf(outbuf,
-                    "%d packets transmitted, %d received, %d%% packet loss,"
-                    " time %dms",
-                    &sent, &recvd, &loss, &time) == 4)
+                      "%d packets transmitted, %d received, %d%% packet loss,"
+                      " time %dms",
+                      &sent, &recvd, &loss, &time) == 4) {
       continue;
 
-    else if (sscanf(outbuf,
-                    "%d packets transmitted, %d received, +%d errors,"
-                    " %d%% packet loss, time %dms",
-                    &sent, &recvd, &errors, &loss, &time) == 5)
+    } else if (sscanf(outbuf,
+                      "%d packets transmitted, %d received, +%d errors,"
+                      " %d%% packet loss, time %dms",
+                      &sent, &recvd, &errors, &loss, &time) == 5) {
       continue;
 
-    else if (sscanf(outbuf,
+    } else if (sscanf(outbuf,
                     "rtt min/avg/max/mdev = %f/%f/%f/%f ms",
-                    &min, &avg, &max, &mdev) == 4)
+                    &min, &avg, &max, &mdev) == 4) {
       continue;
+    }
   }
   pclose(out);
   if (time == -1)

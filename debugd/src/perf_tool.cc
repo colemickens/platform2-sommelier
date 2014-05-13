@@ -4,8 +4,6 @@
 
 #include "perf_tool.h"
 
-#include <fstream>
-
 #include <base/strings/string_split.h>
 
 #include "cpu_info_parser.h"
@@ -59,22 +57,15 @@ PerfTool::PerfTool() {
   cpu_info_parser.GetKey(kCPUModelNameKey, &cpu_model_name);
   std::string odds_filename;
   GetOddsFilenameForCPU(cpu_model_name, &odds_filename);
-  std::string odds_file_path = std::string(kCPUOddsFilePrefix) +
-      odds_filename +
-      kCPUOddsFileSuffix;
+  std::string odds_file_path =
+      std::string(kCPUOddsFilePrefix) + odds_filename + kCPUOddsFileSuffix;
   random_selector_.SetOddsFromFile(odds_file_path);
 }
 
 PerfTool::~PerfTool() { }
 
-// Tool methods have the same signature as the generated DBus adaptors. Most
-// pertinently, this means they take their DBus::Error argument as a non-const
-// reference (hence the NOLINT). Tool methods are generally written in
-// can't-fail style, since their output is usually going to be displayed to the
-// user; instead of returning a DBus exception, we tend to return a string
-// indicating what went wrong.
 std::vector<uint8> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
-                                             DBus::Error& error) { // NOLINT
+                                             DBus::Error* error) {
   std::string perf_command_line;
   random_selector_.GetNext(&perf_command_line);
   std::string output_string;
@@ -84,8 +75,8 @@ std::vector<uint8> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
 
 void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,
                                  const std::string& perf_command_line,
-                                 DBus::Error& error,
-                                 std::string* data_string) { // NOLINT
+                                 DBus::Error* error,
+                                 std::string* data_string) {
   // This whole method is synchronous, so we create a subprocess, let it run to
   // completion, then gather up its output to return it.
   ProcessWithOutput process;
@@ -105,5 +96,4 @@ void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,
   process.GetOutput(data_string);
 }
 
-};  // namespace debugd
-
+}  // namespace debugd

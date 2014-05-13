@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DEBUG_MODE_TOOL_H
-#define DEBUG_MODE_TOOL_H
+#ifndef DEBUG_MODE_TOOL_H_
+#define DEBUG_MODE_TOOL_H_
 
 #include <string>
 #include <vector>
@@ -28,6 +28,6 @@ class DebugModeTool {
   DISALLOW_COPY_AND_ASSIGN(DebugModeTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // DEBUG_MODE_TOOL_H
+#endif  // DEBUG_MODE_TOOL_H_

@@ -51,4 +51,4 @@ string ICMPTool::TestICMPWithOptions(const string& host,
   return out;
 }
 
-};  // namespace debugd
+}  // namespace debugd

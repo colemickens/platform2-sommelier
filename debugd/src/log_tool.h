@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOG_TOOL_H
-#define LOG_TOOL_H
+#ifndef LOG_TOOL_H_
+#define LOG_TOOL_H_
 
 #include <string>
 #include <map>
@@ -20,10 +20,10 @@ class LogTool {
 
   typedef std::map<std::string, std::string> LogMap;
 
-  std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
-  LogMap GetAllLogs(DBus::Error& error); // NOLINT
-  LogMap GetFeedbackLogs(DBus::Error& error); // NOLINT
-  LogMap GetUserLogFiles(DBus::Error& error);  // NOLINT
+  std::string GetLog(const std::string& name, DBus::Error* error);
+  LogMap GetAllLogs(DBus::Error* error);
+  LogMap GetFeedbackLogs(DBus::Error* error);
+  LogMap GetUserLogFiles(DBus::Error* error);
 
  private:
   friend class LogToolTest;
@@ -33,6 +33,6 @@ class LogTool {
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // LOG_TOOL_H
+#endif  // LOG_TOOL_H_

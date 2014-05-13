@@ -5,6 +5,8 @@
 #ifndef WIMAX_STATUS_TOOL_H_
 #define WIMAX_STATUS_TOOL_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
@@ -15,7 +17,7 @@ class WiMaxStatusTool {
   WiMaxStatusTool();
   ~WiMaxStatusTool();
 
-  std::string GetWiMaxStatus(DBus::Error& error);  // NOLINT
+  std::string GetWiMaxStatus(DBus::Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WiMaxStatusTool);

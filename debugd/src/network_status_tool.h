@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef NETWORK_STATUS_TOOL_H
-#define NETWORK_STATUS_TOOL_H
+#ifndef NETWORK_STATUS_TOOL_H_
+#define NETWORK_STATUS_TOOL_H_
 
 #include <string>
 
@@ -17,11 +17,12 @@ class NetworkStatusTool {
   NetworkStatusTool();
   ~NetworkStatusTool();
 
-  std::string GetNetworkStatus(DBus::Error& error); // NOLINT
+  std::string GetNetworkStatus(DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(NetworkStatusTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // NETWORK_STATUS_TOOL_H
+#endif  // NETWORK_STATUS_TOOL_H_

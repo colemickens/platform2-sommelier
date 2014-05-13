@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef NETIF_TOOL_H
-#define NETIF_TOOL_H
+#ifndef NETIF_TOOL_H_
+#define NETIF_TOOL_H_
 
 #include <string>
 
@@ -18,10 +18,11 @@ class NetifTool {
   ~NetifTool();
 
   std::string GetInterfaces(DBus::Error* error);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(NetifTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // NETIF_TOOL_H
+#endif  // NETIF_TOOL_H_

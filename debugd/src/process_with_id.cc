@@ -11,15 +11,15 @@
 
 namespace debugd {
 
-ProcessWithId::ProcessWithId() { }
+ProcessWithId::ProcessWithId() {}
 
 bool ProcessWithId::Init() {
-  return SandboxedProcess::Init() && generate_id();
+  return SandboxedProcess::Init() && GenerateId();
 }
 
-bool ProcessWithId::generate_id() {
+bool ProcessWithId::GenerateId() {
   char buf[16];
-  FILE *urandom = fopen("/dev/urandom", "r");
+  FILE* urandom = fopen("/dev/urandom", "r");
   if (!urandom) {
       PLOG(ERROR) << "Can't open /dev/urandom";
       return false;
@@ -35,4 +35,4 @@ bool ProcessWithId::generate_id() {
   return true;
 }
 
-};  // namespace debugd
+}  // namespace debugd

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MODEM_STATUS_TOOL_H
-#define MODEM_STATUS_TOOL_H
+#ifndef MODEM_STATUS_TOOL_H_
+#define MODEM_STATUS_TOOL_H_
 
 #include <string>
 
@@ -16,21 +16,18 @@ class ModemStatusTool {
  public:
   ModemStatusTool();
   ~ModemStatusTool();
-
-  std::string GetModemStatus(DBus::Error& error); // NOLINT
-
-  std::string RunModemCommand(const std::string& command); // NOLINT
+  std::string GetModemStatus(DBus::Error* error);
+  std::string RunModemCommand(const std::string& command);
 
  private:
   friend class ModemStatusToolTest;
 
-  std::string SendATCommand(const std::string& command); // NOLINT
-
-  static std::string CollapseNewLines(const std::string& input);  // NOLINT
+  std::string SendATCommand(const std::string& command);
+  static std::string CollapseNewLines(const std::string& input);
 
   DISALLOW_COPY_AND_ASSIGN(ModemStatusTool);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // MODEM_STATUS_TOOL_H
+#endif  // MODEM_STATUS_TOOL_H_

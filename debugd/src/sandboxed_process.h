@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SANDBOXED_PROCESS_H
-#define SANDBOXED_PROCESS_H
+#ifndef SANDBOXED_PROCESS_H_
+#define SANDBOXED_PROCESS_H_
+
+#include <string>
 
 #include <chromeos/process.h>
 
@@ -37,6 +39,6 @@ class SandboxedProcess : public chromeos::ProcessImpl {
   std::string group_;
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // SANDBOXED_PROCESS_H
+#endif  // SANDBOXED_PROCESS_H_

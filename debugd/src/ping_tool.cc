@@ -19,9 +19,8 @@ PingTool::~PingTool() { }
 
 std::string PingTool::Start(const DBus::FileDescriptor& outfd,
                             const std::string& destination,
-                            const std::map<std::string, DBus::Variant>&
-                                options,
-                            DBus::Error& error) {
+                            const std::map<std::string, DBus::Variant>& options,
+                            DBus::Error* error) {
   ProcessWithId* p = CreateProcess(true);
   if (!p)
     return "";
@@ -56,4 +55,4 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
   return p->id();
 }
 
-};  // namespace debugd
+}  // namespace debugd

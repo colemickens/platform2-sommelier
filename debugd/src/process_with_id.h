@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PROCESS_WITH_ID_H
-#define PROCESS_WITH_ID_H
+#ifndef PROCESS_WITH_ID_H_
+#define PROCESS_WITH_ID_H_
+
+#include <string>
 
 #include "sandboxed_process.h"
 
@@ -17,12 +19,13 @@ class ProcessWithId : public SandboxedProcess {
  public:
   ProcessWithId();
   virtual bool Init();
-  std::string id() const { return id_; }
+  const std::string& id() const { return id_; }
+
  private:
-  bool generate_id();
+  bool GenerateId();
   std::string id_;
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // PROCESS_WITH_ID_H
+#endif  // PROCESS_WITH_ID_H_

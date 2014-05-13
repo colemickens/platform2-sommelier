@@ -5,19 +5,27 @@
 #include "systrace_tool.h"
 
 #include <string>
-#include <base/strings/string_split.h>
+#include <vector>
 
+#include <base/strings/string_split.h>
 #include <chromeos/process.h>
 
 #include "process_with_output.h"
-
-using base::StringPrintf;
 
 namespace debugd {
 
 namespace {
 
 const char kSystraceHelper[] = "systrace.sh";
+
+void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
+  std::vector<std::string> pieces;
+  base::SplitString(categories, ' ', &pieces);
+  for (std::vector<std::string>::iterator it = pieces.begin();
+       it != pieces.end();
+       it++)
+    p->AddArg(*it);
+}
 
 }  // namespace
 
@@ -26,20 +34,8 @@ extern const char *kDebugfsGroup;
 SystraceTool::SystraceTool() { }
 SystraceTool::~SystraceTool() { }
 
-static void add_category_args(ProcessWithOutput& p,
-    const std::string& categories)
-{
-  std::string temp(categories);
-  std::vector<std::string> pieces;
-  base::SplitString(temp, ' ', &pieces);
-  for (std::vector<std::string>::iterator it = pieces.begin();
-      it < pieces.end();
-      it++)
-    p.AddArg(*it);
-}
-
 std::string SystraceTool::Start(const std::string& categories,
-                                DBus::Error& error) {
+                                DBus::Error* error) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return "";
@@ -50,15 +46,14 @@ std::string SystraceTool::Start(const std::string& categories,
   p.Init();
   p.AddArg(path);
   p.AddArg("start");
-  add_category_args(p, categories);
+  AddCategoryArgs(&p, categories);
   p.Run();
   std::string out;
   p.GetOutput(&out);
   return out;
 }
 
-void SystraceTool::Stop(const DBus::FileDescriptor& outfd,
-    DBus::Error& error) {
+void SystraceTool::Stop(const DBus::FileDescriptor& outfd, DBus::Error* error) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return;
@@ -73,7 +68,7 @@ void SystraceTool::Stop(const DBus::FileDescriptor& outfd,
   p.Run();
 }
 
-std::string SystraceTool::Status(DBus::Error& error) {
+std::string SystraceTool::Status(DBus::Error* error) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return "";
@@ -89,4 +84,4 @@ std::string SystraceTool::Status(DBus::Error& error) {
   return out;
 }
 
-};  // namespace debugd
+}  // namespace debugd

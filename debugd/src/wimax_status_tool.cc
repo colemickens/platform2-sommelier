@@ -15,7 +15,7 @@ namespace debugd {
 WiMaxStatusTool::WiMaxStatusTool() {}
 WiMaxStatusTool::~WiMaxStatusTool() {}
 
-std::string WiMaxStatusTool::GetWiMaxStatus(DBus::Error& error) {  // NOLINT
+std::string WiMaxStatusTool::GetWiMaxStatus(DBus::Error* error) {
   if (!USE_WIMAX)
     return "";
 

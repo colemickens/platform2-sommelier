@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SYSTRACE_TOOL_H
-#define SYSTRACE_TOOL_H
+#ifndef SYSTRACE_TOOL_H_
+#define SYSTRACE_TOOL_H_
 
 #include <map>
 #include <string>
@@ -20,11 +20,11 @@ class SystraceTool {
   SystraceTool();
   ~SystraceTool();
 
-  std::string Start(const std::string& categories, DBus::Error& error);
-  void Stop(const DBus::FileDescriptor& outfd, DBus::Error& error);
-  std::string Status(DBus::Error& error);
+  std::string Start(const std::string& categories, DBus::Error* error);
+  void Stop(const DBus::FileDescriptor& outfd, DBus::Error* error);
+  std::string Status(DBus::Error* error);
 };
 
-};  // namespace debugd
+}  // namespace debugd
 
-#endif  // SYSTRACE_TOOL_H
+#endif  // SYSTRACE_TOOL_H_
