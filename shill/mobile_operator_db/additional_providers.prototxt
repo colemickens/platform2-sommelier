@@ -37,7 +37,7 @@ mno {
         regex: "[0-9]+"
       }
       method : POST
-      url : "https://quickaccess.verizonwireless.com/bbportal/chrome/start.do"
+      url : "https://quickaccess.verizonwireless.com/bbportal/chrome/start4g.do"
       post_data : "oem=${oem}&iccid=${iccid}&imei=${imei}&mdn=${mdn}"
     }
     olp {
@@ -46,7 +46,7 @@ mno {
         regex: "[0-9]+"
       }
       method : POST
-      url : ""
+      url : "https://quickaccess.verizonwireless.com/bbportal/chrome/start.do"
       post_data : "mdn=${mdn}&oem=${oem}&meid=${meid}"
     }
     mccmnc : "310995"
