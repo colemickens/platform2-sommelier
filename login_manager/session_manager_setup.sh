@@ -403,7 +403,7 @@ fi
 
 # Ozone platform configuration
 OZONE_FLAGS=
-if use_flag_is_set ozone; then
+if use_flag_is_set ozone_platform_dri; then
   # TODO(spang): Use freon/chromeos platform, not DRI example platform.
   OZONE_FLAGS="$OZONE_FLAGS --ozone-platform=dri"
 
