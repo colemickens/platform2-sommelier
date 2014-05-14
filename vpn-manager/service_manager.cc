@@ -186,7 +186,7 @@ bool ServiceManager::GetLocalAddressFromRemote(
   if (HANDLE_EINTR(connect(sock, &remote_address,
                            sizeof(struct sockaddr))) != 0) {
     LOG(ERROR) << "Unable to connect";
-    HANDLE_EINTR(close(sock));
+    IGNORE_EINTR(close(sock));
     return false;
   }
   bool result = false;
@@ -198,7 +198,7 @@ bool ServiceManager::GetLocalAddressFromRemote(
   result = true;
 
  error_label:
-  HANDLE_EINTR(close(sock));
+  IGNORE_EINTR(close(sock));
   return result;
 }
 
