@@ -799,7 +799,7 @@ bool Platform::SyncPath(const std::string& path) {
   if (dir) {
     ignore_result(closedir(dir));
   } else {
-    ignore_result(HANDLE_EINTR(close(fd)));
+    ignore_result(close(fd));
   }
   if (result < 0) {
     PLOG(WARNING) << "Failed to sync " << path;
