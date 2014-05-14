@@ -154,13 +154,13 @@ bool ProcessImpl::Start() {
     // Close parent's side of the child pipes. dup2 ours into place and
     // then close our ends.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      HANDLE_EINTR(close(i->second.parent_fd_));
+      IGNORE_EINTR(close(i->second.parent_fd_));
       HANDLE_EINTR(dup2(i->second.child_fd_, i->first));
     }
     // Defer the actual close() of the child fd until afterward; this lets the
     // same child fd be bound to multiple fds using BindFd
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      HANDLE_EINTR(close(i->second.child_fd_));
+      IGNORE_EINTR(close(i->second.child_fd_));
     }
     if (!output_file_.empty()) {
       int output_handle = HANDLE_EINTR(
@@ -178,7 +178,7 @@ bool ProcessImpl::Start() {
       // Only close output_handle if it does not happen to be one of
       // the two standard file descriptors we are trying to redirect.
       if (output_handle != STDOUT_FILENO && output_handle != STDERR_FILENO) {
-        HANDLE_EINTR(close(output_handle));
+        IGNORE_EINTR(close(output_handle));
       }
     }
     if (gid_ != static_cast<gid_t>(-1) && setresgid(gid_, gid_, gid_) < 0) {
@@ -205,7 +205,7 @@ bool ProcessImpl::Start() {
     UpdatePid(pid);
     // Close our copy of child side pipes.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      HANDLE_EINTR(close(i->second.child_fd_));
+      IGNORE_EINTR(close(i->second.child_fd_));
     }
   }
   return true;
@@ -291,7 +291,7 @@ void ProcessImpl::Reset(pid_t new_pid) {
   // handle sigpipes and shutdown nicely, though likely it won't
   // have time.
   for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i)
-    HANDLE_EINTR(close(i->second.parent_fd_));
+    IGNORE_EINTR(close(i->second.parent_fd_));
   pipe_map_.clear();
   if (pid_)
     Kill(SIGKILL, 0);
