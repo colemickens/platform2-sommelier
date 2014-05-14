@@ -54,7 +54,7 @@ int Sockets::BindToDevice(int sockfd, const std::string &device) const {
 }
 
 int Sockets::Close(int fd) const {
-  return HANDLE_EINTR(close(fd));
+  return IGNORE_EINTR(close(fd));
 }
 
 int Sockets::Connect(int sockfd,

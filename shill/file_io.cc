@@ -36,7 +36,7 @@ ssize_t FileIO::Read(int fd, void *buf, size_t count) {
 }
 
 int FileIO::Close(int fd) {
-  return HANDLE_EINTR(close(fd));
+  return IGNORE_EINTR(close(fd));
 }
 
 int FileIO::SetFdNonBlocking(int fd) {
