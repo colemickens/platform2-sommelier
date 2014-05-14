@@ -8,6 +8,7 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos/utility.h>
 
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"
@@ -23,20 +24,6 @@ using base::Value;
 // doesn't emit constants for enums defined in headers.
 // TODO(ellyjones): fix that
 const uint32_t kModemTypeGsm = 1;
-
-const char* kCromoPath = "/org/chromium/ModemManager";
-const char* kCromoService = "org.chromium.ModemManager";
-
-const char* kModemInterface = "org.freedesktop.ModemManager.Modem";
-const char* kModemSimpleInterface = "org.freedesktop.ModemManager.Modem.Simple";
-const char* kModemCdmaInterface = "org.freedesktop.ModemManager.Modem.Cdma";
-const char* kModemGsmInterface = "org.freedesktop.ModemManager.Modem.Gsm";
-const char* kModemGsmCardInterface =
-    "org.freedesktop.ModemManager.Modem.Gsm.Card";
-const char* kModemGsmNetworkInterface =
-    "org.freedesktop.ModemManager.Modem.Gsm.Network";
-const char* kModemGobiInterface =
-    "org.chromium.ModemManager.Modem.Gobi";
 
 class DBusPropertiesProxy
     : public org::freedesktop::DBus::Properties_proxy,
@@ -139,15 +126,15 @@ Value* Modem::GetStatus(DBus::Connection& conn) { // NOLINT
   DictionaryValue* props = new DictionaryValue();
   DBusPropertiesProxy properties = DBusPropertiesProxy(conn, path_.c_str(),
                                                        service_);
-  FetchOneInterface(properties, kModemInterface, props);
-  FetchOneInterface(properties, kModemSimpleInterface, props);
+  FetchOneInterface(properties, cromo::kModemInterface, props);
+  FetchOneInterface(properties, cromo::kModemSimpleInterface, props);
   uint32_t type = modem.Type();
   if (type == kModemTypeGsm) {
-    FetchOneInterface(properties, kModemGsmInterface, props);
-    FetchOneInterface(properties, kModemGsmCardInterface, props);
-    FetchOneInterface(properties, kModemGsmNetworkInterface, props);
+    FetchOneInterface(properties, cromo::kModemGsmInterface, props);
+    FetchOneInterface(properties, cromo::kModemGsmCardInterface, props);
+    FetchOneInterface(properties, cromo::kModemGsmNetworkInterface, props);
   } else {
-    FetchOneInterface(properties, kModemCdmaInterface, props);
+    FetchOneInterface(properties, cromo::kModemCdmaInterface, props);
   }
   result->Set("properties", props);
 
@@ -158,7 +145,9 @@ int main() {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  ModemManagerProxy cromo(conn, kCromoPath, kCromoService);
+  ModemManagerProxy cromo(conn,
+                          cromo::kCromoServicePath,
+                          cromo::kCromoServiceName);
   std::vector<Modem> modems;
 
   // The try-catch block is to account for cromo not being present.
@@ -167,7 +156,7 @@ int main() {
   try {
     std::vector<DBus::Path> cromo_modems = cromo.EnumerateDevices();
     for (size_t i = 0; i < cromo_modems.size(); ++i)
-      modems.push_back(Modem(kCromoService, cromo_modems[i]));
+      modems.push_back(Modem(cromo::kCromoServiceName, cromo_modems[i]));
     // cpplint thinks this is a function call
   } catch(DBus::Error e) { }
 

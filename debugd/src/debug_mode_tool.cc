@@ -5,6 +5,7 @@
 #include "debug_mode_tool.h"
 
 #include <base/file_util.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"
@@ -42,12 +43,6 @@ const char* const kDBusInterface = "org.freedesktop.DBus";
 const char* const kDBusListNames = "ListNames";
 
 const char* const kModemManager = "ModemManager";
-
-const char* const kCromoModemManagerPath = "/org/chromium/ModemManager";
-const char* const kCromoModemManagerService = "org.chromium.ModemManager";
-
-const char* const kModemManager1Path = "/org/freedesktop/ModemManager1";
-const char* const kModemManager1Service = "org.freedesktop.ModemManager1";
 
 class ModemManagerProxy
     : public org::freedesktop::ModemManager_proxy,
@@ -144,13 +139,15 @@ void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
   GetAllModemManagers(&managers);
   for (size_t i = 0; i < managers.size(); ++i) {
     const std::string& manager = managers[i];
-    if (manager == kCromoModemManagerService) {
-      ModemManagerProxy modemmanager(connection_, kCromoModemManagerPath,
-                                     kCromoModemManagerService);
+    if (manager == cromo::kCromoServiceName) {
+      ModemManagerProxy modemmanager(connection_,
+                                     cromo::kCromoServicePath,
+                                     cromo::kCromoServiceName);
       modemmanager.SetLogging(level == "err" ? "error" : level);
-    } else if (manager == kModemManager1Service) {
-      ModemManager1Proxy modemmanager(connection_, kModemManager1Path,
-                                      kModemManager1Service);
+    } else if (manager == modemmanager::kModemManager1ServiceName) {
+      ModemManager1Proxy modemmanager(connection_,
+                                      modemmanager::kModemManager1ServicePath,
+                                      modemmanager::kModemManager1ServiceName);
       modemmanager.SetLogging(level);
     }
   }
