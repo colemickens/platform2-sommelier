@@ -25,6 +25,9 @@ class DBusNameWatcher;
 class EventDispatcher;
 class ProxyFactory;
 
+// TODO(benchan): The current implementation supports multiple suspend delays,
+// which seems unnecessary as shill only registers one. We should simplify the
+// implementation (crbug.com/373348).
 class PowerManager : public PowerManagerProxyDelegate {
  public:
   // This callback is called prior to a suspend attempt.  When it is OK for the
@@ -43,8 +46,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.
-  PowerManager(EventDispatcher *dispatcher,
-               ProxyFactory *proxy_factory);
+  PowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
   virtual ~PowerManager();
 
   bool suspending() const { return suspending_; }

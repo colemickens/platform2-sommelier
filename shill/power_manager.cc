@@ -34,6 +34,10 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
       suspending_(false) {}
 
 PowerManager::~PowerManager() {
+  for (const auto &delay_entry : suspend_delays_) {
+    ignore_result(power_manager_proxy_->UnregisterSuspendDelay(
+        delay_entry.second.delay_id));
+  }
 }
 
 void PowerManager::Start(DBusManager *dbus_manager) {

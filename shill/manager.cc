@@ -1063,6 +1063,11 @@ void Manager::AddTerminationAction(const string &name,
                                    const base::Closure &start) {
   if (termination_actions_.IsEmpty() && power_manager_.get() &&
       !suspend_delay_registered_) {
+    // TODO(benchan): We can probably combine PowerManager::Start() and
+    // PowerManager::AddSuspendDelay() after simplifying PowerManager to support
+    // only one suspend delay. As PowerManager observes the presence of powerd,
+    // it's also more robust to retry the suspend delay registration via
+    // PowerManager::OnPowerManagerAppeared (crbug.com/373348).
     suspend_delay_registered_ = power_manager_->AddSuspendDelay(
         kPowerManagerKey,
         kSuspendDelayDescription,
@@ -1081,17 +1086,7 @@ void Manager::TerminationActionComplete(const string &name) {
 
 void Manager::RemoveTerminationAction(const string &name) {
   SLOG(Manager, 2) << __func__;
-  if (termination_actions_.IsEmpty()) {
-    return;
-  }
   termination_actions_.Remove(name);
-  if (termination_actions_.IsEmpty() && power_manager_.get() &&
-      suspend_delay_registered_) {
-    SLOG(Manager, 2) << "Unregistering suspend delay.";
-    if (power_manager_->RemoveSuspendDelay(kPowerManagerKey)) {
-      suspend_delay_registered_ = false;
-    }
-  }
 }
 
 void Manager::RunTerminationActions(

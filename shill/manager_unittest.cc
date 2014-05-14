@@ -3062,8 +3062,7 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
   MockPowerManager &power_manager = *power_manager_;
   SetPowerManager();
 
-  // Removing an action when the hook table is empty should not result in any
-  // calls to the power manager.
+  // Removing an action when the hook table is empty.
   EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->RemoveTerminationAction("unknown");
@@ -3076,17 +3075,14 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
   manager()->AddTerminationAction(kKey2, base::Closure());
   Mock::VerifyAndClearExpectations(&power_manager);
 
-  // Removing an action that ends up with a non-empty hook table should not
-  // result in any calls to the power manager.
+  // Removing an action that ends up with a non-empty hook table.
   EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   manager()->RemoveTerminationAction(kKey1);
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
   Mock::VerifyAndClearExpectations(&power_manager);
 
-  // Removing the last action should trigger unregistering from the power
-  // manager.
-  EXPECT_CALL(power_manager, RemoveSuspendDelay(_))
-      .WillOnce(Return(true));
+  // Removing the last action.
+  EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   manager()->RemoveTerminationAction(kKey2);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
 }
