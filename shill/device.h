@@ -436,6 +436,23 @@ class Device : public base::RefCounted<Device> {
   // Respond to a LinkMonitor gateway's MAC address found/change event.
   virtual void OnLinkMonitorGatewayChange();
 
+  // Returns true if traffic monitor is enabled on this device. The default
+  // implementation will return false, which can be overridden by a derived
+  // class.
+  virtual bool IsTrafficMonitorEnabled() const;
+
+  // Initiates traffic monitoring on the device if traffic monitor is enabled.
+  void StartTrafficMonitor();
+
+  // Stops traffic monitoring on the device if traffic monitor is enabled.
+  void StopTrafficMonitor();
+
+  // Called by the Traffic Monitor when it detects a network problem. Device
+  // subclasses that want to roam to a different network when encountering
+  // network problems can override this method in order to do so. The parent
+  // implementation handles the metric reporting of the network problem.
+  virtual void OnEncounterNetworkProblem(int reason);
+
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
   void SetServiceConnectedState(Service::ConnectState state);
@@ -469,6 +486,8 @@ class Device : public base::RefCounted<Device> {
   Manager *manager() const { return manager_; }
   const LinkMonitor *link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor *link_monitor);
+  // Use for unit test.
+  void set_traffic_monitor(TrafficMonitor *traffic_monitor);
 
  private:
   friend class CellularCapabilityTest;
@@ -593,6 +612,7 @@ class Device : public base::RefCounted<Device> {
       portal_detector_callback_;
   base::Callback<void(const Error &, const IPAddress &)>
       dns_client_callback_;
+  scoped_ptr<TrafficMonitor> traffic_monitor_;
   Technology::Identifier technology_;
   // The number of portal detection attempts from Connected to Online state.
   // This includes all failure/timeout attempts and the final successful

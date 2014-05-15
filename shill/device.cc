@@ -43,6 +43,7 @@
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 #include "shill/tethering.h"
+#include "shill/traffic_monitor.h"
 
 using base::Bind;
 using base::FilePath;
@@ -566,6 +567,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
     StartPortalDetection();
   }
   StartLinkMonitor();
+  StartTrafficMonitor();
   UpdateIPConfigsProperty();
 }
 
@@ -656,6 +658,7 @@ void Device::CreateConnection() {
 
 void Device::DestroyConnection() {
   SLOG(Device, 2) << __func__ << " on " << link_name_;
+  StopTrafficMonitor();
   StopPortalDetection();
   StopLinkMonitor();
   if (selected_service_.get()) {
@@ -684,6 +687,7 @@ void Device::SelectService(const ServiceRefPtr &service) {
     // Just in case the Device subclass has not already done so, make
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(NULL);
+    StopTrafficMonitor();
     StopLinkMonitor();
     StopPortalDetection();
   }
@@ -912,6 +916,65 @@ void Device::DNSClientCallback(const Error &error, const IPAddress& ip) {
   }
   metrics()->NotifyFallbackDNSTestResult(result);
   fallback_dns_test_client_.reset();
+}
+
+void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
+  traffic_monitor_.reset(traffic_monitor);
+}
+
+bool Device::IsTrafficMonitorEnabled() const {
+  return false;
+}
+
+void Device::StartTrafficMonitor() {
+  // Return if traffic monitor is not enabled for this device.
+  if (!IsTrafficMonitorEnabled()) {
+    return;
+  }
+
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Traffic Monitor starting.";
+  if (!traffic_monitor_.get()) {
+    traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
+    traffic_monitor_->set_network_problem_detected_callback(
+        Bind(&Device::OnEncounterNetworkProblem,
+             weak_ptr_factory_.GetWeakPtr()));
+  }
+  traffic_monitor_->Start();
+}
+
+void Device::StopTrafficMonitor() {
+  // Return if traffic monitor is not enabled for this device.
+  if (!IsTrafficMonitorEnabled()) {
+    return;
+  }
+
+  if (traffic_monitor_.get()) {
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Traffic Monitor stopping.";
+    traffic_monitor_->Stop();
+  }
+  traffic_monitor_.reset();
+}
+
+void Device::OnEncounterNetworkProblem(int reason) {
+  int metric_code;
+  switch (reason) {
+    case TrafficMonitor::kNetworkProblemCongestedTxQueue:
+      metric_code = Metrics::kNetworkProblemCongestedTCPTxQueue;
+      break;
+    case TrafficMonitor::kNetworkProblemDNSFailure:
+      metric_code = Metrics::kNetworkProblemDNSFailure;
+      break;
+    default:
+      LOG(ERROR) << "Invalid network problem code: " << reason;
+      return;
+  }
+
+  metrics()->NotifyNetworkProblemDetected(technology_, metric_code);
+  // Stop the traffic monitor, only report the first network problem detected
+  // on the connection for now.
+  StopTrafficMonitor();
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {

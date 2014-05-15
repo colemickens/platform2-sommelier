@@ -92,6 +92,9 @@ class TestDevice : public Device {
         .WillByDefault(Invoke(this, &TestDevice::DeviceIsIPv6Allowed));
     ON_CALL(*this, SetIPFlag(_, _, _))
         .WillByDefault(Invoke(this, &TestDevice::DeviceSetIPFlag));
+    ON_CALL(*this, IsTrafficMonitorEnabled())
+        .WillByDefault(Invoke(this,
+                              &TestDevice::DeviceIsTrafficMonitorEnabled));
   }
 
   ~TestDevice() {}
@@ -107,6 +110,7 @@ class TestDevice : public Device {
   }
 
   MOCK_CONST_METHOD0(IsIPv6Allowed, bool());
+  MOCK_CONST_METHOD0(IsTrafficMonitorEnabled, bool());
 
   MOCK_METHOD3(SetIPFlag, bool(IPAddress::Family family,
                                const std::string &flag,
@@ -114,6 +118,10 @@ class TestDevice : public Device {
 
   virtual bool DeviceIsIPv6Allowed() const {
     return Device::IsIPv6Allowed();
+  }
+
+  virtual bool DeviceIsTrafficMonitorEnabled() const {
+    return Device::IsTrafficMonitorEnabled();
   }
 
   virtual bool DeviceSetIPFlag(IPAddress::Family family,
@@ -190,6 +198,22 @@ class DeviceTest : public PropertyStoreTest {
 
   uint64 GetLinkMonitorResponseTime(Error *error) {
     return device_->GetLinkMonitorResponseTime(error);
+  }
+
+  void SetTrafficMonitor(TrafficMonitor *traffic_monitor) {
+    device_->set_traffic_monitor(traffic_monitor);  // Passes ownership.
+  }
+
+  void StartTrafficMonitor() {
+    device_->StartTrafficMonitor();
+  }
+
+  void StopTrafficMonitor() {
+    device_->StopTrafficMonitor();
+  }
+
+  void NetworkProblemDetected(int reason) {
+    device_->OnEncounterNetworkProblem(reason);
   }
 
   DeviceMockAdaptor *GetDeviceMockAdaptor() {
@@ -694,6 +718,73 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
   EXPECT_TRUE(HasLinkMonitor());
   SelectService(NULL);
   EXPECT_FALSE(HasLinkMonitor());
+}
+
+TEST_F(DeviceTest, TrafficMonitor) {
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  &manager));
+  SelectService(service);
+  SetConnection(connection.get());
+  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+  SetManager(&manager);
+
+  EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*traffic_monitor, Start());
+  StartTrafficMonitor();
+  EXPECT_CALL(*traffic_monitor, Stop());
+  StopTrafficMonitor();
+  Mock::VerifyAndClearExpectations(traffic_monitor);
+
+  EXPECT_CALL(metrics_, NotifyNetworkProblemDetected(_,
+      Metrics::kNetworkProblemDNSFailure)).Times(1);
+  NetworkProblemDetected(TrafficMonitor::kNetworkProblemDNSFailure);
+
+  // Verify traffic monitor not running when it is disabled.
+  traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  SetTrafficMonitor(traffic_monitor);
+  EXPECT_CALL(*device_, IsTrafficMonitorEnabled())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*traffic_monitor, Start()).Times(0);
+  StartTrafficMonitor();
+  EXPECT_CALL(*traffic_monitor, Stop()).Times(0);
+  StopTrafficMonitor();
+
+}
+
+TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  &manager));
+  SelectService(service);
+  SetConnection(connection.get());
+  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+  EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
+  SetManager(&manager);
+  EXPECT_CALL(*service, state())
+      .WillOnce(Return(Service::kStateIdle));
+  EXPECT_CALL(*service, SetState(_));
+  EXPECT_CALL(*service, SetConnection(_));
+  EXPECT_CALL(*traffic_monitor, Stop());
+  SelectService(NULL);
 }
 
 TEST_F(DeviceTest, ShouldUseArpGateway) {

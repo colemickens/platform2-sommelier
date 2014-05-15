@@ -25,7 +25,14 @@ class SocketInfoReader;
 // and notifies an observer of various scenarios via callbacks.
 class TrafficMonitor {
  public:
-  typedef base::Closure TcpOutTrafficNotRoutedCallback;
+  // Network problem detected by traffic monitor.
+  enum NetworkProblem {
+    kNetworkProblemCongestedTxQueue=0,
+    kNetworkProblemDNSFailure,
+    kNetworkProblemMax
+  };
+
+  typedef base::Callback<void(int)> NetworkProblemDetectedCallback;
 
   TrafficMonitor(const DeviceRefPtr &device, EventDispatcher *dispatcher);
   virtual ~TrafficMonitor();
@@ -36,11 +43,12 @@ class TrafficMonitor {
   // Stops traffic monitoring on the selected device.
   virtual void Stop();
 
-  // Sets the callback to invoke, if the traffic monitor detects that too many
-  // packets are failing to get transmitted over a TCP connection.
-  void set_tcp_out_traffic_not_routed_callback(
-      const TcpOutTrafficNotRoutedCallback &callback) {
-    outgoing_tcp_packets_not_routed_callback_ = callback;
+  // Sets the callback to invoke, if the traffic monitor detects a network
+  // problem, either too many packets are failing to get transmitted over a
+  // TCP connection or DNS is failing.
+  void set_network_problem_detected_callback(
+      const NetworkProblemDetectedCallback &callback) {
+    network_problem_detected_callback_ = callback;
   }
 
  private:
@@ -121,9 +129,11 @@ class TrafficMonitor {
   // of the network interface.
   base::CancelableClosure sample_traffic_callback_;
 
-  // Callback to invoke when we detect that the send queue has been increasing
-  // on an ESTABLISHED TCP connection through the network interface.
-  TcpOutTrafficNotRoutedCallback outgoing_tcp_packets_not_routed_callback_;
+  // Callback to invoke when we detect a network problem. Possible network
+  // problems that can be detected are congested TCP TX queue and DNS failure.
+  // Refer to enum NetworkProblem for all possible network problems that can be
+  // detected by Traffic Monitor.
+  NetworkProblemDetectedCallback network_problem_detected_callback_;
 
   // Reads and parses socket information from the system.
   scoped_ptr<SocketInfoReader> socket_info_reader_;

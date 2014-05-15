@@ -291,6 +291,13 @@ class Metrics {
     kDNSTestResultMax
   };
 
+  // Network problem detected by traffic monitor.
+  enum NetworkProblem {
+    kNetworkProblemCongestedTCPTxQueue = 0,
+    kNetworkProblemDNSFailure,
+    kNetworkProblemMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -494,6 +501,9 @@ class Metrics {
   // DNS test result.
   static const char kMetricFallbackDNSTestResult[];
 
+  // Network problem detected by traffic monitor
+  static const char kMetricNetworkProblemDetectedSuffix[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -682,6 +692,11 @@ class Metrics {
 
   // Notifies this object about the result of the fallback DNS test.
   virtual void NotifyFallbackDNSTestResult(int result);
+
+  // Notifies this object about a network problem detected on the currently
+  // connected network.
+  virtual void NotifyNetworkProblemDetected(
+      Technology::Identifier technology_id, int reason);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

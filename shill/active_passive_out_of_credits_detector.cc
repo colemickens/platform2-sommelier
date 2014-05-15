@@ -31,7 +31,7 @@ ActivePassiveOutOfCreditsDetector::ActivePassiveOutOfCreditsDetector(
       traffic_monitor_(
           new TrafficMonitor(service->cellular(), dispatcher)) {
   ResetDetector();
-  traffic_monitor_->set_tcp_out_traffic_not_routed_callback(
+  traffic_monitor_->set_network_problem_detected_callback(
       Bind(&ActivePassiveOutOfCreditsDetector::OnNoNetworkRouting,
            weak_ptr_factory_.GetWeakPtr()));
 }
@@ -102,7 +102,7 @@ void ActivePassiveOutOfCreditsDetector::StopTrafficMonitor() {
   traffic_monitor_->Stop();
 }
 
-void ActivePassiveOutOfCreditsDetector::OnNoNetworkRouting() {
+void ActivePassiveOutOfCreditsDetector::OnNoNetworkRouting(int reason) {
   SLOG(Cellular, 2) << "Service " << service()->friendly_name()
                     << ": Traffic Monitor detected network congestion.";
   SLOG(Cellular, 2) << "Requesting active probe for out-of-credit detection.";

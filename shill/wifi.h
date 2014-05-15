@@ -216,6 +216,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual std::string PerformTDLSOperation(const std::string &operation,
                                            const std::string &peer,
                                            Error *error) override;
+
+  // Overridden from Device superclass.
+  virtual bool IsTrafficMonitorEnabled() const override;
+
  private:
   enum ScanMethod {
     kScanMethodNone,

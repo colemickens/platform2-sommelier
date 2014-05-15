@@ -190,20 +190,22 @@ bool TrafficMonitor::IsDnsFailing() {
 void TrafficMonitor::SampleTraffic() {
   SLOG(Link, 3) << __func__;
 
+  // Schedule the sample callback first, so it is possible for the network
+  // problem callback to stop the traffic monitor.
+  dispatcher_->PostDelayedTask(sample_traffic_callback_.callback(),
+                               kSamplingIntervalMilliseconds);
+
   if (IsCongestedTxQueues() &&
       accummulated_congested_tx_queues_samples_ ==
           kMinimumFailedSamplesToTrigger) {
     LOG(WARNING) << "Congested tx queues detected, out-of-credits?";
-    outgoing_tcp_packets_not_routed_callback_.Run();
+    network_problem_detected_callback_.Run(kNetworkProblemCongestedTxQueue);
   } else if (IsDnsFailing() &&
              accummulated_dns_failures_samples_ ==
                  kMinimumFailedSamplesToTrigger) {
     LOG(WARNING) << "DNS queries failing, out-of-credits?";
-    outgoing_tcp_packets_not_routed_callback_.Run();
+    network_problem_detected_callback_.Run(kNetworkProblemDNSFailure);
   }
-
-  dispatcher_->PostDelayedTask(sample_traffic_callback_.callback(),
-                               kSamplingIntervalMilliseconds);
 }
 
 }  // namespace shill

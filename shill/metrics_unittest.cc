@@ -799,6 +799,15 @@ TEST_F(MetricsTest, NotifyFallbackDNSTestResult) {
   metrics_.NotifyFallbackDNSTestResult(Metrics::kDNSTestResultSuccess);
 }
 
+TEST_F(MetricsTest, NotifyNetworkProblemDetected) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA("Network.Shill.Wifi.NetworkProblemDetected",
+                    Metrics::kNetworkProblemDNSFailure,
+                    Metrics::kNetworkProblemMax));
+  metrics_.NotifyNetworkProblemDetected(Technology::kWifi,
+                                        Metrics::kNetworkProblemDNSFailure);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

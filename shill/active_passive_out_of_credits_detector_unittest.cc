@@ -282,7 +282,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest, OnNoNetworkRouting) {
                Unretained(this)));
   SetConnectionHealthChecker(health_checker);  // Passes ownership.
   EXPECT_CALL(*health_checker, Start());
-  out_of_credits_detector_->OnNoNetworkRouting();
+  out_of_credits_detector_->OnNoNetworkRouting(0);
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
   Mock::VerifyAndClearExpectations(health_checker);
 
@@ -291,7 +291,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest, OnNoNetworkRouting) {
   EXPECT_CALL(*health_checker, health_check_in_progress())
       .WillOnce(Return(true));
   EXPECT_CALL(*health_checker, Start()).Times(0);
-  out_of_credits_detector_->OnNoNetworkRouting();
+  out_of_credits_detector_->OnNoNetworkRouting(0);
 }
 
 TEST_F(ActivePassiveOutOfCreditsDetectorTest,

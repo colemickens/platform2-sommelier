@@ -63,7 +63,7 @@ class TrafficMonitorTest : public Test {
     remote_addr_.SetAddressFromString(kRemoteIpAddr);
   }
 
-  MOCK_METHOD0(OnNoOutgoingPackets, void());
+  MOCK_METHOD1(OnNoOutgoingPackets, void(int));
 
  protected:
   virtual void SetUp() {
@@ -314,20 +314,21 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
   // Mimic same queue length by using same mock socket info.
-  EXPECT_CALL(*this, OnNoOutgoingPackets());
+  EXPECT_CALL(*this, OnNoOutgoingPackets(
+      TrafficMonitor::kNetworkProblemCongestedTxQueue));
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
   // Perform another sampling pass and make sure the callback is only
   // triggered once.
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 }
 
@@ -343,9 +344,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
@@ -360,7 +361,8 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  EXPECT_CALL(*this, OnNoOutgoingPackets());
+  EXPECT_CALL(*this, OnNoOutgoingPackets(
+      TrafficMonitor::kNetworkProblemCongestedTxQueue));
   monitor_.SampleTraffic();
 }
 
@@ -376,9 +378,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
@@ -393,7 +395,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
@@ -408,7 +410,8 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  EXPECT_CALL(*this, OnNoOutgoingPackets());
+  EXPECT_CALL(*this, OnNoOutgoingPackets(
+      TrafficMonitor::kNetworkProblemCongestedTxQueue));
   monitor_.SampleTraffic();
 }
 
@@ -424,9 +427,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 
   socket_infos.clear();
@@ -456,9 +459,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 
   socket_infos.clear();
@@ -479,9 +482,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged) {
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
   SetupMockSocketInfos(socket_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 
   socket_infos.clear();
@@ -509,11 +512,11 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOut) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
   // Make sure the no routing event is not fired before the threshold is
   // exceeded.
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 1; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -521,12 +524,13 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOut) {
   Mock::VerifyAndClearExpectations(this);
 
   // This call should cause the threshold to exceed.
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(1);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(
+      TrafficMonitor::kNetworkProblemDNSFailure)).Times(1);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
   // Make sure the event is only fired once.
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 }
 
@@ -540,9 +544,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsOutstanding) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -559,9 +563,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsSuccessful) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 1; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -578,9 +582,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 1; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -596,7 +600,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   EXPECT_EQ(0, monitor_.accummulated_dns_failures_samples_);
 }
@@ -611,9 +615,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidProtocol) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -630,9 +634,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidSourceIp) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -650,9 +654,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow) {
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();
@@ -670,9 +674,9 @@ TEST_F(TrafficMonitorTest, SampleTrafficNonDnsTimedOut) {
                    remote_addr_, kNonDnsPort,
                    local_addr_, TrafficMonitorTest::kLocalPort1));
   SetupMockConnectionInfos(connection_infos);
-  monitor_.set_tcp_out_traffic_not_routed_callback(
+  monitor_.set_network_problem_detected_callback(
       Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this)));
-  EXPECT_CALL(*this, OnNoOutgoingPackets()).Times(0);
+  EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
        ++count) {
     monitor_.SampleTraffic();

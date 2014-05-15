@@ -2581,6 +2581,11 @@ string WiFi::PerformTDLSOperation(const string &operation,
   return "";
 }
 
+// Traffic monitor is enabled for wifi.
+bool WiFi::IsTrafficMonitorEnabled() const {
+  return true;
+}
+
 bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
                                  Error *error) {
   if (!WiFiEndpoint::MakeHardwareAddressFromString(input).empty()) {

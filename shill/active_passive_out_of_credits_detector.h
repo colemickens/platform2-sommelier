@@ -58,7 +58,7 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
   void StopTrafficMonitor();
 
   // Responds to a TrafficMonitor no-network-routing failure.
-  void OnNoNetworkRouting();
+  void OnNoNetworkRouting(int reason);
 
   // Initializes and configures the connection health checker.
   void SetupConnectionHealthChecker();
