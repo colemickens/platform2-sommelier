@@ -2586,6 +2586,8 @@ TPM_KEY_BITS
 
 a key size in bits
 
+1.1.1.1.1
+
 Family “2.0”
 Level 00 Revision 00.99
 
@@ -4806,14 +4808,14 @@ RC_VER1 + 0x030
 a _TPM_Init and Startup(CLEAR) is required
 before the TPM can resume operation.
 
+TPM_RC_UNBALANCED
+
 RC_VER1 + 0x031
 
 the protection algorithms (hash and symmetric) are
 not reasonably balanced. The digest size of the
 hash must be larger than the key size of the
 symmetric algorithm.
-
-TPM_RC_UNBALANCED
 
 Page 32
 October 31, 2013
@@ -4940,6 +4942,8 @@ RC_VER1 + 0x053
 
 some function needs testing.
 
+TPM_RC_NO_RESULT
+
 RC_VER1 + 0x054
 
 returned when an internal function cannot process
@@ -4962,8 +4966,6 @@ RC_MAX_FM0
 RC_VER1 + 0x07F
 
 largest version 1 code that is not a warning
-
-TPM_RC_NO_RESULT
 
 New Subsection
 
@@ -6147,64 +6149,65 @@ TPM_CAP_FIRST
 
 TPM_CAP_ALGS
 
-0x00000000 TPM_ALG_ID
+0x00000000
 
 TPM_CAP_HANDLES
 
-0x00000001 TPM_HANDLE
+0x00000001
 
 TPML_HANDLE
 
 TPM_CAP_COMMANDS
 
-0x00000002 TPM_CC
+0x00000002
 
 TPML_CCA
 
 TPM_CAP_PP_COMMANDS
 
-0x00000003 TPM_CC
+0x00000003
 
 TPML_CC
 
 TPM_CAP_AUDIT_COMMANDS
 
-0x00000004 TPM_CC
+0x00000004
 
 TPML_CC
 
 TPM_CAP_PCRS
 
-0x00000005 reserved
+0x00000005
 
 TPML_PCR_SELECTION
 
 TPM_CAP_TPM_PROPERTIES
 
-0x00000006 TPM_PT
+0x00000006
 
 TPML_TAGGED_TPM_PROPERTY
 
 TPM_CAP_PCR_PROPERTIES
 
-0x00000007 TPM_PT_PCR
+0x00000007
 
 (1)
 
 TPM_CAP_ECC_CURVES
 
-0x00000008 TPM_ECC_CURVE
-
-TPM_CAP_LAST
+0x00000008
 
 TPML_ALG_PROPERTY
 
 TPML_TAGGED_PCR_PROPERTY
 (1)
 
+TPM_CAP_LAST
+
 0x00000008
 
-TPM_CAP_VENDOR_PROPERTY 0x00000100 manufacturer specific
+TPM_CAP_VENDOR_PROPERTY
+0x00000100
 
 TPML_ECC_CURVE
 
@@ -6243,7 +6246,8 @@ NOTE The first group with any properties is group 1
 
 PT_FIXED
 
-PT_GROUP * 1 the
+PT_GROUP * 1
+ the
 group
 of
 fixed
@@ -12594,10 +12598,6 @@ TPMI_ALG_SYM_MODE
 when selector may be any of the
 symmetric block ciphers
 
-xor
-
-TPM_ALG_XOR
-
 no mode selector
 
 null
@@ -13069,8 +13069,10 @@ Name
 
 Description
 
-TPMS_SCHEME_SIGHASH TPMS_SCHEME_RSASSA
-TPMS_SCHEME_SIGHASH TPMS_SCHEME_RSAPSS
+TPMS_SCHEME_SIGHASH
+TPMS_SCHEME_RSASSA
+TPMS_SCHEME_SIGHASH
+TPMS_SCHEME_RSAPSS
 
 11.2.1.3
 
@@ -13084,9 +13086,12 @@ Name
 
 Description
 
-TPMS_SCHEME_SIGHASH TPMS_SCHEME_ECDSA
-TPMS_SCHEME_SIGHASH TPMS_SCHEME_SM2
-TPMS_SCHEME_SIGHASH TPMS_SCHEME_ECSCHNORR
+TPMS_SCHEME_SIGHASH
+TPMS_SCHEME_ECDSA
+TPMS_SCHEME_SIGHASH
+TPMS_SCHEME_SM2
+TPMS_SCHEME_SIGHASH
+TPMS_SCHEME_ECSCHNORR
 
 11.2.1.4 TPMS_SCHEME_ECDAA
 Table 141 — Definition of {ECC} TPMS_SCHEME_ECDAA Structure
@@ -13546,9 +13551,10 @@ TPMS_SCHEME_ECSCHNORR
 TPM_ALG_ECSCHNORR elliptic curve Schnorr signature
 
 ecdh
+TPMS_SCHEME_ECDH
+TPM_ALG_ECDH
 anySig
 
-TPM_ALG_ECDH
 TPMS_SCHEME_SIGHASH
 
 null
@@ -16192,12 +16198,11 @@ Description
 
 SHA1_DER
 
-A.2.2
-
 Values are in octets.
 
-{0x30,0x21,0x30,0x09,0x06,0x05,0x2B,0x0E,
-0x03,0x02,0x1A,0x05,0x00,0x04,0x14}
+{0x30,0x21,0x30,0x09,0x06,0x05,0x2B,0x0E,0x03,0x02,0x1A,0x05,0x00,0x04,0x14}
+
+A.2.2
 
 SHA256
 Table 207 — Defines for SHA256 Hash Values
@@ -16222,14 +16227,12 @@ Description
 
 SHA256_DER
 
-A.2.3
 
 Values are in octets.
 
-{0x30,0x31,0x30,0x0d,0x06,0x09,0x60,0x86,
-0x48,0x01,0x65,0x03,0x04,0x02,0x01,0x05,
-0x00,0x04,0x20}
+{0x30,0x31,0x30,0x0d,0x06,0x09,0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x02,0x01,0x05,0x00,0x04,0x20}
 
+A.2.3
 SHA384
 Table 208 — Defines for SHA384 Hash Values
 
@@ -16258,9 +16261,7 @@ Level 00 Revision 00.99
 
 Values are in octets.
 
-{0x30,0x41,0x30,0x0d,0x06,0x09,0x60,0x86,
-0x48,0x01,0x65,0x03,0x04,0x02,0x02,0x05,
-0x00,0x04,0x30}
+{0x30,0x41,0x30,0x0d,0x06,0x09,0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x02,0x02,0x05,0x00,0x04,0x30}
 
 Published
 Copyright © TCG 2006-2013
@@ -16296,14 +16297,12 @@ Description
 
 SHA512_DER
 
-A.2.5
 
 Values are in octets.
 
-{0x30,0x51,0x30,0x0d,0x06,0x09,0x60,0x86,
-0x48,0x01,0x65,0x03,0x04,0x02,0x03,0x05,
-0x00,0x04,0x40}
+{0x30,0x51,0x30,0x0d,0x06,0x09,0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x02,0x03,0x05,0x00,0x04,0x40}
 
+A.2.5
 SM3_256
 Table 210 — Defines for SM3_256 Hash Values
 
@@ -16331,12 +16330,10 @@ SM3_256_DER_SIZE
 
 SM3_256_DER
 
+
+{0x30,0x30,0x30,0x0c,0x06,0x08,0x2a,0x81,0x1c,0x81,0x45,0x01,0x83,0x11,0x05,0x00,0x04,0x20}
+
 A.3
-
-{0x30,0x30,0x30,0x0c,0x06,0x08,0x2a,0x81,
-0x1c,0x81,0x45,0x01,0x83,0x11,0x05,0x00,
-0x04,0x20}
-
 Unknown
 
 Architectural Limits
@@ -17250,8 +17247,7 @@ Value
 
 ECC_CURVES
 
-{TPM_ECC_NIST_P256, TPM_ECC_BN_P256,
-TPM_ECC_SM2_P256}
+{TPM_ECC_NIST_P256, TPM_ECC_BN_P256, TPM_ECC_SM2_P256}
 
 ECC_KEY_SIZES_BITS
 
@@ -17636,8 +17632,7 @@ bits
 
 CONTEXT_ENCRYPT_KEY_BYTES
 
-((CONTEXT_ENCRYPT_KEY_BITS+7
-)/8)
+((CONTEXT_ENCRYPT_KEY_BITS+7)/8)
 
 CONTEXT_INTEGRITY_HASH_ALG
 
@@ -17769,9 +17764,6 @@ ENABLE_PCR_NO_INCREMENT
 
 YES
 
-indicates if the
-TPM_PT_PCR_NO_INCREME
-NT group is implemented
 
 CRT_FORMAT_RSA
 
@@ -17779,8 +17771,7 @@ YES
 
 PRIVATE_VENDOR_SPECIFIC_BYTES
 
-((MAX_RSA_KEY_BYTES/2) * (3 +
-CRT_FORMAT_RSA * 2))
+((MAX_RSA_KEY_BYTES/2) * (3 + CRT_FORMAT_RSA * 2))
 
 Page 156
 October 31, 2013
