@@ -52,7 +52,7 @@ class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
 class MobileOperatorInfoInitTest : public Test {
  public:
   MobileOperatorInfoInitTest()
-      : operator_info_(new MobileOperatorInfo(&dispatcher_)),
+      : operator_info_(new MobileOperatorInfo(&dispatcher_, "Operator")),
         operator_info_impl_(operator_info_->impl()) {}
 
   virtual void TearDown() override {

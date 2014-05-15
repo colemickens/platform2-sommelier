@@ -214,8 +214,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   void SetMockMobileOperatorInfoObjects() {
     CHECK(!mock_home_provider_info_);
     CHECK(!mock_serving_operator_info_);
-    mock_home_provider_info_ = new MockMobileOperatorInfo(dispatcher_);
-    mock_serving_operator_info_ = new MockMobileOperatorInfo(dispatcher_);
+    mock_home_provider_info_ =
+        new MockMobileOperatorInfo(dispatcher_, "HomeProvider");
+    mock_serving_operator_info_ =
+        new MockMobileOperatorInfo(dispatcher_, "ServingOperator");
     cellular_->set_home_provider_info(mock_home_provider_info_);
     cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
@@ -1509,7 +1511,8 @@ TEST_F(CellularCapabilityUniversalMainTest, AllowRoaming) {
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   const string kVzwUUID = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kFooUUID = "foo";
-  MockMobileOperatorInfo mock_operator_info(&dispatcher_);
+  MockMobileOperatorInfo mock_operator_info(&dispatcher_,
+                                            "MobileOperatorInfo");
 
   mock_operator_info.SetEmptyDefaultsForProperties();
   EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())

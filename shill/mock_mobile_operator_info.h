@@ -18,7 +18,8 @@ namespace shill {
 
 class MockMobileOperatorInfo : public MobileOperatorInfo {
  public:
-  explicit MockMobileOperatorInfo(EventDispatcher *dispatcher);
+  MockMobileOperatorInfo(EventDispatcher *dispatcher,
+                         const std::string &info_owner);
   virtual ~MockMobileOperatorInfo();
 
   MOCK_CONST_METHOD0(IsMobileNetworkOperatorKnown, bool());

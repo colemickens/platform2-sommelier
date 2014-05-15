@@ -66,11 +66,13 @@ class MobileOperatorInfo {
   // |Init| must be called on the constructed object before it is used.
   // This object does not take ownership of dispatcher, and |dispatcher| is
   // expected to outlive this object.
-  explicit MobileOperatorInfo(EventDispatcher *dispatcher);
+  MobileOperatorInfo(EventDispatcher *dispatcher,
+                     const std::string &info_owner);
   virtual ~MobileOperatorInfo();
 
   // These functions can be called before Init to read non default database
   // file(s).
+  std::string GetLogPrefix(const char *func) const;
   void ClearDatabasePaths();
   void AddDatabasePath(const base::FilePath &absolute_path);
 
@@ -206,7 +208,6 @@ class MobileOperatorInfo {
 
  private:
   scoped_ptr<MobileOperatorInfoImpl> impl_;
-
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfo);
 };
 

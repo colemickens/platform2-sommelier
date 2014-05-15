@@ -8,8 +8,9 @@
 
 namespace shill {
 
-MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher *dispatcher)
-    : MobileOperatorInfo(dispatcher) {}
+MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher *dispatcher,
+                                               const std::string &info_owner)
+    : MobileOperatorInfo(dispatcher, info_owner) {}
 
 MockMobileOperatorInfo::~MockMobileOperatorInfo() {}
 

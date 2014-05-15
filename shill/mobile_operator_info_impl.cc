@@ -54,10 +54,11 @@ string GetRegError(int code, const regex_t *compiled) {
 
 }  // namespace
 
-MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher *dispatcher)
+MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher *dispatcher,
+                                               const string &info_owner)
     : dispatcher_(dispatcher),
-      observers_(
-          ObserverList<MobileOperatorInfo::Observer, true>::NOTIFY_ALL),
+      info_owner_(info_owner),
+      observers_(ObserverList<MobileOperatorInfo::Observer, true>::NOTIFY_ALL),
       operator_code_type_(kOperatorCodeTypeUnknown),
       current_mno_(nullptr),
       current_mvno_(nullptr),
@@ -88,18 +89,17 @@ bool MobileOperatorInfoImpl::Init() {
   for (const auto &database_path : database_paths_) {
     const char *database_path_cstr = database_path.value().c_str();
     scoped_ptr<CopyingInputStreamAdaptor> database_stream;
-    database_stream.reset(
-        protobuf_lite_file_input_stream(database_path_cstr));
+    database_stream.reset(protobuf_lite_file_input_stream(database_path_cstr));
     if (!database_stream.get()) {
       LOG(ERROR) << "Failed to read mobile operator database: "
-                  << database_path_cstr;
+                 << database_path_cstr;
       continue;
     }
 
     scoped_ptr<MobileOperatorDB> database(new MobileOperatorDB());
     if (!database->ParseFromZeroCopyStream(database_stream.get())) {
       LOG(ERROR) << "Could not parse mobile operator database: "
-                  << database_path_cstr;
+                 << database_path_cstr;
       continue;
     }
     LOG(INFO) << "Successfully loaded database: " << database_path_cstr;
@@ -110,7 +110,7 @@ bool MobileOperatorInfoImpl::Init() {
   // Collate all loaded databases into one.
   if (databases.size() == 0) {
     LOG(ERROR) << "Could not read any mobile operator database. "
-                << "Will not be able to determine MVNO.";
+               << "Will not be able to determine MVNO.";
     return false;
   }
 
@@ -144,6 +144,10 @@ bool MobileOperatorInfoImpl::IsMobileVirtualNetworkOperatorKnown() const {
 
 // ///////////////////////////////////////////////////////////////////////////
 // Getters.
+const string &MobileOperatorInfoImpl::info_owner() const {
+  return info_owner_;
+}
+
 const string &MobileOperatorInfoImpl::uuid() const {
   return uuid_;
 }
@@ -245,7 +249,7 @@ void MobileOperatorInfoImpl::UpdateICCID(const string &iccid) {
   user_iccid_ = iccid;
   // |iccid| is not an exposed property, so don't raise event for just this
   // property update.
-  if(UpdateMVNO()) {
+  if (UpdateMVNO()) {
     PostNotifyOperatorChanged();
   }
 }
@@ -319,7 +323,7 @@ void MobileOperatorInfoImpl::UpdateOperatorName(const string &operator_name) {
     DCHECK(!candidates_by_name_.empty());
   } else {
     LOG(INFO) << "Operator name [" << operator_name << "] does not match any "
-               << "MNO.";
+              << "MNO.";
   }
 
   operator_changed |= UpdateMNO();
@@ -415,7 +419,7 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
   if (database_->imvno_size() > 0) {
     // TODO(pprabhu) Support IMVNOs.
     LOG(ERROR) << "InternationalMobileVirtualNetworkOperators are not "
-                << "supported yet. Ignoring all IMVNOs.";
+               << "supported yet. Ignoring all IMVNOs.";
   }
 }
 
@@ -426,7 +430,6 @@ void MobileOperatorInfoImpl::InsertIntoStringToMNOListMap(
     StringToMNOListMap &table,
     const string &key,
     const MobileNetworkOperator *value) {
-
   if (table.find(key) == table.end()) {
     vector<const MobileNetworkOperator *> empty_mno_list;
     table[key] = empty_mno_list;  // |empty_mno_list| copied.
@@ -481,7 +484,7 @@ bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const string &sid) {
 }
 
 string MobileOperatorInfoImpl::OperatorCodeString() const {
-  switch(operator_code_type_) {
+  switch (operator_code_type_) {
     case kOperatorCodeTypeMCCMNC:
       return "MCCMNC";
     case kOperatorCodeTypeSID:
@@ -632,8 +635,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {
       to_match = user_mccmnc_;
       break;
     default:
-      SLOG(Cellular, 1) << "Unknown filter type [" << filter.type()
-                        << "]";
+      SLOG(Cellular, 1) << "Unknown filter type [" << filter.type() << "]";
       return false;
   }
   // |to_match| can be empty if we have no *user provided* information of the
@@ -662,7 +664,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {
   int regcomp_error = regcomp(&filter_regex,
                               filter_regex_str.c_str(),
                               REG_EXTENDED | REG_NOSUB);
-  if(regcomp_error) {
+  if (regcomp_error) {
     LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. "
                  << "Error returned: "
                  << GetRegError(regcomp_error, &filter_regex) << ". ";

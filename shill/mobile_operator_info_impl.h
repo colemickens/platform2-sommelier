@@ -27,7 +27,8 @@ class MobileOperatorInfoImpl {
            std::vector<const mobile_operator_db::MobileNetworkOperator *>>
       StringToMNOListMap;
 
-  explicit MobileOperatorInfoImpl(EventDispatcher *dispatcher);
+  MobileOperatorInfoImpl(EventDispatcher *dispatcher,
+                         const std::string &info_owner);
   ~MobileOperatorInfoImpl();
 
   // API functions of the interface.
@@ -39,6 +40,7 @@ class MobileOperatorInfoImpl {
   void RemoveObserver(MobileOperatorInfo::Observer *observer);
   bool IsMobileNetworkOperatorKnown() const;
   bool IsMobileVirtualNetworkOperatorKnown() const;
+  const std::string &info_owner() const;
   const std::string &uuid() const;
   const std::string &operator_name() const;
   const std::string &country() const;
@@ -70,7 +72,7 @@ class MobileOperatorInfoImpl {
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
   // Default databases to load.
-  static const char * const kDefaultDatabasePaths[];
+  static const char *const kDefaultDatabasePaths[];
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
   // the lenght of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;
@@ -131,6 +133,8 @@ class MobileOperatorInfoImpl {
   // Data.
   // Not owned by MobileOperatorInfoImpl.
   EventDispatcher *const dispatcher_;
+
+  const std::string info_owner_;
 
   // Owned by MobileOperatorInfoImpl, may be created externally.
   std::vector<base::FilePath> database_paths_;

@@ -120,8 +120,10 @@ Cellular::Cellular(ModemInfo *modem_info,
       weak_ptr_factory_(this),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
-      home_provider_info_(new MobileOperatorInfo(modem_info->dispatcher())),
-      serving_operator_info_(new MobileOperatorInfo(modem_info->dispatcher())),
+      home_provider_info_(
+          new MobileOperatorInfo(modem_info->dispatcher(), "HomeProvider")),
+      serving_operator_info_(
+          new MobileOperatorInfo(modem_info->dispatcher(), "ServingOperator")),
       mobile_operator_info_observer_(
           new Cellular::MobileOperatorInfoObserver(this)),
       dbus_owner_(owner),

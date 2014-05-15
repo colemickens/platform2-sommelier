@@ -186,11 +186,13 @@ class CellularTest : public testing::Test {
   }
 
   void SetMockMobileOperatorInfoObjects() {
-    mock_home_provider_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    mock_home_provider_info_ =
+        new MockMobileOperatorInfo(&dispatcher_, "HomeProvider");
     // Takes ownership.
     device_->set_home_provider_info(mock_home_provider_info_);
 
-    mock_serving_operator_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    mock_serving_operator_info_ =
+        new MockMobileOperatorInfo(&dispatcher_, "ServingOperator");
     // Takes ownership.
     device_->set_serving_operator_info(mock_serving_operator_info_);
   }

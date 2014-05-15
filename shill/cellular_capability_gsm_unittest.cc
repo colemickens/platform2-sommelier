@@ -267,8 +267,10 @@ class CellularCapabilityGSMTest : public testing::Test {
   void SetMockMobileOperatorInfoObjects() {
     CHECK(!mock_home_provider_info_);
     CHECK(!mock_serving_operator_info_);
-    mock_home_provider_info_ = new MockMobileOperatorInfo(&dispatcher_);
-    mock_serving_operator_info_ = new MockMobileOperatorInfo(&dispatcher_);
+    mock_home_provider_info_ =
+        new MockMobileOperatorInfo(&dispatcher_, "HomeProvider");
+    mock_serving_operator_info_ =
+        new MockMobileOperatorInfo(&dispatcher_, "ServingOperator");
     cellular_->set_home_provider_info(mock_home_provider_info_);
     cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
