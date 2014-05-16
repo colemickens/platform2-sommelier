@@ -19,11 +19,6 @@ class PerfTool {
   PerfTool();
   ~PerfTool();
 
-  // Runs the perf tool for |duration_secs| seconds in systemwide mode and
-  // returns a protobuf containing the collected data.
-  std::vector<uint8> GetPerfData(const uint32_t& duration_secs,
-                                 DBus::Error& error); // NOLINT
-
   // Randomly runs the perf tool in various modes and collects various events
   // for |duration_secs| seconds and returns a protobuf containing the collected
   // data.

@@ -179,21 +179,6 @@
         </tp:docstring>
       </arg>
     </method>
-    <method name="GetPerfData">
-      <tp:docstring>
-        Returns perf event data. Does systemwide profiling.
-      </tp:docstring>
-      <arg name="duration" type="u" direction="in">
-        <tp:docstring>
-          Duration to run perf.
-        </tp:docstring>
-      </arg>
-      <arg name="status" type="ay" direction="out">
-        <tp:docstring>
-          Perf event data as a protobuf.
-        </tp:docstring>
-      </arg>
-    </method>
     <method name="GetRichPerfData">
       <tp:docstring>
         Returns perf event data. Does systemwide profiling. It can profile

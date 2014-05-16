@@ -102,8 +102,6 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                       DBus::Error& error); // NOLINT
   virtual std::string GetNetworkStatus(DBus::Error& error); // NOLINT
   virtual std::string GetWiMaxStatus(DBus::Error& error); // NOLINT
-  virtual std::vector<uint8> GetPerfData(const uint32_t& duration,
-                                         DBus::Error& error); // NOLINT
   virtual std::vector<uint8> GetRichPerfData(const uint32_t& duration,
                                              DBus::Error& error); // NOLINT
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,

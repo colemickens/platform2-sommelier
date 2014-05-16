@@ -76,15 +76,6 @@ PerfTool::~PerfTool() { }
 // can't-fail style, since their output is usually going to be displayed to the
 // user; instead of returning a DBus exception, we tend to return a string
 // indicating what went wrong.
-std::vector<uint8> PerfTool::GetPerfData(const uint32_t& duration_secs,
-                                         DBus::Error& error) { // NOLINT
-  std::string output_string;
-  GetPerfDataHelper(duration_secs, kPerfRecord, error, &output_string);
-  std::vector<uint8> output_vector(output_string.begin(),
-                                   output_string.end());
-  return output_vector;
-}
-
 std::vector<uint8> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
                                              DBus::Error& error) { // NOLINT
   std::string perf_command_line;
