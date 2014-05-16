@@ -136,7 +136,7 @@ cat $1 |
     /^_CONSTANTS \(\w*\) .*$/ { print "_TYPE " $2; }
   ' |
   # Mark names.
-  sed 's/^\(TPM_[_A-Z0-9]*\)$/_NAME \1/' |
+  sed 's/^\(TPM_[_A-Z0-9a]*\)$/_NAME \1/' |
   sed 's/^\(RC_[_A-Z0-9]*\)$/_NAME \1/' |
   sed 's/^\(PT_[_A-Z0-9]*\)$/_NAME \1/' |
   sed 's/^\(HR_[_A-Z0-9]*\)$/_NAME \1/' |
@@ -272,7 +272,7 @@ cat $1 |
     END { print "_END"; }
   ' |
   # Mark field types.
-  sed 's/^\(+*TPM[_A-Z0-9+]*\)$/_TYPE \1/' |
+  sed 's/^\(+*TPM[_A-Z0-9+a]*\)$/_TYPE \1/' |
   sed 's/^\(UINT[0-9]*\)$/_TYPE \1/' |
   sed 's/^\(BYTE*\)$/_TYPE \1/' |
   # Mark field names and throw away everything else.

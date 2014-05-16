@@ -5827,24 +5827,6 @@ Comments
 
 0x00C4
 
-tag value for a response; used when there is an error
-in the tag. This is also the value returned from a TPM
-1.2 when an error occurs. This value is used in this
-specification because an error in the command tag
-may prevent determination of the family. When this tag
-is used in the response, the response code will be
-TPM_RC_BAD_TAG (0 1E16), which has the same
-numeric value as the TPM 1.2 response code for
-TPM_BADTAG.
-NOTE
-
-In a previously published version of this
-specification,
-TPM_RC_BAD_TAG
-was
-incorrectly assigned a value of 0x030 instead of
-30 (0x01e). Some implementations my return the
-old value instead of the new value.
 
 TPM_ST_NULL
 
@@ -12251,7 +12233,9 @@ TPM_ST_ATTEST_QUOTE
 
 commandAudit
 
-TPMS_COMMAND_AUDIT_INFO TPM_ST_ATTEST_COMMAND_AUDIT
+TPMS_COMMAND_AUDIT_INFO
+
+TPM_ST_ATTEST_COMMAND_AUDIT
 
 sessionAudit
 
@@ -13393,7 +13377,9 @@ TPMS_SCHEME_MGF1
 
 TPM_ALG_MGF1
 
-kdf1_SP800_56a TPMS_SCHEME_KDF1_SP800_56a
+kdf1_SP800_56a
+
+TPMS_SCHEME_KDF1_SP800_56a
 
 TPM_ALG_KDF1_SP800_56a
 

@@ -39,6 +39,18 @@ class TestGenerators(unittest.TestCase):
     out_file.close()
     out_file2.close()
 
+  def testTypedefSerialize(self):
+    """Test generation of serialization code for typedefs."""
+    serialized_types = set(['int'])
+    typedef = generator.Typedef('int', 'INT')
+    typedef2 = generator.Typedef('INT', 'INT2')
+    typemap = {'INT': typedef}
+    out_file = StringIO.StringIO()
+    typedef2.OutputSerialize(out_file, serialized_types, typemap)
+    self.assertIn('INT', serialized_types)
+    self.assertIn('INT2', serialized_types)
+    out_file.close()
+
   def testConstant(self):
     """Test generation of constant definitions and type dependencies."""
     constant = generator.Constant('INT', 'test', '1')
@@ -71,6 +83,26 @@ class TestGenerators(unittest.TestCase):
     self.assertRegexpMatches(out_file.getvalue(), output_re)
     for t in ('STRUCT', 'DEPEND', 'UNION'):
       self.assertIn(t, defined_types)
+    # Test serialize / parse code generation.
+    out_file.close()
+
+  def testStructSerialize(self):
+    """Test generation of serialization code for typedefs."""
+    serialized_types = set(['int', 'FOO', 'BAR', 'TPMI_ALG_SYM_OBJECT'])
+    struct = generator.Structure('TEST_STRUCT', False)
+    struct.fields = [('TPMI_ALG_SYM_OBJECT', 'selector'),
+                     ('TPMU_SYM_MODE', 'mode'),
+                     ('int', 'sizeOfFoo'),
+                     ('int', 'foo[FOO_MAX]')]
+    # Choose TPMU_SYM_MODE because it exists in the selectors definition and it
+    # has few fields.
+    union = generator.Structure('TPMU_SYM_MODE', True)
+    union.fields = [('FOO', 'aes'), ('BAR', 'SM4')]
+    typemap = {'TPMU_SYM_MODE': union}
+    out_file = StringIO.StringIO()
+    struct.OutputSerialize(out_file, serialized_types, typemap)
+    self.assertIn('TPMU_SYM_MODE', serialized_types)
+    self.assertIn('TEST_STRUCT', serialized_types)
     out_file.close()
 
   def testDefine(self):

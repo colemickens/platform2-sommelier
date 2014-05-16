@@ -60,30 +60,113 @@ _END
 import argparse
 import re
 
+import union_selectors
 
+_OUTPUT_FILE_H = 'tpm_generated.h'
+_OUTPUT_FILE_CC = 'tpm_generated.cc'
 _COPYRIGHT_HEADER = ('// Copyright (c) 2014 The Chromium OS Authors. All '
                      'rights reserved.\n// Use of this source code is '
                      'governed by a BSD-style license that can be found\n'
                      '// in the LICENSE file.\n\n// THIS CODE IS GENERATED - '
                      'DO NOT MODIFY!\n')
-_HEADER_FILE_GUARD_HEADER = '\n#ifndef %(name)s\n#define %(name)s\n'
-_HEADER_FILE_GUARD_FOOTER = '\n#endif  // %(name)s\n'
-_HEADER_FILE_INCLUDES = ('\n#include <stdint.h>\n\n'
-                         '#include <string>\n\n'
-                         '#include <base/callback_forward.h>\n')
-_LOCAL_INCLUDE = '\n#include "%(filename)s"\n\n'
-_NAMESPACE_BEGIN = '\nnamespace Trunks {\n\n'
-_NAMESPACE_END = '\n}  // namespace Trunks\n'
-_CLASS_BEGIN = '\nclass Tpm {\n public:\n'
-_CLASS_END = '};\n'
-_OUTPUT_FILE_H = 'tpm_generated.h'
-_OUTPUT_FILE_CC = 'tpm_generated.cc'
+_HEADER_FILE_GUARD_HEADER = """
+#ifndef %(name)s
+#define %(name)s
+"""
+_HEADER_FILE_GUARD_FOOTER = """
+#endif  // %(name)s
+"""
+_HEADER_FILE_INCLUDES = """
+#include <string>
+
+#include <base/basictypes.h>
+#include <base/callback_forward.h>
+"""
+_IMPLEMENTATION_FILE_INCLUDES = """
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/logging.h>
+#include <base/sys_byteorder.h>
+
+"""
+_LOCAL_INCLUDE = """
+#include "%(filename)s"
+
+"""
+_NAMESPACE_BEGIN = """
+namespace Trunks {
+"""
+_NAMESPACE_END = """
+}  // namespace Trunks
+"""
+_CLASS_BEGIN = """
+class Tpm {
+ public:
+"""
+_CLASS_END = """
+};
+"""
+_SERIALIZE_BASIC_TYPE = """
+TPM_RC Serialize_%(type)s(%(type)s value, std::string* buffer) {
+  VLOG(2) << __func__;
+  %(type)s value_net = value;
+  switch (sizeof(%(type)s)) {
+    case 2:
+      value_net = base::HostToNet16(value);
+      break;
+    case 4:
+      value_net = base::HostToNet32(value);
+      break;
+    case 8:
+      value_net = base::HostToNet64(value);
+      break;
+  }
+  const char* value_bytes = reinterpret_cast<const char*>(&value_net);
+  buffer->append(value_bytes, sizeof(%(type)s));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
+  VLOG(2) << __func__;
+  if (buffer->size() < sizeof(%(type)s))
+    return TPM_RC_INSUFFICIENT;
+  %(type)s value_net = 0;
+  memcpy(&value_net, buffer->data(), sizeof(%(type)s));
+  switch (sizeof(%(type)s)) {
+    case 2:
+      *value = base::NetToHost16(value_net);
+      break;
+    case 4:
+      *value = base::NetToHost32(value_net);
+      break;
+    case 8:
+      *value = base::NetToHost64(value_net);
+      break;
+    default:
+      *value = value_net;
+  }
+  buffer->erase(0, sizeof(%(type)s));
+  return TPM_RC_SUCCESS;
+}
+"""
 
 
 class Typedef(object):
   """Represents a TPM typedef."""
 
   _TYPEDEF = 'typedef %(old_type)s %(new_type)s;\n'
+  _SERIALIZE_FUNCTION = """
+TPM_RC Serialize_%(new)s(const %(new)s& value, std::string* buffer) {
+  VLOG(2) << __func__;
+  return Serialize_%(old)s(value, buffer);
+}
+"""
+  _PARSE_FUNCTION = """
+TPM_RC Parse_%(new)s(std::string* buffer, %(new)s* value) {
+  VLOG(2) << __func__;
+  return Parse_%(old)s(buffer, value);
+}
+"""
 
   def __init__(self, old_type, new_type):
     self.old_type = old_type
@@ -112,6 +195,26 @@ class Typedef(object):
     out_file.write(self._TYPEDEF % {'old_type': self.old_type,
                                     'new_type': self.new_type})
     defined_types.add(self.new_type)
+
+  def OutputSerialize(self, out_file, serialized_types, typemap):
+    """Writes a serialize and parse function for the typedef to |out_file|.
+
+    Args:
+      out_file: The output file.
+      serialized_types: A set of types for which serialize and parse functions
+        have already been generated.
+      typemap: A dict mapping type names to the corresponding object.
+    """
+    if self.new_type in serialized_types:
+      return
+    if self.old_type not in serialized_types:
+      typemap[self.old_type].OutputSerialize(out_file, serialized_types,
+                                             typemap)
+    out_file.write(self._SERIALIZE_FUNCTION % {'old': self.old_type,
+                                               'new': self.new_type})
+    out_file.write(self._PARSE_FUNCTION % {'old': self.old_type,
+                                           'new': self.new_type})
+    serialized_types.add(self.new_type)
 
 
 class Constant(object):
@@ -152,6 +255,117 @@ class Structure(object):
   _UNION_FORWARD = 'union %(name)s;\n'
   _STRUCTURE_END = '};\n\n'
   _STRUCTURE_FIELD = '  %(type)s %(name)s;\n'
+  _SERIALIZE_FUNCTION_START = """
+TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
+  TPM_RC result = TPM_RC_SUCCESS;
+  VLOG(2) << __func__;
+"""
+  _SERIALIZE_FIELD = """
+  result = Serialize_%(type)s(value.%(name)s, buffer);
+  if (result) {
+    return result;
+  }
+"""
+  _SERIALIZE_FIELD_ARRAY = """
+  for (uint32_t i = 0; i < value.%(count)s; ++i) {
+    result = Serialize_%(type)s(value.%(name)s[i], buffer);
+    if (result) {
+      return result;
+    }
+  }
+"""
+  _SERIALIZE_FIELD_WITH_SELECTOR = """
+  result = Serialize_%(type)s(value.%(name)s, value.%(selector_name)s, buffer);
+  if (result) {
+    return result;
+  }
+"""
+  _PARSE_FUNCTION_START = """
+TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
+  TPM_RC result = TPM_RC_SUCCESS;
+  VLOG(2) << __func__;
+"""
+  _PARSE_FIELD = """
+  result = Parse_%(type)s(buffer, &value->%(name)s);
+  if (result) {
+    return result;
+  }
+"""
+  _PARSE_FIELD_ARRAY = """
+  for (uint32_t i = 0; i < value->%(count)s; ++i) {
+    result = Parse_%(type)s(buffer, &value->%(name)s[i]);
+    if (result) {
+      return result;
+    }
+  }
+"""
+  _PARSE_FIELD_WITH_SELECTOR = """
+  result = Parse_%(type)s(buffer, value->%(selector_name)s, &value->%(name)s);
+  if (result) {
+    return result;
+  }
+"""
+  _SERIALIZE_FUNCTION_END = '  return result;\n}\n'
+  _ARRAY_FIELD_RE = re.compile(r'(.*)\[(.*)\]')
+  _ARRAY_FIELD_SIZE_RE = re.compile(r'^(count|size)')
+  _UNION_TYPE_RE = re.compile(r'^TPMU_.*')
+  _SERIALIZE_UNION_FUNCTION_START = """
+TPM_RC Serialize_%(union_type)s(
+    const %(union_type)s& value,
+    %(selector_type)s selector,
+    std::string* buffer) {
+  TPM_RC result = TPM_RC_SUCCESS;
+  VLOG(2) << __func__;
+"""
+  _SERIALIZE_UNION_FIELD = """
+  if (selector == %(selector_value)s) {
+    result = Serialize_%(field_type)s(value.%(field_name)s, buffer);
+    if (result) {
+      return result;
+    }
+  }
+"""
+  _SERIALIZE_UNION_FIELD_ARRAY = """
+  if (selector == %(selector_value)s) {
+    for (uint32_t i = 0; i < %(count)s; ++i) {
+      result = Serialize_%(field_type)s(value.%(field_name)s[i], buffer);
+      if (result) {
+        return result;
+      }
+    }
+  }
+"""
+  _PARSE_UNION_FUNCTION_START = """
+TPM_RC Parse_%(union_type)s(
+    std::string* buffer,
+    %(selector_type)s selector,
+    %(union_type)s* value) {
+  TPM_RC result = TPM_RC_SUCCESS;
+  VLOG(2) << __func__;
+"""
+  _PARSE_UNION_FIELD = """
+  if (selector == %(selector_value)s) {
+    result = Parse_%(field_type)s(buffer, &value->%(field_name)s);
+    if (result) {
+      return result;
+    }
+  }
+"""
+  _PARSE_UNION_FIELD_ARRAY = """
+  if (selector == %(selector_value)s) {
+    for (uint32_t i = 0; i < %(count)s; ++i) {
+      result = Parse_%(field_type)s(buffer, &value->%(field_name)s[i]);
+      if (result) {
+        return result;
+      }
+    }
+  }
+"""
+  _EMPTY_UNION_CASE = """
+  if (selector == %(selector_value)s) {
+    // Do nothing.
+  }
+"""
 
   def __init__(self, name, is_union):
     self.name = name
@@ -219,6 +433,159 @@ class Structure(object):
                                               'name': field[1]})
     out_file.write(self._STRUCTURE_END)
     defined_types.add(self.name)
+
+  def OutputSerialize(self, out_file, serialized_types, typemap):
+    """Writes serialize and parse functions for a structure to |out_file|.
+
+    Args:
+      out_file: The output file.
+      serialized_types: A set of types for which serialize and parse functions
+        have already been generated.  This type name of this structure will be
+        added on success.
+      typemap: A dict mapping type names to the corresponding object.
+    """
+    if (self.name in serialized_types or
+        self.name == 'TPMU_NAME' or
+        self.name == 'TPMU_ENCRYPTED_SECRET'):
+      return
+    # Make sure any dependencies already have serialize functions defined.
+    for field_type in self._GetFieldTypes():
+      if field_type not in serialized_types:
+        typemap[field_type].OutputSerialize(out_file, serialized_types, typemap)
+    if self.is_union:
+      self._OutputUnionSerialize(out_file)
+      serialized_types.add(self.name)
+      return
+    out_file.write(self._SERIALIZE_FUNCTION_START % {'type': self.name})
+    for field in self.fields:
+      if self._ARRAY_FIELD_RE.search(field[1]):
+        self._OutputArrayField(out_file, field, self._SERIALIZE_FIELD_ARRAY)
+      elif self._UNION_TYPE_RE.search(field[0]):
+        self._OutputUnionField(out_file, field,
+                               self._SERIALIZE_FIELD_WITH_SELECTOR)
+      else:
+        out_file.write(self._SERIALIZE_FIELD % {'type': field[0],
+                                                'name': field[1]})
+    out_file.write(self._SERIALIZE_FUNCTION_END)
+    out_file.write(self._PARSE_FUNCTION_START % {'type': self.name})
+    for field in self.fields:
+      if self._ARRAY_FIELD_RE.search(field[1]):
+        self._OutputArrayField(out_file, field, self._PARSE_FIELD_ARRAY)
+      elif self._UNION_TYPE_RE.search(field[0]):
+        self._OutputUnionField(out_file, field, self._PARSE_FIELD_WITH_SELECTOR)
+      else:
+        out_file.write(self._PARSE_FIELD % {'type': field[0],
+                                            'name': field[1]})
+    out_file.write(self._SERIALIZE_FUNCTION_END)
+    serialized_types.add(self.name)
+
+  def _OutputUnionSerialize(self, out_file):
+    """Writes serialize and parse functions for a union to |out_file|.
+
+    This is more complex than the struct case because only one field of the
+    union is serialized / parsed based on the value of a selector.  Arrays are
+    also handled differently: the full size of the array is serialized instead
+    of looking for a field which specifies the count.
+
+    Args:
+      out_file: The output file
+    """
+    selector_type = union_selectors.GetUnionSelectorType(self.name)
+    selector_values = union_selectors.GetUnionSelectorValues(self.name)
+    field_types = {f[1]: f[0] for f in self.fields}
+    out_file.write(self._SERIALIZE_UNION_FUNCTION_START %
+                   {'union_type': self.name, 'selector_type': selector_type})
+    for selector in selector_values:
+      field_name = union_selectors.GetUnionSelectorField(self.name, selector)
+      if not field_name:
+        out_file.write(self._EMPTY_UNION_CASE % {'selector_value': selector})
+        continue
+      field_type = field_types[field_name]
+      array_match = self._ARRAY_FIELD_RE.search(field_name)
+      if array_match:
+        field_name = array_match.group(1)
+        count = array_match.group(2)
+        out_file.write(self._SERIALIZE_UNION_FIELD_ARRAY %
+                       {'selector_value': selector,
+                        'count': count,
+                        'field_type': field_type,
+                        'field_name': field_name})
+      else:
+        out_file.write(self._SERIALIZE_UNION_FIELD %
+                       {'selector_value': selector,
+                        'field_type': field_type,
+                        'field_name': field_name})
+    out_file.write(self._SERIALIZE_FUNCTION_END)
+    out_file.write(self._PARSE_UNION_FUNCTION_START %
+                   {'union_type': self.name, 'selector_type': selector_type})
+    for selector in selector_values:
+      field_name = union_selectors.GetUnionSelectorField(self.name, selector)
+      if not field_name:
+        out_file.write(self._EMPTY_UNION_CASE % {'selector_value': selector})
+        continue
+      field_type = field_types[field_name]
+      array_match = self._ARRAY_FIELD_RE.search(field_name)
+      if array_match:
+        field_name = array_match.group(1)
+        count = array_match.group(2)
+        out_file.write(self._PARSE_UNION_FIELD_ARRAY %
+                       {'selector_value': selector,
+                        'count': count,
+                        'field_type': field_type,
+                        'field_name': field_name})
+      else:
+        out_file.write(self._PARSE_UNION_FIELD %
+                       {'selector_value': selector,
+                        'field_type': field_type,
+                        'field_name': field_name})
+    out_file.write(self._SERIALIZE_FUNCTION_END)
+
+  def _OutputUnionField(self, out_file, field, code_format):
+    """Writes serialize / parse code for a union field.
+
+    In this case |self| may not necessarily represent a union but |field| does.
+    This requires that a field of an acceptable selector type appear somewhere
+    in the struct.  The value of this field is used as the selector value when
+    calling the serialize / parse function for the union.
+
+    Args:
+      out_file: The output file.
+      field: The union field to be processed as a (type, name) tuple.
+      code_format: Must be (_SERIALIZE|_PARSE)_FIELD_WITH_SELECTOR
+    """
+    selector_types = union_selectors.GetUnionSelectorTypes(field[0])
+    selector_name = ''
+    for tmp in self.fields:
+      if tmp[0] in selector_types:
+        selector_name = tmp[1]
+        break
+    assert selector_name, 'Missing selector for %s in %s!' % (field[1],
+                                                              self.name)
+    out_file.write(code_format % {'type': field[0],
+                                  'selector_name': selector_name,
+                                  'name': field[1]})
+
+  def _OutputArrayField(self, out_file, field, code_format):
+    """Writes serialize / parse code for an array field.
+
+    The allocated size of the array is ignored and a field which holds the
+    actual count of items in the array must exist.  Only the number of items
+    represented by the value of that count field are serialized / parsed.
+
+    Args:
+      out_file: The output file.
+      field: The array field to be processed as a (type, name) tuple.
+      code_format: Must be (_SERIALIZE|_PARSE)_FIELD_ARRAY
+    """
+    field_name = self._ARRAY_FIELD_RE.search(field[1]).group(1)
+    for count_field in self.fields:
+      assert count_field != field, ('Missing count field for %s in %s!' %
+                                    (field[1], self.name))
+      if self._ARRAY_FIELD_SIZE_RE.search(count_field[1]):
+        out_file.write(code_format % {'count': count_field[1],
+                                      'type': field[0],
+                                      'name': field_name})
+        break
 
 
 class Define(object):
@@ -655,6 +1022,7 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
   out_file.write(_HEADER_FILE_GUARD_HEADER % {'name': guard_name})
   out_file.write(_HEADER_FILE_INCLUDES)
   out_file.write(_NAMESPACE_BEGIN)
+  out_file.write('\n')
   # These types are built-in or defined by <stdint.h>; they serve as base cases
   # when defining type dependencies.
   defined_types = set(['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
@@ -701,9 +1069,18 @@ def GenerateImplementation(types, structs, typemap, commands):
   out_file = open(_OUTPUT_FILE_CC, 'w')
   out_file.write(_COPYRIGHT_HEADER)
   out_file.write(_LOCAL_INCLUDE % {'filename': _OUTPUT_FILE_H})
+  out_file.write(_IMPLEMENTATION_FILE_INCLUDES)
   out_file.write(_NAMESPACE_BEGIN)
+  serialized_types = set(['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
+                          'uint32_t', 'int32_t', 'uint64_t', 'int64_t'])
+  for basic_type in serialized_types:
+    out_file.write(_SERIALIZE_BASIC_TYPE % {'type': basic_type})
+  for typedef in types:
+    typedef.OutputSerialize(out_file, serialized_types, typemap)
+  for struct in structs:
+    struct.OutputSerialize(out_file, serialized_types, typemap)
   # TODO(dkrahn): Generate implementation of the 'Tpm' class.
-  _ = types, structs, typemap, commands
+  _ = commands
   out_file.write(_NAMESPACE_END)
   out_file.close()
 
