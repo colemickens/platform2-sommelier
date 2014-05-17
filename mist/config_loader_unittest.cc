@@ -47,8 +47,8 @@ const char kTestConfigFileContent[] =
 
 class ConfigLoaderTest : public testing::Test {
  protected:
-  bool CreateConfigFileInDir(const string &content, const FilePath &dir,
-                             FilePath *config_file) {
+  bool CreateConfigFileInDir(const string& content, const FilePath& dir,
+                             FilePath* config_file) {
     if (!base::CreateTemporaryFileInDir(dir, config_file))
       return false;
 
@@ -77,7 +77,7 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
 
   EXPECT_TRUE(config_loader_.GetUsbModemInfo(0x1111, 0x2222) == NULL);
 
-  const UsbModemInfo *usb_modem_info1 =
+  const UsbModemInfo* usb_modem_info1 =
       config_loader_.GetUsbModemInfo(0x2345, 0x7890);
   EXPECT_TRUE(usb_modem_info1 != NULL);
   EXPECT_EQ(0x2345, usb_modem_info1->initial_usb_id().vendor_id());
@@ -111,7 +111,7 @@ TEST_F(ConfigLoaderTest, LoadEmptyConfigFile) {
   ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.path(), &config_file));
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
-  Config *config = config_loader_.config_.get();
+  Config* config = config_loader_.config_.get();
   EXPECT_TRUE(config != NULL);
   EXPECT_EQ(0, config->usb_modem_info_size());
 }
@@ -138,7 +138,7 @@ TEST_F(ConfigLoaderTest, LoadValidConfigFile) {
                                     &config_file));
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
-  Config *config = config_loader_.config_.get();
+  Config* config = config_loader_.config_.get();
   EXPECT_TRUE(config != NULL);
   EXPECT_EQ(2, config->usb_modem_info_size());
 
