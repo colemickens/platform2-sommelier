@@ -60,10 +60,10 @@ main() {
       # At this point, all background processes should be dead.
       # We don't actually care about the result though.
       wait || true
-      log "running $* for ${name}"
+      log "${name}: running $*"
       (
         timeout -k ${CHECK_DELAY} sh -c '"$@"' -- "$@" || true
-        log "${name} completed"
+        log "${name}: job completed"
       ) &
     fi
   done
