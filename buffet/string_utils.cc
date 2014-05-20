@@ -37,7 +37,7 @@ std::vector<std::string> Split(const std::string& str,
   if (trim_whitespaces) {
     std::for_each(tokens.begin(), tokens.end(),
                   [](std::string& str) {  // NOLINT(runtime/references)
-      TrimWhitespaceASCII(str, TRIM_ALL, &str); });
+      base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str); });
   }
 
   return tokens;
@@ -60,8 +60,8 @@ std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
   }
 
   if (trim_whitespaces) {
-    TrimWhitespaceASCII(pair.first, TRIM_ALL, &pair.first);
-    TrimWhitespaceASCII(pair.second, TRIM_ALL, &pair.second);
+    base::TrimWhitespaceASCII(pair.first, base::TRIM_ALL, &pair.first);
+    base::TrimWhitespaceASCII(pair.second, base::TRIM_ALL, &pair.second);
   }
 
   return pair;

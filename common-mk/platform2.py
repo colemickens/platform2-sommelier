@@ -14,7 +14,7 @@ import sys
 # Define default the version of libchrome{,os} to build against.
 # Used only if the BASE_VER environment variable is not set.
 # This can also be overridden in a specific target GYP file if required.
-_BASE_VER = '242728'
+_BASE_VER = '271506'
 
 
 class Platform2(object):

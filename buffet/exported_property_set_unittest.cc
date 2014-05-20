@@ -446,7 +446,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint8List) {
       kTestInterface3, kPathListPropName);
   dbus::MessageReader reader(response.get());
   dbus::MessageReader variant_reader(nullptr);
-  uint8* buffer;
+  const uint8* buffer;
   size_t buffer_len;
   ASSERT_TRUE(reader.PopVariant(&variant_reader));
   // |buffer| remains under the control of the MessageReader.
