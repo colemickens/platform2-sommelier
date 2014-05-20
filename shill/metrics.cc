@@ -301,8 +301,8 @@ const char Metrics::kMetricWifiUserInitiatedConnectionResult[] =
     "Network.Shill.WiFi.UserInitiatedConnectionResult";
 
 // static
-const char Metrics::kMetricFallbackDNSTestResult[] =
-    "Network.Shill.FallbackDNSTestResult";
+const char Metrics::kMetricFallbackDNSTestResultSuffix[] =
+    "FallbackDNSTestResult";
 
 // static
 const char Metrics::kMetricNetworkProblemDetectedSuffix[] =
@@ -1132,10 +1132,13 @@ void Metrics::NotifyUserInitiatedConnectionResult(const string &name,
                 kUserInitiatedConnectionResultMax);
 }
 
-void Metrics::NotifyFallbackDNSTestResult(int result) {
-  SendEnumToUMA(kMetricFallbackDNSTestResult,
+void Metrics::NotifyFallbackDNSTestResult(Technology::Identifier technology_id,
+                                          int result) {
+  string histogram = GetFullMetricName(kMetricFallbackDNSTestResultSuffix,
+                                       technology_id);
+  SendEnumToUMA(histogram,
                 result,
-                kDNSTestResultMax);
+                kFallbackDNSTestResultMax);
 }
 
 void Metrics::NotifyNetworkProblemDetected(Technology::Identifier technology_id,

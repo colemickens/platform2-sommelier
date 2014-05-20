@@ -1408,12 +1408,14 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
 
 TEST_F(DevicePortalDetectionTest, DNSClientCallback) {
   EXPECT_CALL(metrics_,
-      NotifyFallbackDNSTestResult(Metrics::kDNSTestResultFailure)).Times(1);
+      NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultFailure))
+          .Times(1);
   InvokeDNSClientCallback(false);
   Mock::VerifyAndClearExpectations(&metrics_);
 
   EXPECT_CALL(metrics_,
-      NotifyFallbackDNSTestResult(Metrics::kDNSTestResultSuccess)).Times(1);
+      NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
+          .Times(1);
   InvokeDNSClientCallback(true);
 }
 

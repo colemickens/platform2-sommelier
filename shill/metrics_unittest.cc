@@ -793,10 +793,11 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
 
 TEST_F(MetricsTest, NotifyFallbackDNSTestResult) {
   EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricFallbackDNSTestResult,
-                    Metrics::kDNSTestResultSuccess,
-                    Metrics::kDNSTestResultMax));
-  metrics_.NotifyFallbackDNSTestResult(Metrics::kDNSTestResultSuccess);
+      SendEnumToUMA("Network.Shill.Wifi.FallbackDNSTestResult",
+                    Metrics::kFallbackDNSTestResultSuccess,
+                    Metrics::kFallbackDNSTestResultMax));
+  metrics_.NotifyFallbackDNSTestResult(Technology::kWifi,
+                                       Metrics::kFallbackDNSTestResultSuccess);
 }
 
 TEST_F(MetricsTest, NotifyNetworkProblemDetected) {

@@ -286,9 +286,9 @@ class Metrics {
   };
 
   enum DNSTestResult {
-    kDNSTestResultSuccess = 0,
-    kDNSTestResultFailure,
-    kDNSTestResultMax
+    kFallbackDNSTestResultSuccess = 0,
+    kFallbackDNSTestResultFailure,
+    kFallbackDNSTestResultMax
   };
 
   // Network problem detected by traffic monitor.
@@ -499,7 +499,7 @@ class Metrics {
   static const char kMetricWifiUserInitiatedConnectionResult[];
 
   // DNS test result.
-  static const char kMetricFallbackDNSTestResult[];
+  static const char kMetricFallbackDNSTestResultSuffix[];
 
   // Network problem detected by traffic monitor
   static const char kMetricNetworkProblemDetectedSuffix[];
@@ -691,7 +691,8 @@ class Metrics {
   virtual void NotifyUserInitiatedEvent(int event);
 
   // Notifies this object about the result of the fallback DNS test.
-  virtual void NotifyFallbackDNSTestResult(int result);
+  virtual void NotifyFallbackDNSTestResult(Technology::Identifier technology_id,
+                                           int result);
 
   // Notifies this object about a network problem detected on the currently
   // connected network.

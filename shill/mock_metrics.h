@@ -49,9 +49,10 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyWifiTxBitrate, void(int bitrate));
   MOCK_METHOD2(NotifyUserInitiatedConnectionResult,
                void(const std::string &name, int result));
-  MOCK_METHOD1(NotifyFallbackDNSTestResult, void(int result));
   MOCK_METHOD2(NotifyNetworkProblemDetected,
                void(Technology::Identifier technology_id, int reason));
+  MOCK_METHOD2(NotifyFallbackDNSTestResult,
+               void(Technology::Identifier technology_id, int result));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

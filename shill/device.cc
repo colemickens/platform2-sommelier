@@ -910,11 +910,11 @@ void Device::PerformFallbackDNSTest() {
 }
 
 void Device::DNSClientCallback(const Error &error, const IPAddress& ip) {
-  int result = Metrics::kDNSTestResultFailure;
+  int result = Metrics::kFallbackDNSTestResultFailure;
   if (error.IsSuccess()) {
-    result = Metrics::kDNSTestResultSuccess;
+    result = Metrics::kFallbackDNSTestResultSuccess;
   }
-  metrics()->NotifyFallbackDNSTestResult(result);
+  metrics()->NotifyFallbackDNSTestResult(technology_, result);
   fallback_dns_test_client_.reset();
 }
 
