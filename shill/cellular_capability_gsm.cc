@@ -53,12 +53,15 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                              ModemInfo *modem_info)
     : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
+      mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
+                                                   "ParseScanResult")),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_info_(NULL),
       get_imsi_retries_(0),
       get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
+  mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty, &CellularCapabilityGSM::SimLockStatusToProperty);
   this->cellular()->set_scanning_supported(true);
@@ -582,15 +585,11 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
   if ((!ContainsKey(parsed, kLongNameProperty) ||
        parsed[kLongNameProperty].empty()) &&
       ContainsKey(parsed, kNetworkIdProperty)) {
-    mobile_provider *provider =
-        mobile_provider_lookup_by_network(
-            modem_info()->provider_db(),
-            parsed[kNetworkIdProperty].c_str());
-    if (provider) {
-      const char *long_name = mobile_provider_get_name(provider);
-      if (long_name && *long_name) {
-        parsed[kLongNameProperty] = long_name;
-      }
+    mobile_operator_info_->Reset();
+    mobile_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
+    if (mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
+        !mobile_operator_info_->operator_name().empty()) {
+      parsed[kLongNameProperty] = mobile_operator_info_->operator_name();
     }
   }
   return parsed;

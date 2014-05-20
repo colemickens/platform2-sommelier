@@ -202,6 +202,10 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
   base::WeakPtrFactory<CellularCapabilityGSM> weak_ptr_factory_;
+  // Used to enrich information about the network operator in |ParseScanResult|.
+  // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
+  // once the context has been separated out. (crbug.com/363874)
+  scoped_ptr<MobileOperatorInfo> mobile_operator_info_;
 
   uint32 registration_state_;
   uint32 access_technology_;

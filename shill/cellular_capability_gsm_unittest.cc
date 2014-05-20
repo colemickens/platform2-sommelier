@@ -572,14 +572,26 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
 }
 
 TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
-  InitProviderDB();
-  static const char kID[] = "310210";
+  static const char kID[] = "10001";
+  const string kLongName = "TestNetworkLongName";
+  // Replace the |MobileOperatorInfo| used by |ParseScanResult| by a mock.
+  auto *mock_mobile_operator_info = new MockMobileOperatorInfo(
+      &dispatcher_,
+      "MockParseScanResult");
+  capability_->mobile_operator_info_.reset(mock_mobile_operator_info);
+
+  mock_mobile_operator_info->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*mock_mobile_operator_info, UpdateMCCMNC(kID));
+  EXPECT_CALL(*mock_mobile_operator_info, IsMobileNetworkOperatorKnown()).
+      WillOnce(Return(true));
+  EXPECT_CALL(*mock_mobile_operator_info, operator_name()).
+      WillRepeatedly(ReturnRef(kLongName));
   GSMScanResult result;
   result[CellularCapabilityGSM::kNetworkPropertyID] = kID;
   Stringmap parsed = capability_->ParseScanResult(result);
   EXPECT_EQ(2, parsed.size());
   EXPECT_EQ(kID, parsed[kNetworkIdProperty]);
-  EXPECT_EQ("T-Mobile", parsed[kLongNameProperty]);
+  EXPECT_EQ(kLongName, parsed[kLongNameProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {

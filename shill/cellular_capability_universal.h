@@ -399,6 +399,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   scoped_ptr<mm1::ModemProxyInterface> modem_proxy_;
   scoped_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
   scoped_ptr<mm1::SimProxyInterface> sim_proxy_;
+  // Used to enrich information about the network operator in |ParseScanResult|.
+  // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
+  // once the context has been separated out. (crbug.com/363874)
+  scoped_ptr<MobileOperatorInfo> mobile_operator_info_;
 
   base::WeakPtrFactory<CellularCapabilityUniversal> weak_ptr_factory_;
 

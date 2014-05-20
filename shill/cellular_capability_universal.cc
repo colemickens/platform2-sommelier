@@ -132,6 +132,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
     ProxyFactory *proxy_factory,
     ModemInfo *modem_info)
     : CellularCapability(cellular, proxy_factory, modem_info),
+      mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
+                                                   "ParseScanResult")),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
@@ -145,6 +147,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       registration_dropped_update_timeout_milliseconds_(
           kRegistrationDroppedUpdateTimeoutMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
+  mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
@@ -1128,15 +1131,11 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   if ((!ContainsKey(parsed, kLongNameProperty) ||
        parsed[kLongNameProperty].empty()) &&
       ContainsKey(parsed, kNetworkIdProperty)) {
-    mobile_provider *provider =
-        mobile_provider_lookup_by_network(
-            modem_info()->provider_db(),
-            parsed[kNetworkIdProperty].c_str());
-    if (provider) {
-      const char *long_name = mobile_provider_get_name(provider);
-      if (long_name && *long_name) {
-        parsed[kLongNameProperty] = long_name;
-      }
+    mobile_operator_info_->Reset();
+    mobile_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
+    if (mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
+        !mobile_operator_info_->operator_name().empty()) {
+      parsed[kLongNameProperty] = mobile_operator_info_->operator_name();
     }
   }
   return parsed;
