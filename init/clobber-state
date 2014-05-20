@@ -143,6 +143,24 @@ factory_wipe_firmware() {
   fi
 }
 
+# Make sure the active kernel is still bootable after being wiped.
+# The system may be in AU state that active kernel does not have "successful"
+# bit set to 1 (only tries).
+ensure_bootable_kernel() {
+  local kernel_num="$1"
+  local dst="$(rootdev -d)"
+  local active_flag="$(cgpt show -S -i "${kernel_num}" "${dst}")"
+  local priority="$(cgpt show -P -i "${kernel_num}" "${dst}")"
+
+  if [ "${active_flag}" -lt 1 ]; then
+    cgpt add -i "${kernel_num}" "${dst}" -S 1
+  fi
+  if [ "${priority}" -lt 1 ]; then
+    cgpt prioritize -i "${kernel_num}" "${dst}" -P 3
+  fi
+  sync
+}
+
 # Root devs are sda3, sda5.
 # Kernel devs to go along with these are sda2, sda4 respectively.
 ROOT_DEV=$(rootdev -s)
@@ -150,6 +168,7 @@ STATE_DEV=${ROOT_DEV%[0-9]*}1
 OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')
 OTHER_KERNEL_DEV=$(echo $OTHER_ROOT_DEV | tr '35' '24')
+KERNEL_PART_NUM=${KERNEL_DEV##[/a-z]*[/a-z]}
 WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
 # Save the option before wipe-out
 WIPE_OPTION_FILE="${STATE_PATH}/factory_wipe_option"
@@ -237,12 +256,14 @@ if [ "$FAST_WIPE" = "fast" ]; then
   # the stateful partition.
   dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
   if [ -z "${KEEPIMG}" ]; then
+    ensure_bootable_kernel "${KERNEL_PART_NUM}"
     dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
     dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
   fi
 else
 
   if [ -z "${KEEPIMG}" ]; then
+    ensure_bootable_kernel "${KERNEL_PART_NUM}"
     wipedev ${OTHER_ROOT_DEV}
     wipedev ${OTHER_KERNEL_DEV}
   fi
