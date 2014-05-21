@@ -84,9 +84,12 @@ const char* kPerfDataFiles[] = {
   // Obtained from a system that uses NUMA topology.
   "perf.data.numatopology",
 
-  // Data which contains events with non-consecutive event ids.
-  // Events are cycles (id 0) and branch-misses (id 5).
-  "perf.data.cycles_and_branch",
+  // Perf data that contains hardware and software events.
+  // Command:
+  //    perf record -a -c 1000000 -e cycles,branch-misses,cpu-clock -- sleep 2
+  // HW events are cycles and branch-misses, SW event is cpu-clock.
+  // This also tests non-consecutive event types.
+  "perf.data.hw_and_sw",
 
   // This test first mmap()s a DSO, then fork()s to copy the mapping to the
   // child and then modifies the mapping by mmap()ing a DSO on top of the old
@@ -108,6 +111,9 @@ const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.target.next",
 
   // Piped data that contains hardware and software events.
+  // Command:
+  //    perf record -a -c 1000000 -e cycles,branch-misses,cpu-clock -o -
+  //        -- sleep 2
   // HW events are cycles and branch-misses, SW event is cpu-clock.
   "perf.data.piped.hw_and_sw",
 
