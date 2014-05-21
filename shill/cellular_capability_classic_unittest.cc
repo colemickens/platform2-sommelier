@@ -267,7 +267,6 @@ TEST_F(CellularCapabilityTest, GetModemStatus) {
       Bind(&CellularCapabilityTest::TestCallback, Unretained(this));
   capability_->GetModemStatus(callback);
   EXPECT_EQ(kTestCarrier, cellular_->carrier());
-  EXPECT_EQ(kTestCarrier, cellular_->home_provider_.GetName());
 }
 
 TEST_F(CellularCapabilityTest, GetModemInfo) {

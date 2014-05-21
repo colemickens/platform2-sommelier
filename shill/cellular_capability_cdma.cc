@@ -101,13 +101,6 @@ void CellularCapabilityCDMA::OnServiceCreated() {
 
 void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
   string carrier;
-  if (DBusProperties::GetString(properties, "carrier", &carrier)) {
-    Cellular::Operator oper;
-    oper.SetName(carrier);
-    oper.SetCountry("us");
-    cellular()->set_home_provider(oper);
-  }
-
   DBusProperties::GetUint32(
       properties, "activation_state", &activation_state_);
   // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
