@@ -11,10 +11,8 @@
         'libcurl',
       ],
     },
-    # TODO(sosa): Remove gflags: crbug.com/356745.
     'link_settings': {
       'libraries': [
-        '-lgflags',
         '-lbase-dbus_test_support-<(libbase_ver)',
       ],
     },
@@ -29,6 +27,11 @@
       'sources': [
         'any.cc',
         'async_event_sequencer.cc',
+        'commands/object_schema.cc',
+        'commands/prop_constraints.cc',
+        'commands/prop_types.cc',
+        'commands/prop_values.cc',
+        'commands/schema_constants.cc',
         'data_encoding.cc',
         'dbus_constants.cc',
         'dbus_utils.cc',
@@ -80,6 +83,7 @@
         'any_internal_impl_unittest.cc',
         'async_event_sequencer_unittest.cc',
         'buffet_testrunner.cc',
+        'commands/object_schema_unittest.cc',
         'data_encoding_unittest.cc',
         'device_registration_info_unittest.cc',
         'error_unittest.cc',
