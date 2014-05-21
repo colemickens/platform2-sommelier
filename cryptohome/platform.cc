@@ -826,9 +826,9 @@ long ClearUserKeyring() {
 long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
                           const std::string& key_sig,
                           const chromeos::SecureBlob& salt) {
-  DCHECK(key.size() == ECRYPTFS_MAX_KEY_BYTES);
-  DCHECK(key_sig.length() == (ECRYPTFS_SIG_SIZE * 2));
-  DCHECK(salt.size() == ECRYPTFS_SALT_SIZE);
+  DCHECK_EQ(ECRYPTFS_MAX_KEY_BYTES, key.size());
+  DCHECK_EQ(ECRYPTFS_SIG_SIZE * 2, key_sig.length());
+  DCHECK_EQ(ECRYPTFS_SALT_SIZE, salt.size());
 
   struct ecryptfs_auth_tok auth_token;
 

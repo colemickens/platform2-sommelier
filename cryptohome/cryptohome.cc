@@ -1720,9 +1720,7 @@ int main(int argc, char **argv) {
         response_data = client_loop.get_return_data();
       }
     }
-    file_util::WriteFile(GetFile(cl),
-                         response_data.data(),
-                         response_data.length());
+    base::WriteFile(GetFile(cl), response_data.data(), response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
       action.c_str())) {
@@ -1802,9 +1800,7 @@ int main(int argc, char **argv) {
         response_data = client_loop.get_return_data();
       }
     }
-    file_util::WriteFile(GetFile(cl),
-                         response_data.data(),
-                         response_data.length());
+    base::WriteFile(GetFile(cl), response_data.data(), response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
@@ -1867,7 +1863,7 @@ int main(int argc, char **argv) {
       printf("Attestation certificate request failed.\n");
       return 1;
     }
-    file_util::WriteFile(GetFile(cl), cert_data.data(), cert_data.length());
+    base::WriteFile(GetFile(cl), cert_data.data(), cert_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
       action.c_str())) {
@@ -2001,9 +1997,9 @@ int main(int argc, char **argv) {
       return 1;
     }
     string response_data = client_loop.get_return_data();
-    file_util::WriteFileDescriptor(STDOUT_FILENO,
-                                   response_data.data(),
-                                   response_data.length());
+    base::WriteFileDescriptor(STDOUT_FILENO,
+                              response_data.data(),
+                              response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_DELETE],
       action.c_str())) {
@@ -2073,7 +2069,7 @@ int main(int argc, char **argv) {
       printf("Failed to get identity reset request.\n");
       return 1;
     }
-    file_util::WriteFile(GetFile(cl), reset_request->data, reset_request->len);
+    base::WriteFile(GetFile(cl), reset_request->data, reset_request->len);
   } else if (!strcmp(
       switches::kActions[
           switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
@@ -2158,9 +2154,9 @@ int main(int argc, char **argv) {
     }
     std::string signature =
         reply.GetExtension(cryptohome::SignBootLockboxReply::reply).signature();
-    file_util::WriteFile(GetFile(cl).AddExtension("signature"),
-                         signature.data(),
-                         signature.size());
+    base::WriteFile(GetFile(cl).AddExtension("signature"),
+                    signature.data(),
+                    signature.size());
     printf("SignBootLockbox success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_VERIFY_LOCKBOX],
                      action.c_str())) {

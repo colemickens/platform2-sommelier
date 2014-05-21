@@ -589,7 +589,7 @@ TEST_F(AttestationTest, DeleteByPrefixUser) {
 TEST_F(AttestationTest, GetEKInfo) {
   string info;
   EXPECT_TRUE(attestation_.GetEKInfo(&info));
-  EXPECT_TRUE(IsStringASCII(info));
+  EXPECT_TRUE(base::IsStringASCII(info));
 
   // Simulate owner password not available.
   EXPECT_CALL(tpm_, GetEndorsementCredential(_))
