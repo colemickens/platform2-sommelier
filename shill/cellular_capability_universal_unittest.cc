@@ -1657,13 +1657,17 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   const char kIccid[] = "1234567";
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
+    {"some@url", "some_method", "some_post_data"}
+  };
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateUnprovisioned;
   cellular_->set_sim_identifier("");
   cellular_->set_mdn("0000000000");
-  CellularOperatorInfo::OLP olp;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
-      .WillRepeatedly(Return(&olp));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+      .WillRepeatedly(ReturnRef(olp_list));
 
   service_->SetAutoConnect(false);
   EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
@@ -1956,6 +1960,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
+  const vector<MobileOperatorInfo::OnlinePortal> empty_list;
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
+    {"some@url", "some_method", "some_post_data"}
+  };
+
   capability_->subscription_state_ =
       CellularCapabilityUniversal::kSubscriptionStateProvisioned;
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
@@ -1969,11 +1978,23 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   cellular_->set_mdn("0000000000");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
-  CellularOperatorInfo::OLP olp;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
-      .WillOnce(Return((const CellularOperatorInfo::OLP *)NULL))
-      .WillRepeatedly(Return(&olp));
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(false));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+      .WillRepeatedly(ReturnRef(empty_list));
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+
+  // Set expectations for all subsequent cases.
+  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+      .WillRepeatedly(ReturnRef(olp_list));
 
   cellular_->set_mdn("");
   EXPECT_TRUE(capability_->IsServiceActivationRequired());

@@ -374,13 +374,36 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, IsServiceActivationRequired) {
-  CellularOperatorInfo::OLP olp;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
-      .WillOnce(Return((const CellularOperatorInfo::OLP *)NULL))
-      .WillRepeatedly(Return(&olp));
+  const vector<MobileOperatorInfo::OnlinePortal> empty_list;
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
+    {"some@url", "some_method", "some_post_data"}
+  };
+  SetMockMobileOperatorInfoObjects();
+
   capability_->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(false));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_serving_operator_info_, olp_list())
+      .WillRepeatedly(ReturnRef(empty_list));
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+
+  // These expectations hold for all subsequent tests.
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_serving_operator_info_, olp_list())
+      .WillRepeatedly(ReturnRef(olp_list));
+
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
   capability_->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
@@ -392,9 +415,15 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, IsServiceActivationRequired) {
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest,
        UpdateServiceActivationStateProperty) {
-  CellularOperatorInfo::OLP olp;
-  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
-      .WillRepeatedly(Return(&olp));
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
+    {"some@url", "some_method", "some_post_data"}
+  };
+  SetMockMobileOperatorInfoObjects();
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_serving_operator_info_, olp_list())
+      .WillRepeatedly(ReturnRef(olp_list));
+
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(_, _))
       .WillOnce(Return(PendingActivationStore::kStatePending))

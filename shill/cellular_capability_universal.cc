@@ -903,13 +903,10 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
 
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
-  if (!modem_info()->cellular_operator_info())
+  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown() ||
+      cellular()->home_provider_info()->olp_list().empty()) {
     return false;
-
-  const CellularOperatorInfo::OLP *olp =
-      modem_info()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
-  if (!olp)
-    return false;
+  }
 
   // If the MDN is invalid (i.e. empty or contains only zeros), the service
   // requires activation.

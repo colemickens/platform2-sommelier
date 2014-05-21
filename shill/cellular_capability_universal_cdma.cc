@@ -162,13 +162,10 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
 bool CellularCapabilityUniversalCDMA::IsServiceActivationRequired() const {
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
-  if (!modem_info()->cellular_operator_info())
+  if (!cellular()->serving_operator_info()->IsMobileNetworkOperatorKnown() ||
+      cellular()->serving_operator_info()->olp_list().empty()) {
     return false;
-
-  const CellularOperatorInfo::OLP *olp =
-      modem_info()->cellular_operator_info()->GetOLPBySID(UintToString(sid_));
-  if (!olp)
-    return false;
+  }
 
   // We could also use the MDN to determine whether or not the service is
   // activated, however, the CDMA ActivatonState property is a more absolute
