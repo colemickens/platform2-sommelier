@@ -15,7 +15,7 @@
 #include <chromeos/process_mock.h>
 #include <gtest/gtest.h>
 
-using file_util::ScopedFD;
+using base::ScopedFD;
 using std::map;
 using std::string;
 using testing::_;
@@ -27,24 +27,22 @@ namespace lorgnette {
 class ManagerTest : public testing::Test {
  public:
   ManagerTest()
-     : input_pipe_fd_(kInputPipeFd),
-       output_pipe_fd_(kOutputPipeFd),
-       input_scoped_fd_(&input_pipe_fd_),
-       output_scoped_fd_(&output_pipe_fd_),
+     : input_scoped_fd_(kInputPipeFd),
+       output_scoped_fd_(kOutputPipeFd),
        manager_(base::Callback<void()>()) {}
 
   virtual void TearDown() {
     // The fds that we have handed to these ScopedFD are not real, so we
     // must prevent our scoped fds from calling close() on them.
-    int *fd_ptr;
-    fd_ptr = input_scoped_fd_.release();
-    CHECK(fd_ptr == NULL || fd_ptr == &input_pipe_fd_);
-    fd_ptr = output_scoped_fd_.release();
-    CHECK(fd_ptr == NULL || fd_ptr == &output_pipe_fd_);
+    int fd = input_scoped_fd_.release();
+    CHECK(fd == kInvalidFd || fd == kInputPipeFd);
+    fd = output_scoped_fd_.release();
+    CHECK(fd == kInvalidFd || fd == kOutputPipeFd);
   }
  protected:
   static const char kDeviceName[];
   static const char kMode[];
+  static const int kInvalidFd;
   static const int kInputPipeFd;
   static const int kOutputFd;
   static const int kOutputPipeFd;
@@ -57,8 +55,8 @@ class ManagerTest : public testing::Test {
   static void RunScanImageProcess(
       const string &device_name,
       int out_fd,
-      file_util::ScopedFD *input_scoped_fd,
-      file_util::ScopedFD *output_scoped_fd,
+      base::ScopedFD *input_scoped_fd,
+      base::ScopedFD *output_scoped_fd,
       const map<string, ::DBus::Variant> &scan_properties,
       chromeos::Process *scan_process,
       chromeos::Process *convert_process,
@@ -114,13 +112,13 @@ class ManagerTest : public testing::Test {
     return Manager::kScanImageFormattedDeviceListCmd;
   }
 
-  int input_pipe_fd_;
-  int output_pipe_fd_;
   ScopedFD input_scoped_fd_;
   ScopedFD output_scoped_fd_;
   Manager manager_;
 };
 
+// kInvalidFd must equal to base::internal::ScopedFDCloseTraits::InvalidValue().
+const int ManagerTest::kInvalidFd = -1;
 const int ManagerTest::kInputPipeFd = 123;
 const int ManagerTest::kOutputFd = 456;
 const int ManagerTest::kOutputPipeFd = 789;
@@ -165,8 +163,8 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
                       &scan_process,
                       &convert_process,
                       &error);
-  EXPECT_EQ(NULL, input_scoped_fd_.get());
-  EXPECT_EQ(NULL, output_scoped_fd_.get());
+  EXPECT_EQ(kInvalidFd, input_scoped_fd_.get());
+  EXPECT_EQ(kInvalidFd, output_scoped_fd_.get());
   EXPECT_FALSE(error.is_set());
 }
 
@@ -186,8 +184,8 @@ TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
                       &convert_process, &error);
 
   // Expect that the pipe fds have not been released.
-  EXPECT_EQ(&input_pipe_fd_, input_scoped_fd_.get());
-  EXPECT_EQ(&output_pipe_fd_, output_scoped_fd_.get());
+  EXPECT_EQ(kInputPipeFd, input_scoped_fd_.get());
+  EXPECT_EQ(kOutputPipeFd, output_scoped_fd_.get());
 
   EXPECT_TRUE(error.is_set());
   EXPECT_TRUE(StartsWithASCII(error.message(),
@@ -218,8 +216,8 @@ TEST_F(ManagerTest, RunScanImageInvalidModeArgument) {
                       &error);
 
   // Expect that the pipe fds have not been released.
-  EXPECT_EQ(&input_pipe_fd_, input_scoped_fd_.get());
-  EXPECT_EQ(&output_pipe_fd_, output_scoped_fd_.get());
+  EXPECT_EQ(kInputPipeFd, input_scoped_fd_.get());
+  EXPECT_EQ(kOutputPipeFd, output_scoped_fd_.get());
 
   EXPECT_TRUE(error.is_set());
   EXPECT_TRUE(StartsWithASCII(error.message(),
@@ -252,8 +250,8 @@ TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
                       &scan_process,
                       &convert_process,
                       &error);
-  EXPECT_EQ(NULL, input_scoped_fd_.get());
-  EXPECT_EQ(NULL, output_scoped_fd_.get());
+  EXPECT_EQ(kInvalidFd, input_scoped_fd_.get());
+  EXPECT_EQ(kInvalidFd, output_scoped_fd_.get());
   EXPECT_TRUE(error.is_set());
   EXPECT_STREQ(
       base::StringPrintf("Scan process exited with result %d",
@@ -284,8 +282,8 @@ TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
                       &scan_process,
                       &convert_process,
                       &error);
-  EXPECT_EQ(NULL, input_scoped_fd_.get());
-  EXPECT_EQ(NULL, output_scoped_fd_.get());
+  EXPECT_EQ(kInvalidFd, input_scoped_fd_.get());
+  EXPECT_EQ(kInvalidFd, output_scoped_fd_.get());
   EXPECT_TRUE(error.is_set());
   EXPECT_STREQ(
       base::StringPrintf("Image converter process failed with result %d",

@@ -11,7 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback.h>
-#include <base/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
@@ -84,8 +84,8 @@ class Manager {
   static void RunScanImageProcess(
       const std::string &device_name,
       int out_fd,
-      file_util::ScopedFD *pipe_fd_input,
-      file_util::ScopedFD *pipe_fd_output,
+      base::ScopedFD *pipe_fd_input,
+      base::ScopedFD *pipe_fd_output,
       const std::map<std::string, ::DBus::Variant> &scan_properties,
       chromeos::Process *scan_process,
       chromeos::Process *convert_process,

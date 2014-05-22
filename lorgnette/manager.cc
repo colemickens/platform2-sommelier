@@ -20,8 +20,8 @@
 
 #include "lorgnette/daemon.h"
 
+using base::ScopedFD;
 using base::StringPrintf;
-using file_util::ScopedFD;
 using std::map;
 using std::string;
 using std::vector;
@@ -98,8 +98,8 @@ void Manager::ScanImage(
     return;
   }
 
-  ScopedFD pipe_fd_input(&pipe_fds[0]);
-  ScopedFD pipe_fd_output(&pipe_fds[1]);
+  ScopedFD pipe_fd_input(pipe_fds[0]);
+  ScopedFD pipe_fd_output(pipe_fds[1]);
   chromeos::ProcessImpl scan_process;
   chromeos::ProcessImpl convert_process;
   RunScanImageProcess(device_name,
@@ -165,10 +165,10 @@ void Manager::RunScanImageProcess(
       return;
     }
   }
-  scan_process->BindFd(*pipe_fd_output->release(), STDOUT_FILENO);
+  scan_process->BindFd(pipe_fd_output->release(), STDOUT_FILENO);
 
   convert_process->AddArg(kScanConverterPath);
-  convert_process->BindFd(*pipe_fd_input->release(), STDIN_FILENO);
+  convert_process->BindFd(pipe_fd_input->release(), STDIN_FILENO);
   convert_process->BindFd(out_fd, STDOUT_FILENO);
 
   convert_process->Start();
