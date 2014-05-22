@@ -844,7 +844,7 @@ FilePath GobiCdmaModem::GetExecPostActivationStepsCookieCrumbPath() const {
 void GobiCdmaModem::MarkForExecPostActivationStepsAfterReset() {
   // This is a best effort attempt to write out the cookie crumb so don't
   // need to check for write failures.
-  file_util::WriteFile(GetExecPostActivationStepsCookieCrumbPath(), "", 0);
+  base::WriteFile(GetExecPostActivationStepsCookieCrumbPath(), "", 0);
 }
 
 bool GobiCdmaModem::ShouldExecPostActivationSteps() const {
