@@ -21,7 +21,9 @@
 #include <chromeos/utility.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
+#include <vboot/crossystem.h>
 
+#include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_local_account_policy_service.h"
@@ -71,6 +73,25 @@ const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 // Device-local account state directory.
 const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
     FILE_PATH_LITERAL("/var/lib/device_local_accounts");
+
+// The name of the flag that indicates whether dev mode should be blocked.
+const char kCrossystemBlockDevmode[] = "block_devmode";
+
+// Applies system settings as specified in |settings|.
+static void UpdateSystemSettings(
+    const enterprise_management::ChromeDeviceSettingsProto& settings) {
+  int block_devmode_setting =
+      settings.system_settings().block_devmode() ? 1 : 0;
+  int block_devmode_value = VbGetSystemPropertyInt(kCrossystemBlockDevmode);
+  if (block_devmode_value == -1)
+    LOG(ERROR) << "Failed to read block_devmode flag!";
+
+  if (block_devmode_setting != block_devmode_value) {
+    if (VbSetSystemPropertyInt(kCrossystemBlockDevmode, block_devmode_setting))
+      LOG(ERROR) << "Failed to write block_devmode flag!";
+  }
+}
+
 }  // namespace
 
 SessionManagerImpl::Error::Error() : set_(false) {}
@@ -194,6 +215,7 @@ bool SessionManagerImpl::Initialize() {
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(
         device_policy_->GetSettings());
+    UpdateSystemSettings(device_policy_->GetSettings());
     return true;
   }
   return false;
@@ -545,6 +567,7 @@ void SessionManagerImpl::OnPolicyPersisted(bool success) {
                                               success);
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
+  UpdateSystemSettings(device_policy_->GetSettings());
 }
 
 void SessionManagerImpl::OnKeyPersisted(bool success) {
