@@ -125,10 +125,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   MMModemCdmaRegistrationState cdma_1x_registration_state_;
   MMModemCdmaRegistrationState cdma_evdo_registration_state_;
 
-  // Current network operator. Since CDMA operator information is acquired
-  // using the (SID, NID) pair, which itself is acquired OTA, |provider_|
-  // can both be the home provider or the serving operator for roaming.
-  Cellular::Operator provider_;
   uint32_t nid_;
   uint32_t sid_;
 

@@ -1748,7 +1748,6 @@ void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
 void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string &operator_id) {
   SLOG(Cellular, 2) << "Operator ID = '" << operator_id << "'";
-  operator_id_ = operator_id;
   cellular()->home_provider_info()->UpdateMCCMNC(operator_id);
 }
 

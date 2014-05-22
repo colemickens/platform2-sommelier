@@ -822,7 +822,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   cellular_->set_imsi("");
   cellular_->set_sim_identifier("");
-  capability_->operator_id_ = "";
   capability_->spn_ = "";
 
   // SIM is locked.
@@ -832,7 +831,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
-  EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   // SIM is unlocked.
@@ -849,7 +847,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
-  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is missing and SIM path is "/".
@@ -865,7 +862,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
-  EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   // SIM is missing and SIM path is empty.
@@ -881,7 +877,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
-  EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 }
 
@@ -1199,7 +1194,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
-  EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   capability_->OnSimPathChanged(kSimPath);
@@ -1208,7 +1202,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
-  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // Changing to the same SIM path should be a no-op.
@@ -1218,7 +1211,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
-  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   capability_->OnSimPathChanged("");
@@ -1229,7 +1221,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
-  EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
@@ -1244,7 +1235,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
-  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   capability_->OnSimPathChanged("/");
@@ -1253,7 +1243,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ("/", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
-  EXPECT_EQ("", capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 }
 
@@ -1301,7 +1290,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
                                        vector<string>());
   EXPECT_EQ(kNewImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
-  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ("", capability_->spn_);
 
   new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
