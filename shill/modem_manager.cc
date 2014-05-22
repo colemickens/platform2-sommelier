@@ -7,7 +7,6 @@
 #include <base/stl_util.h>
 #include <mm/mm-modem.h>
 
-#include "shill/cellular_operator_info.h"
 #include "shill/dbus_manager.h"
 #include "shill/error.h"
 #include "shill/logging.h"

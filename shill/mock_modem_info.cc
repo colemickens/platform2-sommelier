@@ -10,8 +10,7 @@ namespace shill {
 
 MockModemInfo::MockModemInfo() :
     ModemInfo(NULL, NULL, NULL, NULL, NULL),
-    mock_pending_activation_store_(NULL),
-    mock_cellular_operator_info_(NULL) {}
+    mock_pending_activation_store_(NULL) {}
 
 MockModemInfo::MockModemInfo(ControlInterface *control,
                              EventDispatcher *dispatcher,
@@ -19,8 +18,7 @@ MockModemInfo::MockModemInfo(ControlInterface *control,
                              Manager *manager,
                              GLib *glib) :
     ModemInfo(control, dispatcher, metrics, manager, glib),
-    mock_pending_activation_store_(NULL),
-    mock_cellular_operator_info_(NULL) {
+    mock_pending_activation_store_(NULL) {
   SetMockMembers();
 }
 
@@ -32,11 +30,6 @@ void MockModemInfo::SetMockMembers() {
   set_pending_activation_store(new MockPendingActivationStore());
   mock_pending_activation_store_ =
       static_cast<MockPendingActivationStore*>(pending_activation_store());
-  // Assumes ownership.
-  set_cellular_operator_info(new MockCellularOperatorInfo());
-  mock_cellular_operator_info_ =
-      static_cast<MockCellularOperatorInfo*>(cellular_operator_info());
-
   // These are replaced by mocks only if current unset in ModemInfo.
   if(control_interface() == NULL) {
     mock_control_.reset(new MockControl());

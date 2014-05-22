@@ -18,7 +18,6 @@
 #include "shill/cellular_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
@@ -451,7 +450,6 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest,
       .Times(1);
   capability_->UpdateServiceActivationStateProperty();
   Mock::VerifyAndClearExpectations(service_);
-  Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 }
 

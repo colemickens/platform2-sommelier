@@ -10,7 +10,7 @@
 #include <base/strings/string_util.h>
 
 #include "shill/cellular_bearer.h"
-#include "shill/cellular_operator_info.h"
+#include "shill/cellular_service.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"

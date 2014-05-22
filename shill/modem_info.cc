@@ -8,7 +8,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
 
-#include "shill/cellular_operator_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/modem_manager.h"
@@ -21,8 +20,6 @@ namespace shill {
 
 namespace {
 
-const char kCellularOperatorInfoPath[] =
-    "/usr/share/shill/cellular_operator_info";
 const char kMobileProviderDBPath[] =
     "/usr/share/mobile-broadband-provider-info/serviceproviders.bfd";
 
@@ -49,8 +46,6 @@ void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->glib(),
       manager_->storage_path());
-  cellular_operator_info_.reset(new CellularOperatorInfo());
-  cellular_operator_info_->Load(FilePath(kCellularOperatorInfoPath));
 
   // TODO(petkov): Consider initializing the mobile provider database lazily
   // only if a GSM modem needs to be registered.
@@ -69,7 +64,6 @@ void ModemInfo::Start() {
 
 void ModemInfo::Stop() {
   pending_activation_store_.reset();
-  cellular_operator_info_.reset();
   if(provider_db_)
     mobile_provider_close_db(provider_db_);
   provider_db_ = NULL;
@@ -85,11 +79,6 @@ void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
 void ModemInfo::set_pending_activation_store(
     PendingActivationStore *pending_activation_store) {
   pending_activation_store_.reset(pending_activation_store);
-}
-
-void ModemInfo::set_cellular_operator_info(
-    CellularOperatorInfo *cellular_operator_info) {
-  cellular_operator_info_.reset(cellular_operator_info);
 }
 
 void ModemInfo::RegisterModemManager(ModemManager *manager) {

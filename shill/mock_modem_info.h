@@ -8,7 +8,6 @@
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
-#include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
@@ -35,8 +34,7 @@ class MockModemInfo : public ModemInfo {
   // Replaces data members in ModemInfo by mock objects.
   // The following are relaced by mocks if they are NULL: control_interface,
   // dispatcher, metrics, manager, glib.
-  // The following are always replaced by mocks: pending_activation_store,
-  // cellular_operator_info.
+  // The following are always replaced by mocks: pending_activation_store.
   void SetMockMembers();
 
   // Create a new provider_db and set it in ModemInfo.
@@ -46,9 +44,6 @@ class MockModemInfo : public ModemInfo {
   // Accessors for mock objects
   MockPendingActivationStore* mock_pending_activation_store() const {
     return mock_pending_activation_store_;
-  }
-  MockCellularOperatorInfo* mock_cellular_operator_info() const {
-    return mock_cellular_operator_info_;
   }
   MockControl* mock_control_interface() const {
     return mock_control_.get();
@@ -79,7 +74,6 @@ class MockModemInfo : public ModemInfo {
 
   // owned by ModemInfo
   MockPendingActivationStore *mock_pending_activation_store_;
-  MockCellularOperatorInfo *mock_cellular_operator_info_;
 
   DISALLOW_COPY_AND_ASSIGN(MockModemInfo);
 };

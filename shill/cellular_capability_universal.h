@@ -19,7 +19,6 @@
 #include "shill/cellular.h"
 #include "shill/cellular_bearer.h"
 #include "shill/cellular_capability.h"
-#include "shill/cellular_operator_info.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/mm1_modem_proxy_interface.h"
 #include "shill/mm1_modem_simple_proxy_interface.h"

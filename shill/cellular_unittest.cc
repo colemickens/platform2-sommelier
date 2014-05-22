@@ -410,8 +410,6 @@ class CellularTest : public testing::Test {
     EXPECT_CALL(*mm1_proxy_, set_state_changed_callback(_)).Times(AnyNumber());
     EXPECT_CALL(*modem_info_.mock_metrics(), NotifyDeviceScanStarted(_))
         .Times(AnyNumber());
-    EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-                GetOLPByMCCMNC(_)).Times(AnyNumber());
     EXPECT_CALL(*modem_info_.mock_manager(), UpdateEnabledTechnologies())
         .Times(AnyNumber());
     EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor()),
