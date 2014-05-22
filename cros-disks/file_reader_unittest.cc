@@ -68,13 +68,13 @@ TEST_F(FileReaderTest, ReadLine) {
 
   // Test a file not ending with a new-line character
   ASSERT_EQ(content.size(),
-      file_util::WriteFile(path, content.c_str(), content.size()));
+            base::WriteFile(path, content.c_str(), content.size()));
   VerifyReadLines(path, lines);
 
   // Test a file ending with a new-line character
   content.push_back('\n');
   ASSERT_EQ(content.size(),
-      file_util::WriteFile(path, content.c_str(), content.size()));
+            base::WriteFile(path, content.c_str(), content.size()));
   VerifyReadLines(path, lines);
 }
 

@@ -85,7 +85,7 @@ UdevDevice::~UdevDevice() {
 
 // static
 string UdevDevice::EnsureUTF8String(const string& str) {
-  return IsStringUTF8(str) ? str : "";
+  return base::IsStringUTF8(str) ? str : "";
 }
 
 // static

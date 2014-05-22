@@ -60,9 +60,8 @@ class USBDeviceInfoTest : public ::testing::Test {
   string CreateTestDataFile(const string& content) const {
     FilePath temp_file;
     if (base::CreateTemporaryFile(&temp_file) &&
-        (static_cast<size_t>(file_util::WriteFile(temp_file, content.c_str(),
-                                                  content.size())) ==
-         content.size())) {
+        (static_cast<size_t>(base::WriteFile(
+             temp_file, content.c_str(), content.size())) == content.size())) {
       return temp_file.value();
     }
     return string();
