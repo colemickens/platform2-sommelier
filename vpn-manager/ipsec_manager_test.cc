@@ -92,8 +92,7 @@ class IpsecManagerTest : public ::testing::Test {
   static const char kXauthPassword[];
 
   void WriteFile(const std::string& file_path, const char* contents) {
-    if (file_util::WriteFile(FilePath(file_path), contents,
-                             strlen(contents)) < 0) {
+    if (base::WriteFile(FilePath(file_path), contents, strlen(contents)) < 0) {
       LOG(ERROR) << "Unable to create " << file_path;
     }
   }
@@ -328,7 +327,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, Initialize) {
 TEST_F(IpsecManagerTestIkeV1Psk, FormatSecrets) {
   FilePath input(psk_file_);
   const char psk[] = "pAssword\n";
-  file_util::WriteFile(input, psk, strlen(psk));
+  base::WriteFile(input, psk, strlen(psk));
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PSK \"pAssword\"\n", formatted);

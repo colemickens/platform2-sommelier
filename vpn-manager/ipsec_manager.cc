@@ -238,7 +238,7 @@ bool IpsecManager::FormatIpsecSecret(std::string* formatted) {
       LOG(ERROR) << "Unable to read PSK from " << psk_file_;
       return false;
     }
-    TrimWhitespaceASCII(secret, TRIM_TRAILING, &secret);
+    base::TrimWhitespaceASCII(secret, base::TRIM_TRAILING, &secret);
   }
   std::string local_address_text;
   if (force_local_address_ != NULL) {
@@ -429,7 +429,7 @@ bool IpsecManager::WriteConfigFile(const std::string& output_name,
                << temp_file.value();
     return false;
   }
-  if (!file_util::WriteFile(temp_file, contents.c_str(), contents.length()) ||
+  if (!base::WriteFile(temp_file, contents.c_str(), contents.length()) ||
       !SetIpsecGroup(temp_file)) {
     LOG(ERROR) << "Unable to write " << output_name
                << " file " << temp_file.value();

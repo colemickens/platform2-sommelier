@@ -47,7 +47,7 @@ class DaemonTest : public ::testing::Test {
 
  protected:
   void WritePidFile(const string& pid) {
-    if (file_util::WriteFile(pid_file_path_, pid.c_str(), pid.size()) < 0) {
+    if (base::WriteFile(pid_file_path_, pid.c_str(), pid.size()) < 0) {
       LOG(ERROR) << "Unable to create " << pid_file_path_.value();
     }
   }

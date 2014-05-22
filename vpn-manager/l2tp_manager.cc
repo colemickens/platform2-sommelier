@@ -168,8 +168,8 @@ bool L2tpManager::Initiate() {
     // otherwise the plugin must specify username and password.
     control_string.append("\n");
   }
-  if (!file_util::WriteFile(l2tpd_control_path_, control_string.c_str(),
-                            control_string.size())) {
+  if (!base::WriteFile(l2tpd_control_path_, control_string.c_str(),
+                       control_string.size())) {
     return false;
   }
   was_initiated_ = true;
@@ -179,8 +179,8 @@ bool L2tpManager::Initiate() {
 bool L2tpManager::Terminate() {
   std::string control_string = StringPrintf("d %s\n",
                                             kL2tpConnectionName);
-  if (!file_util::WriteFile(l2tpd_control_path_, control_string.c_str(),
-                            control_string.size())) {
+  if (!base::WriteFile(l2tpd_control_path_, control_string.c_str(),
+                       control_string.size())) {
     return false;
   }
   return true;
@@ -190,8 +190,8 @@ bool L2tpManager::Start() {
   FilePath pppd_config_path = temp_path()->Append("pppd.conf");
   std::string l2tpd_config = FormatL2tpdConfiguration(pppd_config_path.value());
   FilePath l2tpd_config_path = temp_path()->Append("l2tpd.conf");
-  if (!file_util::WriteFile(l2tpd_config_path, l2tpd_config.c_str(),
-                            l2tpd_config.size())) {
+  if (!base::WriteFile(l2tpd_config_path, l2tpd_config.c_str(),
+                       l2tpd_config.size())) {
     LOG(ERROR) << "Unable to write l2tpd config to "
                << l2tpd_config_path.value();
     RegisterError(kServiceErrorInternal);
@@ -204,8 +204,8 @@ bool L2tpManager::Start() {
     return false;
   }
   std::string pppd_config = FormatPppdConfiguration();
-  if (!file_util::WriteFile(pppd_config_path, pppd_config.c_str(),
-                            pppd_config.size())) {
+  if (!base::WriteFile(pppd_config_path, pppd_config.c_str(),
+                       pppd_config.size())) {
     LOG(ERROR) << "Unable to write pppd config to " << pppd_config_path.value();
     RegisterError(kServiceErrorInternal);
     return false;

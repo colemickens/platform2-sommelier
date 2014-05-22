@@ -194,7 +194,7 @@ TEST_F(L2tpManagerTest, PollTimeoutWaitingForUp) {
 
 TEST_F(L2tpManagerTest, PollInitiateConnection) {
   l2tp_.start_ticks_ = base::TimeTicks::Now();
-  file_util::WriteFile(control_path_, "", 0);
+  base::WriteFile(control_path_, "", 0);
   EXPECT_FALSE(l2tp_.was_initiated_);
   FLAGS_pppd_plugin = "set";
   EXPECT_EQ(1000, l2tp_.Poll());
@@ -206,7 +206,7 @@ TEST_F(L2tpManagerTest, PollTransitionToUp) {
   l2tp_.start_ticks_ = base::TimeTicks::Now();
   l2tp_.was_initiated_ = true;
   EXPECT_FALSE(l2tp_.is_running());
-  file_util::WriteFile(ppp_interface_path_, "", 0);
+  base::WriteFile(ppp_interface_path_, "", 0);
   EXPECT_EQ(-1, l2tp_.Poll());
   EXPECT_TRUE(FindLog("L2TP connection now up"));
   EXPECT_TRUE(l2tp_.is_running());
