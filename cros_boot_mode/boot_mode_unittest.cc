@@ -49,19 +49,19 @@ class BootModeTest : public ::testing::Test {
   // that the "system" booted in.
   void UpdateFiles(int chsw, int fw, const char *cmdline) {
     std::string data = base::StringPrintf("%d", chsw);
-    EXPECT_EQ(file_util::WriteFile(
+    EXPECT_EQ(base::WriteFile(
                   base::FilePath(developer_switch_.platform_file_path()),
                   data.c_str(), data.length()),
               data.length());
 
     data = base::StringPrintf("%d", fw);
-    EXPECT_EQ(file_util::WriteFile(
+    EXPECT_EQ(base::WriteFile(
                   base::FilePath(active_main_firmware_.platform_file_path()),
                   data.c_str(), data.length()),
               data.length());
 
     data.assign(cmdline);
-    EXPECT_EQ(file_util::WriteFile(
+    EXPECT_EQ(base::WriteFile(
                   base::FilePath(bootloader_type_.platform_file_path()),
                   data.c_str(), data.length()),
               data.length());

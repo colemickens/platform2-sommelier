@@ -44,8 +44,8 @@ TEST_F(BootloaderTypeTest, ChromeOSBare) {
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kChromeOS]);
 
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(type_file_path_),
-                                 contents.c_str(), contents.length()),
+  EXPECT_EQ(base::WriteFile(base::FilePath(type_file_path_),
+                            contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kChromeOS);
@@ -56,8 +56,8 @@ TEST_F(BootloaderTypeTest, ChromeOSSpaces) {
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kChromeOS]);
 
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(type_file_path_),
-                                 contents.c_str(), contents.length()),
+  EXPECT_EQ(base::WriteFile(base::FilePath(type_file_path_),
+                            contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kChromeOS);
@@ -68,8 +68,8 @@ TEST_F(BootloaderTypeTest, NoBoundaries) {
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kChromeOS]);
 
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(type_file_path_),
-                                 contents.c_str(), contents.length()),
+  EXPECT_EQ(base::WriteFile(base::FilePath(type_file_path_),
+                            contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kUnsupported);
@@ -80,8 +80,8 @@ TEST_F(BootloaderTypeTest, NoStartingBoundary) {
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kChromeOS]);
 
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(type_file_path_),
-                                 contents.c_str(), contents.length()),
+  EXPECT_EQ(base::WriteFile(base::FilePath(type_file_path_),
+                            contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kUnsupported);
@@ -92,8 +92,8 @@ TEST_F(BootloaderTypeTest, NoTrailingBoundary) {
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kChromeOS]);
 
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(type_file_path_),
-                                 contents.c_str(), contents.length()),
+  EXPECT_EQ(base::WriteFile(base::FilePath(type_file_path_),
+                            contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kUnsupported);
@@ -106,8 +106,8 @@ TEST_F(BootloaderTypeTest, FirstMatchInEnumOrderIsUsed) {
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kDebug]);
 
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(type_file_path_),
-                                 contents.c_str(), contents.length()),
+  EXPECT_EQ(base::WriteFile(base::FilePath(type_file_path_),
+                            contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kDebug);

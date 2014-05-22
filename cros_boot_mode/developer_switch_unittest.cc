@@ -40,51 +40,44 @@ class DeveloperSwitchTest : public ::testing::Test {
    cros_boot_mode::DeveloperSwitch switch_;
 };
 
-
 TEST_F(DeveloperSwitchTest, Disabled) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "0", 2), 2);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "0", 2), 2);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kDisabled);
 }
 
 TEST_F(DeveloperSwitchTest, DisabledWithOtherSwitches) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "528", 4),
-            4);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "528", 4), 4);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kDisabled);
 }
 
 TEST_F(DeveloperSwitchTest, Enabled) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "32", 3),
-            3);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "32", 3), 3);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kEnabled);
 }
 
 TEST_F(DeveloperSwitchTest, EnabledWithOtherSwitches) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "544", 4),
-            4);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "544", 4), 4);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kEnabled);
 }
 
 TEST_F(DeveloperSwitchTest, EnabledWithOtherSwitches2) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "4128", 5),
-            5);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "4128", 5), 5);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kEnabled);
 }
 
 TEST_F(DeveloperSwitchTest, EnabledWithOtherSwitches3) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "65535", 6),
-            6);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "65535", 6), 6);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kEnabled);
 }
 
 TEST_F(DeveloperSwitchTest, BadTruncationMakesUnsupported) {
-  EXPECT_EQ(
-      file_util::WriteFile(base::FilePath(switch_file_path_), "100000", 7), 7);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "100000", 7), 7);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kUnsupported);
 }
@@ -95,14 +88,13 @@ TEST_F(DeveloperSwitchTest, MissingFile) {
 }
 
 TEST_F(DeveloperSwitchTest, UnsupportedPlatform) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "-1", 3),
-            3);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "-1", 3), 3);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kUnsupported);
 }
 
 TEST_F(DeveloperSwitchTest, EmptyFile) {
-  EXPECT_EQ(file_util::WriteFile(base::FilePath(switch_file_path_), "", 0), 0);
+  EXPECT_EQ(base::WriteFile(base::FilePath(switch_file_path_), "", 0), 0);
   switch_.Initialize();
   ExpectPosition(cros_boot_mode::PlatformSwitch::kUnsupported);
 }
