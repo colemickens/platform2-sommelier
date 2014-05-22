@@ -328,22 +328,33 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateServiceOLP) {
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
+  const string activation_code {"1234"};
+  SetMockMobileOperatorInfoObjects();
+
   mm1::MockModemModemCdmaProxy *cdma_proxy = modem_cdma_proxy_.get();
   SetUp();
   capability_->InitProxies();
 
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_,_))
-      .Times(0);
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              SetActivationState(_,_,_))
-      .Times(0);
+  // Cases when activation fails because |activation_code| is not available.
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*cdma_proxy, Activate(_,_,_,_)).Times(0);
   capability_->ActivateAutomatic();
-  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  mock_serving_operator_info_->SetEmptyDefaultsForProperties();
+  EXPECT_CALL(*cdma_proxy, Activate(_,_,_,_)).Times(0);
+  capability_->ActivateAutomatic();
+  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
 
-  capability_->activation_code_ = "1234";
+  // These expectations hold for all subsequent tests.
+  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_serving_operator_info_, activation_code())
+      .WillRepeatedly(ReturnRef(activation_code));
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierMEID, _))

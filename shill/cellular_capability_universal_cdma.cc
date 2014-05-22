@@ -92,11 +92,13 @@ void CellularCapabilityUniversalCDMA::CompleteActivation(Error *error) {
 }
 
 void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
-  if (activation_code_.empty()) {
+  if (!cellular()->serving_operator_info()->IsMobileNetworkOperatorKnown() ||
+      cellular()->serving_operator_info()->activation_code().empty()) {
     SLOG(Cellular, 2) << "OTA activation cannot be run in the presence of no "
                       << "activation code.";
     return;
   }
+
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
@@ -125,7 +127,10 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
 
   Error error;
   modem_cdma_proxy_->Activate(
-      activation_code_, &error, activation_callback, kTimeoutActivate);
+      cellular()->serving_operator_info()->activation_code(),
+      &error,
+      activation_callback,
+      kTimeoutActivate);
 }
 
 void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {

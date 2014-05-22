@@ -119,9 +119,6 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   // CDMA ActivationState property.
   MMModemCdmaActivationState activation_state_;
 
-  // The activation code needed for OTASP activation.
-  std::string activation_code_;
-
   MMModemCdmaRegistrationState cdma_1x_registration_state_;
   MMModemCdmaRegistrationState cdma_evdo_registration_state_;
 
