@@ -91,8 +91,6 @@ int GetLogFlags() {
 void InitLog(int init_flags) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
-  settings.dcheck_state =
-      logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS;
   logging::InitLogging(settings);
   logging::SetLogMessageHandler(HandleMessage);
   SetLogFlags(init_flags);

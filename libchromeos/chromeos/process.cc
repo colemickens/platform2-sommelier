@@ -304,7 +304,7 @@ bool ProcessImpl::ResetPidByFile(const std::string& pid_file) {
     LOG(ERROR) << "Could not read pid file" << pid_file;
     return false;
   }
-  TrimWhitespaceASCII(contents, TRIM_TRAILING, &contents);
+  base::TrimWhitespaceASCII(contents, base::TRIM_TRAILING, &contents);
   int64 pid_int64 = 0;
   if (!base::StringToInt64(contents, &pid_int64)) {
     LOG(ERROR) << "Unexpected pid file contents";
