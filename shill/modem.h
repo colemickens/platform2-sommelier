@@ -19,8 +19,6 @@
 #include "shill/modem_info.h"
 #include "shill/refptr_types.h"
 
-struct mobile_provider_db;
-
 namespace shill {
 
 class ProxyFactory;

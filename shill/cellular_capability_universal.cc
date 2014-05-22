@@ -138,7 +138,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
-      home_provider_info_(NULL),
       resetting_(false),
       subscription_state_(kSubscriptionStateUnknown),
       reset_done_(false),

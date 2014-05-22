@@ -54,12 +54,4 @@ void MockModemInfo::SetMockMembers() {
   }
 }
 
-void MockModemInfo::SetProviderDB(const char *provider_db_path) {
-  mobile_provider_db *provider_db =
-      mobile_provider_open_db(provider_db_path);
-  ASSERT_TRUE(provider_db);
-  // Assumes ownership.
-  set_mobile_provider_db(provider_db);
-}
-
 }  // namespace shill

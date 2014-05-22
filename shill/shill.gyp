@@ -208,11 +208,6 @@
           'dependencies': [
             '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
           ],
-          'link_settings': {
-            'libraries': [
-              '-lmobile-provider'
-            ],
-          },
           'variables': {
             'deps': [
               'ModemManager',

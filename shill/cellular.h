@@ -22,8 +22,6 @@
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 
-struct mobile_provider_db;
-
 namespace shill {
 
 class CellularCapability;

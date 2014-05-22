@@ -18,13 +18,6 @@ using std::string;
 
 namespace shill {
 
-namespace {
-
-const char kMobileProviderDBPath[] =
-    "/usr/share/mobile-broadband-provider-info/serviceproviders.bfd";
-
-}  // namespace
-
 ModemInfo::ModemInfo(ControlInterface *control_interface,
                      EventDispatcher *dispatcher,
                      Metrics *metrics,
@@ -34,9 +27,7 @@ ModemInfo::ModemInfo(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
-      glib_(glib),
-      provider_db_path_(kMobileProviderDBPath),
-      provider_db_(NULL) {}
+      glib_(glib) {}
 
 ModemInfo::~ModemInfo() {
   Stop();
@@ -46,12 +37,6 @@ void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->glib(),
       manager_->storage_path());
-
-  // TODO(petkov): Consider initializing the mobile provider database lazily
-  // only if a GSM modem needs to be registered.
-  provider_db_ = mobile_provider_open_db(provider_db_path_.c_str());
-  PLOG_IF(WARNING, !provider_db_)
-      << "Unable to load mobile provider database: ";
 
   RegisterModemManager(new ModemManagerClassic(cromo::kCromoServiceName,
                                                cromo::kCromoServicePath,
@@ -64,9 +49,6 @@ void ModemInfo::Start() {
 
 void ModemInfo::Stop() {
   pending_activation_store_.reset();
-  if(provider_db_)
-    mobile_provider_close_db(provider_db_);
-  provider_db_ = NULL;
   modem_managers_.clear();
 }
 

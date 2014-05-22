@@ -82,10 +82,6 @@ class CellularCapabilityGSMTest : public testing::Test {
         dynamic_cast<DeviceMockAdaptor *>(cellular_->adaptor());
   }
 
-  void InitProviderDB() {
-    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
-  }
-
   void InvokeEnable(bool enable, Error *error,
                     const ResultCallback &callback, int timeout) {
     callback.Run(Error());

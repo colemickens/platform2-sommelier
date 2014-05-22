@@ -20,8 +20,6 @@
 #include "shill/glib.h"
 #include "shill/modem_info.h"
 
-struct mobile_provider_db;
-
 namespace shill {
 
 class DBusNameWatcher;

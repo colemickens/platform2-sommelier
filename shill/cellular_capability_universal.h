@@ -417,7 +417,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   Cellular::Operator serving_operator_;
   std::string spn_;
   std::string operator_id_;
-  mobile_provider *home_provider_info_;
   std::string desired_network_;
 
   // Properties.

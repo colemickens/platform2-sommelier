@@ -11,8 +11,6 @@
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-struct mobile_provider_db;
-
 namespace shill {
 
 class ControlInterface;
@@ -46,7 +44,6 @@ class ModemInfo {
   PendingActivationStore *pending_activation_store() const {
     return pending_activation_store_.get();
   }
-  mobile_provider_db *provider_db() const { return provider_db_; }
 
  protected:
   // Write accessors for unit-tests.
@@ -67,9 +64,6 @@ class ModemInfo {
   }
   void set_pending_activation_store(
       PendingActivationStore *pending_activation_store);
-  void set_mobile_provider_db(mobile_provider_db *provider_db) {
-    provider_db_ = provider_db;
-  }
 
  private:
   friend class ModemInfoTest;
@@ -90,8 +84,6 @@ class ModemInfo {
 
   // Post-payment activation state of the modem.
   scoped_ptr<PendingActivationStore> pending_activation_store_;
-  std::string provider_db_path_;  // For testing.
-  mobile_provider_db *provider_db_;  // Database instance owned by |this|.
 
   DISALLOW_COPY_AND_ASSIGN(ModemInfo);
 };

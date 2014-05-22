@@ -197,10 +197,6 @@ class CellularTest : public testing::Test {
     device_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
-  void InitProviderDB() {
-    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
-  }
-
   void InvokeEnable(bool enable, Error *error,
                     const ResultCallback &callback, int timeout) {
     callback.Run(Error());
@@ -678,7 +674,6 @@ TEST_F(CellularTest, StartCDMARegister) {
 }
 
 TEST_F(CellularTest, StartGSMRegister) {
-  InitProviderDB();
   SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));

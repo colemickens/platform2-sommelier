@@ -40,8 +40,6 @@ class ModemInfoTest : public Test {
   }
 
  protected:
-  static const char kTestMobileProviderDBPath[];
-
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
@@ -51,32 +49,21 @@ class ModemInfoTest : public Test {
   ModemInfo modem_info_;
 };
 
-const char ModemInfoTest::kTestMobileProviderDBPath[] =
-    "provider_db_unittest.bfd";
-
 TEST_F(ModemInfoTest, StartStop) {
   EXPECT_EQ(0, modem_info_.modem_managers_.size());
   EXPECT_CALL(*dbus_service_proxy_,
               GetNameOwner("org.chromium.ModemManager", _, _, _));
   EXPECT_CALL(*dbus_service_proxy_,
               GetNameOwner("org.freedesktop.ModemManager1", _, _, _));
-  modem_info_.provider_db_path_ = kTestMobileProviderDBPath;
   modem_info_.Start();
   EXPECT_EQ(2, modem_info_.modem_managers_.size());
-  EXPECT_TRUE(modem_info_.provider_db_);
-  EXPECT_TRUE(mobile_provider_lookup_by_name(modem_info_.provider_db_, "AT&T"));
-  EXPECT_FALSE(mobile_provider_lookup_by_name(modem_info_.provider_db_, "xyz"));
   modem_info_.Stop();
   EXPECT_EQ(0, modem_info_.modem_managers_.size());
-  EXPECT_FALSE(modem_info_.provider_db_);
 }
 
 TEST_F(ModemInfoTest, RegisterModemManager) {
   static const char kService[] = "some.dbus.service";
   EXPECT_CALL(*dbus_service_proxy_, GetNameOwner(kService, _, _, _));
-  // Passes ownership of the database.
-  modem_info_.provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
-  EXPECT_TRUE(modem_info_.provider_db_);
   modem_info_.RegisterModemManager(
       new ModemManagerClassic(kService, "/dbus/service/path", &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());

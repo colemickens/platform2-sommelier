@@ -37,10 +37,6 @@ class MockModemInfo : public ModemInfo {
   // The following are always replaced by mocks: pending_activation_store.
   void SetMockMembers();
 
-  // Create a new provider_db and set it in ModemInfo.
-  // ModemInfo takes ownership.
-  void SetProviderDB(const char *provider_db_path);
-
   // Accessors for mock objects
   MockPendingActivationStore* mock_pending_activation_store() const {
     return mock_pending_activation_store_;
