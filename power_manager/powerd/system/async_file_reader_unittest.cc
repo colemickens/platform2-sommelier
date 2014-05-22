@@ -43,7 +43,7 @@ void CreateFile(const base::FilePath& path, size_t total_size) {
 
   // Write the contents to file and make sure the right size was written.
   EXPECT_EQ(total_size,
-            file_util::WriteFile(path, file_contents.data(), total_size));
+            base::WriteFile(path, file_contents.data(), total_size));
 }
 
 // When testing a file read where |file size| > |initial read size|, this is the

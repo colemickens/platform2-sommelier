@@ -354,7 +354,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     base::FilePath path(kWakeupCountPath);
     std::string buf;
     if (base::ReadFileToString(path, &buf)) {
-      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+      base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
       if (base::StringToUint64(buf, wakeup_count))
         return true;
 
@@ -367,7 +367,7 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
 
   virtual void SetSuspendAnnounced(bool announced) OVERRIDE {
     if (announced) {
-      if (file_util::WriteFile(daemon_->suspend_announced_path_, NULL, 0) < 0) {
+      if (base::WriteFile(daemon_->suspend_announced_path_, NULL, 0) < 0) {
         PLOG(ERROR) << "Couldn't create "
                     << daemon_->suspend_announced_path_.value();
       }
@@ -657,7 +657,7 @@ void Daemon::PrepareForSuspend() {
   created_suspended_state_file_ = false;
   const base::FilePath kStatePath(kSuspendedStatePath);
   if (!base::PathExists(kStatePath)) {
-    if (file_util::WriteFile(kStatePath, NULL, 0) == 0)
+    if (base::WriteFile(kStatePath, NULL, 0) == 0)
       created_suspended_state_file_ = true;
     else
       LOG(WARNING) << "Unable to create " << kSuspendedStatePath;

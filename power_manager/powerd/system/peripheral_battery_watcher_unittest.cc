@@ -84,7 +84,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 
  protected:
   void WriteFile(const base::FilePath& path, const string& str) {
-    ASSERT_EQ(str.size(), file_util::WriteFile(path, str.data(), str.size()));
+    ASSERT_EQ(str.size(), base::WriteFile(path, str.data(), str.size()));
   }
 
   // Temporary directory mimicking a /sys directory containing a set of sensor

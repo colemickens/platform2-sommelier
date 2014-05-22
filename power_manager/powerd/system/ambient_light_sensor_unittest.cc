@@ -81,7 +81,7 @@ class AmbientLightSensorTest : public ::testing::Test {
   void WriteLux(int lux) {
     std::string lux_string = base::IntToString(lux);
     int bytes_written =
-        file_util::WriteFile(data_file_, lux_string.data(), lux_string.size());
+        base::WriteFile(data_file_, lux_string.data(), lux_string.size());
     CHECK(bytes_written == static_cast<int>(lux_string.size()))
         << "Wrote " << bytes_written << " byte(s) instead of "
         << lux_string.size() << " to " << data_file_.value();

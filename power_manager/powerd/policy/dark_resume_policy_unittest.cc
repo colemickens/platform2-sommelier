@@ -86,8 +86,8 @@ class DarkResumePolicyTest : public ::testing::Test {
     for (map<string, string>::iterator iter = values.begin();
          iter != values.end();
          ++iter) {
-      file_util::WriteFile(path_.Append(iter->first),
-                           iter->second.c_str(), iter->second.length());
+      base::WriteFile(path_.Append(iter->first),
+                      iter->second.c_str(), iter->second.length());
     }
 
     ASSERT_TRUE(power_supply_->RefreshImmediately());

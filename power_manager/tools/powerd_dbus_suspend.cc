@@ -80,9 +80,9 @@ int main(int argc, char* argv[]) {
   if (FLAGS_wakeup_timeout) {
     std::string alarm_string =
         base::IntToString(time(NULL) + FLAGS_wakeup_timeout);
-    CHECK(file_util::WriteFile(base::FilePath(kRtcWakeAlarmPath),
-                               alarm_string.c_str(),
-                               alarm_string.length()));
+    CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath),
+                          alarm_string.c_str(),
+                          alarm_string.length()));
   }
 
   powerd_proxy->ConnectToSignal(

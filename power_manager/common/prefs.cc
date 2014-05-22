@@ -109,7 +109,7 @@ void Prefs::GetPrefStrings(const std::string& name,
     else if (!base::ReadFileToString(path, &buf))
       continue;
 
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
     PrefReadResult result;
     result.path = path.value();
     result.value = buf;
@@ -200,7 +200,7 @@ void Prefs::WritePrefs() {
     const std::string& name = it->first;
     const std::string& value = it->second;
     base::FilePath path = pref_paths_[0].Append(name);
-    if (file_util::WriteFile(path, value.data(), value.size()) == -1)
+    if (base::WriteFile(path, value.data(), value.size()) == -1)
       PLOG(ERROR) << "Failed to write " << path.AsUTF8Unsafe();
   }
   prefs_to_write_.clear();

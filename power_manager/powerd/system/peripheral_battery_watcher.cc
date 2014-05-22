@@ -66,7 +66,7 @@ void PeripheralBatteryWatcher::GetBatteryList(
 
     std::string buf;
     base::ReadFileToString(scope_path, &buf);
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
     if (buf != "Device")
       continue;
 
@@ -94,7 +94,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
 
     std::string model_name;
     base::ReadFileToString(model_name_path, &model_name);
-    TrimWhitespaceASCII(model_name, TRIM_TRAILING, &model_name);
+    base::TrimWhitespaceASCII(model_name, base::TRIM_TRAILING, &model_name);
 
     AsyncFileReader* reader = new AsyncFileReader;
     battery_readers_.push_back(reader);
@@ -132,7 +132,7 @@ void PeripheralBatteryWatcher::ReadCallback(const std::string& path,
                                             const std::string& model_name,
                                             const std::string& data) {
   std::string trimmed_data;
-  TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
+  base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
   int level = -1;
   if (base::StringToInt(trimmed_data, &level)) {
     SendBatteryStatus(path, model_name, level);

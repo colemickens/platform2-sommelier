@@ -144,8 +144,8 @@ class PowerSupplyTest : public ::testing::Test {
 
   void WriteValue(const std::string& relative_filename,
                   const std::string& value) {
-    CHECK(file_util::WriteFile(path_.Append(relative_filename),
-                               value.c_str(), value.length()));
+    CHECK(base::WriteFile(path_.Append(relative_filename),
+                          value.c_str(), value.length()));
   }
 
   void WriteDoubleValue(const std::string& relative_filename, double value) {

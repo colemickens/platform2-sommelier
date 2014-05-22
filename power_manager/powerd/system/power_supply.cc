@@ -64,7 +64,7 @@ bool ReadAndTrimString(const base::FilePath& directory,
   if (!base::ReadFileToString(directory.Append(filename), out))
     return false;
 
-  TrimWhitespaceASCII(*out, TRIM_TRAILING, out);
+  base::TrimWhitespaceASCII(*out, base::TRIM_TRAILING, out);
   return true;
 }
 
@@ -497,7 +497,7 @@ void PowerSupply::GetPowerSupplyPaths() {
     if (base::PathExists(scope_path)) {
       std::string buf;
       base::ReadFileToString(scope_path, &buf);
-      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+      base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
       if (buf == "Device") {
         VLOG(1) << "Skipping Power supply " << path.value()
                 << " with scope: " << buf;
@@ -506,7 +506,7 @@ void PowerSupply::GetPowerSupplyPaths() {
     }
     std::string buf;
     if (base::ReadFileToString(path.Append("type"), &buf)) {
-      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+      base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
       // Only look for battery / line power paths if they haven't been found
       // already.  This makes the assumption that they don't change (but battery
       // path can disappear if removed).  So this code should only be run once

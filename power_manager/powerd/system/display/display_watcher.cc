@@ -39,7 +39,7 @@ bool DeviceIsConnected(const base::FilePath& drm_device_dir) {
     return false;
 
   // Trim whitespace to deal with trailing newlines.
-  TrimWhitespaceASCII(status, TRIM_TRAILING, &status);
+  base::TrimWhitespaceASCII(status, base::TRIM_TRAILING, &status);
   return status == DisplayWatcher::kDrmStatusConnected;
 }
 

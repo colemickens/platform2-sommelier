@@ -32,7 +32,7 @@ bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64* level) {
     return false;
   }
 
-  TrimWhitespaceASCII(level_str, TRIM_TRAILING, &level_str);
+  base::TrimWhitespaceASCII(level_str, base::TRIM_TRAILING, &level_str);
   if (!base::StringToInt64(level_str, level)) {
     LOG(ERROR) << "Unable to parse brightness \"" << level_str << "\" from "
                << path.value();
@@ -45,7 +45,7 @@ bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64* level) {
 // Writes |level| to |path|. Returns false on failure.
 bool WriteBrightnessLevelToFile(const base::FilePath& path, int64 level) {
   std::string buf = base::Int64ToString(level);
-  if (file_util::WriteFile(path, buf.data(), buf.size()) == -1) {
+  if (base::WriteFile(path, buf.data(), buf.size()) == -1) {
     LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
                << path.value();
     return false;

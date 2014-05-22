@@ -113,7 +113,7 @@ bool DarkResumePolicy::CurrentlyInDarkResume() {
     PLOG(ERROR) << "Unable to read " << kDarkResumeStatePath;
     return false;
   }
-  TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+  base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
   uint64 value = 0;
   return base::StringToUint64(buf, &value) && value;
 }
@@ -224,7 +224,7 @@ void DarkResumePolicy::SetStates(const std::vector<base::FilePath>& files,
                                  const std::string& state) {
   for (std::vector<base::FilePath>::const_iterator iter = files.begin();
        iter != files.end(); ++iter) {
-    file_util::WriteFile(*iter, state.c_str(), state.length());
+    base::WriteFile(*iter, state.c_str(), state.length());
   }
 }
 

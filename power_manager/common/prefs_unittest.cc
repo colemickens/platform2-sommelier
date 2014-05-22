@@ -192,13 +192,13 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
       // This way, each path's pref file will have a unique value.
       std::string int_string = base::Int64ToString(kIntTestValue + i);
       EXPECT_EQ(int_string.size(),
-                file_util::WriteFile(path.Append(kIntTestFileName),
+                base::WriteFile(path.Append(kIntTestFileName),
                     int_string.data(), int_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
 
       std::string double_string = base::DoubleToString(kDoubleTestValue + i);
       EXPECT_EQ(double_string.size(),
-                file_util::WriteFile(path.Append(kDoubleTestFileName),
+                base::WriteFile(path.Append(kDoubleTestFileName),
                     double_string.data(), double_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
     }
@@ -254,11 +254,11 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
       double_string = base::DoubleToString(kDoubleTestValue);
     }
     EXPECT_EQ(int_string.size(),
-              file_util::WriteFile(path.Append(kIntTestFileName),
+              base::WriteFile(path.Append(kIntTestFileName),
                   int_string.data(), int_string.size()));
     EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
     EXPECT_EQ(double_string.size(),
-              file_util::WriteFile(path.Append(kDoubleTestFileName),
+              base::WriteFile(path.Append(kDoubleTestFileName),
                   double_string.data(), double_string.size()));
     EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
   }
@@ -281,12 +281,12 @@ TEST_F(PrefsTest, WatchPrefs) {
   TestPrefsObserver observer(&prefs_);
   ASSERT_TRUE(prefs_.Init(paths_));
   EXPECT_EQ(strlen(kPrefValue),
-            file_util::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
+            base::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 
   // Write to the file again.
   EXPECT_EQ(strlen(kPrefValue),
-            file_util::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
+            base::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 
   // Remove the file.

@@ -88,7 +88,7 @@ void AmbientLightSensor::ReadAls() {
 
 void AmbientLightSensor::ReadCallback(const std::string& data) {
   std::string trimmed_data;
-  TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
+  base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
   int value = 0;
   if (base::StringToInt(trimmed_data, &value)) {
     lux_value_ = value;

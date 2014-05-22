@@ -37,20 +37,20 @@ class InternalBacklightTest : public ::testing::Test {
 
     std::string str = base::StringPrintf("%" PRId64 "\n", brightness);
     ASSERT_EQ(str.size(),
-              file_util::WriteFile(
+              base::WriteFile(
                   path.Append(InternalBacklight::kBrightnessFilename),
                   str.data(), str.size()));
 
     str = base::StringPrintf("%" PRId64 "\n", max_brightness);
     ASSERT_EQ(str.size(),
-              file_util::WriteFile(
+              base::WriteFile(
                   path.Append(InternalBacklight::kMaxBrightnessFilename),
                   str.data(), str.size()));
 
     if (actual_brightness >= 0) {
       str = base::StringPrintf("%" PRId64 "\n", actual_brightness);
       ASSERT_EQ(str.size(),
-                file_util::WriteFile(
+                base::WriteFile(
                     path.Append(InternalBacklight::kActualBrightnessFilename),
                     str.data(), str.size()));
     }
@@ -67,7 +67,7 @@ class InternalBacklightTest : public ::testing::Test {
       return -1;
     }
     int64 level = 0;
-    TrimWhitespaceASCII(data, TRIM_TRAILING, &data);
+    base::TrimWhitespaceASCII(data, base::TRIM_TRAILING, &data);
     if (!base::StringToInt64(data, &level)) {
       LOG(ERROR) << "Unable to parse \"" << level << "\" from " << file.value();
       return -1;

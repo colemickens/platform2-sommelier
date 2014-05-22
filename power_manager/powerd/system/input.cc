@@ -380,7 +380,7 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   base::FilePath path = base::FilePath(kSysClassInputPath).
       Append(name).Append("device/power/wakeup");
   const char* state = enabled ? kWakeupEnabled : kWakeupDisabled;
-  if (!file_util::WriteFile(path, state, strlen(state))) {
+  if (!base::WriteFile(path, state, strlen(state))) {
     LOG(ERROR) << "Failed to write to " << path.value();
     return false;
   }
@@ -469,7 +469,7 @@ bool Input::AddWakeInput(const std::string& name) {
                  << device_name_path.value();
     return false;
   }
-  TrimWhitespaceASCII(input_name, TRIM_TRAILING, &input_name);
+  base::TrimWhitespaceASCII(input_name, base::TRIM_TRAILING, &input_name);
   WakeupMap::iterator iter = wakeup_inputs_map_.find(input_name);
   if (iter == wakeup_inputs_map_.end()) {
     // Not on the list of wakeup input devices

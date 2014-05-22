@@ -13,8 +13,6 @@ int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
-  settings.dcheck_state =
-      logging::ENABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS;
   logging::InitLogging(settings);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
