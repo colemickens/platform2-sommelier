@@ -28,7 +28,7 @@ typedef vector<string> Strings;
 // Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
 // string of |value| otherwise.
 string EnsureUTF8String(const string& value) {
-  if (IsStringUTF8(value))
+  if (base::IsStringUTF8(value))
     return value;
 
   gchar* base64_value = g_base64_encode(

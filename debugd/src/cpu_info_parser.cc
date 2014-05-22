@@ -35,7 +35,7 @@ bool CPUInfoParser::GetKey(const std::string& key, std::string* value) {
     base::SplitString(line, kCPUInfoKeyValueDelimiter, &tokens);
     if (!tokens.size())
       continue;
-    TrimWhitespace(tokens[0], TRIM_ALL, &tokens[0]);
+    base::TrimWhitespace(tokens[0], base::TRIM_ALL, &tokens[0]);
     if (tokens[0] == key) {
       *value = tokens[1];
       return true;

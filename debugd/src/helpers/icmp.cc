@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
   if (args.size() != 1)
     Die(kHelpMessage);
   string ip_addr = args[0];
-  if (!ContainsOnlyChars(ip_addr, kIPv4v6Chars))
+  if (!base::ContainsOnlyChars(ip_addr, kIPv4v6Chars))
     Die("not ip address");
 
   // Construct command.
