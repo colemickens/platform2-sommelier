@@ -210,6 +210,10 @@ class Platform2(object):
     except subprocess.CalledProcessError:
       raise AssertionError('Error running: %s'
                            % ' '.join(map(repr, gyp_args)))
+    except OSError:
+      raise AssertionError('Error running %s; make sure depot_tools is mounted.'
+                           ' It must be in your $PATH when you run `cros_sdk`.'
+                           % (gyp_args[0]))
 
   def compile(self, args):
     """Runs the compile step of the Platform2 build.
@@ -236,6 +240,10 @@ class Platform2(object):
     except subprocess.CalledProcessError:
       raise AssertionError('Error running: %s'
                            % ' '.join(map(repr, ninja_args)))
+    except OSError:
+      raise AssertionError('Error running %s; make sure depot_tools is mounted.'
+                           ' It must be in your $PATH when you run `cros_sdk`.'
+                           % (ninja_args[0]))
 
   def deviterate(self, args):
     """Runs the configure and compile steps of the Platform2 build.
