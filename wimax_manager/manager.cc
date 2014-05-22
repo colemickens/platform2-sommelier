@@ -6,7 +6,7 @@
 
 #include <fcntl.h>
 
-#include <base/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>
@@ -158,7 +158,7 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
     return false;
   }
 
-  file_util::ScopedFD scoped_fd(&fd);
+  base::ScopedFD scoped_fd(fd);
   google::protobuf::io::FileInputStream file_stream(fd);
 
   scoped_ptr<Config> config(new(std::nothrow) Config());
