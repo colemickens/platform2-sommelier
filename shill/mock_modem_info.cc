@@ -4,8 +4,6 @@
 
 #include "shill/mock_modem_info.h"
 
-#include <mobile_provider.h>
-
 namespace shill {
 
 MockModemInfo::MockModemInfo() :

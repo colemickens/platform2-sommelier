@@ -11,7 +11,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
-#include <mobile_provider.h>
 
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"

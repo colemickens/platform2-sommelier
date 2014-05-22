@@ -17,7 +17,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <mobile_provider.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_bearer.h"

@@ -6,7 +6,6 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
-#include <mobile_provider.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
