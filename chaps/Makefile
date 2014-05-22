@@ -28,7 +28,7 @@ BUILD_PAM_MODULE ?= $(LINUX_BUILD)
 LIB_DIR ?= /usr/lib
 PAM_MODULE_DIR ?= /lib/security
 
-BASE_VER ?= 242728
+BASE_VER ?= 271506
 PC_DEPS = dbus-c++-1 protobuf openssl \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))

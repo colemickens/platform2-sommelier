@@ -83,7 +83,7 @@ bool IsolateCredentialManager::SaveIsolateCredential(
 
   // Write the isolate credential file.
   const FilePath isolate_cred_file = FilePath(kIsolateFilePath).Append(user);
-  int bytes_written = file_util::WriteFile(
+  int bytes_written = base::WriteFile(
       isolate_cred_file,
       reinterpret_cast<const char *>(isolate_credential.const_data()),
       kIsolateCredentialBytes);

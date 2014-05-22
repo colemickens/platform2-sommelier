@@ -61,7 +61,7 @@ bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
                << " which already exists";
     return false;
   }
-  if (!file_util::CreateDirectory(token_path)) {
+  if (!base::CreateDirectory(token_path)) {
     LOG(ERROR) << "Failed to create " << token_path.value();
     return false;
   }
@@ -91,8 +91,8 @@ bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
   ClearString(&salt_string);
 
   FilePath salt_file = token_path.Append(kSaltFileName);
-  int bytes_written = file_util::WriteFile(
-      salt_file, reinterpret_cast<const char *>(salt.const_data()), kSaltBytes);
+  int bytes_written = base::WriteFile(
+      salt_file, reinterpret_cast<const char*>(salt.const_data()), kSaltBytes);
   if (bytes_written != static_cast<int>(kSaltBytes)) {
     LOG(ERROR) << "Failed to write salt file in token directory "
                << token_path.value();
