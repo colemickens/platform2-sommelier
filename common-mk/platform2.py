@@ -3,6 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Wrapper for building the Chromium OS platform.
+
+Takes care of running gyp/ninja/etc... with all the right values.
+"""
+
 import argparse
 import glob
 import os
@@ -18,6 +23,8 @@ _BASE_VER = '271506'
 
 
 class Platform2(object):
+  """Main builder logic for platform2"""
+
   def __init__(self, use_flags, board=None, host=False, libdir=None,
                incremental=True, verbose=False, enable_tests=False):
     self.board = board
@@ -52,19 +59,16 @@ class Platform2(object):
 
   def get_src_dir(self):
     """Return the path to build tools and common GYP files"""
-
     return os.path.realpath(os.path.dirname(__file__))
 
   def get_platform2_root(self):
     """Return the path to src/platform2"""
-
     return os.path.dirname(self.get_src_dir())
 
   def get_platform_root(self):
     """Return the path to src/platform"""
-
     return os.path.normpath(os.path.join(
-        self.get_src_dir(), '..', '..', 'platform'));
+        self.get_src_dir(), '..', '..', 'platform'))
 
   def get_buildroot(self):
     """Return the path to the folder where build artifacts are located."""
@@ -81,7 +85,6 @@ class Platform2(object):
 
   def get_products_path(self):
     """Return the path to the folder where build product are located."""
-
     return os.path.join(self.get_buildroot(), 'out/Default')
 
   def get_portageq_envvars(self, varnames, board = None):
@@ -92,7 +95,7 @@ class Platform2(object):
     if board is None and not self.host:
       board = self.board
 
-    portageq_bin = 'portageq' if not board else 'portageq-' + board
+    portageq_bin = 'portageq' if not board else 'portageq-%s' % board
     cmd = [portageq_bin, 'envvar', '-v']
     cmd += varnames
 
@@ -100,9 +103,9 @@ class Platform2(object):
       p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       output, errors = p.communicate()
     except UnboundLocalError:
-      raise AssertionError('Error running ' + portageq_bin)
+      raise AssertionError('Error running %s' % portageq_bin)
     except OSError:
-      raise AssertionError('Error running portageq: ' + errors)
+      raise AssertionError('Error running portageq: %s' % errors)
 
     output_lines = [x for x in output.splitlines() if x]
     output_items = [x.split('=', 1) for x in output_lines]
@@ -112,36 +115,36 @@ class Platform2(object):
 
   def get_platform2_use_flags(self):
     """Returns the set of USE flags set for the Platform2 package."""
-    equery_bin = 'equery' if not self.board else 'equery-' + self.board
+    equery_bin = 'equery' if not self.board else 'equery-%s' % self.board
     cmd = [equery_bin, 'u', 'platform2']
 
     try:
       p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       output, errors = p.communicate()
     except UnboundLocalError:
-      raise AssertionError('Error running ' + equery_bin)
+      raise AssertionError('Error running %s' % equery_bin)
     except OSError:
-      raise AssertionError('Error running equery: ' + errors)
+      raise AssertionError('Error running equery: %s' % errors)
 
     return set([x for x in output.splitlines() if x])
 
   def get_build_environment(self):
     """Returns a dict containing environment variables we will use to run GYP.
 
-    We do this to set the various CC/CXX/AR names for the target board."""
-
+    We do this to set the various CC/CXX/AR names for the target board.
+    """
     board_env = self.get_portageq_envvars(['CHOST', 'AR', 'CC', 'CXX'])
 
     tool_names = {
-      'AR': 'ar',
-      'CC': 'gcc',
-      'CXX': 'g++',
+        'AR': 'ar',
+        'CC': 'gcc',
+        'CXX': 'g++',
     }
 
     env = os.environ.copy()
     for var, tool in tool_names.items():
-      env[var + '_target'] = board_env[var] if board_env[var] else \
-                             board_env['CHOST'] + '-' + tool
+      env['%s_target' % var] = (board_env[var] if board_env[var] else \
+                                '%s-%s' % (board_env['CHOST'], tool))
 
     return env
 
@@ -150,22 +153,21 @@ class Platform2(object):
 
     Each project spits out a file whilst building: we return a glob of them
     so we can install/test those projects or reset between compiles to ensure
-    components that are no longer part of the build don't get installed."""
-
+    components that are no longer part of the build don't get installed.
+    """
     return glob.glob(os.path.join(self.get_products_path(),
                                   'gen/components_*'))
 
   def use(self, flag):
     """Returns a boolean describing whether or not a given USE flag is set."""
-
     return flag in self.use_flags
 
-  def configure(self, args):
+  def configure(self, _args):
     """Runs the configure step of the Platform2 build.
 
     Creates the build root if it doesn't already exists. Generates flags to
-    run GYP with, and then runs GYP."""
-
+    run GYP with, and then runs GYP.
+    """
     if not os.path.isdir(self.get_buildroot()):
       os.makedirs(self.get_buildroot())
 
@@ -173,34 +175,34 @@ class Platform2(object):
       shutil.rmtree(self.get_products_path())
 
     gyp_files = {
-      'platform': os.path.join(self.get_src_dir(), 'platform.gyp'),
-      'common': os.path.join(self.get_src_dir(), 'common.gypi')
+        'platform': os.path.join(self.get_src_dir(), 'platform.gyp'),
+        'common': os.path.join(self.get_src_dir(), 'common.gypi')
     }
 
     # The common root folder of platform/ and platform2/.
     # Used as (DEPTH) variable in specific project .gyp files.
-    src_root = os.path.normpath(os.path.join(self.get_src_dir(), '..', '..'));
+    src_root = os.path.normpath(os.path.join(self.get_src_dir(), '..', '..'))
 
     # Do NOT pass the board name into GYP. If you think you need to so, you're
     # probably doing it wrong.
     gyp_args = [
-      'gyp',
-      gyp_files['platform'],
-      '--format=ninja',
-      '--include=' + gyp_files['common'],
-      '--depth=' + src_root,
-      '--toplevel-dir=' + self.get_platform2_root(),
-      '--generator-output=' + self.get_buildroot(),
-      '-Dpkg-config=' + self.pkgconfig,
-      '-Dsysroot=' + self.sysroot,
-      '-Dlibdir=' + self.libdir,
-      '-Dplatform_root=' + self.get_platform_root(),
-      '-Dplatform2_root=' + self.get_platform2_root(),
-      '-Dlibbase_ver=' + os.environ.get('BASE_VER', _BASE_VER),
-      '-Dclang_syntax=' + os.environ.get('CROS_WORKON_CLANG', ''),
-      '-Dexternal_cflags=' + os.environ.get('CFLAGS', ''),
-      '-Dexternal_cxxflags=' + os.environ.get('CXXFLAGS', ''),
-      '-Dexternal_ldflags=' + os.environ.get('LDFLAGS', ''),
+        'gyp',
+        gyp_files['platform'],
+        '--format=ninja',
+        '--include=%s' % gyp_files['common'],
+        '--depth=%s' % src_root,
+        '--toplevel-dir=%s' % self.get_platform2_root(),
+        '--generator-output=%s' % self.get_buildroot(),
+        '-Dpkg-config=%s' % self.pkgconfig,
+        '-Dsysroot=%s' % self.sysroot,
+        '-Dlibdir=%s' % self.libdir,
+        '-Dplatform_root=%s' % self.get_platform_root(),
+        '-Dplatform2_root=%s' % self.get_platform2_root(),
+        '-Dlibbase_ver=%s' % os.environ.get('BASE_VER', _BASE_VER),
+        '-Dclang_syntax=%s' % os.environ.get('CROS_WORKON_CLANG', ''),
+        '-Dexternal_cflags=%s' % os.environ.get('CFLAGS', ''),
+        '-Dexternal_cxxflags=%s' % os.environ.get('CXXFLAGS', ''),
+        '-Dexternal_ldflags=%s' % os.environ.get('LDFLAGS', ''),
     ]
     gyp_args += ['-DUSE_%s=1' % (use_flag,) for use_flag in self.use_flags]
 
@@ -220,8 +222,8 @@ class Platform2(object):
 
     Removes any existing component markers that may exist (so we don't run
     tests/install for projects that have been disabled since the last
-    build). Builds arguments for running Ninja and then runs Ninja."""
-
+    build). Builds arguments for running Ninja and then runs Ninja.
+    """
     for component in self.get_components_glob():
       os.remove(component)
 
@@ -249,13 +251,15 @@ class Platform2(object):
     """Runs the configure and compile steps of the Platform2 build.
 
     This is the default action, to allow easy iterative testing of changes
-    as a developer."""
-
+    as a developer.
+    """
     self.configure([])
     self.compile(args)
 
 
 class _ParseStringSetAction(argparse.Action):
+  """Helper for turning a string argument into a list"""
+
   def __call__(self, parser, namespace, values, option_string=None):
     setattr(namespace, self.dest, set(values.split()))
 
