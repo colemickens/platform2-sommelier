@@ -64,7 +64,7 @@ TEST_F(DHCPProviderTest, DestroyLease) {
       DHCPProvider::kDHCPCDPathFormatLease,
       kDeviceName));
   EXPECT_TRUE(base::CreateDirectory(lease_file.DirName()));
-  EXPECT_EQ(0, file_util::WriteFile(lease_file, "", 0));
+  EXPECT_EQ(0, base::WriteFile(lease_file, "", 0));
   EXPECT_TRUE(base::PathExists(lease_file));
   provider_->DestroyLease(kDeviceName);
   EXPECT_FALSE(base::PathExists(lease_file));

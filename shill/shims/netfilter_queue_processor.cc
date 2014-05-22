@@ -19,7 +19,7 @@
 
 #include <deque>
 
-#include <base/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -284,7 +284,7 @@ uint32_t NetfilterQueueProcessor::GetNetmaskForDevice(int device_index) {
     return INADDR_NONE;
   }
 
-  file_util::ScopedFD scoped_fd(&socket_fd);
+  base::ScopedFD scoped_fd(socket_fd);
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));

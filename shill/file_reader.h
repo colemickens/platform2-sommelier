@@ -9,7 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
-#include <base/file_util.h>
+#include <base/files/scoped_file.h>
 
 namespace shill {
 
@@ -34,7 +34,7 @@ class FileReader {
 
  private:
   // The file to read.
-  file_util::ScopedFILE file_;
+  base::ScopedFILE file_;
 
   DISALLOW_COPY_AND_ASSIGN(FileReader);
 };

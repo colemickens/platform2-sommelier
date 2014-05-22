@@ -471,7 +471,7 @@ bool RoutingTable::FlushCache() {
   SLOG(Route, 2) << __func__;
 
   for (size_t i = 0; i < arraysize(kPaths); ++i) {
-    if (file_util::WriteFile(FilePath(kPaths[i]), "-1", 2) != 2) {
+    if (base::WriteFile(FilePath(kPaths[i]), "-1", 2) != 2) {
       LOG(ERROR) << base::StringPrintf("Cannot write to route flush file %s",
                                        kPaths[i]);
       ret = false;

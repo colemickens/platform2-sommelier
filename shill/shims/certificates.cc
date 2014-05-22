@@ -40,10 +40,9 @@ ByteString Certificates::ConvertDERToPEM(const ByteString &der_cert) {
 // static
 bool Certificates::Write(const ByteString &cert,
                          const base::FilePath &certfile) {
-  if (file_util::WriteFile(certfile,
-                           reinterpret_cast<const char *>(cert.GetConstData()),
-                           cert.GetLength()) !=
-      static_cast<int>(cert.GetLength())) {
+  if (base::WriteFile(certfile,
+                      reinterpret_cast<const char *>(cert.GetConstData()),
+                      cert.GetLength()) != static_cast<int>(cert.GetLength())) {
     base::DeleteFile(certfile, false);
     LOG(ERROR) << "Unable to save certificate to a file: " << certfile.value();
     return false;

@@ -277,7 +277,7 @@ bool OpenVPNDriver::WriteConfigFile(
   string contents = JoinOptions(options, '\n');
   contents.push_back('\n');
   if (!base::CreateTemporaryFileInDir(openvpn_config_directory_, config_file) ||
-      file_util::WriteFile(*config_file, contents.data(), contents.size()) !=
+      base::WriteFile(*config_file, contents.data(), contents.size()) !=
           static_cast<int>(contents.size())) {
     LOG(ERROR) << "Unable to setup OpenVPN config file.";
     return false;
@@ -633,9 +633,8 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
         args()->LookupString(kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
       if (!base::CreateTemporaryFile(&tls_auth_file_) ||
-          file_util::WriteFile(
-              tls_auth_file_, contents.data(), contents.size()) !=
-          static_cast<int>(contents.size())) {
+          base::WriteFile(tls_auth_file_, contents.data(), contents.size()) !=
+              static_cast<int>(contents.size())) {
         Error::PopulateAndLog(
             error, Error::kInternalError, "Unable to setup tls-auth file.");
         return;

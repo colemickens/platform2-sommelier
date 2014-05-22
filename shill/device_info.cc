@@ -23,6 +23,7 @@
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/scoped_file.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -820,7 +821,7 @@ bool DeviceInfo::CreateTunnelInterface(string *interface_name) const {
     PLOG(ERROR) << "failed to open " << kTunDeviceName;
     return false;
   }
-  file_util::ScopedFD scoped_fd(&fd);
+  base::ScopedFD scoped_fd(fd);
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));

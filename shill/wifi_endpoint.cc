@@ -580,7 +580,7 @@ void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
         break;
       }
       string s(ie, ie + element_length);
-      if (IsStringASCII(s)) {
+      if (base::IsStringASCII(s)) {
         switch (element_type) {
           case IEEE_80211::kWPSElementManufacturer:
             vendor_information->wps_manufacturer = s;

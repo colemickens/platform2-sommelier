@@ -323,9 +323,9 @@ void OpenVPNDriverTest::SetupLSBRelease() {
       "CHROMEOS_RELEASE_VERSION=2202.0\n";
   EXPECT_TRUE(base::CreateTemporaryFile(&lsb_release_file_));
   EXPECT_EQ(arraysize(kLSBReleaseContents),
-            file_util::WriteFile(lsb_release_file_,
-                                 kLSBReleaseContents,
-                                 arraysize(kLSBReleaseContents)));
+            base::WriteFile(lsb_release_file_,
+                            kLSBReleaseContents,
+                            arraysize(kLSBReleaseContents)));
   EXPECT_EQ(OpenVPNDriver::kLSBReleaseFile, driver_->lsb_release_file_.value());
   driver_->lsb_release_file_ = lsb_release_file_;
 }
@@ -1396,7 +1396,7 @@ TEST_F(OpenVPNDriverTest, InitEnvironment) {
   EXPECT_EQ("IV_PLAT=Chromium OS", env[0]);
   EXPECT_EQ("IV_PLAT_REL=2202.0", env[1]);
   env.clear();
-  EXPECT_EQ(0, file_util::WriteFile(lsb_release_file_, "", 0));
+  EXPECT_EQ(0, base::WriteFile(lsb_release_file_, "", 0));
   driver_->InitEnvironment(&env);
   EXPECT_EQ(0, env.size());
 }

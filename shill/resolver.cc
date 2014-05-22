@@ -84,7 +84,7 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
   string contents = JoinString(lines, '\n');
 
   SLOG(Resolver, 2) << "Writing DNS out to " << path_.value();
-  int count = file_util::WriteFile(path_, contents.c_str(), contents.size());
+  int count = base::WriteFile(path_, contents.c_str(), contents.size());
 
   return count == static_cast<int>(contents.size());
 }

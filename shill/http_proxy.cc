@@ -272,7 +272,7 @@ bool HTTPProxy::ParseClientRequest() {
     client_data_.Append(ByteString(string("\r\n"), false));
   }
 
-  TrimWhitespaceASCII(host, TRIM_ALL, &host);
+  base::TrimWhitespaceASCII(host, base::TRIM_ALL, &host);
   if (host.empty()) {
     // Revert to using the hostname in the URL if no "Host:" header exists.
     host = server_hostname_;

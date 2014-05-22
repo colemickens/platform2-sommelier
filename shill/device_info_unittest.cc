@@ -1189,8 +1189,8 @@ void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
   FilePath info_path = GetInfoPath(name);
   EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
   string contents_newline(contents + "\n");
-  EXPECT_TRUE(file_util::WriteFile(info_path, contents_newline.c_str(),
-                                   contents_newline.size()));
+  EXPECT_TRUE(base::WriteFile(info_path, contents_newline.c_str(),
+                              contents_newline.size()));
 }
 
 void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,

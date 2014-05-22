@@ -726,7 +726,7 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
                                   link_name_.c_str(), flag.c_str()));
   SLOG(Device, 2) << "Writing " << value << " to flag file "
                   << flag_file.value();
-  if (file_util::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
+  if (base::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
     LOG(ERROR) << StringPrintf("IP flag write failed: %s to %s",
                                value.c_str(), flag_file.value().c_str());
     return false;

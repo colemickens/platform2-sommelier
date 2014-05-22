@@ -275,7 +275,7 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
   if (!psk.empty()) {
     if (!base::CreateTemporaryFileInDir(manager()->run_path(), &psk_file_) ||
         chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
-        file_util::WriteFile(psk_file_, psk.data(), psk.size()) !=
+        base::WriteFile(psk_file_, psk.data(), psk.size()) !=
             static_cast<int>(psk.size())) {
       Error::PopulateAndLog(
           error, Error::kInternalError, "Unable to setup psk file.");
@@ -338,8 +338,8 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string> *options, Error *error) {
   if (!base::CreateTemporaryFileInDir(manager()->run_path(),
                                       &xauth_credentials_file_) ||
       chmod(xauth_credentials_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
-      file_util::WriteFile(xauth_credentials_file_, xauth_credentials.data(),
-                           xauth_credentials.size()) !=
+      base::WriteFile(xauth_credentials_file_, xauth_credentials.data(),
+                      xauth_credentials.size()) !=
           static_cast<int>(xauth_credentials.size())) {
     Error::PopulateAndLog(
         error, Error::kInternalError,

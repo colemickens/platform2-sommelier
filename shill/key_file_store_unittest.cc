@@ -64,7 +64,7 @@ string KeyFileStoreTest::ReadKeyFile() {
 
 void KeyFileStoreTest::WriteKeyFile(string data) {
   EXPECT_EQ(data.size(),
-            file_util::WriteFile(store_.path(), data.data(), data.size()));
+            base::WriteFile(store_.path(), data.data(), data.size()));
 }
 
 TEST_F(KeyFileStoreTest, OpenClose) {

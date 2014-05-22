@@ -15,8 +15,9 @@
 #include <iomanip>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 
 #include "shill/logging.h"
 #include "shill/shill_time.h"
@@ -118,7 +119,7 @@ ssize_t MemoryLog::FlushToFile(const FilePath &file_path) {
     LOG(ERROR) << "Failed to open file for dumping memory log to disk.";
     return -1;
   }
-  file_util::ScopedFILE file_closer(f);
+  base::ScopedFILE file_closer(f);
   long maximum_pw_string_size = sysconf(_SC_GETPW_R_SIZE_MAX);
   if (maximum_pw_string_size < 0) {
     LOG(ERROR) << "Setup for changing ownership of memory log file failed";

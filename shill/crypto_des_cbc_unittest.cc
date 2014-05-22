@@ -53,12 +53,12 @@ TEST_F(CryptoDESCBCTest, LoadKeyMatter) {
 
   string matter = string(kTestIV) + kTestKey;
 
-  file_util::WriteFile(key_matter, matter.data(), matter.size() - 1);
+  base::WriteFile(key_matter, matter.data(), matter.size() - 1);
   EXPECT_FALSE(crypto_.LoadKeyMatter(key_matter));
   EXPECT_TRUE(crypto_.key().empty());
   EXPECT_TRUE(crypto_.iv().empty());
 
-  file_util::WriteFile(key_matter, matter.data(), matter.size());
+  base::WriteFile(key_matter, matter.data(), matter.size());
   EXPECT_TRUE(crypto_.LoadKeyMatter(key_matter));
   EXPECT_EQ(kTestKey, string(crypto_.key().begin(), crypto_.key().end()));
   EXPECT_EQ(kTestIV, string(crypto_.iv().begin(), crypto_.iv().end()));
@@ -67,12 +67,12 @@ TEST_F(CryptoDESCBCTest, LoadKeyMatter) {
   const char kIV2[] = "87654321";
   matter = string("X") + kIV2 + kKey2;
 
-  file_util::WriteFile(key_matter, matter.data(), matter.size());
+  base::WriteFile(key_matter, matter.data(), matter.size());
   EXPECT_TRUE(crypto_.LoadKeyMatter(key_matter));
   EXPECT_EQ(kKey2, string(crypto_.key().begin(), crypto_.key().end()));
   EXPECT_EQ(kIV2, string(crypto_.iv().begin(), crypto_.iv().end()));
 
-  file_util::WriteFile(key_matter, " ", 1);
+  base::WriteFile(key_matter, " ", 1);
   EXPECT_FALSE(crypto_.LoadKeyMatter(key_matter));
   EXPECT_TRUE(crypto_.key().empty());
   EXPECT_TRUE(crypto_.iv().empty());

@@ -157,8 +157,8 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(
   EXPECT_TRUE(base::CreateDirectory(varlib));
   lease_file_ =
       varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
-  EXPECT_EQ(0, file_util::WriteFile(pid_file_, "", 0));
-  EXPECT_EQ(0, file_util::WriteFile(lease_file_, "", 0));
+  EXPECT_EQ(0, base::WriteFile(pid_file_, "", 0));
+  EXPECT_EQ(0, base::WriteFile(lease_file_, "", 0));
   EXPECT_TRUE(base::PathExists(pid_file_));
   EXPECT_TRUE(base::PathExists(lease_file_));
 

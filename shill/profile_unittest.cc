@@ -344,8 +344,7 @@ TEST_F(ProfileTest, LoadUserProfileList) {
                                  "~%s/%s \n\n",
                                  kUser0, kIdentifier0, kHash0,
                                  kUser1, kIdentifier1));
-  EXPECT_EQ(data.size(),
-            file_util::WriteFile(list_path, data.data(), data.size()));
+  EXPECT_EQ(data.size(), base::WriteFile(list_path, data.data(), data.size()));
   identifiers = Profile::LoadUserProfileList(list_path);
   EXPECT_EQ(2, identifiers.size());
   EXPECT_EQ(kUser0, identifiers[0].user);
@@ -449,8 +448,7 @@ TEST_F(ProfileTest, InitStorage) {
       base::StringPrintf("%s/%s/%s.profile", storage_path().c_str(),
                          id.user.c_str(), id.identifier.c_str()));
   string data = "]corrupt_data[";
-  EXPECT_EQ(data.size(),
-            file_util::WriteFile(final_path, data.data(), data.size()));
+  EXPECT_EQ(data.size(), base::WriteFile(final_path, data.data(), data.size()));
 
   // Then test that we fail to open this file.
   EXPECT_CALL(*mock_metrics_, NotifyCorruptedProfile());

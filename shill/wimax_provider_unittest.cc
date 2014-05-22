@@ -470,7 +470,7 @@ TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
       "Type=wimax\n"
       "NetworkId=76543210\n";
   EXPECT_EQ(strlen(contents),
-            file_util::WriteFile(test_profile, contents, strlen(contents)));
+            base::WriteFile(test_profile, contents, strlen(contents)));
   ASSERT_TRUE(store.Open());
   scoped_refptr<MockProfile> profile(
       new MockProfile(&control_, &metrics_, &manager_));

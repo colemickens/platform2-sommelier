@@ -4,6 +4,8 @@
 
 #include "shill/file_reader.h"
 
+#include <base/file_util.h>
+
 using base::FilePath;
 using std::string;
 

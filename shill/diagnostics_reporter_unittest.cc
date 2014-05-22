@@ -102,7 +102,7 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
   base::ScopedTempDir temp_dir_;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   FilePath stashed_net_log = temp_dir_.path().Append("stashed-net-log");
-  EXPECT_EQ(0, file_util::WriteFile(stashed_net_log, "", 0));
+  EXPECT_EQ(0, base::WriteFile(stashed_net_log, "", 0));
   EXPECT_TRUE(base::PathExists(stashed_net_log));
   SetStashedNetLog(stashed_net_log);
   EXPECT_CALL(time_, GetTimeMonotonic(_))

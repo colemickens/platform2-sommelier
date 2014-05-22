@@ -322,7 +322,7 @@ bool Profile::SaveUserProfileList(const FilePath &path,
                                        id.user_hash.c_str()));
   }
   string content = JoinString(lines, "");
-  size_t ret = file_util::WriteFile(path, content.c_str(), content.length());
+  size_t ret = base::WriteFile(path, content.c_str(), content.length());
   return ret == content.length();
 }
 

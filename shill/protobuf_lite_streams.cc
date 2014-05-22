@@ -36,7 +36,7 @@ CopyingInputStreamAdaptor *protobuf_lite_file_input_stream(
 
 ProtobufLiteCopyingFileInputStream::ProtobufLiteCopyingFileInputStream(int fd)
   : fd_(fd),
-    scoped_fd_closer_(&fd_),
+    scoped_fd_closer_(fd_),
     previous_seek_failed_(false) {}
 
 ProtobufLiteCopyingFileInputStream::~ProtobufLiteCopyingFileInputStream() {}

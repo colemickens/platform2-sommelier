@@ -80,7 +80,7 @@ class SocketInfoReaderTest : public testing::Test {
       string line = lines[i];
       line += '\n';
       ASSERT_EQ(line.size(),
-                file_util::AppendToFile(*file_path, line.data(), line.size()));
+                base::AppendToFile(*file_path, line.data(), line.size()));
     }
   }
 

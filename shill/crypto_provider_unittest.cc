@@ -42,7 +42,7 @@ class CryptoProviderTest : public Test {
 FilePath CryptoProviderTest::InitKeyMatterFile(const FilePath &dir) {
   FilePath path = dir.Append(kKeyMatterFile);
   string matter = string(kTestIV) + kTestKey;
-  file_util::WriteFile(path, matter.data(), matter.size());
+  base::WriteFile(path, matter.data(), matter.size());
   return path;
 }
 

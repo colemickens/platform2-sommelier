@@ -66,7 +66,7 @@ string CertificateFile::ExtractHexData(const std::string &pem_data) {
   for (vector<string>::const_iterator it = input_lines.begin();
        it != input_lines.end(); ++it) {
     string line;
-    TrimWhitespaceASCII(*it, TRIM_ALL, &line);
+    base::TrimWhitespaceASCII(*it, base::TRIM_ALL, &line);
     if (StartsWithASCII(line, kPEMHeader, kCaseSensitive)) {
       if (found_header) {
         LOG(ERROR) << "Found two PEM headers in a row.";
@@ -123,8 +123,7 @@ FilePath CertificateFile::WriteFile(const string &output_data) {
   }
 
   size_t written =
-      file_util::WriteFile(output_file, output_data.c_str(),
-                           output_data.length());
+      base::WriteFile(output_file, output_data.c_str(), output_data.length());
   if (written != output_data.length()) {
     LOG(ERROR) << "Unable to write to output file.";
     return FilePath();

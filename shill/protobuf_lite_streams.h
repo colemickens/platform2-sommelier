@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/file_util.h>
+#include <base/files/scoped_file.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 // Some basic input/output streams are not implemented for protobuf-lite.
@@ -32,7 +32,7 @@ class ProtobufLiteCopyingFileInputStream :
   virtual int Skip(int count);
  private:
   int fd_;
-  file_util::ScopedFD scoped_fd_closer_;
+  base::ScopedFD scoped_fd_closer_;
   bool previous_seek_failed_;
 
   DISALLOW_COPY_AND_ASSIGN(ProtobufLiteCopyingFileInputStream);
