@@ -517,7 +517,7 @@ bool Platform::WriteArrayToFile(const std::string& path, const char* data,
     return false;
   }
 
-  int data_written = file_util::WriteFile(file_path, data, size);
+  int data_written = base::WriteFile(file_path, data, size);
   return data_written == static_cast<int>(size);
 }
 
