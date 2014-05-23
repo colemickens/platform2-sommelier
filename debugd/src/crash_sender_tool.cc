@@ -14,6 +14,11 @@ CrashSenderTool::~CrashSenderTool() { }
 
 void CrashSenderTool::UploadCrashes(DBus::Error& error) {  // NOLINT
   ProcessWithId* p = CreateProcess(false);
+  // TODO(jorgelo): This mount namespace shuffling should be handled by
+  // minijail.  See http://crbug.com/376987 for details.
+  p->AddArg("/usr/bin/nsenter");
+  p->AddArg("--mount=/proc/1/ns/mnt");
+  p->AddArg("--");
   p->AddArg("/sbin/crash_sender");
   p->AddStringOption("-e", "SECONDS_SEND_SPREAD=1");
   p->Run();
