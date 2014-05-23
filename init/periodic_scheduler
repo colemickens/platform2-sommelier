@@ -13,6 +13,7 @@ set -e -u
 
 SCRIPT_NAME="$(basename "$0")"
 CHECK_DELAY=300  # Check every 5 minutes.
+KILL_DELAY=10    # How long to let the job clean up after a timeout.
 SPOOL_DIR=/var/spool/cron-lite
 
 log() {
@@ -45,7 +46,7 @@ main() {
 
   while true; do
     # Allow the sleep to be killed manually without terminating the handler.
-    sleep "${CHECK_DELAY}" || true
+    sleep $(( CHECK_DELAY + KILL_DELAY )) || true
 
     [ ! -e "${spool_file}" ] && touch "${spool_file}"
 
@@ -62,7 +63,7 @@ main() {
       wait || true
       log "${name}: running $*"
       (
-        timeout -k ${CHECK_DELAY} sh -c '"$@"' -- "$@" || true
+        timeout -k ${KILL_DELAY} ${CHECK_DELAY} "$@" || true
         log "${name}: job completed"
       ) &
     fi
