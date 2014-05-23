@@ -553,6 +553,9 @@ class Device : public base::RefCounted<Device> {
   // Callback for DNS Client.
   void DNSClientCallback(const Error &error, const IPAddress &ip);
 
+  // Update DNS setting with the given DNS servers for the current connection.
+  void SwitchDNSServers(const std::vector<std::string> &dns_servers);
+
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
   // defaults to true. |enabled_| reflects the real-time state of

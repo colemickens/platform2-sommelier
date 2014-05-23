@@ -115,6 +115,11 @@ void IPConfig::UpdateProperties(const Properties &properties) {
   EmitChanges();
 }
 
+void IPConfig::UpdateDNSServers(const std::vector<std::string> &dns_servers) {
+  properties_.dns_servers = dns_servers;
+  EmitChanges();
+}
+
 void IPConfig::NotifyFailure() {
   // Take a reference of this instance to make sure we don't get destroyed in
   // the middle of this call. (The |update_callback_| may cause a reference

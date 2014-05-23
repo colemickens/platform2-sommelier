@@ -82,7 +82,7 @@ const char Device::kFallbackDnsTestHostname[] = "www.gstatic.com";
 // static
 const char* Device::kFallbackDnsServers[] = {
     "8.8.8.8",
-    "8.8.8.4"
+    "8.8.4.4"
 };
 
 // static
@@ -910,9 +910,31 @@ void Device::DNSClientCallback(const Error &error, const IPAddress& ip) {
   int result = Metrics::kFallbackDNSTestResultFailure;
   if (error.IsSuccess()) {
     result = Metrics::kFallbackDNSTestResultSuccess;
+
+    // Switch to fallback DNS server if service is configured to allow DNS
+    // fallback.
+    CHECK(selected_service_);
+    if (selected_service_->is_dns_auto_fallback_allowed()) {
+      SwitchDNSServers(vector<string>(std::begin(kFallbackDnsServers),
+                                      std::end(kFallbackDnsServers)));
+      // Restart the portal detection with the new DNS setting.
+      RestartPortalDetection();
+    }
   }
   metrics()->NotifyFallbackDNSTestResult(technology_, result);
   fallback_dns_test_client_.reset();
+}
+
+void Device::SwitchDNSServers(const vector<string> &dns_servers) {
+  CHECK(ipconfig_);
+  CHECK(connection_);
+  // Push new DNS servers setting to the IP config object.
+  ipconfig_->UpdateDNSServers(dns_servers);
+  // Push new DNS servers setting to the current connection, so the resolver
+  // will be updated to use the new DNS servers.
+  connection_->UpdateDNSServers(dns_servers);
+  // Allow the service to notify Chrome of ipconfig changes.
+  selected_service_->NotifyIPConfigChanges();
 }
 
 void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {

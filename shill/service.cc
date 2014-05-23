@@ -75,6 +75,7 @@ const char Service::kServiceSortTechnology[] = "Technology";
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
+const char Service::kStorageDNSAutoFallback[] = "DNSAutoFallback";
 const char Service::kStorageError[] = "Error";
 const char Service::kStorageFavorite[] = "Favorite";
 const char Service::kStorageGUID[] = "GUID";
@@ -146,7 +147,8 @@ Service::Service(ControlInterface *control_interface,
       sockets_(new Sockets()),
       time_(Time::GetInstance()),
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()),
-      connection_id_(0) {
+      connection_id_(0),
+      is_dns_auto_fallback_allowed_(false) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull,
@@ -226,6 +228,7 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
   store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
+  store_.RegisterBool(kDnsAutoFallbackProperty, &is_dns_auto_fallback_allowed_);
 
   HelpRegisterObservedDerivedBool(kVisibleProperty,
                                   &Service::GetVisibleProperty,
@@ -466,6 +469,7 @@ bool Service::Load(StoreInterface *storage) {
   LoadString(storage, id, kStorageUIData, "", &ui_data_);
 
   storage->GetInt(id, kStorageConnectionId, &connection_id_);
+  storage->GetBool(id, kStorageDNSAutoFallback, &is_dns_auto_fallback_allowed_);
 
   static_ip_parameters_.Load(storage, id);
 
@@ -490,6 +494,8 @@ bool Service::Unload() {
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
+  connection_id_ = 0;
+  is_dns_auto_fallback_allowed_ = false;
   if (mutable_eap()) {
     mutable_eap()->Reset();
   }
@@ -543,6 +549,7 @@ bool Service::Save(StoreInterface *storage) {
   SaveString(storage, id, kStorageUIData, ui_data_, false, true);
 
   storage->SetInt(id, kStorageConnectionId, connection_id_);
+  storage->SetBool(id, kStorageDNSAutoFallback, is_dns_auto_fallback_allowed_);
 
   static_ip_parameters_.Save(storage, id);
   if (eap()) {
@@ -701,6 +708,10 @@ void Service::SetConnection(const ConnectionRefPtr &connection) {
     static_ip_parameters_.ClearSavedParameters();
   }
   connection_ = connection;
+  NotifyIPConfigChanges();
+}
+
+void Service::NotifyIPConfigChanges() {
   Error error;
   string ipconfig = GetIPConfigRpcIdentifier(&error);
   if (error.IsSuccess()) {

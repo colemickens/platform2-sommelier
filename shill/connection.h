@@ -81,6 +81,9 @@ class Connection : public base::RefCounted<Connection> {
   virtual bool is_default() const { return is_default_; }
   virtual void SetIsDefault(bool is_default);
 
+  // Update and apply the new DNS servers setting to this connection.
+  virtual void UpdateDNSServers(const std::vector<std::string> &dns_servers);
+
   virtual const std::string &interface_name() const { return interface_name_; }
   virtual int interface_index() const { return interface_index_; }
   virtual const std::vector<std::string> &dns_servers() const {
@@ -128,6 +131,7 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(ConnectionTest, RequestHostRoute);
   FRIEND_TEST(ConnectionTest, BlackholeIPv6);
+  FRIEND_TEST(ConnectionTest, UpdateDNSServers);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
   static const uint32 kDefaultMetric;

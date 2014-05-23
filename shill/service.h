@@ -69,6 +69,7 @@ class Service : public base::RefCounted<Service> {
   // crbug.com/208736
   static const char kStorageAutoConnect[];
   static const char kStorageCheckPortal[];
+  static const char kStorageDNSAutoFallback[];
   static const char kStorageError[];
   static const char kStorageFavorite[];
   static const char kStorageGUID[];
@@ -202,6 +203,12 @@ class Service : public base::RefCounted<Service> {
     return state() == kStatePortal;
   }
 
+  // Return true if service is allowed to automatically switch to fallback
+  // DNS server.
+  virtual bool is_dns_auto_fallback_allowed() const {
+    return is_dns_auto_fallback_allowed_;
+  }
+
   virtual ConnectFailure failure() const { return failure_; }
   // Sets the |previous_error_| property based on the current |failure_|, and
   // sets a serial number for this failure.
@@ -292,6 +299,9 @@ class Service : public base::RefCounted<Service> {
   // requests.
   virtual void SetConnection(const ConnectionRefPtr &connection);
   virtual const ConnectionRefPtr &connection() const { return connection_; }
+
+  // Emit service's IP config change event to chrome.
+  virtual void NotifyIPConfigChanges();
 
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
@@ -809,6 +819,10 @@ class Service : public base::RefCounted<Service> {
   // Network identifier indicating the network (gateway) the service is
   // connected to.
   int connection_id_;
+  // When set to true, this service will automatically fallback to Google's DNS
+  // servers if the portal detection failed due to DNS failure and Google's DNS
+  // servers are working.
+  bool is_dns_auto_fallback_allowed_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

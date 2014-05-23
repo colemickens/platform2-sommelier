@@ -201,9 +201,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 
   ipconfig_rpc_identifier_ = config->GetRpcIdentifier();
 
-  if (is_default_) {
-    PushDNSConfig();
-  }
+  PushDNSConfig();
 
   local_ = local;
   gateway_ = gateway;
@@ -222,8 +220,8 @@ void Connection::SetIsDefault(bool is_default) {
 
   is_default_ = is_default;
 
+  PushDNSConfig();
   if (is_default) {
-    PushDNSConfig();
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     if (device) {
       device->RequestPortalDetection();
@@ -232,7 +230,16 @@ void Connection::SetIsDefault(bool is_default) {
   routing_table_->FlushCache();
 }
 
+void Connection::UpdateDNSServers(const vector<string> &dns_servers) {
+  dns_servers_ = dns_servers;
+  PushDNSConfig();
+}
+
 void Connection::PushDNSConfig() {
+  if (!is_default_) {
+    return;
+  }
+
   vector<string> domain_search = dns_domain_search_;
   if (domain_search.empty() && !dns_domain_name_.empty()) {
     SLOG(Connection, 2) << "Setting domain search to domain name "

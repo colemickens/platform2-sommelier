@@ -1382,16 +1382,68 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
 }
 
 TEST_F(DevicePortalDetectionTest, DNSClientCallback) {
+  scoped_refptr<MockIPConfig> ipconfig =
+      new MockIPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(ipconfig);
+
+  // Fallback DNS test failed.
+  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(0);
+  EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultFailure))
           .Times(1);
   InvokeDNSClientCallback(false);
+  Mock::VerifyAndClearExpectations(connection_.get());
+  Mock::VerifyAndClearExpectations(ipconfig);
   Mock::VerifyAndClearExpectations(&metrics_);
 
+  // Fallback DNS test succeed with auto fallback disabled.
+  EXPECT_CALL(*service_.get(), is_dns_auto_fallback_allowed())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(0);
+  EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
+  EXPECT_CALL(*service_.get(), NotifyIPConfigChanges()).Times(0);
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
           .Times(1);
   InvokeDNSClientCallback(true);
+  Mock::VerifyAndClearExpectations(service_.get());
+  Mock::VerifyAndClearExpectations(connection_.get());
+  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  // Fallback DNS test succeed with auto fallback enabled.
+  EXPECT_CALL(*service_.get(), is_dns_auto_fallback_allowed())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
+      .WillRepeatedly(Return(false));
+  const string kPortalCheckURL("http://portal");
+  EXPECT_CALL(manager_, GetPortalCheckURL())
+      .WillOnce(ReturnRef(kPortalCheckURL));
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  const vector<string> kDNSServers;
+  EXPECT_CALL(*connection_.get(), dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
+
+  EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(1);
+  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(1);
+  EXPECT_CALL(*service_.get(), NotifyIPConfigChanges()).Times(1);
+  EXPECT_CALL(metrics_,
+      NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
+          .Times(1);
+  InvokeDNSClientCallback(true);
+  Mock::VerifyAndClearExpectations(service_.get());
+  Mock::VerifyAndClearExpectations(connection_.get());
+  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(&metrics_);
 }
 
 class DeviceByteCountTest : public DeviceTest {

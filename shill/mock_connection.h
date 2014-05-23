@@ -36,6 +36,8 @@ class MockConnection : public Connection {
   MOCK_METHOD0(CreateGatewayRoute, bool());
   MOCK_METHOD0(GetCarrierConnection, ConnectionRefPtr());
   MOCK_CONST_METHOD0(tethering, std::string &());
+  MOCK_METHOD1(UpdateDNSServers,
+               void(const std::vector<std::string> &dns_servers));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

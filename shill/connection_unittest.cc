@@ -436,6 +436,23 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   connection_->UpdateFromIPConfig(ipconfig_);
 }
 
+TEST_F(ConnectionTest, UpdateDNSServers) {
+  const char* kDnsServers[] = {"1.1.1.1", "1.1.1.2"};
+  vector<string> dns_servers(kDnsServers, std::end(kDnsServers));
+
+  // Non-default connection.
+  connection_->is_default_ = false;
+  EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
+  connection_->UpdateDNSServers(dns_servers);
+  Mock::VerifyAndClearExpectations(&resolver_);
+
+  // Default connection.
+  connection_->is_default_ = true;
+  EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
+  connection_->UpdateDNSServers(dns_servers);
+  Mock::VerifyAndClearExpectations(&resolver_);
+}
+
 TEST_F(ConnectionTest, RouteRequest) {
   ConnectionRefPtr connection = GetNewConnection();
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(

@@ -123,6 +123,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void set_properties(const Properties &props) { properties_ = props; }
   virtual const Properties &properties() const { return properties_; }
 
+  // Update DNS servers setting for this ipconfig, this allows Chrome
+  // to retrieve the new DNS servers.
+  virtual void UpdateDNSServers(const std::vector<std::string> &dns_servers);
+
   // Reset the IPConfig properties to their default values.
   virtual void ResetProperties();
 
