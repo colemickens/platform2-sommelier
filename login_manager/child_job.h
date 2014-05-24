@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -28,10 +29,15 @@ class ChildJobInterface {
     Subprocess(uid_t desired_uid, SystemUtils* system);
     virtual ~Subprocess();
 
-    // fork() and exec(argv). Returns false if fork() fails, true otherwise.
-    bool ForkAndExec(const std::vector<std::string>& args);
+    // fork(), export |environment_variables|, and exec(argv).
+    // Returns false if fork() fails, true otherwise.
+    bool ForkAndExec(
+        const std::vector<std::string>& args,
+        const std::map<std::string, std::string>& environment_variables);
+
     // Sends signal to pid_. No-op if there is no subprocess running.
     void Kill(int signal);
+
     // Sends signal to pid_'s entire process group.
     // No-op if there is no subprocess running.
     void KillEverything(int signal);
@@ -89,6 +95,7 @@ class ChildJobInterface {
   static const int kCantSetUid;
   static const int kCantSetGid;
   static const int kCantSetGroups;
+  static const int kCantSetEnv;
   static const int kCantExec;
 };
 

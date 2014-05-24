@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -27,12 +28,14 @@
 #include <chromeos/syslog_logging.h>
 
 #include "login_manager/browser_job.h"
+#include "login_manager/chrome_setup.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils_impl.h"
 
+using std::map;
 using std::string;
 using std::vector;
 using std::wstring;
@@ -41,8 +44,6 @@ using std::wstring;
 // window manager binary as well. Actually supports watching several
 // processes specified as command line arguments separated with --.
 // Also listens over DBus for the commands specified in dbus_glib_shim.h.
-// Usage:
-//   session_manager --uid=1000 -- /path/to/command1 [arg1 [arg2 [ . . . ] ] ]
 
 namespace switches {
 
@@ -52,10 +53,6 @@ static const char kDisableChromeRestartFile[] = "disable-chrome-restart-file";
 // The default path to this file.
 static const char kDisableChromeRestartFileDefault[] =
     "/var/run/disable_chrome_restart";
-
-// Name of the flag specifying UID to be set for each managed job before
-// starting it.
-static const char kUid[] = "uid";
 
 // Name of flag specifying the time (in s) to wait for children to exit
 // gracefully before killing them with a SIGABRT.
@@ -78,8 +75,6 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --disable-chrome-restart-file=</path/to/file>\n"
 "    Magic file that causes this program to stop restarting the\n"
 "    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n"
-"  --uid=[number]\n"
-"    Numeric uid to transition to prior to execution.\n"
 "  --kill-timeout=[number in seconds]\n"
 "    Number of seconds to wait for children to exit gracefully before\n"
 "    killing them with a SIGABRT.\n"
@@ -96,6 +91,7 @@ using login_manager::BrowserJob;
 using login_manager::BrowserJobInterface;
 using login_manager::FileChecker;
 using login_manager::LoginMetrics;
+using login_manager::PerformChromeSetup;
 using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
 
@@ -111,18 +107,6 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
     return 0;
-  }
-
-  // Parse UID if it's present, -1 means no UID should be set.
-  uid_t uid = getuid();
-  if (cl->HasSwitch(switches::kUid)) {
-    string uid_flag = cl->GetSwitchValueASCII(switches::kUid);
-    int uid_value = 0;
-    if (base::StringToInt(uid_flag, &uid_value) && uid_value >= 0) {
-      uid = static_cast<uid_t>(uid_value);
-    } else {
-      DLOG(WARNING) << "Failed to parse uid, defaulting to none.";
-    }
   }
 
   // Parse kill timeout if it's present.
@@ -155,8 +139,11 @@ int main(int argc, char* argv[]) {
   // session_manager side, Chrome will use --multi-profiles flag to enable it.
   bool support_multi_profile = !cl->HasSwitch(switches::kLegacyLoginProfile);
 
-  // We only support a single job with args, so grab all loose args
-  vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
+  // Start the X server and set things up for running Chrome.
+  map<string, string> env_vars;
+  vector<string> arg_list;
+  uid_t uid = 0;
+  PerformChromeSetup(&env_vars, &arg_list, &uid);
 
   // Shim that wraps system calls, file system ops, etc.
   SystemUtilsImpl system;
@@ -181,6 +168,7 @@ int main(int argc, char* argv[]) {
   // UID that the caller would like to run it as.
   scoped_ptr<BrowserJobInterface> browser_job(
       new BrowserJob(arg_list,
+                     env_vars,
                      support_multi_profile,
                      uid,
                      &checker,

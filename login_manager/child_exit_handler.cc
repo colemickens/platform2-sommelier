@@ -102,7 +102,7 @@ void ChildExitHandler::RevertHandlers() {
 }
 
 void ChildExitHandler::Dispatch(const siginfo_t& info) {
-  // Find the manager who's child has exited.
+  // Find the manager whose child has exited.
   std::vector<JobManagerInterface*>::iterator job_manager = managers_.begin();
   while (job_manager != managers_.end()) {
     if ((*job_manager)->IsManagedJob(info.si_pid))
@@ -119,6 +119,7 @@ void ChildExitHandler::Dispatch(const siginfo_t& info) {
     LOG_IF(ERROR, info.si_status != 0) << "  Exited with exit code "
                                        << info.si_status;
     CHECK(info.si_status != ChildJobInterface::kCantSetUid);
+    CHECK(info.si_status != ChildJobInterface::kCantSetEnv);
     CHECK(info.si_status != ChildJobInterface::kCantExec);
   } else {
     LOG(ERROR) << "  Exited with signal " << info.si_status;

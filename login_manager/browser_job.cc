@@ -45,12 +45,15 @@ const uint BrowserJob::kRestartTries = 4;
 const time_t BrowserJob::kRestartWindowSeconds = 60;
 
 BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
+                       const std::map<std::string, std::string>&
+                           environment_variables,
                        bool support_multi_profile,
                        uid_t desired_uid,
                        FileChecker* checker,
                        LoginMetrics* metrics,
                        SystemUtils* utils)
-      : arguments_(arguments),
+      : environment_variables_(environment_variables),
+        arguments_(arguments),
         file_checker_(checker),
         login_metrics_(metrics),
 
@@ -106,7 +109,7 @@ bool BrowserJob::RunInBackground() {
 
   LOG(INFO) << "Running child " << GetName() << "...";
   RecordTime();
-  return subprocess_.ForkAndExec(ExportArgv());
+  return subprocess_.ForkAndExec(ExportArgv(), environment_variables_);
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {

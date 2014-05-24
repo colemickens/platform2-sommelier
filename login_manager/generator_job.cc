@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -59,7 +60,7 @@ bool GeneratorJob::RunInBackground() {
   argv.push_back(filename_);
   argv.push_back(user_path_);
 
-  return subprocess_.ForkAndExec(argv);
+  return subprocess_.ForkAndExec(argv, std::map<std::string, std::string>());
 }
 
 void GeneratorJob::KillEverything(int signal, const std::string& message) {

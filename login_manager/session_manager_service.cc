@@ -449,12 +449,4 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
   key_gen_.EnsureJobExit(timeout);
 }
 
-std::vector<std::string> SessionManagerService::GetArgList(
-    const std::vector<std::string>& args) {
-  std::vector<std::string>::const_iterator start_arg = args.begin();
-  if (!args.empty() && *start_arg == "--")
-    ++start_arg;
-  return std::vector<std::string>(start_arg, args.end());
-}
-
 }  // namespace login_manager

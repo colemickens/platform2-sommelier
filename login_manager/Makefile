@@ -62,10 +62,5 @@ CXX_BINARY($(TEST_BIN)): LDLIBS += $(UNITTEST_LIBS)
 clean: CLEAN($(TEST_BIN)))
 tests: TEST(CXX_BINARY($(TEST_BIN)))
 
-CC_BINARY(cros-xauth): cros-xauth.o
-CC_BINARY(cros-xauth): LDLIBS =
-clean: CLEAN(cros-xauth)
-
-all: login_manager CC_BINARY(cros-xauth)
-login_manager: \
-  CXX_BINARY($(KEYGEN_BIN)) CXX_BINARY($(SESSION_BIN))
+all: login_manager
+login_manager: CXX_BINARY($(KEYGEN_BIN)) CXX_BINARY($(SESSION_BIN))

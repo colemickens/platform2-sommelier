@@ -163,14 +163,6 @@ class SessionManagerService
   // Ensure that browser_ is gone.
   virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE;
 
-  // Ensures |args| is in the correct format, stripping "--" if needed.
-  // No initial "--" is needed, but is allowed.
-  // ("a", "b", "c") => ("a", "b", "c")
-  // ("--", "a", "b", "c") => ("a", "b", "c").
-  // Converts args from wide to plain strings.
-  static std::vector<std::string> GetArgList(
-      const std::vector<std::string>& args);
-
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();
 

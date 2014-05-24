@@ -22,6 +22,7 @@ namespace login_manager {
 const int ChildJobInterface::kCantSetUid = 127;
 const int ChildJobInterface::kCantSetGid = 128;
 const int ChildJobInterface::kCantSetGroups = 129;
+const int ChildJobInterface::kCantSetEnv = 130;
 const int ChildJobInterface::kCantExec = 255;
 
 ChildJobInterface::Subprocess::Subprocess(uid_t desired_uid,
@@ -34,7 +35,8 @@ ChildJobInterface::Subprocess::Subprocess(uid_t desired_uid,
 ChildJobInterface::Subprocess::~Subprocess() {}
 
 bool ChildJobInterface::Subprocess::ForkAndExec(
-    const std::vector<std::string>& args) {
+    const std::vector<std::string>& args,
+    const std::map<std::string, std::string>& environment_variables) {
   pid_ = system_->fork();
   if (pid_ == 0) {
     SessionManagerService::RevertHandlers();
@@ -45,6 +47,19 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
       exit(exit_code);
 
     logging::CloseLogFile();  // So browser does not inherit logging FD.
+
+    if (clearenv() != 0) {
+      PLOG(ERROR) << "Error clearing environment";
+      exit(kCantSetEnv);
+    }
+    for (std::map<std::string, std::string>::const_iterator it =
+             environment_variables.begin();
+         it != environment_variables.end(); ++it) {
+      if (setenv(it->first.c_str(), it->second.c_str(), 1) != 0) {
+        PLOG(ERROR) << "Error exporting " << it->first << "=" << it->second;
+        exit(kCantSetEnv);
+      }
+    }
 
     scoped_ptr<char const*[]> argv(new char const*[args.size() + 1]);
     for (size_t i = 0; i < args.size(); ++i)

@@ -11,8 +11,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <string>
+#include <map>
 #include <queue>
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -75,6 +76,7 @@ class BrowserJobInterface : public ChildJobInterface {
 class BrowserJob : public BrowserJobInterface {
  public:
   BrowserJob(const std::vector<std::string>& arguments,
+             const std::map<std::string, std::string>& environment_varables,
              bool support_multi_profile,
              uid_t desired_uid,
              FileChecker* checker,
@@ -115,6 +117,9 @@ class BrowserJob : public BrowserJobInterface {
   static const time_t kRestartWindowSeconds;
 
  private:
+  // Environment variables exported for Chrome.
+  std::map<std::string, std::string> environment_variables_;
+
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
 

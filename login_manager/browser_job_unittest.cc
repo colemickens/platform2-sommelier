@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -71,6 +72,7 @@ class BrowserJobTest : public ::testing::Test {
     }
   }
 
+  std::map<std::string, std::string> env_;
   std::vector<std::string> argv_;
   MockFileChecker checker_;
   MockMetrics metrics_;
@@ -96,7 +98,8 @@ const char BrowserJobTest::kHash[] = "fake_hash";
 void BrowserJobTest::SetUp() {
   argv_ = std::vector<std::string>(kArgv,
                                    kArgv + arraysize(BrowserJobTest::kArgv));
-  job_.reset(new BrowserJob(argv_, false, 1, &checker_, &metrics_, &utils_));
+  job_.reset(
+      new BrowserJob(argv_, env_, false, 1, &checker_, &metrics_, &utils_));
 }
 
 TEST_F(BrowserJobTest, InitializationTest) {
@@ -175,7 +178,7 @@ TEST_F(BrowserJobTest, ShouldRunTest) {
 }
 
 TEST_F(BrowserJobTest, NullFileCheckerTest) {
-  BrowserJob job(argv_, true, 1, NULL, &metrics_, &utils_);
+  BrowserJob job(argv_, env_, true, 1, NULL, &metrics_, &utils_);
   EXPECT_TRUE(job.ShouldRunBrowser());
 }
 
@@ -238,7 +241,7 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 }
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
-  BrowserJob job(argv_, true, 1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv_, env_, true, 1, &checker_, &metrics_, &utils_);
   job.StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job.ExportArgv();
@@ -272,7 +275,7 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   };
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
-  BrowserJob job(argv, false, 1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv, env_, false, 1, &checker_, &metrics_, &utils_);
 
   job.StartSession(kUser, kHash);
 
@@ -323,7 +326,7 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
 
 TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
-  BrowserJob job(argv, false, -1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv, env_, false, -1, &checker_, &metrics_, &utils_);
 
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
   std::vector<std::string> extra_args(kExtraArgs,
