@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/ucontext.h>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -26,6 +28,18 @@
 //           We will need a "CheckKey" interface as well to simplify
 //           offline authentication checks.
 
+namespace {
+
+void HandlePipeSignal(int signal, siginfo_t* info, void* context_ptr) {
+  uint64_t source = 0;
+#if defined(__x86_64__)
+  ucontext_t* context = reinterpret_cast<ucontext_t*>(context_ptr);
+  source = context->uc_mcontext.gregs[REG_RIP];
+#endif
+  LOG(FATAL) << "SIGPIPE received from 0x" << std::hex << source;
+}
+
+}
 
 namespace switches {
 // Keeps std* open for debugging
@@ -39,6 +53,15 @@ int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
 
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+
+  // Add a handler to do something informative on SIGPIPE.
+  // TODO(dkrahn): Remove this code once crbug.com/367278 is fixed.
+  struct sigaction pipe_action;
+  memset(&pipe_action, 0, sizeof(struct sigaction));
+  pipe_action.sa_flags = SA_SIGINFO;
+  pipe_action.sa_sigaction = &HandlePipeSignal;
+  CHECK(!sigaction(SIGPIPE, &pipe_action, NULL))
+      << "Failed to register SIGPIPE handler.";
 
   // Allow the commands to be configurable.
   CommandLine *cl = CommandLine::ForCurrentProcess();
