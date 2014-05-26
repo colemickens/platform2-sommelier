@@ -395,10 +395,16 @@ if use_flag_is_set gpu_sandbox_start_after_initialization; then
   GPU_FLAGS="$GPU_FLAGS --gpu-sandbox-start-after-initialization"
 fi
 
+# TODO(posciak,owenlin): Autodetection for VIDEO_FLAGS features instead
+# (crbug.com/350197)
 VIDEO_FLAGS=
 if is_board peach_pit || is_board peach_pi ||
    is_board nyan || is_board nyan_big || is_board nyan_blaze; then
   VIDEO_FLAGS="--enable-webrtc-hw-vp8-encoding"
+fi
+
+if is_board peach_pi; then
+  VIDEO_FLAGS="$VIDEO_FLAGS --ignore-resolution-limits-for-accelerated-video-decode"
 fi
 
 # Ozone platform configuration
