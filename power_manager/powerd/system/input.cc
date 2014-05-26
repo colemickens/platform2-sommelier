@@ -514,7 +514,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   }
 
   char phys[256] = "Unknown";
-  if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0) {
+  if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0 && errno != ENOENT) {
     PLOG(ERROR) << "Could not get topo phys path of device " << name;
     return false;
   } else {
