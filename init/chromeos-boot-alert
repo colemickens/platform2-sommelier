@@ -39,6 +39,10 @@ usage_help() {
 
   dev_fwcheck: Message when staring with developer firmware, to check if there
                is available updates.
+
+  block_devmode: Message shown to indicate that dev mode is blocked by request
+                 of the device owner.
+                 Arg: none
 "
 }
 
@@ -177,8 +181,8 @@ mode_warn_dev() {
     "20")  # Spacebar
       crossystem recovery_request=1
       reboot
-      # To prevent system continue booting
-      sleep 1d
+      # To prevent the system from continuing to boot.
+      sleep infinity
       ;;
   esac
   return 0
@@ -360,6 +364,59 @@ mode_dev_fwcheck() {
   fi
 }
 
+# Prints a message telling the user that developer mode has been disabled for
+# the device upon request by the device owner. Depending on hardware support,
+# the system switches back to verified boot mode automatically or prompts the
+# user to do so. The system reboots after the user confirms by pressing space or
+# after timeout.
+mode_block_devmode() {
+  local delay_secs=30
+
+  if has_virtual_dev_switch; then
+    show_assets_message_image "block_devmode_virtual" ||
+    # The text by echo below is only fallback of localized assets message.
+    # Please sync with text there if you want to change the message.
+    echo "
+      The device owner has disabled Developer Mode for this device. Please ask
+      the device owner to remove the restriction if you want to use Developer
+      Mode.
+
+      The system will reboot in Verified Mode.
+    " >"$STDOUT"
+  else
+    # Leave the notification on the screen for 5 minutes to increase chances
+    # the user actually sees it before shutting down the device.
+    delay_secs=300
+    show_assets_message_image "block_devmode" ||
+    # The text by echo below is only fallback of localized assets message.
+    # Please sync with text there if you want to change the message.
+    echo "
+      The device owner has disabled Developer Mode for this device. Please ask
+      the device owner to remove the restriction if you want to use Developer
+      Mode.
+
+      Please toggle the Developer Switch and reboot the device to return to
+      Verified Mode.
+    " >"$STDOUT"
+  fi
+
+  # Read a space bar or timeout.
+  local input=$(match_char_timeout "$delay_secs" 20 < "$STDOUT")
+  tput clear > "$STDOUT"
+
+  if has_virtual_dev_switch; then
+    # Return to verified mode.
+    crossystem disable_dev_request=1
+    reboot
+  else
+    # Shut down instead of rebooting in a loop.
+    halt
+  fi
+
+  # To prevent the system from continuing to boot.
+  sleep infinity
+}
+
 # Main initialization and dispatcher
 main() {
   # process args
@@ -387,7 +444,8 @@ main() {
 
   case "$mode" in
     "warn_dev" | "enter_dev" | "leave_dev" | "dev_fwcheck" | \
-      "update_firmware" | "wipe" | "power_wash" | "self_repair" )
+      "update_firmware" | "wipe" | "power_wash" | "self_repair" | \
+      "block_devmode" )
       mode_"$mode" "$@"
       ;;
     * )

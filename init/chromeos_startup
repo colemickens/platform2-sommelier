@@ -60,6 +60,25 @@ mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 # processes.
 sysctl -q -p /etc/sysctl.conf
 
+# CROS_DEBUG equals one if we've booted in developer mode or we've
+# booted a developer image.
+crossystem "cros_debug?1"
+CROS_DEBUG=$((! $?))
+
+# Check whether the device is allowed to boot in dev mode. If firmware write
+# protect is off or a debug build is already installed on the system, ignore
+# block_devmode. It is pointless in these cases, as the device is already in a
+# state where the local user has full control.
+#
+# The up-front CROS_DEBUG check avoids forking a crossystem process in verified
+# mode, thus keeping the check as lightweight as possible for normal boot.
+if [ $CROS_DEBUG -eq 1 ]; then
+  if crossystem "block_devmode?1" "wpsw_boot?1" "debug_build?0" \
+                "devsw_boot?1"; then
+    chromeos-boot-alert block_devmode /dev/tty1
+  fi
+fi
+
 # Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
@@ -149,11 +168,6 @@ FACTORY_MODE=
 if is_factory_mode; then
   FACTORY_MODE=factory
 fi
-
-# CROS_DEBUG equals one if we've booted in developer mode or we've
-# booted a developer image.
-crossystem "cros_debug?1"
-CROS_DEBUG=$((! $?))
 
 # Check if we need to perform firmware update: only if fwupdate_tries is
 # non-zero or if not using normal (ex, developer or recovery) firmware.
