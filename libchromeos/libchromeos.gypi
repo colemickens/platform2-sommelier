@@ -54,7 +54,6 @@
       'sources': [
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
-        'chromeos/dbus/error_constants.cc',
         'chromeos/process_information.cc',
         'chromeos/process.cc',
         'chromeos/secure_blob.cc',
