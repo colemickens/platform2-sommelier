@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 # Run tasks periodically.
-# Usage: $0  <delay_seconds> <task_name> <task_binary>
+# Usage: $0 <delay_seconds> <timeout_seconds> <task_name> <task_binary>
 #
 # Executes task <task_name> by running <task_binary> every <delay_seconds>.
 
@@ -35,11 +35,13 @@ check_and_fix_spool_paths() {
 
 main() {
   local delay="$1"
-  local name="$2"
+  local timeout="$2"
+  local name="$3"
   local spool_file="${SPOOL_DIR}/${name}"
-  shift 2
+  shift 3
 
   [ -z "${delay}" ] && exit 1
+  [ -z "${timeout}" ] && exit 1
   [ -z "${name}" ] && exit 1
   [ $# -eq 0 ] && exit 1
   check_and_fix_spool_paths
@@ -57,15 +59,9 @@ main() {
     if [ ${time_diff} -gt ${delay} ]; then
       rm "${spool_file}" || true
       touch "${spool_file}"
-      # Make sure to reclaim status info about background processes.
-      # At this point, all background processes should be dead.
-      # We don't actually care about the result though.
-      wait || true
       log "${name}: running $*"
-      (
-        timeout -k ${KILL_DELAY} ${CHECK_DELAY} "$@" || true
-        log "${name}: job completed"
-      ) &
+      timeout -k ${KILL_DELAY} ${timeout} "$@" || true
+      log "${name}: job completed"
     fi
   done
 }
