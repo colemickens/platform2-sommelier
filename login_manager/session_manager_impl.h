@@ -191,6 +191,9 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   PolicyService* GetPolicyService(const std::string& user_email);
 
+  // Updates system settings according to |device_policy_|.
+  void UpdateSystemSettings();
+
   bool session_started_;
   bool session_stopping_;
   bool screen_locked_;

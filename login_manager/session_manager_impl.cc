@@ -77,21 +77,6 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // The name of the flag that indicates whether dev mode should be blocked.
 const char kCrossystemBlockDevmode[] = "block_devmode";
 
-// Applies system settings as specified in |settings|.
-static void UpdateSystemSettings(
-    const enterprise_management::ChromeDeviceSettingsProto& settings) {
-  int block_devmode_setting =
-      settings.system_settings().block_devmode() ? 1 : 0;
-  int block_devmode_value = VbGetSystemPropertyInt(kCrossystemBlockDevmode);
-  if (block_devmode_value == -1)
-    LOG(ERROR) << "Failed to read block_devmode flag!";
-
-  if (block_devmode_setting != block_devmode_value) {
-    if (VbSetSystemPropertyInt(kCrossystemBlockDevmode, block_devmode_setting))
-      LOG(ERROR) << "Failed to write block_devmode flag!";
-  }
-}
-
 }  // namespace
 
 SessionManagerImpl::Error::Error() : set_(false) {}
@@ -215,7 +200,7 @@ bool SessionManagerImpl::Initialize() {
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(
         device_policy_->GetSettings());
-    UpdateSystemSettings(device_policy_->GetSettings());
+    UpdateSystemSettings();
     return true;
   }
   return false;
@@ -567,7 +552,7 @@ void SessionManagerImpl::OnPolicyPersisted(bool success) {
                                               success);
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
-  UpdateSystemSettings(device_policy_->GetSettings());
+  UpdateSystemSettings();
 }
 
 void SessionManagerImpl::OnKeyPersisted(bool success) {
@@ -656,6 +641,23 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
 PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
   UserSessionMap::const_iterator it = user_sessions_.find(user);
   return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
+}
+
+void SessionManagerImpl::UpdateSystemSettings() {
+  // Only write settings when device ownership is established.
+  if (!owner_key_.IsPopulated())
+    return;
+
+  int block_devmode_setting =
+      device_policy_->GetSettings().system_settings().block_devmode() ? 1 : 0;
+  int block_devmode_value = VbGetSystemPropertyInt(kCrossystemBlockDevmode);
+  if (block_devmode_value == -1)
+    LOG(ERROR) << "Failed to read block_devmode flag!";
+
+  if (block_devmode_setting != block_devmode_value) {
+    if (VbSetSystemPropertyInt(kCrossystemBlockDevmode, block_devmode_setting))
+      LOG(ERROR) << "Failed to write block_devmode flag!";
+  }
 }
 
 }  // namespace login_manager
