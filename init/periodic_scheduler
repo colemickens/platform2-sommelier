@@ -14,7 +14,8 @@ set -e -u
 SCRIPT_NAME="$(basename "$0")"
 CHECK_DELAY=300  # Check every 5 minutes.
 KILL_DELAY=10    # How long to let the job clean up after a timeout.
-SPOOL_DIR=/var/spool/cron-lite
+# Let the unittests override.
+: ${SPOOL_DIR:=/var/spool/cron-lite}
 
 log() {
   logger -p local3.info -t "${SCRIPT_NAME}" "$@"
@@ -24,8 +25,7 @@ trap "log 'exiting'" EXIT
 
 check_and_fix_spool_paths() {
   # Avoid weird spool paths if possible.
-  test -L /var/spool && unlink /var/spool
-  test -L "${SPOOL_DIR}" && unlink "${SPOOL_DIR}"
+  rm -f "$(dirname "${SPOOL_DIR}")" "${SPOOL_DIR}" 2>/dev/null || :
   mkdir -p "${SPOOL_DIR}"
   if [ ! -O "${SPOOL_DIR}" -o ! -d "${SPOOL_DIR}" ]; then
     log "Spool directory is damaged. Aborting!"
@@ -48,7 +48,8 @@ main() {
 
   while true; do
     # Allow the sleep to be killed manually without terminating the handler.
-    sleep $(( CHECK_DELAY + KILL_DELAY )) || true
+    # Send stderr to /dev/null to suppress the shell's "Terminated" message.
+    sleep $(( CHECK_DELAY + KILL_DELAY )) 2>/dev/null || true
 
     [ ! -e "${spool_file}" ] && touch "${spool_file}"
 
