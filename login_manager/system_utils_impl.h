@@ -18,7 +18,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace base {
