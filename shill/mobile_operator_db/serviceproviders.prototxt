@@ -5052,6 +5052,23 @@ mno {
       dns : "172.31.139.17"
     }
   }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      regex : "234206210(0|1)[0-9]{5}"
+    }
+    data {
+      uuid : "aeff3fc4-3e8e-4f76-a4be-f565919cf3ac"
+      localized_name {
+        name : "HP DataPass"
+      }
+      mobile_apn {
+        apn : "HP DataPass"
+        plan : PREPAID
+        gateway : "hpdp-internet.foggmobile.com"
+      }
+    }
+  }
 }
 
 mno {

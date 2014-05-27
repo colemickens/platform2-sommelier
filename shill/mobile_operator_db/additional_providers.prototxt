@@ -340,3 +340,32 @@ mno {
     sid : "14846"
   }
 }
+
+# - We add a fake MNO since we don't support international MVNOs yet. MCCMNC /
+#   operator name are added to the MNO data, to allow us to match the MNO.
+# - The same MVNO also exists under the MNO with MCCMNC 23420.
+mno {
+  data {
+    uuid : "3c18cc31-1b06-4e9b-acce-51158dedcf6f"
+    localized_name {
+      name : "HP DataPass"
+    }
+    mccmnc : "20812"
+    mccmnc : "312620"
+    mobile_apn {
+      apn : "HP DataPass"
+      plan : PREPAID
+      gateway : "hpdp-internet.foggmobile.com"
+    }
+  }
+  # If the IMSI range is correct, we still want to treat this as an MVNO.
+  mvno {
+    mvno_filter {
+      type : IMSI
+      regex : "(20812|312620)[0-9]{10}"
+    }
+    data {
+      uuid : "aeff3fc4-3e8e-4f76-a4be-f565919cf3ac"
+    }
+  }
+}
