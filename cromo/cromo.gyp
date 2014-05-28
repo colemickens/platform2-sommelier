@@ -31,14 +31,14 @@
       'sources': [
         '<(xml2cpp_in_dir)/org.freedesktop.DBus.Properties.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'libcromo',
       'type': 'static_library',
       'standalone_static_library': 1, # tells GYP to not make this a 'thin' library
       'dependencies': [
-        '../common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
+        '../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
         'cromo-adaptors',
       ],
       'sources': [
@@ -61,7 +61,7 @@
       # dependencies and sources from the 'libcromo' target, instead of
       # depending on 'libcromo'.
       'dependencies': [
-        '../common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
+        '../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
         'cromo-adaptors',
       ],
       'defines': [
@@ -94,7 +94,7 @@
         {
           'target_name': 'dummy_modem',
           'type': 'shared_library',
-          'dependencies': ['../common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors'],
+          'dependencies': ['../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors'],
           'sources': [
             'dummy_modem.cc',
             'dummy_modem_handler.cc',
@@ -103,7 +103,7 @@
         {
           'target_name': 'cromo_server_unittest',
           'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'carrier.cc',
             'cromo_server_unittest.cc',
@@ -116,7 +116,7 @@
           'target_name': 'utilities_unittest',
           'type': 'executable',
           'dependencies': ['libcromo'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'utilities_unittest.cc',
           ]
@@ -125,7 +125,7 @@
           'target_name': 'sms_message_unittest',
           'type': 'executable',
           'dependencies': ['libcromo'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'sms_message_unittest.cc',
           ]
@@ -134,7 +134,7 @@
           'target_name': 'sms_cache_unittest',
           'type': 'executable',
           'dependencies': ['libcromo'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'sms_cache_unittest.cc',
           ]
