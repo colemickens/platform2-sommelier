@@ -98,6 +98,8 @@ DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
 }
 
 DeviceManager::~DeviceManager() {
+  udev_monitor_unref(udev_monitor_);
+  udev_unref(udev_);
   RemoveDevices(true /* remove all */);
 }
 
