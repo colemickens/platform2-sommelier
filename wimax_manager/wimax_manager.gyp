@@ -32,7 +32,7 @@
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Device.xml',
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Network.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'wimax_manager-proxies',
@@ -49,7 +49,7 @@
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Device.xml',
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Network.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'wimax_manager-protos',
@@ -63,7 +63,7 @@
         '<(proto_in_dir)/eap_parameters.proto',
         '<(proto_in_dir)/network_operator.proto',
       ],
-      'includes': ['../common-mk/protoc.gypi'],
+      'includes': ['../../platform2/common-mk/protoc.gypi'],
     },
     {
       'target_name': 'libwimax_manager',
@@ -119,7 +119,7 @@
           'target_name': 'wimax_manager_testrunner',
           'type': 'executable',
           'dependencies': ['libwimax_manager'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'byte_identifier_unittest.cc',
             'gdm_device_unittest.cc',
