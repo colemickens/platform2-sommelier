@@ -25,7 +25,7 @@
         '<(proto_in_dir)/config.proto',
         '<(proto_in_dir)/usb_modem_info.proto',
       ],
-      'includes': ['../common-mk/protoc.gypi'],
+      'includes': ['../../platform2/common-mk/protoc.gypi'],
     },
     {
       'target_name': 'libmist',
@@ -76,7 +76,7 @@
           'target_name': 'mist_testrunner',
           'type': 'executable',
           'dependencies': ['libmist'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'config_loader_unittest.cc',
             'event_dispatcher_unittest.cc',
