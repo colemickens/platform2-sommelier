@@ -30,7 +30,7 @@
       'sources': [
         '<(xml2cpp_in_dir)/org.chromium.lorgnette.Manager.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'lorgnette-proxies',
@@ -43,7 +43,7 @@
       'sources': [
         '<(xml2cpp_in_dir)/org.chromium.lorgnette.Manager.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'liblorgnette',
@@ -103,7 +103,7 @@
           'target_name': 'lorgnette_unittest',
           'type': 'executable',
           'dependencies': ['liblorgnette'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'manager_unittest.cc',
             'testrunner.cc',
