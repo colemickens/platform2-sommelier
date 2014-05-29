@@ -50,8 +50,9 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
 
   EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
 
-  EXPECT_NE(util_->GetPrivateKeyForUser(public_key, slot_.get()),
-            reinterpret_cast<RSAPrivateKey*>(NULL));
+  scoped_ptr<RSAPrivateKey> private_key(
+      util_->GetPrivateKeyForUser(public_key, slot_.get()));
+  EXPECT_NE(private_key.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
 }
 
 TEST_F(NssUtilTest, RejectBadPublicKey) {
