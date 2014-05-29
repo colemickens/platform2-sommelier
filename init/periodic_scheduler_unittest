@@ -72,7 +72,9 @@ main() {
 
   trap cleanup EXIT INT
   export SCHED=$(realpath "${0%_unittest}")
-  TMP_DIR=$(mktemp -d "${SCHED}.XXXXXX")
+  # Default to the temp dir ($T) that portage has set up for us.
+  # This is needed when doing out of tree builds.
+  TMP_DIR=$(mktemp -d "${T:-${SCHED%/*}}/${SCHED##*/}.XXXXXX")
 
   # Try to use dash if it's available as that's what we'll be using
   # on the actual device at runtime.
