@@ -122,6 +122,11 @@ const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.extradata",
 };
 
+const char* kCorruptedPerfPipedDataFiles[] = {
+  // Has a SAMPLE event with size set to zero. Don't go into an infinite loop!
+  "perf.data.piped.corrupted.zero_size_sample",
+};
+
 const char* kPerfDataProtoFiles[] = {
   "perf.callgraph.pb_text",
 };

@@ -224,6 +224,19 @@ TEST(PerfReaderTest, Test1Cycle) {
   }
 }
 
+TEST(PerfReaderTest, CorruptedFiles) {
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kCorruptedPerfPipedDataFiles);
+       ++i) {
+    const char* test_file = perf_test_files::kCorruptedPerfPipedDataFiles[i];
+    string input_perf_data = GetTestInputFilePath(test_file);
+    LOG(INFO) << "Testing " << input_perf_data;
+    ASSERT_TRUE(FileExists(input_perf_data)) << "Test file does not exist!";
+    PerfReader pr;
+    ASSERT_FALSE(pr.ReadFile(input_perf_data));
+  }
+}
+
 TEST(PerfReaderTest, PerfizeBuildID) {
   string test = "f";
   PerfReader::PerfizeBuildIDString(&test);

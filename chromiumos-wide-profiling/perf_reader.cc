@@ -1430,6 +1430,12 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       ByteSwap(&header.size);
     }
 
+    if (header.size == 0) {
+      // Avoid an infinite loop.
+      LOG(ERROR) << "Event size is zero. Type: " << header.type;
+      return false;
+    }
+
     if (data.size < offset + header.size) {
       LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
                  << header.size << " bytes.  Available: "

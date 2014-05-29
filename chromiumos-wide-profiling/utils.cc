@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <openssl/md5.h>
+#include <sys/stat.h>
 
 #include <cctype>
 #include <cstdlib>
@@ -136,6 +137,11 @@ bool FileToBuffer(const string& filename, std::vector<char>* contents) {
     CHECK_GT(fread(&(*contents)[0], file_size, 1, fp), 0U);
   fclose(fp);
   return true;
+}
+
+bool FileExists(const string& filename) {
+  struct stat st;
+  return stat(filename.c_str(), &st) == 0;
 }
 
 string HexToString(const u8* array, size_t length) {

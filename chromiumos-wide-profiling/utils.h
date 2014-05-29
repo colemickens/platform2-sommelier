@@ -64,6 +64,9 @@ uint64 GetPerfSampleDataOffset(const event_t& event);
 // Returns the size of the 8-byte-aligned memory for storing |string|.
 size_t GetUint64AlignedStringLength(const string& str);
 
+// Returns true iff the file exists.
+bool FileExists(const string& filename);
+
 // Reads the contents of a file into |data|.  Returns true on success, false if
 // it fails.
 bool ReadFileToData(const string& filename, std::vector<char>* data);
