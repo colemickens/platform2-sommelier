@@ -62,6 +62,8 @@ import re
 
 import union_selectors
 
+_BASIC_TYPES = ['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
+                'uint32_t', 'int32_t', 'uint64_t', 'int64_t']
 _OUTPUT_FILE_H = 'tpm_generated.h'
 _OUTPUT_FILE_CC = 'tpm_generated.cc'
 _COPYRIGHT_HEADER = ('// Copyright (c) 2014 The Chromium OS Authors. All '
@@ -81,13 +83,19 @@ _HEADER_FILE_INCLUDES = """
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
+
+#include "trunks/authorization_delegate.h"
 """
 _IMPLEMENTATION_FILE_INCLUDES = """
+#include <string>
+
+#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
 #include <base/sys_byteorder.h>
 
+#include "trunks/authorization_delegate.h"
 """
 _LOCAL_INCLUDE = """
 #include "%(filename)s"
@@ -107,7 +115,7 @@ _CLASS_END = """
 };
 """
 _SERIALIZE_BASIC_TYPE = """
-TPM_RC Serialize_%(type)s(%(type)s value, std::string* buffer) {
+TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
   VLOG(2) << __func__;
   %(type)s value_net = value;
   switch (sizeof(%(type)s)) {
@@ -149,6 +157,15 @@ TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
   return TPM_RC_SUCCESS;
 }
 """
+_SERIALIZE_DECLARATION = """
+TPM_RC Serialize_%(type)s(
+    const %(type)s& value,
+    std::string* buffer);
+
+TPM_RC Parse_%(type)s(
+    std::string* buffer,
+    %(type)s* value);
+"""
 
 
 class Typedef(object):
@@ -156,13 +173,17 @@ class Typedef(object):
 
   _TYPEDEF = 'typedef %(old_type)s %(new_type)s;\n'
   _SERIALIZE_FUNCTION = """
-TPM_RC Serialize_%(new)s(const %(new)s& value, std::string* buffer) {
+TPM_RC Serialize_%(new)s(
+    const %(new)s& value,
+    std::string* buffer) {
   VLOG(2) << __func__;
   return Serialize_%(old)s(value, buffer);
 }
 """
   _PARSE_FUNCTION = """
-TPM_RC Parse_%(new)s(std::string* buffer, %(new)s* value) {
+TPM_RC Parse_%(new)s(
+    std::string* buffer,
+    %(new)s* value) {
   VLOG(2) << __func__;
   return Parse_%(old)s(buffer, value);
 }
@@ -256,7 +277,9 @@ class Structure(object):
   _STRUCTURE_END = '};\n\n'
   _STRUCTURE_FIELD = '  %(type)s %(name)s;\n'
   _SERIALIZE_FUNCTION_START = """
-TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
+TPM_RC Serialize_%(type)s(
+    const %(type)s& value,
+    std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(2) << __func__;
 """
@@ -275,13 +298,18 @@ TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
   }
 """
   _SERIALIZE_FIELD_WITH_SELECTOR = """
-  result = Serialize_%(type)s(value.%(name)s, value.%(selector_name)s, buffer);
+  result = Serialize_%(type)s(
+      value.%(name)s,
+      value.%(selector_name)s,
+      buffer);
   if (result) {
     return result;
   }
 """
   _PARSE_FUNCTION_START = """
-TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
+TPM_RC Parse_%(type)s(
+    std::string* buffer,
+    %(type)s* value) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(2) << __func__;
 """
@@ -300,7 +328,10 @@ TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
   }
 """
   _PARSE_FIELD_WITH_SELECTOR = """
-  result = Parse_%(type)s(buffer, value->%(selector_name)s, &value->%(name)s);
+  result = Parse_%(type)s(
+      buffer,
+      value->%(selector_name)s,
+      &value->%(name)s);
   if (result) {
     return result;
   }
@@ -864,6 +895,10 @@ class StructureParser(object):
 class Command(object):
   """Represents a TPM command."""
 
+  _APPENDED_ARGS = """
+      AuthorizationDelegate* authorization_delegate,
+      const %(method_name)sResponse& callback"""
+
   def __init__(self, name):
     self.name = name
     self.command_code = ''
@@ -878,7 +913,7 @@ class Command(object):
     args = self._ArgList(self.request_args)
     if args:
       args += ','
-    args += '\n      const %sResponse& callback' % self._MethodName()
+    args += self._APPENDED_ARGS % {'method_name': self._MethodName()}
     out_file.write('  void %s(%s);\n' % (self._MethodName(), args))
 
   def _OutputCallbackSignature(self, out_file):
@@ -1025,8 +1060,7 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
   out_file.write('\n')
   # These types are built-in or defined by <stdint.h>; they serve as base cases
   # when defining type dependencies.
-  defined_types = set(['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
-                       'uint32_t', 'int32_t', 'uint64_t', 'int64_t'])
+  defined_types = set(_BASIC_TYPES)
   # Generate defines.  These must be generated before any other code.
   for define in defines:
     define.Output(out_file)
@@ -1046,6 +1080,13 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
   # Generate structs.  All non-struct dependencies should be already declared.
   for struct in structs:
     struct.Output(out_file, defined_types, typemap)
+  # Generate serialize / parse function declarations.
+  for basic_type in _BASIC_TYPES:
+    out_file.write(_SERIALIZE_DECLARATION % {'type': basic_type})
+  for typedef in types:
+    out_file.write(_SERIALIZE_DECLARATION % {'type': typedef.new_type})
+  for struct in structs:
+    out_file.write(_SERIALIZE_DECLARATION % {'type': struct.name})
   # Generate a declaration for a 'Tpm' class, which includes one method for
   # every TPM 2.0 command.
   out_file.write(_CLASS_BEGIN)
@@ -1071,9 +1112,8 @@ def GenerateImplementation(types, structs, typemap, commands):
   out_file.write(_LOCAL_INCLUDE % {'filename': _OUTPUT_FILE_H})
   out_file.write(_IMPLEMENTATION_FILE_INCLUDES)
   out_file.write(_NAMESPACE_BEGIN)
-  serialized_types = set(['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
-                          'uint32_t', 'int32_t', 'uint64_t', 'int64_t'])
-  for basic_type in serialized_types:
+  serialized_types = set(_BASIC_TYPES)
+  for basic_type in _BASIC_TYPES:
     out_file.write(_SERIALIZE_BASIC_TYPE % {'type': basic_type})
   for typedef in types:
     typedef.OutputSerialize(out_file, serialized_types, typemap)
