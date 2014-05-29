@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
@@ -32,7 +33,8 @@ ChildJobInterface::Subprocess::Subprocess(uid_t desired_uid,
 
 ChildJobInterface::Subprocess::~Subprocess() {}
 
-bool ChildJobInterface::Subprocess::ForkAndExec(char const** argv) {
+bool ChildJobInterface::Subprocess::ForkAndExec(
+    const std::vector<std::string>& args) {
   pid_ = system_->fork();
   if (pid_ == 0) {
     SessionManagerService::RevertHandlers();
@@ -44,7 +46,12 @@ bool ChildJobInterface::Subprocess::ForkAndExec(char const** argv) {
 
     logging::CloseLogFile();  // So browser does not inherit logging FD.
 
-    execv(argv[0], const_cast<char* const*>(argv));
+    scoped_ptr<char const*[]> argv(new char const*[args.size() + 1]);
+    for (size_t i = 0; i < args.size(); ++i)
+      argv[i] = args[i].c_str();
+    argv[args.size()] = 0;
+
+    execv(argv[0], const_cast<char* const*>(argv.get()));
 
     // Should never get here, unless we couldn't exec the command.
     PLOG(ERROR) << "Error executing " << argv[0];

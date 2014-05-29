@@ -321,29 +321,16 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
   ExpectArgsToContainAll(job_args, extra_args);
 }
 
-TEST_F(BrowserJobTest, CreateArgv) {
+TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
   BrowserJob job(argv, false, -1, &checker_, &metrics_, &utils_);
 
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
   std::vector<std::string> extra_args(kExtraArgs,
                                       kExtraArgs + arraysize(kExtraArgs));
-  job.SetExtraArguments(extra_args);
-
-  const char** arg_array = job.CreateArgv();
-
   argv.insert(argv.end(), extra_args.begin(), extra_args.end());
-
-  size_t arg_array_size = 0;
-  for (const char** arr = arg_array; *arr != NULL; ++arr)
-    ++arg_array_size;
-
-  ASSERT_EQ(argv.size(), arg_array_size);
-  for (size_t i = 0; i < argv.size(); ++i) {
-    EXPECT_EQ(argv[i], arg_array[i]);
-    delete [] arg_array[i];
-  }
-  delete [] arg_array;
+  job.SetExtraArguments(extra_args);
+  EXPECT_EQ(argv, job.ExportArgv());
 }
 
 }  // namespace login_manager

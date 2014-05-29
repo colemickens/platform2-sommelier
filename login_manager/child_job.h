@@ -29,7 +29,7 @@ class ChildJobInterface {
     virtual ~Subprocess();
 
     // fork() and exec(argv). Returns false if fork() fails, true otherwise.
-    bool ForkAndExec(char const** argv);
+    bool ForkAndExec(const std::vector<std::string>& args);
     // Sends signal to pid_. No-op if there is no subprocess running.
     void Kill(int signal);
     // Sends signal to pid_'s entire process group.

@@ -103,7 +103,7 @@ class BrowserJob : public BrowserJobInterface {
   void RecordTime();
 
   // Export a copy of the current argv.
-  std::vector<std::string> ExportArgv();
+  std::vector<std::string> ExportArgv() const;
 
   // Flag passed to Chrome the first time Chrome is started after the
   // system boots. Not passed when Chrome is restarted after signout.
@@ -115,13 +115,6 @@ class BrowserJob : public BrowserJobInterface {
   static const time_t kRestartWindowSeconds;
 
  private:
-  // Helper for CreateArgV() that copies a vector of arguments into argv.
-  size_t CopyArgsToArgv(const std::vector<std::string>& arguments,
-                        char const** argv) const;
-
-  // Allocates and populates array of C strings to pass to exec call.
-  char const** CreateArgv() const;
-
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
 
@@ -172,7 +165,6 @@ class BrowserJob : public BrowserJobInterface {
   FRIEND_TEST(BrowserJobTest, InitializationTest);
   FRIEND_TEST(BrowserJobTest, ShouldStopTest);
   FRIEND_TEST(BrowserJobTest, ShouldNotStopTest);
-  FRIEND_TEST(BrowserJobTest, CreateArgv);
   DISALLOW_COPY_AND_ASSIGN(BrowserJob);
 };
 

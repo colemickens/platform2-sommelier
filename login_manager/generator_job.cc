@@ -54,11 +54,10 @@ GeneratorJob::GeneratorJob(const std::string& filename,
 GeneratorJob::~GeneratorJob() {}
 
 bool GeneratorJob::RunInBackground() {
-  char const* argv[4];
-  argv[0] = kKeygenExecutable;
-  argv[1] = filename_.c_str();
-  argv[2] = user_path_.c_str();
-  argv[3] = NULL;
+  std::vector<std::string> argv;
+  argv.push_back(kKeygenExecutable);
+  argv.push_back(filename_);
+  argv.push_back(user_path_);
 
   return subprocess_.ForkAndExec(argv);
 }

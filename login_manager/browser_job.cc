@@ -106,7 +106,7 @@ bool BrowserJob::RunInBackground() {
 
   LOG(INFO) << "Running child " << GetName() << "...";
   RecordTime();
-  return subprocess_.ForkAndExec(CreateArgv());
+  return subprocess_.ForkAndExec(ExportArgv());
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {
@@ -203,44 +203,19 @@ void BrowserJob::ClearPid() {
   subprocess_.clear_pid();
 }
 
-std::vector<std::string> BrowserJob::ExportArgv() {
-  std::vector<std::string> to_return;
-  char const** argv = CreateArgv();
-  for (size_t i = 0; argv[i]; ++i) {
-    to_return.push_back(argv[i]);
-    delete [] argv[i];
+std::vector<std::string> BrowserJob::ExportArgv() const {
+  std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
+  to_return.insert(to_return.end(),
+                   login_arguments_.begin(), login_arguments_.end());
+  to_return.insert(to_return.end(),
+                   extra_arguments_.begin(), extra_arguments_.end());
+
+  if (!extra_one_time_arguments_.empty()) {
+    to_return.insert(to_return.end(),
+                     extra_one_time_arguments_.begin(),
+                     extra_one_time_arguments_.end());
   }
-  delete [] argv;
   return to_return;
-}
-
-size_t BrowserJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
-                                char const** argv) const {
-  for (size_t i = 0; i < arguments.size(); ++i) {
-    size_t needed_space = arguments[i].length() + 1;
-    char* space = new char[needed_space];
-    strncpy(space, arguments[i].c_str(), needed_space);
-    argv[i] = space;
-  }
-  return arguments.size();
-}
-
-char const** BrowserJob::CreateArgv() const {
-  size_t total_size = (arguments_.size() +
-                       login_arguments_.size() +
-                       extra_arguments_.size());
-  if (!extra_one_time_arguments_.empty())
-    total_size += extra_one_time_arguments_.size();
-
-  char const** argv = new char const*[total_size + 1];
-  size_t index = CopyArgsToArgv(arguments_, argv);
-  index += CopyArgsToArgv(login_arguments_, argv + index);
-  index += CopyArgsToArgv(extra_arguments_, argv + index);
-  if (!extra_one_time_arguments_.empty())
-    index += CopyArgsToArgv(extra_one_time_arguments_, argv + index);
-  // Need to append NULL at the end.
-  argv[total_size] = NULL;
-  return argv;
 }
 
 }  // namespace login_manager
