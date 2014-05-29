@@ -28,5 +28,4 @@ CXX_BINARY(cros_installer_unittest): \
 		$(filter-out %_main.o,$(CXX_OBJECTS))
 
 clean: CLEAN(cros_installer_unittest)
-all: CXX_BINARY(cros_installer_unittest)
 tests: TEST(CXX_BINARY(cros_installer_unittest))
