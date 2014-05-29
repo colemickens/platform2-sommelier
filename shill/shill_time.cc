@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <base/format_macros.h>
 #include <base/strings/stringprintf.h>
 
 using std::string;
@@ -77,7 +78,8 @@ string Time::FormatTime(const struct tm &date_time, suseconds_t usec) {
       split_pos) {
     *split_pos = '\0';
     full_string =
-        base::StringPrintf("%s.%06ld%s", date_time_string, usec, split_pos+1);
+        base::StringPrintf("%s.%06" PRIu64 "%s", date_time_string,
+                           static_cast<uint64_t>(usec), split_pos + 1);
   }
 
   return full_string;
