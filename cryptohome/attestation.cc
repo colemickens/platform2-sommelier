@@ -487,8 +487,13 @@ void Attestation::PrepareForEnrollment() {
 void Attestation::PrepareForEnrollmentAsync() {
   base::AutoLock lock(lock_);
   if (!thread_.is_null()) {
-    LOG(WARNING) << "PrepareForEnrollmentAsync called multiple times.";
-    return;
+    if (!is_prepare_in_progress_) {
+      // Join the old thread and reuse the handle.
+      base::PlatformThread::Join(thread_);
+    } else {
+      LOG(WARNING) << "PrepareForEnrollmentAsync called multiple times.";
+      return;
+    }
   }
   base::PlatformThread::Create(0, this, &thread_);
 }
