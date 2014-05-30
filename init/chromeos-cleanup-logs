@@ -166,6 +166,9 @@ NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
 metrics_client Platform.DiskUsage.NumUserHomeDirectories \
                $NUMBER_OF_USERS 1 50 50
 
+WEEKLY_USERS_ACTIVE=$(cryptohome --action=dump_last_activity | awk '$2 <= 7' )
+metrics_client -s Login.UsersActiveWeekly ${WEEKLY_USERS_ACTIVE}
+
 # Report days since the least frequently used account signed in.
 # It is reported every time to measure effect of autodeletion feature.
 DAYS_SINCE_LFU_ACCOUNT_SIGNIN=$(cryptohome --action=dump_last_activity |
