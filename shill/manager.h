@@ -124,10 +124,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                           std::vector<DeviceRefPtr> *found) const;
 
   ServiceRefPtr FindService(const std::string& name);
-  std::vector<std::string> EnumerateAvailableServices(Error *error);
+  RpcIdentifiers EnumerateAvailableServices(Error *error);
 
   // Return the complete list of services, including those that are not visible.
-  std::vector<std::string> EnumerateCompleteServices(Error *error);
+  RpcIdentifiers EnumerateCompleteServices(Error *error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   std::map<std::string, std::string> GetLoadableProfileEntriesForService(

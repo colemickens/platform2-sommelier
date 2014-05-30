@@ -3562,6 +3562,9 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   manager()->RegisterService(mock_service);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
+          kServiceCompleteListProperty, _)).Times(1);
+  EXPECT_CALL(
+      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
           kServicesProperty, _)).Times(1);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
@@ -3569,6 +3572,9 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   CompleteServiceSort();
 
   Mock::VerifyAndClearExpectations(manager_adaptor_);
+  EXPECT_CALL(
+      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
+          kServiceCompleteListProperty, _)).Times(1);
   EXPECT_CALL(
       *manager_adaptor_, EmitRpcIdentifierArrayChanged(
           kServicesProperty, _)).Times(1);

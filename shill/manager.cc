@@ -1384,6 +1384,8 @@ void Manager::SortServicesTask() {
   }
 
   Error error;
+  adaptor_->EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty,
+                                          EnumerateCompleteServices(NULL));
   adaptor_->EmitRpcIdentifierArrayChanged(kServicesProperty,
                                           EnumerateAvailableServices(NULL));
   adaptor_->EmitRpcIdentifierArrayChanged(kServiceWatchListProperty,
@@ -1599,8 +1601,8 @@ RpcIdentifiers Manager::EnumerateProfiles(Error */*error*/) {
   return profile_rpc_ids;
 }
 
-vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
-  vector<string> service_rpc_ids;
+RpcIdentifiers Manager::EnumerateAvailableServices(Error */*error*/) {
+  RpcIdentifiers service_rpc_ids;
   for (const auto &service : services_) {
     if (service->IsVisible()) {
       service_rpc_ids.push_back(service->GetRpcIdentifier());
@@ -1610,7 +1612,7 @@ vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
 }
 
 RpcIdentifiers Manager::EnumerateCompleteServices(Error */*error*/) {
-  vector<string> service_rpc_ids;
+  RpcIdentifiers service_rpc_ids;
   for (const auto &service : services_) {
     service_rpc_ids.push_back(service->GetRpcIdentifier());
   }
@@ -1618,7 +1620,7 @@ RpcIdentifiers Manager::EnumerateCompleteServices(Error */*error*/) {
 }
 
 RpcIdentifiers Manager::EnumerateWatchedServices(Error */*error*/) {
-  vector<string> service_rpc_ids;
+  RpcIdentifiers service_rpc_ids;
   for (const auto &service : services_) {
     if (service->IsVisible() && service->IsActive(NULL)) {
       service_rpc_ids.push_back(service->GetRpcIdentifier());
