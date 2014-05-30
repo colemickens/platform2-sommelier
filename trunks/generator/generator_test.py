@@ -129,7 +129,7 @@ class TestGenerators(unittest.TestCase):
     command.OutputDeclarations(out_file)
     output_re = r'\s*typedef base::Callback<void\(\s*TPM_RC response_code,'
     output_re += r'\s+BYTE output\[sizeof\(TEST\)\]\)> TestResponse;'
-    output_re += r'\s+void Test\(\s*int input,'
+    output_re += r'\s+virtual void Test\(\s*int input,'
     output_re += r'\s+AuthorizationDelegate\* authorization_delegate,'
     output_re += r'\s+const TestResponse& callback\s*\);\s+'
     self.assertRegexpMatches(out_file.getvalue(), output_re)

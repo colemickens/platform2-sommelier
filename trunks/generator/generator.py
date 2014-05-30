@@ -83,8 +83,6 @@ _HEADER_FILE_INCLUDES = """
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
-
-#include "trunks/authorization_delegate.h"
 """
 _IMPLEMENTATION_FILE_INCLUDES = """
 #include <string>
@@ -96,6 +94,8 @@ _IMPLEMENTATION_FILE_INCLUDES = """
 #include <base/sys_byteorder.h>
 
 #include "trunks/authorization_delegate.h"
+#include "trunks/command_transceiver.h"
+
 """
 _LOCAL_INCLUDE = """
 #include "%(filename)s"
@@ -107,11 +107,23 @@ namespace Trunks {
 _NAMESPACE_END = """
 }  // namespace Trunks
 """
+_FORWARD_DECLARATIONS = """
+class AuthorizationDelegate;
+class CommandTransceiver;
+"""
 _CLASS_BEGIN = """
 class Tpm {
  public:
+  // Does not take ownership of |transceiver|.
+  Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}
+  virtual ~Tpm() {}
+
 """
 _CLASS_END = """
+ private:
+  CommandTransceiver* transceiver_;
+
+  DISALLOW_COPY_AND_ASSIGN(Tpm);
 };
 """
 _SERIALIZE_BASIC_TYPE = """
@@ -914,7 +926,7 @@ class Command(object):
     if args:
       args += ','
     args += self._APPENDED_ARGS % {'method_name': self._MethodName()}
-    out_file.write('  void %s(%s);\n' % (self._MethodName(), args))
+    out_file.write('  virtual void %s(%s);\n' % (self._MethodName(), args))
 
   def _OutputCallbackSignature(self, out_file):
     args = self._ArgList(self.response_args)
@@ -1057,6 +1069,7 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
   out_file.write(_HEADER_FILE_GUARD_HEADER % {'name': guard_name})
   out_file.write(_HEADER_FILE_INCLUDES)
   out_file.write(_NAMESPACE_BEGIN)
+  out_file.write(_FORWARD_DECLARATIONS)
   out_file.write('\n')
   # These types are built-in or defined by <stdint.h>; they serve as base cases
   # when defining type dependencies.
