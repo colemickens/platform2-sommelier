@@ -230,6 +230,11 @@ Service::Service(ControlInterface *control_interface,
                                   &Service::GetMisconnectsProperty);
   store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
 
+  HelpRegisterDerivedBool(kVisibleProperty,
+                          &Service::GetVisibleProperty,
+                          NULL,
+                          NULL);
+
   metrics_->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -1488,6 +1493,10 @@ Strings Service::GetDisconnectsProperty(Error */*error*/) const {
 
 Strings Service::GetMisconnectsProperty(Error */*error*/) const {
   return ExtractWallClockToStrings(misconnects_);
+}
+
+bool Service::GetVisibleProperty(Error */*error*/) {
+  return IsVisible();
 }
 
 void Service::SaveToProfile() {

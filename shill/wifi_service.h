@@ -108,7 +108,7 @@ class WiFiService : public Service {
   virtual bool Unload();
 
   virtual bool HasEndpoints() const { return !endpoints_.empty(); }
-  virtual bool IsVisible() const;
+  virtual bool IsVisible() const override;
   bool IsSecurityMatch(const std::string &security) const;
 
   // Used by WiFi objects to indicate that the credentials for this network

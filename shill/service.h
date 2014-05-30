@@ -495,6 +495,8 @@ class Service : public base::RefCounted<Service> {
   virtual std::string CalculateState(Error *error);
   std::string CalculateTechnology(Error *error);
 
+  bool GetVisibleProperty(Error *error);
+
   // Returns whether this service is in a state conducive to auto-connect.
   // This should include any tests used for computing connectable(),
   // as well as other critera such as whether the device associated with
