@@ -466,6 +466,9 @@ class Device : public base::RefCounted<Device> {
   // to alleviate issues with receiving a reply.
   bool ShouldUseMinimalDHCPConfig() const;
 
+  // Indicates if the selected service is configured with a static IP address.
+  bool IsUsingStaticIP() const;
+
   const ServiceRefPtr &selected_service() const { return selected_service_; }
 
   void HelpRegisterConstDerivedString(

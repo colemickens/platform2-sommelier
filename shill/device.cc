@@ -440,6 +440,13 @@ bool Device::ShouldUseMinimalDHCPConfig() const {
   return selected_service_ && selected_service_->ShouldUseMinimalDHCPConfig();
 }
 
+bool Device::IsUsingStaticIP() const {
+  if (!selected_service_) {
+    return false;
+  }
+  return selected_service_->HasStaticIPAddress();
+}
+
 bool Device::AcquireIPConfig() {
   return AcquireIPConfigWithLeaseName(string());
 }
@@ -513,9 +520,7 @@ void Device::ConfigureStaticIPTask() {
     return;
   }
 
-  const StaticIPParameters &static_ip_parameters =
-      selected_service_->static_ip_parameters();
-  if (static_ip_parameters.ContainsAddress()) {
+  if (IsUsingStaticIP()) {
     SLOG(Device, 2) << __func__ << " " << " configuring static IP parameters.";
     // If the parameters contain an IP address, apply them now and bring
     // the interface up.  When DHCP information arrives, it will supplement
@@ -536,7 +541,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
   if (selected_service_) {
     ipconfig->ApplyStaticIPParameters(
         selected_service_->mutable_static_ip_parameters());
-    if (selected_service_->static_ip_parameters().ContainsAddress()) {
+    if (IsUsingStaticIP()) {
       // If we are using a statically configured IP address instead
       // of a leased IP address, release any acquired lease so it may
       // be used by others.  This allows us to merge other non-leased
@@ -578,7 +583,7 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
   if (selected_service_) {
     selected_service_->OnDHCPFailure();
 
-    if (selected_service_->static_ip_parameters().ContainsAddress()) {
+    if (IsUsingStaticIP()) {
       // Consider three cases:
       //
       // 1. We're here because DHCP failed while starting up. There

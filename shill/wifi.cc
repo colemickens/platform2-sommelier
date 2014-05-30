@@ -1577,7 +1577,7 @@ void WiFi::OnLinkMonitorFailure() {
 }
 
 bool WiFi::ShouldUseArpGateway() const {
-  return true;
+  return !IsUsingStaticIP();
 }
 
 void WiFi::DisassociateFromService(const WiFiServiceRefPtr &service) {

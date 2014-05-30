@@ -1218,7 +1218,29 @@ TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsNetworkUnknown) {
 }
 
 TEST_F(WiFiMainTest, UseArpGateway) {
+  StartWiFi();
+
+  // With no selected service.
+  EXPECT_TRUE(wifi()->ShouldUseArpGateway());
   EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true, false))
+      .WillOnce(Return(dhcp_config_));
+  const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
+
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  InitiateConnect(service);
+
+  // Selected service that does not have a static IP address.
+  EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(false));
+  EXPECT_TRUE(wifi()->ShouldUseArpGateway());
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true, false))
+      .WillOnce(Return(dhcp_config_));
+  const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
+  Mock::VerifyAndClearExpectations(service);
+
+  // Selected service that has a static IP address.
+  EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(true));
+  EXPECT_FALSE(wifi()->ShouldUseArpGateway());
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, false, false))
       .WillOnce(Return(dhcp_config_));
   const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
 }

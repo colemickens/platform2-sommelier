@@ -765,6 +765,10 @@ void Service::ClearEAPCertification() {
   remote_certification_.clear();
 }
 
+bool Service::HasStaticIPAddress() const {
+  return static_ip_parameters().ContainsAddress();
+}
+
 void Service::SetAutoConnect(bool connect) {
   if (auto_connect() == connect) {
     return;
