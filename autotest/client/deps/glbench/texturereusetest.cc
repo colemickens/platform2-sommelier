@@ -27,7 +27,7 @@ bool TextureReuseTest::TestFunc(uint64_t iterations) {
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
 
-  for (uint64_t i = 0; i < iterations - 1; ++i) {
+  for (uint64_t i = 0; i < iterations; ++i) {
     glBindTexture(GL_TEXTURE_2D, textures_[i % kNumberOfTextures]);
     switch (flavor_) {
       case TEX_IMAGE:

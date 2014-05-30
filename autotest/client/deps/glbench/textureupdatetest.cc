@@ -25,7 +25,7 @@ bool TextureUpdateTest::TestFunc(uint64_t iterations) {
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
-  for (uint64_t i = 0; i < iterations - 1; ++i) {
+  for (uint64_t i = 0; i < iterations; ++i) {
     switch (flavor_) {
       case TEX_IMAGE:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width_, height_,

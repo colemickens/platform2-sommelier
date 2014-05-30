@@ -22,7 +22,7 @@ class TextureUploadTest : public TextureTest {
 bool TextureUploadTest::TestFunc(uint64_t iterations) {
   glGetError();
 
-  for (uint64_t i = 0; i < iterations - 1; ++i) {
+  for (uint64_t i = 0; i < iterations; ++i) {
     glBindTexture(GL_TEXTURE_2D, textures_[i % kNumberOfTextures]);
     switch (flavor_) {
       case TEX_IMAGE:
