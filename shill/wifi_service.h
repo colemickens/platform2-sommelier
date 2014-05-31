@@ -107,6 +107,10 @@ class WiFiService : public Service {
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
 
+  // Override SetState from parent Service class.  We will call the
+  // parent method.
+  virtual void SetState(ConnectState state) override;
+
   virtual bool HasEndpoints() const { return !endpoints_.empty(); }
   virtual bool IsVisible() const override;
   bool IsSecurityMatch(const std::string &security) const;

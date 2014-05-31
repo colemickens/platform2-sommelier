@@ -1476,6 +1476,11 @@ string Service::GetTethering(Error *error) const {
   return "";
 }
 
+
+void Service::UpdateVisible() {
+  adaptor_->EmitBoolChanged(kVisibleProperty, IsVisible());
+}
+
 // static
 Strings Service::ExtractWallClockToStrings(
     const deque<Timestamp> &timestamps) {

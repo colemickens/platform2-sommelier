@@ -372,6 +372,14 @@ bool WiFiService::Unload() {
   return provider_->OnServiceUnloaded(this);
 }
 
+void WiFiService::SetState(ConnectState state) {
+  bool is_visible = IsVisible();
+  Service::SetState(state);
+  if (IsVisible() != is_visible) {
+    UpdateVisible();
+  }
+}
+
 bool WiFiService::IsSecurityMatch(const string &security) const {
   return GetSecurityClass(security) == GetSecurityClass(security_);
 }
@@ -747,6 +755,7 @@ void WiFiService::UpdateFromEndpoints() {
   adaptor()->EmitUint16sChanged(kWifiFrequencyListProperty, frequency_list_);
   SetStrength(SignalToStrength(signal));
   UpdateSecurity();
+  UpdateVisible();
 }
 
 void WiFiService::UpdateSecurity() {

@@ -75,6 +75,7 @@ void WiMaxService::Stop() {
     SetDevice(NULL);
   }
   UpdateConnectable();
+  UpdateVisible();
 }
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
@@ -112,6 +113,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
   proxy_.reset(local_proxy.release());
   UpdateConnectable();
+  UpdateVisible();
   LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();
   return true;
 }

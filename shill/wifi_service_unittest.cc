@@ -1908,4 +1908,42 @@ TEST_F(WiFiServiceTest, GetTethering) {
   EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(NULL));
 }
 
+TEST_F(WiFiServiceTest, IsVisible) {
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
+  ServiceMockAdaptor *adaptor = GetAdaptor(wifi_service);
+
+  // Adding the first endpoint emits a change: Visible = true.
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  wifi_service->AddEndpoint(endpoint);
+  EXPECT_TRUE(wifi_service->IsVisible());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Removing the last endpoint emits a change: Visible = false.
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, false));
+  wifi_service->RemoveEndpoint(endpoint);
+  EXPECT_FALSE(wifi_service->IsVisible());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Entering the a connecting state emits a change: Visible = true
+  // although the service has no endpoints.
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
+  wifi_service->SetState(Service::kStateAssociating);
+  EXPECT_TRUE(wifi_service->IsVisible());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Moving between connecting / connected states does not trigger an Emit.
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, _)).Times(0);
+  wifi_service->SetState(Service::kStateConfiguring);
+  EXPECT_TRUE(wifi_service->IsVisible());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Entering the Idle state emits a change: Visible = false.
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, false));
+  wifi_service->SetState(Service::kStateIdle);
+  EXPECT_FALSE(wifi_service->IsVisible());
+  Mock::VerifyAndClearExpectations(adaptor);
+}
+
 }  // namespace shill

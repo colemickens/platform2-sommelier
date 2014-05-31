@@ -577,6 +577,9 @@ class Service : public base::RefCounted<Service> {
   // metered backhaul for internet connectivity.
   virtual std::string GetTethering(Error *error) const;
 
+  // Emit a change for the Visible property.
+  void UpdateVisible();
+
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class EthernetEapServiceTest;

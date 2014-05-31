@@ -22,6 +22,7 @@
 
 using std::string;
 using testing::_;
+using testing::AnyNumber;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -127,6 +128,10 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
   EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
+  ServiceMockAdaptor *adaptor = GetAdaptor();
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, _))
+     .Times(AnyNumber());
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
   ExpectUpdateService();
   service_->need_passphrase_ = false;
   EXPECT_TRUE(service_->Start(proxy_.release()));
@@ -141,6 +146,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
 
   service_->device_ = device_;
   EXPECT_CALL(*device_, OnServiceStopped(_));
+  EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, false));
   ExpectUpdateService();
   service_->Stop();
   EXPECT_FALSE(service_->IsStarted());
