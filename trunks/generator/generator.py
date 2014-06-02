@@ -68,9 +68,9 @@ _OUTPUT_FILE_H = 'tpm_generated.h'
 _OUTPUT_FILE_CC = 'tpm_generated.cc'
 _COPYRIGHT_HEADER = ('// Copyright 2014 The Chromium OS Authors. All '
                      'rights reserved.\n// Use of this source code is '
-                     'governed by a BSD-style license that can be found\n'
-                     '// in the LICENSE file.\n\n// THIS CODE IS GENERATED - '
-                     'DO NOT MODIFY!\n')
+                     'governed by a BSD-style license that can be\n'
+                     '// found in the LICENSE file.\n\n'
+                     '// THIS CODE IS GENERATED - DO NOT MODIFY!\n')
 _HEADER_FILE_GUARD_HEADER = """
 #ifndef %(name)s
 #define %(name)s
@@ -91,14 +91,17 @@ _IMPLEMENTATION_FILE_INCLUDES = """
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/sys_byteorder.h>
+#include <crypto/secure_hash.h>
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/command_transceiver.h"
+#include "trunks/error_codes.h"
 
 """
 _LOCAL_INCLUDE = """
-#include "%(filename)s"
+#include "trunks/%(filename)s"
 
 """
 _NAMESPACE_BEGIN = """
@@ -115,7 +118,7 @@ _CLASS_BEGIN = """
 class Tpm {
  public:
   // Does not take ownership of |transceiver|.
-  Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}
+  explicit Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}
   virtual ~Tpm() {}
 
 """
@@ -148,7 +151,10 @@ TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
+TPM_RC Parse_%(type)s(
+    std::string* buffer,
+    %(type)s* value,
+    std::string* value_bytes) {
   VLOG(2) << __func__;
   if (buffer->size() < sizeof(%(type)s))
     return TPM_RC_INSUFFICIENT;
@@ -167,6 +173,9 @@ TPM_RC Parse_%(type)s(std::string* buffer, %(type)s* value) {
     default:
       *value = value_net;
   }
+  if (value_bytes) {
+    value_bytes->append(buffer->substr(0, sizeof(%(type)s)));
+  }
   buffer->erase(0, sizeof(%(type)s));
   return TPM_RC_SUCCESS;
 }
@@ -178,8 +187,27 @@ TPM_RC Serialize_%(type)s(
 
 TPM_RC Parse_%(type)s(
     std::string* buffer,
-    %(type)s* value);
+    %(type)s* value,
+    std::string* value_bytes);
 """
+
+_TPM2B_HELPERS_DECLARATION = """
+%(type)s Make_%(type)s(
+    const std::string& bytes);
+std::string StringFrom_%(type)s(
+    const %(type)s& tpm2b);
+"""
+
+
+def FixName(name):
+  """Fixes names to conform to Chromium style."""
+  match = re.search(r'([^\[]*)(\[.*\])*', name)
+  fixed_name = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', match.group(1)).lower()
+  return fixed_name + match.group(2) if match.group(2) else fixed_name
+
+
+def IsTPM2B(name):
+  return name.startswith('TPM2B_')
 
 
 class Typedef(object):
@@ -197,9 +225,10 @@ TPM_RC Serialize_%(new)s(
   _PARSE_FUNCTION = """
 TPM_RC Parse_%(new)s(
     std::string* buffer,
-    %(new)s* value) {
+    %(new)s* value,
+    std::string* value_bytes) {
   VLOG(2) << __func__;
-  return Parse_%(old)s(buffer, value);
+  return Parse_%(old)s(buffer, value, value_bytes);
 }
 """
 
@@ -323,19 +352,26 @@ TPM_RC Serialize_%(type)s(
   _PARSE_FUNCTION_START = """
 TPM_RC Parse_%(type)s(
     std::string* buffer,
-    %(type)s* value) {
+    %(type)s* value,
+    std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(2) << __func__;
 """
   _PARSE_FIELD = """
-  result = Parse_%(type)s(buffer, &value->%(name)s);
+  result = Parse_%(type)s(
+      buffer,
+      &value->%(name)s,
+      value_bytes);
   if (result) {
     return result;
   }
 """
   _PARSE_FIELD_ARRAY = """
   for (uint32_t i = 0; i < value->%(count)s; ++i) {
-    result = Parse_%(type)s(buffer, &value->%(name)s[i]);
+    result = Parse_%(type)s(
+        buffer,
+        &value->%(name)s[i],
+        value_bytes);
     if (result) {
       return result;
     }
@@ -345,7 +381,8 @@ TPM_RC Parse_%(type)s(
   result = Parse_%(type)s(
       buffer,
       value->%(selector_name)s,
-      &value->%(name)s);
+      &value->%(name)s,
+      value_bytes);
   if (result) {
     return result;
   }
@@ -384,13 +421,17 @@ TPM_RC Serialize_%(union_type)s(
 TPM_RC Parse_%(union_type)s(
     std::string* buffer,
     %(selector_type)s selector,
-    %(union_type)s* value) {
+    %(union_type)s* value,
+    std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(2) << __func__;
 """
   _PARSE_UNION_FIELD = """
   if (selector == %(selector_value)s) {
-    result = Parse_%(field_type)s(buffer, &value->%(field_name)s);
+    result = Parse_%(field_type)s(
+        buffer,
+        &value->%(field_name)s,
+        value_bytes);
     if (result) {
       return result;
     }
@@ -399,7 +440,10 @@ TPM_RC Parse_%(union_type)s(
   _PARSE_UNION_FIELD_ARRAY = """
   if (selector == %(selector_value)s) {
     for (uint32_t i = 0; i < %(count)s; ++i) {
-      result = Parse_%(field_type)s(buffer, &value->%(field_name)s[i]);
+      result = Parse_%(field_type)s(
+          buffer,
+          &value->%(field_name)s[i],
+          value_bytes);
       if (result) {
         return result;
       }
@@ -411,6 +455,24 @@ TPM_RC Parse_%(union_type)s(
     // Do nothing.
   }
 """
+  _TPM2B_HELPERS = """
+%(type)s Make_%(type)s(
+    const std::string& bytes) {
+  %(type)s tpm2b;
+  CHECK(bytes.size() <= sizeof(tpm2b.%(buffer_name)s));
+  memset(&tpm2b, 0, sizeof(%(type)s));
+  tpm2b.size = bytes.size();
+  memcpy(tpm2b.%(buffer_name)s, bytes.data(), bytes.size());
+  return tpm2b;
+}
+
+std::string StringFrom_%(type)s(
+    const %(type)s& tpm2b) {
+  const char* char_buffer = reinterpret_cast<const char*>(
+      tpm2b.%(buffer_name)s);
+  return std::string(char_buffer, tpm2b.size);
+}
+"""
 
   def __init__(self, name, is_union):
     self.name = name
@@ -419,9 +481,9 @@ TPM_RC Parse_%(union_type)s(
     self.depends_on = []
     self.forwarded = False
 
-  def AddField(self, field_name, field_type):
+  def AddField(self, field_type, field_name):
     """Adds a field for this struct."""
-    self.fields.append((field_name, field_type))
+    self.fields.append((field_type, FixName(field_name)))
 
   def AddDependency(self, required_type):
     """Adds an explicit dependency on another type.
@@ -435,6 +497,9 @@ TPM_RC Parse_%(union_type)s(
       required_type: The type this structure depends on.
     """
     self.depends_on.append(required_type)
+
+  def IsBasicTPM2B(self):
+    return self.name.startswith('TPM2B_') and self.fields[1][0] == 'BYTE'
 
   def _GetFieldTypes(self):
     return set([field[0] for field in self.fields])
@@ -522,6 +587,11 @@ TPM_RC Parse_%(union_type)s(
         out_file.write(self._PARSE_FIELD % {'type': field[0],
                                             'name': field[1]})
     out_file.write(self._SERIALIZE_FUNCTION_END)
+    # If this is a TPM2B structure throw in a few convenience functions.
+    if self.IsBasicTPM2B():
+      field_name = self._ARRAY_FIELD_RE.search(self.fields[1][1]).group(1)
+      out_file.write(self._TPM2B_HELPERS % {'type': self.name,
+                                            'buffer_name': field_name})
     serialized_types.add(self.name)
 
   def _OutputUnionSerialize(self, out_file):
@@ -541,7 +611,8 @@ TPM_RC Parse_%(union_type)s(
     out_file.write(self._SERIALIZE_UNION_FUNCTION_START %
                    {'union_type': self.name, 'selector_type': selector_type})
     for selector in selector_values:
-      field_name = union_selectors.GetUnionSelectorField(self.name, selector)
+      field_name = FixName(union_selectors.GetUnionSelectorField(self.name,
+                                                                 selector))
       if not field_name:
         out_file.write(self._EMPTY_UNION_CASE % {'selector_value': selector})
         continue
@@ -564,7 +635,8 @@ TPM_RC Parse_%(union_type)s(
     out_file.write(self._PARSE_UNION_FUNCTION_START %
                    {'union_type': self.name, 'selector_type': selector_type})
     for selector in selector_values:
-      field_name = union_selectors.GetUnionSelectorField(self.name, selector)
+      field_name = FixName(union_selectors.GetUnionSelectorField(self.name,
+                                                                 selector))
       if not field_name:
         out_file.write(self._EMPTY_UNION_CASE % {'selector_value': selector})
         continue
@@ -909,9 +981,182 @@ class StructureParser(object):
 class Command(object):
   """Represents a TPM command."""
 
+  _HANDLE_RE = re.compile(r'TPMI_.H_.*')
   _APPENDED_ARGS = """
       AuthorizationDelegate* authorization_delegate,
       const %(method_name)sResponse& callback"""
+  _METHOD_START = """
+void Tpm::%(method_name)s(%(method_args)s) {
+  TPM_RC rc = TPM_RC_SUCCESS;
+  base::Callback<void(TPM_RC)> error_reporter =
+      base::Bind(%(method_name)sErrorCallback, callback);
+  base::Callback<void(const std::string&)> parser =
+      base::Bind(%(method_name)sResponseParser,
+                 callback,
+                 authorization_delegate);
+  TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
+  UINT32 command_size = 10;  // Header size.
+  std::string handle_section_bytes;
+  std::string parameter_section_bytes;"""
+  _DECLARE_COMMAND_CODE = """
+  TPM_CC command_code = %(command_code)s;"""
+  _SERIALIZE_LOCAL_VAR = """
+  std::string %(var_name)s_bytes;
+  rc = Serialize_%(var_type)s(
+      %(var_name)s,
+      &%(var_name)s_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    error_reporter.Run(rc);
+    return;
+  }"""
+  _ENCRYPT_PARAMETER = """
+  // Encrypt just the parameter data, not the size.
+  std::string tmp = %(var_name)s_bytes.substr(2);
+  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+    error_reporter.Run(TRUNKS_RC_ENCRYPTION_FAILED);
+    return;
+  }
+  %(var_name)s_bytes.replace(2, std::string::npos, tmp);"""
+  _HASH_START = """
+  scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
+      crypto::SecureHash::SHA256));"""
+  _HASH_UPDATE = """
+  hash->Update(%(var_name)s.data(),
+               %(var_name)s.size());"""
+  _APPEND_COMMAND_HANDLE = """
+  handle_section_bytes += %(var_name)s_bytes;
+  command_size += %(var_name)s_bytes.size();"""
+  _APPEND_COMMAND_PARAMETER = """
+  parameter_section_bytes += %(var_name)s_bytes;
+  command_size += %(var_name)s_bytes.size();"""
+  _AUTHORIZE_COMMAND = """
+  std::string command_hash(32, 0);
+  hash->Finish(string_as_array(&command_hash), command_hash.size());
+  std::string authorization_section_bytes;
+  if (!authorization_delegate->GetCommandAuthorization(
+      command_hash,
+      &authorization_section_bytes)) {
+    error_reporter.Run(TRUNKS_RC_AUTHORIZATION_FAILED);
+    return;
+  }
+  std::string authorization_size_bytes;
+  if (!authorization_section_bytes.empty()) {
+    tag = TPM_ST_SESSIONS;
+    std::string tmp;
+    rc = Serialize_UINT32(authorization_section_bytes.size(),
+                          &authorization_size_bytes);
+    if (rc != TPM_RC_SUCCESS) {
+      error_reporter.Run(rc);
+      return;
+    }
+    command_size += authorization_size_bytes.size() +
+                    authorization_section_bytes.size();
+  }"""
+  _METHOD_END = """
+  std::string command = tag_bytes +
+                        command_size_bytes +
+                        command_code_bytes +
+                        handle_section_bytes +
+                        authorization_size_bytes +
+                        authorization_section_bytes +
+                        parameter_section_bytes;
+  CHECK(command.size() == command_size) << "Command size mismatch!";
+  transceiver_->SendCommand(command, parser);
+}
+"""
+  _ERROR_CALLBACK_START = """
+void %(method_name)sErrorCallback(
+    const Tpm::%(method_name)sResponse& callback,
+    TPM_RC response_code) {
+  callback.Run(response_code"""
+  _ERROR_CALLBACK_ARG = """,
+               %(arg_type)s()"""
+  _ERROR_CALLBACK_END = """);
+}
+"""
+  _RESPONSE_PARSER_START = """
+void %(method_name)sResponseParser(
+    const Tpm::%(method_name)sResponse& callback,
+    AuthorizationDelegate* authorization_delegate,
+    const std::string& response) {
+  TPM_RC rc = TPM_RC_SUCCESS;
+  base::Callback<void(TPM_RC)> error_reporter =
+      base::Bind(%(method_name)sErrorCallback, callback);
+  std::string buffer(response);"""
+  _PARSE_LOCAL_VAR = """
+  %(var_type)s %(var_name)s;
+  std::string %(var_name)s_bytes;
+  rc = Parse_%(var_type)s(
+      &buffer,
+      &%(var_name)s,
+      &%(var_name)s_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    error_reporter.Run(rc);
+    return;
+  }"""
+  _RESPONSE_ERROR_CHECK = """
+  if (response_size != response.size()) {
+    error_reporter.Run(TPM_RC_SIZE);
+    return;
+  }
+  if (response_code != TPM_RC_SUCCESS) {
+    error_reporter.Run(response_code);
+    return;
+  }"""
+  _RESPONSE_SECTION_SPLIT = """
+  std::string authorization_section_bytes;
+  if (tag == TPM_ST_SESSIONS) {
+    UINT32 parameter_section_size = buffer.size();
+    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    if (rc != TPM_RC_SUCCESS) {
+      error_reporter.Run(rc);
+      return;
+    }
+    if (parameter_section_size > buffer.size()) {
+      error_reporter.Run(TPM_RC_INSUFFICIENT);
+      return;
+    }
+    authorization_section_bytes = buffer.substr(parameter_section_size);
+    // Keep the parameter section in |buffer|.
+    buffer.erase(parameter_section_size);
+  }"""
+  _AUTHORIZE_RESPONSE = """
+  std::string response_hash(32, 0);
+  hash->Finish(string_as_array(&response_hash), response_hash.size());
+  if (tag == TPM_ST_SESSIONS) {
+    if (!authorization_delegate->CheckResponseAuthorization(
+        response_hash,
+        authorization_section_bytes)) {
+      error_reporter.Run(TRUNKS_RC_AUTHORIZATION_FAILED);
+      return;
+    }
+  }"""
+  _DECRYPT_PARAMETER = """
+  if (tag == TPM_ST_SESSIONS) {
+    // Decrypt just the parameter data, not the size.
+    std::string tmp = %(var_name)s_bytes.substr(2);
+    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
+      error_reporter.Run(TRUNKS_RC_ENCRYPTION_FAILED);
+      return;
+    }
+    %(var_name)s_bytes.replace(2, std::string::npos, tmp);
+    rc = Parse_%(var_type)s(
+        &%(var_name)s_bytes,
+        &%(var_name)s,
+        NULL);
+    if (rc != TPM_RC_SUCCESS) {
+      error_reporter.Run(rc);
+      return;
+    }
+  }"""
+  _RESPONSE_CALLBACK_START = """
+  callback.Run(response_code"""
+  _RESPONSE_CALLBACK_ARG = """,
+               %(arg_name)s"""
+  _RESPONSE_CALLBACK_END = ');'
+  _RESPONSE_PARSER_END = """
+}
+"""
 
   def __init__(self, name):
     self.name = name
@@ -920,15 +1165,135 @@ class Command(object):
     self.response_args = None
 
   def OutputDeclarations(self, out_file):
+    """Generates the declaration of a Tpm class method for this command.
+
+    The declaration of the response callback type is also generated.
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
     self._OutputCallbackSignature(out_file)
     self._OutputMethodSignature(out_file)
 
+  def OutputMethodImplementation(self, out_file):
+    """Generates the implementation of a Tpm class method for this command.
+
+    The method assembles a command to be sent unmodified to the TPM and invokes
+    the CommandTransceiver with the command. Errors are reported directly to the
+    response callback via the error callback (see OutputErrorCallback).
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
+    # Categorize arguments as either handles or parameters.
+    handles, parameters = self._SplitArgs(self.request_args)
+    out_file.write(self._METHOD_START % {'method_name': self._MethodName(),
+                                         'method_args': self._MethodArgs()})
+    out_file.write(self._DECLARE_COMMAND_CODE % {'command_code':
+                                                 self.command_code})
+    # Serialize the command code and all the handles and parameters.
+    out_file.write(self._SERIALIZE_LOCAL_VAR % {'var_name': 'command_code',
+                                                'var_type': 'TPM_CC'})
+    for arg in self.request_args:
+      out_file.write(self._SERIALIZE_LOCAL_VAR % {'var_name': arg['name'],
+                                                  'var_type': arg['type']})
+    # Encrypt the first parameter (before doing authorization) if necessary.
+    if parameters and IsTPM2B(parameters[0]['type']):
+      out_file.write(self._ENCRYPT_PARAMETER % {'var_name':
+                                                parameters[0]['name']})
+    # Compute the command hash and construct handle and parameter sections.
+    out_file.write(self._HASH_START)
+    out_file.write(self._HASH_UPDATE % {'var_name': 'command_code_bytes'})
+    for handle in handles:
+      out_file.write(self._HASH_UPDATE % {'var_name':
+                                          '%s_name' % handle['name']})
+      out_file.write(self._APPEND_COMMAND_HANDLE % {'var_name':
+                                                    handle['name']})
+    for parameter in parameters:
+      out_file.write(self._HASH_UPDATE % {'var_name':
+                                          '%s_bytes' % parameter['name']})
+      out_file.write(self._APPEND_COMMAND_PARAMETER % {'var_name':
+                                                       parameter['name']})
+    # Do authorization based on the hash.
+    out_file.write(self._AUTHORIZE_COMMAND)
+    # Now that the tag and size are finalized, serialize those.
+    out_file.write(self._SERIALIZE_LOCAL_VAR %
+                   {'var_name': 'tag',
+                    'var_type': 'TPMI_ST_COMMAND_TAG'})
+    out_file.write(self._SERIALIZE_LOCAL_VAR % {'var_name': 'command_size',
+                                                'var_type': 'UINT32'})
+    out_file.write(self._METHOD_END)
+
+  def OutputErrorCallback(self, out_file):
+    """Generates the implementation of an error callback for this command.
+
+    The error callback simply calls the command response callback with the error
+    as the first argument and default values for all other arguments.
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
+    out_file.write(self._ERROR_CALLBACK_START % {'method_name':
+                                                 self._MethodName()})
+    for arg in self.response_args:
+      out_file.write(self._ERROR_CALLBACK_ARG % {'arg_type': arg['type']})
+    out_file.write(self._ERROR_CALLBACK_END)
+
+  def OutputResponseParser(self, out_file):
+    """Generates the implementation of a response parser for this command.
+
+    The response parser takes the unmodified response from the TPM, parses it,
+    and invokes the original response callback with the parsed response args.
+    Errors during parsing or from the TPM are reported directly to the response
+    callback via the error callback (see OutputErrorCallback).
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
+    out_file.write(self._RESPONSE_PARSER_START % {'method_name':
+                                                  self._MethodName()})
+    # Parse the header -- this should always exist.
+    out_file.write(self._PARSE_LOCAL_VAR % {'var_name': 'tag',
+                                            'var_type': 'TPM_ST'})
+    out_file.write(self._PARSE_LOCAL_VAR % {'var_name': 'response_size',
+                                            'var_type': 'UINT32'})
+    out_file.write(self._PARSE_LOCAL_VAR % {'var_name': 'response_code',
+                                            'var_type': 'TPM_RC'})
+    # Handle the error case.
+    out_file.write(self._RESPONSE_ERROR_CHECK)
+    # Setup a serialized command code which is needed for the response hash.
+    out_file.write(self._DECLARE_COMMAND_CODE % {'command_code':
+                                                 self.command_code})
+    out_file.write(self._SERIALIZE_LOCAL_VAR % {'var_name': 'command_code',
+                                                'var_type': 'TPM_CC'})
+    # Split out the authorization section.
+    out_file.write(self._RESPONSE_SECTION_SPLIT)
+    # Compute the response hash.
+    out_file.write(self._HASH_START)
+    out_file.write(self._HASH_UPDATE % {'var_name': 'response_code_bytes'})
+    out_file.write(self._HASH_UPDATE % {'var_name': 'command_code_bytes'})
+    out_file.write(self._HASH_UPDATE % {'var_name': 'buffer'})
+    # Do authorization related stuff.
+    out_file.write(self._AUTHORIZE_RESPONSE)
+    # Parse response parameters.
+    for arg in self.response_args:
+      out_file.write(self._PARSE_LOCAL_VAR % {'var_name': arg['name'],
+                                              'var_type': arg['type']})
+    if self.response_args:
+      out_file.write(self._DECRYPT_PARAMETER % {'var_name':
+                                                self.response_args[0]['name'],
+                                                'var_type':
+                                                self.response_args[0]['type']})
+    # All arguments are ready, run the response callback.
+    out_file.write(self._RESPONSE_CALLBACK_START)
+    for arg in self.response_args:
+      out_file.write(self._RESPONSE_CALLBACK_ARG % {'arg_name': arg['name']})
+    out_file.write(self._RESPONSE_CALLBACK_END)
+    out_file.write(self._RESPONSE_PARSER_END)
+
   def _OutputMethodSignature(self, out_file):
-    args = self._ArgList(self.request_args)
-    if args:
-      args += ','
-    args += self._APPENDED_ARGS % {'method_name': self._MethodName()}
-    out_file.write('  virtual void %s(%s);\n' % (self._MethodName(), args))
+    out_file.write('  virtual void %s(%s);\n' % (self._MethodName(),
+                                                 self._MethodArgs()))
 
   def _OutputCallbackSignature(self, out_file):
     args = self._ArgList(self.response_args)
@@ -948,6 +1313,33 @@ class Command(object):
       arg_list = ['%s %s' % (a['type'], a['name']) for a in args]
       return '\n      ' + ',\n      '.join(arg_list)
     return ''
+
+  def _SplitArgs(self, args):
+    """Splits a list of args into handles and parameters."""
+    handles = []
+    parameters = []
+    for arg in args:
+      if arg['type'] == 'TPM_HANDLE' or self._HANDLE_RE.search(arg['type']):
+        handles.append(arg)
+      else:
+        parameters.append(arg)
+    return handles, parameters
+
+  def _MethodArgs(self):
+    """Computes the argument list for a Tpm command method."""
+    handles, parameters = self._SplitArgs(self.request_args)
+    args = []
+    # Add a name argument for every handle.  We'll need it to compute cpHash.
+    for handle in handles:
+      args.append(handle)
+      args.append({'type': 'const std::string&',
+                   'name': '%s_name' % handle['name']})
+    for parameter in parameters:
+      args.append(parameter)
+    arg_list = self._ArgList(args)
+    if arg_list:
+      arg_list += ','
+    return arg_list + self._APPENDED_ARGS % {'method_name': self._MethodName()}
 
 
 class CommandParser(object):
@@ -1025,7 +1417,6 @@ class CommandParser(object):
   def _ParseCommandArgs(self, cmd):
     """Parses a set of arguments."""
     args = []
-    command_code = None
     match = self._TYPE_RE.search(self._line)
     while match:
       arg_type = match.group(1)
@@ -1041,15 +1432,10 @@ class CommandParser(object):
         cmd.command_code = match.group(1)
       match = self._COMMENT_RE.search(self._line)
       if match:
-        description = match.group(1)
         self._NextLine()
-      else:
-        description = ''
       if arg_name not in self._INTERNAL_ARGS:
         args.append({'type': arg_type,
-                     'name': arg_name,
-                     'command_code': command_code,
-                     'description': description})
+                     'name': FixName(arg_name)})
       match = self._TYPE_RE.search(self._line)
     return args
 
@@ -1102,6 +1488,8 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
     out_file.write(_SERIALIZE_DECLARATION % {'type': typedef.new_type})
   for struct in structs:
     out_file.write(_SERIALIZE_DECLARATION % {'type': struct.name})
+    if struct.IsBasicTPM2B():
+      out_file.write(_TPM2B_HELPERS_DECLARATION % {'type': struct.name})
   # Generate a declaration for a 'Tpm' class, which includes one method for
   # every TPM 2.0 command.
   out_file.write(_CLASS_BEGIN)
@@ -1134,8 +1522,10 @@ def GenerateImplementation(types, structs, typemap, commands):
     typedef.OutputSerialize(out_file, serialized_types, typemap)
   for struct in structs:
     struct.OutputSerialize(out_file, serialized_types, typemap)
-  # TODO(dkrahn): Generate implementation of the 'Tpm' class.
-  _ = commands
+  for command in commands:
+    command.OutputErrorCallback(out_file)
+    command.OutputResponseParser(out_file)
+    command.OutputMethodImplementation(out_file)
   out_file.write(_NAMESPACE_END)
   out_file.close()
 

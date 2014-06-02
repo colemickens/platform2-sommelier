@@ -12,7 +12,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CXXFLAGS += -I$(SRC)/.. $(PC_CFLAGS)
-LDLIBS += $(PC_LIBS)
+LDLIBS += $(PC_LIBS) -lchrome_crypto
 
 TEST_OBJS := $(filter %_test.o trunks_testrunner.o mock_%.o, $(CXX_OBJECTS))
 SHARED_OBJS := $(filter-out $(TEST_OBJS), $(CXX_OBJECTS))

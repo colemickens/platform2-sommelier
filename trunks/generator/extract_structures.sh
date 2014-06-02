@@ -137,6 +137,7 @@ cat $1 |
   ' |
   # Mark names.
   sed 's/^\(TPM_[_A-Z0-9a]*\)$/_NAME \1/' |
+  sed 's/^\(TPM_CC_[_A-Z0-9a-z]*\)$/_NAME \1/' |
   sed 's/^\(RC_[_A-Z0-9]*\)$/_NAME \1/' |
   sed 's/^\(PT_[_A-Z0-9]*\)$/_NAME \1/' |
   sed 's/^\(HR_[_A-Z0-9]*\)$/_NAME \1/' |

@@ -28,17 +28,11 @@ class AuthorizationDelegate {
   virtual bool CheckResponseAuthorization(const std::string& response_hash,
                                           const std::string& authorization) = 0;
 
-  // Encrypts |parameters_in| if encryption is enabled. If encryption is not
-  // enabled |parameters_out| is populated without encrypting. Returns true on
-  // success.
-  virtual bool EncryptCommandParameters(const std::string& parameters_in,
-                                        std::string* parameters_out) = 0;
+  // Encrypts |parameter| if encryption is enabled. Returns true on success.
+  virtual bool EncryptCommandParameter(std::string* parameter) = 0;
 
-  // Decrypts |parameters_in| if encryption is enabled. If encryption is not
-  // enabled |parameters_out| is populated without decrypting. Returns true on
-  // success.
-  virtual bool DecryptResponseParameters(const std::string& parameters_in,
-                                         std::string* parameters_out) = 0;
+  // Decrypts |parameter| if encryption is enabled. Returns true on success.
+  virtual bool DecryptResponseParameter(std::string* parameter) = 0;
 };
 
 }  // namespace trunks

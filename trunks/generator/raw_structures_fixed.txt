@@ -15843,7 +15843,8 @@ Description
 
 UINT16
 
-buffer[size] {:sizeof(TPMS_CONTEXT_DATA)} BYTE
+buffer[size] {:sizeof(TPMS_CONTEXT_DATA)}
+BYTE
 
 Page 140
 October 31, 2013

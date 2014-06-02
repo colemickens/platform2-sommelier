@@ -64,6 +64,8 @@ cat $1 |
     /^[^_].*$/ { if (comment != "") { comment = comment " " $0; }
                  else { comment = $0 } }
   ' |
+  # Fix typos.
+  sed 's/_COMMENT TPM_CC_PolicyNVWritten/_COMMENT TPM_CC_PolicyNvWritten/' |
   # Strip off modifiers like TYPE+ and @name.
   sed 's/^\(_TYPE .*\)[+]$/\1/' |
   sed 's/^_NAME @\(.*\)$/_NAME \1/' |

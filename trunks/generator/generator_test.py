@@ -97,7 +97,7 @@ class TestGenerators(unittest.TestCase):
     # Choose TPMU_SYM_MODE because it exists in the selectors definition and it
     # has few fields.
     union = generator.Structure('TPMU_SYM_MODE', True)
-    union.fields = [('FOO', 'aes'), ('BAR', 'SM4')]
+    union.fields = [('FOO', 'aes'), ('BAR', 'sm4')]
     typemap = {'TPMU_SYM_MODE': union}
     out_file = StringIO.StringIO()
     struct.OutputSerialize(out_file, serialized_types, typemap)
