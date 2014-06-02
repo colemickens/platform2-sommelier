@@ -1,7 +1,7 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
+      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
       '../system_api/system_api.gyp:system_api-power_manager-protos',
     ],
     'variables': {
