@@ -213,9 +213,7 @@ class Platform2(object):
       raise AssertionError('Error running: %s'
                            % ' '.join(map(repr, gyp_args)))
     except OSError:
-      raise AssertionError('Error running %s; make sure depot_tools is mounted.'
-                           ' It must be in your $PATH when you run `cros_sdk`.'
-                           % (gyp_args[0]))
+      raise AssertionError('Error running %s' % (gyp_args[0]))
 
   def compile(self, args):
     """Runs the compile step of the Platform2 build.
@@ -227,9 +225,6 @@ class Platform2(object):
     for component in self.get_components_glob():
       os.remove(component)
 
-    env = os.environ.copy()
-    env['PATH'] += ':/mnt/host/depot_tools'
-
     if not args:
       args = ['all']
     ninja_args = ['ninja', '-C', self.get_products_path()] + args
@@ -238,14 +233,12 @@ class Platform2(object):
       ninja_args.append('-v')
 
     try:
-      subprocess.check_call(ninja_args, env=env)
+      subprocess.check_call(ninja_args)
     except subprocess.CalledProcessError:
       raise AssertionError('Error running: %s'
                            % ' '.join(map(repr, ninja_args)))
     except OSError:
-      raise AssertionError('Error running %s; make sure depot_tools is mounted.'
-                           ' It must be in your $PATH when you run `cros_sdk`.'
-                           % (ninja_args[0]))
+      raise AssertionError('Error running %s' % (ninja_args[0]))
 
   def deviterate(self, args):
     """Runs the configure and compile steps of the Platform2 build.
