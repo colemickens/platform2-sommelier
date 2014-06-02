@@ -138,6 +138,11 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   UpdateConnectable();
   UpdateSecurity();
 
+  // Now that |this| is a fully constructed WiFiService, synchronize observers
+  // with our current state, and emit the appropriate change notifications.
+  // (Initial observer state may have been set in our base class.)
+  NotifyPropertyChanges();
+
   IgnoreParameterForConfigure(kModeProperty);
   IgnoreParameterForConfigure(kSSIDProperty);
   IgnoreParameterForConfigure(kSecurityProperty);
@@ -373,11 +378,8 @@ bool WiFiService::Unload() {
 }
 
 void WiFiService::SetState(ConnectState state) {
-  bool is_visible = IsVisible();
   Service::SetState(state);
-  if (IsVisible() != is_visible) {
-    UpdateVisible();
-  }
+  NotifyPropertyChanges();
 }
 
 bool WiFiService::IsSecurityMatch(const string &security) const {
@@ -755,7 +757,7 @@ void WiFiService::UpdateFromEndpoints() {
   adaptor()->EmitUint16sChanged(kWifiFrequencyListProperty, frequency_list_);
   SetStrength(SignalToStrength(signal));
   UpdateSecurity();
-  UpdateVisible();
+  NotifyPropertyChanges();
 }
 
 void WiFiService::UpdateSecurity() {

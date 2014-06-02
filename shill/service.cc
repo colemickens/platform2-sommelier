@@ -29,6 +29,7 @@
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/service_dbus_adaptor.h"
+#include "shill/service_property_change_notifier.h"
 #include "shill/sockets.h"
 #include "shill/store_interface.h"
 
@@ -142,6 +143,8 @@ Service::Service(ControlInterface *control_interface,
       unique_name_(base::UintToString(serial_number_)),
       friendly_name_(unique_name_),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
+      property_change_notifier_(
+          new ServicePropertyChangeNotifier(adaptor_.get())),
       metrics_(metrics),
       manager_(manager),
       sockets_(new Sockets()),
@@ -230,10 +233,10 @@ Service::Service(ControlInterface *control_interface,
                                   &Service::GetMisconnectsProperty);
   store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
 
-  HelpRegisterDerivedBool(kVisibleProperty,
-                          &Service::GetVisibleProperty,
-                          NULL,
-                          NULL);
+  HelpRegisterObservedDerivedBool(kVisibleProperty,
+                                  &Service::GetVisibleProperty,
+                                  NULL,
+                                  NULL);
 
   metrics_->RegisterService(*this);
 
@@ -1273,6 +1276,17 @@ void Service::HelpRegisterConstDerivedString(
       StringAccessor(new CustomReadOnlyAccessor<Service, string>(this, get)));
 }
 
+void Service::HelpRegisterObservedDerivedBool(
+    const string &name,
+    bool(Service::*get)(Error *),
+    bool(Service::*set)(const bool&, Error *),
+    void(Service::*clear)(Error *)) {
+  BoolAccessor accessor(
+      new CustomAccessor<Service, bool>(this, get, set, clear));
+  store_.RegisterDerivedBool(name, accessor);
+  property_change_notifier_->AddBoolPropertyObserver(name, accessor);
+}
+
 // static
 void Service::LoadString(StoreInterface *storage,
                          const string &id,
@@ -1477,8 +1491,8 @@ string Service::GetTethering(Error *error) const {
 }
 
 
-void Service::UpdateVisible() {
-  adaptor_->EmitBoolChanged(kVisibleProperty, IsVisible());
+void Service::NotifyPropertyChanges() {
+  property_change_notifier_->UpdatePropertyObservers();
 }
 
 // static

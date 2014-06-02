@@ -47,6 +47,7 @@ class Metrics;
 class MockManager;
 class ServiceAdaptorInterface;
 class ServiceMockAdaptor;
+class ServicePropertyChangeNotifier;
 class Sockets;
 class StoreInterface;
 
@@ -535,6 +536,14 @@ class Service : public base::RefCounted<Service> {
   void HelpRegisterConstDerivedString(
       const std::string &name, std::string(Service::*get)(Error *error) const);
 
+  // HelpRegisterObservedDerived*: Expose an property over RPC, with the
+  // name |name|, for which property changes are automatically generated.
+  //
+  void HelpRegisterObservedDerivedBool(
+      const std::string &name,
+      bool(Service::*get)(Error *error),
+      bool(Service::*set)(const bool &value, Error *error),
+      void(Service::*clear)(Error *error));
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
   void UnloadEapCredentials();
@@ -577,8 +586,8 @@ class Service : public base::RefCounted<Service> {
   // metered backhaul for internet connectivity.
   virtual std::string GetTethering(Error *error) const;
 
-  // Emit a change for the Visible property.
-  void UpdateVisible();
+  // Emit property change notifications for all observed properties.
+  void NotifyPropertyChanges();
 
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
@@ -810,6 +819,7 @@ class Service : public base::RefCounted<Service> {
   std::vector<std::string> remote_certification_;
 
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
+  scoped_ptr<ServicePropertyChangeNotifier> property_change_notifier_;
   scoped_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;

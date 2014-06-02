@@ -49,6 +49,11 @@ WiMaxService::WiMaxService(ControlInterface *control,
   // name. The identifier most likely needs to be reinitialized by the caller
   // when its components have been set.
   InitStorageIdentifier();
+
+  // Now that |this| is a fully constructed WiMaxService, synchronize observers
+  // with our current state, and emit the appropriate change notifications.
+  // (Initial observer state may have been set in our base class.)
+  NotifyPropertyChanges();
 }
 
 WiMaxService::~WiMaxService() {}
@@ -75,7 +80,7 @@ void WiMaxService::Stop() {
     SetDevice(NULL);
   }
   UpdateConnectable();
-  UpdateVisible();
+  NotifyPropertyChanges();
 }
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
@@ -113,7 +118,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
   proxy_.reset(local_proxy.release());
   UpdateConnectable();
-  UpdateVisible();
+  NotifyPropertyChanges();
   LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();
   return true;
 }
