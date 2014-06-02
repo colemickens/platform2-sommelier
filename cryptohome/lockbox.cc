@@ -49,7 +49,8 @@ Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
   : tpm_(tpm),
     nvram_index_(nvram_index),
     nvram_version_(kNvramVersionDefault),
-    process_(new chromeos::ProcessImpl()),
+    default_process_(new chromeos::ProcessImpl()),
+    process_(default_process_.get()),
     contents_(new LockboxContents()),
     default_platform_(new Platform()),
     platform_(default_platform_.get()) {

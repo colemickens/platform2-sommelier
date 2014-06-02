@@ -192,6 +192,7 @@ class Lockbox {
   Tpm* tpm_;
   uint32_t nvram_index_;
   uint32_t nvram_version_;
+  scoped_ptr<chromeos::Process> default_process_;
   chromeos::Process* process_;
   scoped_ptr<LockboxContents> contents_;
   scoped_ptr<Platform> default_platform_;

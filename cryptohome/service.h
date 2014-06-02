@@ -575,6 +575,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   chromeos::SecureBlob system_salt_;
   scoped_ptr<cryptohome::Platform> default_platform_;
   cryptohome::Platform* platform_;
+  scoped_ptr<cryptohome::Crypto> default_crypto_;
   cryptohome::Crypto* crypto_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
