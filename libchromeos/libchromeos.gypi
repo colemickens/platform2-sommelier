@@ -106,7 +106,7 @@
         },
       },
       'ldflags': [
-        '-Wl,--version-script,<(platform_root)/libchromeos/libpolicy.ver',
+        '-Wl,--version-script,<(platform2_root)/libchromeos/libpolicy.ver',
       ],
       'sources': [
         'chromeos/policy/device_policy.cc',
