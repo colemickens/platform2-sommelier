@@ -29,11 +29,13 @@ DEFINE_string(tests, "",
 DEFINE_string(blacklist, "", "colon-separated list of tests to disable");
 DEFINE_bool(hasty, false,
             "Run a smaller set of tests with less accurate results. "
-            "Useful for running in BVT or debugging a failure.");
+            "Useful for running in BVT or debugging a failure.  Implies notemp");
 DEFINE_bool(list, false, "List available tests");
+DEFINE_bool(notemp, false, "Skip temperature checking");
 
 GLint g_max_texture_size;
 bool g_hasty;
+bool g_notemp;
 
 bool test_is_enabled(glbench::TestBase* test,
                      const vector<string>& enabled_tests) {
@@ -125,7 +127,9 @@ int main(int argc, char *argv[]) {
   printDateTime();
 
   g_hasty = FLAGS_hasty;
-  if (!g_hasty)
+  g_notemp = FLAGS_notemp || g_hasty;
+
+  if (!g_notemp)
     g_initial_temperature = GetMachineTemperature();
 
   vector<string> enabled_tests, disabled_tests;

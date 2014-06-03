@@ -17,6 +17,7 @@
 #include "utils.h"
 
 extern bool g_hasty;
+extern bool g_notemp;
 
 DEFINE_bool(save, false, "save images after each test case");
 DEFINE_string(outdir, "", "directory to save images");
@@ -53,7 +54,7 @@ double Bench(TestBase* test) {
   // By default we try to cool to initial + 5'C but don't wait longer than 30s.
   // But in hasty mode we really don't want to spend too much time to get the
   // numbers right, so we don't wait at all.
-  if (!::g_hasty) {
+  if (!::g_notemp) {
     wait = WaitForCoolMachine(initial_temperature + 5.0, 30.0, &temperature);
     printf("Bench: Cooled down to %.1f'C (initial=%.1f'C) after waiting %.1fs.\n",
            temperature, initial_temperature, wait);
