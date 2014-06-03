@@ -30,6 +30,7 @@ DEFINE_string(blacklist, "", "colon-separated list of tests to disable");
 DEFINE_bool(hasty, false,
             "Run a smaller set of tests with less accurate results. "
             "Useful for running in BVT or debugging a failure.");
+DEFINE_bool(list, false, "List available tests");
 
 GLint g_max_texture_size;
 bool g_hasty;
@@ -152,6 +153,12 @@ int main(int argc, char *argv[]) {
     glbench::GetTextureUploadTest(),
     glbench::GetFboFillRateTest(),
   };
+
+  if (FLAGS_list) {
+    for (unsigned int i = 0; i < arraysize(tests); i++)
+      printf("%s\n", tests[i]->Name());
+    return 0;
+  }
 
   uint64_t done = GetUTime() + 1000000ULL * FLAGS_duration;
   do {
