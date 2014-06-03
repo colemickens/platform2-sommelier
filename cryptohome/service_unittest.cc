@@ -288,8 +288,9 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   HomeDirs homedirs;
   homedirs.set_shadow_root(kImageDir);
   homedirs.set_platform(&platform);
-  homedirs.set_policy_provider(new policy::PolicyProvider(
-      new NiceMock<policy::MockDevicePolicy>));
+  scoped_ptr<policy::PolicyProvider> policy_provider(
+      new policy::PolicyProvider(new NiceMock<policy::MockDevicePolicy>));
+  homedirs.set_policy_provider(policy_provider.get());
 
   ServiceSubclass service;
   service.set_platform(&platform);
@@ -687,7 +688,7 @@ TEST(Standalone, LoadEnrollmentState) {
 
   gboolean success;
   GError* error = NULL;
-  GArray* output = NULL;
+  chromeos::glib::ScopedArray output;
 
   // Convert to blob -- this is what we're reading from the file.
   std::string data = "123456";
@@ -703,7 +704,8 @@ TEST(Standalone, LoadEnrollmentState) {
   EXPECT_CALL(crypto, DecryptWithTpm(_, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(decrypted_blob), Return(TRUE)));
 
-  EXPECT_TRUE(service.LoadEnrollmentState(&output, &success, &error));
+  EXPECT_TRUE(service.LoadEnrollmentState(
+      &(chromeos::Resetter(&output).lvalue()), &success, &error));
   EXPECT_TRUE(success);
 
   // Convert output array to a blob for comparison.
@@ -715,7 +717,8 @@ TEST(Standalone, LoadEnrollmentState) {
       "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
       _)).WillOnce(Return(false));
 
-  EXPECT_TRUE(service.LoadEnrollmentState(&output, &success, &error));
+  EXPECT_TRUE(service.LoadEnrollmentState(
+      &(chromeos::Resetter(&output).lvalue()), &success, &error));
   EXPECT_FALSE(success);
 }
 

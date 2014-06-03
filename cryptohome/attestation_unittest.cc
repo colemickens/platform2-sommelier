@@ -294,7 +294,8 @@ class AttestationTest : public testing::Test {
 
 TEST(AttestationTest_, NullTpm) {
   Attestation without_tpm;
-  without_tpm.Initialize(NULL, NULL, NULL, new Crypto(NULL),
+  scoped_ptr<Crypto> crypt(new Crypto(NULL));
+  without_tpm.Initialize(NULL, NULL, NULL, crypt.get(),
                          new InstallAttributes(NULL));
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
