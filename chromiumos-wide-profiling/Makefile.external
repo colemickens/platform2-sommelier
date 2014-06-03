@@ -26,7 +26,7 @@ GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
 COMMON_SOURCES = utils.cc perf_reader.cc perf_parser.cc perf_serializer.cc \
 		 address_mapper.cc perf_protobuf_io.cc perf_recorder.cc \
-		 conversion_utils.cc \
+		 conversion_utils.cc scoped_temp_path.cc \
 		 $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
 TEST_COMMON_SOURCES = test_utils.cc test_utils_defs.cc

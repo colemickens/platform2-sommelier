@@ -58,5 +58,6 @@ class LOG {
                                                 << "failed"
 #define DLOG(x) LOG(x)
 #define VLOG(x) LOG(x)
+#define DCHECK(x) CHECK(x)
 
 #endif  // BASE_LOGGING_H_
