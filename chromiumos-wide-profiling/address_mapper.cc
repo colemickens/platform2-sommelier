@@ -15,17 +15,19 @@ AddressMapper::AddressMapper(const AddressMapper& source) {
 bool AddressMapper::Map(const uint64 real_addr,
                         const uint64 size,
                         const bool remove_existing_mappings) {
-  return MapWithID(real_addr, size, kuint64max, remove_existing_mappings);
+  return MapWithID(real_addr, size, kuint64max, 0, remove_existing_mappings);
 }
 
 bool AddressMapper::MapWithID(const uint64 real_addr,
                               const uint64 size,
                               const uint64 id,
+                              const uint64 offset_base,
                               bool remove_existing_mappings) {
   MappedRange range;
   range.real_addr = real_addr;
   range.size = size;
   range.id = id;
+  range.offset_base = offset_base;
 
   if (size == 0) {
     LOG(ERROR) << "Must allocate a nonzero-length address range.";
@@ -76,14 +78,22 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
     uint64 gap_after = (old_range.real_addr + old_range.size) -
                        (range.real_addr + range.size);
 
-    if (gap_before)
-      CHECK(MapWithID(old_range.real_addr, gap_before, old_range.id, false));
+    if (gap_before) {
+      CHECK(MapWithID(old_range.real_addr,
+                      gap_before,
+                      old_range.id,
+                      old_range.offset_base,
+                      false));
+    }
 
-    CHECK(MapWithID(range.real_addr, range.size, id, false));
+    CHECK(MapWithID(range.real_addr, range.size, id, offset_base, false));
 
     if (gap_after) {
-      CHECK(MapWithID(
-          range.real_addr + range.size, gap_after, old_range.id, false));
+      CHECK(MapWithID(range.real_addr + range.size,
+                      gap_after,
+                      old_range.id,
+                      old_range.offset_base + gap_before + range.size,
+                      false));
     }
 
     return true;
@@ -163,7 +173,7 @@ bool AddressMapper::GetMappedIDAndOffset(const uint64 real_addr,
     if (!iter->ContainsAddress(real_addr))
       continue;
     *id = iter->id;
-    *offset = real_addr - iter->real_addr;
+    *offset = real_addr - iter->real_addr + iter->offset_base;
     return true;
   }
   return false;

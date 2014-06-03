@@ -33,9 +33,16 @@ class AddressMapper {
   // identifier value to be stored along with the mapping.  AddressMapper does
   // not care whether it is unique compared to all other IDs passed in.  That is
   // up to the caller to keep track of.
+  // |offset_base| represents the offset within the original region at which the
+  // mapping begins. The original region can be much larger than the mapped
+  // region.
+  // e.g. Given a mapped region with base=0x4000 and size=0x2000 mapped with
+  // offset_base=0x10000, then the address 0x5000 maps to an offset of 0x11000
+  // (0x5000 - 0x4000 + 0x10000).
   bool MapWithID(const uint64 real_addr,
                  const uint64 length,
                  const uint64 id,
+                 const uint64 offset_base,
                  bool remove_existing_mappings);
 
   // Looks up |real_addr| and returns the mapped address.
@@ -73,6 +80,7 @@ class AddressMapper {
     uint64 size;
 
     uint64 id;
+    uint64 offset_base;
 
     // Length of unmapped space after this range.
     uint64 unmapped_space_after;
@@ -111,6 +119,8 @@ class AddressMapper {
 
   // Container for all the existing mappings.
   MappingList mappings_;
+
+  bool CheckMappings() const;
 };
 
 }  // namespace quipper

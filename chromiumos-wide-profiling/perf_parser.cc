@@ -527,7 +527,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
     pgoff = 0;
   }
 
-  if (!mapper->MapWithID(start, len, id, true)) {
+  if (!mapper->MapWithID(start, len, id, pgoff, true)) {
     mapper->DumpToLog();
     return false;
   }
