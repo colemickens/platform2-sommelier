@@ -40,6 +40,8 @@ uint64_t TimeTest(TestBase* test, uint64_t iterations) {
 // Notice as of March 2014 the BVT suite has a hard limit per job of 20 minutes.
 #define MIN_ITERATION_DURATION_US 1000000
 
+#define MAX_TESTNAME 45
+
 // Benchmark some draw commands, by running it many times. We want to measure
 // the marginal cost, so we try more and more iterations until we reach the
 // minimum specified iteration time.
@@ -134,21 +136,21 @@ void RunTest(TestBase* test, const char* testname, const double coefficient,
 
     // TODO(ihf) adjust string length based on longest test name
     int length = strlen(testname);
-    if (length > 45)
+    if (length > MAX_TESTNAME)
       printf("# Warning: adjust string formatting to length = %d\n",
              length);
     // Results are marked using a leading '@RESULT: ' to allow parsing.
     if (value == 0.0)
-      printf("@RESULT:  %-45s=          0   []\n", testname);
+      printf("@RESULT:  %-*s=          0   []\n", MAX_TESTNAME, testname);
     else
-      printf("@RESULT: %-45s= %10.2f   [%s]\n", testname,
+      printf("@RESULT: %-*s= %10.2f   [%s]\n", MAX_TESTNAME, testname,
              coefficient * (inverse ? 1.0 / value : value),
              name_png);
   } else {
     printf("# Error: %s aborted, glGetError returned 0x%02x.\n",
             testname, error);
     // float() in python will happily parse Nan.
-    printf("%-45s=        Nan   []\n", testname);
+    printf("%-*s=        Nan   []\n", MAX_TESTNAME, testname);
   }
 }
 
