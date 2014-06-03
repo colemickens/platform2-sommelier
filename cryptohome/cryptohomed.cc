@@ -4,8 +4,6 @@
 
 #include "service.h"
 
-#include <signal.h>
-
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -37,9 +35,6 @@ int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
 
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
-
-  // Ignore SIGPIPE.
-  CHECK(SIG_ERR != signal(SIGPIPE, SIG_IGN));
 
   // Allow the commands to be configurable.
   CommandLine *cl = CommandLine::ForCurrentProcess();
