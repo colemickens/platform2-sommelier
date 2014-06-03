@@ -24,8 +24,6 @@
 #include "shill/device_dbus_adaptor.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
-#include "shill/dns_client.h"
-#include "shill/dns_client_factory.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -111,11 +109,10 @@ Device::Device(ControlInterface *control_interface,
       manager_(manager),
       weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
-      dns_client_factory_(DNSClientFactory::GetInstance()),
       portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
                                      weak_ptr_factory_.GetWeakPtr())),
-      dns_client_callback_(Bind(&Device::DNSClientCallback,
-                                weak_ptr_factory_.GetWeakPtr())),
+      fallback_dns_result_callback_(Bind(&Device::FallbackDNSResultCallback,
+                                         weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
       portal_attempts_to_online_(0),
       receive_byte_offset_(0),
@@ -883,32 +880,24 @@ void Device::OnLinkMonitorGatewayChange() {
 }
 
 void Device::PerformFallbackDNSTest() {
-  // Return if DNS client already running.
-  if (fallback_dns_test_client_.get()) {
-    return;
+  if (!fallback_dns_server_tester_.get()) {
+    vector<string> dns_servers(std::begin(kFallbackDnsServers),
+                               std::end(kFallbackDnsServers));
+    fallback_dns_server_tester_.reset(
+        new DNSServerTester(connection_,
+                            dispatcher_,
+                            dns_servers,
+                            false,
+                            fallback_dns_result_callback_));
   }
 
-  // Send DNS request to Google's DNS server.
-  vector<string> dns_servers(std::begin(kFallbackDnsServers),
-                             std::end(kFallbackDnsServers));
-  fallback_dns_test_client_.reset(
-      dns_client_factory_->CreateDNSClient(IPAddress::kFamilyIPv4,
-                                           connection_->interface_name(),
-                                           dns_servers,
-                                           kDNSTimeoutMilliseconds,
-                                           dispatcher_,
-                                           dns_client_callback_));
-  Error error;
-  if (!fallback_dns_test_client_->Start(kFallbackDnsTestHostname, &error)) {
-    LOG(ERROR) << __func__ << ": Failed to start DNS client "
-                                << error.message();
-    fallback_dns_test_client_.reset();
-  }
+  // Perform DNS server test for Google's DNS servers.
+  fallback_dns_server_tester_->Start();
 }
 
-void Device::DNSClientCallback(const Error &error, const IPAddress& ip) {
+void Device::FallbackDNSResultCallback(const DNSServerTester::Status status) {
   int result = Metrics::kFallbackDNSTestResultFailure;
-  if (error.IsSuccess()) {
+  if (status == DNSServerTester::kStatusSuccess) {
     result = Metrics::kFallbackDNSTestResultSuccess;
 
     // Switch to fallback DNS server if service is configured to allow DNS
@@ -922,7 +911,7 @@ void Device::DNSClientCallback(const Error &error, const IPAddress& ip) {
     }
   }
   metrics()->NotifyFallbackDNSTestResult(technology_, result);
-  fallback_dns_test_client_.reset();
+  fallback_dns_server_tester_.reset();
 }
 
 void Device::SwitchDNSServers(const vector<string> &dns_servers) {

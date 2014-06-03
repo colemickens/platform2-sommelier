@@ -16,6 +16,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
@@ -30,8 +31,6 @@ namespace shill {
 class ControlInterface;
 class DHCPProvider;
 class DeviceAdaptorInterface;
-class DNSClient;
-class DNSClientFactory;
 class Endpoint;
 class Error;
 class EventDispatcher;
@@ -550,8 +549,8 @@ class Device : public base::RefCounted<Device> {
   // Perform fallback DNS test by sending DNS request to Google's DNS server.
   void PerformFallbackDNSTest();
 
-  // Callback for DNS Client.
-  void DNSClientCallback(const Error &error, const IPAddress &ip);
+  // Called by DNS server tester when the fallback DNS server test completed.
+  void FallbackDNSResultCallback(const DNSServerTester::Status status);
 
   // Update DNS setting with the given DNS servers for the current connection.
   void SwitchDNSServers(const std::vector<std::string> &dns_servers);
@@ -604,14 +603,13 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
   scoped_ptr<LinkMonitor> link_monitor_;
-  // DNS Client for performing fallback DNS test when portal detector failed
-  // due to DNS failure.
-  scoped_ptr<DNSClient> fallback_dns_test_client_;
-  DNSClientFactory *dns_client_factory_;
+  // DNS server tester for performing DNS test on the fallback DNS servers when
+  // portal detector failed due to DNS failure.
+  scoped_ptr<DNSServerTester> fallback_dns_server_tester_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
-  base::Callback<void(const Error &, const IPAddress &)>
-      dns_client_callback_;
+  base::Callback<void(const DNSServerTester::Status)>
+      fallback_dns_result_callback_;
   scoped_ptr<TrafficMonitor> traffic_monitor_;
   Technology::Identifier technology_;
   // The number of portal detection attempts from Connected to Online state.
