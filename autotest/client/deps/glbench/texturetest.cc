@@ -99,8 +99,8 @@ bool TextureTest::Run() {
       RunTest(this, name.c_str(), width_ * height_, g_width, g_height, true);
       GLenum error = glGetError();
       if (error != GL_NO_ERROR) {
-        printf("# GL error code %d after RunTest() with %dx%d texture.", error,
-               width_, height_);
+        printf("# GL error code %d after RunTest() with %dx%d texture.\n",
+               error, width_, height_);
       }
     }
   }
