@@ -19,6 +19,7 @@
       'dependencies': [
         'libchromeos-core-<(libbase_ver)',
         'libchromeos-cryptohome-<(libbase_ver)',
+        'libchromeos-ui-<(libbase_ver)',
         'libpolicy-<(libbase_ver)',
       ],
       'direct_dependent_settings': {
@@ -84,6 +85,29 @@
       ],
     },
     {
+      'target_name': 'libchromeos-ui-<(libbase_ver)',
+      'type': 'shared_library',
+      'variables': {
+        'exported_deps': ['openssl'],
+        'deps': ['<@(exported_deps)'],
+      },
+      'cflags': [
+        '-fvisibility=default',
+      ],
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        'chromeos/ui/chromium_command_builder.cc',
+        'chromeos/ui/util.cc',
+        'chromeos/ui/x_server_runner.cc',
+      ],
+    },
+    {
       'target_name': 'libpolicy-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
@@ -121,7 +145,10 @@
         {
           'target_name': 'libchromeos-<(libbase_ver)_unittests',
           'type': 'executable',
-          'dependencies': ['libchromeos-<(libbase_ver)'],
+          'dependencies': [
+            'libchromeos-<(libbase_ver)',
+            'libchromeos-ui-<(libbase_ver)',
+          ],
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'cflags': [
             '-Wno-format-zero-length',
@@ -142,6 +169,8 @@
             'chromeos/glib/object_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',
+            'chromeos/ui/chromium_command_builder_unittest.cc',
+            'chromeos/ui/x_server_runner_unittest.cc',
             'chromeos/utility_test.cc',
             'testrunner.cc',
           ]

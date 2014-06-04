@@ -13,10 +13,14 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/ui/chromium_command_builder.h>
+#include <chromeos/ui/util.h>
+#include <chromeos/ui/x_server_runner.h>
 
-#include "login_manager/chromium_command_builder.h"
-#include "login_manager/util.h"
-#include "login_manager/x_server_runner.h"
+using chromeos::ui::ChromiumCommandBuilder;
+using chromeos::ui::XServerRunner;
+using chromeos::ui::util::EnsureDirectoryExists;
+using chromeos::ui::util::SetPermissions;
 
 namespace login_manager {
 
@@ -76,73 +80,72 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   builder->AddArg("--user-data-dir=" + data_dir.value());
 
   const base::FilePath user_dir = GetUserDir(builder);
-  CHECK(util::EnsureDirectoryExists(user_dir, uid, gid, 0755));
+  CHECK(EnsureDirectoryExists(user_dir, uid, gid, 0755));
   // TODO(keescook): Remove Chrome's use of $HOME.
   builder->AddEnvVar("HOME", user_dir.value());
 
   // Old builds will have a profile dir that's owned by root; newer ones won't
   // have this directory at all.
-  CHECK(util::EnsureDirectoryExists(
-      data_dir.Append("Default"), uid, gid, 0755));
+  CHECK(EnsureDirectoryExists(data_dir.Append("Default"), uid, gid, 0755));
 
   // TODO(cmasone,derat): Stop using this directory and delete this code.
   const base::FilePath state_dir("/var/run/state");
   CHECK(base::DeleteFile(state_dir, true));
-  CHECK(util::EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));
+  CHECK(EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));
 
   // Create a directory where the session manager can store a copy of the user
   // policy key, that will be readable by the chrome process as chronos.
   const base::FilePath policy_dir("/var/run/user_policy");
   CHECK(base::DeleteFile(policy_dir, true));
-  CHECK(util::EnsureDirectoryExists(policy_dir, kRootUid, gid, 0710));
+  CHECK(EnsureDirectoryExists(policy_dir, kRootUid, gid, 0710));
 
   // Create a directory where the chrome process can store a reboot request so
   // that it persists across browser crashes but is always removed on reboot.
-  CHECK(util::EnsureDirectoryExists(
+  CHECK(EnsureDirectoryExists(
       base::FilePath("/var/run/chrome"), uid, gid, 0700));
 
   // Ensure the existence of the directory in which the whitelist and other
   // ownership-related state will live. Yes, it should be owned by root. The
   // permissions are set such that the chronos user can see the content of known
   // files inside whitelist, but not anything else.
-  CHECK(util::EnsureDirectoryExists(
+  CHECK(EnsureDirectoryExists(
       base::FilePath("/var/lib/whitelist"), kRootUid, gid, 0710));
 
   // Create the directory where external data referenced by policies is cached
   // for device-local accounts. This data is read and written by chronos.
-  CHECK(util::EnsureDirectoryExists(
+  CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/device_local_account_external_policy_data"),
       uid, gid, 0700));
 
   // Create the directory where the AppPack extensions are cached.
   // These extensions are read and written by chronos.
-  CHECK(util::EnsureDirectoryExists(
+  CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/app_pack"), uid, gid, 0700));
 
   // Create the directory where extensions for device-local accounts are cached.
   // These extensions are read and written by chronos.
-  CHECK(util::EnsureDirectoryExists(
+  CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/device_local_account_extensions"),
       uid, gid, 0700));
 
   // Create the directory for shared installed extensions.
   // Shared extensions are validated at runtime by the browser.
   // These extensions are read and written by chronos.
-  CHECK(util::EnsureDirectoryExists(
+  CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/shared_extensions"), uid, gid, 0700));
 
   // Enable us to keep track of the user's chosen time zone.
   // Default to Pacific if we don't have one set.
   const base::FilePath timezone_file("/var/lib/timezone/localtime");
   if (!base::PathExists(timezone_file)) {
-    CHECK(util::EnsureDirectoryExists(timezone_file.DirName(), uid, gid, 0700));
+    CHECK(EnsureDirectoryExists(timezone_file.DirName(), uid, gid, 0700));
     CHECK(base::CreateSymbolicLink(
         base::FilePath("/usr/share/zoneinfo/US/Pacific"), timezone_file));
   }
 
   // Tell Chrome where to write logging messages before the user logs in.
   base::FilePath system_log_dir("/var/log/chrome");
-  CHECK(util::EnsureDirectoryExists(system_log_dir, uid, gid, 0755));
+  CHECK(EnsureDirectoryExists(system_log_dir, uid, gid, 0755));
   builder->AddEnvVar("CHROME_LOG_FILE",
       system_log_dir.Append("chrome").value());
 
@@ -169,8 +172,8 @@ void InitCrashHandling(ChromiumCommandBuilder* builder) {
         user_dir.Append(".config/google-chrome/Crash Reports"));
     if (!base::PathExists(reports_dir)) {
       base::FilePath minidump_dir("/var/minidumps");
-      util::EnsureDirectoryExists(minidump_dir, uid, gid, 0700);
-      util::EnsureDirectoryExists(reports_dir.DirName(), uid, gid, 0700);
+      EnsureDirectoryExists(minidump_dir, uid, gid, 0700);
+      EnsureDirectoryExists(reports_dir.DirName(), uid, gid, 0700);
       base::CreateSymbolicLink(minidump_dir, reports_dir);
     }
   }
@@ -178,8 +181,7 @@ void InitCrashHandling(ChromiumCommandBuilder* builder) {
   // Enable gathering of core dumps via a file in the stateful partition so it
   // can be enabled post-build.
   if (base::PathExists(stateful_etc.Append("enable_chromium_coredumps"))) {
-    util::EnsureDirectoryExists(
-        base::FilePath("/var/coredumps"), uid, gid, 0700);
+    EnsureDirectoryExists(base::FilePath("/var/coredumps"), uid, gid, 0700);
     struct rlimit limit;
     limit.rlim_cur = limit.rlim_max = RLIM_INFINITY;
     if (setrlimit(RLIMIT_CORE, &limit) != 0)
@@ -232,7 +234,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder, bool using_x11) {
     const base::FilePath user_xauth_file(data_dir.Append(".Xauthority"));
     PCHECK(base::CopyFile(base::FilePath(kXauthFile), user_xauth_file))
         << "Unable to copy " << kXauthFile << " to " << user_xauth_file.value();
-    CHECK(util::SetPermissions(
+    CHECK(SetPermissions(
         user_xauth_file, builder->uid(), builder->gid(), 0600));
     builder->AddEnvVar("XAUTHORITY", user_xauth_file.value());
     builder->AddEnvVar("DISPLAY", ":0.0");

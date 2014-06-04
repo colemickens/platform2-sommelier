@@ -11,8 +11,12 @@
 #include <string>
 #include <vector>
 
+namespace chromeos {
+namespace ui {
 class ChromiumCommandBuilder;
 class XServerRunner;
+}  // namespace ui
+}  // namespace chromeos
 
 namespace login_manager {
 
@@ -24,7 +28,8 @@ namespace login_manager {
 //
 // Initialization that is common across all Chromium-derived binaries (e.g.
 // content_shell, app_shell, etc.) rather than just applying to the Chrome
-// browser should be added to the ChromiumCommandBuilder class instead.
+// browser should be added to libchromeos's ChromiumCommandBuilder class
+// instead.
 void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
                         uid_t* uid_out);

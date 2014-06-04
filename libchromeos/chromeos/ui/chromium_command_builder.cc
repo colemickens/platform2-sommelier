@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/chromium_command_builder.h"
+#include "chromeos/ui/chromium_command_builder.h"
 
 #include <sys/resource.h>
 
@@ -18,7 +18,10 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "login_manager/util.h"
+#include "chromeos/ui/util.h"
+
+namespace chromeos {
+namespace ui {
 
 namespace {
 
@@ -475,3 +478,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
     }
   }
 }
+
+}  // namespace ui
+}  // namespace chromeos

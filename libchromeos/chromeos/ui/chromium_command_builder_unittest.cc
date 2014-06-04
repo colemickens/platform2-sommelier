@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/chromium_command_builder.h"
+#include "chromeos/ui/chromium_command_builder.h"
 
 #include <base/files/file_path.h>
 #include <base/file_util.h>
@@ -10,7 +10,10 @@
 #include <base/macros.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/util.h"
+#include "chromeos/ui/util.h"
+
+namespace chromeos {
+namespace ui {
 
 class ChromiumCommandBuilderTest : public testing::Test {
  public:
@@ -278,3 +281,6 @@ TEST_F(ChromiumCommandBuilderTest, DeepMemoryProfiler) {
   EXPECT_EQ("1", ReadEnvVar("DEEP_HEAP_PROFILE"));
   EXPECT_EQ("--no-sandbox", GetFirstArgWithPrefix("--no-sandbox"));
 }
+
+}  // namespace ui
+}  // namespace chromeos

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/x_server_runner.h"
+#include "chromeos/ui/x_server_runner.h"
 
 #include <arpa/inet.h>
 #include <grp.h>
@@ -23,7 +23,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
-#include "login_manager/util.h"
+#include "chromeos/ui/util.h"
+
+namespace chromeos {
+namespace ui {
 
 namespace {
 
@@ -295,3 +298,6 @@ bool XServerRunner::WaitForServer() {
 base::FilePath XServerRunner::GetPath(const std::string& path) const {
   return util::GetReparentedPath(path, base_path_for_testing_);
 }
+
+}  // namespace ui
+}  // namespace chromeos

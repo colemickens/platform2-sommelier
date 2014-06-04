@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_CHROMIUM_COMMAND_BUILDER_H_
-#define LOGIN_MANAGER_CHROMIUM_COMMAND_BUILDER_H_
+#ifndef CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
+#define CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
 
 #include <sys/types.h>
 
@@ -14,6 +14,9 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+
+namespace chromeos {
+namespace ui {
 
 // ChromiumCommandBuilder facilitates building a command line for running a
 // Chromium-derived binary and performing related setup.
@@ -155,5 +158,8 @@ class ChromiumCommandBuilder {
 
   DISALLOW_COPY_AND_ASSIGN(ChromiumCommandBuilder);
 };
+
+}  // namespace ui
+}  // namespace chromeos
 
 #endif  // LOGIN_MANAGER_CHROMIUM_COMMAND_BUILDER_H_

@@ -8,9 +8,11 @@
 
 #include <base/files/file_path.h>
 
-#ifndef LOGIN_MANAGER_UTIL_H_
-#define LOGIN_MANAGER_UTIL_H_
+#ifndef CHROMEOS_UI_UTIL_H_
+#define CHROMEOS_UI_UTIL_H_
 
+namespace chromeos {
+namespace ui {
 namespace util {
 
   // Converts an absolute path |path| into a base::FilePath. If |parent| is
@@ -38,5 +40,7 @@ bool EnsureDirectoryExists(const base::FilePath& path,
 bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid);
 
 }  // namespace util
+}  // namespace ui
+}  // namespace chromeos
 
-#endif  // LOGIN_MANAGER_UTIL_H_
+#endif  // CHROMEOS_UI_UTIL_H_

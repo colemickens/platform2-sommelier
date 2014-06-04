@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_X_SERVER_RUNNER_H_
-#define LOGIN_MANAGER_X_SERVER_RUNNER_H_
+#ifndef CHROMEOS_UI_X_SERVER_RUNNER_H_
+#define CHROMEOS_UI_X_SERVER_RUNNER_H_
 
 #include <sys/types.h>
 
@@ -12,6 +12,9 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+
+namespace chromeos {
+namespace ui {
 
 // XServerRunner can be used to start the X server asynchronously and later
 // block until the server is ready to accept connections from clients.
@@ -73,4 +76,7 @@ class XServerRunner {
   DISALLOW_COPY_AND_ASSIGN(XServerRunner);
 };
 
-#endif  // LOGIN_MANAGER_X_SERVER_RUNNER_H_
+}  // namespace ui
+}  // namespace chromeos
+
+#endif  // CHROMEOS_UI_X_SERVER_RUNNER_H_

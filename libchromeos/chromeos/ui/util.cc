@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/util.h"
+#include "chromeos/ui/util.h"
 
 #include <pwd.h>
 #include <unistd.h>
@@ -11,6 +11,8 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
+namespace chromeos {
+namespace ui {
 namespace util {
 
 base::FilePath GetReparentedPath(const std::string& path,
@@ -69,3 +71,5 @@ bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
 }
 
 }  // namespace util
+}  // namespace ui
+}  // namespace chromeos

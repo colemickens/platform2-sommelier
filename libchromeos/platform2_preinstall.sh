@@ -9,7 +9,7 @@ set -e
 OUT=$1
 shift
 for v; do
-  sublibs=( 'core' 'cryptohome' )
+  sublibs=( 'core' 'cryptohome' 'ui' )
   sublibs=("${sublibs[@]/#/-lchromeos-}")
   sublibs="${sublibs[@]/%/-${v}}"
   echo "GROUP ( AS_NEEDED ( ${sublibs} ) )" > "${OUT}"/lib/libchromeos-${v}.so

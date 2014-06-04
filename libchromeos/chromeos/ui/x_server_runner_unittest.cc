@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/x_server_runner.h"
+#include "chromeos/ui/x_server_runner.h"
 
 #include <fcntl.h>
 #include <pwd.h>
@@ -22,7 +22,10 @@
 #include <base/threading/platform_thread.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/util.h"
+#include "chromeos/ui/util.h"
+
+namespace chromeos {
+namespace ui {
 
 namespace {
 
@@ -198,3 +201,6 @@ TEST_F(XServerRunnerTest, CreateDirectories) {
   EXPECT_EQ(log_dir.BaseName().Append(log_file.BaseName()).value(),
             link.value());
 }
+
+}  // namespace ui
+}  // namespace chromeos
