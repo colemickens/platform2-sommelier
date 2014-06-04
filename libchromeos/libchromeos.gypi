@@ -27,7 +27,7 @@
           '../libchromeos',
         ],
       },
-      'includes': ['../../platform2/common-mk/deps.gypi'],
+      'includes': ['../common-mk/deps.gypi'],
     },
     {
       'target_name': 'libchromeos-core-<(libbase_ver)',
@@ -114,8 +114,8 @@
       'target_name': 'libpolicy-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
-        '../libchromeos/libpolicy.gyp:*',
-        '../../platform2/common-mk/external_dependencies.gyp:policy-protos',
+        'libpolicy-includes',
+        '../common-mk/external_dependencies.gyp:policy-protos',
       ],
       'variables': {
         'exported_deps': [
@@ -152,7 +152,7 @@
             'libchromeos-<(libbase_ver)',
             'libchromeos-ui-<(libbase_ver)',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'cflags': [
             '-Wno-format-zero-length',
           ],
@@ -182,7 +182,7 @@
           'target_name': 'libpolicy-<(libbase_ver)_unittests',
           'type': 'executable',
           'dependencies': ['libpolicy-<(libbase_ver)'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chromeos/policy/tests/libpolicy_unittest.cc',
           ]

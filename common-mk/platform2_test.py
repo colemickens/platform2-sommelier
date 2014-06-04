@@ -25,7 +25,7 @@ class Platform2Test(object):
   _BIND_MOUNT_PATHS = ('dev', 'proc', 'sys')
 
   def __init__(self, test_bin, board, host, use_flags, package, framework,
-               run_as_root, gtest_filter, user_gtest_filter):
+               run_as_root, gtest_filter, user_gtest_filter, cache_dir):
     self.bin = test_bin
     self.board = board
     self.host = host
@@ -39,7 +39,7 @@ class Platform2Test(object):
     if self.framework == 'auto':
       self.framework = 'qemu' if self.use('arm') else 'ldso'
 
-    p2 = Platform2(self.use_flags, self.board, self.host)
+    p2 = Platform2(self.use_flags, self.board, self.host, cache_dir=cache_dir)
     self.sysroot = p2.sysroot
     self.qemu_path = os.path.join(p2.get_buildroot(), 'qemu-arm')
     self.lib_dir = os.path.join(p2.get_products_path(), 'lib')
@@ -196,6 +196,9 @@ def main(argv):
                       help='test binary to run')
   parser.add_argument('--board', required=True,
                       help='board to build for')
+  parser.add_argument('--cache_dir',
+                      default='var/cache/portage/chromeos-base/platform2',
+                      help='directory to use as cache for incremental build')
   parser.add_argument('--framework', default='auto',
                       choices=('auto', 'ldso', 'qemu'),
                       help='framework to be used to run tests')
@@ -225,7 +228,7 @@ def main(argv):
   p2test = Platform2Test(options.bin, options.board, options.host,
                          options.use_flags, options.package, options.framework,
                          options.run_as_root, options.gtest_filter,
-                         options.user_gtest_filter)
+                         options.user_gtest_filter, options.cache_dir)
   getattr(p2test, options.action)()
 
 

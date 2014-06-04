@@ -32,7 +32,7 @@
         '<(xml2cpp_in_dir)/org.freedesktop.ModemManager1.Modem.Time.xml',
         '<(xml2cpp_in_dir)/org.freedesktop.ModemManager1.Sim.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['xml2cpp.gypi'],
     },
     {
       'target_name': 'modemmanager-dbus-adaptors',
@@ -66,7 +66,7 @@
         '<(xml2cpp_in_dir)/org.freedesktop.ModemManager1.Modem.Time.xml',
         '<(xml2cpp_in_dir)/org.freedesktop.ModemManager1.Sim.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['xml2cpp.gypi'],
     },
     {
       'target_name': 'dbus-proxies',
@@ -79,7 +79,7 @@
       'sources': [
         '<(xml2cpp_in_dir)/org.freedesktop.DBus.Properties.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['xml2cpp.gypi'],
     },
     {
       'target_name': 'policy-protos',
@@ -98,7 +98,7 @@
         '<(proto_in_dir)/device_management_local.proto',
         '<(proto_in_dir)/install_attributes.proto',
       ],
-      'includes': ['../common-mk/protoc.gypi'],
+      'includes': ['protoc.gypi'],
     },
     {
       'target_name': 'feedback-protos',
@@ -120,7 +120,7 @@
         '<(proto_in_dir)/math.proto',
         '<(proto_in_dir)/web.proto',
       ],
-      'includes': ['../common-mk/protoc.gypi'],
+      'includes': ['protoc.gypi'],
     },
   ],
 }

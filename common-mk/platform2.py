@@ -26,7 +26,8 @@ class Platform2(object):
   """Main builder logic for platform2"""
 
   def __init__(self, use_flags, board=None, host=False, libdir=None,
-               incremental=True, verbose=False, enable_tests=False):
+               incremental=True, verbose=False, enable_tests=False,
+               cache_dir=None):
     self.board = board
     self.host = host
     self.incremental = incremental
@@ -57,6 +58,12 @@ class Platform2(object):
     else:
       self.libdir = '/usr/lib64' if self.arch == 'amd64' else '/usr/lib'
 
+    if cache_dir:
+      self.cache_dir = cache_dir
+    else:
+      self.cache_dir = os.path.join(self.sysroot,
+                                    'var/cache/portage/chromeos-base/platform2')
+
   def get_src_dir(self):
     """Return the path to build tools and common GYP files"""
     return os.path.realpath(os.path.dirname(__file__))
@@ -80,8 +87,7 @@ class Platform2(object):
       else:
         return os.getcwd()
     else:
-      return os.path.join(self.sysroot,
-                          'var/cache/portage/chromeos-base/platform2/')
+      return self.cache_dir
 
   def get_products_path(self):
     """Return the path to the folder where build product are located."""
@@ -162,7 +168,7 @@ class Platform2(object):
     """Returns a boolean describing whether or not a given USE flag is set."""
     return flag in self.use_flags
 
-  def configure(self, _args):
+  def configure(self, args):
     """Runs the configure step of the Platform2 build.
 
     Creates the build root if it doesn't already exists. Generates flags to
@@ -174,10 +180,11 @@ class Platform2(object):
     if not self.incremental and os.path.isdir(self.get_products_path()):
       shutil.rmtree(self.get_products_path())
 
-    gyp_files = {
-        'platform': os.path.join(self.get_src_dir(), 'platform.gyp'),
-        'common': os.path.join(self.get_src_dir(), 'common.gypi')
-    }
+    targets = [os.path.join(self.get_src_dir(), 'platform.gyp')]
+    if args:
+      targets = args
+
+    common_gyp = os.path.join(self.get_src_dir(), 'common.gypi')
 
     # The common root folder of platform/ and platform2/.
     # Used as (DEPTH) variable in specific project .gyp files.
@@ -185,11 +192,9 @@ class Platform2(object):
 
     # Do NOT pass the board name into GYP. If you think you need to so, you're
     # probably doing it wrong.
-    gyp_args = [
-        'gyp',
-        gyp_files['platform'],
+    gyp_args = ['gyp'] + targets + [
         '--format=ninja',
-        '--include=%s' % gyp_files['common'],
+        '--include=%s' % common_gyp,
         '--depth=%s' % src_root,
         '--toplevel-dir=%s' % self.get_platform2_root(),
         '--generator-output=%s' % self.get_buildroot(),
@@ -265,6 +270,8 @@ def main(argv):
                       choices=actions, help='action to run')
   parser.add_argument('--board',
                       help='board to build for')
+  parser.add_argument('--cache_dir',
+                      help='directory to use as cache for incremental build')
   parser.add_argument('--disable_incremental', action='store_false',
                       dest='incremental', help='disable incremental build')
   parser.add_argument('--enable_tests', action='store_true',
@@ -290,7 +297,7 @@ def main(argv):
 
   p2 = Platform2(options.use_flags, options.board, options.host,
                  options.libdir, options.incremental, options.verbose,
-                 options.enable_tests)
+                 options.enable_tests, options.cache_dir)
   getattr(p2, options.action)(options.args)
 
 
