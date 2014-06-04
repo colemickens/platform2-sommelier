@@ -1,7 +1,6 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
       '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
     ],
     'libraries': [
@@ -16,6 +15,7 @@
         'gobject-2.0',
         'gthread-2.0',
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
         'libudev',
       ],
     },
@@ -40,7 +40,10 @@
     {
       'target_name': 'libdisks',
       'type': 'static_library',
-      'dependencies': ['libdisks-adaptors'],
+      'dependencies': [
+        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
+        'libdisks-adaptors',
+      ],
       'sources': [
         'archive_manager.cc',
         'cros_disks_server.cc',
