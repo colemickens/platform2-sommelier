@@ -4,6 +4,7 @@
 
 #include "shill/hook_table.h"
 
+#include <list>
 #include <string>
 
 #include <base/bind.h>
@@ -19,6 +20,7 @@ using base::Callback;
 using base::Closure;
 using base::ConstRef;
 using base::Unretained;
+using std::list;
 using std::string;
 
 namespace shill {
@@ -26,7 +28,7 @@ namespace shill {
 HookTable::HookTable(EventDispatcher *event_dispatcher)
     : event_dispatcher_(event_dispatcher) {}
 
-void HookTable::Add(const string &name, const base::Closure &start) {
+void HookTable::Add(const string &name, const Closure &start) {
   Remove(name);
   hook_table_.insert(
       HookTableMap::value_type(name, HookAction(start)));
@@ -74,14 +76,21 @@ void HookTable::Run(int timeout_ms,
   // Otherwise, if the first action completes inline, its call to
   // ActionComplete() will cause the |done| callback to be invoked before the
   // rest of the actions get started.
+  //
+  // An action that completes inline could call HookTable::Remove(), which
+  // modifies |hook_table_|. It is thus not safe to iterate through
+  // |hook_table_| to execute the actions. Instead, we keep a list of start
+  // callback of each action and iterate through that to invoke the callback.
+  list<Closure> action_start_callbacks;
   for (auto &hook_entry : hook_table_) {
     HookAction *action = &hook_entry.second;
+    action_start_callbacks.push_back(action->start);
     action->started = true;
     action->completed = false;
   }
   // Now start the actions.
-  for (auto &hook_entry : hook_table_) {
-    hook_entry.second.start.Run();
+  for (auto &callback : action_start_callbacks) {
+    callback.Run();
   }
 }
 

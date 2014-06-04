@@ -26,9 +26,17 @@ using ::testing::SaveArg;
 
 namespace shill {
 
+namespace {
+
+const char kName[] = "test";
+const char kName1[] = "test1";
+const char kName2[] = "test2";
+const char kName3[] = "test3";
+
+}  // namespace
+
 class HookTableTest : public testing::Test {
  public:
-  static const char kName[];
   MOCK_METHOD0(StartAction, void());
   MOCK_METHOD0(StartAction2, void());
   MOCK_METHOD1(DoneAction, void(const Error &));
@@ -44,8 +52,6 @@ class HookTableTest : public testing::Test {
   EventDispatcher event_dispatcher_;
   HookTable hook_table_;
 };
-
-const char HookTableTest::kName[] = "test";
 
 TEST_F(HookTableTest, ActionCompletes) {
   EXPECT_CALL(*this, StartAction());
@@ -64,6 +70,30 @@ TEST_F(HookTableTest, ActionCompletes) {
 
 ACTION_P2(CompleteAction, hook_table, name) {
   hook_table->ActionComplete(name);
+}
+
+ACTION_P2(CompleteActionAndRemoveAction, hook_table, name) {
+  hook_table->ActionComplete(name);
+  hook_table->Remove(name);
+}
+
+TEST_F(HookTableTest, ActionCompletesAndRemovesActionInDoneCallback) {
+  EXPECT_CALL(*this, StartAction())
+      .WillOnce(CompleteActionAndRemoveAction(&hook_table_, kName));
+  EXPECT_CALL(*this, StartAction2())
+      .WillOnce(CompleteAction(&hook_table_, kName2));
+  EXPECT_CALL(*this, DoneAction(IsSuccess()));
+  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
+  Closure start2_cb = Bind(&HookTableTest::StartAction2, Unretained(this));
+  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
+                                               Unretained(this));
+  hook_table_.Add(kName, start_cb);
+  hook_table_.Add(kName2, start2_cb);
+  hook_table_.Run(0, done_cb);
+
+  // Ensure that the timeout callback got cancelled.  If it did not get
+  // cancelled, done_cb will be run twice and make this test fail.
+  event_dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(HookTableTest, ActionCompletesInline) {
@@ -102,9 +132,6 @@ TEST_F(HookTableTest, ActionTimesOut) {
 }
 
 TEST_F(HookTableTest, MultipleActionsAllSucceed) {
-  const string kName1 = "test1";
-  const string kName2 = "test2";
-  const string kName3 = "test3";
   Closure pending_cb;
   const int kTimeout = 10;
   EXPECT_CALL(*this, StartAction()).Times(2);
@@ -128,9 +155,6 @@ TEST_F(HookTableTest, MultipleActionsAllSucceed) {
 }
 
 TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
-  const string kName1 = "test1";
-  const string kName2 = "test2";
-  const string kName3 = "test3";
   Closure pending_cb;
   const int kTimeout = 1;
   EXPECT_CALL(*this, StartAction()).Times(3);
@@ -236,6 +260,5 @@ TEST_F(HookTableTest, ActionAddedBeforePreviousActionCompletes) {
   hook_table_.Add(kName, start2_cb);
   hook_table_.ActionComplete(kName);
 }
-
 
 }  // namespace shill
