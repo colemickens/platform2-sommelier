@@ -23,6 +23,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <chromeos/syslog_logging.h>
@@ -46,6 +47,10 @@ using std::wstring;
 // Also listens over DBus for the commands specified in dbus_glib_shim.h.
 
 namespace switches {
+
+// Name of the flag that contains the command for running Chrome.
+static const char kChromeCommand[] = "chrome-command";
+static const char kChromeCommandDefault[] = "/opt/google/chrome/chrome";
 
 // Name of the flag that contains the path to the file which disables restart of
 // managed jobs upon exit or crash if the file is present.
@@ -72,6 +77,11 @@ static const char kLegacyLoginProfile[] = "use-legacy-login-profile";
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\nAvailable Switches: \n"
+"  --chrome-command=</path/to/executable>\n"
+"    Path to the Chrome executable. Split along whitespace into arguments\n"
+"    (to which standard Chrome arguments will be appended); a value like\n"
+"    \"/usr/local/bin/strace /path/to/chrome\" may be used to wrap Chrome in\n"
+"    another program. (default: /opt/google/chrome/chrome)\n"
 "  --disable-chrome-restart-file=</path/to/file>\n"
 "    Magic file that causes this program to stop restarting the\n"
 "    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n"
@@ -109,6 +119,13 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
+  // Parse the base Chrome command.
+  string command_flag(switches::kChromeCommandDefault);
+  if (cl->HasSwitch(switches::kChromeCommand))
+    command_flag = cl->GetSwitchValueASCII(switches::kChromeCommand);
+  vector<string> command;
+  base::SplitStringAlongWhitespace(command_flag, &command);
+
   // Parse kill timeout if it's present.
   int kill_timeout = switches::kKillTimeoutDefault;
   if (cl->HasSwitch(switches::kKillTimeout)) {
@@ -141,9 +158,10 @@ int main(int argc, char* argv[]) {
 
   // Start the X server and set things up for running Chrome.
   map<string, string> env_vars;
-  vector<string> arg_list;
+  vector<string> args;
   uid_t uid = 0;
-  PerformChromeSetup(&env_vars, &arg_list, &uid);
+  PerformChromeSetup(&env_vars, &args, &uid);
+  command.insert(command.end(), args.begin(), args.end());
 
   // Shim that wraps system calls, file system ops, etc.
   SystemUtilsImpl system;
@@ -167,7 +185,7 @@ int main(int argc, char* argv[]) {
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
   scoped_ptr<BrowserJobInterface> browser_job(
-      new BrowserJob(arg_list,
+      new BrowserJob(command,
                      env_vars,
                      support_multi_profile,
                      uid,

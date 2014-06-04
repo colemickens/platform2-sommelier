@@ -27,9 +27,6 @@ const char kXorgUser[] = "xorg";
 const int kXorgVt = 1;
 const char kXauthFile[] = "/var/run/chromelogin.auth";
 
-// Path to the Chrome binary.
-const char kChromeExecutable[] = "/opt/google/chrome/chrome";
-
 // Path to file containing developer-supplied modifications to Chrome's
 // environment and command line. Passed to
 // ChromiumCommandBuilder::ApplyUserConfig().
@@ -311,11 +308,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 }  // namespace
 
 void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
-                        std::vector<std::string>* chrome_command_out,
-                        uid_t* chrome_uid_out) {
+                        std::vector<std::string>* args_out,
+                        uid_t* uid_out) {
   DCHECK(env_vars_out);
-  DCHECK(chrome_command_out);
-  DCHECK(chrome_uid_out);
+  DCHECK(args_out);
+  DCHECK(uid_out);
 
   ChromiumCommandBuilder builder;
   CHECK(builder.Init());
@@ -347,14 +344,9 @@ void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
   if (builder.is_developer_end_user())
     builder.ApplyUserConfig(base::FilePath(kChromeDevConfigPath));
 
-  chrome_command_out->clear();
-  chrome_command_out->reserve(builder.arguments().size() + 1);
-  chrome_command_out->push_back(kChromeExecutable);
-  chrome_command_out->insert(chrome_command_out->end(),
-                             builder.arguments().begin(),
-                             builder.arguments().end());
   *env_vars_out = builder.environment_variables();
-  *chrome_uid_out = builder.uid();
+  *args_out = builder.arguments();
+  *uid_out = builder.uid();
 
   if (using_x11) {
     CHECK(x_runner->WaitForServer());

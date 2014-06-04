@@ -26,8 +26,8 @@ namespace login_manager {
 // content_shell, app_shell, etc.) rather than just applying to the Chrome
 // browser should be added to the ChromiumCommandBuilder class instead.
 void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
-                        std::vector<std::string>* chrome_command_out,
-                        uid_t* chrome_uid_out);
+                        std::vector<std::string>* args_out,
+                        uid_t* uid_out);
 
 }  // namespace login_manager
 
