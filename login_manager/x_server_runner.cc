@@ -114,6 +114,51 @@ void ExecServer(int vt,
   PCHECK(execv(argv[0], argv) == 0) << "execv() failed";
 }
 
+// Helper for ExecAndWaitForServer() that reads signals sent from |server_pid|
+// via signalfd-created |fd|. Returns true if the server started successfully.
+bool WaitForSignalFromServer(pid_t server_pid, int fd) {
+  LOG(INFO) << "X server started with PID " << server_pid;
+  while (true) {
+    struct signalfd_siginfo siginfo;
+    int bytes_read = HANDLE_EINTR(read(fd, &siginfo, sizeof(siginfo)));
+    PCHECK(bytes_read >= 0);
+    if (bytes_read != sizeof(siginfo)) {
+      LOG(ERROR) << "Read " << bytes_read << " byte(s); expected "
+                 << sizeof(siginfo);
+      return false;
+    }
+
+    switch (siginfo.ssi_signo) {
+      case SIGUSR1:
+        LOG(INFO) << "X server is ready for connections";
+        return true;
+      case SIGCHLD: {
+        int status = 0;
+        int result = waitpid(server_pid, &status, WNOHANG);
+        if (result != 0) {
+          PCHECK(result == server_pid) << "waitpid() returned " << result;
+          if (WIFEXITED(status)) {
+            LOG(ERROR) << "X server exited with " << WEXITSTATUS(status)
+                       << " before sending SIGUSR1";
+            return false;
+          } else if (WIFSIGNALED(status)) {
+            LOG(ERROR) << "X server was terminated with signal "
+                       << WTERMSIG(status) << " before sending SIGUSR1";
+            return false;
+          }
+        }
+        // In the event of a non-exit SIGCHLD, ignore it and loop to
+        // read the next signal.
+        LOG(INFO) << "Ignoring non-exit SIGCHLD";
+        continue;
+      }
+      default:
+        CHECK(false) << "Unexpected signal " << siginfo.ssi_signo;
+    }
+  }
+  return false;
+}
+
 // Drops privileges, forks-and-execs the X server, waits for it to emit SIGUSR1
 // to indicate that it's ready for connections, and returns true on success.
 bool ExecAndWaitForServer(const std::string& user,
@@ -138,67 +183,34 @@ bool ExecAndWaitForServer(const std::string& user,
   PCHECK(fd != -1) << "signalfd() failed";
   PCHECK(sigprocmask(SIG_BLOCK, &mask, NULL) == 0);
 
+  bool success = false;
   switch (pid_t pid = fork()) {
     case -1:
       PLOG(ERROR) << "fork() failed";
-      return false;
+      break;
     case 0:
       // Forked process: exec the X server.
       base::CloseSuperfluousFds(base::InjectiveMultimap());
+      PCHECK(sigprocmask(SIG_UNBLOCK, &mask, NULL) == 0);
 
       // Set SIGUSR1's disposition to SIG_IGN before exec-ing so that X will
       // emit SIGUSR1 once it's ready to accept connections.
       PCHECK(signal(SIGUSR1, SIG_IGN) != SIG_ERR);
-      PCHECK(signal(SIGCHLD, SIG_DFL) != SIG_ERR);
 
       closure.Run();
-      break;
-    default: {
-      // Original process: wait for the forked process to become ready or exit.
-      LOG(INFO) << "X server started with PID " << pid;
-      struct signalfd_siginfo siginfo;
-      while (true) {
-        int bytes_read = HANDLE_EINTR(read(fd, &siginfo, sizeof(siginfo)));
-        PCHECK(bytes_read >= 0);
-        if (bytes_read != sizeof(siginfo)) {
-          LOG(ERROR) << "Read " << bytes_read << " byte(s); expected "
-                     << sizeof(siginfo);
-          close(fd);
-          return false;
-        }
 
-        switch (siginfo.ssi_signo) {
-          case SIGUSR1:
-            LOG(INFO) << "X server is ready for connections";
-            close(fd);
-            return true;
-          case SIGCHLD: {
-            int status = 0;
-            int result = waitpid(pid, &status, WNOHANG);
-            if (result != 0) {
-              PCHECK(result == pid) << "waitpid() returned " << result;
-              if (WIFEXITED(status)) {
-                LOG(ERROR) << "X server exited with " << WEXITSTATUS(status)
-                           << " before sending SIGUSR1";
-                close(fd);
-                return false;
-              } else if (WIFSIGNALED(status)) {
-                LOG(ERROR) << "X server was terminated with signal "
-                           << WTERMSIG(status) << " before sending SIGUSR1";
-                close(fd);
-                return false;
-              }
-            }
-            // Ignore non-exit SIGCHLDs.
-            break;
-          }
-          default:
-            CHECK(false) << "Unexpected signal " << siginfo.ssi_signo;
-        }
-      }
-    }
+      // We should never reach this point, but crash just in case to avoid
+      // double-closing the FD.
+      LOG(FATAL) << "Server closure returned unexpectedly";
+      break;
+    default:
+      // Original process: wait for the forked process to become ready or exit.
+      success = WaitForSignalFromServer(pid, fd);
+      break;
   }
-  return true;
+
+  close(fd);
+  return success;
 }
 
 }  // namespace

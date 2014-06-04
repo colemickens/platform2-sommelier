@@ -15,6 +15,15 @@
 
 // XServerRunner can be used to start the X server asynchronously and later
 // block until the server is ready to accept connections from clients.
+//
+// In more detail:
+//
+// - StartServer() performs necessary setup and forks |child_pid_|.
+// - |child_pid_| setuids to |user| and forks another process |x_pid|.
+// - |x_pid| execs the X server.
+// - The X server sends SIGUSR1 to |child_pid_| after initialization.
+// - |child_pid_| exits, resulting in the original process receiving SIGCHLD.
+// - WaitForServer() blocks until SIGCHLD has been received.
 class XServerRunner {
  public:
   // Various hard-coded paths exposed here for tests.

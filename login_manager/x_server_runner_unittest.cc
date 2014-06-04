@@ -39,6 +39,13 @@ void ExecServer(const base::FilePath& pipe_path,
   PCHECK(base::WriteFile(pipe_path, reinterpret_cast<const char*>(&pid),
                          sizeof(pid)) == sizeof(pid));
 
+  // Check that the child process didn't inherit any blocked signals:
+  // http://crbug.com/380713
+  sigset_t old_signals;
+  PCHECK(sigemptyset(&old_signals) == 0);
+  PCHECK(sigprocmask(SIG_SETMASK, NULL, &old_signals) == 0);
+  CHECK(sigisemptyset(&old_signals)) << "Child inherited blocked signals";
+
   if (exit_delay > base::TimeDelta()) {
     base::PlatformThread::Sleep(exit_delay);
     exit(1);
