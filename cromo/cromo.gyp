@@ -1,7 +1,6 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
       '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
     ],
     'variables': {
@@ -10,6 +9,7 @@
         'gthread-2.0',
         'gobject-2.0',
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
       ],
     },
     'link_settings': {
@@ -62,6 +62,7 @@
       # depending on 'libcromo'.
       'dependencies': [
         '../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
+        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
         'cromo-adaptors',
       ],
       'defines': [
@@ -72,6 +73,9 @@
       ],
       'ldflags': [
         '-Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=<(platform_root)/cromo/cromo.ver',
+      ],
+      'libraries': [
+        '-lpthread',
       ],
       'sources': [
         'cromo_server.cc',
