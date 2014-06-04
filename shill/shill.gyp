@@ -1,11 +1,11 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
     ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
       ],
     },
     'cflags': [
@@ -152,7 +152,13 @@
       'dependencies': ['shim-protos'],
       'sources': [
         'shims/crypto_util.cc',
-      ]
+      ],
+      'variables': {
+        'deps': [
+          'openssl',
+          'protobuf-lite',
+        ]
+      }
     },
     {
       'target_name': 'libshill',
@@ -489,7 +495,12 @@
           'type': 'executable',
           'sources': [
             'shims/set_apn_helper.c',
-          ]
+          ],
+          'variables': {
+            'deps': [
+              'dbus-glib-1'
+            ]
+          }
         },
       ],
     }],
