@@ -1,11 +1,9 @@
 {
   'target_defaults': {
-    'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
-    ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
       ],
     },
     'cflags': [
@@ -50,6 +48,7 @@
       'type': 'static_library',
       'dependencies': [
         '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
+        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
         'lorgnette-adaptors',
         'lorgnette-proxies',
       ],
