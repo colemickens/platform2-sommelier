@@ -188,9 +188,17 @@ std::vector<utilities::DBusPropertyMap>* SmsCache::List(
     for (std::vector<int>::const_iterator it = indexlist->begin();
          it != indexlist->end();
          ++it) {
-      SmsMessageFragment* frag = impl->GetSms(*it, error);
-      if (!error.is_set())
-        AddToCache(frag);
+      DBus::Error get_sms_error;
+      SmsMessageFragment* frag = impl->GetSms(*it, get_sms_error);
+      // If GetSms fails, continue to the next SMS message fragment.
+      // |error| should only be set once, so report only the first error.
+      if (get_sms_error.is_set()) {
+        if (!error.is_set()) {
+          error.set(get_sms_error.name(), get_sms_error.message());
+        }
+        continue;
+      }
+      AddToCache(frag);
     }
   }
 
