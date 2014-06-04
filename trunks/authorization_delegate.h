@@ -1,4 +1,4 @@
-// Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 #include <string>
 
-namespace Trunks {
+namespace trunks {
 
 // AuthorizationDelegate is an interface passed to TPM commands. The delegate
 // takes care of providing the authorization data for commands and verifying
@@ -41,6 +41,6 @@ class AuthorizationDelegate {
                                          std::string* parameters_out) = 0;
 };
 
-}  // namespace Trunks
+}  // namespace trunks
 
 #endif  // TRUNKS_AUTHORIZATION_DELEGATE_H_

@@ -1,4 +1,4 @@
-// Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,9 @@
 
 #include <string>
 
-namespace Trunks {
+#include <base/callback_forward.h>
+
+namespace trunks {
 
 // CommandTransceiver is an interface that sends commands to a TPM device and
 // receives responses asynchronously.
@@ -19,9 +21,9 @@ class CommandTransceiver {
   // the callback using an error code defined by the TCG for the TCTI layer.
   virtual void SendCommand(
       const std::string& command,
-      base::Callback<void(const std::string& response)> callback) = 0;
+      const base::Callback<void(const std::string& response)>& callback) = 0;
 };
 
-}  // namespace Trunks
+}  // namespace trunks
 
 #endif  // TRUNKS_COMMAND_TRANSCEIVER_H_

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -66,7 +66,7 @@ _BASIC_TYPES = ['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
                 'uint32_t', 'int32_t', 'uint64_t', 'int64_t']
 _OUTPUT_FILE_H = 'tpm_generated.h'
 _OUTPUT_FILE_CC = 'tpm_generated.cc'
-_COPYRIGHT_HEADER = ('// Copyright (c) 2014 The Chromium OS Authors. All '
+_COPYRIGHT_HEADER = ('// Copyright 2014 The Chromium OS Authors. All '
                      'rights reserved.\n// Use of this source code is '
                      'governed by a BSD-style license that can be found\n'
                      '// in the LICENSE file.\n\n// THIS CODE IS GENERATED - '
@@ -102,10 +102,10 @@ _LOCAL_INCLUDE = """
 
 """
 _NAMESPACE_BEGIN = """
-namespace Trunks {
+namespace trunks {
 """
 _NAMESPACE_END = """
-}  // namespace Trunks
+}  // namespace trunks
 """
 _FORWARD_DECLARATIONS = """
 class AuthorizationDelegate;
@@ -139,6 +139,8 @@ TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
       break;
     case 8:
       value_net = base::HostToNet64(value);
+      break;
+    default:
       break;
   }
   const char* value_bytes = reinterpret_cast<const char*>(&value_net);
