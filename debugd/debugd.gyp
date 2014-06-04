@@ -1,8 +1,5 @@
 {
   'target_defaults': {
-    'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
-    ],
     'variables': {
       'deps': [
         'dbus-1',
@@ -10,11 +7,9 @@
         'glib-2.0',
         'libpcrecpp',
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
       ],
     },
-    "cflags": [
-      '-fvisibility=hidden',
-    ],
     'defines': [
       'USE_CELLULAR=<(USE_cellular)',
       'USE_WIMAX=<(USE_wimax)',
@@ -139,7 +134,10 @@
         {
           'target_name': 'modem_status',
           'type': 'executable',
-          'dependencies': ['debugd-proxies'],
+          'dependencies': [
+            '<(platform_root)/system_api/system_api.gyp:system_api-headers',
+            'debugd-proxies',
+          ],
           'sources': [
             'src/helpers/modem_status.cc',
           ]
@@ -171,7 +169,10 @@
         {
           'target_name': 'wimax_status',
           'type': 'executable',
-          'dependencies': ['debugd-proxies'],
+          'dependencies': [
+            '<(platform_root)/system_api/system_api.gyp:system_api-headers',
+            'debugd-proxies',
+          ],
           'sources': [
             'src/helpers/wimax_status.cc',
           ]
