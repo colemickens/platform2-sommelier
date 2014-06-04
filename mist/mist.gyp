@@ -1,12 +1,12 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
       '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
     ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
         'libudev',
         'libusb-1.0',
         'protobuf',
