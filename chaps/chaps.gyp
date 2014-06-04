@@ -3,15 +3,13 @@
     'build_chaps_live_tests': 0,
   },
   'target_defaults': {
-    'dependencies': [
-      '../../platform2/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
-    ],
     'variables': {
       'deps': [
         'dbus-c++-1',
         'protobuf-lite',
         'openssl',
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
       ],
     },
   },
