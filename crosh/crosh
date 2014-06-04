@@ -285,11 +285,11 @@ cmd_help_advanced() (
 
 # We move the trailing brace to the next line so that we avoid the style
 # checker from rejecting the use of braces.  We cannot use subshells here
-# as we want the exit to exit crosh itself and not the subshell.
+# as we want the set the exit variable in crosh itself.
 # http://crbug.com/318368
 cmd_exit()
 {
-  exit
+  exit='y'
 }
 
 check_dforward() {
@@ -1438,7 +1438,9 @@ repl() {
       "shell limitations."
   fi
 
-  while [ 1 ]; do
+  # This will be set by the 'exit' command to tell us to quit.
+  local exit
+  while [ -z "${exit}" ]; do
     if shell_read "crosh> " LINE_; then
       if [ ! -z "$LINE_" ]; then
         shell_history -s "$LINE_"
