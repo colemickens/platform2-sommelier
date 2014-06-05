@@ -138,7 +138,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
     CHECK(util::EnsureDirectoryExists(timezone_file.DirName(), uid, gid, 0700));
     CHECK(base::CreateSymbolicLink(
         base::FilePath("/usr/share/zoneinfo/US/Pacific"), timezone_file));
-    CHECK(util::SetPermissions(timezone_file, uid, gid, 0644));
   }
 
   // Tell Chrome where to write logging messages before the user logs in.
