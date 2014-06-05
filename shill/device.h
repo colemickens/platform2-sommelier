@@ -445,6 +445,17 @@ class Device : public base::RefCounted<Device> {
   // Stops traffic monitoring on the device if traffic monitor is enabled.
   void StopTrafficMonitor();
 
+  // Start DNS test for the given servers. When retry_until_success is set,
+  // callback will only be invoke when the test succeed or the test failed to
+  // start (internal error). This function will return false if there is a test
+  // that's already running, and true otherwise.
+  virtual bool StartDNSTest(
+      const std::vector<std::string> &dns_servers,
+      const bool retry_until_success,
+      const base::Callback<void(const DNSServerTester::Status)> &callback);
+  // Stop DNS test if one is running.
+  virtual void StopDNSTest();
+
   // Called by the Traffic Monitor when it detects a network problem. Device
   // subclasses that want to roam to a different network when encountering
   // network problems can override this method in order to do so. The parent
@@ -546,11 +557,11 @@ class Device : public base::RefCounted<Device> {
   // Emit a property change signal for the "IPConfigs" property of this device.
   void UpdateIPConfigsProperty();
 
-  // Perform fallback DNS test by sending DNS request to Google's DNS server.
-  void PerformFallbackDNSTest();
-
-  // Called by DNS server tester when the fallback DNS server test completed.
+  // Called by DNS server tester when the fallback DNS servers test completes.
   void FallbackDNSResultCallback(const DNSServerTester::Status status);
+
+  // Called by DNS server tester when the configured DNS servers test completes.
+  void ConfigDNSResultCallback(const DNSServerTester::Status status);
 
   // Update DNS setting with the given DNS servers for the current connection.
   void SwitchDNSServers(const std::vector<std::string> &dns_servers);
@@ -603,14 +614,14 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
   scoped_ptr<LinkMonitor> link_monitor_;
-  // DNS server tester for performing DNS test on the fallback DNS servers when
-  // portal detector failed due to DNS failure.
-  scoped_ptr<DNSServerTester> fallback_dns_server_tester_;
+  // Used for verifying whether DNS server is functional.
+  scoped_ptr<DNSServerTester> dns_server_tester_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
-  base::Callback<void(const DNSServerTester::Status)>
-      fallback_dns_result_callback_;
   scoped_ptr<TrafficMonitor> traffic_monitor_;
+  // DNS servers obtained from ipconfig (either from DHCP or static config)
+  // that are not working.
+  std::vector<std::string> config_dns_servers_;
   Technology::Identifier technology_;
   // The number of portal detection attempts from Connected to Online state.
   // This includes all failure/timeout attempts and the final successful

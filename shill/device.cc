@@ -44,6 +44,7 @@
 #include "shill/traffic_monitor.h"
 
 using base::Bind;
+using base::Callback;
 using base::FilePath;
 using base::StringPrintf;
 using std::string;
@@ -111,8 +112,6 @@ Device::Device(ControlInterface *control_interface,
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
       portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
                                      weak_ptr_factory_.GetWeakPtr())),
-      fallback_dns_result_callback_(Bind(&Device::FallbackDNSResultCallback,
-                                         weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
       portal_attempts_to_online_(0),
       receive_byte_offset_(0),
@@ -657,6 +656,7 @@ void Device::DestroyConnection() {
   StopTrafficMonitor();
   StopPortalDetection();
   StopLinkMonitor();
+  StopDNSTest();
   if (selected_service_.get()) {
     SLOG(Device, 3) << "Clearing connection of service "
                     << selected_service_->unique_name();
@@ -686,6 +686,7 @@ void Device::SelectService(const ServiceRefPtr &service) {
     StopTrafficMonitor();
     StopLinkMonitor();
     StopPortalDetection();
+    StopDNSTest();
   }
   selected_service_ = service;
 }
@@ -881,23 +882,31 @@ void Device::OnLinkMonitorGatewayChange() {
   manager_->ReportServicesOnSameNetwork(connection_id);
 }
 
-void Device::PerformFallbackDNSTest() {
-  if (!fallback_dns_server_tester_.get()) {
-    vector<string> dns_servers(std::begin(kFallbackDnsServers),
-                               std::end(kFallbackDnsServers));
-    fallback_dns_server_tester_.reset(
-        new DNSServerTester(connection_,
-                            dispatcher_,
-                            dns_servers,
-                            false,
-                            fallback_dns_result_callback_));
+bool Device::StartDNSTest(
+    const vector<string> &dns_servers,
+    bool retry_until_success,
+    const Callback<void(const DNSServerTester::Status)> &callback) {
+  if (dns_server_tester_.get()) {
+    LOG(ERROR) << FriendlyName() << ": "
+               << "Failed to start DNS Test: current test still running";
+    return false;
   }
 
-  // Perform DNS server test for Google's DNS servers.
-  fallback_dns_server_tester_->Start();
+  dns_server_tester_.reset(new DNSServerTester(connection_,
+                                               dispatcher_,
+                                               dns_servers,
+                                               retry_until_success,
+                                               callback));
+  dns_server_tester_->Start();
+  return true;
+}
+
+void Device::StopDNSTest() {
+  dns_server_tester_.reset();
 }
 
 void Device::FallbackDNSResultCallback(const DNSServerTester::Status status) {
+  StopDNSTest();
   int result = Metrics::kFallbackDNSTestResultFailure;
   if (status == DNSServerTester::kStatusSuccess) {
     result = Metrics::kFallbackDNSTestResultSuccess;
@@ -906,14 +915,33 @@ void Device::FallbackDNSResultCallback(const DNSServerTester::Status status) {
     // fallback.
     CHECK(selected_service_);
     if (selected_service_->is_dns_auto_fallback_allowed()) {
+      LOG(INFO) << "Device " << FriendlyName()
+                << ": Switching to fallback DNS servers.";
+      // Save the DNS servers from ipconfig.
+      config_dns_servers_ = ipconfig_->properties().dns_servers;
       SwitchDNSServers(vector<string>(std::begin(kFallbackDnsServers),
                                       std::end(kFallbackDnsServers)));
-      // Restart the portal detection with the new DNS setting.
-      RestartPortalDetection();
+      // Start DNS test for configured DNS servers.
+      StartDNSTest(config_dns_servers_,
+                   true,
+                   Bind(&Device::ConfigDNSResultCallback,
+                        weak_ptr_factory_.GetWeakPtr()));
     }
   }
   metrics()->NotifyFallbackDNSTestResult(technology_, result);
-  fallback_dns_server_tester_.reset();
+}
+
+void Device::ConfigDNSResultCallback(const DNSServerTester::Status status) {
+  StopDNSTest();
+  // DNS test failed to start due to internal error.
+  if (status == DNSServerTester::kStatusFailure) {
+    return;
+  }
+
+  // Switch back to the configured DNS servers.
+  LOG(INFO) << "Device " << FriendlyName()
+            << ": Switching back to configured DNS servers.";
+  SwitchDNSServers(config_dns_servers_);
 }
 
 void Device::SwitchDNSServers(const vector<string> &dns_servers) {
@@ -926,6 +954,8 @@ void Device::SwitchDNSServers(const vector<string> &dns_servers) {
   connection_->UpdateDNSServers(dns_servers);
   // Allow the service to notify Chrome of ipconfig changes.
   selected_service_->NotifyIPConfigChanges();
+  // Restart the portal detection with the new DNS setting.
+  RestartPortalDetection();
 }
 
 void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
@@ -1075,7 +1105,11 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
     // if the DNS failure is due to bad DNS server settings.
     if ((portal_status == Metrics::kPortalResultDNSFailure) ||
         (portal_status == Metrics::kPortalResultDNSTimeout)) {
-      PerformFallbackDNSTest();
+      StartDNSTest(vector<string>(std::begin(kFallbackDnsServers),
+                                  std::end(kFallbackDnsServers)),
+                   false,
+                   Bind(&Device::FallbackDNSResultCallback,
+                        weak_ptr_factory_.GetWeakPtr()));
     }
   }
 }
