@@ -1055,11 +1055,12 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   // The salted password passed in from Chrome.
   const char kPassword[] = "OSL3HZZSfK+mDQTYUh3lXhgAzJNWhYz52ax0Bleny7Q=";
   // A no-op encryption key.
-  const char kB64CipherKey[] = "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=";
+  const char kB64CipherKey[] = "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=\n";
   // The signing key pre-installed.
-  const char kB64SigningKey[] = "p5TR/34XX0R7IMuffH14BiL1vcdSD8EajPzdIg09z9M=";
+  const char kB64SigningKey[] =
+    "p5TR/34XX0R7IMuffH14BiL1vcdSD8EajPzdIg09z9M=\n";
   // The HMAC-256 signature over kPassword using kSigningKey.
-  const char kB64Signature[] = "KOPQmmJcMr9iMkr36N1cX+G9gDdBBu7zutAxNayPMN4=";
+  const char kB64Signature[] = "KOPQmmJcMr9iMkr36N1cX+G9gDdBBu7zutAxNayPMN4=\n";
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
