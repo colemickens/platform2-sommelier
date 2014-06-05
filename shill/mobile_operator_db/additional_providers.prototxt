@@ -38,7 +38,7 @@ mno {
       }
       method : POST
       url : "https://quickaccess.verizonwireless.com/bbportal/chrome/start4g.do"
-      post_data : "oem=${oem}&iccid=${iccid}&imei=${imei}&mdn=${mdn}"
+      post_data : "iccid=${iccid}&imei=${imei}&mdn=${mdn}"
     }
     olp {
       olp_filter {
@@ -47,7 +47,7 @@ mno {
       }
       method : POST
       url : "https://quickaccess.verizonwireless.com/bbportal/chrome/start.do"
-      post_data : "mdn=${mdn}&oem=${oem}&meid=${meid}"
+      post_data : "mdn=${mdn}&meid=${meid}"
     }
     mccmnc : "310995"
     mccmnc : "311480"

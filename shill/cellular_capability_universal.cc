@@ -848,11 +848,6 @@ void CellularCapabilityUniversal::UpdateServiceOLP() {
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
                                GetMdnForOLP(cellular()->home_provider_info()));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", cellular()->min());
-
-  // TODO(armansito): Define constants for the OEM IDs in MobileOperator
-  // (See crbug.com/298408).
-  string oem_id = (cellular()->model_id() == kE362ModelId) ? "GOG3" : "QUA";
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", oem_id);
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
