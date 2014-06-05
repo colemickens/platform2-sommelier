@@ -13,7 +13,7 @@ PKG_CONFIG ?= pkg-config
 # When you uprev this, please grep for TODOBASE to find stuff you might want to
 # clean up or fix.
 BASE_VER ?= 271506
-PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 gthread-2.0 nss openssl \
+PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 gthread-2.0 openssl \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
