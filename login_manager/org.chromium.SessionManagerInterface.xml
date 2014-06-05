@@ -1,0 +1,342 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/chromium/SessionManager"
+      xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
+<!--
+  Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+
+-->
+
+  <!-- ********************************************************************* -->
+
+  <!--
+      org.chromium.SessionManagerInterface:
+      @short_description: User session manager.
+
+      Interface for user session manager. Also handles persisting and
+      retrieving device and per-user enterprise policy blobs and
+      brokering certain privileged operations on the browser's behalf.
+  -->
+  <interface name="org.chromium.SessionManagerInterface">
+    <!--
+        EmitLoginPromptVisible:
+
+        Emits the "login-prompt-visible" upstart signal and LoginPromptVisible
+        DBus signal on the browser's behalf.
+    -->
+    <method name="EmitLoginPromptVisible">
+    </method>
+    <!--
+        LoginPromptVisible:
+
+        Emitted when the browser indicates that the sign in screen is visible.
+    -->
+    <signal name="LoginPromptVisible">
+    </signal>
+    <!--
+        EnableChromeTesting:
+        @force_relaunch: Restart the browser no matter what.
+        @extra_arguments: Extra command line arguments to pass on restart.
+        @filepath: The named pipe to be used for testing communication.
+
+        Restarts the browser, leaving it open for testing automation.
+        Adds an argument to the chrome child job command line that causes it,
+        upon restart, to open a testing channel. Next, kills and restarts
+        chrome. The name of the pipe to be used for testing is returned in
+        @filepath.
+        If @force_relaunch is true, Chrome will be restarted with each
+        invocation. Otherwise, it will only be restarted if
+        automation is not yet enabled.  @extra_arguments can
+        include any additional arguments that need to be passed to
+        Chrome on subsequent launches.
+    -->
+    <method name="EnableChromeTesting">
+      <arg type="b" name="force_relaunch" direction="in" />
+      <arg type="as" name="extra_arguments" direction="in" />
+      <arg type="s" name="filepath" direction="out" />
+    </method>
+
+    <!--
+        StartSession:
+        @email_address: Human-readable ID of the user to start a session for.
+        @unique_identifier: Unused.
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Updates bookkeeping to know about a session for
+        @email_address. Also emits "start-user-session" upstart signal
+        and "SessionStateChanged:started" D-Bus signal.
+    -->
+    <method name="StartSession">
+      <arg type="s" name="email_address" direction="in" />
+      <arg type="s" name="unique_identifier" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+
+    <!--
+        StopSession:
+        @unique_identifier: Unused.
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Terminates all active user sessions, announces this over upstart
+        ("stop-user-session") and DBus (SessionStateChanges:stopped).
+    -->
+    <method name="StopSession">
+      <arg type="s" name="unique_identifier" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+
+    <!--
+        SessionStateChanged:
+        @state: State the device has changed to.
+        @user: User for whom a session has changed state.
+
+        Signal emitted to announce session state changes. Supported values for
+        @state include <quote>started</quote>, <quote>stopping</quote>, and
+        <quote>stopped</quote>. Currently, @user will only be populated when
+        we're announcing the beginning of a session.
+    -->
+    <signal name="SessionStateChanged">
+      <arg type="s" name="state" />
+      <arg type="s" name="user" />
+    </signal>
+
+    <!--
+        StorePolicy:
+        @policy_blob: Serialized protobuffer containing a device policy and
+                      a signature over that policy
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Stores a device policy. This method will verify the sig in @policy_blob
+        and persist the blob to disk.
+        The signature is a SHA1 with RSA signature over the policy,
+        verifiable with the device-wide policy key.
+    -->
+    <method name="StorePolicy">
+      <arg type="ay" name="policy_blob" direction="in" />
+      <arg type="b" name="done" direction="out"></arg>
+    </method>
+
+    <!--
+        RetrievePolicy:
+        @policy_blob: Serialized protobuffer containing a device policy and
+                      a signature over that policy.
+
+        Retrieve device policy stored by StorePolicy.
+    -->
+    <method name="RetrievePolicy">
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
+
+    <!--
+        StorePolicyForUser:
+        @user_email: User whose policy is to be stored.
+        @policy_blob: A serialized PolicyFetchResponse protobuf.
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Similar to StorePolicy() above, but for user policy.
+        @policy_blob should contain a serialized PolicyFetchResponse protobuf
+        which wraps the actual policy data along with an SHA1-RSA signature
+        over the policy data. The policy data is opaque to session_manager,
+        the exact definition is only relevant to client code in Chrome.
+
+        Calling this function attempts to persist the policy blob for
+        a given user. Policy is stored in a root-owned location
+        within the user's cryptohome (for privacy reasons). The
+        first attempt to store policy also installs the signing
+        key for user policy. This key is used later to verify policy
+        updates pushed by Chrome.
+    -->
+    <method name="StorePolicyForUser">
+      <arg type="s" name="user_email" direction="in" />
+      <arg type="ay" name="policy_blob" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+
+    <!--
+        RetrievePolicyForUser:
+        @user_email: User whose policy the caller wants.
+        @policy_blob: Serialized protobuffer containing a PolicyFetchResponse
+                      a signature over that policy.
+
+        Retrieves user policy for a given user.
+    -->
+    <method name="RetrievePolicyForUser">
+      <arg type="s" name="user_email" direction="in" />
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
+
+    <!--
+        StoreDeviceLocalAccountPolicy:
+        @account_id: Account whose policy is to be stored.
+        @policy_blob: A serialized PolicyFetchResponse protobuf.
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Similar to StorePolicyForUser() above, but for device-local
+        accounts. @policy_blob should contain a serialized
+        PolicyFetchResponse protobuf which wraps the actual policy
+        data along with an SHA1-RSA signature over the policy
+        data. The policy data is opaque to session manager, the exact
+        definition is only relevant to client code in Chrome.
+
+        Calling this function attempts to persist the policy blob for
+        the device-local account specified in the method call. Policy
+        is stored in the root-owned /var/lib/device_local_accounts
+        directory in the stateful partition. Signatures are checked
+        against the owner key, key rotation is not allowed.
+    -->
+    <method name="StoreDeviceLocalAccountPolicy">
+      <arg type="s" name="account_id" direction="in" />
+      <arg type="ay" name="policy_blob" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+
+    <!--
+        RetrieveDeviceLocalAccountPolicy:
+        @account_id: Account whose policy is to be stored.
+        @policy_blob: Serialized protobuffer containing a PolicyFetchResponse
+                      a signature over that policy.
+
+        Retrieves device-local account policy for the specified @account_id.
+    -->
+    <method name="RetrieveDeviceLocalAccountPolicy">
+      <arg type="s" name="account_id" direction="in" />
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
+
+    <!--
+        RetrieveSessionState:
+        @state: The current session state.
+
+        Get information about the current session. Will be one of
+        <quote>started</quote>, <quote>stopping</quote>, <quote>stopped</quote>.
+    -->
+    <method name="RetrieveSessionState">
+      <arg type="s" name="state" direction="out" />
+    </method>
+
+    <!--
+        RetrieveActiveSessions:
+        @sessions: A map describing the currently active user sessions.
+
+        Enumerate active user sessions.
+        @sessions is a dictionary mapping { username: sanitized_user_name }.
+    -->
+    <method name="RetrieveActiveSessions">
+      <arg type="a{ss}" name="sessions" direction="out" />
+    </method>
+
+    <!--
+        LockScreen:
+
+        Allows other processes to request screen locking.
+        Emits LockScreen signal to Chromium Browser to tell it to lock the
+        screen. The browser should call the HandleScreenLocked
+        method when the screen is actually locked.
+    -->
+    <method name="LockScreen">
+    </method>
+
+    <!--
+        HandleLockScreenShown:
+
+        Handle notification from Chrome that the lock screen is visible.
+        Emits ScreenIsLocked.
+    -->
+    <method name="HandleLockScreenShown">
+    </method>
+
+    <!--
+        HandleLockScreenDismissed:
+
+        Handle notification from Chrome that the lock screen is hidden.
+        Emits ScreenIsUnlocked.
+    -->
+    <method name="HandleLockScreenDismissed">
+    </method>
+
+    <!--
+        ScreenIsLocked:
+        Broadcast that the browser locked the screen.
+    -->
+    <signal name="ScreenIsLocked">
+    </signal>
+    <!--
+        ScreenIsUnlocked:
+        Broadcast that the browser unlocked the screen.
+    -->
+    <signal name="ScreenIsUnlocked">
+    </signal>
+
+    <!--
+        RestartJob:
+        @pid: PID of the job to restart.
+        @command_line: Command line arguments to restart the job with.
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Restarts job with specified @pid replacing its command line arguments
+        with those provided. Only works for the browser process managed by
+        the SessionManager.
+    -->
+    <method name="RestartJob">
+      <arg type="i" name="pid" direction="in" />
+      <arg type="s" name="command_line" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+
+    <!--
+        StartDeviceWipe:
+        @done: True on success. Error returned on failure, so likely redundant.
+
+        Sets the device up to "Powerwash" on reboot, and triggers a reboot.
+    -->
+    <method name="StartDeviceWipe">
+      <arg type="b" name="done" direction="out" />
+    </method>
+
+    <!--
+        SetFlagsForUser:
+        @user_email: User to set flags for.
+        @flags: array of flags to be set for the user.
+
+        Sets browser @flags to be applied on next in-session restart.
+    -->
+    <method name="SetFlagsForUser">
+      <arg type="s" name="user_email" direction="in" />
+      <arg type="as" name="flags" direction="in" />
+    </method>
+
+    <!--
+        GetServerBackedStateKeys:
+        @state_keys: The array of currently valid state keys.
+
+        Requests server-backed state keys to be computed and returned. A
+        server-backed state key is an opaque client-determined identifier
+        that's used to stage state in a server to be retrieved after device
+        recovery. These are used to figure out device state such as previous
+        enrollment domain and whether the device got marked as stolen by its
+        owner. The keys are time-dependent, with each key being valid only for
+        a window of time, and this call returns the currently valid state key
+        plus a number of subsequent state keys that span a year of time in
+        coverage.
+    -->
+    <method name="GetServerBackedStateKeys">
+      <arg type="aay" name="state_keys" direction="out" />
+    </method>
+
+    <!--
+        InitMachineInfo:
+        @data: A string containing newline-separated key=value pairs.
+
+        Initializes supplemental machine information for use by session manager
+        that has be asynchronously determined in the boot process after
+        starting session_manager. This method gets invoked by the ui-init-late
+        init job; nothing else should call this method.
+    -->
+    <method name="InitMachineInfo">
+      <arg type="s" name="data" direction="in" />
+    </method>
+  </interface>
+  <!-- ********************************************************************* -->
+</node>
