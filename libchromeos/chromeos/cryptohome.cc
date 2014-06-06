@@ -122,14 +122,6 @@ void SetRootHomePrefix(const std::string& prefix) {
     strcpy(g_root_home_prefix, prefix.c_str());
 }
 
-void SetSystemSaltPath(const std::string& path) {
-  if (path.length() < sizeof(g_system_salt_path)) {
-    strcpy(g_system_salt_path, path.c_str());
-    delete salt;
-    salt = NULL;
-  }
-}
-
 std::string* GetSystemSalt() {
   return salt;
 }

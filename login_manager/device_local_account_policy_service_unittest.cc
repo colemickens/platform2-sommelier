@@ -34,15 +34,13 @@ namespace login_manager {
 class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
  public:
   DeviceLocalAccountPolicyServiceTest()
-      : fake_account_("account@example.com") {
+      : fake_account_("account@example.com"),
+        salt_("salt") {
   }
 
   virtual void SetUp() OVERRIDE {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-
-    base::FilePath salt_path = temp_dir_.path().Append("salt");
-    ASSERT_EQ(0, base::WriteFile(salt_path, NULL, 0));
-    chromeos::cryptohome::home::SetSystemSaltPath(salt_path.value());
+    chromeos::cryptohome::home::SetSystemSalt(&salt_);
 
     fake_account_policy_path_ =
         temp_dir_.path()
@@ -84,6 +82,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   const std::string fake_account_;
   base::FilePath fake_account_policy_path_;
 
+  std::string salt_;
   std::string policy_blob_;
 
   base::MessageLoop loop_;
