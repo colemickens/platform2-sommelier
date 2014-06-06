@@ -273,25 +273,38 @@ int CreateMesh(GLushort **indices, GLsizeiptr *size,
   return iptr - *indices;
 }
 
-static void print_info_log(int obj)
+static void print_info_log(int obj, bool shader)
 {
   char info_log[4096];
   int length;
-  glGetError();
-  glGetShaderInfoLog(obj, sizeof(info_log)-1, &length, info_log);
-  if (glGetError() != 0)
+
+  if (shader)
+    glGetShaderInfoLog(obj, sizeof(info_log)-1, &length, info_log);
+  else
     glGetProgramInfoLog(obj, sizeof(info_log)-1, &length, info_log);
+
   char *p = info_log;
   while (p < info_log + length) {
     char *newline = strchr(p, '\n');
     if (newline)
       *newline = '\0';
-    printf("# Info: glGetShader/ProgramInfoLog: %s\n", p);
+    printf("# Info: glGet%sInfoLog: %s\n", shader ? "Shader" : "Program", p);
     if (!newline)
       break;
     p = newline + 1;
   }
 }
+
+static void print_shader_log(int shader)
+{
+  print_info_log(shader, true);
+}
+
+static void print_program_log(int program)
+{
+  print_info_log(program, false);
+}
+
 
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
   return InitShaderProgramWithHeader(NULL, vertex_src, fragment_src);
@@ -323,15 +336,15 @@ GLuint InitShaderProgramWithHeaders(const char** headers,
   delete[] header_and_body;
 
   glCompileShader(vertex_shader);
-  print_info_log(vertex_shader);
+  print_shader_log(vertex_shader);
   glCompileShader(fragment_shader);
-  print_info_log(fragment_shader);
+  print_shader_log(fragment_shader);
 
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex_shader);
   glAttachShader(program, fragment_shader);
   glLinkProgram(program);
-  print_info_log(program);
+  print_program_log(program);
   glUseProgram(program);
 
   glDeleteShader(vertex_shader);
