@@ -40,6 +40,7 @@ class TextureTest : public TestBase {
   scoped_ptr<char[]> pixels_[kNumberOfTextures];
   GLuint textures_[kNumberOfTextures];
   UpdateFlavor flavor_;
+  GLenum texel_gl_format_;
   DISALLOW_COPY_AND_ASSIGN(TextureTest);
 };
 

@@ -65,42 +65,58 @@ bool TextureTest::Run() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
 
-  // Types of textures, and corresponding name strings for logging.
+  // Textures formats
+  // TODO(djkurtz): Other formats such as GL_BGRA, GL_RGB, GL_BGR, ... ?
+  const GLenum kTexelFormats[] =
+     { GL_LUMINANCE, GL_RGBA }; // , GL_BGRA, GL_RGB, GL_BGR };
+  const unsigned int kTexelFormatSizes[] = { 1, 4 }; // , 4, 3, 3 };
+  const std::string kTexelFormatNames[] =
+      { "luminance", "rgba" }; // , "bgra", "rgb", "bgr" };
+
+  // Texture upload commands
   UpdateFlavor kFlavors[] = { TEX_IMAGE, TEX_SUBIMAGE };
   const std::string kFlavorNames[] = { "teximage2d", "texsubimage2d" };
 
-  for (unsigned int f = 0; f < arraysize(kFlavors); f++) {
-    flavor_ = kFlavors[f];
-    int sizes[] = {32, 128, 256, 512, 768, 1024, 1536, 2048};
-    for (unsigned int j = 0; j < arraysize(sizes); j++) {
-      // In hasty mode only do at most 512x512 sized problems.
-      if (g_hasty && sizes[j] > 512)
-        continue;
-      std::string name = std::string(Name()) + "_" + kFlavorNames[f] + "_" +
-          base::IntToString(sizes[j]);
-      width_ = height_ = sizes[j];
-      for (int i = 0; i < kNumberOfTextures; ++i) {
-        pixels_[i].reset(new char[width_ * height_]);
-        memset(pixels_[i].get(), 255, width_ * height_);
+  for (unsigned int fmt = 0; fmt < arraysize(kTexelFormats); fmt++) {
+    texel_gl_format_ = kTexelFormats[fmt];
+    unsigned int texel_size = kTexelFormatSizes[fmt];
+    for (unsigned int flavor = 0; flavor < arraysize(kFlavors); flavor++) {
+      flavor_ = kFlavors[flavor];
+      const int sizes[] = { 32, 128, 256, 512, 768, 1024, 1536, 2048 };
+      for (unsigned int j = 0; j < arraysize(sizes); j++) {
+        // In hasty mode only do at most 512x512 sized problems.
+        if (g_hasty && sizes[j] > 512)
+          continue;
 
-        //For NPOT texture we must set GL_TEXTURE_WRAP as GL_CLAMP_TO_EDGE
-        glBindTexture(GL_TEXTURE_2D, textures_[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width_, height_, 0,
-                     GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
-        if (glGetError() != 0) {
-          printf("# Error: Failed to allocate %dx%d texture.\n", width_,
-                 height_);
+        std::string name = std::string(Name()) + "_" +
+            kTexelFormatNames[fmt] + "_" + kFlavorNames[flavor] + "_" +
+            base::IntToString(sizes[j]);
+
+        width_ = height_ = sizes[j];
+        const unsigned int buffer_size = width_ * height_ * texel_size;
+        for (int i = 0; i < kNumberOfTextures; ++i) {
+          pixels_[i].reset(new char[buffer_size]);
+          memset(pixels_[i].get(), 255, buffer_size);
+
+          // For NPOT texture we must set GL_TEXTURE_WRAP as GL_CLAMP_TO_EDGE
+          glBindTexture(GL_TEXTURE_2D, textures_[i]);
+          glTexImage2D(GL_TEXTURE_2D, 0, texel_gl_format_, width_, height_, 0,
+                       texel_gl_format_, GL_UNSIGNED_BYTE, NULL);
+          if (glGetError() != 0) {
+            printf("# Error: Failed to allocate %dx%d %u-byte texel texture.\n",
+                   width_, height_, texel_size);
+          }
+          if (IS_NOT_POWER_OF_2(width_) || IS_NOT_POWER_OF_2(height_)) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+          }
         }
-        if (IS_NOT_POWER_OF_2(width_) || IS_NOT_POWER_OF_2(height_)) {
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        }
-      }
-      RunTest(this, name.c_str(), width_ * height_, g_width, g_height, true);
-      GLenum error = glGetError();
-      if (error != GL_NO_ERROR) {
-        printf("# GL error code %d after RunTest() with %dx%d texture.\n",
-               error, width_, height_);
+        RunTest(this, name.c_str(), buffer_size, g_width, g_height, true);
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+          printf("# GL error code %d after RunTest() with %dx%d %d-byte texture.\n",
+                 error, width_, height_, texel_size);
+       }
       }
     }
   }

@@ -27,13 +27,13 @@ bool TextureUploadTest::TestFunc(uint64_t iterations) {
     glBindTexture(GL_TEXTURE_2D, textures_[i % kNumberOfTextures]);
     switch (flavor_) {
       case TEX_IMAGE:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width_, height_,
-                     0, GL_LUMINANCE, GL_UNSIGNED_BYTE,
+        glTexImage2D(GL_TEXTURE_2D, 0, texel_gl_format_, width_, height_,
+                     0, texel_gl_format_, GL_UNSIGNED_BYTE,
                      pixels_[i % kNumberOfTextures].get());
         break;
       case TEX_SUBIMAGE:
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                        GL_LUMINANCE, GL_UNSIGNED_BYTE,
+                        texel_gl_format_, GL_UNSIGNED_BYTE,
                         pixels_[i % kNumberOfTextures].get());
         break;
     }
