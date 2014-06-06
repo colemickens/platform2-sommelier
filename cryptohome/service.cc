@@ -2470,10 +2470,13 @@ gboolean Service::InstallAttributesGet(gchar* name,
                                        GError** error) {
   chromeos::Blob value;
   *OUT_successful = install_attrs_->Get(name, &value);
-  // TODO(wad) can g_array_new return NULL.
   *OUT_value = g_array_new(false, false, sizeof(value.front()));
-  if (*OUT_successful)
+  if (!(*OUT_value)) {
+    return FALSE;
+  }
+  if (*OUT_successful) {
     g_array_append_vals(*OUT_value, &value.front(), value.size());
+  }
   return TRUE;
 }
 

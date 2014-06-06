@@ -498,18 +498,12 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
   return true;
 }
 
-// TODO(ellyjones): replace this with base::HexEncode
 void CryptoLib::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
                                     unsigned int buffer_length) {
-  const char hex_chars[] = "0123456789abcdef";
-  unsigned int i = 0;
-  for (chromeos::Blob::const_iterator it = blob.begin();
-      it < blob.end() && (i + 1) < buffer_length; ++it) {
-    buffer[i++] = hex_chars[((*it) >> 4) & 0x0f];
-    buffer[i++] = hex_chars[(*it) & 0x0f];
-  }
-  if (i < buffer_length) {
-    buffer[i] = '\0';
+  std::string ascii = chromeos::AsciiEncode(blob);
+  size_t length = ascii.copy(buffer, buffer_length);
+  if (length < buffer_length) {
+    buffer[length] = '\0';
   }
 }
 
