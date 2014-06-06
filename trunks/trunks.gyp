@@ -22,6 +22,7 @@
       'sources': [
         'trunks_testrunner.cc',
         'tpm_generated.cc',
+        'tpm_generated_test.cc'
       ],
     },
   ],
