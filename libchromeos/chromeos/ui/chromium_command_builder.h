@@ -25,6 +25,9 @@ class ChromiumCommandBuilder {
   typedef std::map<std::string, std::string> StringMap;
   typedef std::vector<std::string> StringVector;
 
+  // Name of user account used to run the binary.
+  static const char kUser[];
+
   // Location of the file containing newline-separated USE flags that were set
   // when the system was built.
   static const char kUseFlagsPath[];
@@ -64,6 +67,10 @@ class ChromiumCommandBuilder {
   // |arguments_| accordingly. Also creates necessary directories, sets resource
   // limits, etc. Returns true on success.
   bool SetUpChromium();
+
+  // Configures the environment so a core dump will be written when the binary
+  // crashes.
+  void EnableCoreDumps();
 
   // Reads a user-supplied file requesting modifications to the current set of
   // arguments. The following directives are supported:

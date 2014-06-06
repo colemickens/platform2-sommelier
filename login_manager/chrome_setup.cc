@@ -4,7 +4,6 @@
 
 #include "login_manager/chrome_setup.h"
 
-#include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -180,16 +179,8 @@ void InitCrashHandling(ChromiumCommandBuilder* builder) {
 
   // Enable gathering of core dumps via a file in the stateful partition so it
   // can be enabled post-build.
-  if (base::PathExists(stateful_etc.Append("enable_chromium_coredumps"))) {
-    EnsureDirectoryExists(base::FilePath("/var/coredumps"), uid, gid, 0700);
-    struct rlimit limit;
-    limit.rlim_cur = limit.rlim_max = RLIM_INFINITY;
-    if (setrlimit(RLIMIT_CORE, &limit) != 0)
-      PLOG(ERROR) << "Setting unlimited coredumps with setrlimit() failed";
-    const std::string kPattern("/var/coredumps/core.%e.%p");
-    base::WriteFile(base::FilePath("/proc/sys/kernel/core_pattern"),
-                    kPattern.c_str(), kPattern.size());
-  }
+  if (base::PathExists(stateful_etc.Append("enable_chromium_coredumps")))
+    builder->EnableCoreDumps();
 }
 
 // Adds system-related flags to the command line.
