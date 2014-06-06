@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace buffet {
 namespace string_utils {
@@ -36,7 +37,7 @@ std::vector<std::string> Split(const std::string& str,
 
   if (trim_whitespaces) {
     std::for_each(tokens.begin(), tokens.end(),
-                  [](std::string& str) {  // NOLINT(runtime/references)
+                  [](std::string& str) {
       base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str); });
   }
 
@@ -84,6 +85,14 @@ std::string Join(char delimiter,
 std::string Join(const std::string& delimiter,
                  const std::string& str1, const std::string& str2) {
   return str1 + delimiter + str2;
+}
+
+std::string ToString(double value) {
+  return base::StringPrintf("%g", value);
+}
+
+std::string ToString(bool value) {
+  return value ? "true" : "false";
 }
 
 }  // namespace string_utils

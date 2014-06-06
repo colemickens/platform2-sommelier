@@ -66,9 +66,7 @@ std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token) {
   std::string authorization =
       buffet::string_utils::Join(' ', access_token_type, access_token);
-  // Linter doesn't like the ; after } on the following line...
-  return {buffet::http::request_header::kAuthorization,
-          authorization};  // NOLINT
+  return {buffet::http::request_header::kAuthorization, authorization};
 }
 
 std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
@@ -320,8 +318,8 @@ bool CheckParam(const std::string& param_name,
   if (!param_value.empty())
     return true;
 
-  Error::AddTo(error, kErrorDomainBuffet, "missing_parameter",
-               "Parameter " + param_name + " not specified");
+  Error::AddToPrintf(error, kErrorDomainBuffet, "missing_parameter",
+                     "Parameter %s not specified", param_name.c_str());
   return false;
 }
 
@@ -364,9 +362,9 @@ std::string DeviceRegistrationInfo::StartRegistration(
   set_device_configuration_params->Append(param1);
 
   base::ListValue* vendor_commands = new base::ListValue;
-  for (auto&& pair : commands) {
+  for (const auto& pair : commands) {
     base::ListValue* params = new base::ListValue;
-    for (auto&& param_name : pair.second) {
+    for (const auto& param_name : pair.second) {
       base::DictionaryValue* param = new base::DictionaryValue;
       param->SetString("name", param_name);
       params->Append(param);

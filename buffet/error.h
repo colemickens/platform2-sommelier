@@ -30,6 +30,11 @@ class Error {
   // the error chain pointed to by |error|.
   static void AddTo(ErrorPtr* error, const std::string& domain,
                     const std::string& code, const std::string& message);
+  // Same as the Error::AddTo above, but allows to pass in a printf-like
+  // format string and optional parameters to format the error message.
+  static void AddToPrintf(ErrorPtr* error, const std::string& domain,
+                          const std::string& code,
+                          const char* format, ...) PRINTF_FORMAT(4, 5);
 
   // Returns the error domain, code and message
   const std::string& GetDomain() const { return domain_; }
@@ -45,6 +50,10 @@ class Error {
 
   // Gets a pointer to the inner error, if present. Returns nullptr otherwise.
   const Error* GetInnerError() const { return inner_error_.get(); }
+
+  // Gets a pointer to the first error occurred.
+  // Returns itself if no inner error are available.
+  const Error* GetFirstError() const;
 
  protected:
   // Constructor is protected since this object is supposed to be

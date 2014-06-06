@@ -36,6 +36,20 @@ std::string Join(char delimiter,
 std::string Join(const std::string& delimiter,
                  const std::string& str1, const std::string& str2);
 
+// string_utils::ToString() is a helper function to convert any scalar type
+// to a string. In most cases, it redirects the call to std::to_string with
+// two exceptions: for std::string itself and for double and bool.
+template<typename T>
+inline std::string ToString(T value) { return std::to_string(value); }
+// Having the following overload is handy for templates where the type
+// of template parameter isn't known and could be a string itself.
+inline std::string ToString(std::string value) { return value; }
+// We overload this for double because std::to_string(double) uses %f to
+// format the value and I would like to use a shorter %g format instead.
+std::string ToString(double value);
+// And the bool to be converted as true/false instead of 1/0.
+std::string ToString(bool value);
+
 }  // namespace string_utils
 }  // namespace buffet
 

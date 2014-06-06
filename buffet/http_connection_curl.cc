@@ -121,7 +121,7 @@ bool Connection::FinishRequest(ErrorPtr* error) {
   if (header_list)
     curl_slist_free_all(header_list);
   if (ret != CURLE_OK) {
-    Error::AddTo(error, http::curl::kErrorDomain, std::to_string(ret),
+    Error::AddTo(error, http::curl::kErrorDomain, string_utils::ToString(ret),
                  curl_easy_strerror(ret));
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("

@@ -14,6 +14,7 @@
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
 #include "buffet/mime_utils.h"
+#include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
 namespace buffet {
@@ -128,7 +129,7 @@ std::unique_ptr<base::DictionaryValue>
 }
 
 void ServerRequestResponseBase::AddHeaders(const HeaderList& headers) {
-  for (auto&& pair : headers) {
+  for (const auto& pair : headers) {
     if (pair.second.empty())
       headers_.erase(pair.first);
     else
@@ -170,7 +171,7 @@ void ServerResponse::Reply(int status_code, const void* data, size_t data_size,
   status_code_ = status_code;
   AddData(data, data_size);
   AddHeaders({
-    {response_header::kContentLength, std::to_string(data_size)},
+    {response_header::kContentLength, string_utils::ToString(data_size)},
     {response_header::kContentType, mime_type}
   });
 }
@@ -194,7 +195,7 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
 void ServerResponse::ReplyJson(int status_code,
                                const http::FormFieldList& fields) {
   base::DictionaryValue json;
-  for (auto&& pair : fields) {
+  for (const auto& pair : fields) {
     json.SetString(pair.first, pair.second);
   }
   ReplyJson(status_code, &json);
@@ -250,7 +251,7 @@ std::string ServerResponse::GetStatusText() const {
     {505, "HTTP Version Not Supported"},
   };
 
-  for (auto&& pair : status_text_map) {
+  for (const auto& pair : status_text_map) {
     if (pair.first == status_code_)
       return pair.second;
   }

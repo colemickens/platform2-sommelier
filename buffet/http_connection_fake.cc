@@ -37,7 +37,7 @@ bool Connection::WriteRequestData(const void* data, size_t size,
 
 bool Connection::FinishRequest(ErrorPtr* error) {
   request_.AddHeaders({{request_header::kContentLength,
-                      std::to_string(request_.GetData().size())}});
+                      string_utils::ToString(request_.GetData().size())}});
   fake::Transport* transport = static_cast<fake::Transport*>(transport_.get());
   CHECK(transport) << "Expecting a fake transport";
   auto handler = transport->GetHandler(request_.GetURL(), request_.GetMethod());

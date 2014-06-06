@@ -5,6 +5,7 @@
 #include "buffet/error.h"
 
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 using buffet::Error;
 using buffet::ErrorPtr;
@@ -36,6 +37,15 @@ void Error::AddTo(ErrorPtr* error, const std::string& domain,
   }
 }
 
+void Error::AddToPrintf(ErrorPtr* error, const std::string& domain,
+                        const std::string& code, const char* format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  std::string message = base::StringPrintV(format, ap);
+  va_end(ap);
+  AddTo(error, domain, code, message);
+}
+
 bool Error::HasDomain(const std::string& domain) const {
   const Error* err = this;
   while (err) {
@@ -54,6 +64,13 @@ bool Error::HasError(const std::string& domain, const std::string& code) const {
     err = err->GetInnerError();
   }
   return false;
+}
+
+const Error* Error::GetFirstError() const {
+  const Error* err = this;
+  while (err->GetInnerError())
+    err = err->GetInnerError();
+  return err;
 }
 
 Error::Error(const std::string& domain, const std::string& code,

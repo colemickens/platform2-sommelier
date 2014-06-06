@@ -193,11 +193,11 @@ bool Request::SendRequestIfNeeded(ErrorPtr* error) {
               p.second != range_value_omitted) {
             std::string range;
             if (p.first != range_value_omitted) {
-              range = std::to_string(p.first);
+              range = string_utils::ToString(p.first);
             }
             range += '-';
             if (p.second != range_value_omitted) {
-              range += std::to_string(p.second);
+              range += string_utils::ToString(p.second);
             }
             ranges.push_back(range);
           }

@@ -5,6 +5,7 @@
 #ifndef BUFFET_HTTP_REQUEST_H_
 #define BUFFET_HTTP_REQUEST_H_
 
+#include <limits>
 #include <map>
 #include <memory>
 #include <string>
@@ -303,7 +304,7 @@ class Request {
   // range_value_omitted is used in |ranges_| list to indicate omitted value.
   // E.g. range (10,range_value_omitted) represents bytes from 10 to the end
   // of the data stream.
-  const uint64_t range_value_omitted = (uint64_t)-1;
+  const uint64_t range_value_omitted = std::numeric_limits<uint64_t>::max();
 
   DISALLOW_COPY_AND_ASSIGN(Request);
 };

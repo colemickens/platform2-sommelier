@@ -28,13 +28,13 @@ static void EchoDataHandler(const fake::ServerRequest& request,
                             fake::ServerResponse* response) {
   response->Reply(status_code::Ok, request.GetData(),
                   request.GetHeader(request_header::kContentType).c_str());
-};
+}
 
 // Returns the request method as a plain text response.
 static void EchoMethodHandler(const fake::ServerRequest& request,
                               fake::ServerResponse* response) {
   response->ReplyText(status_code::Ok, request.GetMethod(), mime::text::kPlain);
-};
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 TEST(HttpUtils, SendRequest_BinaryData) {
@@ -43,7 +43,7 @@ TEST(HttpUtils, SendRequest_BinaryData) {
                         base::Bind(EchoDataHandler));
 
   // Test binary data round-tripping.
-  std::vector<unsigned char> custom_data({0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F});
+  std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
   auto response = http::SendRequest(request_type::kPost, kEchoUrl,
                                     custom_data.data(), custom_data.size(),
                                     mime::application::kOctet_stream,
@@ -114,7 +114,7 @@ TEST(HttpUtils, SendRequest_Headers) {
     base::DictionaryValue json;
     json.SetString("method", request.GetMethod());
     json.SetString("data", request.GetDataAsString());
-    for (auto&& pair : request.GetHeaders()) {
+    for (const auto& pair : request.GetHeaders()) {
       json.SetString("header." + pair.first, pair.second);
     }
     response->ReplyJson(status_code::Ok, &json);
@@ -204,7 +204,7 @@ TEST(HttpUtils, PostBinary) {
     EXPECT_EQ("256", request.GetHeader(request_header::kContentLength));
     EXPECT_EQ(mime::application::kOctet_stream,
               request.GetHeader(request_header::kContentType));
-    auto&& data = request.GetData();
+    const auto& data = request.GetData();
     EXPECT_EQ(256, data.size());
 
     // Sum up all the bytes.
@@ -218,8 +218,7 @@ TEST(HttpUtils, PostBinary) {
 
   /// Fill the data buffer with bytes from 0x00 to 0xFF.
   std::vector<unsigned char> data(256);
-  unsigned char counter = 0xFF;
-  std::generate(data.begin(), data.end(), [&counter]() { return ++counter; });
+  std::iota(data.begin(), data.end(), 0);
 
   auto response = http::PostBinary(kFakeUrl, data.data(), data.size(),
                                    transport, nullptr);
@@ -311,7 +310,7 @@ TEST(HttpUtils, ParseJsonResponse) {
   transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(JsonHandler));
 
   // Test valid JSON responses (with success or error codes).
-  for (auto&& item : {"200;data", "400;wrong", "500;Internal Server error"}) {
+  for (auto item : {"200;data", "400;wrong", "500;Internal Server error"}) {
     auto pair = string_utils::SplitAtFirst(item, ';');
     auto response = http::PostFormData(kFakeUrl, {
                       {"code", pair.first},
@@ -322,7 +321,7 @@ TEST(HttpUtils, ParseJsonResponse) {
     EXPECT_NE(nullptr, json.get());
     std::string value;
     EXPECT_TRUE(json->GetString("data", &value));
-    EXPECT_EQ(pair.first, std::to_string(code));
+    EXPECT_EQ(pair.first, string_utils::ToString(code));
     EXPECT_EQ(pair.second, value);
   }
 
