@@ -50,7 +50,7 @@ bool WindowManagerCompositingTest::Run() {
   if (scissor_) {
     glScissor(0, 0, 1, 1);
     glEnable(GL_SCISSOR_TEST);
-    testname = "1280x768_fps_no_fill_compositing";
+    testname = "1280x768_fps_compositing_no_fill";
   }
   InitializeCompositing();
   RunTest(this, testname, kScreenScaleFactor, WINDOW_WIDTH, WINDOW_HEIGHT, true);
