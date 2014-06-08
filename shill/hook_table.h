@@ -17,14 +17,13 @@
 // Usage example.  Add an action to a hook table like this:
 //
 //   HookTable hook_table_(&event_dispatcher);
-//   Closure start_cb = Bind(&MyService::Disconnect, &my_service);
-//   hook_table_.Add("MyService", start_cb);
+//   Closure start_callback = Bind(&MyService::Disconnect, &my_service);
+//   hook_table_.Add("MyService", start_callback);
 //
 // The code that catches an event runs the actions of the hook table like this:
 //
-//   Callback<void(const Error &)> done_cb =
-//     Bind(Manager::OnDisconnect, &manager);
-//   hook_table_.Run(kTimeout, done_cb);
+//   ResultCallback done_callback = Bind(Manager::OnDisconnect, &manager);
+//   hook_table_.Run(kTimeout, done_callback);
 //
 // When |my_service| has completed its disconnect process,
 // Manager::OnDisconnect() gets called with Error::kSuccess.  If |my_service|
@@ -35,9 +34,10 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <gtest/gtest_prod.h>
+
+#include "shill/callbacks.h"
 
 namespace shill {
 class EventDispatcher;
@@ -56,16 +56,15 @@ class HookTable {
   // Users call this function to report the completion of an action |name|.
   void ActionComplete(const std::string &name);
 
-  // Removes the action associtated with |name| from the hook table.  If |name|
+  // Removes the action associated with |name| from the hook table.  If |name|
   // does not exist, the hook table is unchanged.
   void Remove(const std::string &name);
 
   // Runs the actions that have been added to the HookTable via Add().  It
   // starts a timer for completion in |timeout_ms|.  If all actions complete
-  // succesfully within the timeout period, |done| is called with a value of
+  // successfully within the timeout period, |done| is called with a value of
   // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
-  void Run(int timeout_ms,
-           const base::Callback<void(const Error &)> &done);
+  void Run(int timeout_ms, const ResultCallback &done);
 
   bool IsEmpty() const { return hook_table_.empty(); }
 
@@ -75,11 +74,11 @@ class HookTable {
   // For each action, there is a |start| callback which is stored in this
   // structure.
   struct HookAction {
-    HookAction(const base::Closure &start_cb)
-        : start(start_cb),
+    explicit HookAction(const base::Closure &start_callback)
+        : start_callback(start_callback),
           started(false),
           completed(false) {}
-    const base::Closure start;
+    const base::Closure start_callback;
     bool started;
     bool completed;
   };
@@ -89,7 +88,7 @@ class HookTable {
 
   // Returns true if all started actions have completed; false otherwise.  If no
   // actions have started, returns true.
-  bool AllActionsComplete();
+  bool AllActionsComplete() const;
 
   // This function runs if all the actions do not complete before the timeout
   // period.  It invokes the user-supplied callback to Run() with an error value
@@ -100,12 +99,12 @@ class HookTable {
   HookTableMap hook_table_;
 
   // This is the user-supplied callback to Run().
-  base::Callback<void(const Error &)> done_cb_;
+  ResultCallback done_callback_;
 
-  // This callback is creted in Run() and is queued to the event dispatcher to
+  // This callback is created in Run() and is queued to the event dispatcher to
   // run after a timeout period.  If all the actions complete before the
   // timeout, then this callback is cancelled.
-  base::CancelableClosure timeout_cb_;
+  base::CancelableClosure timeout_callback_;
 
   // Used for setting a timeout action to run in case all the actions do not
   // complete in time.

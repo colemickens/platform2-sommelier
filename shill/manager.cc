@@ -1092,20 +1092,20 @@ void Manager::RemoveTerminationAction(const string &name) {
   termination_actions_.Remove(name);
 }
 
-void Manager::RunTerminationActions(
-    const base::Callback<void(const Error &)> &done) {
+void Manager::RunTerminationActions(const ResultCallback &done_callback) {
   LOG(INFO) << "Running termination actions.";
-  termination_actions_.Run(kTerminationActionsTimeoutMilliseconds, done);
+  termination_actions_.Run(kTerminationActionsTimeoutMilliseconds,
+                           done_callback);
 }
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
-        const base::Callback<void(const Error &)> &done,
-        Metrics::TerminationActionReason reason) {
+    const ResultCallback &done_callback,
+    Metrics::TerminationActionReason reason) {
   if (termination_actions_.IsEmpty())
     return false;
 
   metrics_->NotifyTerminationActionsStarted(reason);
-  RunTerminationActions(done);
+  RunTerminationActions(done_callback);
   return true;
 }
 

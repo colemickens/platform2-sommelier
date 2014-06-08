@@ -317,12 +317,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // that the termination actions started running, only if any termination
   // actions have been registered. |reason| specifies whether this method was
   // called due to termination or suspend. If all actions complete within
-  // |kTerminationActionsTimeoutMilliseconds|, |done| is called with a value of
-  // Error::kSuccess. Otherwise, it is called with Error::kOperationTimeout.
+  // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
+  // value of Error::kSuccess. Otherwise, it is called with
+  // Error::kOperationTimeout.
   //
   // Returns true, if termination actions were run.
   bool RunTerminationActionsAndNotifyMetrics(
-      const base::Callback<void(const Error &)> &done,
+      const ResultCallback &done_callback,
       Metrics::TerminationActionReason reason);
 
   // Registers a |callback| that's invoked whenever the default service
@@ -519,9 +520,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
 
   // Runs the termination actions.  If all actions complete within
-  // |kTerminationActionsTimeoutMilliseconds|, |done| is called with a value of
-  // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
-  void RunTerminationActions(const base::Callback<void(const Error &)> &done);
+  // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
+  // value of Error::kSuccess.  Otherwise, it is called with
+  // Error::kOperationTimeout.
+  void RunTerminationActions(const ResultCallback &done_callback);
 
   // Called when the system is about to be suspended.  Each call will be
   // followed by a call to OnSuspendDone().

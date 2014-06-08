@@ -7,7 +7,6 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/callback.h>
 #include <base/message_loop/message_loop.h>
 
 #include "shill/error.h"
@@ -15,7 +14,6 @@
 #include "shill/testing.h"
 
 using base::Bind;
-using base::Callback;
 using base::Closure;
 using base::Unretained;
 using std::string;
@@ -45,9 +43,7 @@ class HookTableTest : public testing::Test {
   HookTableTest()
       : hook_table_(&event_dispatcher_) {}
 
-  Callback<void(const Error &)> *GetDoneCallback() {
-    return &hook_table_.done_cb_;
-  }
+  ResultCallback *GetDoneCallback() { return &hook_table_.done_callback_; }
 
   EventDispatcher event_dispatcher_;
   HookTable hook_table_;
@@ -56,15 +52,15 @@ class HookTableTest : public testing::Test {
 TEST_F(HookTableTest, ActionCompletes) {
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
-  hook_table_.Add(kName, start_cb);
-  hook_table_.Run(0, done_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
+  hook_table_.Run(0, done_callback);
   hook_table_.ActionComplete(kName);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
-  // cancelled, done_cb will be run twice and make this test fail.
+  // cancelled, done_callback will be run twice and make this test fail.
   event_dispatcher_.DispatchPendingEvents();
 }
 
@@ -83,16 +79,17 @@ TEST_F(HookTableTest, ActionCompletesAndRemovesActionInDoneCallback) {
   EXPECT_CALL(*this, StartAction2())
       .WillOnce(CompleteAction(&hook_table_, kName2));
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_cb = Bind(&HookTableTest::StartAction2, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
-  hook_table_.Add(kName, start_cb);
-  hook_table_.Add(kName2, start2_cb);
-  hook_table_.Run(0, done_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  Closure start2_callback =
+      Bind(&HookTableTest::StartAction2, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
+  hook_table_.Add(kName2, start2_callback);
+  hook_table_.Run(0, done_callback);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
-  // cancelled, done_cb will be run twice and make this test fail.
+  // cancelled, done_callback will be run twice and make this test fail.
   event_dispatcher_.DispatchPendingEvents();
 }
 
@@ -101,14 +98,14 @@ TEST_F(HookTableTest, ActionCompletesInline) {
   EXPECT_CALL(*this, StartAction())
       .WillOnce(CompleteAction(&hook_table_, kName));
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
-  hook_table_.Add(kName, start_cb);
-  hook_table_.Run(0, done_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
+  hook_table_.Run(0, done_callback);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
-  // cancelled, done_cb will be run twice and make this test fail.
+  // cancelled, done_callback will be run twice and make this test fail.
   event_dispatcher_.DispatchPendingEvents();
 }
 
@@ -117,12 +114,12 @@ TEST_F(HookTableTest, ActionTimesOut) {
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
 
-  hook_table_.Add(kName, start_cb);
-  hook_table_.Run(kTimeout, done_cb);
+  hook_table_.Add(kName, start_callback);
+  hook_table_.Run(kTimeout, done_callback);
 
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
   event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitClosure(),
@@ -132,7 +129,7 @@ TEST_F(HookTableTest, ActionTimesOut) {
 }
 
 TEST_F(HookTableTest, MultipleActionsAllSucceed) {
-  Closure pending_cb;
+  Closure pending_callback;
   const int kTimeout = 10;
   EXPECT_CALL(*this, StartAction()).Times(2);
 
@@ -141,33 +138,34 @@ TEST_F(HookTableTest, MultipleActionsAllSucceed) {
       .WillOnce(CompleteAction(&hook_table_, kName1));
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
 
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_cb = Bind(&HookTableTest::StartAction2, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  Closure start2_callback =
+      Bind(&HookTableTest::StartAction2, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
 
-  hook_table_.Add(kName1, start2_cb);
-  hook_table_.Add(kName2, start_cb);
-  hook_table_.Add(kName3, start_cb);
-  hook_table_.Run(kTimeout, done_cb);
+  hook_table_.Add(kName1, start2_callback);
+  hook_table_.Add(kName2, start_callback);
+  hook_table_.Add(kName3, start_callback);
+  hook_table_.Run(kTimeout, done_callback);
   hook_table_.ActionComplete(kName2);
   hook_table_.ActionComplete(kName3);
 }
 
 TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
-  Closure pending_cb;
+  Closure pending_callback;
   const int kTimeout = 1;
   EXPECT_CALL(*this, StartAction()).Times(3);
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
 
-  hook_table_.Add(kName1, start_cb);
-  hook_table_.Add(kName2, start_cb);
-  hook_table_.Add(kName3, start_cb);
-  hook_table_.Run(kTimeout, done_cb);
+  hook_table_.Add(kName1, start_callback);
+  hook_table_.Add(kName2, start_callback);
+  hook_table_.Add(kName3, start_callback);
+  hook_table_.Run(kTimeout, done_callback);
   hook_table_.ActionComplete(kName1);
   hook_table_.ActionComplete(kName3);
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
@@ -180,38 +178,39 @@ TEST_F(HookTableTest, AddActionsWithSameName) {
   EXPECT_CALL(*this, StartAction()).Times(0);
   EXPECT_CALL(*this, StartAction2());
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_cb = Bind(&HookTableTest::StartAction2, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
-  hook_table_.Add(kName, start_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  Closure start2_callback =
+      Bind(&HookTableTest::StartAction2, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
 
   // Adding an action with the same name kName.  New callbacks should replace
   // old ones.
-  hook_table_.Add(kName, start2_cb);
-  hook_table_.Run(0, done_cb);
+  hook_table_.Add(kName, start2_callback);
+  hook_table_.Run(0, done_callback);
   hook_table_.ActionComplete(kName);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
-  // cancelled, done_cb will be run twice and make this test fail.
+  // cancelled, done_callback will be run twice and make this test fail.
   event_dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(HookTableTest, RemoveAction) {
   EXPECT_CALL(*this, StartAction()).Times(0);
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
-  hook_table_.Add(kName, start_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
   hook_table_.Remove(kName);
-  hook_table_.Run(0, done_cb);
+  hook_table_.Run(0, done_callback);
 }
 
 TEST_F(HookTableTest, ActionCompleteFollowedByRemove) {
   EXPECT_CALL(*this, StartAction()).Times(0);
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  hook_table_.Add(kName, start_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
   hook_table_.ActionComplete(kName);
   hook_table_.Remove(kName);
 }
@@ -239,8 +238,8 @@ TEST_F(HookTableTest, RefcountedObject) {
   scoped_ptr<HookTable> ht(new HookTable(&event_dispatcher_));
   {
     scoped_refptr<SomeClass> ref_counted_object = new SomeClass();
-    Closure start_cb = Bind(&SomeClass::StartAction, ref_counted_object);
-    ht->Add(kName, start_cb);
+    Closure start_callback = Bind(&SomeClass::StartAction, ref_counted_object);
+    ht->Add(kName, start_callback);
   }
 }
 
@@ -248,16 +247,17 @@ TEST_F(HookTableTest, ActionAddedBeforePreviousActionCompletes) {
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, StartAction2()).Times(0);
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_cb = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_cb = Bind(&HookTableTest::StartAction2, Unretained(this));
-  Callback<void(const Error &)> done_cb = Bind(&HookTableTest::DoneAction,
-                                               Unretained(this));
-  hook_table_.Add(kName, start_cb);
-  hook_table_.Run(0, done_cb);
+  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  Closure start2_callback =
+      Bind(&HookTableTest::StartAction2, Unretained(this));
+  ResultCallback done_callback =
+      Bind(&HookTableTest::DoneAction, Unretained(this));
+  hook_table_.Add(kName, start_callback);
+  hook_table_.Run(0, done_callback);
 
   // An action with the same name is added before the previous actions complete.
   // It should not be run.
-  hook_table_.Add(kName, start2_cb);
+  hook_table_.Add(kName, start2_callback);
   hook_table_.ActionComplete(kName);
 }
 
