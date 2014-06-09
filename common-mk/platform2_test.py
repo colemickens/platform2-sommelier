@@ -10,19 +10,142 @@ qemu, bind mounts, etc...
 """
 
 import argparse
-import glob
+import errno
 import os
-import shutil
 import subprocess
 import sys
 
 from platform2 import Platform2
 
+from chromite.lib import cros_build_lib
+from chromite.lib import namespaces
+from chromite.lib import osutils
+from chromite.lib import signals
+
+
+# Env vars to let through to the test env when we do sudo.
+ENV_PASSTHRU = (
+)
+
+
+class Qemu(object):
+  """Framework for running tests via qemu"""
+
+  # Map from the Gentoo $ARCH to the right qemu arch.
+  ARCH_MAP = {
+      'amd64': 'x86_64',
+      'arm': 'arm',
+      'x86': 'i386',
+  }
+
+  # The binfmt register format looks like:
+  # :name:type:offset:magic:mask:interpreter:flags
+  _REGISTER_FORMAT = r':%(name)s:M::%(magic)s:%(mask)s:%(interp)s:%(flags)s'
+
+  # Tuples of (magic, mask) for an arch.
+  _MAGIC_MASK = {
+      'arm': (r'\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+              r'\x02\x00\x28\x00',
+              r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff'
+              r'\xff\xff\xfe\xff\xff\xff',),
+  }
+
+  _BINFMT_PATH = '/proc/sys/fs/binfmt_misc'
+  _BINFMT_REGISTER_PATH = os.path.join(_BINFMT_PATH, 'register')
+
+  def __init__(self, qemu_arch=None, gentoo_arch=None, sysroot=None):
+    if qemu_arch is None:
+      qemu_arch = self.ARCH_MAP[gentoo_arch]
+    self.arch = qemu_arch
+
+    self.sysroot = sysroot
+
+    self.name = 'qemu-%s' % self.arch
+    self.build_path = os.path.join('/build', 'bin', self.name)
+    self.binfmt_path = os.path.join(self._BINFMT_PATH, self.name)
+
+  @staticmethod
+  def inode(path):
+    """Return the inode for |path| (or -1 if it doesn't exist)"""
+    try:
+      return os.stat(path).st_ino
+    except OSError as e:
+      if e.errno == errno.ENOENT:
+        return -1
+      raise
+
+  def install(self, sysroot=None):
+    """Install qemu into |sysroot| safely"""
+    if sysroot is None:
+      sysroot = self.sysroot
+
+    # Copying strategy:
+    # Compare /usr/bin/qemu inode to /build/$board/build/bin/qemu; if
+    # different, hard link to a temporary file, then rename temp to target.
+    # This should ensure that once $QEMU_SYSROOT_PATH exists it will always
+    # exist, regardless of simultaneous test setups.
+    paths = (
+        ('/usr/bin/%s' % self.name,
+         sysroot + self.build_path),
+        ('/usr/bin/qemu-binfmt-wrapper',
+         sysroot + self.build_path + '-binfmt-wrapper'),
+    )
+
+    for src_path, sysroot_path in paths:
+      src_path = os.path.normpath(src_path)
+      sysroot_path = os.path.normpath(sysroot_path)
+      if self.inode(sysroot_path) != self.inode(src_path):
+        # Use hardlinks so that the process is atomic.
+        temp_path = '%s.%s' % (sysroot_path, os.getpid())
+        os.link(src_path, temp_path)
+        os.rename(temp_path, sysroot_path)
+        # Clear out the temp path in case it exists (another process already
+        # swooped in and created the target link for us).
+        try:
+          os.unlink(temp_path)
+        except OSError as e:
+          if e.errno != errno.ENOENT:
+            raise
+
+  def register_binfmt(self):
+    """Make sure qemu has been registered as a format handler
+
+    Prep the binfmt handler. First mount if needed, then unregister any bad
+    mappings, and then register our mapping.
+
+    There may still be some race conditions here where one script
+    de-registers and another script starts executing before it gets
+    re-registered, however it should be rare.
+    """
+    if not os.path.exists(self._BINFMT_REGISTER_PATH):
+      cmd = ['mount', '-n', '-t', 'binfmt_misc', 'binfmt_misc',
+             self._BINFMT_PATH]
+      cros_build_lib.SudoRunCommand(cmd, error_code_ok=True)
+
+    if os.path.exists(self.binfmt_path):
+      interp = 'interpreter %s\n' % self.build_path
+      for line in osutils.ReadFile(self.binfmt_path):
+        if line == interp:
+          break
+      else:
+        osutils.WriteFile(self.binfmt_path, '-1')
+
+    if not os.path.exists(self.binfmt_path):
+      magic, mask = self._MAGIC_MASK[self.arch]
+      register = self._REGISTER_FORMAT % {
+          'name': self.name,
+          'magic': magic,
+          'mask': mask,
+          'interp': '%s-binfmt-wrapper' % self.build_path,
+          'flags': 'POC',
+      }
+      osutils.WriteFile(self._BINFMT_REGISTER_PATH, register)
+
 
 class Platform2Test(object):
   """Framework for running platform2 tests"""
 
-  _BIND_MOUNT_PATHS = ('dev', 'proc', 'sys')
+  _BIND_MOUNT_PATHS = ('dev', 'dev/pts', 'proc', 'mnt/host/source', 'sys')
 
   def __init__(self, test_bin, board, host, use_flags, package, framework,
                run_as_root, gtest_filter, user_gtest_filter, cache_dir):
@@ -36,13 +159,21 @@ class Platform2Test(object):
         self.generateGtestFilter(gtest_filter, user_gtest_filter)
 
     self.framework = framework
+    for k in Qemu.ARCH_MAP.iterkeys():
+      if self.use(k):
+        gentoo_arch = k
+        break
     if self.framework == 'auto':
-      self.framework = 'qemu' if self.use('arm') else 'ldso'
+      if gentoo_arch in ('x86', 'amd64'):
+        self.framework = 'ldso'
+      else:
+        self.framework = 'qemu'
 
     p2 = Platform2(self.use_flags, self.board, self.host, cache_dir=cache_dir)
     self.sysroot = p2.sysroot
-    self.qemu_path = os.path.join(p2.get_buildroot(), 'qemu-arm')
     self.lib_dir = os.path.join(p2.get_products_path(), 'lib')
+    if self.framework == 'qemu':
+      self.qemu = Qemu(gentoo_arch=gentoo_arch, sysroot=self.sysroot)
 
   @classmethod
   def generateGtestSubfilter(cls, gtest_filter):
@@ -96,32 +227,25 @@ class Platform2Test(object):
     (not those specific to tests) into the sysroot.
     """
 
-    if not self.use('cros_host'):
-      for mount in self._BIND_MOUNT_PATHS:
-        path = os.path.join(self.sysroot, mount)
-        if not os.path.isdir(path):
-          subprocess.check_call(['sudo', 'mkdir', '-p', path])
-        subprocess.check_call(['sudo', 'mount', '--bind', '/' + mount, path])
-
     if self.framework == 'qemu':
-      shutil.copy('/usr/bin/qemu-arm', self.qemu_path)
+      self.qemu.install()
+      self.qemu.register_binfmt()
 
   def post_test(self):
     """Runs post-test teardown, removes mounts/files copied during pre-test."""
-
-    if not self.use('cros_host'):
-      for mount in self._BIND_MOUNT_PATHS:
-        path = os.path.join(self.sysroot, mount)
-        subprocess.check_call(['sudo', 'umount', path])
-
-    if self.framework == 'qemu':
-      os.remove(self.qemu_path)
 
   def use(self, use_flag):
     return use_flag in self.use_flags
 
   def run(self):
     """Runs the test in a proper environment (e.g. qemu)."""
+
+    if not self.use('cros_host'):
+      for mount in self._BIND_MOUNT_PATHS:
+        path = os.path.join(self.sysroot, mount)
+        if not os.path.isdir(path):
+          subprocess.check_call(['mkdir', '-p', path])
+        subprocess.check_call(['mount', '-n', '--bind', '/' + mount, path])
 
     positive_filters = self.gtest_filter[0]
     negative_filters = self.gtest_filter[1]
@@ -136,49 +260,65 @@ class Platform2Test(object):
     filters = (':'.join(positive_filters), ':'.join(negative_filters))
     gtest_filter = '%s-%s' % filters
 
-    cmd = []
-    env = {}
-
-    if self.framework == 'qemu':
-      self.lib_dir = self.removeSysrootPrefix(self.lib_dir)
-      self.bin = self.removeSysrootPrefix(self.bin)
-
-    # TODO(lmcloughlin): This code is fundamentally "broken" in the non-QEMU
-    # case: it uses the SDK ldso, not the board ldso.
-    ld_paths = [self.lib_dir]
-    ld_paths += glob.glob(self.sysroot + '/lib*/')
-    ld_paths += glob.glob(self.sysroot + '/usr/lib*/')
-
-    if self.framework == 'qemu':
-      ld_paths = [self.removeSysrootPrefix(path) for path in ld_paths]
-
-    env['LD_LIBRARY_PATH'] = ':'.join(ld_paths)
-    env['PATH'] = os.environ.get('PATH')
-    env['SYSROOT'] = os.environ.get('SYSROOT')
-
-    # Passthrough TERM so that we get colors in test output where supported.
-    env['TERM'] = os.environ.get("TERM")
-
-    if self.run_as_root or self.framework == 'qemu':
-      cmd.append('sudo')
-      for var, val in env.items():
-        cmd += ['-E', '%s=%s' % (var, val)]
-
-    if self.framework == 'qemu':
-      cmd.append('chroot')
-      cmd.append(self.sysroot)
-      cmd.append(self.removeSysrootPrefix(self.qemu_path))
-      cmd.append('-drop-ld-preload')
-
-    cmd.append(self.bin)
-
-    if len(self.gtest_filter) > 0:
+    self.bin = self.removeSysrootPrefix(self.bin)
+    cmd = [self.bin]
+    if gtest_filter != '-':
       cmd.append('--gtest_filter=' + gtest_filter)
 
-    try:
-      subprocess.check_call(cmd, env=env)
-    except subprocess.CalledProcessError:
-      raise AssertionError('Error running test binary ' + self.bin)
+    # Some programs expect to find data files via $CWD, so doing a chroot
+    # and dropping them into / would make them fail.
+    cwd = self.removeSysrootPrefix(os.getcwd())
+
+    # Fork off a child to run the test.  This way we can make tweaks to the
+    # env that only affect the child (gid/uid/chroot/cwd/etc...).  We have
+    # to fork anyways to run the test, so might as well do it all ourselves
+    # to avoid (slow) chaining through programs like:
+    #   sudo -u $SUDO_UID -g $SUDO_GID chroot $SYSROOT bash -c 'cd $CWD; $BIN'
+    child = os.fork()
+    if child == 0:
+      print 'chroot: %s' % self.sysroot
+      print 'cwd: %s' % cwd
+      print 'cmd: %s' % (' '.join(map(repr, cmd)))
+      os.chroot(self.sysroot)
+      os.chdir(cwd)
+      if not self.run_as_root:
+        os.setgid(int(os.environ.get('SUDO_GID', '65534')))
+        os.setuid(int(os.environ.get('SUDO_UID', '65534')))
+      sys.exit(os.execv(cmd[0], cmd))
+
+    _, status = os.waitpid(child, 0)
+    if status:
+      exit_status, sig = status >> 8, status & 0xff
+      raise AssertionError('Error running test binary %s: exit:%i signal:%s(%i)'
+                           % (self.bin, exit_status,
+                              signals.StrSignal(sig & 0x7f), sig))
+
+
+def _SudoCommand():
+  """Get the 'sudo' command, along with all needed environment variables."""
+  cmd = ['sudo']
+  for key in ENV_PASSTHRU:
+    value = os.environ.get(key)
+    if value is not None:
+      cmd += ['%s=%s' % (key, value)]
+  return cmd
+
+
+def _ReExecuteIfNeeded(argv):
+  """Re-execute tests as root.
+
+  We often need to do things as root, so make sure we're that.  Like chroot
+  for proper library environment or do bind mounts.
+
+  Also unshare the mount namespace so as to ensure that doing bind mounts for
+  tests don't leak out to the normal chroot.  Also unshare the UTS namespace
+  so changes to `hostname` do not impact the host.
+  """
+  if os.geteuid() != 0:
+    cmd = _SudoCommand() + ['--'] + argv
+    os.execvp(cmd[0], cmd)
+  else:
+    namespaces.Unshare(namespaces.CLONE_NEWNS | namespaces.CLONE_NEWUTS)
 
 
 class _ParseStringSetAction(argparse.Action):
@@ -228,6 +368,9 @@ def main(argv):
 
   if not (options.host ^ (options.board != None)):
     raise AssertionError('You must provide only one of --board or --host')
+
+  # Once we've finished sanity checking args, make sure we're root.
+  _ReExecuteIfNeeded([sys.argv[0]] + argv)
 
   p2test = Platform2Test(options.bin, options.board, options.host,
                          options.use_flags, options.package, options.framework,
