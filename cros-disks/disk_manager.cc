@@ -33,6 +33,7 @@ using std::vector;
 namespace {
 
 const char kBlockSubsystem[] = "block";
+const char kMmcSubsystem[] = "mmc";
 const char kScsiSubsystem[] = "scsi";
 const char kScsiDevice[] = "scsi_device";
 const char kUdevAddAction[] = "add";
@@ -58,6 +59,8 @@ DiskManager::DiskManager(const string& mount_root, Platform* platform,
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
                                                   kBlockSubsystem, NULL);
+  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
+                                                  kMmcSubsystem, NULL);
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
                                                   kScsiSubsystem, kScsiDevice);
   udev_monitor_enable_receiving(udev_monitor_);
@@ -193,7 +196,7 @@ void DiskManager::ProcessBlockDeviceEvents(
   }
 }
 
-void DiskManager::ProcessScsiDeviceEvents(
+void DiskManager::ProcessMmcOrScsiDeviceEvents(
     struct udev_device* dev, const char* action, DeviceEventList* events) {
   UdevDevice device(dev);
   if (device.IsMobileBroadbandDevice())
@@ -239,12 +242,14 @@ bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
     return false;
   }
 
-  // udev_monitor_ only monitors block or scsi device changes, so
-  // subsystem is either "block" or "scsi".
+  // |udev_monitor_| only monitors block, mmc, and scsi device changes, so
+  // subsystem is either "block", "mmc", or "scsi".
   if (strcmp(subsystem, kBlockSubsystem) == 0) {
     ProcessBlockDeviceEvents(dev, action, events);
-  } else {  // strcmp(subsystem, kScsiSubsystem) == 0
-    ProcessScsiDeviceEvents(dev, action, events);
+  } else {
+    // strcmp(subsystem, kMmcSubsystem) == 0 ||
+    // strcmp(subsystem, kScsiSubsystem) == 0
+    ProcessMmcOrScsiDeviceEvents(dev, action, events);
   }
 
   udev_device_unref(dev);

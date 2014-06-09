@@ -121,9 +121,11 @@ class DiskManager : public MountManager,
   void ProcessBlockDeviceEvents(struct udev_device* device, const char *action,
                                 DeviceEventList* events);
 
-  // Determines one or more device/disk events from a udev SCSI device change.
-  void ProcessScsiDeviceEvents(struct udev_device* device, const char *action,
-                               DeviceEventList* events);
+  // Determines one or more device/disk events from a udev MMC or SCSI device
+  // change.
+  void ProcessMmcOrScsiDeviceEvents(struct udev_device* device,
+                                    const char* action,
+                                    DeviceEventList* events);
 
   // If |disk| should be ejected on unmount, add |mount_path| and the device
   // file of |disk| to |devices_to_eject_on_unmount_| and returns true. Returns
