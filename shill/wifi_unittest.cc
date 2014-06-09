@@ -2239,6 +2239,28 @@ TEST_F(WiFiMainTest, NewConnectPreemptsPending) {
   EXPECT_EQ(NULL, GetCurrentService().get());
 }
 
+TEST_F(WiFiMainTest, ConnectedToUnintendedPreemptsPending) {
+  StartWiFi();
+  ::DBus::Path bss_path;
+  // Connecting two different services back-to-back.
+  MockWiFiServiceRefPtr unintended_service(
+      SetupConnectingService(DBus::Path(), NULL, &bss_path));
+  MockWiFiServiceRefPtr intended_service(
+      SetupConnectingService(DBus::Path(), NULL, NULL));
+
+  // Verify the pending service.
+  EXPECT_EQ(intended_service.get(), GetPendingService().get());
+
+  // Connected to the unintended service (service0).
+  ReportCurrentBSSChanged(bss_path);
+
+  // Verify the pending service is disconnected, and the service state is back
+  // to idle, so it is connectable again.
+  EXPECT_EQ(NULL, GetPendingService().get());
+  EXPECT_EQ(NULL, GetCurrentService().get());
+  EXPECT_EQ(Service::kStateIdle, intended_service->state());
+}
+
 TEST_F(WiFiMainTest, IsIdle) {
   StartWiFi();
   EXPECT_TRUE(wifi()->IsIdle());

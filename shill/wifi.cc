@@ -976,9 +976,12 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
                    << (current_service_ ?
                        current_service_->unique_name() :
                        "(NULL)");
-      // Although we didn't expect to get here, we should keep
-      // |current_service_| in sync with what supplicant has done.
-      current_service_ = service;
+      // wpa_supplicant has no knowledge of the pending_service_ at this point.
+      // Disconnect the pending_service_, so that it can be connectable again.
+      // Otherwise, we'd have to wait for the pending timeout to trigger the
+      // disconnect. This will speed up the connection attempt process for
+      // the pending_service_.
+      DisconnectFrom(pending_service_);
     }
     return;
   }
