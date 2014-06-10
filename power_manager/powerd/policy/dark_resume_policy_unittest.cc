@@ -62,6 +62,8 @@ class DarkResumePolicyTest : public ::testing::Test {
  protected:
   // Initializes |power_supply_| and |dark_resume_policy_|.
   void Init() {
+    prefs_.SetInt64(kMaxCurrentSamplesPref, 5);
+    prefs_.SetInt64(kMaxChargeSamplesPref, 5);
     power_supply_->Init(path_, &prefs_, &udev_);
     SetBattery(100.0, false);
     dark_resume_policy_->Init(power_supply_.get(), &prefs_);

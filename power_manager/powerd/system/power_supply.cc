@@ -129,8 +129,6 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
 }
 
 const char PowerSupply::kUdevSubsystem[] = "power_supply";
-const int PowerSupply::kMaxCurrentSamples = 5;
-const int PowerSupply::kMaxChargeSamples = 5;
 const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
@@ -142,8 +140,6 @@ PowerSupply::PowerSupply()
       power_status_initialized_(false),
       low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
-      current_samples_(kMaxCurrentSamples),
-      charge_samples_(kMaxChargeSamples),
       full_factor_(1.0) {
 }
 
@@ -192,15 +188,21 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
     low_battery_shutdown_time_ = base::TimeDelta();
   }
 
+  int64 samples = 0;
+  CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
+  current_samples_on_line_power_.reset(new RollingAverage(samples));
+  current_samples_on_battery_power_.reset(new RollingAverage(samples));
+
+  CHECK(prefs_->GetInt64(kMaxChargeSamplesPref, &samples));
+  charge_samples_.reset(new RollingAverage(samples));
+
   // This log message is needed by the power_LoadTest autotest.
   LOG(INFO) << "Using low battery time threshold of "
             << low_battery_shutdown_time_.InSeconds()
             << " secs and using low battery percent threshold of "
             << low_battery_shutdown_percent_;
 
-  // This defers the initial recording of samples until the current has
-  // stabilized.
-  ResetBatterySamples(battery_stabilized_after_startup_delay_);
+  DeferBatterySampling(battery_stabilized_after_startup_delay_);
   SchedulePoll();
 }
 
@@ -237,7 +239,9 @@ void PowerSupply::SetSuspended(bool suspended) {
     poll_timer_.Stop();
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
-    ResetBatterySamples(battery_stabilized_after_resume_delay_);
+    DeferBatterySampling(battery_stabilized_after_resume_delay_);
+    charge_samples_->Clear();
+    current_samples_on_line_power_->Clear();
     RefreshImmediately();
   }
 }
@@ -256,10 +260,7 @@ base::TimeDelta PowerSupply::GetMsPref(const std::string& pref_name,
   return base::TimeDelta::FromMilliseconds(default_duration_ms);
 }
 
-void PowerSupply::ResetBatterySamples(base::TimeDelta stabilized_delay) {
-  current_samples_.Clear();
-  charge_samples_.Clear();
-
+void PowerSupply::DeferBatterySampling(base::TimeDelta stabilized_delay) {
   const base::TimeTicks now = clock_->GetCurrentTime();
   battery_stabilized_timestamp_ =
       std::max(battery_stabilized_timestamp_, now + stabilized_delay);
@@ -418,7 +419,7 @@ bool PowerSupply::UpdatePowerStatus() {
   // The current can be reported as negative on some systems but not on
   // others, so it can't be used to determine whether the battery is
   // charging or discharging.
-  double battery_current = 0;
+  double battery_current = 0.0;
   if (base::PathExists(battery_path_.Append("power_now"))) {
     battery_current = fabs(ReadScaledDouble(battery_path_, "power_now")) /
         battery_voltage;
@@ -455,16 +456,32 @@ bool PowerSupply::UpdatePowerStatus() {
 
   if (power_status_initialized_ &&
       status.line_power_on != power_status_.line_power_on) {
-    ResetBatterySamples(status.line_power_on ?
+    DeferBatterySampling(status.line_power_on ?
         battery_stabilized_after_line_power_connected_delay_ :
         battery_stabilized_after_line_power_disconnected_delay_);
+    charge_samples_->Clear();
+
+    // Chargers can deliver highly-variable currents depending on various
+    // factors (e.g. negotiated current for USB chargers, charge level, etc.).
+    // If one was just connected, throw away the previous average.
+    if (status.line_power_on)
+      current_samples_on_line_power_->Clear();
   }
 
   base::TimeTicks now = clock_->GetCurrentTime();
   if (now >= battery_stabilized_timestamp_) {
-    charge_samples_.AddSample(battery_charge, now);
-    if (battery_current > 0.0)
-      current_samples_.AddSample(battery_current, now);
+    charge_samples_->AddSample(battery_charge, now);
+
+    if (battery_current > 0.0) {
+      const double signed_current =
+          (status.battery_state ==
+           PowerSupplyProperties_BatteryState_DISCHARGING) ?
+          -battery_current : battery_current;
+      if (status.line_power_on)
+        current_samples_on_line_power_->AddSample(signed_current, now);
+      else
+        current_samples_on_battery_power_->AddSample(signed_current, now);
+    }
   }
 
   UpdateObservedBatteryChargeRate(&status);
@@ -531,27 +548,31 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   if (clock_->GetCurrentTime() < battery_stabilized_timestamp_)
     return false;
 
-  const double average_current = current_samples_.GetAverage();
+  // Positive if the battery is charging and negative if it's discharging.
+  const double signed_current = status->line_power_on ?
+      current_samples_on_line_power_->GetAverage() :
+      current_samples_on_battery_power_->GetAverage();
+
   switch (status->battery_state) {
     case PowerSupplyProperties_BatteryState_CHARGING:
-      if (average_current <= kEpsilon) {
+      if (signed_current <= kEpsilon) {
         status->battery_time_to_full = base::TimeDelta::FromSeconds(-1);
       } else {
         const double charge_to_full = std::max(0.0,
             status->battery_charge_full * full_factor_ -
             status->battery_charge);
         status->battery_time_to_full = base::TimeDelta::FromSeconds(
-            roundl(3600 * charge_to_full / average_current));
+            roundl(3600 * charge_to_full / signed_current));
       }
       break;
     case PowerSupplyProperties_BatteryState_DISCHARGING:
-      if (average_current <= kEpsilon) {
+      if (signed_current >= -kEpsilon) {
         status->battery_time_to_empty = base::TimeDelta::FromSeconds(-1);
         status->battery_time_to_shutdown = base::TimeDelta::FromSeconds(-1);
       } else {
         status->battery_time_to_empty = base::TimeDelta::FromSeconds(
             roundl(3600 * (status->battery_charge * status->nominal_voltage) /
-                   (average_current * status->battery_voltage)));
+                   (-signed_current * status->battery_voltage)));
 
         const double shutdown_charge =
             status->battery_charge_full * low_battery_shutdown_percent_ / 100.0;
@@ -559,7 +580,7 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
             status->battery_charge - shutdown_charge);
         status->battery_time_to_shutdown = base::TimeDelta::FromSeconds(
             roundl(3600 * (available_charge * status->nominal_voltage) /
-                   (average_current * status->battery_voltage))) -
+                   (-signed_current * status->battery_voltage))) -
             low_battery_shutdown_time_;
         status->battery_time_to_shutdown =
             std::max(base::TimeDelta(), status->battery_time_to_shutdown);
@@ -576,10 +597,10 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
 
 void PowerSupply::UpdateObservedBatteryChargeRate(PowerStatus* status) const {
   DCHECK(status);
-  const base::TimeDelta time_delta = charge_samples_.GetTimeDelta();
+  const base::TimeDelta time_delta = charge_samples_->GetTimeDelta();
   status->observed_battery_charge_rate =
       (time_delta.InMilliseconds() < kObservedBatteryChargeRateMinMs) ? 0.0 :
-      charge_samples_.GetValueDelta() / (time_delta.InSecondsF() / 3600);
+      charge_samples_->GetValueDelta() / (time_delta.InSecondsF() / 3600);
 }
 
 bool PowerSupply::IsBatteryBelowShutdownThreshold(

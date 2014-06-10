@@ -93,6 +93,10 @@ extern const char kBatteryStabilizedAfterLinePowerConnectedMsPref[];
 extern const char kBatteryStabilizedAfterLinePowerDisconnectedMsPref[];
 extern const char kBatteryStabilizedAfterResumeMsPref[];
 
+// Maximum number of current and charge samples that should be averaged.
+extern const char kMaxCurrentSamplesPref[];
+extern const char kMaxChargeSamplesPref[];
+
 // Milliseconds to wait after setting the backlight to 0 before asking Chrome to
 // turn off the display via DPMS.
 extern const char kTurnOffScreenTimeoutMsPref[];

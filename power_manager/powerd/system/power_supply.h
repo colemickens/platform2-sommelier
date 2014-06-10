@@ -175,13 +175,6 @@ class PowerSupply : public UdevObserver {
   // Power supply subsystem for udev events.
   static const char kUdevSubsystem[];
 
-  // Maximum number of samples of the battery current to average when
-  // calculating the battery's time-to-full or -empty.
-  static const int kMaxCurrentSamples;
-
-  // Maximum number of samples of recent battery charge readings to hold.
-  static const int kMaxChargeSamples;
-
   // Minimum duration of samples that need to be present in |charge_samples_|
   // for the observed battery charge rate to be calculated.
   static const int kObservedBatteryChargeRateMinMs;
@@ -237,10 +230,9 @@ class PowerSupply : public UdevObserver {
   base::TimeDelta GetMsPref(const std::string& pref_name,
                             int64 default_duration_ms) const;
 
-  // Clears |current_samples_| and |charge_samples_| and sets
-  // |battery_stabilized_timestamp_| so that the current and charge won't be
-  // sampled again until at least |stabilized_delay| in the future.
-  void ResetBatterySamples(base::TimeDelta stabilized_delay);
+  // Sets |battery_stabilized_timestamp_| so that the current and charge won't
+  // be sampled again until at least |stabilized_delay| in the future.
+  void DeferBatterySampling(base::TimeDelta stabilized_delay);
 
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
@@ -318,23 +310,25 @@ class PowerSupply : public UdevObserver {
   base::TimeDelta battery_stabilized_after_resume_delay_;
 
   // Time at which the reported current and charge are expected to have
-  // stabilized to the point where they can be recorded in |current_samples_|
-  // and |charge_samples_| and the battery's time-to-full or time-to-empty
-  // estimates can be updated.
+  // stabilized to the point where they can be recorded in
+  // |current_samples_on_*_power_| and |charge_samples_| and the battery's
+  // time-to-full or time-to-empty estimates can be updated.
   base::TimeTicks battery_stabilized_timestamp_;
 
   // A collection of recent current readings (in amperes) used to calculate
-  // time-to-full and time-to-empty estimates. Reset in response to changes
-  // such as resuming from suspend or the power source being changed.
-  RollingAverage current_samples_;
+  // time-to-full and time-to-empty estimates collected while on line or
+  // battery power. Values are positive when the battery is charging and
+  // negative when it's discharging.
+  scoped_ptr<RollingAverage> current_samples_on_line_power_;
+  scoped_ptr<RollingAverage> current_samples_on_battery_power_;
 
   // A collection of recent charge readings (in ampere-hours) used to measure
-  // the rate at which the battery is charging or discharging. Reset in response
-  // to the same changes as |current_samples_|.
-  RollingAverage charge_samples_;
+  // the rate at which the battery is charging or discharging. Reset when the
+  // system resumes from suspend or the power source changes.
+  scoped_ptr<RollingAverage> charge_samples_;
 
-  // The fraction of full charge at which the battery is considered "full", in
-  // the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.
+  // The fraction of the full charge at which the battery is considered "full",
+  // in the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.
   double full_factor_;
 
   // Amount of time to wait before updating |power_status_| again after an
