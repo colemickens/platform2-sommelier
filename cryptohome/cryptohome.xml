@@ -43,6 +43,17 @@
       <arg type="ay" name="remove_key_request" direction="in" />
       <arg type="ay" name="remove_key_reply" direction="out" />
     </method>
+    <method name="GetKeyDataEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <!-- This should be an empty AuthorizationRequest.
+           In the future, authorization may be used to decrypt and return
+           secrets, like the UpdateAuthorization secret.
+        -->
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="get_key_data_request" direction="in" />
+      <arg type="ay" name="get_key_data_reply" direction="out" />
+    </method>
     <method name="MigrateKey">
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="from_key" direction="in" />

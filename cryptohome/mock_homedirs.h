@@ -27,6 +27,7 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD1(Remove, bool(const std::string&));
   MOCK_METHOD2(Migrate, bool(const Credentials&, const chromeos::SecureBlob&));
   MOCK_CONST_METHOD1(Exists, bool(const Credentials&));
+  MOCK_CONST_METHOD1(GetVaultKeyset, VaultKeyset*(const Credentials&));
   MOCK_CONST_METHOD2(GetVaultKeysets,
                      bool(const std::string&, std::vector<int>*));
   MOCK_METHOD5(AddKeyset, CryptohomeErrorCode(const Credentials&,

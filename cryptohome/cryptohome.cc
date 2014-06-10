@@ -11,13 +11,18 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <termios.h>
+#include <string.h>
 #include <unistd.h>
+
+#include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
@@ -71,6 +76,7 @@ namespace switches {
     "test_auth",
     "check_key_ex",
     "remove_key_ex",
+    "get_key_data_ex",
     "migrate_key",
     "add_key",
     "add_key_ex",
@@ -121,6 +127,7 @@ namespace switches {
     ACTION_TEST_AUTH,
     ACTION_CHECK_KEY_EX,
     ACTION_REMOVE_KEY_EX,
+    ACTION_GET_KEY_DATA_EX,
     ACTION_MIGRATE_KEY,
     ACTION_ADD_KEY,
     ACTION_ADD_KEY_EX,
@@ -832,6 +839,64 @@ int main(int argc, char **argv) {
       return reply.error();
     }
     printf("Key removed.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_GET_KEY_DATA_EX],
+                     action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id)) {
+      return -1;
+    }
+    cryptohome::AuthorizationRequest auth;
+    cryptohome::GetKeyDataRequest key_data_req;
+    const std::string label =
+      cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
+    if (label.empty()) {
+      printf("No key_label specified.\n");
+      return -1;
+    }
+    key_data_req.mutable_key()->mutable_data()->set_label(label);
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_data_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      return -1;
+    }
+
+    cryptohome::BaseReply reply;
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+           org_chromium_CryptohomeInterface_get_key_data_ex_async(
+               proxy.gproxy(),
+               account_ary.get(),
+               auth_ary.get(),
+               req_ary.get(),
+               &ClientLoop::ParseReplyThunk,
+               static_cast<gpointer>(&loop));
+      if (!call) {
+        return -1;
+      }
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_get_key_data_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("GetKeyDataEx call failed: %s", error->message);
+        return -1;
+      }
+      ParseBaseReply(out_reply, &reply);
+    }
+    if (reply.has_error()) {
+      printf("Key retrieval failed.\n");
+      return reply.error();
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
                 action.c_str())) {
     cryptohome::AccountIdentifier id;

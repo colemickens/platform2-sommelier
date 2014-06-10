@@ -83,6 +83,14 @@ gboolean cryptohome_remove_key_ex(Cryptohome* self,
   // Leave the response called error to reuse WRAP.
   CRYPTOHOME_WRAP_METHOD(RemoveKeyEx, identifier, authorization, request);
 }
+gboolean cryptohome_get_key_data_ex(Cryptohome* self,
+                                    GArray* identifier,
+                                    GArray* authorization,
+                                    GArray* request,
+                                    DBusGMethodInvocation* error) {
+  // Leave the response called error to reuse WRAP.
+  CRYPTOHOME_WRAP_METHOD(GetKeyDataEx, identifier, authorization, request);
+}
 gboolean cryptohome_migrate_key(Cryptohome* self,
                                 gchar* userid,
                                 gchar* from_key,

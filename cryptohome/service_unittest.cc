@@ -17,6 +17,7 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 #include <string>
+#include <vector>
 
 #include "crypto.h"
 #include "make_tests.h"
@@ -30,6 +31,7 @@
 #include "mock_mount_factory.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_vault_keyset.h"
 #include "username_passkey.h"
 
 using base::PlatformThread;
@@ -804,6 +806,12 @@ class ExTest : public ::testing::Test {
     return ary;
   }
 
+  VaultKeyset* GetNiceMockVaultKeyset(const Credentials& credentials) const {
+    scoped_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
+    *(mvk->mutable_serialized()->mutable_key_data()) = credentials.key_data();
+    return mvk.release();
+  }
+
   template<class ProtoBuf>
   chromeos::SecureBlob BlobFromProtobuf(const ProtoBuf& pb) {
     std::string serialized;
@@ -1137,6 +1145,61 @@ TEST_F(ExTest, BootLockboxFinalizeError) {
   BaseReply reply = GetLastReply();
   EXPECT_TRUE(reply.has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_TPM_COMM_ERROR, reply.error());
+}
+
+TEST_F(ExTest, GetKeyDataExNoMatch) {
+  SetupReply();
+  PrepareArguments();
+
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+
+  id_->set_email("unittest@example.com");
+  GetKeyDataRequest req;
+  req.mutable_key()->mutable_data()->set_label("non-existent label");
+  // Ensure there are no matches.
+  EXPECT_CALL(homedirs_, GetVaultKeyset(_))
+      .Times(1)
+      .WillRepeatedly(Return(static_cast<VaultKeyset*>(NULL)));
+  service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  GetKeyDataReply sub_reply = reply.GetExtension(GetKeyDataReply::reply);
+  EXPECT_EQ(0, sub_reply.key_data_size());
+}
+
+TEST_F(ExTest, GetKeyDataExOneMatch) {
+  // Request the single key by label.
+  SetupReply();
+  PrepareArguments();
+
+  static const char *kExpectedLabel = "find-me";
+  GetKeyDataRequest req;
+  req.mutable_key()->mutable_data()->set_label(kExpectedLabel);
+
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, GetVaultKeyset(_))
+      .Times(1)
+      .WillRepeatedly(Invoke(this, &ExTest::GetNiceMockVaultKeyset));
+
+  id_->set_email("unittest@example.com");
+  service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+
+  GetKeyDataReply sub_reply = reply.GetExtension(GetKeyDataReply::reply);
+  ASSERT_EQ(1, sub_reply.key_data_size());
+  EXPECT_EQ(std::string(kExpectedLabel), sub_reply.key_data(0).label());
+}
+
+TEST_F(ExTest, GetKeyDataInvalidArgsNoEmail) {
+  SetupErrorReply();
+  PrepareArguments();
+  GetKeyDataRequest req;
+  service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
 }  // namespace cryptohome

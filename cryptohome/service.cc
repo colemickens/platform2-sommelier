@@ -976,6 +976,84 @@ gboolean Service::RemoveKeyEx(GArray* account_id,
   return TRUE;
 }
 
+void Service::DoGetKeyDataEx(AccountIdentifier* identifier,
+                             AuthorizationRequest* authorization,
+                             GetKeyDataRequest* get_key_data_request,
+                             DBusGMethodInvocation* context) {
+  if (!identifier || !authorization || !get_key_data_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+
+  if (!get_key_data_request->has_key()) {
+    SendInvalidArgsReply(context, "No key attributes provided");
+    return;
+  }
+
+  BaseReply reply;
+  UsernamePasskey credentials(identifier->email().c_str(), SecureBlob());
+  if (!homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
+  GetKeyDataReply* sub_reply = reply.MutableExtension(GetKeyDataReply::reply);
+  credentials.set_key_data(get_key_data_request->key().data());
+  // Requests only support using the key label at present.
+  scoped_ptr<VaultKeyset> vk(homedirs_->GetVaultKeyset(credentials));
+  if (vk) {
+    KeyData* new_kd = sub_reply->add_key_data();
+    *new_kd = vk->serialized().key_data();
+    // Clear any symmetric KeyAuthorizationSecrets even if they are wrapped.
+    for (int a = 0; a < new_kd->authorization_data_size(); ++a) {
+      KeyAuthorizationData *auth_data = new_kd->mutable_authorization_data(a);
+      for (int s = 0; s < auth_data->secrets_size(); ++s) {
+        auth_data->mutable_secrets(s)->clear_symmetric_key();
+        auth_data->mutable_secrets(s)->set_wrapped(false);
+      }
+    }
+  }
+  // No error is thrown if there is no match.
+  reply.clear_error();
+  SendReply(context, reply);
+}
+
+gboolean Service::GetKeyDataEx(GArray* account_id,
+                               GArray* authorization_request,
+                               GArray* get_key_data_request,
+                               DBusGMethodInvocation *context) {
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<GetKeyDataRequest> request(new GetKeyDataRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
+    identifier.reset(NULL);
+  }
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len)) {
+    authorization.reset(NULL);
+  }
+  if (!request->ParseFromArray(get_key_data_request->data,
+                               get_key_data_request->len)) {
+    request.reset(NULL);
+  }
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoGetKeyDataEx, base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
+  return TRUE;
+}
 
 gboolean Service::MigrateKey(gchar *userid,
                              gchar *from_key,

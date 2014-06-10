@@ -45,11 +45,7 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_METHOD1(set_legacy_index, void(int));
   MOCK_CONST_METHOD0(legacy_index, const int(void));
  private:
-   const SerializedVaultKeyset& StubSerialized(void) {
-     return serialized_;
-   }
-   SerializedVaultKeyset serialized_;
-
+  SerializedVaultKeyset stub_serialized_;
 };
 }  // namespace cryptohome
 
