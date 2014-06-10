@@ -82,33 +82,6 @@ const char ChromiumCommandBuilder::kDeepMemoryProfilerPrefixPath[] =
 const char ChromiumCommandBuilder::kDeepMemoryProfilerTimeIntervalPath[] =
     "/var/tmp/deep_memory_profiler_time_interval.txt";
 
-// static
-bool ChromiumCommandBuilder::Run(bool log_failure,
-                                 const char* command,
-                                 const char* arg, ...) {
-  // Extra parentheses because yay C++ most vexing parse.
-  base::CommandLine cl((base::FilePath(command)));
-  va_list list;
-  va_start(list, arg);
-  while (arg) {
-    cl.AppendArg(const_cast<char*>(arg));
-    arg = va_arg(list, char*);
-  }
-  va_end(list);
-
-  std::string output;
-  int exit_code = 0;
-  if (!base::GetAppOutputWithExitCode(cl, &output, &exit_code)) {
-    if (log_failure) {
-      LOG(WARNING) << "\"" << cl.GetCommandLineString() << "\" failed with "
-                   << exit_code << ": " << output;
-    }
-    return false;
-  }
-
-  return true;
-}
-
 ChromiumCommandBuilder::ChromiumCommandBuilder()
     : uid_(0),
       gid_(0),
@@ -471,8 +444,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   const base::FilePath debugfs_gpu_path(GetPath(kDebugfsGpuPath));
   if (getuid() == 0 && !base::DirectoryExists(debugfs_gpu_path)) {
     if (base::CreateDirectory(debugfs_gpu_path)) {
-      Run(true, "mount", "-o", "bind", "/sys/kernel/debug/dri/0",
-          kDebugfsGpuPath, NULL);
+      util::Run("mount", "-o", "bind", "/sys/kernel/debug/dri/0",
+                kDebugfsGpuPath, NULL);
     } else {
       PLOG(ERROR) << "Unable to create " << kDebugfsGpuPath;
     }

@@ -39,11 +39,6 @@ class ChromiumCommandBuilder {
   static const char kDeepMemoryProfilerPrefixPath[];
   static const char kDeepMemoryProfilerTimeIntervalPath[];
 
-  // Runs the passed-in command and arguments synchronously, returning true on
-  // success. On failure, the command's output is logged if |log_failure| is
-  // true. The path will be searched for |command|.
-  static bool Run(bool log_failure, const char* command, const char* arg, ...);
-
   ChromiumCommandBuilder();
   ~ChromiumCommandBuilder();
 

@@ -7,9 +7,11 @@
 #include <pwd.h>
 #include <unistd.h>
 
+#include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/process/launch.h>
 
 namespace chromeos {
 namespace ui {
@@ -67,6 +69,29 @@ bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
     *uid = user_info->pw_uid;
   if (gid)
     *gid = user_info->pw_gid;
+  return true;
+}
+
+bool Run(const char* command,
+         const char* arg, ...) {
+  // Extra parentheses because yay C++ most vexing parse.
+  base::CommandLine cl((base::FilePath(command)));
+  va_list list;
+  va_start(list, arg);
+  while (arg) {
+    cl.AppendArg(const_cast<char*>(arg));
+    arg = va_arg(list, char*);
+  }
+  va_end(list);
+
+  std::string output;
+  int exit_code = 0;
+  if (!base::GetAppOutputWithExitCode(cl, &output, &exit_code)) {
+    LOG(WARNING) << "\"" << cl.GetCommandLineString() << "\" failed with "
+                 << exit_code << ": " << output;
+    return false;
+  }
+
   return true;
 }
 

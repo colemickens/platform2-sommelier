@@ -15,10 +15,9 @@ namespace chromeos {
 namespace ui {
 namespace util {
 
-  // Converts an absolute path |path| into a base::FilePath. If |parent| is
-  // non-empty, |path| is rooted within it. For example,
-  // GetPath("/usr/bin/bar", base::FilePath("/tmp/foo")) returns
-  // base::FilePath("/tmp/foo/usr/bin/bar")).
+// Converts an absolute path |path| into a base::FilePath. If |parent| is
+// non-empty, |path| is rooted within it. For example, GetPath("/usr/bin/bar",
+// base::FilePath("/tmp/foo")) returns base::FilePath("/tmp/foo/usr/bin/bar")).
 base::FilePath GetReparentedPath(const std::string& path,
                                  const base::FilePath& parent);
 
@@ -38,6 +37,11 @@ bool EnsureDirectoryExists(const base::FilePath& path,
 
 // Looks up the UID and GID corresponding to |user|. Returns true on success.
 bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid);
+
+// Runs the passed-in command and arguments synchronously, returning true on
+// success. On failure, the command's output is logged. The path will be
+// searched for |command|.
+bool Run(const char* command, const char* arg, ...);
 
 }  // namespace util
 }  // namespace ui

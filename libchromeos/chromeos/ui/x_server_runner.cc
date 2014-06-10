@@ -22,6 +22,7 @@
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <metrics/bootstat.h>
 
 #include "chromeos/ui/util.h"
 
@@ -292,6 +293,14 @@ bool XServerRunner::WaitForServer() {
                << WEXITSTATUS(status);
     return false;
   }
+
+  if (getuid() == 0) {
+    // TODO(derat): Move session_manager's UpstartSignalEmitter into libchromeos
+    // and use it here.
+    util::Run("initctl", "emit", "x-started", NULL);
+    bootstat_log("x-started");
+  }
+
   return true;
 }
 

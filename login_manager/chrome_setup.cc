@@ -354,13 +354,9 @@ void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
   *args_out = builder.arguments();
   *uid_out = builder.uid();
 
-  if (using_x11) {
+  if (using_x11)
     CHECK(x_runner->WaitForServer());
-    // TODO: Emit this D-Bus signal directly.
-    ChromiumCommandBuilder::Run(true, "initctl", "emit", "x-started", NULL);
-    // TODO: Link against libbootstat to log this.
-    ChromiumCommandBuilder::Run(true, "bootstat", "x-started", NULL);
-  }
+
   // Do not add code here. Potentially-expensive work should be done between
   // StartServer() and WaitForServer().
 }

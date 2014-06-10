@@ -55,7 +55,8 @@ class XServerRunner {
                    const base::FilePath& xauth_file);
 
   // Blocks until the previously-started X server is ready to accept
-  // connections.
+  // connections. Handles announcing the server's readiness to Upstart and
+  // recording a bootstat event.
   bool WaitForServer();
 
  private:

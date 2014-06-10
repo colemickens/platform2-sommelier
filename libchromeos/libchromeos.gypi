@@ -66,7 +66,10 @@
       'target_name': 'libchromeos-cryptohome-<(libbase_ver)',
       'type': 'shared_library',
       'variables': {
-        'exported_deps': ['openssl'],
+        'exported_deps': [
+          'bootstat',
+          'openssl',
+        ],
         'deps': ['<@(exported_deps)'],
       },
       'cflags': [
