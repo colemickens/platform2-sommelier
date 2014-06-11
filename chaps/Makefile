@@ -29,7 +29,7 @@ LIB_DIR ?= /usr/lib
 PAM_MODULE_DIR ?= /lib/security
 
 BASE_VER ?= 271506
-PC_DEPS = dbus-c++-1 protobuf openssl \
+PC_DEPS = dbus-c++-1 protobuf-lite openssl \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))

@@ -9,7 +9,7 @@
     'variables': {
       'deps': [
         'dbus-c++-1',
-        'protobuf',
+        'protobuf-lite',
         'openssl',
         'libchrome-<(libbase_ver)',
       ],
