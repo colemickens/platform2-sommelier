@@ -203,18 +203,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
 
   builder->AddArg("--max-unused-resource-memory-usage-percentage=5");
 
-  // Exporting this environment variable turns on a useful diagnostic feature in
-  // Chrome/NSS, which can allow users to decrypt their own SSL traffic later
-  // with e.g. Wireshark. We key this off of both a USE flag stored on rootfs
-  // (which, essentially, locks this feature off for normal systems), and, the
-  // logfile itself (which makes this feature easy to toggle on/off, on systems
-  // like mod-for-test images, where the USE flag has been customized to permit
-  // its use).
-  const base::FilePath ssl_key_log_file("/var/log/sslkeys.log");
-  if (builder->UseFlagIsSet("dangerous_sslkeylogfile") &&
-      base::PathExists(ssl_key_log_file))
-    builder->AddEnvVar("SSLKEYLOGFILE", ssl_key_log_file.value());
-
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
