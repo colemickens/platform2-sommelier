@@ -99,12 +99,15 @@ TEST_F(ChromiumCommandBuilderTest, MissingUseFlagsFile) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, UseFlags) {
-  use_flags_data_ = "foo\nbar\nboard_use_blah\n";
+  use_flags_data_ = "# Here's a comment.\nfoo\nbar\nboard_use_blah\n";
   EXPECT_TRUE(Init());
 
   EXPECT_TRUE(builder_.UseFlagIsSet("foo"));
   EXPECT_TRUE(builder_.UseFlagIsSet("bar"));
   EXPECT_FALSE(builder_.UseFlagIsSet("food"));
+  EXPECT_FALSE(builder_.UseFlagIsSet("# Here's a comment."));
+  EXPECT_FALSE(builder_.UseFlagIsSet("#"));
+  EXPECT_FALSE(builder_.UseFlagIsSet("a"));
 
   EXPECT_TRUE(builder_.IsBoard("blah"));
   EXPECT_FALSE(builder_.IsBoard("foo"));

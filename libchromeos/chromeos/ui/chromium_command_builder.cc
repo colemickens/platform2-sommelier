@@ -71,9 +71,7 @@ bool IsEnvironmentVariableName(const std::string& name) {
 
 }  // namespace
 
-// TODO(derat): Rename this file to not be session-manager-specific.
-const char ChromiumCommandBuilder::kUseFlagsPath[] =
-    "/etc/session_manager_use_flags.txt";
+const char ChromiumCommandBuilder::kUseFlagsPath[] = "/etc/ui_use_flags.txt";
 const char ChromiumCommandBuilder::kLsbReleasePath[] = "/etc/lsb-release";
 const char ChromiumCommandBuilder::kPepperPluginsPath[] =
     "/opt/google/chrome/pepper";
@@ -102,10 +100,12 @@ bool ChromiumCommandBuilder::Init() {
     PLOG(ERROR) << "Unable to read " << kUseFlagsPath;
     return false;
   }
-  StringVector flags;
-  base::SplitStringAlongWhitespace(data, &flags);
-  for (size_t i = 0; i < flags.size(); ++i)
-    use_flags_.insert(flags[i]);
+  std::vector<std::string> lines;
+  base::SplitString(data, '\n', &lines);
+  for (size_t i = 0; i < lines.size(); ++i) {
+    if (!lines[i].empty() && lines[i][0] != '#')
+      use_flags_.insert(lines[i]);
+  }
 
   base::CommandLine cl(base::FilePath("crossystem"));
   cl.AppendArg("mainfw_type");
