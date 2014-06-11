@@ -46,6 +46,8 @@ class ConnectionDelegate : public ConnectionDelegateInterface {
       int64_t max_download_rate);
 
   // Overrides DelegateSimpleThread::Delegate
+  // Run() handles the connection passed on Construct() and deletes
+  // itself when the work is done.
   virtual void Run();
 
  private:

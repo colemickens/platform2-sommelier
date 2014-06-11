@@ -52,6 +52,10 @@ class FakeConnectionDelegate : public ConnectionDelegateInterface {
 
     server_->ConnectionTerminated(this);
     fclose(f); // This closes fd_
+
+    // We don't keep track of the created ConnectionDelegates, because
+    // they are supposed to be deleted after Run() is called.
+    delete this;
   }
 
  private:
