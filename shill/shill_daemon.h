@@ -9,11 +9,11 @@
 
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/callback80211_metrics.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
 #include "shill/sockets.h"
-#include "shill/callback80211_metrics.h"
 
 namespace shill {
 
@@ -57,6 +57,9 @@ class Daemon {
 
   Config *config_;
   ControlInterface *control_;
+  EventDispatcher dispatcher_;
+  GLib glib_;
+  Sockets sockets_;
   scoped_ptr<Metrics> metrics_;
   NSS *nss_;
   ProxyFactory *proxy_factory_;
@@ -66,9 +69,6 @@ class Daemon {
   NetlinkManager *netlink_manager_;
   scoped_ptr<Manager> manager_;
   Callback80211Metrics callback80211_metrics_;
-  EventDispatcher dispatcher_;
-  Sockets sockets_;
-  GLib glib_;
 };
 
 }  // namespace shill

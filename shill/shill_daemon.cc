@@ -4,13 +4,9 @@
 
 #include "shill/shill_daemon.h"
 
-#include <stdio.h>
-
 #include <string>
-#include <vector>
 
 #include <base/bind.h>
-#include <base/files/file_path.h>
 
 #include "shill/callback80211_metrics.h"
 #include "shill/dhcp_provider.h"
@@ -28,7 +24,6 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -52,7 +47,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
       callback80211_metrics_(metrics_.get()) {
 }
 
-Daemon::~Daemon() { }
+Daemon::~Daemon() {}
 
 void Daemon::AddDeviceToBlackList(const string &device_name) {
   manager_->AddDeviceToBlackList(device_name);
@@ -72,8 +67,8 @@ void Daemon::Run() {
 void Daemon::Quit() {
   SLOG(Daemon, 1) << "Starting termination actions.";
   if (!manager_->RunTerminationActionsAndNotifyMetrics(
-      Bind(&Daemon::TerminationActionsCompleted, Unretained(this)),
-      Metrics::kTerminationActionReasonTerminate)) {
+          Bind(&Daemon::TerminationActionsCompleted, Unretained(this)),
+          Metrics::kTerminationActionReasonTerminate)) {
     SLOG(Daemon, 1) << "No termination actions were run";
     StopAndReturnToMain();
   }
