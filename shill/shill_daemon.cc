@@ -75,8 +75,7 @@ void Daemon::Quit() {
       Bind(&Daemon::TerminationActionsCompleted, Unretained(this)),
       Metrics::kTerminationActionReasonTerminate)) {
     SLOG(Daemon, 1) << "No termination actions were run";
-    Stop();
-    dispatcher_.PostTask(base::MessageLoop::QuitClosure());
+    StopAndReturnToMain();
   }
 }
 
@@ -84,6 +83,32 @@ void Daemon::TerminationActionsCompleted(const Error &error) {
   SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonTerminate, error.IsSuccess());
+
+  // Daemon::TerminationActionsCompleted() should not directly call
+  // Daemon::Stop(). Otherwise, it could lead to the call sequence below. That
+  // is not safe as the HookTable's start callback only holds a weak pointer to
+  // the Cellular object, which is destroyed in midst of the
+  // Cellular::OnTerminationCompleted() call. We schedule the
+  // Daemon::StopAndReturnToMain() call through the message loop instead.
+  //
+  // Daemon::Quit
+  //   -> Manager::RunTerminationActionsAndNotifyMetrics
+  //     -> Manager::RunTerminationActions
+  //       -> HookTable::Run
+  //         ...
+  //         -> Cellular::OnTerminationCompleted
+  //           -> Manager::TerminationActionComplete
+  //             -> HookTable::ActionComplete
+  //               -> Daemon::TerminationActionsCompleted
+  //                 -> Daemon::Stop
+  //                   -> Manager::Stop
+  //                     -> DeviceInfo::Stop
+  //                       -> Cellular::~Cellular
+  //           -> Manager::RemoveTerminationAction
+  dispatcher_.PostTask(Bind(&Daemon::StopAndReturnToMain, Unretained(this)));
+}
+
+void Daemon::StopAndReturnToMain() {
   Stop();
   dispatcher_.PostTask(base::MessageLoop::QuitClosure());
 }

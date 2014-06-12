@@ -45,10 +45,13 @@ class Daemon {
  private:
   friend class ShillDaemonTest;
 
-  // Causes the dispatcher message loop to terminate, calls Stop(), and returns
-  // to the main function which started the daemon.  Called when the termination
-  // actions are completed.
+  // Called when the termination actions are completed.
   void TerminationActionsCompleted(const Error &error);
+
+  // Calls Stop() and then causes the dispatcher message loop to terminate and
+  // return to the main function which started the daemon.
+  void StopAndReturnToMain();
+
   void Start();
   void Stop();
 
