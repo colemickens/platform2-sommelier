@@ -367,6 +367,7 @@ std::string IpsecManager::FormatStarterConfigFile() {
   if (debug()) {
     AppendStringSetting(&config, "charondebug", "dmn 2, mgr 2, ike 2, net 2");
   }
+  AppendStringSetting(&config, "uniqueids", "no");
 
   config.append("conn managed\n");
   AppendStringSetting(&config, "ike", FLAGS_ike);

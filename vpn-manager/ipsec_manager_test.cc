@@ -340,6 +340,7 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(
   if (debug) {
     expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
   }
+  expected.append("\tuniqueids=\"no\"\n");
   expected.append(
       "conn managed\n"
       "\tike=\"3des-sha1-modp1024\"\n"
@@ -422,6 +423,7 @@ std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
   if (debug) {
     expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
   }
+  expected.append("\tuniqueids=\"no\"\n");
   expected.append(
       "conn managed\n"
       "\tike=\"3des-sha1-modp1024\"\n"
