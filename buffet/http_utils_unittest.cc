@@ -59,7 +59,7 @@ TEST(HttpUtils, SendRequest_Post) {
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
   // Test binary data round-tripping.
-  std::vector<unsigned char> custom_data({0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F});
+  std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
 
   // Check the correct HTTP method used.
   auto response = http::SendRequest(request_type::kPost, kMethodEchoUrl,

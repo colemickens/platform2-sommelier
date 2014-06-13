@@ -173,7 +173,7 @@ class ExportedProperty : public ExportedPropertyBase {
 
  private:
   OnUpdateCallback on_update_;
-  T value_{};  // NOLINT - initializer list
+  T value_{};
 
   DISALLOW_COPY_AND_ASSIGN(ExportedProperty);
 };

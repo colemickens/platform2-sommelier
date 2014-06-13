@@ -71,7 +71,7 @@ std::string url::CombineMultiple(
   std::string result = url;
   if (!parts.empty()) {
     std::string query_string = TrimOffQueryString(&result);
-    for (auto&& part : parts) {
+    for (const auto& part : parts) {
       if (!part.empty()) {
         if (!result.empty() && result.back() != '/')
           result += '/';
@@ -112,7 +112,7 @@ std::string url::GetQueryStringValue(
 std::string url::GetQueryStringValue(
     const data_encoding::WebParamList& params,
     const std::string& name) {
-  for (auto&& pair : params) {
+  for (const auto& pair : params) {
     if (name.compare(pair.first) == 0)
       return pair.second;
   }

@@ -87,11 +87,11 @@ class AsyncEventSequencer : public base::RefCounted<AsyncEventSequencer> {
                        const std::string& error_message);
   void PossiblyRunCompletionActions();
 
-  bool started_{false};          // NOLINT - initializer list
-  int registration_counter_{0};  // NOLINT - initializer list
+  bool started_{false};
+  int registration_counter_{0};
   std::set<int> outstanding_registrations_;
   std::vector<CompletionAction> completion_actions_;
-  bool had_failures_{false};     // NOLINT - initializer list
+  bool had_failures_{false};
   // Ref counted objects have private destructors.
   ~AsyncEventSequencer();
   friend class base::RefCounted<AsyncEventSequencer>;

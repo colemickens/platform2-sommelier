@@ -99,7 +99,7 @@ void AsyncEventSequencer::PossiblyRunCompletionActions() {
     // be scheduled in the future.
     return;
   }
-  for (auto&& completion_action : completion_actions_) {
+  for (const auto& completion_action : completion_actions_) {
     // Should this be put on the message loop or run directly?
     completion_action.Run(!had_failures_);
   }

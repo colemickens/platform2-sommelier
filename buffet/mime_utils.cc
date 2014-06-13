@@ -102,7 +102,7 @@ std::string mime::Combine(const std::string& type, const std::string& subtype,
                           const mime::Parameters& parameters) {
   std::vector<std::string> parts;
   parts.push_back(string_utils::Join('/', type, subtype));
-  for (auto&& pair : parameters) {
+  for (const auto& pair : parameters) {
     parts.push_back(string_utils::Join('=', pair.first,
                                        EncodeParam(pair.second)));
   }
@@ -146,7 +146,7 @@ std::string mime::AppendParameter(const std::string& mime_string,
 std::string mime::GetParameterValue(const std::string& mime_string,
                                     const std::string& paramName) {
   mime::Parameters params = mime::GetParameters(mime_string);
-  for (auto&& pair : params) {
+  for (const auto& pair : params) {
     if (base::strcasecmp(pair.first.c_str(), paramName.c_str()) == 0)
       return pair.second;
   }

@@ -136,7 +136,7 @@ class BuffetHelperProxy {
 
     if (!args.empty()) {
       auto key_values = buffet::data_encoding::WebParamsDecode(args.front());
-      for (auto&& pair : key_values) {
+      for (const auto& pair : key_values) {
         params.insert(std::make_pair(
           pair.first, std::shared_ptr<base::Value>(
               base::Value::CreateStringValue(pair.second))));
@@ -148,7 +148,7 @@ class BuffetHelperProxy {
     dbus::MessageWriter writer(&method_call);
     dbus::MessageWriter dict_writer(nullptr);
     writer.OpenArray("{sv}", &dict_writer);
-    for (auto&& pair : params) {
+    for (const auto& pair : params) {
       dbus::MessageWriter dict_entry_writer(nullptr);
       dict_writer.OpenDictEntry(&dict_entry_writer);
       dict_entry_writer.AppendString(pair.first);
@@ -252,8 +252,8 @@ class BuffetHelperProxy {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* manager_proxy_{nullptr};  // NOLINT - initializer list
-  dbus::ObjectProxy* root_proxy_{nullptr};  // NOLINT - initializer list
+  dbus::ObjectProxy* manager_proxy_{nullptr};
+  dbus::ObjectProxy* root_proxy_{nullptr};
 };
 
 }  // namespace

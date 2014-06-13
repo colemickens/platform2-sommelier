@@ -16,7 +16,7 @@ template<typename T>
 std::vector<typename T::key_type> GetMapKeys(const T& map) {
   std::vector<typename T::key_type> keys;
   keys.reserve(map.size());
-  for (auto&& pair : map)
+  for (const auto& pair : map)
     keys.push_back(pair.first);
   return keys;
 }
@@ -26,7 +26,7 @@ template<typename T>
 std::vector<typename T::mapped_type> GetMapValues(const T& map) {
   std::vector<typename T::mapped_type> values;
   values.reserve(map.size());
-  for (auto&& pair : map)
+  for (const auto& pair : map)
     values.push_back(pair.second);
   return values;
 }
@@ -37,7 +37,7 @@ std::vector<std::pair<typename T::key_type,
                       typename T::mapped_type>> MapToVector(const T& map) {
   std::vector<std::pair<typename T::key_type, typename T::mapped_type>> vector;
   vector.reserve(map.size());
-  for (auto&& pair : map)
+  for (const auto& pair : map)
     vector.push_back(pair);
   return vector;
 }

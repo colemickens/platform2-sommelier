@@ -73,7 +73,7 @@ TEST(Any, Assignments) {
   val2.Clear();
   EXPECT_TRUE(val2.IsEmpty());
 
-  val = std::vector<int>({100, 20, 3});
+  val = std::vector<int>{100, 20, 3};
   auto v = val.Get<std::vector<int>>();
   EXPECT_EQ(100, v[0]);
   EXPECT_EQ(20, v[1]);
@@ -197,7 +197,7 @@ TEST(Any, CustomTypes) {
     std::string name;
     int age;
   };
-  Any val(Person{"Jack", 40});  // NOLINT(whitespace/braces)
+  Any val(Person{"Jack", 40});
   Any val2 = val;
   EXPECT_EQ("Jack", val.Get<Person>().name);
   val.GetPtr<Person>()->name = "Joe";
