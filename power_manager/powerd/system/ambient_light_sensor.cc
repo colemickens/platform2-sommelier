@@ -111,12 +111,14 @@ bool AmbientLightSensor::InitAlsFile() {
   CHECK(!als_file_.HasOpenedFile());
 
   // Search the iio/devices directory for a subdirectory (eg "device0" or
-  // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
+  // "iio:device0") that contains the "[in_]illuminance[0]_{input|raw}" file.
   base::FileEnumerator dir_enumerator(
       device_list_path_, false, base::FileEnumerator::DIRECTORIES);
   const char* input_names[] = {
       "in_illuminance0_input",
+      "in_illuminance_input",
       "in_illuminance0_raw",
+      "in_illuminance_raw",
       "illuminance0_input",
   };
 
