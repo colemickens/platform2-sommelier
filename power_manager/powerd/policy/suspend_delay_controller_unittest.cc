@@ -11,7 +11,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -48,8 +47,7 @@ class TestObserver : public SuspendDelayObserver {
 
 class SuspendDelayControllerTest : public ::testing::Test {
  public:
-  SuspendDelayControllerTest()
-      : controller_(&dbus_sender_, 1 /* initial_delay_id */) {
+  SuspendDelayControllerTest() : controller_(1) {
     controller_.AddObserver(&observer_);
   }
 
@@ -86,19 +84,7 @@ class SuspendDelayControllerTest : public ::testing::Test {
     controller_.HandleSuspendReadiness(info, client);
   }
 
-  // Tests that exactly one SuspendImminent signal has been emitted via
-  // |dbus_sender_| and returns the suspend ID from it.  Clears sent signals
-  // before returning.
-  int GetSuspendId() {
-    EXPECT_EQ(1, dbus_sender_.num_sent_signals());
-    SuspendImminent proto;
-    EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendImminentSignal, &proto));
-    dbus_sender_.ClearSentSignals();
-    return proto.suspend_id();
-  }
-
   TestObserver observer_;
-  DBusSenderStub dbus_sender_;
   SuspendDelayController controller_;
 
   DISALLOW_COPY_AND_ASSIGN(SuspendDelayControllerTest);
@@ -115,7 +101,6 @@ TEST_F(SuspendDelayControllerTest, NoDelays) {
   // suspending -- there are no delays to wait for.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_TRUE(controller_.ready_for_suspend());
 
   // The observer should be notified that it's safe to suspend.
@@ -133,7 +118,6 @@ TEST_F(SuspendDelayControllerTest, SingleDelay) {
   // The controller shouldn't report readiness now; it's waiting on the delay.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
 
   // Tell the controller that the delay is ready and check that the controller
@@ -155,7 +139,6 @@ TEST_F(SuspendDelayControllerTest, UnregisterDelayBeforeRequestingSuspend) {
   // The controller should immediately report readiness.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_TRUE(controller_.ready_for_suspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ready_for_suspend());
@@ -170,7 +153,6 @@ TEST_F(SuspendDelayControllerTest, UnregisterDelayAfterRequestingSuspend) {
   // Request suspending.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
 
   // If the delay is unregistered while the controller is waiting for it, the
@@ -185,7 +167,6 @@ TEST_F(SuspendDelayControllerTest, RegisterDelayAfterRequestingSuspend) {
   // Request suspending before any delays have been registered.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_TRUE(controller_.ready_for_suspend());
 
   // Register a delay now.  The controller should still report readiness.
@@ -198,7 +179,6 @@ TEST_F(SuspendDelayControllerTest, RegisterDelayAfterRequestingSuspend) {
   // Request suspending again.  The controller should say it isn't ready now.
   const int kNextSuspendId = 6;
   controller_.PrepareForSuspend(kNextSuspendId);
-  EXPECT_EQ(kNextSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
 
   HandleSuspendReadiness(delay_id, kNextSuspendId, kClient);
@@ -216,7 +196,6 @@ TEST_F(SuspendDelayControllerTest, Timeout) {
   // The controller should report readiness due to the timeout being hit.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ready_for_suspend());
@@ -234,7 +213,6 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientBeforeRequestingSuspend) {
   // The delay should have been removed.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_TRUE(controller_.ready_for_suspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ready_for_suspend());
@@ -247,7 +225,6 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientAfterRequestingSuspend) {
 
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
 
   // If the client is disconnected while the controller is waiting, it should
@@ -267,13 +244,11 @@ TEST_F(SuspendDelayControllerTest, MultipleSuspendRequests) {
   // Request suspending.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
 
   // Before confirming that the delay is ready, request suspending again.
   const int kNextSuspendId = 6;
   controller_.PrepareForSuspend(kNextSuspendId);
-  EXPECT_EQ(kNextSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
 
   // Report readiness, but do it on behalf of the original suspend attempt.  The
@@ -304,7 +279,6 @@ TEST_F(SuspendDelayControllerTest, MultipleDelays) {
   // until both delays have confirmed their readiness.
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_EQ(kSuspendId, GetSuspendId());
   EXPECT_FALSE(controller_.ready_for_suspend());
   HandleSuspendReadiness(delay_id2, kSuspendId, kClient2);
   EXPECT_FALSE(controller_.ready_for_suspend());

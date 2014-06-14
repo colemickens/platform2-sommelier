@@ -20,6 +20,7 @@
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/input_controller.h"
+#include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 
@@ -62,6 +63,7 @@ typedef scoped_ptr<dbus::Response> (Daemon::*DBusMethodCallMemberFunction)(
 // Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::BacklightControllerObserver,
                public policy::InputController::Delegate,
+               public policy::Suspender::Delegate,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
  public:
@@ -78,14 +80,6 @@ class Daemon : public policy::BacklightControllerObserver,
       policy::BacklightController::BrightnessChangeCause cause,
       policy::BacklightController* source) OVERRIDE;
 
-  // Called by |suspender_| just before a suspend attempt begins.
-  void PrepareForSuspend();
-
-  // Called by |suspender_| after the completion of a suspend/resume cycle
-  // (which did not necessarily succeed).
-  void HandleSuspendAttemptCompletion(bool suspend_was_successful,
-                                      int num_suspend_attempts);
-
   // Overridden from policy::InputController::Delegate:
   virtual void HandleLidClosed() OVERRIDE;
   virtual void HandleLidOpened() OVERRIDE;
@@ -95,6 +89,21 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE;
   virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
       OVERRIDE;
+
+  // Overridden from policy::Suspender::Delegate:
+  virtual int GetInitialSuspendId() OVERRIDE;
+  virtual bool IsLidClosedForSuspend() OVERRIDE;
+  virtual bool ReadSuspendWakeupCount(uint64* wakeup_count) OVERRIDE;
+  virtual void SetSuspendAnnounced(bool announced) OVERRIDE;
+  virtual bool GetSuspendAnnounced() OVERRIDE;
+  virtual void PrepareToSuspend() OVERRIDE;
+  virtual SuspendResult DoSuspend(uint64 wakeup_count,
+                                  bool wakeup_count_valid,
+                                  base::TimeDelta duration) OVERRIDE;
+  virtual void UndoPrepareToSuspend(bool success,
+                                    int num_suspend_attempts) OVERRIDE;
+  virtual void ShutDownForFailedSuspend() OVERRIDE;
+  virtual void ShutDownForDarkResume() OVERRIDE;
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioStateChange(bool active) OVERRIDE;
@@ -237,7 +246,6 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
   scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<system::DarkResume> dark_resume_;
-  scoped_ptr<SuspenderDelegate> suspender_delegate_;
   scoped_ptr<policy::Suspender> suspender_;
 
   scoped_ptr<MetricsCollector> metrics_collector_;

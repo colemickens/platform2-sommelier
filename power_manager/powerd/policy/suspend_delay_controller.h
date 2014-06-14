@@ -30,8 +30,7 @@ class SuspendDelayObserver;
 // time to do last-minute cleanup.
 class SuspendDelayController {
  public:
-  SuspendDelayController(DBusSenderInterface* dbus_sender,
-                         int initial_delay_id);
+  explicit SuspendDelayController(int initial_delay_id);
   ~SuspendDelayController();
 
   bool ready_for_suspend() const { return delay_ids_being_waited_on_.empty(); }
@@ -100,9 +99,6 @@ class SuspendDelayController {
 
   // Invokes OnReadyForSuspend() on |observers_|.
   void NotifyObservers(int suspend_id);
-
-  // Used to emit D-Bus signals.
-  DBusSenderInterface* dbus_sender_;
 
   // Map from delay ID to registered delay.
   typedef std::map<int, DelayInfo> DelayInfoMap;

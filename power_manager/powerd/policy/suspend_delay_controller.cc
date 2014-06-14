@@ -10,7 +10,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -26,16 +25,12 @@ const int kMaxDelayTimeoutMs = 10000;
 
 }  // namespace
 
-SuspendDelayController::SuspendDelayController(DBusSenderInterface* dbus_sender,
-                                               int initial_delay_id)
-    : dbus_sender_(dbus_sender),
-      next_delay_id_(initial_delay_id),
+SuspendDelayController::SuspendDelayController(int initial_delay_id)
+    : next_delay_id_(initial_delay_id),
       current_suspend_id_(0) {
-  DCHECK(dbus_sender_);
 }
 
 SuspendDelayController::~SuspendDelayController() {
-  dbus_sender_ = NULL;
 }
 
 void SuspendDelayController::AddObserver(SuspendDelayObserver* observer) {
@@ -86,11 +81,11 @@ void SuspendDelayController::HandleSuspendReadiness(
   int suspend_id = info.suspend_id();
   LOG(INFO) << "Got notification that delay " << delay_id
             << " (" << GetDelayDescription(delay_id) << ") is ready for "
-            << "suspend attempt " << suspend_id << " from " << dbus_client;
+            << "suspend request " << suspend_id << " from " << dbus_client;
 
   if (suspend_id != current_suspend_id_) {
-    LOG(WARNING) << "Ignoring readiness notification for wrong suspend attempt "
-                 << "(got " << suspend_id << ", currently attempting "
+    LOG(WARNING) << "Ignoring readiness notification for wrong suspend request "
+                 << "(got " << suspend_id << ", currently on "
                  << current_suspend_id_ << ")";
     return;
   }
@@ -130,10 +125,10 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
        it != registered_delays_.end(); ++it)
     delay_ids_being_waited_on_.insert(it->first);
 
-  LOG(INFO) << "Announcing suspend attempt " << current_suspend_id_
+  LOG(INFO) << "Announcing suspend request " << current_suspend_id_
             << " with " << delay_ids_being_waited_on_.size()
             << " pending delay(s) and " << old_count
-            << " outstanding delay(s) from previous attempt";
+            << " outstanding delay(s) from previous request";
   if (delay_ids_being_waited_on_.empty()) {
     PostNotifyObserversTask(current_suspend_id_);
   } else {
@@ -147,10 +142,6 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
     delay_expiration_timer_.Start(FROM_HERE, max_timeout, this,
         &SuspendDelayController::OnDelayExpiration);
   }
-
-  SuspendImminent proto;
-  proto.set_suspend_id(current_suspend_id_);
-  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
 std::string SuspendDelayController::GetDelayDescription(int delay_id) const {

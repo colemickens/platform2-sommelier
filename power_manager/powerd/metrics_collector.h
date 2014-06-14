@@ -59,17 +59,17 @@ class MetricsCollector {
   void HandlePowerStatusUpdate(const system::PowerStatus& status);
   void HandleShutdown(ShutdownReason reason);
 
-  // Called just before a suspend attempt is performed.
+  // Called at the beginning of a suspend request (which may consist of multiple
+  // suspend attempts).
   void PrepareForSuspend();
 
-  // Called after the system has successfully suspended and resumed.
-  // |num_suspend_attempts| contains the number of attempts up to and including
-  // the one in which the system successfully suspended.
+  // Called at the end of a successful suspend request. |num_suspend_attempts|
+  // contains the number of attempts up to and including the one in which the
+  // system successfully suspended.
   void HandleResume(int num_suspend_attempts);
 
-  // Called after a request to suspend the system (that is, a series of one or
-  // more suspend attempts performed in response to e.g. the lid being closed)
-  // is canceled.
+  // Called after a suspend request (that is, a series of one or more suspend
+  // attempts performed in response to e.g. the lid being closed) is canceled.
   void HandleCanceledSuspendRequest(int num_suspend_attempts);
 
   // Generates UMA metrics on when leaving the idle state.

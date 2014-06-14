@@ -25,12 +25,9 @@ namespace policy {
 namespace {
 
 // Various actions that can be returned by TestDelegate::GetActions().
-const char kAnnounce[] = "announce";
 const char kPrepare[] = "prepare";
-const char kCancel[] = "cancel";
 const char kSuspend[] = "suspend";
-const char kAttemptComplete[] = "attempt_complete";
-const char kRequestCanceled[] = "request_canceled";
+const char kUnprepare[] = "unprepare";
 const char kShutDown[] = "shut_down";
 const char kNoActions[] = "";
 
@@ -40,7 +37,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
  public:
   TestDelegate()
       : lid_closed_(false),
-        report_success_for_get_wakeup_count_(true),
+        report_success_for_read_wakeup_count_(true),
         suspend_result_(SUSPEND_SUCCESSFUL),
         wakeup_count_(0),
         suspend_announced_(false),
@@ -51,8 +48,8 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
-  void set_report_success_for_get_wakeup_count(bool success) {
-    report_success_for_get_wakeup_count_ = success;
+  void set_report_success_for_read_wakeup_count(bool success) {
+    report_success_for_read_wakeup_count_ = success;
   }
   void set_suspend_announced(bool announced) { suspend_announced_ = announced; }
   void set_suspend_result(SuspendResult result) {
@@ -65,22 +62,26 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void set_completion_callback(base::Closure callback) {
     completion_callback_ = callback;
   }
+  void set_shutdown_callback(base::Closure callback) {
+    shutdown_callback_ = callback;
+  }
 
   bool suspend_announced() const { return suspend_announced_; }
   uint64 suspend_wakeup_count() const { return suspend_wakeup_count_; }
   bool suspend_wakeup_count_valid() const {
     return suspend_wakeup_count_valid_;
   }
+  const base::TimeDelta& suspend_duration() const { return suspend_duration_; }
   bool suspend_was_successful() const { return suspend_was_successful_; }
   int num_suspend_attempts() const { return num_suspend_attempts_; }
 
   // Delegate implementation:
-  virtual int GetInitialId() OVERRIDE { return 1; }
+  virtual int GetInitialSuspendId() OVERRIDE { return 1; }
 
-  virtual bool IsLidClosed() OVERRIDE { return lid_closed_; }
+  virtual bool IsLidClosedForSuspend() OVERRIDE { return lid_closed_; }
 
-  virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
-    if (!report_success_for_get_wakeup_count_)
+  virtual bool ReadSuspendWakeupCount(uint64* wakeup_count) OVERRIDE {
+    if (!report_success_for_read_wakeup_count_)
       return false;
     *wakeup_count = wakeup_count_;
     return true;
@@ -92,85 +93,79 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   virtual bool GetSuspendAnnounced() OVERRIDE { return suspend_announced_; }
 
-  virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    AppendAction(kAnnounce);
+  virtual void PrepareToSuspend() OVERRIDE {
+    AppendAction(kPrepare);
   }
 
-  virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
-    AppendAction(kCancel);
-  }
-
-  virtual SuspendResult Suspend(uint64 wakeup_count,
-                                bool wakeup_count_valid,
-                                base::TimeDelta duration) OVERRIDE {
+  virtual SuspendResult DoSuspend(uint64 wakeup_count,
+                                  bool wakeup_count_valid,
+                                  base::TimeDelta duration) OVERRIDE {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
     suspend_duration_ = duration;
-    if (!suspend_callback_.is_null()) {
-      base::Closure cb = suspend_callback_;
-      suspend_callback_.Reset();
-      cb.Run();
-    }
+    RunAndResetCallback(&suspend_callback_);
     return suspend_result_;
   }
 
-  virtual void PrepareForSuspend() { AppendAction(kPrepare); }
-
-  virtual void HandleSuspendAttemptCompletion(
-      bool success,
-      int num_suspend_attempts) OVERRIDE {
-    AppendAction(kAttemptComplete);
+  virtual void UndoPrepareToSuspend(bool success,
+                                    int num_suspend_attempts) OVERRIDE {
+    AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;
-    if (!completion_callback_.is_null()) {
-      base::Closure cb = completion_callback_;
-      completion_callback_.Reset();
-      cb.Run();
-    }
-  }
-
-  virtual void HandleCanceledSuspendRequest(int num_suspend_attempts) OVERRIDE {
-    AppendAction(kRequestCanceled);
-    num_suspend_attempts_ = num_suspend_attempts;
+    RunAndResetCallback(&completion_callback_);
   }
 
   virtual void ShutDownForFailedSuspend() OVERRIDE {
     AppendAction(kShutDown);
+    RunAndResetCallback(&shutdown_callback_);
   }
 
-  virtual void ShutDownForDarkResume() OVERRIDE { AppendAction(kShutDown); }
+  virtual void ShutDownForDarkResume() OVERRIDE {
+    AppendAction(kShutDown);
+    RunAndResetCallback(&shutdown_callback_);
+  }
 
  private:
-  // Value returned by IsLidClosed().
+  // If |callback| is non-null, runs and resets it.
+  static void RunAndResetCallback(base::Closure* callback) {
+    if (callback->is_null())
+      return;
+
+    base::Closure callback_copy = *callback;
+    callback->Reset();
+    callback_copy.Run();
+  }
+
+  // Value returned by IsLidClosedForSuspend().
   bool lid_closed_;
 
-  // Should GetWakeupCount() and Suspend() report success?
-  bool report_success_for_get_wakeup_count_;
+  // Should ReadSuspendWakeupCount() and DoSuspend() report success?
+  bool report_success_for_read_wakeup_count_;
   SuspendResult suspend_result_;
 
-  // Count that should be returned by GetWakeupCount().
+  // Count that should be returned by ReadSuspendWakeupCount().
   uint64 wakeup_count_;
 
-  // Value updated by SetSuspendAnnounced() and returned by
-  // GetSuspendAnnounced().
+  // Updated by SetSuspendAnnounced() and returned by GetSuspendAnnounced().
   bool suspend_announced_;
 
-  // Callback that will be run once (if non-null) when Suspend() is called.
+  // Callback that will be run once (if non-null) when DoSuspend() is called.
   base::Closure suspend_callback_;
 
   // Callback that will be run once (if non-null) when
-  // HandleSuspendAttemptCompletion() is called.
+  // UndoPrepareToSuspend() is called.
   base::Closure completion_callback_;
 
-  // Arguments passed to latest invocation of Suspend().
+  // Callback that will be run once (if non-null) when ShutDown*() is called.
+  base::Closure shutdown_callback_;
+
+  // Arguments passed to last invocation of DoSuspend().
   uint64 suspend_wakeup_count_;
   bool suspend_wakeup_count_valid_;
   base::TimeDelta suspend_duration_;
 
-  // Arguments passed to last invocation of HandleSuspendAttemptCompletion().
-  // |num_suspend_attempts_| is also updated in response to
-  // HandleCanceledSuspendRequest().
+  // Arguments passed to last invocation of UndoPrepareToSuspend().
   bool suspend_was_successful_;
   int num_suspend_attempts_;
 
@@ -192,6 +187,24 @@ class SuspenderTest : public testing::Test {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
     suspender_.Init(&delegate_, &dbus_sender_, &dark_resume_, &prefs_);
+  }
+
+  // Returns the ID from a SuspendImminent signal at |position|, or -1 if the
+  // signal wasn't sent.
+  int GetSuspendImminentId(int position) {
+    SuspendImminent proto;
+    if (!dbus_sender_.GetSentSignal(position, kSuspendImminentSignal, &proto))
+      return -1;
+    return proto.suspend_id();
+  }
+
+  // Returns the ID from a SuspendDone signal at |position|, or -1 if the signal
+  // wasn't sent.
+  int GetSuspendDoneId(int position) {
+    SuspendDone proto;
+    if (!dbus_sender_.GetSentSignal(position, kSuspendDoneSignal, &proto))
+      return -1;
+    return proto.suspend_id();
   }
 
   FakePrefs prefs_;
@@ -217,11 +230,8 @@ TEST_F(SuspenderTest, SuspendResume) {
   delegate_.set_wakeup_count(kWakeupCount);
   suspender_.RequestSuspend();
   const int suspend_id = test_api_.suspend_id();
-  SuspendImminent imminent_proto;
-  EXPECT_TRUE(
-      dbus_sender_.GetSentSignal(0, kSuspendImminentSignal, &imminent_proto));
-  EXPECT_EQ(suspend_id, imminent_proto.suspend_id());
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 
   // Advance the time and register a callback to advance the time again
@@ -237,8 +247,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   // suspended, it should immediately suspend the system.
   dbus_sender_.ClearSentSignals();
   suspender_.OnReadyForSuspend(suspend_id);
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
   EXPECT_TRUE(delegate_.suspend_was_successful());
@@ -249,12 +258,12 @@ TEST_F(SuspenderTest, SuspendResume) {
   SuspendDone done_proto;
   EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
-  EXPECT_EQ((kResumeTime - kSuspendTime).ToInternalValue(),
+  EXPECT_EQ((kResumeTime - kRequestTime).ToInternalValue(),
             done_proto.suspend_duration());
   EXPECT_FALSE(delegate_.suspend_announced());
 
-  // A retry timeout shouldn't be set.
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  // A resuspend timeout shouldn't be set.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
 // Tests that Suspender doesn't pass a wakeup count to the delegate when it was
@@ -262,12 +271,11 @@ TEST_F(SuspenderTest, SuspendResume) {
 TEST_F(SuspenderTest, MissingWakeupCount) {
   Init();
 
-  delegate_.set_report_success_for_get_wakeup_count(false);
+  delegate_.set_report_success_for_read_wakeup_count(false);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_wakeup_count_valid());
 }
 
@@ -277,8 +285,8 @@ TEST_F(SuspenderTest, IgnoreDuplicateSuspendRequests) {
   Init();
 
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  int orig_suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  const int orig_suspend_id = test_api_.suspend_id();
 
   // The suspend ID should be left unchanged after a second call to
   // RequestSuspend().
@@ -295,41 +303,26 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   delegate_.set_wakeup_count(kOrigWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  int orig_suspend_id = test_api_.suspend_id();
+  const int suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 
-  dbus_sender_.ClearSentSignals();
-  suspender_.OnReadyForSuspend(orig_suspend_id);
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
-  EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
-  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_FALSE(delegate_.suspend_was_successful());
-  EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(orig_suspend_id, done_proto.suspend_id());
-  EXPECT_FALSE(delegate_.suspend_announced());
-
-  // The timeout should trigger a new suspend announcement.
   const uint64 kRetryWakeupCount = 67;
   delegate_.set_wakeup_count(kRetryWakeupCount);
-  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  int new_suspend_id = test_api_.suspend_id();
-  EXPECT_NE(orig_suspend_id, new_suspend_id);
-
   dbus_sender_.ClearSentSignals();
-  suspender_.OnReadyForSuspend(new_suspend_id);
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  suspender_.OnReadyForSuspend(suspend_id);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+
+  // The timeout should trigger another suspend attempt.
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(kRetryWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_FALSE(delegate_.suspend_was_successful());
-  EXPECT_EQ(2, delegate_.num_suspend_attempts());
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(new_suspend_id, done_proto.suspend_id());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
 
   // A second suspend request should be ignored so we'll avoid trying to
   // re-suspend immediately if an attempt fails while the lid is closed
@@ -338,34 +331,33 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   const uint64 kExternalWakeupCount = 32542;
   suspender_.RequestSuspendWithExternalWakeupCount(kExternalWakeupCount);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
 
-  // Report success this time and check that the timeout isn't registered.
-  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  int final_suspend_id = test_api_.suspend_id();
-  EXPECT_NE(new_suspend_id, final_suspend_id);
-  dbus_sender_.ClearSentSignals();
+  // Report success this time and check that the timer isn't running.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
-  suspender_.OnReadyForSuspend(final_suspend_id);
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_NE(kExternalWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(3, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(final_suspend_id, done_proto.suspend_id());
+  EXPECT_EQ(suspend_id, GetSuspendDoneId(0));
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Suspend successfully again and check that the number of attempts are
   // reported as 1 now.
+  dbus_sender_.ClearSentSignals();
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  const int new_suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(new_suspend_id, GetSuspendImminentId(0));
+
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(new_suspend_id);
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  EXPECT_EQ(new_suspend_id, GetSuspendDoneId(0));
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
 // Tests that the system is shut down after repeated suspend failures.
@@ -375,23 +367,14 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
 
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
-  EXPECT_FALSE(delegate_.suspend_was_successful());
-  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // Proceed through all retries, reporting failure each time.
-  for (int i = 1; i <= pref_num_retries_; ++i) {
-    EXPECT_TRUE(test_api_.TriggerRetryTimeout()) << "Retry #" << i;
-    EXPECT_EQ(kAnnounce, delegate_.GetActions()) << "Retry #" << i;
-    suspender_.OnReadyForSuspend(test_api_.suspend_id());
-    EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-              delegate_.GetActions())
-        << "Retry #" << i;
-    EXPECT_FALSE(delegate_.suspend_was_successful());
-    EXPECT_EQ(i + 1, delegate_.num_suspend_attempts());
+  for (int i = 1; i <= pref_num_retries_ - 1; ++i) {
+    EXPECT_TRUE(test_api_.TriggerResuspendTimeout()) << "Retry #" << i;
+    EXPECT_EQ(kSuspend, delegate_.GetActions()) << "Retry #" << i;
   }
 
   // Check that another suspend request doesn't reset the retry count
@@ -399,10 +382,10 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
   suspender_.RequestSuspend();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // On the last failed attempt, the system should shut down immediately.
-  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kShutDown, delegate_.GetActions());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  // After the last failed attempt, the system should shut down immediately.
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kShutDown, NULL), delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
 // Tests that OnReadyForSuspend() doesn't trigger a call to Suspend() if
@@ -413,48 +396,48 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 
   // User activity should cancel suspending.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   EXPECT_TRUE(delegate_.suspend_announced());
-  dbus_sender_.ClearSentSignals();
-  suspender_.HandleUserActivity();
 
-  SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(test_api_.suspend_id(), done_proto.suspend_id());
-  EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
+  suspender_.HandleUserActivity();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
   EXPECT_FALSE(delegate_.suspend_announced());
-  EXPECT_EQ(JoinActions(kCancel, kRequestCanceled, NULL),
-            delegate_.GetActions());
-  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
+
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // The lid being opened should also cancel.
-  suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   dbus_sender_.ClearSentSignals();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   suspender_.HandleLidOpened();
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(JoinActions(kCancel, kRequestCanceled, NULL),
-            delegate_.GetActions());
-  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // The request should also be canceled if the system starts shutting down.
-  suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   dbus_sender_.ClearSentSignals();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   suspender_.HandleShutdown();
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(JoinActions(kCancel, kRequestCanceled, NULL),
-            delegate_.GetActions());
-  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Subsequent requests after shutdown has started should be ignored.
   suspender_.RequestSuspend();
@@ -467,27 +450,20 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
   Init();
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
-  EXPECT_FALSE(delegate_.suspend_was_successful());
-  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // Fail a second time.
-  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // This time, report user activity first, which should cancel the request.
+  suspender_.HandleUserActivity();
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(2, delegate_.num_suspend_attempts());
-
-  // This time, also report user activity, which should cancel the request.
-  suspender_.HandleUserActivity();
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kRequestCanceled, delegate_.GetActions());
-  EXPECT_EQ(2, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
 // Tests that Chrome-reported user activity received while suspending with
@@ -499,28 +475,23 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   // Report user activity before powerd_suspend is executed and check that
   // Suspender still suspends when OnReadyForSuspend() is called.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   suspender_.HandleUserActivity();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
 
   // Report user activity after powerd_suspend fails and check that the
-  // retry timeout isn't removed.
+  // resuspend timer isn't stopped.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
   suspender_.HandleUserActivity();
 
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
-  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
 }
 
 // Tests that expected wakeup counts passed to
@@ -532,37 +503,35 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   const uint64 kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
   suspender_.RequestSuspendWithExternalWakeupCount(kWakeupCount - 1);
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Make the delegate report that powerd_suspend reported a wakeup count
   // mismatch. Suspender should avoid retrying after a mismatch when using an
   // external wakeup count.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_EQ(kWakeupCount - 1, delegate_.suspend_wakeup_count());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Send another suspend request with the current wakeup count. Report failure
-  // and check that the suspend attempt is retried.
+  // and check that the suspend attempt is retried using the external wakeup
+  // count.
   suspender_.RequestSuspendWithExternalWakeupCount(kWakeupCount);
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
 
   // Let the retry succeed and check that another retry isn't scheduled.
-  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
-            delegate_.GetActions());
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
 // Tests that the SuspendDone signal contains a zero duration rather than a
@@ -570,9 +539,9 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
 // resume.
 TEST_F(SuspenderTest, SystemClockGoesBackward) {
   Init();
+  test_api_.SetCurrentWallTime(base::Time::FromInternalValue(5000));
   suspender_.RequestSuspend();
 
-  test_api_.SetCurrentWallTime(base::Time::FromInternalValue(5000));
   delegate_.set_suspend_callback(
       base::Bind(&Suspender::TestApi::SetCurrentWallTime,
                  base::Unretained(&test_api_),
@@ -585,26 +554,47 @@ TEST_F(SuspenderTest, SystemClockGoesBackward) {
 }
 
 // Tests that things don't go haywire when
-// Suspender::Delegate::HandleSuspendAttemptCompletion() synchronously requests
-// another suspend attempt. Previously, this could result in the new suspend
-// attempt being started before the previous one had completed.
-TEST_F(SuspenderTest, CompletionCallbackStartsNewAttempt) {
-  // Instruct the delegate to report failure and to start another suspend
-  // attempt when the current one finishes.
+// Suspender::Delegate::UndoPrepareToSuspend() synchronously starts another
+// suspend request. Previously, this could result in the new request being
+// started before the previous one had completed.
+TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
+  // Instruct the delegate to send another suspend request when the current one
+  // finishes.
   Init();
   suspender_.RequestSuspend();
-  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   delegate_.set_completion_callback(
       base::Bind(&Suspender::RequestSuspend, base::Unretained(&suspender_)));
 
-  // Check that the SuspendDone signal from the first attempt contains the first
-  // attempt's ID.
+  // Check that the SuspendDone signal from the first request contains the first
+  // request's ID, and that a second request was started immediately.
   dbus_sender_.ClearSentSignals();
   const int kOldSuspendId = test_api_.suspend_id();
   suspender_.OnReadyForSuspend(kOldSuspendId);
-  SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
-  EXPECT_EQ(kOldSuspendId, done_proto.suspend_id());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, kPrepare, NULL),
+            delegate_.GetActions());
+  EXPECT_EQ(kOldSuspendId, GetSuspendDoneId(0));
+  const int kNewSuspendId = test_api_.suspend_id();
+  EXPECT_NE(kOldSuspendId, kNewSuspendId);
+  EXPECT_EQ(kNewSuspendId, GetSuspendImminentId(1));
+
+  // Finish the second request.
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(kNewSuspendId);
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+  EXPECT_EQ(kNewSuspendId, GetSuspendDoneId(0));
+  dbus_sender_.ClearSentSignals();
+
+  // Now make the delegate's shutdown method report that the system is shutting
+  // down.
+  delegate_.set_shutdown_callback(
+      base::Bind(&Suspender::HandleShutdown, base::Unretained(&suspender_)));
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  dark_resume_.set_action(system::DarkResumeInterface::SHUT_DOWN);
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
 }
 
 // Tests that a SuspendDone signal is emitted at startup and the "suspend
@@ -618,6 +608,117 @@ TEST_F(SuspenderTest, SendSuspendDoneAtStartupForAbandonedAttempt) {
   EXPECT_EQ(0, proto.suspend_id());
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), proto.suspend_duration());
   EXPECT_FALSE(delegate_.suspend_announced());
+}
+
+TEST_F(SuspenderTest, DarkResume) {
+  Init();
+  const int kWakeupCount = 45;
+  delegate_.set_wakeup_count(kWakeupCount);
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  const int kSuspendId = test_api_.suspend_id();
+  EXPECT_EQ(kSuspendId, GetSuspendImminentId(0));
+
+  // Instruct |dark_resume_| to request a ten-second suspend and report that the
+  // system did a dark resume.
+  const int64 kSuspendSec = 10;
+  dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
+  dark_resume_.set_in_dark_resume(true);
+  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(kSuspendId);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
+  EXPECT_EQ(kSuspendSec, delegate_.suspend_duration().InSeconds());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+
+  // The system should resuspend for another ten seconds, but without using the
+  // wakeup count this time. Make it do a normal resume.
+  dark_resume_.set_in_dark_resume(false);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_wakeup_count_valid());
+  EXPECT_EQ(kSuspendSec, delegate_.suspend_duration().InSeconds());
+  EXPECT_EQ(kSuspendId, GetSuspendDoneId(0));
+
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+}
+
+TEST_F(SuspenderTest, DarkResumeShutDown) {
+  Init();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  dark_resume_.set_action(system::DarkResumeInterface::SHUT_DOWN);
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
+}
+
+TEST_F(SuspenderTest, DarkResumeRetry) {
+  pref_num_retries_ = 2;
+  Init();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+
+  // Suspend for ten seconds.
+  const int64 kSuspendSec = 10;
+  dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
+  dark_resume_.set_in_dark_resume(true);
+  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Now make one resuspend attempt while in dark resume fail and a second
+  // attempt succeed. The successful attempt should reset the retry counter.
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Fail to resuspend one time short of the retry limit.
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
+  for (int i = 0; i < pref_num_retries_; ++i) {
+    SCOPED_TRACE(base::StringPrintf("Attempt #%d", i));
+    EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+    EXPECT_EQ(kSuspend, delegate_.GetActions());
+    EXPECT_FALSE(delegate_.suspend_wakeup_count_valid());
+    EXPECT_EQ(kSuspendSec, delegate_.suspend_duration().InSeconds());
+  }
+
+  // The next failure should result in the system shutting down.
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kShutDown, NULL), delegate_.GetActions());
+}
+
+TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
+  Init();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+
+  // Suspend successfully once and do a dark resume.
+  dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
+  dark_resume_.set_in_dark_resume(true);
+  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(10));
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Report failure for the first attempt to resuspend from dark resume; then
+  // report success for the second attempt.
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  dark_resume_.set_in_dark_resume(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+
+  // Check that the single initial suspend attempt is reported rather than the
+  // two attempts that occurred while in dark resume.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+  EXPECT_TRUE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
 }
 
 }  // namespace policy

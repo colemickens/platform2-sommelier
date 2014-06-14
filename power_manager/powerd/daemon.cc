@@ -28,7 +28,6 @@
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
-#include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/dark_resume.h"
@@ -329,137 +328,6 @@ class Daemon::StateControllerDelegate
   DISALLOW_COPY_AND_ASSIGN(StateControllerDelegate);
 };
 
-// Performs actions on behalf of Suspender.
-class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
- public:
-  SuspenderDelegate(Daemon* daemon) : daemon_(daemon) {}
-  virtual ~SuspenderDelegate() {}
-
-  // Delegate implementation:
-  virtual int GetInitialId() OVERRIDE {
-    // Take powerd's PID modulo 2**15 (/proc/sys/kernel/pid_max is currently
-    // 2**15, but just in case...) and multiply it by 2**16, leaving it able to
-    // fit in a signed 32-bit int. This allows for 2**16 suspend attempts and
-    // suspend delays per powerd run before wrapping or intruding on another
-    // run's ID range (neither of which should be particularly problematic, but
-    // doing this reduces the chances of a confused client that's using stale
-    // IDs from a previous powerd run being able to conflict with the new run's
-    // IDs).
-    return (getpid() % 32768) * 65536 + 1;
-  }
-
-  virtual bool IsLidClosed() OVERRIDE {
-    return daemon_->input_->QueryLidState() == LID_CLOSED;
-  }
-
-  virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
-    DCHECK(wakeup_count);
-    base::FilePath path(kWakeupCountPath);
-    std::string buf;
-    if (base::ReadFileToString(path, &buf)) {
-      base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-      if (base::StringToUint64(buf, wakeup_count))
-        return true;
-
-      LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
-    } else {
-      LOG(ERROR) << "Could not read " << kWakeupCountPath;
-    }
-    return false;
-  }
-
-  virtual void SetSuspendAnnounced(bool announced) OVERRIDE {
-    if (announced) {
-      if (base::WriteFile(daemon_->suspend_announced_path_, NULL, 0) < 0) {
-        PLOG(ERROR) << "Couldn't create "
-                    << daemon_->suspend_announced_path_.value();
-      }
-    } else {
-      if (!base::DeleteFile(daemon_->suspend_announced_path_, false)) {
-        PLOG(ERROR) << "Couldn't delete "
-                    << daemon_->suspend_announced_path_.value();
-      }
-    }
-  }
-
-  virtual bool GetSuspendAnnounced() OVERRIDE {
-    return base::PathExists(daemon_->suspend_announced_path_);
-  }
-
-  virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    // When going to suspend, notify the backlight controller so it can turn
-    // the backlight off and tell the kernel to resume the current level
-    // after resuming.  This must occur before Chrome is told that the system
-    // is going to suspend (Chrome turns the display back on while leaving
-    // the backlight off).
-    daemon_->SetBacklightsSuspended(true);
-  }
-
-  virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
-    // Undo the earlier call.
-    daemon_->SetBacklightsSuspended(false);
-  }
-
-  virtual void PrepareForSuspend() {
-    daemon_->PrepareForSuspend();
-  }
-
-  virtual SuspendResult Suspend(uint64 wakeup_count,
-                                bool wakeup_count_valid,
-                                base::TimeDelta duration) OVERRIDE {
-    std::string args;
-    if (wakeup_count_valid) {
-      args += base::StringPrintf(" --suspend_wakeup_count_valid"
-                                 " --suspend_wakeup_count %" PRIu64,
-                                 wakeup_count);
-    }
-    if (duration != base::TimeDelta()) {
-      args += base::StringPrintf(" --suspend_duration %" PRId64,
-                                 duration.InSeconds());
-    }
-
-    // These exit codes are defined in scripts/powerd_suspend.
-    switch (RunSetuidHelper("suspend", args, true)) {
-      case 0:
-        return SUSPEND_SUCCESSFUL;
-      case 1:
-        return SUSPEND_FAILED;
-      case 2:  // Canceled before write to wakeup_count.
-        return SUSPEND_CANCELED;
-      case 3:  // Canceled after write to wakeup_count.
-        return SUSPEND_CANCELED;
-      default:
-        LOG(ERROR) << "Treating unexpected exit code as suspend failure";
-        return SUSPEND_FAILED;
-    }
-  }
-
-  virtual void HandleSuspendAttemptCompletion(
-      bool suspend_was_successful,
-      int num_suspend_attempts) OVERRIDE {
-    daemon_->HandleSuspendAttemptCompletion(suspend_was_successful,
-                                            num_suspend_attempts);
-  }
-
-  virtual void HandleCanceledSuspendRequest(int num_suspend_attempts) {
-    daemon_->metrics_collector_->HandleCanceledSuspendRequest(
-        num_suspend_attempts);
-  }
-
-  virtual void ShutDownForFailedSuspend() OVERRIDE {
-    daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_SUSPEND_FAILED);
-  }
-
-  virtual void ShutDownForDarkResume() OVERRIDE {
-    daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_DARK_RESUME);
-  }
-
- private:
-  Daemon* daemon_;  // weak
-
-  DISALLOW_COPY_AND_ASSIGN(SuspenderDelegate);
-};
-
 Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
                const base::FilePath& read_only_prefs_dir,
                const base::FilePath& run_dir)
@@ -481,7 +349,6 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       power_supply_(new system::PowerSupply),
       dark_resume_(new system::DarkResume),
-      suspender_delegate_(new SuspenderDelegate(this)),
       suspender_(new policy::Suspender),
       metrics_collector_(new MetricsCollector),
       shutting_down_(false),
@@ -578,8 +445,7 @@ void Daemon::Init() {
   OnPowerStatusUpdate();
 
   dark_resume_->Init(power_supply_.get(), prefs_.get());
-  suspender_->Init(suspender_delegate_.get(), dbus_sender_.get(),
-                   dark_resume_.get(), prefs_.get());
+  suspender_->Init(this, dbus_sender_.get(), dark_resume_.get(), prefs_.get());
 
   CHECK(input_->Init(prefs_.get(), udev_.get()));
   input_controller_->Init(input_.get(), this, display_watcher_.get(),
@@ -641,65 +507,6 @@ void Daemon::OnBrightnessChanged(
   }
 }
 
-void Daemon::PrepareForSuspend() {
-  // This command is run synchronously to ensure that it finishes before the
-  // system is suspended.
-  // TODO(derat): Remove this once it's logged by the kernel:
-  // http://crosbug.com/p/16132
-  if (log_suspend_with_mosys_eventlog_)
-    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
-
-  // Do not let suspend change the console terminal.
-  if (lock_vt_before_suspend_)
-    RunSetuidHelper("lock_vt", "", true);
-
-  // Touch a file that crash-reporter can inspect later to determine
-  // whether the system was suspended while an unclean shutdown occurred.
-  // If the file already exists, assume that crash-reporter hasn't seen it
-  // yet and avoid unlinking it after resume.
-  created_suspended_state_file_ = false;
-  const base::FilePath kStatePath(kSuspendedStatePath);
-  if (!base::PathExists(kStatePath)) {
-    if (base::WriteFile(kStatePath, NULL, 0) == 0)
-      created_suspended_state_file_ = true;
-    else
-      LOG(WARNING) << "Unable to create " << kSuspendedStatePath;
-  }
-
-  power_supply_->SetSuspended(true);
-  audio_client_->MuteSystem();
-  metrics_collector_->PrepareForSuspend();
-}
-
-void Daemon::HandleSuspendAttemptCompletion(bool suspend_was_successful,
-                                            int num_suspend_attempts) {
-  SetBacklightsSuspended(false);
-  audio_client_->RestoreMutedState();
-  power_supply_->SetSuspended(false);
-
-  // Allow virtual terminal switching again.
-  if (lock_vt_before_suspend_)
-    RunSetuidHelper("unlock_vt", "", true);
-
-  if (created_suspended_state_file_) {
-    if (!base::DeleteFile(base::FilePath(kSuspendedStatePath), false))
-      LOG(ERROR) << "Failed to delete " << kSuspendedStatePath;
-  }
-
-  if (suspend_was_successful)
-    metrics_collector_->HandleResume(num_suspend_attempts);
-
-  // TODO(derat): Remove this once it's logged by the kernel:
-  // http://crosbug.com/p/16132
-  if (log_suspend_with_mosys_eventlog_)
-    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
-
-  // StateController may synchronously trigger another suspend attempt if the
-  // lid is still closed. Notify it last to ensure that all other cleanup is
-  // already done.
-  state_controller_->HandleResume();
-}
-
 void Daemon::HandleLidClosed() {
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(LID_CLOSED);
@@ -736,6 +543,156 @@ void Daemon::HandleMissingPowerButtonAcknowledgment() {
 
 void Daemon::ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) {
   metrics_collector_->SendPowerButtonAcknowledgmentDelayMetric(delay);
+}
+
+int Daemon::GetInitialSuspendId() {
+  // Take powerd's PID modulo 2**15 (/proc/sys/kernel/pid_max is currently
+  // 2**15, but just in case...) and multiply it by 2**16, leaving it able to
+  // fit in a signed 32-bit int. This allows for 2**16 suspend attempts and
+  // suspend delays per powerd run before wrapping or intruding on another
+  // run's ID range (neither of which should be particularly problematic, but
+  // doing this reduces the chances of a confused client that's using stale
+  // IDs from a previous powerd run being able to conflict with the new run's
+  // IDs).
+  return (getpid() % 32768) * 65536 + 1;
+}
+
+bool Daemon::IsLidClosedForSuspend() {
+  return input_->QueryLidState() == LID_CLOSED;
+}
+
+bool Daemon::ReadSuspendWakeupCount(uint64* wakeup_count) {
+  DCHECK(wakeup_count);
+  base::FilePath path(kWakeupCountPath);
+  std::string buf;
+  if (base::ReadFileToString(path, &buf)) {
+    base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
+    if (base::StringToUint64(buf, wakeup_count))
+      return true;
+
+    LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
+  } else {
+    LOG(ERROR) << "Could not read " << kWakeupCountPath;
+  }
+  return false;
+}
+
+void Daemon::SetSuspendAnnounced(bool announced) {
+  if (announced) {
+    if (base::WriteFile(suspend_announced_path_, NULL, 0) < 0)
+      PLOG(ERROR) << "Couldn't create " << suspend_announced_path_.value();
+  } else {
+    if (!base::DeleteFile(suspend_announced_path_, false))
+      PLOG(ERROR) << "Couldn't delete " << suspend_announced_path_.value();
+  }
+}
+
+bool Daemon::GetSuspendAnnounced() {
+  return base::PathExists(suspend_announced_path_);
+}
+
+void Daemon::PrepareToSuspend() {
+  // Before announcing the suspend request, notify the backlight controller so
+  // it can turn the backlight off and tell the kernel to resume the current
+  // level after resuming.  This must occur before Chrome is told that the
+  // system is going to suspend (Chrome turns the display back on while leaving
+  // the backlight off).
+  SetBacklightsSuspended(true);
+
+  // Do not let suspend change the console terminal.
+  if (lock_vt_before_suspend_)
+    RunSetuidHelper("lock_vt", "", true);
+
+  power_supply_->SetSuspended(true);
+  audio_client_->MuteSystem();
+  metrics_collector_->PrepareForSuspend();
+}
+
+policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
+    uint64 wakeup_count,
+    bool wakeup_count_valid,
+    base::TimeDelta duration) {
+  // Touch a file that crash-reporter can inspect later to determine
+  // whether the system was suspended while an unclean shutdown occurred.
+  // If the file already exists, assume that crash-reporter hasn't seen it
+  // yet and avoid unlinking it after resume.
+  created_suspended_state_file_ = false;
+  const base::FilePath kStatePath(kSuspendedStatePath);
+  if (!base::PathExists(kStatePath)) {
+    if (base::WriteFile(kStatePath, NULL, 0) == 0)
+      created_suspended_state_file_ = true;
+    else
+      PLOG(ERROR) << "Unable to create " << kSuspendedStatePath;
+  }
+
+  // This command is run synchronously to ensure that it finishes before the
+  // system is suspended.
+  // TODO(derat): Remove this once it's logged by the kernel:
+  // http://crosbug.com/p/16132
+  if (log_suspend_with_mosys_eventlog_)
+    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+
+  std::string args;
+  if (wakeup_count_valid) {
+    args += base::StringPrintf(" --suspend_wakeup_count_valid"
+                               " --suspend_wakeup_count %" PRIu64,
+                               wakeup_count);
+  }
+  if (duration != base::TimeDelta()) {
+    args += base::StringPrintf(" --suspend_duration %" PRId64,
+                               duration.InSeconds());
+  }
+  const int exit_code = RunSetuidHelper("suspend", args, true);
+
+  // TODO(derat): Remove this once it's logged by the kernel:
+  // http://crosbug.com/p/16132
+  if (log_suspend_with_mosys_eventlog_)
+    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
+
+  if (created_suspended_state_file_) {
+    if (!base::DeleteFile(base::FilePath(kSuspendedStatePath), false))
+      PLOG(ERROR) << "Failed to delete " << kSuspendedStatePath;
+  }
+
+  // These exit codes are defined in powerd/powerd_suspend.
+  switch (exit_code) {
+    case 0:
+      return SUSPEND_SUCCESSFUL;
+    case 1:
+      return SUSPEND_FAILED;
+    case 2:  // Wakeup event received before write to wakeup_count.
+    case 3:  // Wakeup event received after write to wakeup_count.
+      return SUSPEND_CANCELED;
+    default:
+      LOG(ERROR) << "Treating unexpected exit code " << exit_code
+                 << " as suspend failure";
+      return SUSPEND_FAILED;
+  }
+}
+
+void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
+  audio_client_->RestoreMutedState();
+  power_supply_->SetSuspended(false);
+
+  // Allow virtual terminal switching again.
+  if (lock_vt_before_suspend_)
+    RunSetuidHelper("unlock_vt", "", true);
+
+  SetBacklightsSuspended(false);
+  state_controller_->HandleResume();
+
+  if (success)
+    metrics_collector_->HandleResume(num_suspend_attempts);
+  else if (num_suspend_attempts > 0)
+    metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts);
+}
+
+void Daemon::ShutDownForFailedSuspend() {
+  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_SUSPEND_FAILED);
+}
+
+void Daemon::ShutDownForDarkResume() {
+  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_DARK_RESUME);
 }
 
 void Daemon::OnAudioStateChange(bool active) {
