@@ -225,7 +225,8 @@ class Suspender : public SuspendDelayObserver {
   // Notifies clients that have registered delays that the system is about
   // to suspend. Internal implementation shared by RequestSuspend() and
   // RequestSuspendWithExternalWakeupCount().
-  void StartSuspendAttempt();
+  void StartSuspendAttempt(uint64 external_wakeup_count,
+                           bool use_external_wakeup_count);
 
   // Actually suspends the system. Before this method is called, the system
   // should be in a state where it's truly ready to suspend (i.e. no

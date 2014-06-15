@@ -85,15 +85,11 @@ void Suspender::Init(Delegate *delegate,
 }
 
 void Suspender::RequestSuspend() {
-  got_external_wakeup_count_ = false;
-  StartSuspendAttempt();
+  StartSuspendAttempt(0, false);
 }
 
 void Suspender::RequestSuspendWithExternalWakeupCount(uint64 wakeup_count) {
-  wakeup_count_ = wakeup_count;
-  wakeup_count_valid_ = true;
-  got_external_wakeup_count_ = true;
-  StartSuspendAttempt();
+  StartSuspendAttempt(wakeup_count, true);
 }
 
 void Suspender::RegisterSuspendDelay(
@@ -187,7 +183,8 @@ void Suspender::OnReadyForSuspend(int suspend_id) {
   }
 }
 
-void Suspender::StartSuspendAttempt() {
+void Suspender::StartSuspendAttempt(uint64 external_wakeup_count,
+                                    bool use_external_wakeup_count) {
   // Suspend shouldn't be requested after the system has started shutting
   // down, but if it is, avoid doing anything.
   if (shutting_down_) {
@@ -195,12 +192,18 @@ void Suspender::StartSuspendAttempt() {
     return;
   }
 
-  if (waiting_for_readiness_)
+  // Ignore the request if a suspend attempt has already been started or if a
+  // retry is already scheduled.
+  if (waiting_for_readiness_ || retry_suspend_timer_.IsRunning())
     return;
 
-  retry_suspend_timer_.Stop();
-  if (!got_external_wakeup_count_)
+  if (use_external_wakeup_count) {
+    wakeup_count_ = external_wakeup_count;
+    wakeup_count_valid_ = true;
+  } else {
     wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
+  }
+  got_external_wakeup_count_ = use_external_wakeup_count;
 
   suspend_id_++;
   num_attempts_++;
@@ -321,7 +324,8 @@ void Suspender::RetrySuspend() {
     return;
 
   LOG(WARNING) << "Retry #" << num_attempts_;
-  StartSuspendAttempt();
+  StartSuspendAttempt(got_external_wakeup_count_ ? wakeup_count_ : 0,
+                      got_external_wakeup_count_);
 }
 
 void Suspender::CancelSuspend() {

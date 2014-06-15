@@ -332,20 +332,25 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(new_suspend_id, done_proto.suspend_id());
 
-  // Explicitly requesting a suspend should cancel the timeout and generate a
-  // new announcement immediately.
-  suspender_.RequestSuspend();
+  // A second suspend request should be ignored so we'll avoid trying to
+  // re-suspend immediately if an attempt fails while the lid is closed
+  // (http://crbug.com/384610). Also check that an external wakeup count passed
+  // in the request gets ignored for the eventual retry.
+  const uint64 kExternalWakeupCount = 32542;
+  suspender_.RequestSuspendWithExternalWakeupCount(kExternalWakeupCount);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Report success this time and check that the timeout isn't registered.
+  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int final_suspend_id = test_api_.suspend_id();
   EXPECT_NE(new_suspend_id, final_suspend_id);
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-
-  // Report success this time and check that the timeout isn't registered.
   dbus_sender_.ClearSentSignals();
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
   suspender_.OnReadyForSuspend(final_suspend_id);
   EXPECT_EQ(JoinActions(kPrepare, kSuspend, kAttemptComplete, NULL),
             delegate_.GetActions());
+  EXPECT_NE(kExternalWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(3, delegate_.num_suspend_attempts());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
@@ -389,6 +394,11 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
     EXPECT_FALSE(delegate_.suspend_was_successful());
     EXPECT_EQ(i + 1, delegate_.num_suspend_attempts());
   }
+
+  // Check that another suspend request doesn't reset the retry count
+  // (http://crbug.com/384610).
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // On the last failed attempt, the system should shut down immediately.
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
