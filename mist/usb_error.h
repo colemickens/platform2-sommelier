@@ -5,7 +5,7 @@
 #ifndef MIST_USB_ERROR_H_
 #define MIST_USB_ERROR_H_
 
-#include <ostream>
+#include <ostream>  // NOLINT(readability/streams)
 
 #include <libusb.h>
 

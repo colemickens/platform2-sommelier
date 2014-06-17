@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 
-#include <iostream>
+#include <iostream>  // NOLINT(readability/streams)
 #include <string>
 
 #include <base/command_line.h>

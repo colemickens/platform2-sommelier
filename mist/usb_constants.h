@@ -5,7 +5,7 @@
 #ifndef MIST_USB_CONSTANTS_H_
 #define MIST_USB_CONSTANTS_H_
 
-#include <ostream>
+#include <ostream>  // NOLINT(readability/streams)
 
 #include <base/basictypes.h>
 

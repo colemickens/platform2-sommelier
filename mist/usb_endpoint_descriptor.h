@@ -5,7 +5,7 @@
 #ifndef MIST_USB_ENDPOINT_DESCRIPTOR_H_
 #define MIST_USB_ENDPOINT_DESCRIPTOR_H_
 
-#include <ostream>
+#include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
 #include <base/basictypes.h>
