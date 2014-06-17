@@ -155,14 +155,12 @@ void RunTest(TestBase* test, const char* testname, const double coefficient,
 
   // TODO(ihf) adjust string length based on longest test name
   int name_length = strlen(testname);
-  int unit_length = strlen(test->Unit()) + 1;
-  int max_testname = MAX_TESTNAME - unit_length;
-  if (name_length > max_testname)
+  if (name_length > MAX_TESTNAME)
     printf("# Warning: adjust string formatting to length = %d\n",
-           name_length + unit_length);
+           name_length);
   // Results are marked using a leading '@RESULT: ' to allow parsing.
-  printf("@RESULT: %s_%-*s = %10.2f [%s]\n",
-         test->Unit(), max_testname, testname, value, name_png);
+  printf("@RESULT: %-*s = %10.2f %-15s [%s]\n",
+         MAX_TESTNAME, testname, value, test->Unit(), name_png);
 }
 
 bool DrawArraysTestFunc::TestFunc(uint64_t iterations) {
