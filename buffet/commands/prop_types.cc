@@ -39,11 +39,11 @@ bool PropType::HasOverriddenAttributes() const {
 }
 
 std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
-                                               ErrorPtr* error) const {
+                                              ErrorPtr* error) const {
   if (!full_schema && !HasOverriddenAttributes()) {
     if (based_on_schema_)
       return std::unique_ptr<base::Value>(new base::DictionaryValue);
-    return TypedValueToJson(GetTypeAsString());
+    return TypedValueToJson(GetTypeAsString(), error);
   }
 
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
@@ -82,19 +82,19 @@ std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
 }
 
 bool PropType::FromJson(const base::DictionaryValue* value,
-                        const PropType* schema, ErrorPtr* error) {
-  if (schema && schema->GetType() != GetType()) {
+                        const PropType* base_schema, ErrorPtr* error) {
+  if (base_schema && base_schema->GetType() != GetType()) {
     Error::AddToPrintf(error, commands::errors::kDomain,
                        commands::errors::kPropTypeChanged,
                        "Redefining a command of type %s as %s",
-                       schema->GetTypeAsString().c_str(),
+                       base_schema->GetTypeAsString().c_str(),
                        GetTypeAsString().c_str());
     return false;
   }
-  based_on_schema_ = (schema != nullptr);
+  based_on_schema_ = (base_schema != nullptr);
   constraints_.clear();
-  if (schema) {
-    for (const auto& pair : schema->GetConstraints()) {
+  if (base_schema) {
+    for (const auto& pair : base_schema->GetConstraints()) {
       std::shared_ptr<Constraint> inherited(pair.second->CloneAsInherited());
       constraints_.insert(std::make_pair(pair.first, inherited));
     }
@@ -121,7 +121,14 @@ Constraint* PropType::GetConstraint(ConstraintType constraint_type) {
   return p != constraints_.end() ? p->second.get() : nullptr;
 }
 
-bool PropType::ValidateConstraints(const Any& value, ErrorPtr* error) const {
+bool PropType::ValidateValue(const base::Value* value, ErrorPtr* error) const {
+  std::shared_ptr<PropValue> val = CreateValue();
+  CHECK(val) << "Failed to create value object";
+  return val->FromJson(value, error) && ValidateConstraints(*val, error);
+}
+
+bool PropType::ValidateConstraints(const PropValue& value,
+                                   ErrorPtr* error) const {
   for (const auto& pair : constraints_) {
     if (!pair.second->Validate(value, error))
       return false;
@@ -135,6 +142,7 @@ const PropType::TypeMap& PropType::GetTypeMap() {
     {ValueType::Double,      "number"},
     {ValueType::String,      "string"},
     {ValueType::Boolean,     "boolean"},
+    {ValueType::Object,      "object"},
   };
   return map;
 }
@@ -173,28 +181,17 @@ std::unique_ptr<PropType> PropType::Create(ValueType type) {
   case buffet::ValueType::Boolean:
     prop = new BooleanPropType;
     break;
+  case buffet::ValueType::Object:
+    prop = new ObjectPropType;
+    break;
   }
   return std::unique_ptr<PropType>(prop);
 }
 
 template<typename T>
-bool TypedValueFromJson(const base::Value* value_in, T* value_out,
-                        ErrorPtr* error) {
-  if (!TypedValueFromJson(value_in, value_out)) {
-    std::string value_as_string;
-    base::JSONWriter::Write(value_in, &value_as_string);
-    Error::AddToPrintf(
-        error, commands::errors::kDomain, commands::errors::kTypeMismatch,
-        "Unable to convert %s to %s", value_as_string.c_str(),
-        PropType::GetTypeStringFromType(GetValueType<T>()).c_str());
-    return false;
-  }
-  return true;
-}
-
-template<typename T>
 static std::shared_ptr<Constraint> LoadOneOfConstraint(
-    const base::DictionaryValue* value, ErrorPtr* error) {
+    const base::DictionaryValue* value, const ObjectSchema* object_schema,
+    ErrorPtr* error) {
   const base::ListValue* list = nullptr;
   if (!value->GetListWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                           &list)) {
@@ -206,7 +203,7 @@ static std::shared_ptr<Constraint> LoadOneOfConstraint(
   set.reserve(list->GetSize());
   for (const base::Value* item : *list) {
     T val{};
-    if (!TypedValueFromJson(item, &val, error))
+    if (!TypedValueFromJson(item, object_schema, &val, error))
       return std::shared_ptr<Constraint>();
     set.push_back(val);
   }
@@ -216,12 +213,13 @@ static std::shared_ptr<Constraint> LoadOneOfConstraint(
 
 template<class ConstraintClass, typename T>
 static std::shared_ptr<Constraint> LoadMinMaxConstraint(
-    const char* dict_key, const base::DictionaryValue* value, ErrorPtr* error) {
+    const char* dict_key, const base::DictionaryValue* value,
+    const ObjectSchema* object_schema, ErrorPtr* error) {
   InheritableAttribute<T> limit;
 
   const base::Value* src_val = nullptr;
   CHECK(value->Get(dict_key, &src_val)) << "Unable to get min/max constraints";
-  if (!TypedValueFromJson(src_val, &limit.value, error))
+  if (!TypedValueFromJson(src_val, object_schema, &limit.value, error))
     return std::shared_ptr<Constraint>();
   limit.is_inherited = false;
 
@@ -230,13 +228,14 @@ static std::shared_ptr<Constraint> LoadMinMaxConstraint(
 
 template<typename T>
 bool NumericPropTypeBase::FromJsonHelper(const base::DictionaryValue* value,
-                                         const PropType* schema,
+                                         const PropType* base_schema,
                                          ErrorPtr* error) {
-  if (!PropType::FromJson(value, schema, error))
+  if (!PropType::FromJson(value, base_schema, error))
     return false;
 
   if (value->HasKey(commands::attributes::kOneOf_Enum)) {
-    auto constraint = LoadOneOfConstraint<T>(value, error);
+    auto constraint = LoadOneOfConstraint<T>(value, GetObjectSchemaPtr(),
+                                             error);
     if (!constraint)
       return false;
     AddConstraint(constraint);
@@ -245,7 +244,8 @@ bool NumericPropTypeBase::FromJsonHelper(const base::DictionaryValue* value,
   } else {
     if (value->HasKey(commands::attributes::kNumeric_Min)) {
       auto constraint = LoadMinMaxConstraint<ConstraintMin<T>, T>(
-          commands::attributes::kNumeric_Min, value, error);
+          commands::attributes::kNumeric_Min, value, GetObjectSchemaPtr(),
+          error);
       if (!constraint)
         return false;
       AddConstraint(constraint);
@@ -253,7 +253,8 @@ bool NumericPropTypeBase::FromJsonHelper(const base::DictionaryValue* value,
     }
     if (value->HasKey(commands::attributes::kNumeric_Max)) {
       auto constraint = LoadMinMaxConstraint<ConstraintMax<T>, T>(
-          commands::attributes::kNumeric_Max, value, error);
+          commands::attributes::kNumeric_Max, value, GetObjectSchemaPtr(),
+          error);
       if (!constraint)
         return false;
       AddConstraint(constraint);
@@ -271,7 +272,13 @@ std::shared_ptr<PropType> IntPropType::Clone() const {
 }
 
 std::shared_ptr<PropValue> IntPropType::CreateValue() const {
-  return std::make_shared<IntValue>();
+  return std::make_shared<IntValue>(this);
+}
+
+std::shared_ptr<PropValue> IntPropType::CreateValue(const Any& val) const {
+  auto v = std::make_shared<IntValue>(this);
+  v->SetValue(val.Get<int>());
+  return std::move(v);
 }
 
 // DoublePropType -------------------------------------------------------------
@@ -281,7 +288,13 @@ std::shared_ptr<PropType> DoublePropType::Clone() const {
 }
 
 std::shared_ptr<PropValue> DoublePropType::CreateValue() const {
-  return std::make_shared<DoubleValue>();
+  return std::make_shared<DoubleValue>(this);
+}
+
+std::shared_ptr<PropValue> DoublePropType::CreateValue(const Any& val) const {
+  auto v = std::make_shared<DoubleValue>(this);
+  v->SetValue(val.Get<double>());
+  return std::move(v);
 }
 
 // StringPropType -------------------------------------------------------------
@@ -291,15 +304,23 @@ std::shared_ptr<PropType> StringPropType::Clone() const {
 }
 
 std::shared_ptr<PropValue> StringPropType::CreateValue() const {
-  return std::make_shared<StringValue>();
+  return std::make_shared<StringValue>(this);
+}
+
+std::shared_ptr<PropValue> StringPropType::CreateValue(const Any& val) const {
+  auto v = std::make_shared<StringValue>(this);
+  v->SetValue(val.Get<std::string>());
+  return std::move(v);
 }
 
 bool StringPropType::FromJson(const base::DictionaryValue* value,
-                              const PropType* schema, ErrorPtr* error) {
-  if (!PropType::FromJson(value, schema, error))
+                              const PropType* base_schema, ErrorPtr* error) {
+  if (!PropType::FromJson(value, base_schema, error))
     return false;
   if (value->HasKey(commands::attributes::kOneOf_Enum)) {
-    auto constraint = LoadOneOfConstraint<std::string>(value, error);
+    auto constraint = LoadOneOfConstraint<std::string>(value,
+                                                       GetObjectSchemaPtr(),
+                                                       error);
     if (!constraint)
       return false;
     AddConstraint(constraint);
@@ -308,7 +329,8 @@ bool StringPropType::FromJson(const base::DictionaryValue* value,
   } else {
     if (value->HasKey(commands::attributes::kString_MinLength)) {
       auto constraint = LoadMinMaxConstraint<ConstraintStringLengthMin, int>(
-          commands::attributes::kString_MinLength, value, error);
+          commands::attributes::kString_MinLength, value, GetObjectSchemaPtr(),
+          error);
       if (!constraint)
         return false;
       AddConstraint(constraint);
@@ -316,7 +338,8 @@ bool StringPropType::FromJson(const base::DictionaryValue* value,
     }
     if (value->HasKey(commands::attributes::kString_MaxLength)) {
       auto constraint = LoadMinMaxConstraint<ConstraintStringLengthMax, int>(
-          commands::attributes::kString_MaxLength, value, error);
+          commands::attributes::kString_MaxLength, value, GetObjectSchemaPtr(),
+          error);
       if (!constraint)
         return false;
       AddConstraint(constraint);
@@ -352,16 +375,111 @@ std::shared_ptr<PropType> BooleanPropType::Clone() const {
 }
 
 std::shared_ptr<PropValue> BooleanPropType::CreateValue() const {
-  return std::make_shared<BooleanValue>();
+  return std::make_shared<BooleanValue>(this);
+}
+
+std::shared_ptr<PropValue> BooleanPropType::CreateValue(const Any& val) const {
+  auto v = std::make_shared<BooleanValue>(this);
+  v->SetValue(val.Get<bool>());
+  return std::move(v);
 }
 
 bool BooleanPropType::FromJson(const base::DictionaryValue* value,
-                               const PropType* schema, ErrorPtr* error) {
-  if (!PropType::FromJson(value, schema, error))
+                               const PropType* base_schema, ErrorPtr* error) {
+  if (!PropType::FromJson(value, base_schema, error))
     return false;
 
   if (value->HasKey(commands::attributes::kOneOf_Enum)) {
-    auto constraint = LoadOneOfConstraint<bool>(value, error);
+    auto constraint = LoadOneOfConstraint<bool>(value, GetObjectSchemaPtr(),
+                                                error);
+    if (!constraint)
+      return false;
+    AddConstraint(constraint);
+  }
+
+  return true;
+}
+
+// ObjectPropType -------------------------------------------------------------
+
+ObjectPropType::ObjectPropType()
+    : object_schema_(std::make_shared<ObjectSchema>(), false) {}
+
+std::shared_ptr<PropType> ObjectPropType::Clone() const {
+  return std::make_shared<ObjectPropType>(*this);
+}
+
+std::shared_ptr<PropValue> ObjectPropType::CreateValue() const {
+  return std::make_shared<ObjectValue>(this);
+}
+
+std::shared_ptr<PropValue> ObjectPropType::CreateValue(const Any& val) const {
+  auto v = std::make_shared<ObjectValue>(this);
+  v->SetValue(val.Get<native_types::Object>());
+  return std::move(v);
+}
+
+bool ObjectPropType::HasOverriddenAttributes() const {
+  return PropType::HasOverriddenAttributes() ||
+         !object_schema_.is_inherited;
+}
+
+
+std::unique_ptr<base::Value> ObjectPropType::ToJson(bool full_schema,
+                                                    ErrorPtr* error) const {
+  std::unique_ptr<base::Value> value = PropType::ToJson(full_schema, error);
+  if (value) {
+    base::DictionaryValue* dict = nullptr;
+    CHECK(value->GetAsDictionary(&dict)) << "Expecting a JSON object";
+    if (!object_schema_.is_inherited || full_schema) {
+      auto object_schema = object_schema_.value->ToJson(full_schema, error);
+      if (!object_schema) {
+        value.reset();
+        return value;
+      }
+      dict->SetWithoutPathExpansion(commands::attributes::kObject_Properties,
+                                    object_schema.release());
+    }
+  }
+  return value;
+}
+
+bool ObjectPropType::FromJson(const base::DictionaryValue* value,
+                              const PropType* base_schema, ErrorPtr* error) {
+  if (!PropType::FromJson(value, base_schema, error))
+    return false;
+
+  using commands::attributes::kObject_Properties;
+
+  std::shared_ptr<const ObjectSchema> base_object_schema;
+  if (base_schema)
+    base_object_schema = base_schema->GetObject()->GetObjectSchema();
+
+  const base::DictionaryValue* props = nullptr;
+  if (value->GetDictionaryWithoutPathExpansion(kObject_Properties, &props)) {
+    auto object_schema = std::make_shared<ObjectSchema>();
+    if (!object_schema->FromJson(props, base_object_schema.get(), error)) {
+      Error::AddTo(error, commands::errors::kDomain,
+                   commands::errors::kInvalidObjectSchema,
+                   "Error parsing object property schema");
+      return false;
+    }
+    object_schema_.value = object_schema;
+    object_schema_.is_inherited = false;
+  } else if (base_object_schema) {
+    object_schema_.value = base_object_schema;
+    object_schema_.is_inherited = true;
+  } else {
+    Error::AddToPrintf(error, commands::errors::kDomain,
+                       commands::errors::kInvalidObjectSchema,
+                       "Object type definition must include the object schema "
+                       "('%s' field not found)", kObject_Properties);
+    return false;
+  }
+
+  if (value->HasKey(commands::attributes::kOneOf_Enum)) {
+    auto constraint = LoadOneOfConstraint<native_types::Object>(
+        value, GetObjectSchemaPtr(), error);
     if (!constraint)
       return false;
     AddConstraint(constraint);

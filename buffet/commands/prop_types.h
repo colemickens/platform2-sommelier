@@ -18,10 +18,11 @@
 
 namespace buffet {
 
-// Helper function to read in a C++ type from JSON value.
-template<typename T>
-bool TypedValueFromJson(const base::Value* value_in, T* value_out,
-                        ErrorPtr* error);
+class IntPropType;
+class DoublePropType;
+class StringPropType;
+class BooleanPropType;
+class ObjectPropType;
 
 // PropType is a base class for all parameter type definition objects.
 // Property definitions of a particular type will derive from this class and
@@ -70,12 +71,15 @@ class PropType {
   virtual StringPropType const* GetString() const { return nullptr; }
   virtual BooleanPropType* GetBoolean() { return nullptr; }
   virtual BooleanPropType const* GetBoolean() const { return nullptr; }
+  virtual ObjectPropType* GetObject() { return nullptr; }
+  virtual ObjectPropType const* GetObject() const { return nullptr; }
 
   // Makes a full copy of this type definition.
   virtual std::shared_ptr<PropType> Clone() const = 0;
   // Creates an instance of associated value object, using the parameter
   // type as a factory class.
   virtual std::shared_ptr<PropValue> CreateValue() const = 0;
+  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const = 0;
 
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
@@ -86,22 +90,21 @@ class PropType {
   // error information.
   virtual std::unique_ptr<base::Value> ToJson(bool full_schema,
                                               ErrorPtr* error) const;
-  // Parses an JSON parameter type definition. Optional |schema| may specify
-  // the base schema type definition this type should be based upon.
+  // Parses an JSON parameter type definition. Optional |base_schema| may
+  // specify the base schema type definition this type should be based upon.
   // If not specified (nullptr), the parameter type is assumed to be a full
   // definition and any omitted required properties are treated as an error.
   // Returns true on success, otherwise fills in the |error| with additional
   // error information.
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* schema, ErrorPtr* error);
+                        const PropType* base_schema, ErrorPtr* error);
 
   // Validates a JSON value for the parameter type to make sure it satisfies
   // the parameter type definition including any specified constraints.
   // Returns false if the |value| does not meet the requirements of the type
   // definition and returns additional information about the failure via
   // the |error| parameter.
-  virtual bool ValidateValue(const base::Value* value,
-                             ErrorPtr* error) const = 0;
+  bool ValidateValue(const base::Value* value, ErrorPtr* error) const;
 
   // Additional helper static methods to help with converting a type enum
   // value into a string and back.
@@ -126,24 +129,25 @@ class PropType {
   const Constraint* GetConstraint(ConstraintType constraint_type) const;
   Constraint* GetConstraint(ConstraintType constraint_type);
 
- protected:
-  // Validates the given value against all the constraints.
-  // This is a helper method used by PropType::ValidateValue().
-  bool ValidateConstraints(const Any& value, ErrorPtr* error) const;
+  // Returns a schema for Object-type parameter. This will be nullptr for
+  // every type but Object.
+  const ObjectSchema* GetObjectSchemaPtr() const {
+    return GetObjectSchema().get();
+  }
+  virtual std::shared_ptr<const ObjectSchema> GetObjectSchema() const {
+    return std::shared_ptr<const ObjectSchema>();
+  }
 
+  // Validates the given value against all the constraints.
+  bool ValidateConstraints(const PropValue& value, ErrorPtr* error) const;
+
+ protected:
   // Helper method to obtaining a vector of OneOf constraint values.
   template<typename T>
   std::vector<T> GetOneOfValuesHelper() const {
     auto ofc = static_cast<const ConstraintOneOf<T>*>(
         GetConstraint(ConstraintType::OneOf));
     return ofc ? ofc->set_.value : std::vector<T>();
-  }
-  // Helper methods to validating parameter values for various types.
-  template<typename T>
-  bool ValidateValueHelper(const base::Value* value, ErrorPtr* error) const {
-    T val;
-    return TypedValueFromJson(value, &val, error) &&
-           ValidateConstraints(val, error);
   }
 
   // Specifies if this parameter definition is derived from a base
@@ -190,7 +194,7 @@ class NumericPropTypeBase : public PropType {
   // Helper method for implementing FromJson in derived classes.
   template<typename T>
   bool FromJsonHelper(const base::DictionaryValue* value,
-                      const PropType* schema, ErrorPtr* error);
+                      const PropType* base_schema, ErrorPtr* error);
 };
 
 // Property definition of Integer type.
@@ -204,15 +208,11 @@ class IntPropType : public NumericPropTypeBase {
 
   virtual std::shared_ptr<PropType> Clone() const override;
   virtual std::shared_ptr<PropValue> CreateValue() const override;
+  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const override;
 
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* schema, ErrorPtr* error) override {
-    return FromJsonHelper<int>(value, schema, error);
-  }
-
-  virtual bool ValidateValue(const base::Value* value,
-                             ErrorPtr* error) const override {
-    return ValidateValueHelper<int>(value, error);
+                        const PropType* base_schema, ErrorPtr* error) override {
+    return FromJsonHelper<int>(value, base_schema, error);
   }
 
   // Helper methods to add and inspect simple constraints.
@@ -238,15 +238,11 @@ class DoublePropType : public NumericPropTypeBase {
 
   virtual std::shared_ptr<PropType> Clone() const override;
   virtual std::shared_ptr<PropValue> CreateValue() const override;
+  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const override;
 
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* schema, ErrorPtr* error) override {
-    return FromJsonHelper<double>(value, schema, error);
-  }
-
-  virtual bool ValidateValue(const base::Value* value,
-                             ErrorPtr* error) const override {
-    return ValidateValueHelper<double>(value, error);
+                        const PropType* base_schema, ErrorPtr* error) override {
+    return FromJsonHelper<double>(value, base_schema, error);
   }
 
   // Helper methods to add and inspect simple constraints.
@@ -272,14 +268,10 @@ class StringPropType : public PropType {
 
   virtual std::shared_ptr<PropType> Clone() const override;
   virtual std::shared_ptr<PropValue> CreateValue() const override;
+  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const override;
 
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* schema, ErrorPtr* error) override;
-
-  virtual bool ValidateValue(const base::Value* value,
-                             ErrorPtr* error) const override {
-    return ValidateValueHelper<std::string>(value, error);
-  }
+                        const PropType* base_schema, ErrorPtr* error) override;
 
   // Helper methods to add and inspect simple constraints.
   // Used mostly for unit testing.
@@ -302,14 +294,10 @@ class BooleanPropType : public PropType {
 
   virtual std::shared_ptr<PropType> Clone() const override;
   virtual std::shared_ptr<PropValue> CreateValue() const override;
+  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const override;
 
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* schema, ErrorPtr* error) override;
-
-  virtual bool ValidateValue(const base::Value* value,
-                             ErrorPtr* error) const override {
-    return ValidateValueHelper<bool>(value, error);
-  }
+                        const PropType* base_schema, ErrorPtr* error) override;
 
   // Helper methods to add and inspect simple constraints.
   // Used mostly for unit testing.
@@ -318,6 +306,38 @@ class BooleanPropType : public PropType {
   }
 };
 
+// Parameter definition of Object type.
+class ObjectPropType : public PropType {
+ public:
+  ObjectPropType();
+
+  // Overrides from the ParamType base class.
+  virtual ValueType GetType() const override { return ValueType::Object; }
+  virtual bool HasOverriddenAttributes() const override;
+
+  virtual ObjectPropType* GetObject() override { return this; }
+  virtual ObjectPropType const* GetObject() const override { return this; }
+
+  virtual std::shared_ptr<PropType> Clone() const override;
+  virtual std::shared_ptr<PropValue> CreateValue() const override;
+  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const override;
+
+  virtual std::unique_ptr<base::Value> ToJson(bool full_schema,
+                                              ErrorPtr* error) const override;
+  virtual bool FromJson(const base::DictionaryValue* value,
+                        const PropType* base_schema, ErrorPtr* error) override;
+
+  virtual std::shared_ptr<const ObjectSchema> GetObjectSchema() const override {
+    return object_schema_.value;
+  }
+  void SetObjectSchema(const std::shared_ptr<const ObjectSchema>& schema) {
+    object_schema_.value = schema;
+    object_schema_.is_inherited = false;
+  }
+
+ private:
+  InheritableAttribute<std::shared_ptr<const ObjectSchema>> object_schema_;
+};
 }  // namespace buffet
 
 #endif  // BUFFET_COMMANDS_PROP_TYPES_H_

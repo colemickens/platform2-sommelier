@@ -8,28 +8,35 @@ namespace buffet {
 namespace commands {
 
 namespace errors {
-const char kDomain[]            = "command_schema";
+const char kDomain[] = "command_schema";
 
-const char kOutOfRange[]        = "out_of_range";
-const char kTypeMismatch[]      = "type_mismatch";
-const char kPropTypeChanged[]   = "param_type_changed";
-const char kUnknownType[]       = "unknown_type";
-const char kInvalidPropDef[]    = "invalid_parameter_definition";
-const char kNoTypeInfo[]        = "no_type_info";
-const char kPropertyMissing[]   = "parameter_missing";
+const char kOutOfRange[] = "out_of_range";
+const char kTypeMismatch[] = "type_mismatch";
+const char kPropTypeChanged[] = "param_type_changed";
+const char kUnknownType[] = "unknown_type";
+const char kInvalidPropDef[] = "invalid_parameter_definition";
+const char kInvalidPropValue[] = "invalid_parameter_value";
+const char kNoTypeInfo[] = "no_type_info";
+const char kPropertyMissing[] = "parameter_missing";
+const char kUnknownProperty[] = "unexpected_parameter";
+const char kInvalidObjectSchema[] = "invalid_object_schema";
 }  // namespace errors
 
 namespace attributes {
-const char kType[]              = "type";
-const char kDisplayName[]       = "displayName";
+const char kType[] = "type";
+const char kDisplayName[] = "displayName";
 
-const char kNumeric_Min[]       = "minimum";
-const char kNumeric_Max[]       = "maximum";
+const char kNumeric_Min[] = "minimum";
+const char kNumeric_Max[] = "maximum";
 
-const char kString_MinLength[]  = "minLength";
-const char kString_MaxLength[]  = "maxLength";
+const char kString_MinLength[] = "minLength";
+const char kString_MaxLength[] = "maxLength";
 
-const char kOneOf_Enum[]        = "enum";
+const char kOneOf_Enum[] = "enum";
+const char kOneOf_Metadata[] = "metadata";
+const char kOneOf_MetaSchema[] = "schema";
+
+const char kObject_Properties[] = "properties";
 }  // namespace attributes
 
 }  // namespace commands

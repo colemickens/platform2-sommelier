@@ -3,24 +3,11 @@
 // found in the LICENSE file.
 
 #include "buffet/commands/prop_constraints.h"
+#include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/string_utils.h"
 
 namespace buffet {
-
-// Specializations of TypedValueToJson<T>() for supported C++ types.
-std::unique_ptr<base::Value> TypedValueToJson(bool value) {
-  return std::unique_ptr<base::Value>(base::Value::CreateBooleanValue(value));
-}
-std::unique_ptr<base::Value> TypedValueToJson(int value) {
-  return std::unique_ptr<base::Value>(base::Value::CreateIntegerValue(value));
-}
-std::unique_ptr<base::Value> TypedValueToJson(double value) {
-  return std::unique_ptr<base::Value>(base::Value::CreateDoubleValue(value));
-}
-std::unique_ptr<base::Value> TypedValueToJson(const std::string& value) {
-  return std::unique_ptr<base::Value>(base::Value::CreateStringValue(value));
-}
 
 // Constraint ----------------------------------------------------------------
 Constraint::~Constraint() {}
@@ -76,7 +63,7 @@ bool ConstraintStringLength::HasOverriddenAttributes() const {
 
 std::unique_ptr<base::Value> ConstraintStringLength::ToJson(
     ErrorPtr* error) const {
-  return TypedValueToJson(limit_.value);
+  return TypedValueToJson(limit_.value, error);
 }
 
 // ConstraintStringLengthMin --------------------------------------------------
@@ -85,9 +72,10 @@ ConstraintStringLengthMin::ConstraintStringLengthMin(
 ConstraintStringLengthMin::ConstraintStringLengthMin(int limit)
     : ConstraintStringLength(limit) {}
 
-bool ConstraintStringLengthMin::Validate(const Any& value,
+bool ConstraintStringLengthMin::Validate(const PropValue& value,
                                          ErrorPtr* error) const {
-  std::string str = value.Get<std::string>();
+  CHECK(value.GetString()) << "Expecting a string value for this constraint";
+  const std::string& str = value.GetString()->GetValue();
   int length = static_cast<int>(str.size());
   if (length < limit_.value) {
     if (limit_.value == 1) {
@@ -116,9 +104,10 @@ ConstraintStringLengthMax::ConstraintStringLengthMax(
 ConstraintStringLengthMax::ConstraintStringLengthMax(int limit)
     : ConstraintStringLength(limit) {}
 
-bool ConstraintStringLengthMax::Validate(const Any& value,
+bool ConstraintStringLengthMax::Validate(const PropValue& value,
                                          ErrorPtr* error) const {
-  std::string str = value.Get<std::string>();
+  CHECK(value.GetString()) << "Expecting a string value for this constraint";
+  const std::string& str = value.GetString()->GetValue();
   int length = static_cast<int>(str.size());
   if (length > limit_.value) {
     Error::AddToPrintf(error, commands::errors::kDomain,

@@ -60,6 +60,7 @@ TEST(CommandSchema, IntPropType_Types) {
   EXPECT_EQ(&prop, prop.GetInt());
   EXPECT_EQ(nullptr, prop.GetDouble());
   EXPECT_EQ(nullptr, prop.GetString());
+  EXPECT_EQ(nullptr, prop.GetObject());
 }
 
 TEST(CommandSchema, IntPropType_ToJson) {
@@ -165,6 +166,7 @@ TEST(CommandSchema, BoolPropType_Types) {
   EXPECT_EQ(&prop, prop.GetBoolean());
   EXPECT_EQ(nullptr, prop.GetDouble());
   EXPECT_EQ(nullptr, prop.GetString());
+  EXPECT_EQ(nullptr, prop.GetObject());
 }
 
 TEST(CommandSchema, BoolPropType_ToJson) {
@@ -229,6 +231,7 @@ TEST(CommandSchema, DoublePropType_Types) {
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(&prop, prop.GetDouble());
   EXPECT_EQ(nullptr, prop.GetString());
+  EXPECT_EQ(nullptr, prop.GetObject());
 }
 
 TEST(CommandSchema, DoublePropType_ToJson) {
@@ -325,6 +328,7 @@ TEST(CommandSchema, StringPropType_Types) {
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(nullptr, prop.GetDouble());
   EXPECT_EQ(&prop, prop.GetString());
+  EXPECT_EQ(nullptr, prop.GetObject());
 }
 
 TEST(CommandSchema, StringPropType_ToJson) {
@@ -410,6 +414,121 @@ TEST(CommandSchema, StringPropType_Validate) {
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+TEST(CommandSchema, ObjectPropType_Empty) {
+  buffet::ObjectPropType prop;
+  EXPECT_TRUE(prop.HasOverriddenAttributes());
+  EXPECT_FALSE(prop.IsBasedOnSchema());
+}
+
+TEST(CommandSchema, ObjectPropType_Types) {
+  buffet::ObjectPropType prop;
+  EXPECT_EQ(nullptr, prop.GetInt());
+  EXPECT_EQ(nullptr, prop.GetBoolean());
+  EXPECT_EQ(nullptr, prop.GetDouble());
+  EXPECT_EQ(nullptr, prop.GetString());
+  EXPECT_EQ(&prop, prop.GetObject());
+}
+
+TEST(CommandSchema, ObjectPropType_ToJson) {
+  buffet::ObjectPropType prop;
+  EXPECT_EQ("{'properties':{}}",
+            ValueToString(prop.ToJson(false, nullptr).get()));
+  EXPECT_EQ("{'properties':{},'type':'object'}",
+            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_FALSE(prop.IsBasedOnSchema());
+  buffet::ObjectPropType prop2;
+  prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
+  EXPECT_EQ("{}", ValueToString(prop2.ToJson(false, nullptr).get()));
+  EXPECT_TRUE(prop2.IsBasedOnSchema());
+
+  auto schema = std::make_shared<buffet::ObjectSchema>();
+  schema->AddProp("expires", std::make_shared<buffet::IntPropType>());
+  auto pw = std::make_shared<buffet::StringPropType>();
+  pw->AddLengthConstraint(6, 100);
+  schema->AddProp("password", pw);
+  prop2.SetObjectSchema(schema);
+  EXPECT_EQ("{'properties':{'expires':'integer',"
+            "'password':{'maxLength':100,'minLength':6}}}",
+            ValueToString(prop2.ToJson(false, nullptr).get()));
+  EXPECT_EQ("{'properties':{'expires':{'type':'integer'},"
+            "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
+            "'type':'object'}",
+            ValueToString(prop2.ToJson(true, nullptr).get()));
+}
+
+TEST(CommandSchema, ObjectPropType_FromJson) {
+  buffet::ObjectPropType base_prop;
+  EXPECT_TRUE(base_prop.FromJson(CreateDictionaryValue(
+      "{'properties':{'name':'string','age':'integer'}}").get(), nullptr,
+      nullptr));
+  auto schema = base_prop.GetObjectSchemaPtr();
+  const buffet::PropType* prop = schema->GetProp("name");
+  EXPECT_EQ(buffet::ValueType::String, prop->GetType());
+  prop = schema->GetProp("age");
+  EXPECT_EQ(buffet::ValueType::Int, prop->GetType());
+}
+
+TEST(CommandSchema, ObjectPropType_Validate) {
+  buffet::ObjectPropType prop;
+  prop.FromJson(CreateDictionaryValue(
+      "{'properties':{'expires':'integer',"
+      "'password':{'maxLength':100,'minLength':6}}}").get(), nullptr,
+      nullptr);
+  buffet::ErrorPtr error;
+  EXPECT_TRUE(prop.ValidateValue(CreateValue(
+      "{'expires':10,'password':'abcdef'}").get(), &error));
+  error.reset();
+
+  EXPECT_FALSE(prop.ValidateValue(CreateValue(
+      "{'expires':10}").get(), &error));
+  EXPECT_EQ("parameter_missing", error->GetCode());
+  error.reset();
+
+  EXPECT_FALSE(prop.ValidateValue(CreateValue(
+      "{'password':'abcdef'}").get(), &error));
+  EXPECT_EQ("parameter_missing", error->GetCode());
+  error.reset();
+
+  EXPECT_FALSE(prop.ValidateValue(CreateValue(
+      "{'expires':10,'password':'abcde'}").get(), &error));
+  EXPECT_EQ("out_of_range", error->GetFirstError()->GetCode());
+  error.reset();
+
+  EXPECT_FALSE(prop.ValidateValue(CreateValue("2").get(), &error));
+  EXPECT_EQ("type_mismatch", error->GetCode());
+  error.reset();
+
+  EXPECT_FALSE(prop.ValidateValue(CreateValue(
+      "{'expires':10,'password':'abcdef','retry':true}").get(), &error));
+  EXPECT_EQ("unexpected_parameter", error->GetCode());
+  error.reset();
+}
+
+TEST(CommandSchema, ObjectPropType_Validate_Enum) {
+  buffet::ObjectPropType prop;
+  EXPECT_TRUE(prop.FromJson(CreateDictionaryValue(
+      "{'properties':{'width':'integer','height':'integer'},"
+      "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
+      nullptr, nullptr));
+  buffet::ErrorPtr error;
+  EXPECT_TRUE(prop.ValidateValue(CreateValue(
+      "{'height':20,'width':10}").get(), &error));
+  error.reset();
+
+  EXPECT_TRUE(prop.ValidateValue(CreateValue(
+      "{'height':200,'width':100}").get(), &error));
+  error.reset();
+
+  EXPECT_FALSE(prop.ValidateValue(CreateValue(
+      "{'height':12,'width':10}").get(), &error));
+  EXPECT_EQ("out_of_range", error->GetCode());
+  error.reset();
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeName) {
   buffet::ObjectSchema schema;

@@ -9,8 +9,6 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
-
 #include "buffet/error.h"
 
 namespace base {
@@ -34,7 +32,11 @@ class ObjectSchema final {
   // name and the value is the parameter type definition object.
   using Properties = std::map<std::string, std::shared_ptr<PropType>>;
 
+  // Declaring default and copy constructors to document the copyable
+  // nature of this class. Using the default implementation for them though.
   ObjectSchema() = default;
+  ObjectSchema(const ObjectSchema& rhs) = default;
+  ObjectSchema& operator=(const ObjectSchema& rhs) = default;
 
   // Add a new parameter definition.
   void AddProp(const std::string& name, std::shared_ptr<PropType> prop);
@@ -43,44 +45,54 @@ class ObjectSchema final {
   // Gets the list of all the properties defined.
   const Properties& GetProps() const { return properties_; }
 
+  // Specify whether extra properties are allowed on objects described by
+  // this schema. When validating a value of an object type, we can
+  // make sure that the value has only the properties explicitly defined by
+  // the schema and no other (custom) properties are allowed.
+  // This is to support JSON Schema's "additionalProperties" specification.
+  bool GetExtraPropertiesAllowed() const { return extra_properties_allowed_; }
+  void SetExtraPropertiesAllowed(bool allowed) {
+    extra_properties_allowed_ = allowed;
+  }
+
   // Saves the object schema to JSON. When |full_schema| is set to true,
   // then all properties and constraints are saved, otherwise, only
   // the overridden (not inherited) ones are saved.
   std::unique_ptr<base::DictionaryValue> ToJson(bool full_schema,
                                                 ErrorPtr* error) const;
-  // Loads the object schema from JSON. If |schema| is not nullptr, it is
+  // Loads the object schema from JSON. If |object_schema| is not nullptr, it is
   // used as a base schema to inherit omitted properties and constraints from.
-  bool FromJson(const base::DictionaryValue* value, const ObjectSchema* schema,
-                ErrorPtr* error);
+  bool FromJson(const base::DictionaryValue* value,
+                const ObjectSchema* object_schema, ErrorPtr* error);
 
  private:
   // Internal helper method to load individual parameter type definitions.
   bool PropFromJson(const std::string& prop_name,
                     const base::Value& value,
-                    const PropType* schemaProp,
+                    const PropType* base_schema,
                     Properties* properties, ErrorPtr* error) const;
   // Helper function in case the parameter is defined as JSON string like this:
   //   "prop":"..."
   bool PropFromJsonString(const std::string& prop_name,
                           const base::Value& value,
-                          const PropType* schemaProp,
+                          const PropType* base_schema,
                           Properties* properties, ErrorPtr* error) const;
   // Helper function in case the parameter is defined as JSON array like this:
   //   "prop":[...]
   bool PropFromJsonArray(const std::string& prop_name,
                          const base::Value& value,
-                         const PropType* schemaProp,
+                         const PropType* base_schema,
                          Properties* properties, ErrorPtr* error) const;
   // Helper function in case the parameter is defined as JSON object like this:
   //   "prop":{...}
   bool PropFromJsonObject(const std::string& prop_name,
                           const base::Value& value,
-                          const PropType* schemaProp,
+                          const PropType* base_schema,
                           Properties* properties, ErrorPtr* error) const;
 
   // Internal parameter type definition map.
   Properties properties_;
-  DISALLOW_COPY_AND_ASSIGN(ObjectSchema);
+  bool extra_properties_allowed_{false};
 };
 
 }  // namespace buffet

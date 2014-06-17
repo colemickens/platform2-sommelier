@@ -41,14 +41,15 @@ std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
 }
 
 bool ObjectSchema::FromJson(const base::DictionaryValue* value,
-                            const ObjectSchema* schema, ErrorPtr* error) {
+                            const ObjectSchema* object_schema,
+                            ErrorPtr* error) {
   Properties properties;
   base::DictionaryValue::Iterator iter(*value);
   while (!iter.IsAtEnd()) {
     std::string name = iter.key();
-    const PropType* schemaProp = schema ? schema->GetProp(iter.key()) :
-                                          nullptr;
-    if (!PropFromJson(iter.key(), iter.value(), schemaProp, &properties,
+    const PropType* base_schema =
+        object_schema ? object_schema->GetProp(iter.key()) : nullptr;
+    if (!PropFromJson(iter.key(), iter.value(), base_schema, &properties,
                       error))
       return false;
     iter.Advance();
@@ -84,21 +85,21 @@ static bool ErrorInvalidTypeInfo(const std::string& prop_name,
 
 bool ObjectSchema::PropFromJson(const std::string& prop_name,
                                 const base::Value& value,
-                                const PropType* schemaProp,
+                                const PropType* base_schema,
                                 Properties* properties,
                                 ErrorPtr* error) const {
   if (value.IsType(base::Value::TYPE_STRING)) {
     // A string value is a short-hand object specification and provides
     // the parameter type.
-    return PropFromJsonString(prop_name, value, schemaProp, properties,
+    return PropFromJsonString(prop_name, value, base_schema, properties,
                               error);
   } else if (value.IsType(base::Value::TYPE_LIST)) {
     // One of the enumerated types.
-    return PropFromJsonArray(prop_name, value, schemaProp, properties,
+    return PropFromJsonArray(prop_name, value, base_schema, properties,
                              error);
   } else if (value.IsType(base::Value::TYPE_DICTIONARY)) {
     // Full parameter definition.
-    return PropFromJsonObject(prop_name, value, schemaProp, properties,
+    return PropFromJsonObject(prop_name, value, base_schema, properties,
                               error);
   }
   Error::AddToPrintf(error, commands::errors::kDomain,
@@ -109,7 +110,7 @@ bool ObjectSchema::PropFromJson(const std::string& prop_name,
 
 bool ObjectSchema::PropFromJsonString(const std::string& prop_name,
                                       const base::Value& value,
-                                      const PropType* schemaProp,
+                                      const PropType* base_schema,
                                       Properties* properties,
                                       ErrorPtr* error) const {
   std::string type_name;
@@ -118,17 +119,17 @@ bool ObjectSchema::PropFromJsonString(const std::string& prop_name,
   if (!prop)
     return false;
   base::DictionaryValue empty;
-  if (!prop->FromJson(&empty, schemaProp, error))
+  if (!prop->FromJson(&empty, base_schema, error))
     return false;
   properties->insert(std::make_pair(prop_name, std::move(prop)));
   return true;
 }
 
 static std::string DetectArrayType(const base::ListValue* list,
-                                   const PropType* schemaProp) {
+                                   const PropType* base_schema) {
   std::string type_name;
-  if (schemaProp) {
-    type_name = schemaProp->GetTypeAsString();
+  if (base_schema) {
+    type_name = base_schema->GetTypeAsString();
   } else if (list->GetSize() > 0) {
     const base::Value* first_element = nullptr;
     if (list->Get(0, &first_element)) {
@@ -145,6 +146,9 @@ static std::string DetectArrayType(const base::ListValue* list,
       case base::Value::TYPE_STRING:
         type_name = PropType::GetTypeStringFromType(ValueType::String);
         break;
+      case base::Value::TYPE_DICTIONARY:
+        type_name = PropType::GetTypeStringFromType(ValueType::Object);
+        break;
       default:
         // The rest are unsupported.
         break;
@@ -156,12 +160,12 @@ static std::string DetectArrayType(const base::ListValue* list,
 
 bool ObjectSchema::PropFromJsonArray(const std::string& prop_name,
                                      const base::Value& value,
-                                     const PropType* schemaProp,
+                                     const PropType* base_schema,
                                      Properties* properties,
                                      ErrorPtr* error) const {
   const base::ListValue* list = nullptr;
   CHECK(value.GetAsList(&list)) << "Unable to get array value";
-  std::string type_name = DetectArrayType(list, schemaProp);
+  std::string type_name = DetectArrayType(list, base_schema);
   if (type_name.empty())
     return ErrorInvalidTypeInfo(prop_name, error);
   std::unique_ptr<PropType> prop = CreatePropType(type_name, prop_name, error);
@@ -170,14 +174,14 @@ bool ObjectSchema::PropFromJsonArray(const std::string& prop_name,
   base::DictionaryValue array_object;
   array_object.SetWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                        list->DeepCopy());
-  if (!prop->FromJson(&array_object, schemaProp, error))
+  if (!prop->FromJson(&array_object, base_schema, error))
     return false;
   properties->insert(std::make_pair(prop_name, std::move(prop)));
   return true;
 }
 
 static std::string DetectObjectType(const base::DictionaryValue* dict,
-                                    const PropType* schemaProp) {
+                                    const PropType* base_schema) {
   bool has_min_max = dict->HasKey(commands::attributes::kNumeric_Min) ||
                      dict->HasKey(commands::attributes::kNumeric_Max);
 
@@ -191,7 +195,7 @@ static std::string DetectObjectType(const base::DictionaryValue* dict,
   // "min:0, max:0" instead of just forcing it to be only "min:0.0, max:0.0".
   // If we have "minimum" or "maximum", and we have a Double schema object,
   // treat this object as a Double (even if both min and max are integers).
-  if (has_min_max && schemaProp && schemaProp->GetType() == ValueType::Double)
+  if (has_min_max && base_schema && base_schema->GetType() == ValueType::Double)
     return PropType::GetTypeStringFromType(ValueType::Double);
 
   // If we have at least one "minimum" or "maximum" that is Double,
@@ -213,18 +217,22 @@ static std::string DetectObjectType(const base::DictionaryValue* dict,
       dict->HasKey(commands::attributes::kString_MaxLength))
     return PropType::GetTypeStringFromType(ValueType::String);
 
-  // If we have "values", it's an array.
+  // If we have "properties", it's an object.
+  if (dict->HasKey(commands::attributes::kObject_Properties))
+    return PropType::GetTypeStringFromType(ValueType::Object);
+
+  // If we have "enum", it's an array. Detect type from array elements.
   const base::ListValue* list = nullptr;
   if (dict->GetListWithoutPathExpansion(
       commands::attributes::kOneOf_Enum, &list))
-    return DetectArrayType(list, schemaProp);
+    return DetectArrayType(list, base_schema);
 
   return std::string();
 }
 
 bool ObjectSchema::PropFromJsonObject(const std::string& prop_name,
                                       const base::Value& value,
-                                      const PropType* schemaProp,
+                                      const PropType* base_schema,
                                       Properties* properties,
                                       ErrorPtr* error) const {
   const base::DictionaryValue* dict = nullptr;
@@ -234,15 +242,15 @@ bool ObjectSchema::PropFromJsonObject(const std::string& prop_name,
     if (!dict->GetString(commands::attributes::kType, &type_name))
       return ErrorInvalidTypeInfo(prop_name, error);
   } else {
-    type_name = DetectObjectType(dict, schemaProp);
+    type_name = DetectObjectType(dict, base_schema);
   }
   if (type_name.empty()) {
-    if (!schemaProp)
+    if (!base_schema)
       return ErrorInvalidTypeInfo(prop_name, error);
-    type_name = schemaProp->GetTypeAsString();
+    type_name = base_schema->GetTypeAsString();
   }
   std::unique_ptr<PropType> prop = CreatePropType(type_name, prop_name, error);
-  if (!prop || !prop->FromJson(dict, schemaProp, error))
+  if (!prop || !prop->FromJson(dict, base_schema, error))
     return false;
   properties->insert(std::make_pair(prop_name, std::move(prop)));
   return true;

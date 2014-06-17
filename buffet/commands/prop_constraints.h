@@ -5,7 +5,6 @@
 #ifndef BUFFET_COMMANDS_PROP_CONSTRAINTS_H_
 #define BUFFET_COMMANDS_PROP_CONSTRAINTS_H_
 
-#include <limits>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -13,63 +12,13 @@
 #include <base/basictypes.h>
 #include <base/values.h>
 
-#include "buffet/any.h"
+#include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
+#include "buffet/commands/schema_utils.h"
 #include "buffet/error.h"
 #include "buffet/string_utils.h"
 
 namespace buffet {
-
-// InheritableAttribute class is used for specifying various command parameter
-// attributes that can be inherited from a base (parent) schema.
-// The |value| still specifies the actual attribute values, whether it
-// is inherited or overridden, while |is_inherited| can be used to identify
-// if the attribute was inherited (true) or overridden (false).
-template<typename T>
-class InheritableAttribute {
- public:
-  InheritableAttribute() = default;
-  explicit InheritableAttribute(T val)
-      : value(std::move(val)), is_inherited(true) {}
-  InheritableAttribute(T val, bool inherited)
-      : value(std::move(val)), is_inherited(inherited) {}
-  T value{};
-  bool is_inherited{true};
-};
-
-// A bunch of helper function to create base::Value for specific C++ classes,
-// including vectors of types. These are used in template classes below
-// to simplify specialization logic.
-std::unique_ptr<base::Value> TypedValueToJson(bool value);
-std::unique_ptr<base::Value> TypedValueToJson(int value);
-std::unique_ptr<base::Value> TypedValueToJson(double value);
-std::unique_ptr<base::Value> TypedValueToJson(const std::string& value);
-template<typename T>
-std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values) {
-  std::unique_ptr<base::ListValue> list(new base::ListValue);
-  for (const auto& v : values)
-    list->Append(TypedValueToJson(v).release());
-  return std::unique_ptr<base::Value>(list.release());
-}
-
-// Similarly to CreateTypedValue() function above, the following overloaded
-// helper methods allow to extract specific C++ data types from base::Value.
-// Also used in template classes below to simplify specialization logic.
-inline bool TypedValueFromJson(const base::Value* value_in, bool* value_out) {
-  return value_in->GetAsBoolean(value_out);
-}
-inline bool TypedValueFromJson(const base::Value* value_in, int* value_out) {
-  return value_in->GetAsInteger(value_out);
-}
-inline bool TypedValueFromJson(const base::Value* value_in, double* value_out) {
-  return value_in->GetAsDouble(value_out);
-}
-inline bool TypedValueFromJson(const base::Value* value_in,
-                               std::string* value_out) {
-  return value_in->GetAsString(value_out);
-}
-
-//////////////////////////////////////////////////////////////////////////////
 
 enum class ConstraintType {
   Min,
@@ -97,7 +46,7 @@ class Constraint {
   // Validates a parameter against the constraint. Returns true if parameter
   // value satisfies the constraint, otherwise fills the optional |error| with
   // the details for the failure.
-  virtual bool Validate(const Any& value, ErrorPtr* error) const = 0;
+  virtual bool Validate(const PropValue& value, ErrorPtr* error) const = 0;
   // Makes a copy of the constraint object, marking all the attributes
   // as inherited from the original definition.
   virtual std::shared_ptr<Constraint> CloneAsInherited() const = 0;
@@ -153,7 +102,7 @@ class ConstraintMinMaxBase : public Constraint {
 
   // Implementation of Constraint::ToJson().
   virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
-    return TypedValueToJson(limit_.value);
+    return TypedValueToJson(limit_.value, error);
   }
 
   // Stores the upper/lower value limit for maximum/minimum constraint.
@@ -178,8 +127,9 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
   virtual ConstraintType GetType() const { return ConstraintType::Min; }
 
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const Any& value, ErrorPtr* error) const override {
-    const T& v = value.Get<T>();
+  virtual bool Validate(const PropValue& value,
+                        ErrorPtr* error) const override {
+    T v = value.GetValueAsAny().Get<T>();
     if (v < this->limit_.value)
       return this->ReportErrorLessThan(
           error, string_utils::ToString(v),
@@ -214,8 +164,9 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
   virtual ConstraintType GetType() const { return ConstraintType::Max; }
 
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const Any& value, ErrorPtr* error) const override {
-    const T& v = value.Get<T>();
+  virtual bool Validate(const PropValue& value,
+                        ErrorPtr* error) const override {
+    T v = value.GetValueAsAny().Get<T>();
     if (v > this->limit_.value)
       return this->ReportErrorGreaterThan(
           error, string_utils::ToString(v),
@@ -268,7 +219,7 @@ class ConstraintStringLengthMin : public ConstraintStringLength {
     return ConstraintType::StringLengthMin;
   }
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const Any& value, ErrorPtr* error) const override;
+  virtual bool Validate(const PropValue& value, ErrorPtr* error) const override;
   // Implementation of Constraint::CloneAsInherited().
   virtual std::shared_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
@@ -289,7 +240,7 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
     return ConstraintType::StringLengthMax;
   }
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const Any& value, ErrorPtr* error) const override;
+  virtual bool Validate(const PropValue& value, ErrorPtr* error) const override;
   // Implementation of Constraint::CloneAsInherited().
   virtual std::shared_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
@@ -299,27 +250,6 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstraintStringLengthMax);
-};
-
-// CompareValue is a helper functor to help with implementing EqualsTo operator
-// for various data types. For most scalar types it is using operator==(),
-// however, for floating point values, rounding errors in binary representation
-// of IEEE floats/doubles can cause straight == comparison to fail for seemingly
-// equivalent values. For these, use approximate comparison with the error
-// margin equal to the epsilon value defined for the corresponding data type.
-
-// Compare exact types using ==.
-template<typename T, bool exact = true>
-struct CompareValue {
-  inline bool operator()(const T& v1, const T& v2) { return v1 == v2; }
-};
-
-// Compare non-exact types (such as double) using precision margin (epsilon).
-template<typename T>
-struct CompareValue<T, false> {
-  inline bool operator()(const T& v1, const T& v2) {
-    return std::abs(v1 - v2) <= std::numeric_limits<T>::epsilon();
-  }
 };
 
 // Implementation of OneOf constraint for different data types.
@@ -342,20 +272,20 @@ class ConstraintOneOf : public Constraint {
   }
 
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const Any& value, ErrorPtr* error) const override {
-    const T& v = value.Get<T>();
-    constexpr bool exact_type = std::is_same<T, std::string>::value ||
-                                std::numeric_limits<T>::is_exact;
+  virtual bool Validate(const PropValue& value,
+                        ErrorPtr* error) const override {
+    using string_utils::ToString;
+    T v = value.GetValueAsAny().Get<T>();
     for (const auto& item : set_.value) {
-      if (CompareValue<T, exact_type>()(v, item))
+      if (CompareValue(v, item))
         return true;
     }
     std::vector<std::string> values;
     values.reserve(set_.value.size());
     for (const auto& item : set_.value) {
-      values.push_back(string_utils::ToString(item));
+      values.push_back(ToString(item));
     }
-    return ReportErrorNotOneOf(error, string_utils::ToString(v), values);
+    return ReportErrorNotOneOf(error, ToString(v), values);
   }
 
   // Implementation of Constraint::CloneAsInherited().
@@ -365,7 +295,7 @@ class ConstraintOneOf : public Constraint {
 
   // Implementation of Constraint::ToJson().
   virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
-    return TypedValueToJson(set_.value);
+    return TypedValueToJson(set_.value, error);
   }
 
   // Implementation of Constraint::GetDictKey().

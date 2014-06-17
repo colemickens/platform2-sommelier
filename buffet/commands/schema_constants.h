@@ -18,8 +18,11 @@ extern const char kTypeMismatch[];
 extern const char kPropTypeChanged[];
 extern const char kUnknownType[];
 extern const char kInvalidPropDef[];
+extern const char kInvalidPropValue[];
 extern const char kNoTypeInfo[];
 extern const char kPropertyMissing[];
+extern const char kUnknownProperty[];
+extern const char kInvalidObjectSchema[];
 }  // namespace errors
 
 namespace attributes {
@@ -34,6 +37,10 @@ extern const char kString_MinLength[];
 extern const char kString_MaxLength[];
 
 extern const char kOneOf_Enum[];
+extern const char kOneOf_Metadata[];
+extern const char kOneOf_MetaSchema[];
+
+extern const char kObject_Properties[];
 }  // namespace attributes
 
 }  // namespace commands
