@@ -157,8 +157,16 @@ bool GdmDriver::Initialize() {
     return false;
 
   GCT_WIMAX_API_PARAM api_param;
-  strcpy(api_param.nonvolatile_dir, kNonVolatileDirectory);
-  strcpy(api_param.log_path, kLogDirectory);
+  CHECK_LT(snprintf(api_param.nonvolatile_dir,
+                    sizeof(api_param.nonvolatile_dir),
+                    "%s",
+                    kNonVolatileDirectory),
+           sizeof(api_param.nonvolatile_dir));
+  CHECK_LT(snprintf(api_param.log_path,
+                    sizeof(api_param.log_path),
+                    "%s",
+                    kLogDirectory),
+           sizeof(api_param.log_path));
   api_param.log_level = 1;
   GCT_API_RET ret =
       GAPI_Initialize(GCT_WIMAX_SDK_EMBEDDED_EAP_ENABLED, &api_param);

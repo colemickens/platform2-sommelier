@@ -169,7 +169,7 @@ NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
 }
 
 void DeviceDBusAdaptor::on_set_property(
-    DBus::InterfaceAdaptor& interface,
+    DBus::InterfaceAdaptor& interface,  // NOLINT(runtime/references)
     const string& property, const DBus::Variant& value) {
   if (property == "NetworkScanInterval") {
     device_->SetNetworkScanInterval(value.reader().get_uint32());
