@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>  // NOLINT
+#include <dbus-c++/dbus.h>
 
 namespace cros_disks {
 

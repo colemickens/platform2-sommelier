@@ -5,7 +5,7 @@
 #ifndef CROS_DISKS_DISK_H_
 #define CROS_DISKS_DISK_H_
 
-#include <dbus-c++/dbus.h>  // NOLINT
+#include <dbus-c++/dbus.h>
 
 #include <map>
 #include <string>

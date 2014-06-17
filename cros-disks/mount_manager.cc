@@ -386,7 +386,7 @@ bool MountManager::IsPathImmediateChildOfParent(const string& path,
                     path_components.begin());
 }
 
-bool MountManager::IsValidMountPath(const std::string& mount_path) const{
+bool MountManager::IsValidMountPath(const std::string& mount_path) const {
   return IsPathImmediateChildOfParent(mount_path, mount_root_);
 }
 

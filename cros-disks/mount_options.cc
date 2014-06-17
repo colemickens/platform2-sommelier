@@ -116,8 +116,8 @@ void MountOptions::SetReadOnlyOption() {
                kOptionReadWrite, kOptionReadOnly);
 }
 
-pair<unsigned long, string> MountOptions::ToMountFlagsAndData() const {
-  unsigned long flags = MS_RDONLY;
+pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {
+  Flags flags = MS_RDONLY;
   vector<string> data;
   data.reserve(options_.size());
 
@@ -125,7 +125,7 @@ pair<unsigned long, string> MountOptions::ToMountFlagsAndData() const {
     if (option == kOptionReadOnly) {
       flags |= MS_RDONLY;
     } else if (option == kOptionReadWrite) {
-      flags &= ~static_cast<unsigned long>(MS_RDONLY);
+      flags &= ~static_cast<Flags>(MS_RDONLY);
     } else if (option == kOptionBind) {
       flags |= MS_BIND;
     } else if (option == kOptionDirSync) {

@@ -165,10 +165,10 @@ TEST_F(MountOptionsTest, ToString) {
 TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   MountOptions mount_options;
   vector<string> options;
-  unsigned long expected_flags;
-  unsigned long security_flags = MS_NODEV | MS_NOEXEC | MS_NOSUID;
+  MountOptions::Flags expected_flags;
+  MountOptions::Flags security_flags = MS_NODEV | MS_NOEXEC | MS_NOSUID;
   string expected_data;
-  pair<unsigned long, string> flags_and_data;
+  pair<MountOptions::Flags, string> flags_and_data;
 
   // default construction
   expected_flags = MS_RDONLY;

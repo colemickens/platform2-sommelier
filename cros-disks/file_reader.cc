@@ -45,4 +45,4 @@ bool FileReader::ReadLine(string* line) {
   return line_valid;
 }
 
-}  // namespace file_util
+}  // namespace cros_disks

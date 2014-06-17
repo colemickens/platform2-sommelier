@@ -14,6 +14,8 @@ namespace cros_disks {
 // A class for holding and manipulating mount options.
 class MountOptions {
  public:
+  typedef unsigned long Flags;  // NOLINT(runtime/int)
+
   static const char kOptionBind[];
   static const char kOptionDirSync[];
   static const char kOptionFlush[];
@@ -49,7 +51,7 @@ class MountOptions {
 
   // Converts the mount options into mount flags and data that are used by
   // the mount() library call.
-  std::pair<unsigned long, std::string> ToMountFlagsAndData() const;
+  std::pair<Flags, std::string> ToMountFlagsAndData() const;
 
   // Converts the mount options into a comma-separated string.
   std::string ToString() const;

@@ -103,7 +103,7 @@ string Platform::GetDirectoryFallbackName(const string& path,
 }
 
 bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
-  long buffer_size = sysconf(_SC_GETGR_R_SIZE_MAX);
+  long buffer_size = sysconf(_SC_GETGR_R_SIZE_MAX);  // NOLINT(runtime/int)
   if (buffer_size <= 0)
     buffer_size = kFallbackGroupBufferSize;
 
@@ -124,7 +124,7 @@ bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
 
 bool Platform::GetUserAndGroupId(const string& user_name,
                                  uid_t* user_id, gid_t* group_id) const {
-  long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+  long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
   if (buffer_size <= 0)
     buffer_size = kFallbackPasswordBufferSize;
 

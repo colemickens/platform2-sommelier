@@ -27,7 +27,7 @@ SystemMounter::SystemMounter(const string& source_path,
 }
 
 MountErrorType SystemMounter::MountImpl() {
-  pair<unsigned long, string> flags_and_data =
+  pair<MountOptions::Flags, string> flags_and_data =
     mount_options().ToMountFlagsAndData();
   if (mount(source_path().c_str(), target_path().c_str(),
         filesystem_type().c_str(), flags_and_data.first,

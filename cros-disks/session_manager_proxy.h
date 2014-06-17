@@ -5,7 +5,7 @@
 #ifndef CROS_DISKS_SESSION_MANAGER_PROXY_H_
 #define CROS_DISKS_SESSION_MANAGER_PROXY_H_
 
-#include <dbus-c++/dbus.h>  // NOLINT
+#include <dbus-c++/dbus.h>
 
 #include <base/basictypes.h>
 #include <base/observer_list.h>

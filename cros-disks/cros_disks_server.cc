@@ -226,7 +226,7 @@ void CrosDisksServer::InitializeProperties() {
     DBus::Variant value;
     value.writer().append_bool(platform_->experimental_features_enabled());
     CrosDisks_adaptor::set_property(kExperimentalFeaturesEnabled, value);
-  } catch (const DBus::Error& e) {  // NOLINT
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "Failed to initialize properties: " << e.what();
   }
 }
