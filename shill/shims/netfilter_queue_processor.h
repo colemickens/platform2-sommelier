@@ -9,7 +9,7 @@
 #include <sys/time.h>
 
 #include <deque>
-#include <tr1/memory>
+#include <memory>
 
 #include <base/basictypes.h>
 
@@ -116,7 +116,7 @@ class NetfilterQueueProcessor {
     uint32_t destination;
   };
 
-  typedef std::tr1::shared_ptr<ListenerEntry> ListenerEntryPtr;
+  typedef std::shared_ptr<ListenerEntry> ListenerEntryPtr;
 
   // Called by the netlink_queue code when a packet arrives for the
   // input queue.

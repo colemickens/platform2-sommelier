@@ -628,7 +628,7 @@ ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   ifr.ifr_ifindex = interface_index;
-  strcpy(ifr.ifr_ifrn.ifrn_name, info->name.c_str());
+  strcpy(ifr.ifr_ifrn.ifrn_name, info->name.c_str());  // NOLINT(runtime/printf)
   int err = sockets_->Ioctl(fd, SIOCGIFHWADDR, &ifr);
   if (err < 0) {
     LOG(ERROR) << __func__ << ": Unable to read MAC address: " << errno;

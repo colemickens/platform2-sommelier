@@ -175,7 +175,7 @@ class WiFiService : public Service {
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyAdHoc);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
-  FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity); // security_
+  FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity);  // security_
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);

@@ -4,6 +4,8 @@
 
 #include "shill/link_monitor.h"
 
+#include <string>
+
 #include <base/bind.h>
 #include <gtest/gtest.h>
 

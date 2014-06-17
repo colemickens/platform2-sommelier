@@ -71,6 +71,7 @@ class MockCryptoUtilProxy
                                const std::string &input,
                                const StringCallback &result_handler);
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockCryptoUtilProxy);
 };
 

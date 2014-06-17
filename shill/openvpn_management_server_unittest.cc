@@ -31,7 +31,7 @@ namespace {
 MATCHER_P(VoidStringEq, value, "") {
   return value == reinterpret_cast<const char *>(arg);
 }
-}  // namespace {}
+}  // namespace
 
 class OpenVPNManagementServerTest : public testing::Test {
  public:

@@ -24,7 +24,7 @@ const char kHostName[] = "testhostname";
 const char kStorageIdentifier[] = "teststorageidentifier";
 const bool kArpGateway = false;
 const bool kMinimalConfig = false;
-}  // namespace {}
+}  // namespace
 
 class DHCPProviderTest : public Test {
  public:

@@ -7,10 +7,10 @@
 
 #include <deque>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/callback.h>
-#include <base/containers/hash_tables.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -32,8 +32,7 @@ struct RoutingTableEntry;
 class RoutingTable {
  public:
   typedef std::vector<RoutingTableEntry> TableEntryVector;
-  typedef base::hash_map<int, TableEntryVector> Tables;  // NOLINT
-  // NOLINT above: hash_map from base, no need to #include <hash_map>.
+  typedef std::unordered_map<int, TableEntryVector> Tables;
 
   struct Query {
     // Callback::Run(interface_index, entry)

@@ -6,6 +6,7 @@
 #define SHILL_MM1_MODEM_MODEM3GPP_PROXY_
 
 #include <string>
+#include <vector>
 
 #include "dbus_proxies/org.freedesktop.ModemManager1.Modem.Modem3gpp.h"
 #include "shill/dbus_properties.h"

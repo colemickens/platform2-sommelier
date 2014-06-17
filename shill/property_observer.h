@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback.h>
-#include <tr1/memory>
+#include <memory>
 
 #include "shill/accessor_interface.h"
 #include "shill/error.h"
@@ -25,7 +25,7 @@ class PropertyObserver : public PropertyObserverInterface {
  public:
   typedef base::Callback<void(const T &new_value)> Callback;
 
-  PropertyObserver(std::tr1::shared_ptr<AccessorInterface<T>> accessor,
+  PropertyObserver(std::shared_ptr<AccessorInterface<T>> accessor,
                    Callback callback)
       : accessor_(accessor), callback_(callback) {
     Error unused_error;
@@ -49,7 +49,7 @@ class PropertyObserver : public PropertyObserverInterface {
  private:
   friend class PropertyObserverTest;
 
-  std::tr1::shared_ptr<AccessorInterface<T>> accessor_;
+  std::shared_ptr<AccessorInterface<T>> accessor_;
   Callback callback_;
   T saved_value_;
 

@@ -57,10 +57,10 @@ const char kProxyIPAddressLocal[] = "192.23.34.1";
 const char kProxyIPv6AddressLocal[] = "::ffff:192.23.34.1";
 const char kProxyURLRemote[] = "http://www.google.com";
 const int kProxyFD = 100;
-const short kProxyPortLocal = 5540;
-const short kProxyPortRemote = 80;
+const int16_t kProxyPortLocal = 5540;
+const int16_t kProxyPortRemote = 80;
 const int kSocketError = 3000;
-}  // namespace {}
+}  // namespace
 
 MATCHER_P(IsSameIPAddress, ip_addr, "") {
   return arg.Equals(ip_addr);
@@ -257,7 +257,6 @@ class ConnectionHealthCheckerTest : public Test {
         .InSequence(seq_)
         .WillOnce(DoAll(SetArgumentPointee<0>(info_list),
                         Return(true)));
-
   }
   void ExpectSuccessfulStart() {
     EXPECT_CALL(remote_ips_, Empty()).WillRepeatedly(Return(false));
@@ -396,7 +395,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
   }
   // Will pass ownership of dns_clients elements.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
         .InSequence(seq_)
         .WillOnce(Return(dns_client_buffer[i]));
   }
@@ -416,13 +415,13 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
   }
   // Will pass ownership of dns_clients elements.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
         .InSequence(seq_)
         .WillOnce(Return(dns_client_buffer[i]));
   }
   EXPECT_CALL(remote_ips_, AddUnique(_));
   health_checker_->AddRemoteURL(kProxyURLRemote);
-  for(int i = 0; i < NumDNSQueries() - 1; ++i) {
+  for (int i = 0; i < NumDNSQueries() - 1; ++i) {
     InvokeGetDNSResultFailure();
   }
   InvokeGetDNSResultSuccess(remote_ip);
@@ -440,7 +439,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
   }
   // Will pass ownership of dns_clients elements.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
         .InSequence(seq_)
         .WillOnce(Return(dns_client_buffer[i]));
   }
@@ -462,13 +461,13 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   vector<SocketInfo> info_list;
 
   // GetSockName fails.
-  EXPECT_CALL(*socket_, GetSockName(_,_,_))
+  EXPECT_CALL(*socket_, GetSockName(_, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   Mock::VerifyAndClearExpectations(socket_);
 
   // GetSockName returns IPv6.
-  EXPECT_CALL(*socket_, GetSockName(_,_,_))
+  EXPECT_CALL(*socket_, GetSockName(_, _, _))
       .WillOnce(
           Invoke(this,
                  &ConnectionHealthCheckerTest::GetSockNameReturnsIPv6));
@@ -587,16 +586,16 @@ TEST_F(ConnectionHealthCheckerTest, NextHealthCheckSample) {
   dispatcher_.DispatchPendingEvents();
   VerifyAndClearAllExpectations();
 
-  EXPECT_CALL(*tcp_connection_, Start(_,_)).WillOnce(Return(true));
+  EXPECT_CALL(*tcp_connection_, Start(_, _)).WillOnce(Return(true));
   health_checker_->NextHealthCheckSample();
   VerifyAndClearAllExpectations();
 
   // This test assumes that there are at least 2 connection attempts left
   // before ConnectionHealthChecker gives up.
-  EXPECT_CALL(*tcp_connection_, Start(_,_))
+  EXPECT_CALL(*tcp_connection_, Start(_, _))
     .WillOnce(Return(false))
     .WillOnce(Return(true));
-  short num_connection_failures = health_checker_->num_connection_failures();
+  int16_t num_connection_failures = health_checker_->num_connection_failures();
   health_checker_->NextHealthCheckSample();
   EXPECT_EQ(num_connection_failures + 1,
             health_checker_->num_connection_failures());
@@ -735,7 +734,7 @@ TEST_F(ConnectionHealthCheckerTest, VerifySentData) {
 // Flow: Start() -> Start()
 // Expectation: Only one AsyncConnection is setup
 TEST_F(ConnectionHealthCheckerTest, StartStartSkipsSecond) {
-  EXPECT_CALL(*tcp_connection_, Start(_,_))
+  EXPECT_CALL(*tcp_connection_, Start(_, _))
       .WillOnce(Return(true));
   EXPECT_CALL(remote_ips_, Empty()).WillRepeatedly(Return(false));
   EXPECT_CALL(remote_ips_, GetRandomIP())
@@ -748,7 +747,7 @@ TEST_F(ConnectionHealthCheckerTest, StartStartSkipsSecond) {
 // Flow: Start() -> Stop() before ConnectionComplete()
 // Expectation: No call to |result_callback|
 TEST_F(ConnectionHealthCheckerTest, StartStopNoCallback) {
-  EXPECT_CALL(*tcp_connection_, Start(_,_))
+  EXPECT_CALL(*tcp_connection_, Start(_, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*tcp_connection_, Stop());
   EXPECT_CALL(*this, ResultCallbackTarget(_))

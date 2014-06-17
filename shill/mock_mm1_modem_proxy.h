@@ -6,6 +6,7 @@
 #define SHILL_MM1_MOCK_MODEM_PROXY_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <gmock/gmock.h>

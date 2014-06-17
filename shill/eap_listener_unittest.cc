@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include <base/bind.h>
 #include <gtest/gtest.h>
 

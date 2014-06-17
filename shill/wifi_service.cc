@@ -492,7 +492,7 @@ void WiFiService::HelpRegisterDerivedString(
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
     const string &name,
     bool(WiFiService::*set)(const string &, Error *),
-    void(WiFiService::*clear)(Error *),
+    void(WiFiService::*clear)(Error *error),
     const string *default_value) {
   mutable_store()->RegisterDerivedString(
       name,
@@ -859,7 +859,7 @@ void WiFiService::ParseWEPPassphrase(const string &passphrase,
     case IEEE_80211::kWEP40AsciiLen + 2:
     case IEEE_80211::kWEP104AsciiLen + 2:
       if (CheckWEPKeyIndex(passphrase, error)) {
-        base::StringToInt(passphrase.substr(0,1), &key_index_local);
+        base::StringToInt(passphrase.substr(0, 1), &key_index_local);
         password_text = passphrase.substr(2);
       }
       break;
@@ -873,9 +873,9 @@ void WiFiService::ParseWEPPassphrase(const string &passphrase,
       break;
     case IEEE_80211::kWEP40HexLen + 2:
     case IEEE_80211::kWEP104HexLen + 2:
-      if(CheckWEPKeyIndex(passphrase, error) &&
+      if (CheckWEPKeyIndex(passphrase, error) &&
          CheckWEPIsHex(passphrase.substr(2), error)) {
-        base::StringToInt(passphrase.substr(0,1), &key_index_local);
+        base::StringToInt(passphrase.substr(0, 1), &key_index_local);
         password_text = passphrase.substr(2);
         is_hex = true;
       } else if (CheckWEPPrefix(passphrase, error) &&
@@ -890,7 +890,7 @@ void WiFiService::ParseWEPPassphrase(const string &passphrase,
       if (CheckWEPKeyIndex(passphrase, error) &&
           CheckWEPPrefix(passphrase.substr(2), error) &&
           CheckWEPIsHex(passphrase.substr(4), error)) {
-        base::StringToInt(passphrase.substr(0,1), &key_index_local);
+        base::StringToInt(passphrase.substr(0, 1), &key_index_local);
         password_text = passphrase.substr(4);
         is_hex = true;
       }

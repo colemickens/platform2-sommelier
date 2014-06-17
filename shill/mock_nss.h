@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_NSS_
 #define SHILL_MOCK_NSS_
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include "shill/nss.h"

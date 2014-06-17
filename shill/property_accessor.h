@@ -188,7 +188,7 @@ class CustomAccessor : public AccessorInterface<T> {
   // the initializer list.
   T default_value_;
   T(C::*const getter_)(Error *error);
-  bool(C::*const setter_)(const T &value, Error *error);
+  bool(C::*const setter_)(const T &value, Error *error);  // NOLINT - "casting"
   void(C::*const clearer_)(Error *error);
   DISALLOW_COPY_AND_ASSIGN(CustomAccessor);
 };
@@ -241,7 +241,7 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
 
  private:
   C *const target_;
-  bool(C::*const setter_)(const T &value, Error *error);
+  bool(C::*const setter_)(const T &value, Error *error);  // NOLINT - "casting"
   void(C::*const clearer_)(Error *error);
   // |default_value_| is non-const because it can't be initialized in
   // the initializer list.
@@ -330,7 +330,8 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   C *const target_;
   void(C::*const clearer_)(const A &argument, Error *error);
   T(C::*const getter_)(const A &argument, Error *error);
-  bool(C::*const setter_)(const A &argument, const T &value, Error *error);
+  bool(C::*const setter_)(const A &argument,  // NOLINT - "casting"
+                          const T &value, Error *error);
   A argument_;
   DISALLOW_COPY_AND_ASSIGN(CustomMappedAccessor);
 };

@@ -26,7 +26,7 @@ namespace shill {
 namespace {
 const char kTestDeviceName[] = "tun0";
 const int kTestInterfaceIndex = 5;
-}  // namespace {}
+}  // namespace
 
 class VirtualDeviceTest : public testing::Test {
  public:

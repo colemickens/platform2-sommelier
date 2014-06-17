@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_WIMAX_PROVIDER_H_
 #define SHILL_MOCK_WIMAX_PROVIDER_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/wimax_provider.h"

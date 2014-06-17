@@ -1158,7 +1158,6 @@ void Manager::VerifyDestination(const string &certificate,
       error->Populate(Error::kOperationFailed,
                       "Unable to find connected WiFi service.");
       return;
-
     }
   }
   crypto_util_proxy_->VerifyDestination(certificate, public_key, nonce,
@@ -1218,7 +1217,7 @@ void Manager::VerifyAndEncryptCredentials(const string &certificate,
 
 int Manager::CalcConnectionId(std::string gateway_ip,
                               std::string gateway_mac) {
-  return  (int)(std::hash<std::string>()(gateway_ip + gateway_mac +
+  return static_cast<int>(std::hash<std::string>()(gateway_ip + gateway_mac +
       std::to_string(props_.connection_id_salt)));
 }
 
@@ -1315,7 +1314,7 @@ void Manager::HelpRegisterConstDerivedRpcIdentifiers(
 
 void Manager::HelpRegisterDerivedString(
     const string &name,
-    string(Manager::*get)(Error *),
+    string(Manager::*get)(Error *error),
     bool(Manager::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
@@ -1332,7 +1331,7 @@ void Manager::HelpRegisterConstDerivedStrings(
 
 void Manager::HelpRegisterDerivedBool(
     const string &name,
-    bool(Manager::*get)(Error *),
+    bool(Manager::*get)(Error *error),
     bool(Manager::*set)(const bool&, Error *)) {
   store_.RegisterDerivedBool(
       name,

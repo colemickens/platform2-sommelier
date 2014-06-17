@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_DBUS_PROPERTIES_PROXY_H_
 #define SHILL_MOCK_DBUS_PROPERTIES_PROXY_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

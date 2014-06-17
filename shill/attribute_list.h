@@ -10,7 +10,7 @@
 
 #include <map>
 #include <string>
-#include <tr1/memory>
+#include <memory>
 
 #include <base/bind.h>
 
@@ -25,7 +25,7 @@ class NetlinkRawAttribute;
 
 class AttributeList : public base::RefCounted<AttributeList> {
  public:
-  typedef std::tr1::shared_ptr<NetlinkAttribute> AttributePointer;
+  typedef std::shared_ptr<NetlinkAttribute> AttributePointer;
   typedef base::Callback<NetlinkAttribute *(int id)> NewFromIdMethod;
 
   AttributeList() {}

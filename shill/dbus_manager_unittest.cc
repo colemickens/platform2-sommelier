@@ -111,8 +111,7 @@ TEST_F(DBusManagerTest, GetNameOwnerFails) {
 }
 
 TEST_F(DBusManagerTest,
-       GetNameOwnerReturnsAfterDBusManagerAndNameWatcherDestroyed)
-{
+       GetNameOwnerReturnsAfterDBusManagerAndNameWatcherDestroyed) {
   MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
 
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));

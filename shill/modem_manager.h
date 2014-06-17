@@ -7,7 +7,7 @@
 
 #include <map>
 #include <string>
-#include <tr1/memory>
+#include <memory>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -53,7 +53,7 @@ class ModemManager {
   void OnDeviceInfoAvailable(const std::string &link_name);
 
  protected:
-  typedef std::map<std::string, std::tr1::shared_ptr<Modem> > Modems;
+  typedef std::map<std::string, std::shared_ptr<Modem> > Modems;
 
   const std::string &owner() const { return owner_; }
   const std::string &service() const { return service_; }
@@ -69,7 +69,7 @@ class ModemManager {
 
   bool ModemExists(const std::string &path) const;
   // Put the modem into our modem map
-  void RecordAddedModem(std::tr1::shared_ptr<Modem> modem);
+  void RecordAddedModem(std::shared_ptr<Modem> modem);
 
   // Removes a modem on |path|.
   void RemoveModem(const std::string &path);
@@ -122,7 +122,7 @@ class ModemManagerClassic : public ModemManager {
   virtual void Disconnect();
 
   virtual void AddModemClassic(const std::string &path);
-  virtual void InitModemClassic(std::tr1::shared_ptr<ModemClassic> modem);
+  virtual void InitModemClassic(std::shared_ptr<ModemClassic> modem);
 
  private:
   scoped_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy
@@ -144,7 +144,7 @@ class ModemManager1 : public ModemManager {
  protected:
   void AddModem1(const std::string &path,
                  const DBusInterfaceToProperties &properties);
-  virtual void InitModem1(std::tr1::shared_ptr<Modem1> modem,
+  virtual void InitModem1(std::shared_ptr<Modem1> modem,
                           const DBusInterfaceToProperties &properties);
 
   // ModemManager methods

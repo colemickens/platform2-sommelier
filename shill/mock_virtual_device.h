@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_VIRTUAL_DEVICE_H_
 #define SHILL_MOCK_VIRTUAL_DEVICE_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/virtual_device.h"

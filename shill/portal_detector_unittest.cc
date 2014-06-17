@@ -43,7 +43,7 @@ const char kURL[] = "http://www.chromium.org";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
-}  // namespace {}
+}  // namespace
 
 MATCHER_P(IsResult, result, "") {
   return (result.phase == arg.phase &&

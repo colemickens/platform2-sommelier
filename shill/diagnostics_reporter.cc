@@ -4,6 +4,8 @@
 
 #include "shill/diagnostics_reporter.h"
 
+#include <vector>
+
 #include <base/file_util.h>
 
 #include "shill/minijail.h"

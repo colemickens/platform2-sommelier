@@ -38,7 +38,7 @@ AsyncConnection::~AsyncConnection() {
 }
 
 bool AsyncConnection::Start(const IPAddress &address, int port) {
-  DCHECK(fd_ < 0);
+  DCHECK_LT(fd_, 0);
 
   fd_ = sockets_->Socket(PF_INET, SOCK_STREAM, 0);
   if (fd_ < 0 ||

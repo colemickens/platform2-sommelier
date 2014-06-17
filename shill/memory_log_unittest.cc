@@ -70,8 +70,8 @@ TEST_F(MemoryLogTest, NormalLoggingStillWorks) {
 
 // Test that no matter what we did, CHECK still kills the process.
 TEST_F(MemoryLogDeathTest, CheckLogsStillWork) {
-  EXPECT_DEATH( { CHECK(false) << "diediedie"; },
-                "Check failed: false. diediedie");
+  EXPECT_DEATH({ CHECK(false) << "diediedie"; },
+               "Check failed: false. diediedie");
 }
 
 TEST_F(MemoryLogTest, MemoryLogIsLogging) {
@@ -223,7 +223,6 @@ TEST_F(MemoryLogTest, MemoryLogMessageInterceptorWorks) {
   ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
   NOTIMPLEMENTED();
   ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
-
 }
 
 }  // namespace shill

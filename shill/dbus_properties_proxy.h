@@ -5,6 +5,9 @@
 #ifndef SHILL_DBUS_PROPERTIES_PROXY_
 #define SHILL_DBUS_PROPERTIES_PROXY_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 
 #include "shill/dbus_proxies/dbus-properties.h"

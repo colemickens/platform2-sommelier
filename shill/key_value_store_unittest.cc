@@ -29,9 +29,9 @@ TEST_F(KeyValueStoreTest, Bool) {
   EXPECT_EQ(kDefaultValue, store_.LookupBool(kKey, kDefaultValue));
   store_.SetBool(kKey, kValue);
   EXPECT_TRUE(store_.ContainsBool(kKey));
-  // TODO: investigate if a newer version of gtest handles EXPECT_EQ for bools
-  // in a manner that gcc 4.7 is happy with. (Inproper conversion from "false"
-  // to "NULL".)
+  // TODO(shenhan): investigate if a newer version of gtest handles EXPECT_EQ
+  // for bools in a manner that gcc 4.7 is happy with. (Improper conversion from
+  // "false" to "NULL").
   EXPECT_EQ(static_cast<int>(kValue),
             static_cast<int>(store_.LookupBool(kKey, kDefaultValue)));
   EXPECT_EQ(static_cast<int>(kValue),

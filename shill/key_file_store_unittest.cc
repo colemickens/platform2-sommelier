@@ -4,6 +4,10 @@
 
 #include "shill/key_file_store.h"
 
+#include <set>
+#include <string>
+#include <vector>
+
 #include <base/file_util.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/scoped_temp_dir.h>
@@ -26,7 +30,7 @@ namespace shill {
 namespace {
 const char kPlainText[] = "This is a test!";
 const char kROT47Text[] = "rot47:%9:D :D 2 E6DEP";
-}  // namespace {}
+}  // namespace
 
 class KeyFileStoreTest : public Test {
  public:

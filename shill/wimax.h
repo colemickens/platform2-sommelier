@@ -6,6 +6,7 @@
 #define SHILL_WIMAX_H_
 
 #include <set>
+#include <string>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>

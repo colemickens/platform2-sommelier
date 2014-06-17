@@ -65,7 +65,7 @@ MATCHER_P(HasApn, expected_apn, "") {
 
 class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
-  CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
+  explicit CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
       : dispatcher_(dispatcher),
         modem_info_(NULL, dispatcher, NULL, NULL, NULL),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
@@ -1775,7 +1775,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ActivationWaitForRegisterTimeout) {
 
   // Reset not done.
   capability_->reset_done_ = false;
-  EXPECT_CALL(*modem_proxy, Reset(_,_,_)).Times(1);
+  EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(1);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
     .WillOnce(Return(PendingActivationStore::kStatePending));

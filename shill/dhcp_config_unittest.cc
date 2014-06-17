@@ -4,6 +4,9 @@
 
 #include "shill/dhcp_config.h"
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -47,7 +50,7 @@ const bool kArpGateway = true;
 const bool kHasHostname = true;
 const bool kHasLeaseSuffix = true;
 const bool kMinimalConfig = true;
-}  // namespace {}
+}  // namespace
 
 class DHCPConfigTest : public PropertyStoreTest {
  public:
@@ -435,7 +438,7 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
 
 void DoNothing() {}
 
-}  // namespace {}
+}  // namespace
 
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
   DHCPConfig::Configuration conf;

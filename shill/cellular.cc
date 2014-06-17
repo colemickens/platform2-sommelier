@@ -638,7 +638,7 @@ void Cellular::CreateService() {
   // TODO(pprabhu) Make profile matching more robust (crbug.com/369755)
   string service_id;
   if (home_provider_info_->IsMobileNetworkOperatorKnown() &&
-      !home_provider_info_->uuid().empty()){
+      !home_provider_info_->uuid().empty()) {
     service_id = home_provider_info_->uuid();
   } else if (serving_operator_info_->IsMobileNetworkOperatorKnown() &&
              !serving_operator_info_->uuid().empty()) {
@@ -1567,7 +1567,7 @@ void Cellular::UpdateServingOperator(
       service_name += home_provider_info->operator_name() + " | ";
     }
     service_name += operator_info->operator_name();
-  } else if(!operator_info->mccmnc().empty()){
+  } else if (!operator_info->mccmnc().empty()) {
     // We could not get a name for the operator, just use the code.
     service_name = "cellular_" + operator_info->mccmnc();
   } else {

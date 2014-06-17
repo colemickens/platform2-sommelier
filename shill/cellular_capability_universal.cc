@@ -668,11 +668,11 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
        subscription_state_ == kSubscriptionStateUnprovisioned) &&
       !sim_identifier.empty() &&
       (state == PendingActivationStore::kStatePending ||
-       state == PendingActivationStore::kStatePendingTimeout))
+       state == PendingActivationStore::kStatePendingTimeout)) {
     activation_state = kActivationStateActivating;
-  else if (activation_required)
+  } else if (activation_required) {
     activation_state = kActivationStateNotActivated;
-  else {
+  } else {
     activation_state = kActivationStateActivated;
 
     // Mark an activated service for auto-connect by default. Since data from

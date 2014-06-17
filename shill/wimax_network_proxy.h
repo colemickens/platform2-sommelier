@@ -5,6 +5,8 @@
 #ifndef SHILL_WIMAX_NETWORK_PROXY_H_
 #define SHILL_WIMAX_NETWORK_PROXY_H_
 
+#include <string>
+
 #include <base/callback.h>
 
 #include "wimax_manager/dbus_proxies/org.chromium.WiMaxManager.Network.h"

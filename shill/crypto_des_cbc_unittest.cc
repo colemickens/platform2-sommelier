@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -26,7 +28,7 @@ const char kPlainText[] = "Hello world! ~123";
 const char kCipherText[] = "02:MbxzeBqK3HVeS3xfjyhbe47Xx+szYgOp";
 const char kPlainVersion1[] = "This is a test!";
 const char kCipherVersion1[] = "bKlHDISdHMFfmfgBTT5I0w==";
-}  // namespace {}
+}  // namespace
 
 class CryptoDESCBCTest : public Test {
  public:

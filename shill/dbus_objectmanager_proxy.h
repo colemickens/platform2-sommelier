@@ -4,7 +4,9 @@
 // found in the LICENSE file.
 #ifndef SHILL_DBUS_OBJECTMANAGER_PROXY_H_
 #define SHILL_DBUS_OBJECTMANAGER_PROXY_H_
+
 #include <string>
+#include <vector>
 
 #include "shill/dbus_objectmanager_proxy_interface.h"
 #include "shill/dbus_proxies/dbus-objectmanager.h"

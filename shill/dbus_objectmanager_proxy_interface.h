@@ -3,7 +3,10 @@
 // found in the LICENSE file.
 #ifndef SHILL_DBUS_OBJECTMANAGER_INTERFACE_H_
 #define SHILL_DBUS_OBJECTMANAGER_INTERFACE_H_
+
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/callback.h>

@@ -184,16 +184,11 @@ TEST_F(DBusAdaptorTest, Signatures) {
 
 template <typename T>
 class DBusAdaptorTypedTest : public DBusAdaptorTest {
- public:
-  DBusAdaptorTypedTest()
-      : property_(T()) // value-initialize primitives
-  {}
-
  protected:
   T *property() { return &property_; }
 
  private:
-  T property_;
+  T property_{};  // value-initialize primitives
 };
 
 TYPED_TEST_CASE(DBusAdaptorTypedTest, PropertyStoreTest::PropertyTypes);
@@ -308,7 +303,6 @@ TEST_F(DBusAdaptorTest, ClearProperty) {
                      Return(false)));
   EXPECT_TRUE(DBusAdaptor::ClearProperty(&store, "valid property", &e1));
   EXPECT_FALSE(DBusAdaptor::ClearProperty(&store, "invalid property", &e2));
-
 }
 
 TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {

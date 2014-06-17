@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_ETHERNET_SERVICE_H_
 #define SHILL_MOCK_ETHERNET_SERVICE_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/ethernet_service.h"
@@ -18,7 +20,7 @@ class MockEthernetService : public EthernetService {
 
   MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
                                          size_t depth));
-  MOCK_METHOD0(ClearEAPCertification, void ());
+  MOCK_METHOD0(ClearEAPCertification, void());
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
   MOCK_METHOD2(DisconnectWithFailure,
                void(ConnectFailure failure, Error *error));

@@ -23,7 +23,7 @@ namespace shill {
 
 namespace {
 const size_t kBitsPerByte = 8;
-} // namespace
+}  // namespace
 
 // static
 const IPAddress::Family IPAddress::kFamilyUnknown = AF_UNSPEC;

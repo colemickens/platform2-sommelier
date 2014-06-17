@@ -119,6 +119,7 @@ class MobileOperatorInfoInitTest : public Test {
   // Owned by |operator_info_| and tied to its life cycle.
   MobileOperatorInfoImpl *operator_info_impl_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoInitTest);
 };
 
@@ -300,6 +301,7 @@ class MobileOperatorInfoMainTest
   MockMobileOperatorInfoObserver observer_;
   const EventCheckingPolicy event_checking_policy_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoMainTest);
 };
 
@@ -982,7 +984,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
 
 class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
  public:
-   MobileOperatorInfoDataTest() : MobileOperatorInfoMainTest() {}
+  MobileOperatorInfoDataTest() : MobileOperatorInfoMainTest() {}
 
   // Same as MobileOperatorInfoMainTest, except that the database used is
   // different.
@@ -1165,6 +1167,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   // Extra data to be verified only against user updates.
   string sid_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoDataTest);
 };
 
@@ -1450,6 +1453,7 @@ class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {
   // Data.
   MockMobileOperatorInfoObserver second_observer_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserverTest);
 };
 

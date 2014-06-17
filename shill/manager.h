@@ -482,7 +482,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       RpcIdentifiers(Manager::*get)(Error *));
   void HelpRegisterDerivedString(
       const std::string &name,
-      std::string(Manager::*get)(Error *),
+      std::string(Manager::*get)(Error *error),
       bool(Manager::*set)(const std::string&, Error *));
   void HelpRegisterConstDerivedStrings(
       const std::string &name,

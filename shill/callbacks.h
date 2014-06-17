@@ -6,6 +6,7 @@
 #define SHILL_CALLBACKS_
 
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 

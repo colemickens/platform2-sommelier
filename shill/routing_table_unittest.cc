@@ -24,7 +24,6 @@
 using base::Bind;
 using base::Callback;
 using base::Unretained;
-using base::hash_map;
 using std::deque;
 using std::vector;
 using testing::_;
@@ -59,7 +58,7 @@ class RoutingTableTest : public Test {
     RTNLHandler::GetInstance()->Stop();
   }
 
-  hash_map<int, vector<RoutingTableEntry> > *GetRoutingTables() {
+  std::unordered_map<int, vector<RoutingTableEntry>> *GetRoutingTables() {
     return &routing_table_->tables_;
   }
 
@@ -289,8 +288,8 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                  kTestDeviceIndex0,
                  entry0);
 
-  hash_map<int, vector<RoutingTableEntry> > *tables =
-    GetRoutingTables();
+  std::unordered_map<int, vector<RoutingTableEntry>> *tables =
+      GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
   EXPECT_EQ(1, tables->size());
@@ -605,7 +604,8 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                                 kTestRequestSeq,
                                 RTPROT_UNSPEC);
 
-  hash_map<int, vector<RoutingTableEntry> > *tables = GetRoutingTables();
+  std::unordered_map<int, vector<RoutingTableEntry>> *tables =
+      GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
   EXPECT_EQ(1, tables->size());

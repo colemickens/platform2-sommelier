@@ -608,12 +608,12 @@ const Stringmaps CellularTest::kTestNetworksCellular =
       {kLongNameProperty, "some_long_name"},
       {kShortNameProperty, "short"}}};
 const int CellularTest::kStrength = 90;
-string CellularTest::kHomeProviderCode = "10001";
-string CellularTest::kHomeProviderCountry = "us";
-string CellularTest::kHomeProviderName = "HomeProviderName";
-string CellularTest::kServingOperatorCode = "10002";
-string CellularTest::kServingOperatorCountry = "ca";
-string CellularTest::kServingOperatorName = "ServingOperatorName";
+string CellularTest::kHomeProviderCode = "10001";  // NOLINT(runtime/string)
+string CellularTest::kHomeProviderCountry = "us";                   // NOLINT
+string CellularTest::kHomeProviderName = "HomeProviderName";        // NOLINT
+string CellularTest::kServingOperatorCode = "10002";                // NOLINT
+string CellularTest::kServingOperatorCountry = "ca";                // NOLINT
+string CellularTest::kServingOperatorName = "ServingOperatorName";  // NOLINT
 
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",
@@ -1278,7 +1278,7 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_,_))
+              GetActivationState(_, _))
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
 
   device_->state_ = Cellular::kStateDisabled;

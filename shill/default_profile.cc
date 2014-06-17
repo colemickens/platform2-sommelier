@@ -118,7 +118,7 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   if (!storage()->GetInt(kStorageId, kStorageConnectionIdSalt,
                          &manager_props->connection_id_salt)) {
     srand(time(NULL));
-    manager_props->connection_id_salt = rand();
+    manager_props->connection_id_salt = rand();  // NOLINT - rand
   }
 }
 

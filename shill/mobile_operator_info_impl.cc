@@ -397,12 +397,12 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
 
     const RepeatedPtrField<string> &mccmncs = data.mccmnc();
     for (const auto &mccmnc : mccmncs) {
-      InsertIntoStringToMNOListMap(mccmnc_to_mnos_, mccmnc, &mno);
+      InsertIntoStringToMNOListMap(&mccmnc_to_mnos_, mccmnc, &mno);
     }
 
     const RepeatedPtrField<string> &sids = data.sid();
-    for (const auto &sid: sids) {
-      InsertIntoStringToMNOListMap(sid_to_mnos_, sid, &mno);
+    for (const auto &sid : sids) {
+      InsertIntoStringToMNOListMap(&sid_to_mnos_, sid, &mno);
     }
 
     const RepeatedPtrField<LocalizedName> &localized_names =
@@ -410,7 +410,7 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
     for (const auto &localized_name : localized_names) {
       // LocalizedName::name is a required field.
       DCHECK(localized_name.has_name());
-      InsertIntoStringToMNOListMap(name_to_mnos_,
+      InsertIntoStringToMNOListMap(&name_to_mnos_,
                                    localized_name.name(),
                                    &mno);
     }
@@ -427,20 +427,16 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
 // same |key|. If you do that, the function is too dumb to deduplicate the
 // |value|s, and two copies will get stored.
 void MobileOperatorInfoImpl::InsertIntoStringToMNOListMap(
-    StringToMNOListMap &table,
+    StringToMNOListMap *table,
     const string &key,
     const MobileNetworkOperator *value) {
-  if (table.find(key) == table.end()) {
-    vector<const MobileNetworkOperator *> empty_mno_list;
-    table[key] = empty_mno_list;  // |empty_mno_list| copied.
-  }
-  table[key].push_back(value);
+  (*table)[key].push_back(value);
 }
 
 bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(const string &mccmnc) {
   // First check that we haven't determined candidates using SID.
   if (operator_code_type_ == kOperatorCodeTypeSID) {
-    LOG(WARNING) << "SID update will be overriden by the MCCMNC update for "
+    LOG(WARNING) << "SID update will be overridden by the MCCMNC update for "
                     "determining MNO.";
     candidates_by_operator_code_.clear();
   }

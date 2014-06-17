@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include "shill/crypto_rot47.h"
@@ -15,7 +17,7 @@ namespace {
 const char kEmpty[] = "";
 const char kPlainText[] = "~{\"Hello world!\" OPQ ['1234']}";
 const char kCipherText[] = "OLQw6==@ H@C=5PQ ~!\" ,V`abcV.N";
-}  // namespace {}
+}  // namespace
 
 class CryptoROT47Test : public Test {
  protected:

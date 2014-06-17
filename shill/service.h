@@ -799,7 +799,7 @@ class Service : public base::RefCounted<Service> {
   std::deque<Timestamp> misconnects_;  // Failures to connect.
 
   base::CancelableClosure reenable_auto_connect_task_;
-  uint64 auto_connect_cooldown_milliseconds_ ;
+  uint64 auto_connect_cooldown_milliseconds_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;

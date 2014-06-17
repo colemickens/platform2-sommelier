@@ -72,13 +72,12 @@ TEST_F(DiagnosticsReporterTest, IsReportingEnabled) {
 }
 
 TEST_F(DiagnosticsReporterTest, OnConnectivityEventThrottle) {
-  const uint64 kLastStash = 50;
-  const uint64 kNow = kLastStash + GetLogStashThrottleSeconds() - 1;
+  using timeval_seconds_t = decltype(timeval::tv_sec);
+  const timeval_seconds_t kLastStash = 50;
+  auto kNow = kLastStash +
+              static_cast<timeval_seconds_t>(GetLogStashThrottleSeconds() - 1);
   SetLastLogStash(kLastStash);
-  const struct timeval now = {
-    .tv_sec = static_cast<long int>(kNow),
-    .tv_usec = 0
-  };
+  const struct timeval now = {kNow, 0};
   EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
   reporter_.OnConnectivityEvent();
@@ -86,19 +85,15 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEventThrottle) {
 }
 
 TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
+  using timeval_seconds_t = decltype(timeval::tv_sec);
   const uint64 kInitStash = 0;
   SetLastLogStash(kInitStash);
   // Test that the initial call is not throttled.
-  const uint64 kNow0 = kInitStash + 1;
-  const struct timeval now0 = {
-    .tv_sec = static_cast<long int>(kNow0),
-    .tv_usec = 0
-  };
-  const uint64 kNow1 = kNow0 + GetLogStashThrottleSeconds() + 1;
-  const struct timeval now1 = {
-    .tv_sec = static_cast<long int>(kNow1),
-    .tv_usec = 0
-  };
+  auto kNow0 = static_cast<timeval_seconds_t>(kInitStash + 1);
+  const struct timeval now0 = {kNow0, 0};
+  auto kNow1 = kNow0 +
+               static_cast<timeval_seconds_t>(GetLogStashThrottleSeconds() + 1);
+  const struct timeval now1 = {kNow1, 0};
   base::ScopedTempDir temp_dir_;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   FilePath stashed_net_log = temp_dir_.path().Append("stashed-net-log");

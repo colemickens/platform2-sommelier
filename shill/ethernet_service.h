@@ -5,6 +5,8 @@
 #ifndef SHILL_ETHERNET_SERVICE_
 #define SHILL_ETHERNET_SERVICE_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

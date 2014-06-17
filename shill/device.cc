@@ -892,7 +892,7 @@ void Device::OnLinkMonitorGatewayChange() {
 
 void Device::PerformFallbackDNSTest() {
   // Return if DNS client already running.
-  if(fallback_dns_test_client_.get()) {
+  if (fallback_dns_test_client_.get()) {
     return;
   }
 

@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_WIMAX_DEVICE_PROXY_H_
 #define SHILL_MOCK_WIMAX_DEVICE_PROXY_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -42,6 +44,7 @@ class MockWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   MOCK_METHOD1(Name, std::string(Error *error));
   MOCK_METHOD1(Networks, RpcIdentifiers(Error *error));
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxDeviceProxy);
 };
 

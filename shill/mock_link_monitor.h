@@ -22,6 +22,7 @@ class MockLinkMonitor : public LinkMonitor {
   MOCK_CONST_METHOD0(GetResponseTimeMilliseconds, int());
   MOCK_CONST_METHOD0(IsGatewayFound, bool());
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockLinkMonitor);
 };
 

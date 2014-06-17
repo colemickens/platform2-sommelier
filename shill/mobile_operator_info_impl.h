@@ -5,6 +5,7 @@
 #ifndef SHILL_MOBILE_OPERATOR_IMPL_H_
 #define SHILL_MOBILE_OPERATOR_IMPL_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -75,7 +76,7 @@ class MobileOperatorInfoImpl {
   // Default databases to load.
   static const char *const kDefaultDatabasePaths[];
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
-  // the lenght of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
+  // the length of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;
 
   // ///////////////////////////////////////////////////////////////////////////
@@ -85,7 +86,7 @@ class MobileOperatorInfoImpl {
   // same |key|. If you do that, the function is too dumb to deduplicate the
   // |value|s, and two copies will get stored.
   void InsertIntoStringToMNOListMap(
-      StringToMNOListMap &table,
+      StringToMNOListMap *table,
       const std::string &key,
       const mobile_operator_db::MobileNetworkOperator *value);
 

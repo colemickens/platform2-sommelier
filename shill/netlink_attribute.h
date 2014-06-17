@@ -8,6 +8,7 @@
 #include <netlink/attr.h>
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 

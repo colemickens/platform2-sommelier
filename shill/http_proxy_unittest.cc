@@ -80,7 +80,7 @@ const int kServerFD = 10204;
 const int kClientFD = 10205;
 const int kServerPort = 40506;
 const int kConnectPort = 443;
-}  // namespace {}
+}  // namespace
 
 MATCHER_P(IsIPAddress, address, "") {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -106,6 +106,7 @@ class HTTPProxyTest : public Test {
             reinterpret_cast<Manager*>(NULL))),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         proxy_(connection_) { }
+
  protected:
   virtual void SetUp() {
     EXPECT_CALL(*connection_.get(), interface_name())
@@ -231,8 +232,8 @@ class HTTPProxyTest : public Test {
      if (proxy_.is_route_requested_) {
        EXPECT_CALL(*connection_.get(), ReleaseRouting());
      }
-   }
-   void ExpectClientInput(int fd) {
+  }
+  void ExpectClientInput(int fd) {
     EXPECT_CALL(sockets(), Accept(kProxyFD, _, _))
         .WillOnce(Return(fd));
     EXPECT_CALL(sockets(), SetNonBlocking(fd))

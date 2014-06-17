@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mm1_modem_location_proxy.h"
+#include "shill/mm1_modem_location_proxy.h"
 
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"

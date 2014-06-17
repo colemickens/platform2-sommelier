@@ -369,7 +369,7 @@ map<string, ::DBus::Variant> ManagerDBusAdaptor::GetNetworksForGeolocation(
   for (const auto &network : manager_->GetNetworksForGeolocation()) {
     Stringmaps value;
     // Convert GeolocationInfos to their Stringmaps equivalent.
-    for(const auto &info : network.second) {
+    for (const auto &info : network.second) {
       value.push_back(info.properties());
     }
     networks[network.first] = StringmapsToVariant(value);

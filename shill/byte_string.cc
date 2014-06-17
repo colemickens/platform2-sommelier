@@ -156,7 +156,7 @@ bool ByteString::Equals(const ByteString &b) const {
   }
   Vector::const_iterator lhs(begin_);
   Vector::const_iterator rhs(b.begin_);
-  while(lhs != data_.end()) {
+  while (lhs != data_.end()) {
     if (*lhs++ != *rhs++) {
       return false;
     }

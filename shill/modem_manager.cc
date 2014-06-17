@@ -16,7 +16,7 @@
 #include "shill/proxy_factory.h"
 
 using std::string;
-using std::tr1::shared_ptr;
+using std::shared_ptr;
 using std::vector;
 
 namespace shill {

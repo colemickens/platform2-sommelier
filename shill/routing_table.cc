@@ -19,7 +19,6 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/containers/hash_tables.h>
 #include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>

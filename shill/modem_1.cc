@@ -34,7 +34,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   }
 
   vector<DBus::Struct<string, uint32>> ports = props_it->second;
-  for (const auto &port_pair: ports) {
+  for (const auto &port_pair : ports) {
     if (port_pair._2 == MM_MODEM_PORT_TYPE_NET) {
       net_port = port_pair._1;
       break;

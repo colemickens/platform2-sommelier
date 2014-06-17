@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mock_proxy_factory.h"
+#include "shill/mock_proxy_factory.h"
 
 namespace shill {
 

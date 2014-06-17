@@ -34,7 +34,7 @@ const char kConnectAddress[] = "10.11.12.13";
 const int kConnectPort = 10203;
 const int kErrorNumber = 30405;
 const int kSocketFD = 60708;
-}  // namespace {}
+}  // namespace
 
 class AsyncConnectionTest : public Test {
  public:

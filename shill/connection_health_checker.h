@@ -5,6 +5,7 @@
 #ifndef SHILL_CONNECTION_HEALTH_CHECKER_H_
 #define SHILL_CONNECTION_HEALTH_CHECKER_H_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -40,7 +41,6 @@ class SocketInfoReader;
 //   -(3)- Connectivity OK (TCP connection established, is healthy)
 class ConnectionHealthChecker {
  public:
-
   enum Result {
     // There was some problem in the setup of ConnctionHealthChecker.
     // Could not attempt a tcp connection.
@@ -99,24 +99,24 @@ class ConnectionHealthChecker {
     dispatcher_ = dispatcher;
   }
   void set_sock_fd(int sock_fd) { sock_fd_ = sock_fd; }
-  short num_connection_failures() const { return num_connection_failures_; }
-  void set_num_connection_failures(short val) {
+  int16_t num_connection_failures() const { return num_connection_failures_; }
+  void set_num_connection_failures(int16_t val) {
     num_connection_failures_ = val;
   }
-  short num_tx_queue_polling_attempts() const {
+  int16_t num_tx_queue_polling_attempts() const {
     return num_tx_queue_polling_attempts_;
   }
-  void set_num_tx_queue_polling_attempts(short val) {
+  void set_num_tx_queue_polling_attempts(int16_t val) {
     num_tx_queue_polling_attempts_ = val;
   }
-  short num_congested_queue_detected() const {
+  int16_t num_congested_queue_detected() const {
     return num_congested_queue_detected_;
   }
-  void set_num_congested_queue_detected(short val) {
+  void set_num_congested_queue_detected(int16_t val) {
     num_congested_queue_detected_ = val;
   }
-  short num_successful_sends() const { return num_successful_sends_; }
-  void set_num_successful_sends(short val) {
+  int16_t num_successful_sends() const { return num_successful_sends_; }
+  void set_num_successful_sends(int16_t val) {
     num_successful_sends_ = val;
   }
   void set_old_transmit_queue_value(uint64 val) {
@@ -212,13 +212,13 @@ class ConnectionHealthChecker {
 
   bool health_check_in_progress_;
   // Number of connection failures in currently active health check.
-  short num_connection_failures_;
+  int16_t num_connection_failures_;
   // Number of times we have checked the tx-queue for the current send attempt.
-  short num_tx_queue_polling_attempts_;
-  // Number of out of credit scenarios detected in currentl health check.
-  short num_congested_queue_detected_;
+  int16_t num_tx_queue_polling_attempts_;
+  // Number of out of credit scenarios detected in current health check.
+  int16_t num_congested_queue_detected_;
   // Number of successful send attempts currently active health check.
-  short num_successful_sends_;
+  int16_t num_successful_sends_;
 
   // Snooze time while polling for updated /proc/tcpinfo
   int tcp_state_update_wait_milliseconds_;

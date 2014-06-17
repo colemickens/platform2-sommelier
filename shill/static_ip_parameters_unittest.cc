@@ -34,7 +34,7 @@ static const char kNameServer1[] = "10.0.1.252";
 static const char kNameServers[] = "10.0.1.253,10.0.1.252";
 static const char kPeerAddress[] = "10.0.0.2";
 static const int32 kPrefixLen = 24;
-} // namespace {}
+}  // namespace
 
 class StaticIpParametersTest : public Test {
  public:

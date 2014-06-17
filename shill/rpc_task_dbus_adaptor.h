@@ -5,6 +5,9 @@
 #ifndef SHILL_RPC_TASK_DBUS_ADAPTOR_H_
 #define SHILL_RPC_TASK_DBUS_ADAPTOR_H_
 
+#include <map>
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/adaptor_interfaces.h"

@@ -19,7 +19,7 @@
 #include "shill/testing.h"
 
 using std::string;
-using std::tr1::shared_ptr;
+using std::shared_ptr;
 using std::vector;
 using testing::_;
 using testing::Invoke;

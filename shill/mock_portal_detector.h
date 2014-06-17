@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_PORTAL_DETECTOR_H_
 #define SHILL_MOCK_PORTAL_DETECTOR_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -14,7 +16,7 @@ namespace shill {
 
 class MockPortalDetector : public PortalDetector {
  public:
-  MockPortalDetector(ConnectionRefPtr connection);
+  explicit MockPortalDetector(ConnectionRefPtr connection);
   virtual ~MockPortalDetector();
 
   MOCK_METHOD1(Start, bool(const std::string &));

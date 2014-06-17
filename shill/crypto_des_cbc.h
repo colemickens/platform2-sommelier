@@ -5,6 +5,7 @@
 #ifndef SHILL_CRYPTO_DES_CBC_
 #define SHILL_CRYPTO_DES_CBC_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

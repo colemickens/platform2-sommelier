@@ -16,7 +16,7 @@ namespace shill {
 
 namespace {
 const char kHardwareAddressEmpty[] = "";
-}  // namespace {}
+}  // namespace
 
 VirtualDevice::VirtualDevice(ControlInterface *control,
                              EventDispatcher *dispatcher,

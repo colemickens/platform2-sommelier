@@ -5,6 +5,7 @@
 #ifndef SHILL_WIMAX_MANAGER_PROXY_H_
 #define SHILL_WIMAX_MANAGER_PROXY_H_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

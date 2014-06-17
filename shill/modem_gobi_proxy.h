@@ -5,6 +5,8 @@
 #ifndef SHILL_MODEM_GOBI_PROXY_H_
 #define SHILL_MODEM_GOBI_PROXY_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/dbus_proxies/modem-gobi.h"

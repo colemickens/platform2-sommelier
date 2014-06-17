@@ -19,7 +19,6 @@
 #include "shill/supplicant_bss_proxy_interface.h"
 #include "shill/tethering.h"
 #include "shill/wifi.h"
-#include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
 using base::StringPrintf;
@@ -130,7 +129,7 @@ void WiFiEndpoint::PropertiesChanged(
 }
 
 void WiFiEndpoint::UpdateSignalStrength(int16 strength) {
-  if (signal_strength_ == strength ) {
+  if (signal_strength_ == strength) {
     return;
   }
 
@@ -299,7 +298,7 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
   }
 
   return new WiFiEndpoint(
-      proxy_factory, wifi, bssid, args); // |bssid| fakes an RPC ID
+      proxy_factory, wifi, bssid, args);  // |bssid| fakes an RPC ID
 }
 
 // static

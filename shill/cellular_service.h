@@ -153,7 +153,7 @@ class CellularService : public Service {
       bool(CellularService::*set)(const Stringmap &value, Error *error));
   void HelpRegisterDerivedBool(
       const std::string &name,
-      bool(CellularService::*get)(Error *),
+      bool(CellularService::*get)(Error *error),
       bool(CellularService::*set)(const bool&, Error *));
 
   virtual std::string GetDeviceRpcId(Error *error) const;

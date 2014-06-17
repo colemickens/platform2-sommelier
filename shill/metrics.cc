@@ -15,7 +15,7 @@
 #include "shill/wifi_service.h"
 
 using std::string;
-using std::tr1::shared_ptr;
+using std::shared_ptr;
 
 namespace shill {
 

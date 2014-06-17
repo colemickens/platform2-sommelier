@@ -32,7 +32,7 @@ const uint8 kMACAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
 const uint8 kInsertedByte[] = { 0x00 };
 const size_t kArpPaddingSizeV4 = 18;
 const size_t kArpPaddingSizeV6 = 0;
-}  // namespace {}
+}  // namespace
 
 class ArpPacketTest : public Test {
  public:

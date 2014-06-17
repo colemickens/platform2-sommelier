@@ -5,6 +5,10 @@
 #ifndef SHILL_KEY_FILE_STORE_
 #define SHILL_KEY_FILE_STORE_
 
+#include <set>
+#include <string>
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -75,7 +79,7 @@ class KeyFileStore : public StoreInterface {
                       int *value) const override;
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
-                      int value) override ;
+                      int value) override;
   virtual bool GetUint64(const std::string &group,
                          const std::string &key,
                          uint64 *value) const override;
@@ -94,6 +98,7 @@ class KeyFileStore : public StoreInterface {
   virtual bool SetCryptedString(const std::string &group,
                                 const std::string &key,
                                 const std::string &value) override;
+
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
   FRIEND_TEST(KeyFileStoreTest, OpenFail);

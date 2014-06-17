@@ -74,7 +74,7 @@ MATCHER_P(IsCryptoUtilCommandLine, command, "") {
   }
 
   return true;
-};
+}
 
 MATCHER_P(ErrorIsOfType, error_type, "") {
   if (error_type != arg.type()) {
@@ -82,7 +82,7 @@ MATCHER_P(ErrorIsOfType, error_type, "") {
   }
 
   return true;
-};
+}
 
 class CryptoUtilProxyTest : public testing::Test {
  public:
@@ -132,9 +132,9 @@ class CryptoUtilProxyTest : public testing::Test {
         .WillOnce(Return(true));
     EXPECT_CALL(minijail_, RunPipesAndDestroy(_,
                                               IsCryptoUtilCommandLine(command),
-                                              NotNull(), // pid
-                                              NotNull(), // stdin
-                                              NotNull(), // stdout
+                                              NotNull(),  // pid
+                                              NotNull(),  // stdin
+                                              NotNull(),  // stdout
                                               NULL))  // stderr
         .WillOnce(Invoke(this, &CryptoUtilProxyTest::HandleRunPipesAndDestroy));
     // We should always schedule a shim timeout callback.
@@ -388,7 +388,6 @@ TEST_F(CryptoUtilProxyTest, ShimLifeTime) {
                                 ErrorIsOfType(Error::kSuccess))).Times(1);
   ExpectCleanup(Error(Error::kSuccess));
   crypto_util_proxy_.HandleShimOutput(&data);
-
 }
 
 }  // namespace shill

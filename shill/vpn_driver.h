@@ -6,6 +6,7 @@
 #define SHILL_VPN_DRIVER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/cancelable_callback.h>

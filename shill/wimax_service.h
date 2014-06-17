@@ -5,6 +5,8 @@
 #ifndef SHILL_WIMAX_SERVICE_H_
 #define SHILL_WIMAX_SERVICE_H_
 
+#include <string>
+
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"

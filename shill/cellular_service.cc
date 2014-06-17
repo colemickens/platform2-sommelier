@@ -129,7 +129,7 @@ void CellularService::HelpRegisterDerivedStringmap(
 
 void CellularService::HelpRegisterDerivedBool(
     const string &name,
-    bool(CellularService::*get)(Error *),
+    bool(CellularService::*get)(Error *error),
     bool(CellularService::*set)(const bool&, Error *)) {
   mutable_store()->RegisterDerivedBool(
     name,

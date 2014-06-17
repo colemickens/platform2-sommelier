@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_DEVICE_INFO_
 #define SHILL_MOCK_DEVICE_INFO_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

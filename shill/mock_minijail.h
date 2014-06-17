@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_MINIJAIL_H_
 #define SHILL_MOCK_MINIJAIL_H_
 
+#include <vector>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -18,7 +20,7 @@ class MockMinijail : public Minijail {
   virtual ~MockMinijail();
 
   MOCK_METHOD0(New, struct minijail *());
-  MOCK_METHOD1(Destroy, void (struct minijail *));
+  MOCK_METHOD1(Destroy, void(struct minijail *));
 
   MOCK_METHOD2(DropRoot, bool(struct minijail *jail, const char *user));
   MOCK_METHOD2(UseCapabilities, void(struct minijail *jail, uint64_t capmask));

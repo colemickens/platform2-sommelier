@@ -46,7 +46,7 @@ bool IPAddressStore::Empty() const {
 IPAddress IPAddressStore::GetRandomIP() {
   if (ip_addresses_.empty())
     return IPAddress(IPAddress::kFamilyUnknown);
-  int index = rand() % ip_addresses_.size();
+  int index = rand() % ip_addresses_.size();  // NOLINT(runtime/threadsafe_fn)
   IPAddresses::const_iterator cit = ip_addresses_.begin();
   advance(cit, index);
   return *cit;

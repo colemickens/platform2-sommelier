@@ -8,6 +8,7 @@
 #include "shill/netlink_manager.h"
 
 #include <map>
+#include <string>
 
 #include <gmock/gmock.h>
 

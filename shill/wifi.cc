@@ -892,7 +892,7 @@ void WiFi::HandleDisconnect() {
   RestartFastScanAttempts();
 }
 
-void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service){
+void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
   // Check if service was explicitly disconnected due to failure or
   // is explicitly disconnected by user.
   if (!affected_service->IsInFailState() &&
@@ -2441,7 +2441,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
 
     if (transmit_info->GetU16AttributeValue(
         NL80211_RATE_INFO_BITRATE, &u16_rate)) {
-      rate = (uint32) u16_rate;
+      rate = static_cast<uint32>(u16_rate);
     } else {
       transmit_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, &rate);
     }

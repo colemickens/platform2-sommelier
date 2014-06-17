@@ -26,7 +26,7 @@ class ServiceAdaptorInterface;
 // property change notifier.
 class ServicePropertyChangeNotifier {
  public:
-  ServicePropertyChangeNotifier(ServiceAdaptorInterface *adaptor);
+  explicit ServicePropertyChangeNotifier(ServiceAdaptorInterface *adaptor);
   virtual ~ServicePropertyChangeNotifier();
 
   virtual void AddBoolPropertyObserver(const std::string &name,

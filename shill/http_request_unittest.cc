@@ -57,7 +57,7 @@ const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
 const char kServerAddress[] = "10.1.1.1";
 const int kServerFD = 10203;
 const int kServerPort = 80;
-}  // namespace {}
+}  // namespace
 
 MATCHER_P(IsIPAddress, address, "") {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -86,6 +86,7 @@ class HTTPRequestTest : public Test {
             reinterpret_cast<Metrics*>(NULL),
             reinterpret_cast<Manager*>(NULL))),
         connection_(new StrictMock<MockConnection>(device_info_.get())) { }
+
  protected:
   class CallbackTarget {
    public:

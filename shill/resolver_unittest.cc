@@ -35,7 +35,7 @@ const char kExpectedIgnoredSearchOutput[] =
   "nameserver 8.8.9.9\n"
   "search google.com\n"
   "options single-request timeout:1 attempts:5\n";
-}  // namespace {}
+}  // namespace
 
 class ResolverTest : public Test {
  public:

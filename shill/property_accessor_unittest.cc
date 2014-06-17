@@ -491,7 +491,7 @@ class StringMapWrapper {
     return true;
   }
 
-  map<string,string> value_;
+  map<string, string> value_;
 };
 
 TEST(PropertyAccessorTest, CustomMappedAccessor) {

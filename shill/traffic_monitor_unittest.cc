@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+#include <vector>
+
 #include "shill/traffic_monitor.h"
 
 #include <base/bind.h>
@@ -131,13 +134,13 @@ class TrafficMonitorTest : public Test {
 };
 
 // static
-const string TrafficMonitorTest::kLocalIpAddr = "127.0.0.1";
+const string TrafficMonitorTest::kLocalIpAddr = "127.0.0.1";  // NOLINT - string
 const uint16 TrafficMonitorTest::kLocalPort1 = 1234;
 const uint16 TrafficMonitorTest::kLocalPort2 = 2345;
 const uint16 TrafficMonitorTest::kLocalPort3 = 3456;
 const uint16 TrafficMonitorTest::kLocalPort4 = 4567;
 const uint16 TrafficMonitorTest::kLocalPort5 = 4567;
-const string TrafficMonitorTest::kRemoteIpAddr = "192.168.1.1";
+const string TrafficMonitorTest::kRemoteIpAddr = "192.168.1.1";  // NOLINT - str
 const uint16 TrafficMonitorTest::kRemotePort = 5678;
 const uint64 TrafficMonitorTest::kTxQueueLength1 = 111;
 const uint64 TrafficMonitorTest::kTxQueueLength2 = 222;

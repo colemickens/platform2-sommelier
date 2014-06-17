@@ -6,6 +6,7 @@
 #define SHILL_MOCK_DEVICE_
 
 #include <string>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>

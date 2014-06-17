@@ -19,6 +19,7 @@ class MockTrafficMonitor : public TrafficMonitor {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockTrafficMonitor);
 };
 

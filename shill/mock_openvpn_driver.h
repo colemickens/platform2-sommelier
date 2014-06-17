@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_OPENVPN_DRIVER_
 #define SHILL_MOCK_OPENVPN_DRIVER_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/openvpn_driver.h"

@@ -5,6 +5,7 @@
 #ifndef SHILL_ETHERNET_
 #define SHILL_ETHERNET_
 
+#include <map>
 #include <string>
 
 #include <base/cancelable_callback.h>

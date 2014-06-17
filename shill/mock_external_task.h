@@ -5,6 +5,10 @@
 #ifndef SHILL_MOCK_EXTERNAL_TASK_H_
 #define SHILL_MOCK_EXTERNAL_TASK_H_
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include "shill/external_task.h"
@@ -12,7 +16,7 @@
 namespace shill {
 
 class MockExternalTask : public ExternalTask {
-public:
+ public:
   MockExternalTask(ControlInterface *control,
                    GLib *glib,
                    const base::WeakPtr<RPCTaskDelegate> &task_delegate,
@@ -28,7 +32,7 @@ public:
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(OnDelete, void());
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockExternalTask);
 };
 

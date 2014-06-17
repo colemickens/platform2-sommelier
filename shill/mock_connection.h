@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_CONNECTION_H_
 #define SHILL_MOCK_CONNECTION_H_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -14,7 +17,7 @@ namespace shill {
 
 class MockConnection : public Connection {
  public:
-  MockConnection(const DeviceInfo *device_info);
+  explicit MockConnection(const DeviceInfo *device_info);
   virtual ~MockConnection();
 
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr &config));

@@ -7,6 +7,8 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include "shill/byte_string.h"
@@ -347,7 +349,7 @@ const unsigned char kAddNeighborMessage[] = {
   0x04, 0x00, 0x00, 0x00,
 };
 
-}  // namespace {}
+}  // namespace
 
 class RTNLMessageTest : public Test {
  protected:

@@ -5,6 +5,9 @@
 #ifndef SHILL_DHCP_CONFIG_
 #define SHILL_DHCP_CONFIG_
 
+#include <map>
+#include <string>
+
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>

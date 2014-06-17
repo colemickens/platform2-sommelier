@@ -40,7 +40,7 @@ class MockSimProxy : public SimProxyInterface {
                                const ResultCallback &callback,
                                int timeout));
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockSimProxy);
 };
 

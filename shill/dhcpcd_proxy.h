@@ -5,6 +5,8 @@
 #ifndef SHILL_DHCPCD_PROXY_
 #define SHILL_DHCPCD_PROXY_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/dbus_proxies/dhcpcd.h"

@@ -46,7 +46,6 @@ void RPCTaskTest::GetLogin(string *user, string *password) {
 
 void RPCTaskTest::Notify(const string &reason,
                          const map<string, string> &dict) {
-
   notify_calls_++;
   last_notify_reason_ = reason;
   last_notify_dict_ = dict;

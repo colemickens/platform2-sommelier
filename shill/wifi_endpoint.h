@@ -115,7 +115,7 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);
-   // for physical_mode_
+  // for physical_mode_
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, PhysicalMode);
 
   enum KeyManagement {

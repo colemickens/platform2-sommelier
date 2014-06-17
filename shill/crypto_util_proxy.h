@@ -71,6 +71,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                            const std::string &data,
                            const ResultStringCallback &result_callback,
                            Error *error);
+
  private:
   friend class CryptoUtilProxyTest;
   friend class MockCryptoUtilProxy;

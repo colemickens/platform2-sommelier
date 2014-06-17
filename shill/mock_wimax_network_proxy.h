@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_WIMAX_NETWORK_PROXY_H_
 #define SHILL_MOCK_WIMAX_NETWORK_PROXY_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/wimax_network_proxy_interface.h"
@@ -26,6 +28,7 @@ class MockWiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   MOCK_METHOD1(RSSI, int(Error *error));
   MOCK_METHOD1(SignalStrength, int(Error *error));
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxNetworkProxy);
 };
 

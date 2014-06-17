@@ -5,6 +5,7 @@
 #include "shill/metrics.h"
 
 #include <string>
+#include <vector>
 
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library_mock.h>

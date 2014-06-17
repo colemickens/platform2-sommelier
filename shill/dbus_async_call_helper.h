@@ -31,7 +31,8 @@ namespace shill {
 template<
     typename TraceMsgT, typename ProxyT, typename CallT,
     typename CallbackT, typename... ArgTypes>
-void BeginAsyncDBusCall(const TraceMsgT &trace_msg, ProxyT &proxy,
+void BeginAsyncDBusCall(const TraceMsgT &trace_msg,
+                        ProxyT &proxy,  // NOLINT(runtime/references)
                         const CallT &call, const CallbackT &callback,
                         Error *error,
                         void(*error_converter)(const DBus::Error &, Error *),

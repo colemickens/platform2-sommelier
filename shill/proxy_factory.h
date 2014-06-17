@@ -50,7 +50,7 @@ class ModemSimpleProxyInterface;
 class ModemTimeProxyInterface;
 class SimProxyInterface;
 
-} // namespace mm1
+}  // namespace mm1
 
 // Global DBus proxy factory that can be mocked out in tests.
 class ProxyFactory {

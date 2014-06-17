@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_MODEM_INFO_
 #define SHILL_MOCK_MODEM_INFO_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

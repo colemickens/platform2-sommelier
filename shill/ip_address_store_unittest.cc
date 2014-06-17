@@ -18,7 +18,7 @@ namespace {
 const char kIPAddress_0_0_0_0[] = "0.0.0.0";
 const char kIPAddress_8_8_8_8[] = "8.8.8.8";
 const char kIPAddress_7_7_7_7[] = "7.7.7.7";
-}  // namespace {}
+}  // namespace
 
 class IPAddressStoreTest : public Test {
  public:

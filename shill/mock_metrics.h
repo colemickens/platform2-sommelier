@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_METRICS_
 #define SHILL_MOCK_METRICS_
 
+#include <string>
+
 #include "shill/metrics.h"
 
 #include <gmock/gmock.h>

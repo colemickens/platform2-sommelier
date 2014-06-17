@@ -88,6 +88,7 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
 
   Proxy proxy_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(ModemCDMAProxy);
 };
 

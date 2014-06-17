@@ -6,6 +6,7 @@
 #define SHILL_MOCK_ADAPTORS_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 

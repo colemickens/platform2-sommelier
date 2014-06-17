@@ -120,11 +120,12 @@ ssize_t MemoryLog::FlushToFile(const FilePath &file_path) {
     return -1;
   }
   base::ScopedFILE file_closer(f);
-  long maximum_pw_string_size = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if (maximum_pw_string_size < 0) {
+  auto maxpw_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (maxpw_size < 0) {
     LOG(ERROR) << "Setup for changing ownership of memory log file failed";
     return -1;
   }
+  size_t maximum_pw_string_size = static_cast<size_t>(maxpw_size);
   struct passwd chronos;
   struct passwd *pwresult = NULL;
   scoped_ptr<char[]> buf(new char[maximum_pw_string_size]);

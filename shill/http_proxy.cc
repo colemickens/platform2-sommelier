@@ -138,7 +138,7 @@ bool HTTPProxy::Start(EventDispatcher *dispatcher,
 void HTTPProxy::Stop() {
   SLOG(HTTPProxy, 3) << "In " << __func__;
 
-  if (!sockets_ ) {
+  if (!sockets_) {
     return;
   }
 

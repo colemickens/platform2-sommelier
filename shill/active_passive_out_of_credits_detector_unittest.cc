@@ -4,6 +4,9 @@
 
 #include "shill/active_passive_out_of_credits_detector.h"
 
+#include <string>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"

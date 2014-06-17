@@ -62,7 +62,7 @@ string FormattedIdentifier(PendingActivationStore::IdentifierType type,
 
 // static
 string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
-  switch(type) {
+  switch (type) {
     case kIdentifierICCID:
       return kIccidGroupId;
     case kIdentifierMEID:

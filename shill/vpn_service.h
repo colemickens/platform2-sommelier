@@ -5,6 +5,8 @@
 #ifndef SHILL_VPN_SERVICE_
 #define SHILL_VPN_SERVICE_
 
+#include <string>
+
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

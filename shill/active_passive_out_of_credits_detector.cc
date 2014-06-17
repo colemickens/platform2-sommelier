@@ -111,7 +111,7 @@ void ActivePassiveOutOfCreditsDetector::OnNoNetworkRouting(int reason) {
 
 void ActivePassiveOutOfCreditsDetector::SetupConnectionHealthChecker() {
   DCHECK(service()->connection());
-  // TODO: Consider moving health_checker_remote_ips() out of manager
+  // TODO(thieule): Consider moving health_checker_remote_ips() out of manager
   // (crbug.com/304974).
   if (!health_checker_.get()) {
     health_checker_.reset(

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mock_crypto_util_proxy.h"
+#include "shill/mock_crypto_util_proxy.h"
 
 #include <string>
 #include <vector>
@@ -32,7 +32,7 @@ bool MockCryptoUtilProxy::RealVerifyDestination(
     const ResultBoolCallback &result_callback,
     Error *error) {
   return CryptoUtilProxy::VerifyDestination(certificate, public_key,
-                                            nonce,signed_data,
+                                            nonce, signed_data,
                                             destination_udn, ssid, bssid,
                                             result_callback, error);
 }

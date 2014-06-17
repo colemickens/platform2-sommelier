@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
 
+#include <set>
+
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/resolver.h"
@@ -253,7 +255,7 @@ void Connection::RequestRouting() {
 }
 
 void Connection::ReleaseRouting() {
-  DCHECK(routing_request_count_ > 0);
+  DCHECK_GT(routing_request_count_, 0);
   if (--routing_request_count_ == 0) {
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     DCHECK(device.get());

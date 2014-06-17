@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdio.h>
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -658,7 +659,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
 
 bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
   SLOG(Service, 5) << "Checking bool properties:";
-  for (const auto &bool_it: args.bool_properties()) {
+  for (const auto &bool_it : args.bool_properties()) {
     SLOG(Service, 5) << "   " << bool_it.first;
     Error get_error;
     bool value;
@@ -1219,7 +1220,7 @@ bool Service::IsPortalDetectionAuto() const {
 
 void Service::HelpRegisterDerivedBool(
     const string &name,
-    bool(Service::*get)(Error *),
+    bool(Service::*get)(Error *error),
     bool(Service::*set)(const bool&, Error *),
     void(Service::*clear)(Error *)) {
   store_.RegisterDerivedBool(
@@ -1229,7 +1230,7 @@ void Service::HelpRegisterDerivedBool(
 
 void Service::HelpRegisterDerivedInt32(
     const string &name,
-    int32(Service::*get)(Error *),
+    int32(Service::*get)(Error *error),
     bool(Service::*set)(const int32&, Error *)) {
   store_.RegisterDerivedInt32(
       name,
@@ -1238,7 +1239,7 @@ void Service::HelpRegisterDerivedInt32(
 
 void Service::HelpRegisterDerivedString(
     const string &name,
-    string(Service::*get)(Error *),
+    string(Service::*get)(Error *error),
     bool(Service::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
@@ -1278,7 +1279,7 @@ void Service::HelpRegisterConstDerivedString(
 
 void Service::HelpRegisterObservedDerivedBool(
     const string &name,
-    bool(Service::*get)(Error *),
+    bool(Service::*get)(Error *error),
     bool(Service::*set)(const bool&, Error *),
     void(Service::*clear)(Error *)) {
   BoolAccessor accessor(

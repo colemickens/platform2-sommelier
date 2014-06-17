@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_SOCKETS_H_
 #define SHILL_MOCK_SOCKETS_H_
 
+#include <string>
+
 #include "shill/sockets.h"
 
 #include <base/basictypes.h>

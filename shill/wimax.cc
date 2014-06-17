@@ -4,6 +4,8 @@
 
 #include "shill/wimax.h"
 
+#include <string>
+
 #include <base/bind.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

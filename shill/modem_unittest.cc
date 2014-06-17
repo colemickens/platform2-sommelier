@@ -269,7 +269,6 @@ TEST_F(ModemTest, GetDeviceParams) {
   EXPECT_TRUE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(2, interface_index);
   EXPECT_EQ(kAddressAsString, mac_address);
-
 }
 
 TEST_F(ModemTest, RejectPPPModem) {

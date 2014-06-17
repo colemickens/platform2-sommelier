@@ -8,6 +8,7 @@
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
 
+#include <algorithm>
 #include <map>
 #include <string>
 

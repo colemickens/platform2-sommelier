@@ -758,7 +758,6 @@ TEST_F(DeviceTest, TrafficMonitor) {
   StartTrafficMonitor();
   EXPECT_CALL(*traffic_monitor, Stop()).Times(0);
   StopTrafficMonitor();
-
 }
 
 TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
@@ -1335,7 +1334,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
-  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
       .WillOnce(Return(dns_client));
   EXPECT_CALL(*dns_client, Start(_, _))
       .WillOnce(Return(true));
@@ -1356,7 +1355,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
-  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
       .WillOnce(Return(dns_client));
   EXPECT_CALL(*dns_client, Start(_, _))
       .WillOnce(Return(true));
@@ -1377,7 +1376,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
-  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _))
       .WillOnce(Return(dns_client));
   EXPECT_CALL(*dns_client, Start(_, _))
       .WillOnce(Return(false));
@@ -1397,7 +1396,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
-  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_)).Times(0);
+  EXPECT_CALL(*dns_client_factory, CreateDNSClient(_, _, _, _, _, _)).Times(0);
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseConnection,
       PortalDetector::kStatusFailure,

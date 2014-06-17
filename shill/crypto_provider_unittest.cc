@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -26,7 +28,7 @@ const char kEmptyText[] = "";
 const char kPlainText[] = "This is a test!";
 const char kROT47Text[] = "rot47:%9:D :D 2 E6DEP";
 const char kDESCBCText[] = "des-cbc:02:bKlHDISdHMFc0teQd4mAVrXgwlSj6iA+";
-}  // namespace {}
+}  // namespace
 
 class CryptoProviderTest : public Test {
  public:

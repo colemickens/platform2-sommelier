@@ -7,6 +7,8 @@
 
 #include <sys/types.h>
 
+#include <map>
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>

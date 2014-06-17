@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_CONNECTION_HEALTH_CHECKER_H_
 #define SHILL_MOCK_CONNECTION_HEALTH_CHECKER_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/connection_health_checker.h"

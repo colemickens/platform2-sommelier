@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_CERTFICATE_FILE_H_
 #define SHILL_MOCK_CERTFICATE_FILE_H_
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include "shill/certificate_file.h"

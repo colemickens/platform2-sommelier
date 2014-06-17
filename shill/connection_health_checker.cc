@@ -105,7 +105,7 @@ ConnectionHealthChecker::~ConnectionHealthChecker() {
 }
 
 bool ConnectionHealthChecker::health_check_in_progress() const {
- return health_check_in_progress_;
+  return health_check_in_progress_;
 }
 
 void ConnectionHealthChecker::AddRemoteIP(IPAddress ip) {
@@ -199,7 +199,7 @@ void ConnectionHealthChecker::SetConnection(ConnectionRefPtr connection) {
 
 const char *ConnectionHealthChecker::ResultToString(
     ConnectionHealthChecker::Result result) {
-  switch(result) {
+  switch (result) {
     case kResultUnknown:
       return "Unknown";
     case kResultConnectionFailure:
@@ -357,7 +357,7 @@ void ConnectionHealthChecker::VerifySentData() {
   NextHealthCheckSample();
 }
 
-//TODO(pprabhu): Scrub IP address logging.
+// TODO(pprabhu): Scrub IP address logging.
 bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
                                             SocketInfo *sock_info) {
   struct sockaddr_storage addr;

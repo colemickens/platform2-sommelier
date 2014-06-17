@@ -6,6 +6,7 @@
 #define SHILL_MM1_MODEM_PROXY_INTERFACE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 

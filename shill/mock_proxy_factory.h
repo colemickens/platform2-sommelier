@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_PROXY_FACTORY_H_
 #define SHILL_MOCK_PROXY_FACTORY_H_
 
+#include <string>
+
 #include "shill/proxy_factory.h"
 
 #include <gmock/gmock.h>

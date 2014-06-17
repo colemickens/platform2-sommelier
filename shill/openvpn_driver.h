@@ -26,7 +26,7 @@ namespace base {
 template<typename T>
 class WeakPtr;
 
-}  // namespace base;
+}  // namespace base
 
 namespace shill {
 

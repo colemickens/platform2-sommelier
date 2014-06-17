@@ -29,7 +29,7 @@ const unsigned char kV6Address2[] = { 0x19, 0x80, 0x00, 0x00,
                                       0x10, 0x00, 0x1b, 0x02,
                                       0x1a, 0xa9, 0x05, 0xff,
                                       0x7e, 0xbf };
-}  // namespace {}
+}  // namespace
 
 class IPAddressTest : public Test {
  protected:

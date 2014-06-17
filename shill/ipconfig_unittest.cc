@@ -29,7 +29,7 @@ namespace shill {
 
 namespace {
 const char kDeviceName[] = "testdevice";
-}  // namespace {}
+}  // namespace
 
 class IPConfigTest : public Test {
  public:

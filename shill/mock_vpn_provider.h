@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_VPN_PROVIDER_
 #define SHILL_MOCK_VPN_PROVIDER_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -23,6 +25,7 @@ class MockVPNProvider : public VPNProvider {
                                            int interface_index));
   MOCK_CONST_METHOD0(HasActiveService, bool());
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNProvider);
 };
 

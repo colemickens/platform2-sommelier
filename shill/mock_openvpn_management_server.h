@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_H_
 #define SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_H_
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include "shill/openvpn_management_server.h"

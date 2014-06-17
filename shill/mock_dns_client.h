@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_DNS_CLIENT_H_
 #define SHILL_MOCK_DNS_CLIENT_H_
 
+#include <string>
+
 #include "shill/dns_client.h"
 
 #include <base/basictypes.h>

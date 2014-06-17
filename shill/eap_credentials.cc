@@ -475,7 +475,7 @@ bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
 void EapCredentials::HelpRegisterDerivedString(
     PropertyStore *store,
     const string &name,
-    string(EapCredentials::*get)(Error *),
+    string(EapCredentials::*get)(Error *error),
     bool(EapCredentials::*set)(const string&, Error *)) {
   store->RegisterDerivedString(
       name,
@@ -487,7 +487,7 @@ void EapCredentials::HelpRegisterWriteOnlyDerivedString(
     PropertyStore *store,
     const string &name,
     bool(EapCredentials::*set)(const string &, Error *),
-    void(EapCredentials::*clear)(Error *),
+    void(EapCredentials::*clear)(Error *error),
     const string *default_value) {
   store->RegisterDerivedString(
       name,
@@ -496,4 +496,4 @@ void EapCredentials::HelpRegisterWriteOnlyDerivedString(
               this, set, clear, default_value)));
 }
 
-}
+}  // namespace shill

@@ -12,7 +12,7 @@
 #include <map>
 #include <set>
 #include <string>
-#include <tr1/memory>
+#include <memory>
 #include <vector>
 
 #include <base/bind.h>
@@ -49,8 +49,8 @@ struct DNSClientState {
   DNSClientState() : channel(NULL), start_time{} {}
 
   ares_channel channel;
-  map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > read_handlers;
-  map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > write_handlers;
+  map< ares_socket_t, std::shared_ptr<IOHandler> > read_handlers;
+  map< ares_socket_t, std::shared_ptr<IOHandler> > write_handlers;
   struct timeval start_time;
 };
 
@@ -262,9 +262,9 @@ void DNSClient::ReceiveDNSReplyCB(void *arg, int status,
 }
 
 bool DNSClient::RefreshHandles() {
-  map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > old_read =
+  map< ares_socket_t, std::shared_ptr<IOHandler> > old_read =
       resolver_state_->read_handlers;
-  map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > old_write =
+  map< ares_socket_t, std::shared_ptr<IOHandler> > old_write =
       resolver_state_->write_handlers;
 
   resolver_state_->read_handlers.clear();
@@ -284,7 +284,7 @@ bool DNSClient::RefreshHandles() {
         resolver_state_->read_handlers[sockets[i]] = old_read[sockets[i]];
       } else {
         resolver_state_->read_handlers[sockets[i]] =
-            std::tr1::shared_ptr<IOHandler> (
+            std::shared_ptr<IOHandler> (
                 dispatcher_->CreateReadyHandler(sockets[i],
                                                 IOHandler::kModeInput,
                                                 read_callback));
@@ -295,7 +295,7 @@ bool DNSClient::RefreshHandles() {
         resolver_state_->write_handlers[sockets[i]] = old_write[sockets[i]];
       } else {
         resolver_state_->write_handlers[sockets[i]] =
-            std::tr1::shared_ptr<IOHandler> (
+            std::shared_ptr<IOHandler> (
                 dispatcher_->CreateReadyHandler(sockets[i],
                                                 IOHandler::kModeOutput,
                                                 write_callback));

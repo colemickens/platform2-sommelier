@@ -13,7 +13,7 @@ namespace shill {
 
 class MockFileIO : public FileIO {
  public:
-  MockFileIO() {};
+  MockFileIO() {}
   virtual ~MockFileIO() {}
   MOCK_METHOD3(Write, ssize_t(int fd, const void *buf, size_t count));
   MOCK_METHOD3(Read, ssize_t(int fd, void *buf, size_t count));

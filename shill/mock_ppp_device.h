@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_PPP_DEVICE_H_
 #define SHILL_MOCK_PPP_DEVICE_H_
 
+#include <map>
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "shill/ppp_device.h"

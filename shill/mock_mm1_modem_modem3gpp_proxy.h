@@ -28,6 +28,7 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
                           const DBusPropertyMapsCallback &callback,
                           int timeout));
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockModemModem3gppProxy);
 };
 

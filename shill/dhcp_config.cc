@@ -4,6 +4,8 @@
 
 #include "shill/dhcp_config.h"
 
+#include <vector>
+
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <sys/wait.h>

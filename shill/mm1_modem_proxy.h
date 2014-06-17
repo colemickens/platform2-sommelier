@@ -6,6 +6,7 @@
 #define SHILL_MM1_MODEM_PROXY_H_
 
 #include <string>
+#include <vector>
 
 #include "dbus_proxies/org.freedesktop.ModemManager1.Modem.h"
 #include "shill/dbus_properties.h"
@@ -118,8 +119,9 @@ class ModemProxy : public ModemProxyInterface {
   template<typename TraceMsgT, typename CallT, typename CallbackT,
       typename... ArgTypes>
       void BeginCall(
-          const TraceMsgT &trace_msg, const CallT &call, CallbackT &callback,
-          Error *error, int timeout, ArgTypes... rest);
+          const TraceMsgT &trace_msg, const CallT &call,
+          const CallbackT &callback, Error *error, int timeout,
+          ArgTypes... rest);
 
   DISALLOW_COPY_AND_ASSIGN(ModemProxy);
 };

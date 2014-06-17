@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_PPP_DEVICE_FACTORY_H_
 #define SHILL_MOCK_PPP_DEVICE_FACTORY_H_
 
+#include <string>
+
 #include <base/lazy_instance.h>
 #include <gmock/gmock.h>
 

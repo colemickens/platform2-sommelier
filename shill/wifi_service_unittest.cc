@@ -4,6 +4,7 @@
 
 #include "shill/wifi_service.h"
 
+#include <limits>
 #include <map>
 #include <set>
 #include <string>

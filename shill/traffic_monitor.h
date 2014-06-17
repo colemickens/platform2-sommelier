@@ -10,6 +10,8 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include <map>
+#include <string>
+#include <vector>
 
 #include "shill/connection_info.h"
 #include "shill/connection_info_reader.h"
@@ -27,7 +29,7 @@ class TrafficMonitor {
  public:
   // Network problem detected by traffic monitor.
   enum NetworkProblem {
-    kNetworkProblemCongestedTxQueue=0,
+    kNetworkProblemCongestedTxQueue = 0,
     kNetworkProblemDNSFailure,
     kNetworkProblemMax
   };

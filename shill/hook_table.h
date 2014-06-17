@@ -103,7 +103,7 @@ class HookTable {
 
   // This callback is created in Run() and is queued to the event dispatcher to
   // run after a timeout period.  If all the actions complete before the
-  // timeout, then this callback is cancelled.
+  // timeout, then this callback is canceled.
   base::CancelableClosure timeout_callback_;
 
   // Used for setting a timeout action to run in case all the actions do not

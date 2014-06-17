@@ -52,7 +52,7 @@ const ares_channel kAresChannel =
 const int kAresFd = 10203;
 const int kAresTimeoutMS = 2000;  // ARES transaction timeout
 const int kAresWaitMS = 1000;     // Time period ARES asks caller to wait
-}  // namespace {}
+}  // namespace
 
 class DNSClientTest : public Test {
  public:

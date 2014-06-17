@@ -26,7 +26,7 @@ const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
 const unsigned char kTest3[] = { 0, 0, 0, 0 };
 const char kTest4[] = "Hello world";
-}  // namespace {}
+}  // namespace
 
 class ByteStringTest : public Test {
  public:

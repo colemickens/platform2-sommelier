@@ -5,6 +5,7 @@
 #ifndef SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
 #define SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
 
+#include <string>
 #include <vector>
 
 #include <base/callback.h>

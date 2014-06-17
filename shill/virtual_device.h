@@ -5,6 +5,8 @@
 #ifndef SHILL_VIRTUAL_DEVICE_H_
 #define SHILL_VIRTUAL_DEVICE_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/device.h"

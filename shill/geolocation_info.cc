@@ -26,7 +26,7 @@ const string &GeolocationInfo::GetFieldValue(
   return properties_.find(key)->second;
 }
 
-bool GeolocationInfo::Equals(const GeolocationInfo &info) const{
+bool GeolocationInfo::Equals(const GeolocationInfo &info) const {
   return properties_ == info.properties_;
 }
 

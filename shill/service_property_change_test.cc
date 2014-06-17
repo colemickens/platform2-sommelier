@@ -171,4 +171,4 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
   }
 }
 
-} // namespace shill
+}  // namespace shill

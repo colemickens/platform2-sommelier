@@ -9,7 +9,6 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -41,7 +40,7 @@ class ConnectionInfoReaderUnderTest : public ConnectionInfoReader {
   // Mock out GetConnectionInfoFilePath to use a temporary created connection
   // info file instead of the actual path in procfs (i.e.
   // /proc/net/ip_conntrack).
-  MOCK_CONST_METHOD0(GetConnectionInfoFilePath, FilePath ());
+  MOCK_CONST_METHOD0(GetConnectionInfoFilePath, FilePath());
 };
 
 class ConnectionInfoReaderTest : public testing::Test {

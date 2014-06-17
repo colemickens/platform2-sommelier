@@ -135,7 +135,7 @@ class PropertyStore {
   //
   // |name| is the key used to access the property. If the property
   // cannot be cleared, |error| is set, and the method returns false.
-  // Otherwrise, |error| is unchanged, and the method returns true.
+  // Otherwise, |error| is unchanged, and the method returns true.
   virtual bool ClearProperty(const std::string &name, Error *error);
 
   // Accessors for iterators over property maps. Useful for dumping all
@@ -143,12 +143,12 @@ class PropertyStore {
   ReadablePropertyConstIterator<bool> GetBoolPropertiesIter() const;
   ReadablePropertyConstIterator<int16> GetInt16PropertiesIter() const;
   ReadablePropertyConstIterator<int32> GetInt32PropertiesIter() const;
-  ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter(
-      ) const;
-  ReadablePropertyConstIterator<RpcIdentifier> GetRpcIdentifierPropertiesIter(
-      ) const;
-  ReadablePropertyConstIterator<RpcIdentifiers> GetRpcIdentifiersPropertiesIter(
-      ) const;
+  ReadablePropertyConstIterator<KeyValueStore>
+      GetKeyValueStorePropertiesIter() const;
+  ReadablePropertyConstIterator<RpcIdentifier>
+    GetRpcIdentifierPropertiesIter() const;
+  ReadablePropertyConstIterator<RpcIdentifiers>
+    GetRpcIdentifiersPropertiesIter() const;
   ReadablePropertyConstIterator<std::string> GetStringPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
@@ -232,7 +232,7 @@ class PropertyStore {
       const std::string &name,
       V *value,
       Error *error,
-      const std::map< std::string, std::tr1::shared_ptr<
+      const std::map< std::string, std::shared_ptr<
           AccessorInterface<V> > > &collection,
       const std::string &value_type_english) const;
 
@@ -241,7 +241,7 @@ class PropertyStore {
       const std::string &name,
       const V &value,
       Error *error,
-      std::map< std::string, std::tr1::shared_ptr< AccessorInterface<V> > > &,
+      std::map< std::string, std::shared_ptr< AccessorInterface<V> > > *,
       const std::string &value_type_english);
 
   // These are std::maps instead of something cooler because the common

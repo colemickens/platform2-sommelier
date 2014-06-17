@@ -56,7 +56,7 @@ static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
       return Cellular::kModemStateConnected;
     default:
       return Cellular::kModemStateUnknown;
-  };
+  }
 }
 
 CellularCapabilityClassic::CellularCapabilityClassic(

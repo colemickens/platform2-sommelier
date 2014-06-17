@@ -6,6 +6,8 @@
 #define SHILL_METRICS_H_
 
 #include <list>
+#include <map>
+#include <string>
 
 #include <base/memory/scoped_vector.h>
 #include <metrics/metrics_library.h>
@@ -733,7 +735,7 @@ class Metrics {
     TimerReportersByState start_on_state;
     TimerReportersByState stop_on_state;
   };
-  typedef std::map<const Service *, std::tr1::shared_ptr<ServiceMetrics> >
+  typedef std::map<const Service *, std::shared_ptr<ServiceMetrics> >
       ServiceMetricsLookupMap;
 
   struct DeviceMetrics {
@@ -748,7 +750,7 @@ class Metrics {
     scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
     int auto_connect_tries;
   };
-  typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
+  typedef std::map<const int, std::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;
 
   static const uint16 kWiFiBandwidth5MHz;

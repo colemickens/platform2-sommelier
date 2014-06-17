@@ -69,6 +69,7 @@ class Minijail {
                                   std::vector<char *> args,
                                   pid_t *pid, int *stdin,
                                   int *stdout, int *stderr);
+
  protected:
   Minijail();
 

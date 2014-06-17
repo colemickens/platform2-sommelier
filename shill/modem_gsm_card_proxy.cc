@@ -20,7 +20,7 @@ namespace shill {
 template<typename TraceMsgT, typename CallT, typename CallbackT,
          typename... ArgTypes>
 void ModemGSMCardProxy::BeginCall(
-    const TraceMsgT &trace_msg, const CallT &call, CallbackT &callback,
+    const TraceMsgT &trace_msg, const CallT &call, const CallbackT &callback,
     Error *error, int timeout, ArgTypes... rest) {
   BeginAsyncDBusCall(trace_msg, proxy_, call, callback, error,
                      &CellularError::FromDBusError, timeout, rest...);

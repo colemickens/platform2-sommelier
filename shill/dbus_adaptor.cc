@@ -43,37 +43,37 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
   Error e;
   bool ret;
 
-  if (DBusAdaptor::IsBool(value.signature()))
+  if (DBusAdaptor::IsBool(value.signature())) {
     ret = store->SetBoolProperty(name, value.reader().get_bool(), &e);
-  else if (DBusAdaptor::IsByte(value.signature()))
+  } else if (DBusAdaptor::IsByte(value.signature())) {
     ret = store->SetUint8Property(name, value.reader().get_byte(), &e);
-  else if (DBusAdaptor::IsInt16(value.signature()))
+  } else if (DBusAdaptor::IsInt16(value.signature())) {
     ret = store->SetInt16Property(name, value.reader().get_int16(), &e);
-  else if (DBusAdaptor::IsInt32(value.signature()))
+  } else if (DBusAdaptor::IsInt32(value.signature())) {
     ret = store->SetInt32Property(name, value.reader().get_int32(), &e);
-  else if (DBusAdaptor::IsPath(value.signature()))
+  } else if (DBusAdaptor::IsPath(value.signature())) {
     ret = store->SetStringProperty(name, value.reader().get_path(), &e);
-  else if (DBusAdaptor::IsString(value.signature()))
+  } else if (DBusAdaptor::IsString(value.signature())) {
     ret = store->SetStringProperty(name, value.reader().get_string(), &e);
-  else if (DBusAdaptor::IsStringmap(value.signature()))
+  } else if (DBusAdaptor::IsStringmap(value.signature())) {
     ret = store->SetStringmapProperty(name,
                                       value.operator map<string, string>(),
                                       &e);
-  else if (DBusAdaptor::IsStringmaps(value.signature())) {
+  } else if (DBusAdaptor::IsStringmaps(value.signature())) {
     SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
     ret = false;
     e.Populate(Error::kInternalError);
-  } else if (DBusAdaptor::IsStrings(value.signature()))
+  } else if (DBusAdaptor::IsStrings(value.signature())) {
     ret = store->SetStringsProperty(name, value.operator vector<string>(), &e);
-  else if (DBusAdaptor::IsUint16(value.signature()))
+  } else if (DBusAdaptor::IsUint16(value.signature())) {
     ret = store->SetUint16Property(name, value.reader().get_uint16(), &e);
-  else if (DBusAdaptor::IsUint16s(value.signature()))
+  } else if (DBusAdaptor::IsUint16s(value.signature())) {
     ret = store->SetUint16sProperty(name, value.operator vector<uint16>(), &e);
-  else if (DBusAdaptor::IsUint32(value.signature()))
+  } else if (DBusAdaptor::IsUint32(value.signature())) {
     ret = store->SetUint32Property(name, value.reader().get_uint32(), &e);
-  else if (DBusAdaptor::IsUint64(value.signature()))
+  } else if (DBusAdaptor::IsUint64(value.signature())) {
     ret = store->SetUint64Property(name, value.reader().get_uint64(), &e);
-  else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
+  } else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
     SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
     ret = false;
     e.Populate(Error::kInternalError);

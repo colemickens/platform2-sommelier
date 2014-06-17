@@ -20,7 +20,7 @@ class MockPendingActivationStore : public PendingActivationStore {
   virtual ~MockPendingActivationStore();
 
   MOCK_METHOD2(InitStorage,
-               bool(GLib *glib,const base::FilePath &storage_path));
+               bool(GLib *glib, const base::FilePath &storage_path));
   MOCK_CONST_METHOD2(GetActivationState,
                      State(IdentifierType type, const std::string &iccid));
   MOCK_METHOD3(SetActivationState,

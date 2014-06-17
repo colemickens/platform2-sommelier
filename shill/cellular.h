@@ -5,6 +5,7 @@
 #ifndef SHILL_CELLULAR_H_
 #define SHILL_CELLULAR_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -414,7 +415,7 @@ class Cellular : public Device, public RPCTaskDelegate {
    public:
     // |cellular| must have lifespan longer than this object. In practice this
     // is enforced because |cellular| owns this object.
-    MobileOperatorInfoObserver(Cellular *cellular);
+    explicit MobileOperatorInfoObserver(Cellular *cellular);
     virtual ~MobileOperatorInfoObserver();
 
     void set_capability(CellularCapability *capability) {

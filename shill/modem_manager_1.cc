@@ -15,7 +15,7 @@
 
 using base::Bind;
 using std::string;
-using std::tr1::shared_ptr;
+using std::shared_ptr;
 using std::vector;
 
 namespace shill {

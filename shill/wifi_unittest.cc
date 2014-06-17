@@ -1742,7 +1742,6 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
   EXPECT_CALL(*service0, SetState(Service::kStateIdle)).Times(AtLeast(1));
   EXPECT_CALL(*service0, SetFailure(_)).Times(0);
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
-
 }
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {

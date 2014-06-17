@@ -137,31 +137,31 @@ bool PropertyStore::GetUint64Property(const string &name,
 bool PropertyStore::SetBoolProperty(const string &name,
                                     bool value,
                                     Error *error) {
-  return SetProperty(name, value, error, bool_properties_, "a bool");
+  return SetProperty(name, value, error, &bool_properties_, "a bool");
 }
 
 bool PropertyStore::SetInt16Property(const string &name,
                                      int16 value,
                                      Error *error) {
-  return SetProperty(name, value, error, int16_properties_, "an int16");
+  return SetProperty(name, value, error, &int16_properties_, "an int16");
 }
 
 bool PropertyStore::SetInt32Property(const string &name,
                                      int32 value,
                                      Error *error) {
-  return SetProperty(name, value, error, int32_properties_, "an int32.");
+  return SetProperty(name, value, error, &int32_properties_, "an int32.");
 }
 
 bool PropertyStore::SetStringProperty(const string &name,
                                       const string &value,
                                       Error *error) {
-  return SetProperty(name, value, error, string_properties_, "a string");
+  return SetProperty(name, value, error, &string_properties_, "a string");
 }
 
 bool PropertyStore::SetStringmapProperty(const string &name,
                                          const map<string, string> &values,
                                          Error *error) {
-  return SetProperty(name, values, error, stringmap_properties_,
+  return SetProperty(name, values, error, &stringmap_properties_,
                      "a string map");
 }
 
@@ -169,50 +169,51 @@ bool PropertyStore::SetStringmapsProperty(
     const string &name,
     const vector<map<string, string> > &values,
     Error *error) {
-  return SetProperty(name, values, error, stringmaps_properties_,
+  return SetProperty(name, values, error, &stringmaps_properties_,
                      "a stringmaps");
 }
 
 bool PropertyStore::SetStringsProperty(const string &name,
                                        const vector<string> &values,
                                        Error *error) {
-  return SetProperty(name, values, error, strings_properties_, "a string list");
+  return SetProperty(name, values, error, &strings_properties_,
+                     "a string list");
 }
 
 bool PropertyStore::SetUint8Property(const string &name,
                                      uint8 value,
                                      Error *error) {
-  return SetProperty(name, value, error, uint8_properties_, "a uint8");
+  return SetProperty(name, value, error, &uint8_properties_, "a uint8");
 }
 
 bool PropertyStore::SetUint16Property(const string &name,
                                       uint16 value,
                                       Error *error) {
-  return SetProperty(name, value, error, uint16_properties_, "a uint16");
+  return SetProperty(name, value, error, &uint16_properties_, "a uint16");
 }
 
 bool PropertyStore::SetUint16sProperty(const string &name,
                                        const vector<uint16> &value,
                                        Error *error) {
-  return SetProperty(name, value, error, uint16s_properties_, "a uint16 list");
+  return SetProperty(name, value, error, &uint16s_properties_, "a uint16 list");
 }
 
 bool PropertyStore::SetUint32Property(const string &name,
                                       uint32 value,
                                       Error *error) {
-  return SetProperty(name, value, error, uint32_properties_, "a uint32");
+  return SetProperty(name, value, error, &uint32_properties_, "a uint32");
 }
 
 bool PropertyStore::SetUint64Property(const string &name,
                                       uint64 value,
                                       Error *error) {
-  return SetProperty(name, value, error, uint64_properties_, "a uint64");
+  return SetProperty(name, value, error, &uint64_properties_, "a uint64");
 }
 
 bool PropertyStore::SetRpcIdentifierProperty(const string &name,
                                              const RpcIdentifier &value,
                                              Error *error) {
-  return SetProperty(name, value, error, rpc_identifier_properties_,
+  return SetProperty(name, value, error, &rpc_identifier_properties_,
                      "an rpc_identifier");
 }
 
@@ -637,12 +638,12 @@ bool PropertyStore::GetProperty(
     const string &name,
     V *value,
     Error *error,
-    const map< string, std::tr1::shared_ptr<
+    const map< string, std::shared_ptr<
         AccessorInterface<V> > >&collection,
     const string &value_type_english) const {
   SLOG(Property, 2) << "Getting " << name << " as " << value_type_english
                     << ".";
-  typename map< string, std::tr1::shared_ptr<
+  typename map< string, std::shared_ptr<
       AccessorInterface<V> > >::const_iterator it = collection.find(name);
   if (it != collection.end()) {
     V val = it->second->Get(error);
@@ -660,20 +661,20 @@ bool PropertyStore::GetProperty(
     }
   }
   return error->IsSuccess();
-};
+}
 
 template <class V>
 bool PropertyStore::SetProperty(
     const string &name,
     const V &value,
     Error *error,
-    map< string, std::tr1::shared_ptr< AccessorInterface<V> > >&collection,
+    map< string, std::shared_ptr< AccessorInterface<V> > >* collection,
     const string &value_type_english) {
   bool ret = false;
   SLOG(Property, 2) << "Setting " << name << " as " << value_type_english
                     << ".";
-  if (ContainsKey(collection, name)) {
-    ret = collection[name]->Set(value, error);
+  if (ContainsKey(*collection, name)) {
+    ret = (*collection)[name]->Set(value, error);
     if (ret) {
       if (!property_changed_callback_.is_null()) {
         property_changed_callback_.Run(name);
@@ -690,6 +691,6 @@ bool PropertyStore::SetProperty(
     }
   }
   return ret;
-};
+}
 
 }  // namespace shill

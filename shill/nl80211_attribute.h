@@ -7,6 +7,8 @@
 
 #include <netlink/attr.h>
 
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/netlink_attribute.h"
