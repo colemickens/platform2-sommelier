@@ -60,7 +60,7 @@ void GLInterfaceTest::CleanupGLRendering() {
 }
 
 bool GLInterfaceTest::Run() {
-  const std::string test_name_base = std::string("us_") + Name() + "_";
+  const std::string test_name_base = std::string(Name()) + "_";
 
   // Run test without GL commands.
   render_func_.Reset();

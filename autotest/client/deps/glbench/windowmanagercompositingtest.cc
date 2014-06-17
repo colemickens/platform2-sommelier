@@ -25,6 +25,7 @@ class WindowManagerCompositingTest : public TestBase {
   virtual bool Run();
   virtual const char* Name() const { return "compositing"; }
   virtual bool IsDrawTest() const { return true; }
+  virtual const char* Unit() const { return "1280x768_fps"; }
 
   void InitializeCompositing();
   void TeardownCompositing();
@@ -47,11 +48,11 @@ TestBase* GetWindowManagerCompositingTest(bool enable_scissor) {
 }
 
 bool WindowManagerCompositingTest::Run() {
-  const char* testname = "1280x768_fps_compositing";
+  const char* testname = "compositing";
   if (scissor_) {
     glScissor(0, 0, 1, 1);
     glEnable(GL_SCISSOR_TEST);
-    testname = "1280x768_fps_compositing_no_fill";
+    testname = "compositing_no_fill";
   }
   InitializeCompositing();
   RunTest(this, testname, kScreenScaleFactor, WINDOW_WIDTH, WINDOW_HEIGHT, true);

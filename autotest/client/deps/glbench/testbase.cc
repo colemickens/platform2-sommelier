@@ -145,7 +145,7 @@ void RunTest(TestBase* test, const char* testname, const double coefficient,
           "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
           d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
           d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
-        sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
+        sprintf(name_png, "%s_%s.pixmd5-%s.png", test->Unit(), testname, pixmd5);
 
         if (FLAGS_save)
           SaveImage(name_png, width, height);
@@ -154,13 +154,15 @@ void RunTest(TestBase* test, const char* testname, const double coefficient,
   }
 
   // TODO(ihf) adjust string length based on longest test name
-  int length = strlen(testname);
-  if (length > MAX_TESTNAME)
+  int name_length = strlen(testname);
+  int unit_length = strlen(test->Unit()) + 1;
+  int max_testname = MAX_TESTNAME - unit_length;
+  if (name_length > max_testname)
     printf("# Warning: adjust string formatting to length = %d\n",
-             length);
+           name_length + unit_length);
   // Results are marked using a leading '@RESULT: ' to allow parsing.
-  printf("@RESULT: %-*s = %10.2f [%s]\n",
-         MAX_TESTNAME, testname, value, name_png);
+  printf("@RESULT: %s_%-*s = %10.2f [%s]\n",
+         test->Unit(), max_testname, testname, value, name_png);
 }
 
 bool DrawArraysTestFunc::TestFunc(uint64_t iterations) {
@@ -183,10 +185,7 @@ void DrawArraysTestFunc::FillRateTestNormalSubWindow(const char* name,
                                                      const int width,
                                                      const int height)
 {
-  const int buffer_len = 64;
-  char buffer[buffer_len];
-  snprintf(buffer, buffer_len, "mpixels_sec_%s", name);
-  RunTest(this, buffer, width * height, width, height, true);
+  RunTest(this, name, width * height, width, height, true);
 }
 
 
@@ -196,7 +195,7 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
-  snprintf(buffer, buffer_len, "mpixels_sec_%s_blended", name);
+  snprintf(buffer, buffer_len, "%s_blended", name);
   RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
   glDisable(GL_BLEND);
 
@@ -204,14 +203,14 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   // Fragments should have depth 0.
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_NOTEQUAL);
-  snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_neq", name);
+  snprintf(buffer, buffer_len, "%s_depth_neq", name);
   RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
 
   // The DrawArrays call invoked by this test shouldn't render anything
   // because every fragment will fail the depth test.  Therefore we
   // should see the clear color.
   glDepthFunc(GL_NEVER);
-  snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_never", name);
+  snprintf(buffer, buffer_len, "%s_depth_never", name);
   RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
   glDisable(GL_DEPTH_TEST);
 }

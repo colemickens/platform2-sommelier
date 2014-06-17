@@ -25,6 +25,7 @@ class TextureTest : public TestBase {
   virtual bool TestFunc(uint64_t iterations) = 0;
   virtual bool Run();
   virtual const char* Name() const = 0;
+  virtual const char* Unit() const { return "mtexel_sec"; }
 
   enum UpdateFlavor {
     TEX_IMAGE,

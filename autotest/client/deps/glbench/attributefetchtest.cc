@@ -16,6 +16,7 @@ class AttributeFetchShaderTest : public DrawElementsTestFunc {
   virtual bool Run();
   virtual const char* Name() const { return "attribute_fetch_shader"; }
   virtual bool IsDrawTest() const { return false; }
+  virtual const char* Unit() const { return "mvtx_sec"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AttributeFetchShaderTest);
@@ -116,23 +117,22 @@ bool AttributeFetchShaderTest::Run() {
     vertex_buffers[i] = vertex_buffer;
 
   GLuint program = AttributeFetchShaderProgram(1, vertex_buffers);
-  RunTest(this,
-          "mvtx_sec_attribute_fetch_shader", count_, g_width, g_height, true);
+  RunTest(this, "attribute_fetch_shader", count_, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = AttributeFetchShaderProgram(2, vertex_buffers);
   RunTest(this,
-          "mvtx_sec_attribute_fetch_shader_2_attr", count_, g_width, g_height, true);
+          "attribute_fetch_shader_2_attr", count_, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = AttributeFetchShaderProgram(4, vertex_buffers);
   RunTest(this,
-          "mvtx_sec_attribute_fetch_shader_4_attr", count_, g_width, g_height, true);
+          "attribute_fetch_shader_4_attr", count_, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = AttributeFetchShaderProgram(8, vertex_buffers);
   RunTest(this,
-          "mvtx_sec_attribute_fetch_shader_8_attr", count_, g_width, g_height, true);
+          "attribute_fetch_shader_8_attr", count_, g_width, g_height, true);
   glDeleteProgram(program);
 
   glDeleteBuffers(1, &index_buffer);

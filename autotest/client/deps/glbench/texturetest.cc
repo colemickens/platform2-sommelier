@@ -76,8 +76,8 @@ bool TextureTest::Run() {
       // In hasty mode only do at most 512x512 sized problems.
       if (g_hasty && sizes[j] > 512)
         continue;
-      std::string name = std::string("mtexel_sec_") + Name() + "_" +
-          kFlavorNames[f] + "_" + base::IntToString(sizes[j]);
+      std::string name = std::string(Name()) + "_" + kFlavorNames[f] + "_" +
+          base::IntToString(sizes[j]);
       width_ = height_ = sizes[j];
       for (int i = 0; i < kNumberOfTextures; ++i) {
         pixels_[i].reset(new char[width_ * height_]);

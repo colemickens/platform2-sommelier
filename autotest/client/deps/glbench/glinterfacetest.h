@@ -21,6 +21,7 @@ class GLInterfaceTest : public TestBase {
   virtual bool Run();
   virtual const char* Name() const = 0;
   virtual bool IsDrawTest() const { return !render_func_.is_null(); }
+  virtual const char* Unit() const { return "us"; }
 
  protected:
   // Callback for GL rendering function to be run before GLX/EGL calls.

@@ -20,6 +20,7 @@ class ReadPixelTest : public TestBase {
   virtual bool Run();
   virtual const char* Name() const { return "pixel_read"; }
   virtual bool IsDrawTest() const { return false; }
+  virtual const char* Unit() const { return "mpixels_sec"; }
 
  private:
   void* pixels_;
@@ -44,15 +45,15 @@ bool ReadPixelTest::Run() {
   // One is added so that we can test reads into unaligned location.
   scoped_ptr<char[]> buf(new char[((row_size + 3) & ~3) * g_height + 1]);
   pixels_ = buf.get();
-  RunTest(this, "mpixels_sec_pixel_read", g_width * g_height, g_width, g_height, true);
+  RunTest(this, "pixel_read", g_width * g_height, g_width, g_height, true);
 
   // Reducing GL_PACK_ALIGNMENT can only make rows smaller.  No need to
   // reallocate the buffer.
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  RunTest(this, "mpixels_sec_pixel_read_2", g_width * g_height, g_width, g_height, true);
+  RunTest(this, "pixel_read_2", g_width * g_height, g_width, g_height, true);
 
   pixels_ = static_cast<void*>(buf.get() + 1);
-  RunTest(this, "mpixels_sec_pixel_read_3", g_width * g_height, g_width, g_height, true);
+  RunTest(this, "pixel_read_3", g_width * g_height, g_width, g_height, true);
 
   return true;
 }

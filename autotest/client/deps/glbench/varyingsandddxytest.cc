@@ -16,6 +16,7 @@ class VaryingsAndDdxyShaderTest : public DrawElementsTestFunc {
   virtual ~VaryingsAndDdxyShaderTest() {}
   virtual bool Run();
   virtual const char* Name() const { return "varyings_ddx_shader"; }
+  virtual const char* Unit() const { return "mpixels_sec"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VaryingsAndDdxyShaderTest);
@@ -181,33 +182,31 @@ bool VaryingsAndDdxyShaderTest::Run() {
 
   GLuint program = VaryingsShaderProgram(1, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_1", g_width * g_height, g_width, g_height, true);
+          "varyings_shader_1", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = VaryingsShaderProgram(2, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_2", g_width * g_height, g_width, g_height, true);
+          "varyings_shader_2", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = VaryingsShaderProgram(4, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_4", g_width * g_height, g_width, g_height, true);
+          "varyings_shader_4", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = VaryingsShaderProgram(8, vertex_buffer);
   RunTest(this,
-          "mpixels_sec_varyings_shader_8", g_width * g_height, g_width, g_height, true);
+          "varyings_shader_8", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
 #if !defined(DISABLE_SOME_TESTS_FOR_INTEL_DRIVER)
   program = DdxDdyShaderProgram(true, vertex_buffer);
-  RunTest(this,
-          "mpixels_sec_ddx_shader", g_width * g_height, g_width, g_height, true);
+  RunTest(this, "ddx_shader", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 
   program = DdxDdyShaderProgram(false, vertex_buffer);
-  RunTest(this,
-          "mpixels_sec_ddy_shader", g_width * g_height, g_width, g_height, true);
+  RunTest(this, "ddy_shader", g_width * g_height, g_width, g_height, true);
   glDeleteProgram(program);
 #endif
 

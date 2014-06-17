@@ -53,6 +53,8 @@ class TestBase {
   // If so, testbase will read back pixels, compute its MD5 hash and optionally
   // save them to a file on disk.
   virtual bool IsDrawTest() const = 0;
+  // Name of unit for benchmark score (e.g., mtexel_sec, us, etc.)
+  virtual const char* Unit() const = 0;
 };
 
 // Helper class to time glDrawArrays.
@@ -61,6 +63,7 @@ class DrawArraysTestFunc : public TestBase {
   virtual ~DrawArraysTestFunc() {}
   virtual bool TestFunc(uint64_t);
   virtual bool IsDrawTest() const { return true; }
+  virtual const char* Unit() const { return "mpixels_sec"; }
 
   // Runs the test and reports results in mpixels per second, assuming each
   // iteration updates the whole window (its size is g_width by g_height).
@@ -82,6 +85,7 @@ class DrawElementsTestFunc : public TestBase {
   virtual ~DrawElementsTestFunc() {}
   virtual bool TestFunc(uint64_t);
   virtual bool IsDrawTest() const { return true; }
+  virtual const char* Unit() const { return "mtri_sec"; }
 
  protected:
   // Passed to glDrawElements.
