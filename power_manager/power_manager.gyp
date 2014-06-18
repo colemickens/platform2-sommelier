@@ -4,13 +4,13 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libudev',
+        # system_api depends on protobuf (or protobuf-lite). It must appear
+        # before protobuf here or the linker flags won't be in the right
+        # order.
+        'system_api',
         'protobuf-lite',
       ],
     },
-    'dependencies': [
-      '../system_api/system_api.gyp:system_api-headers',
-      '../system_api/system_api.gyp:system_api-power_manager-protos',
-    ],
     'link_settings': {
       'libraries': [
         '-lgflags',
