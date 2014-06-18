@@ -21,8 +21,7 @@ bool IPAddressLTIgnorePrefix::operator () (const IPAddress &lhs,
   return lhs.ToString() < rhs.ToString();
 }
 
-IPAddressStore::IPAddressStore() {
-  srand(time(NULL));
+IPAddressStore::IPAddressStore() : random_engine_(time(nullptr)) {
 }
 
 IPAddressStore::~IPAddressStore() {}
@@ -46,7 +45,8 @@ bool IPAddressStore::Empty() const {
 IPAddress IPAddressStore::GetRandomIP() {
   if (ip_addresses_.empty())
     return IPAddress(IPAddress::kFamilyUnknown);
-  int index = rand() % ip_addresses_.size();  // NOLINT(runtime/threadsafe_fn)
+  std::uniform_int_distribution<int> uniform_rand(0, ip_addresses_.size() - 1);
+  int index = uniform_rand(random_engine_);
   IPAddresses::const_iterator cit = ip_addresses_.begin();
   advance(cit, index);
   return *cit;

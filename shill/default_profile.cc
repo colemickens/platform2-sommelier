@@ -4,6 +4,7 @@
 
 #include "shill/default_profile.h"
 
+#include <random>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -62,7 +63,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
     : Profile(control, metrics, manager, Identifier(profile_id), "", true),
       storage_path_(storage_path),
       profile_id_(profile_id),
-      props_(manager_props) {
+      props_(manager_props),
+      random_engine_(time(nullptr)) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kArpGatewayProperty, &manager_props.arp_gateway);
   store->RegisterConstString(kCheckPortalListProperty,
@@ -117,8 +119,8 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   }
   if (!storage()->GetInt(kStorageId, kStorageConnectionIdSalt,
                          &manager_props->connection_id_salt)) {
-    srand(time(NULL));
-    manager_props->connection_id_salt = rand();  // NOLINT - rand
+    manager_props->connection_id_salt =
+        std::uniform_int_distribution<int>()(random_engine_);
   }
 }
 

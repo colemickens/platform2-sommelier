@@ -5,6 +5,7 @@
 #ifndef SHILL_DEFAULT_PROFILE_H_
 #define SHILL_DEFAULT_PROFILE_H_
 
+#include <random>
 #include <string>
 #include <vector>
 
@@ -84,6 +85,7 @@ class DefaultProfile : public Profile {
   const base::FilePath storage_path_;
   const std::string profile_id_;
   const Manager::Properties &props_;
+  std::default_random_engine random_engine_;
 
   DISALLOW_COPY_AND_ASSIGN(DefaultProfile);
 };
