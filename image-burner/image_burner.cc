@@ -4,11 +4,9 @@
 
 #include "image-burner/image_burner.h"
 
-#include <iostream>
-
 namespace imageburn {
 
-// Register with the glib type system. 
+// Register with the glib type system.
 // This macro automatically defines a number of functions and variables
 // which are required to make session_manager functional as a GObject:
 // - image_burner_parent_class

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <iostream>
 #include <string>
 
-#include "image_burner_utils_interfaces.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "image-burner/image_burner_utils_interfaces.h"
 
 namespace imageburn {
 
@@ -37,5 +37,5 @@ class MockRootPathGetter : public RootPathGetter {
   MOCK_METHOD1(GetRootPath, bool(std::string*));
 };
 
-}  // namespace imageburn.
+}  // namespace imageburn
 

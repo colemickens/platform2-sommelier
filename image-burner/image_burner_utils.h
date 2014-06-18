@@ -5,11 +5,11 @@
 #ifndef IMAGE_BURNER_UTILS_H_
 #define IMAGE_BURNER_UTILS_H_
 
-#include <fstream>
-#include <string>
 #include <unistd.h>
 
-#include "image_burner_utils_interfaces.h"
+#include <string>
+
+#include "image-burner/image_burner_utils_interfaces.h"
 
 namespace imageburn {
 
@@ -23,8 +23,8 @@ class BurnWriter : public FileSystemWriter {
   virtual int Write(char* data_block, int data_size);
 
  private:
-   FILE* file_;
-   int writes_count_;
+  FILE* file_;
+  int writes_count_;
 };
 
 class BurnReader : public FileSystemReader {
@@ -46,7 +46,6 @@ class BurnRootPathGetter : public RootPathGetter {
   virtual bool GetRootPath(std::string* path);
 };
 
-}  // namespace imageburn.
+}  // namespace imageburn
 
 #endif  // IMAGE_BURNER_UTLS_H_
-

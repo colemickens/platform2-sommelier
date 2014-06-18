@@ -4,18 +4,16 @@
 
 #include "image-burner/image_burn_service.h"
 
-#include <cstring>
 #include <ctype.h>
 #include <glib.h>
+
+#include <string>
 
 #include <base/logging.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include <fstream>
-#include <string>
-
-#include "image_burner.h"
-#include "marshal.h"
+#include "image-burner/image_burner.h"
+#include "image-burner/marshal.h"
 
 namespace imageburn {
 #include "image-burner/bindings/server.h"

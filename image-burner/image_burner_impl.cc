@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "image_burner_impl.h"
+#include "image-burner/image_burner_impl.h"
 
-#include <cstring>
 #include <ctype.h>
 #include <regex.h>
+
 #include <base/basictypes.h>
 #include <base/logging.h>
 
@@ -65,7 +65,7 @@ bool BurnerImpl::ValidateTargetPath(const char* path, ErrorCode* error) {
   for (int i = 0; i < kFilePathPatternCount; ++i) {
     regex_t re;
     int status = regcomp(&re, kFilePathPatterns[i], REG_EXTENDED);
-    DCHECK(status == 0);
+    DCHECK_EQ(0, status);
     status = regexec(&re, path, 0, NULL, 0);
     regfree(&re);
     if (status == 0) {
@@ -153,4 +153,4 @@ bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
   return success;
 }
 
-}  // namespace imageburn.
+}  // namespace imageburn

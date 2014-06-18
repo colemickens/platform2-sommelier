@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstring>
-
-#include "image_burner_impl.h"
-#include "image_burner_test_utils.h"
+#include "image-burner/image_burner_impl.h"
+#include "image-burner/image_burner_test_utils.h"
 
 namespace imageburn {
 
@@ -379,7 +377,6 @@ TEST_F(ImageBurnerImplTest, ErrorWriting) {
 
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb"),
             imageburn::IMAGEBURN_ERROR_FAILED_WRITING_TO_TARGET);
-
 }
 
 TEST_F(ImageBurnerImplTest, ErrorWritingWrongReturn) {
@@ -603,4 +600,4 @@ TEST_F(ImageBurnerImplTest, FileSizeNotDivisibleByDAtaBlockSizeSDCard) {
             imageburn::IMAGEBURN_OK);
 }
 
-}  // namespace imageburn.
+}  // namespace imageburn

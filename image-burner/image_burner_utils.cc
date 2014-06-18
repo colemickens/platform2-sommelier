@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "image_burner_utils.h"
+#include "image-burner/image_burner_utils.h"
 
-#include <cstring>
-#include <errno.h>
 #include <fcntl.h>
-#include <rootdev/rootdev.h>
+#include <stdio.h>
 
 #include <base/logging.h>
+#include <rootdev/rootdev.h>
 
 namespace imageburn {
 
@@ -34,8 +33,7 @@ bool BurnWriter::Open(const char* path) {
   if (fd >= 0)
     file_ = fdopen(fd, "wb");
   if (!file_) {
-    LOG(ERROR) << "Couldn't open target path " << path << ": "
-               << strerror(errno);
+    PLOG(ERROR) << "Couldn't open target path " << path;
     return false;
   } else {
     LOG(INFO) << path << " opened";
@@ -46,7 +44,7 @@ bool BurnWriter::Open(const char* path) {
 bool BurnWriter::Close() {
   if (file_) {
     if (fclose(file_) != 0) {
-      LOG(ERROR) << "Couldn't close target file: " << strerror(errno);
+      PLOG(ERROR) << "Couldn't close target file";
       return false;
     } else {
       LOG(INFO) << "Target file closed";
@@ -59,12 +57,12 @@ bool BurnWriter::Close() {
 int BurnWriter::Write(char* data_block, int data_size) {
   size_t written = fwrite(data_block, sizeof(char), data_size, file_);
   if (written != static_cast<size_t>(data_size)) {
-    LOG(ERROR) << "Error writing to target file: " << strerror(errno);
+    PLOG(ERROR) << "Error writing to target file";
     return written;
   }
 
   if (!writes_count_ && fsync(fileno(file_))) {
-    LOG(ERROR) << "Error syncing target file: " << strerror(errno);
+    PLOG(ERROR) << "Error syncing target file";
     return -1;
   }
   writes_count_++;
@@ -87,8 +85,7 @@ bool BurnReader::Open(const char* path) {
     Close();
   file_ = fopen(path, "rb");
   if (!file_) {
-    LOG(ERROR) << "Couldn't open source path " << path << ": "
-               << strerror(errno);
+    PLOG(ERROR) << "Couldn't open source path " << path;
     return false;
   } else {
     LOG(INFO) << path << " opened";
@@ -99,7 +96,7 @@ bool BurnReader::Open(const char* path) {
 bool BurnReader::Close() {
   if (file_) {
     if (fclose(file_) != 0) {
-      LOG(ERROR) << "Couldn't close source file: " << strerror(errno);
+      PLOG(ERROR) << "Couldn't close source file";
       return false;
     } else {
       LOG(INFO) << "Source file closed";
@@ -112,7 +109,7 @@ bool BurnReader::Close() {
 int BurnReader::Read(char* data_block, int data_size) {
   int read = fread(data_block, sizeof(char), data_size, file_);
   if (read < 0)
-    LOG(ERROR) << "Error reading from source file: " << strerror(errno);
+    PLOG(ERROR) << "Error reading from source file";
   return read;
 }
 
@@ -134,5 +131,5 @@ bool BurnRootPathGetter::GetRootPath(std::string* path) {
   return true;
 }
 
-}  // namespace imageburn.
+}  // namespace imageburn
 

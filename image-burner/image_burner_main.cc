@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "image_burner.h"
-#include "image_burner_impl.h"
-#include "image_burner_utils.h"
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+
+#include "image-burner/image_burner.h"
+#include "image-burner/image_burner_impl.h"
+#include "image-burner/image_burner_utils.h"
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);

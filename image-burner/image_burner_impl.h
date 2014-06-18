@@ -6,9 +6,10 @@
 #define IMAGE_BURNER_IMPL_H_
 
 #include <string>
+
 #include <base/memory/scoped_ptr.h>
 
-#include "image_burner_utils_interfaces.h"
+#include "image-burner/image_burner_utils_interfaces.h"
 
 namespace imageburn {
 
@@ -58,5 +59,5 @@ class BurnerImpl {
   int data_block_size_;
 };
 
-}  // namespace imageburn.
+}  // namespace imageburn
 #endif  // IMAGE_BURNER_IMPL_H_

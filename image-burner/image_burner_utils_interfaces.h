@@ -13,7 +13,7 @@ namespace imageburn {
 
 class FileSystemWriter {
  public:
-  virtual ~FileSystemWriter() {};
+  virtual ~FileSystemWriter() {}
   virtual int Write(char* data_block, int data_size) = 0;
   virtual bool Open(const char* path) = 0;
   virtual bool Close() = 0;
@@ -21,7 +21,7 @@ class FileSystemWriter {
 
 class FileSystemReader {
  public:
-  virtual ~FileSystemReader() {};
+  virtual ~FileSystemReader() {}
   virtual bool Open(const char* path) = 0;
   virtual bool Close() = 0;
   virtual int Read(char* data_block, int data_size) = 0;
@@ -30,19 +30,19 @@ class FileSystemReader {
 
 class RootPathGetter {
  public:
-  virtual ~RootPathGetter() {};
+  virtual ~RootPathGetter() {}
   virtual bool GetRootPath(std::string* path) = 0;
 };
 
 class SignalSender {
  public:
-  virtual ~SignalSender() {};
+  virtual ~SignalSender() {}
   virtual void SendFinishedSignal(const char* target_path, bool success,
                                   const char* error_message) = 0;
   virtual void SendProgressSignal(int64 amount_burnt, int64 total_size,
                                   const char* target_path) = 0;
 };
 
-}  // namespace imageburn.
-#endif  // IMAGE_BURNER_UTILS_INTERFACES_H_
+}  // namespace imageburn
 
+#endif  // IMAGE_BURNER_UTILS_INTERFACES_H_

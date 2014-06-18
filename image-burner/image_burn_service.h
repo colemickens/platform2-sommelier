@@ -5,14 +5,15 @@
 #ifndef IMAGE_BURN_SERVICE_H_
 #define IMAGE_BURN_SERVICE_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
-#include <string>
 
-#include "image_burner_impl.h"
+#include "image-burner/image_burner_impl.h"
 
 namespace imageburn {
 
@@ -33,7 +34,7 @@ enum BurnSignals {
 class ImageBurnService : public chromeos::dbus::AbstractDbusService,
                          public SignalSender {
  public:
-  ImageBurnService(BurnerImpl* burner_impl);
+  explicit ImageBurnService(BurnerImpl* burner_impl);
   virtual ~ImageBurnService();
 
   // chromeos::dbus::AbstractDbusService implementation.
