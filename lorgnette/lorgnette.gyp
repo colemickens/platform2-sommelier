@@ -48,7 +48,6 @@
       'type': 'static_library',
       'dependencies': [
         '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
-        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
         'lorgnette-adaptors',
         'lorgnette-proxies',
       ],
