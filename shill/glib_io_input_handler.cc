@@ -70,7 +70,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
 
   if (status == G_IO_STATUS_EOF) {
     LOG(INFO) << "InputHandler on fd " << fd << " closing due to EOF.";
-    CHECK_EQ(len, 0);
+    CHECK_EQ(0U, len);
     return FALSE;
   }
   return TRUE;
