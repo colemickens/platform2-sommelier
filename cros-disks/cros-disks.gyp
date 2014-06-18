@@ -41,7 +41,6 @@
       'target_name': 'libdisks',
       'type': 'static_library',
       'dependencies': [
-        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
         'libdisks-adaptors',
       ],
       'sources': [
