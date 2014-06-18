@@ -61,6 +61,11 @@ extern const char kWakeupInputPref[];
 // should be reported as full in the UI.
 extern const char kPowerSupplyFullFactorPref[];
 
+// Maximum luminance of the internal panel. Optionally set through VPD in the
+// factory to allow specifying different default brightness percentages for
+// different displays in kInternalBacklightNoAls*BrightnessPref.
+extern const char kInternalBacklightMaxNitsPref[];
+
 // Ambient-light-sensor-derived internal backlight brightness steps. See
 // powerd/policy/ambient_light_handler.h for details.
 extern const char kInternalBacklightAlsStepsPref[];

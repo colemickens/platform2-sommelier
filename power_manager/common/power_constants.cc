@@ -29,6 +29,7 @@ const char kAvoidSuspendWhenHeadphoneJackPluggedPref[] =
     "avoid_suspend_when_headphone_jack_plugged";
 const char kWakeupInputPref[] = "wakeup_input_device_names";
 const char kPowerSupplyFullFactorPref[] = "power_supply_full_factor";
+const char kInternalBacklightMaxNitsPref[] = "internal_backlight_max_nits";
 const char kInternalBacklightAlsStepsPref[] = "internal_backlight_als_steps";
 const char kInternalBacklightNoAlsAcBrightnessPref[] =
     "internal_backlight_no_als_ac_brightness";

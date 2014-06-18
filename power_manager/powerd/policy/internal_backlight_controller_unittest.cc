@@ -563,24 +563,28 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensor) {
 
 TEST_F(InternalBacklightControllerTest, NoAmbientLightSensorMultipleDefaults) {
   // Test that different default brightness percentages can be specified for
-  // different maximum brightness levels (http://crosbug.com/p/28715).
+  // different maximum luminances (http://crosbug.com/p/28715).
   pass_light_sensor_ = false;
-  report_initial_power_source_ = false;
   report_initial_als_reading_ = false;
-  max_backlight_level_ = 400;
-  default_no_als_ac_brightness_ = "40.0 300\n50.0 400";
-  default_no_als_battery_brightness_ = "20.0 400\n30.0 300";
+  default_no_als_ac_brightness_ = "40.0 300\n50.0 400\n30.0";
+  default_no_als_battery_brightness_ = "35.0 400\n25.0 300\n15.0\n";
+
   Init(POWER_AC);
-  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
-
-  // The default percentages corresponding to a maximum level of 400 should be
-  // used on both AC and battery.
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
-
+  EXPECT_EQ(PercentToLevel(30.0), backlight_.current_level());
   controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(PercentToLevel(20.0), backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(15.0), backlight_.current_level());
 
+  prefs_.SetInt64(kInternalBacklightMaxNitsPref, 300);
+  Init(POWER_AC);
+  EXPECT_EQ(PercentToLevel(40.0), backlight_.current_level());
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(25.0), backlight_.current_level());
+
+  prefs_.SetInt64(kInternalBacklightMaxNitsPref, 400);
+  Init(POWER_AC);
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(35.0), backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {

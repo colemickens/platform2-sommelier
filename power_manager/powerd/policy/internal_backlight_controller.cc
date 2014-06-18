@@ -77,27 +77,27 @@ double ClampPercentToVisibleRange(double percent) {
 }
 
 // Reads |pref_name| from |prefs| and returns the desired initial brightness
-// percent corresponding to |max_brightness_level|, the backlight's actual
-// maximum brightness. Crashes on failure.
+// percent corresponding to |backlight_nits|, the backlight's actual maximum
+// luminance. Crashes on failure.
 //
 // The pref's value should consist of one or more lines, each containing either
 // a single double brightness percentage or a space-separated "<double-percent>
 // <int64-max-level>" pair. The percentage from the first line either using the
-// single-value format or matching |max_brightness_level| will be returned.
+// single-value format or matching |backlight_nits| will be returned.
 //
 // For example,
 //
 // 60.0 300
 // 50.0 400
+// 40.0
 //
-// indicates that 60% should be used if the maximum brightness level is 300,
-// while 50% should be used if it's 400.
+// indicates that 60% should be used if the maximum luminance is 300, 50% should
+// be used if it's 400, and 40% should be used otherwise.
 //
-// Note that when using the two-value format, all possible maximum levels for
-// the current system must be covered by the pref.
+// Note that this method will crash if no matching lines are found.
 double GetInitialBrightnessPercent(PrefsInterface* prefs,
                                    const std::string& pref_name,
-                                   int64 max_brightness_level) {
+                                   int64 backlight_nits) {
   DCHECK(prefs);
   std::string pref_value;
   CHECK(prefs->GetString(pref_name, &pref_value))
@@ -116,19 +116,18 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
           percent >= 0.0 && percent <= 100.0)
         << "Unable to parse \"" << parts[0] << "\" from pref " << pref_name
         << " as double in [0.0, 100.0]";
+    if (parts.size() == 1U)
+      return percent;
 
-    int64 max_level = -1;
-    CHECK(parts.size() == 1U ||
-          (base::StringToInt64(parts[1], &max_level) && max_level > 0))
+    int64 nits = -1;
+    CHECK(base::StringToInt64(parts[1], &nits))
         << "Unable to parse \"" << parts[1] << "\" from pref " << pref_name;
-
-    if (max_level < 0 || max_level == max_brightness_level)
+    if (nits == backlight_nits)
       return percent;
   }
 
-  LOG(FATAL) << "Unable to find initial brightness level in pref "
-             << pref_name << " for max brightness level "
-             << max_brightness_level;
+  LOG(FATAL) << "Unable to find initial brightness percentage in pref "
+             << pref_name << " for " << backlight_nits << " nits";
   return kMaxPercent;
 }
 
@@ -196,10 +195,13 @@ void InternalBacklightController::Init(
 
   const double initial_percent = LevelToPercent(current_level_);
   ambient_light_brightness_percent_ = initial_percent;
+
+  int64 max_nits = 0;
+  prefs_->GetInt64(kInternalBacklightMaxNitsPref, &max_nits);
   plugged_explicit_brightness_percent_ = GetInitialBrightnessPercent(
-      prefs_, kInternalBacklightNoAlsAcBrightnessPref, max_level_);
+      prefs_, kInternalBacklightNoAlsAcBrightnessPref, max_nits);
   unplugged_explicit_brightness_percent_ = GetInitialBrightnessPercent(
-      prefs_, kInternalBacklightNoAlsBatteryBrightnessPref, max_level_);
+      prefs_, kInternalBacklightNoAlsBatteryBrightnessPref, max_nits);
 
   prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
                   &instant_transitions_below_min_level_);
