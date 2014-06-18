@@ -4,9 +4,6 @@
 
 {
   'target_defaults': {
-    'dependencies': [
-      '<(platform_root)/system_api/system_api.gyp:*',
-    ],
     'variables': {
       'deps': [  # This is a list of pkg-config dependencies
         'libchrome-<(libbase_ver)',

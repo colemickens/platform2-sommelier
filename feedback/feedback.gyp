@@ -3,9 +3,6 @@
     'libbase_ver': 271506,
   },
   'target_defaults': {
-    'dependencies': [
-      '<(platform_root)/system_api/system_api.gyp:system_api-headers',
-    ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
