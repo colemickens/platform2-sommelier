@@ -1,7 +1,5 @@
 {
   'target_defaults': {
-    'dependencies': [
-    ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
@@ -165,7 +163,6 @@
       'type': 'static_library',
       'dependencies': [
         '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
-        '../system_api/system_api.gyp:system_api-power_manager-protos',
         'mobile_operator_db',
         'shill-adaptors',
         'shill-proxies',
@@ -199,6 +196,10 @@
             'libcares',
             'libnl-3.0',
             'libnl-genl-3.0',
+            # system_api depends on protobuf (or protobuf-lite). It must appear
+            # before protobuf here or the linker flags won't be in the right
+            # order.
+            'system_api',
             'protobuf-lite',
           ],
         },
