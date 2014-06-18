@@ -1,8 +1,5 @@
 {
   'target_defaults': {
-    'dependencies': [
-      '../system_api/system_api.gyp:system_api-power_manager-protos',
-    ],
     'variables': {
       'deps': [
         'dbus-c++-1',
@@ -11,6 +8,10 @@
         'gobject-2.0',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        # system_api depends on protobuf (or protobuf-lite). It must appear
+        # before protobuf here or the linker flags won't be in the right
+        # order.
+        'system_api',
         'protobuf',
       ],
     },
@@ -69,7 +70,6 @@
       'target_name': 'libwimax_manager',
       'type': 'static_library',
       'dependencies': [
-        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
         'wimax_manager-adaptors',
         'wimax_manager-proxies',
         'wimax_manager-protos',
