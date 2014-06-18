@@ -62,7 +62,6 @@
       # depending on 'libcromo'.
       'dependencies': [
         '../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-adaptors',
-        '<(platform_root)/system_api/system_api.gyp:system_api-headers',
         'cromo-adaptors',
       ],
       'defines': [
