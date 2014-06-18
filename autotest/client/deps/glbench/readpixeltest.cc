@@ -19,6 +19,7 @@ class ReadPixelTest : public TestBase {
   virtual bool TestFunc(uint64_t iterations);
   virtual bool Run();
   virtual const char* Name() const { return "pixel_read"; }
+  virtual bool IsDrawTest() const { return false; }
 
  private:
   void* pixels_;

@@ -47,7 +47,12 @@ class TestBase {
   virtual bool TestFunc(uint64_t n) = 0;
   // Main entry point into the test.
   virtual bool Run() = 0;
+  // Name of test case group
   virtual const char* Name() const = 0;
+  // Returns true if a test draws some output.
+  // If so, testbase will read back pixels, compute its MD5 hash and optionally
+  // save them to a file on disk.
+  virtual bool IsDrawTest() const = 0;
 };
 
 // Helper class to time glDrawArrays.
@@ -55,6 +60,7 @@ class DrawArraysTestFunc : public TestBase {
  public:
   virtual ~DrawArraysTestFunc() {}
   virtual bool TestFunc(uint64_t);
+  virtual bool IsDrawTest() const { return true; }
 
   // Runs the test and reports results in mpixels per second, assuming each
   // iteration updates the whole window (its size is g_width by g_height).
@@ -75,6 +81,7 @@ class DrawElementsTestFunc : public TestBase {
   DrawElementsTestFunc() : count_(0) {}
   virtual ~DrawElementsTestFunc() {}
   virtual bool TestFunc(uint64_t);
+  virtual bool IsDrawTest() const { return true; }
 
  protected:
   // Passed to glDrawElements.

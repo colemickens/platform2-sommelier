@@ -18,6 +18,7 @@ class TextureUpdateTest : public TextureTest {
   virtual ~TextureUpdateTest() {}
   virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "texture_update"; }
+  virtual bool IsDrawTest() const { return true; }
 };
 
 bool TextureUpdateTest::TestFunc(uint64_t iterations) {

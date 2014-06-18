@@ -119,20 +119,23 @@ void RunTest(TestBase* test, const char* testname, const double coefficient,
   GLenum error = glGetError();
   if (error == GL_NO_ERROR) {
     value = Bench(test);
-    // save as png with MD5 as hex string attached
-    char          pixmd5[33];
-    unsigned char d[16];
-    ComputeMD5(d, width, height);
-    // translate to hexadecimal ASCII of MD5
-    sprintf(pixmd5,
-      "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-      d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
-      d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
-    char name_png[512];
-    sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
+    char name_png[512] = "none";
 
-    if (FLAGS_save)
-      SaveImage(name_png, width, height);
+    if (test->IsDrawTest()) {
+      // save as png with MD5 as hex string attached
+      char          pixmd5[33];
+      unsigned char d[16];
+      ComputeMD5(d, width, height);
+      // translate to hexadecimal ASCII of MD5
+      sprintf(pixmd5,
+        "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+        d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
+        d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
+      sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
+
+      if (FLAGS_save)
+        SaveImage(name_png, width, height);
+    }
 
     // TODO(ihf) adjust string length based on longest test name
     int length = strlen(testname);

@@ -17,6 +17,7 @@ class TextureUploadTest : public TextureTest {
   virtual ~TextureUploadTest() {}
   virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "texture_upload"; }
+  virtual bool IsDrawTest() const { return false; }
 };
 
 bool TextureUploadTest::TestFunc(uint64_t iterations) {

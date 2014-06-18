@@ -19,6 +19,7 @@ class TextureReuseTest : public TextureTest {
   virtual ~TextureReuseTest() {}
   virtual bool TestFunc(uint64_t iterations);
   virtual const char* Name() const { return "texture_reuse"; }
+  virtual bool IsDrawTest() const { return true; }
 };
 
 bool TextureReuseTest::TestFunc(uint64_t iterations) {

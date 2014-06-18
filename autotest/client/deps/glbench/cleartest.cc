@@ -16,6 +16,7 @@ class ClearTest : public TestBase {
   virtual bool TestFunc(uint64_t iterations);
   virtual bool Run();
   virtual const char* Name() const { return "clear"; }
+  virtual bool IsDrawTest() const { return true; }
 
  private:
   GLbitfield mask_;

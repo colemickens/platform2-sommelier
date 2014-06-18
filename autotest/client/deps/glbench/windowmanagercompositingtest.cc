@@ -24,6 +24,7 @@ class WindowManagerCompositingTest : public TestBase {
   virtual bool TestFunc(uint64_t iterations);
   virtual bool Run();
   virtual const char* Name() const { return "compositing"; }
+  virtual bool IsDrawTest() const { return true; }
 
   void InitializeCompositing();
   void TeardownCompositing();
