@@ -10,6 +10,8 @@
 #ifndef CRYPTOHOME_CRYPTO_H_
 #define CRYPTOHOME_CRYPTO_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
@@ -215,12 +217,12 @@ class Crypto {
                     const std::string& key_sig,
                     const chromeos::SecureBlob& salt) const;
 
-  bool EncryptTPM(const chromeos::SecureBlob& blob,
+  bool EncryptTPM(const VaultKeyset& vault_keyset,
                   const chromeos::SecureBlob& key,
                   const chromeos::SecureBlob& salt,
                   SerializedVaultKeyset* serialized) const;
 
-  bool EncryptScrypt(const chromeos::SecureBlob& blob,
+  bool EncryptScrypt(const VaultKeyset& vault_keyset,
                      const chromeos::SecureBlob& key,
                      SerializedVaultKeyset* serialized) const;
 

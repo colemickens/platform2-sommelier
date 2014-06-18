@@ -15,6 +15,7 @@ namespace cryptohome {
 // The default salt length for the user salt
 #define CRYPTOHOME_DEFAULT_SALT_LENGTH 16
 #define CRYPTOHOME_PWNAME_BUF_LENGTH 1024
+#define CRYPTOHOME_CHAPS_KEY_LENGTH 16           // AES block size
 
 struct VaultKeysetKeys {
   unsigned char fek[CRYPTOHOME_DEFAULT_KEY_SIZE];

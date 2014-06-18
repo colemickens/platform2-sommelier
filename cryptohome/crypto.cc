@@ -191,9 +191,9 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
   // Add the File Encryption key (FEK) from the vault keyset.  This is the key
   // that is used to encrypt the file contents when it is persisted to the lower
   // filesystem by eCryptfs.
-  *key_signature = chromeos::AsciiEncode(vault_keyset.FEK_SIG());
-  if (!PushVaultKey(vault_keyset.FEK(), *key_signature,
-                    vault_keyset.FEK_SALT())) {
+  *key_signature = chromeos::AsciiEncode(vault_keyset.fek_sig());
+  if (!PushVaultKey(vault_keyset.fek(), *key_signature,
+                    vault_keyset.fek_salt())) {
     LOG(ERROR) << "Couldn't add ecryptfs key to keyring";
     return false;
   }
@@ -201,9 +201,9 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
   // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
   // key that is used to encrypt the file name when it is persisted to the lower
   // filesystem by eCryptfs.
-  *filename_key_signature = chromeos::AsciiEncode(vault_keyset.FNEK_SIG());
-  if (!PushVaultKey(vault_keyset.FNEK(), *filename_key_signature,
-                    vault_keyset.FNEK_SALT())) {
+  *filename_key_signature = chromeos::AsciiEncode(vault_keyset.fnek_sig());
+  if (!PushVaultKey(vault_keyset.fnek(), *filename_key_signature,
+                    vault_keyset.fnek_salt())) {
     LOG(ERROR) << "Couldn't add ecryptfs filename encryption key to keyring";
     return false;
   }
@@ -306,7 +306,12 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   serialized.salt().copy(static_cast<char*>(salt.data()),
                          serialized.salt().length(), 0);
   SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
-
+  bool chaps_key_present = serialized.has_wrapped_chaps_key();
+  SecureBlob local_wrapped_chaps_key;
+  if (chaps_key_present) {
+    local_wrapped_chaps_key = CryptoLib::ConvertStringToBlob(
+        serialized.wrapped_chaps_key());
+  }
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
     if (error)
@@ -373,7 +378,6 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
 
   SecureBlob aes_key;
   SecureBlob iv;
-  SecureBlob plain_text;
   if (!CryptoLib::PasskeyToAesKey(local_vault_key,
                                   salt,
                                   rounds,
@@ -384,10 +388,20 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
       *error = CE_OTHER_FATAL;
     return false;
   }
-
+  SecureBlob plain_text;
   if (!CryptoLib::AesDecrypt(local_encrypted_keyset, aes_key, iv,
                              &plain_text)) {
-    LOG(ERROR) << "AES decryption failed.";
+    LOG(ERROR) << "AES decryption failed for vault keyset.";
+    if (error)
+      *error = CE_OTHER_CRYPTO;
+    return false;
+  }
+  SecureBlob unwrapped_chaps_key;
+  if (chaps_key_present && !CryptoLib::AesDecrypt(local_wrapped_chaps_key,
+                                                  aes_key,
+                                                  iv,
+                                                  &unwrapped_chaps_key)) {
+    LOG(ERROR) << "AES decryption failed for chaps key.";
     if (error)
       *error = CE_OTHER_CRYPTO;
     return false;
@@ -422,8 +436,12 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   }
 
   keyset->FromKeysBlob(plain_text);
-  if (!serialized.has_tpm_public_key_hash() && error)
+  if (chaps_key_present) {
+    keyset->set_chaps_key(unwrapped_chaps_key);
+  }
+  if (!serialized.has_tpm_public_key_hash() && error) {
     *error = CE_NO_PUBLIC_KEY_HASH;
+  }
   return true;
 }
 
@@ -431,29 +449,79 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
                            const SecureBlob& key,
                            CryptoError* error,
                            VaultKeyset* keyset) const {
-  SecureBlob blob(serialized.wrapped_keyset().length());
-  serialized.wrapped_keyset().copy(static_cast<char*>(blob.data()),
-                                   blob.size(), 0);
-  size_t out_len = blob.size();
-  SecureBlob decrypted(out_len);
+  SecureBlob blob = CryptoLib::ConvertStringToBlob(serialized.wrapped_keyset());
   int scrypt_rc;
+  size_t out_len = 0;
+  SecureBlob decrypted(blob.size());
+  // Perform a Scrypt operation on wrapped vault keyset.
   if ((scrypt_rc = scryptdec_buf(
-          static_cast<const uint8_t*>(blob.const_data()),
-          blob.size(),
-          static_cast<uint8_t*>(decrypted.data()),
-          &out_len,
-          static_cast<const uint8_t*>(key.const_data()),
-          key.size(),
-          kScryptMaxMem,
-          100.0,
-          kScryptMaxDecryptTime))) {
-    LOG(ERROR) << "Scrypt decryption failed: " << scrypt_rc;
+      static_cast<const uint8_t*>(blob.const_data()),
+      blob.size(),
+      static_cast<uint8_t*>(decrypted.data()),
+      &out_len,
+      static_cast<const uint8_t*>(key.const_data()),
+      key.size(),
+      kScryptMaxMem,
+      100.0,
+      kScryptMaxDecryptTime))) {
+    LOG(ERROR) << "Vault Keyset Scrypt decryption returned error code: "
+               << scrypt_rc;
     if (error)
       *error = CE_SCRYPT_CRYPTO;
     return false;
   }
-  // TODO(ellyjones): size underflow?
+  // Check if the plaintext is the right length.
+  if (blob.size() < kScryptHeaderLength ||
+      out_len != (blob.size() - kScryptHeaderLength)) {
+    LOG(ERROR) << "Scrypt decryption output was the wrong length.";
+    if (error) {
+      *error = CE_SCRYPT_CRYPTO;
+    }
+    return false;
+  }
   decrypted.resize(out_len);
+  out_len = 0;
+  SecureBlob chaps_key;
+  SecureBlob wrapped_chaps_key;
+  bool chaps_key_present = serialized.has_wrapped_chaps_key();
+  if (chaps_key_present) {
+    wrapped_chaps_key = CryptoLib::ConvertStringToBlob(
+        serialized.wrapped_chaps_key());
+    chaps_key.resize(wrapped_chaps_key.size());
+  }
+  // Perform a Scrypt operation on wrapped chaps key.
+  if (chaps_key_present) {
+    scrypt_rc = scryptdec_buf(
+        static_cast<const uint8_t*>(wrapped_chaps_key.const_data()),
+        wrapped_chaps_key.size(),
+        static_cast<uint8_t*>(chaps_key.data()),
+        &out_len,
+        static_cast<const uint8_t*>(key.const_data()),
+        key.size(),
+        kScryptMaxMem,
+        100.0,
+        kScryptMaxDecryptTime);
+    if (scrypt_rc) {
+      LOG(ERROR) << "Chaps keyset Scrypt decryption returned error code: "
+                 << scrypt_rc;
+      if (error)
+        *error = CE_SCRYPT_CRYPTO;
+      return false;
+    }
+    // Check if the plaintext is the right length.
+    if ((wrapped_chaps_key.size() < kScryptHeaderLength) ||
+        (out_len != (wrapped_chaps_key.size() - kScryptHeaderLength))) {
+      LOG(ERROR) << "Scrypt decryption output was the wrong length";
+      if (error) {
+        *error = CE_SCRYPT_CRYPTO;
+      }
+      return false;
+    }
+    chaps_key.resize(out_len);
+    keyset->set_chaps_key(chaps_key);
+  }
+
+  // Perform sanity check to ensure vault keyset is not tampered with.
   SecureBlob included_hash(SHA_DIGEST_LENGTH);
   if (decrypted.size() < SHA_DIGEST_LENGTH) {
     LOG(ERROR) << "Message length underflow: " << decrypted.size() << " bytes?";
@@ -483,7 +551,6 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     *crypt_flags = serialized.flags();
   if (error)
     *error = CE_NONE;
-
   // Check if the vault keyset was TPM-wrapped
   if (serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED) {
     return DecryptTPM(serialized, vault_key, error, vault_keyset);
@@ -495,11 +562,10 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 }
 
-bool Crypto::EncryptTPM(const SecureBlob& blob,
+bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
                         const SecureBlob& key,
                         const SecureBlob& salt,
                         SerializedVaultKeyset* serialized) const {
-  unsigned int rounds = kDefaultPasswordRounds;
   if (!use_tpm_)
     return false;
   EnsureTpm(false);
@@ -511,6 +577,7 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
   TSS_RESULT result;
   SecureBlob tpm_key;
   SecureBlob derived_key;
+  unsigned int rounds = kDefaultPasswordRounds;
   CryptoLib::PasskeyToAesKey(key, salt, rounds, &derived_key, NULL);
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
   // encrypted blob in tpm_key, which is stored in the serialized vault
@@ -527,13 +594,21 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
 
   SecureBlob aes_key;
   SecureBlob iv;
-  SecureBlob cipher_text;
   if (!CryptoLib::PasskeyToAesKey(local_blob, salt, rounds, &aes_key, &iv)) {
     LOG(ERROR) << "Failure converting passkey to key";
     return false;
   }
 
-  if (!CryptoLib::AesEncrypt(blob, aes_key, iv, &cipher_text)) {
+  SecureBlob blob;
+  if (!vault_keyset.ToKeysBlob(&blob)) {
+    LOG(ERROR) << "Failure serializing keyset to buffer";
+    return false;
+  }
+  SecureBlob chaps_key = vault_keyset.chaps_key();
+  SecureBlob cipher_text;
+  SecureBlob wrapped_chaps_key;
+  if (!CryptoLib::AesEncrypt(blob, aes_key, iv, &cipher_text) ||
+      !CryptoLib::AesEncrypt(chaps_key, aes_key, iv, &wrapped_chaps_key)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
@@ -553,6 +628,12 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
   serialized->set_flags(flags | SerializedVaultKeyset::TPM_WRAPPED);
   serialized->set_tpm_key(tpm_key.const_data(), tpm_key.size());
   serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+    serialized->set_wrapped_chaps_key(wrapped_chaps_key.const_data(),
+                                      wrapped_chaps_key.size());
+  } else {
+    serialized->clear_wrapped_chaps_key();
+  }
 
   // Handle AuthorizationData secrets if provided.
   if (serialized->key_data().authorization_data_size() > 0) {
@@ -589,16 +670,21 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
   return true;
 }
 
-bool Crypto::EncryptScrypt(const SecureBlob& blob,
+bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
                            const SecureBlob& key,
                            SerializedVaultKeyset* serialized) const {
+  SecureBlob blob;
+  if (!vault_keyset.ToKeysBlob(&blob)) {
+    LOG(ERROR) << "Failure serializing keyset to buffer";
+    return false;
+  }
   // Append the SHA1 hash of the keyset blob
-  SecureBlob cipher_text;
   SecureBlob hash = CryptoLib::Sha1(blob);
   SecureBlob local_blob(blob.size() + hash.size());
   memcpy(&local_blob[0], blob.const_data(), blob.size());
   memcpy(&local_blob[blob.size()], hash.data(), hash.size());
-  cipher_text.resize(local_blob.size() + kScryptHeaderLength);
+  SecureBlob cipher_text(local_blob.size() + kScryptHeaderLength);
+
   int scrypt_rc;
   if ((scrypt_rc = scryptenc_buf(
           static_cast<const uint8_t*>(local_blob.const_data()),
@@ -609,12 +695,38 @@ bool Crypto::EncryptScrypt(const SecureBlob& blob,
           kScryptMaxMem,
           100.0,
           kScryptMaxEncryptTime))) {
-    LOG(ERROR) << "Scrypt encryption failed: " << scrypt_rc;
+    LOG(ERROR) << "Vault Keyset Scrypt encryption returned error code: "
+               << scrypt_rc;
+    return false;
+  }
+
+  SecureBlob chaps_key = vault_keyset.chaps_key();
+  SecureBlob wrapped_chaps_key;
+  wrapped_chaps_key.resize(chaps_key.size() + kScryptHeaderLength);
+  scrypt_rc = scryptenc_buf(
+      static_cast<const uint8_t*>(chaps_key.const_data()),
+      chaps_key.size(),
+      static_cast<uint8_t*>(wrapped_chaps_key.data()),
+      static_cast<const uint8_t*>(&key[0]),
+      key.size(),
+      kScryptMaxMem,
+      100.0,
+      kScryptMaxEncryptTime);
+  if (scrypt_rc) {
+    LOG(ERROR) << "Chaps Key Scrypt encryption returned error code: "
+               << scrypt_rc;
     return false;
   }
   unsigned int flags = serialized->flags();
   serialized->set_flags(flags | SerializedVaultKeyset::SCRYPT_WRAPPED);
   serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+    serialized->set_wrapped_chaps_key(wrapped_chaps_key.const_data(),
+                                      wrapped_chaps_key.size());
+  } else {
+    serialized->clear_wrapped_chaps_key();
+  }
+
   return true;
 }
 
@@ -622,14 +734,8 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                 const SecureBlob& vault_key,
                                 const SecureBlob& vault_key_salt,
                                 SerializedVaultKeyset* serialized) const {
-  SecureBlob keyset_blob;
-  if (!vault_keyset.ToKeysBlob(&keyset_blob)) {
-    LOG(ERROR) << "Failure serializing keyset to buffer";
-    return false;
-  }
-
-  if (!EncryptTPM(keyset_blob, vault_key, vault_key_salt, serialized))
-    if (!EncryptScrypt(keyset_blob, vault_key, serialized))
+  if (!EncryptTPM(vault_keyset, vault_key, vault_key_salt, serialized))
+    if (!EncryptScrypt(vault_keyset, vault_key, serialized))
       return false;
 
   serialized->set_salt(vault_key_salt.const_data(),

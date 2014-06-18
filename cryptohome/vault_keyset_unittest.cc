@@ -60,15 +60,16 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
   vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.FEK().size());
+  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.fek().size());
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
-            vault_keyset.FEK_SIG().size());
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE, vault_keyset.FEK_SALT().size());
+            vault_keyset.fek_sig().size());
+  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE, vault_keyset.fek_salt().size());
 
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.FNEK().size());
+  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.fnek().size());
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
-            vault_keyset.FNEK_SIG().size());
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE, vault_keyset.FNEK_SALT().size());
+            vault_keyset.fnek_sig().size());
+  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE, vault_keyset.fnek_salt().size());
+  EXPECT_EQ(CRYPTOHOME_CHAPS_KEY_LENGTH, vault_keyset.chaps_key().size());
 }
 
 TEST_F(VaultKeysetTest, SerializeTest) {
@@ -81,13 +82,13 @@ TEST_F(VaultKeysetTest, SerializeTest) {
   SecureBlob blob;
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
 
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FEK()));
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FEK_SIG()));
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FEK_SALT()));
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.fek()));
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.fek_sig()));
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.fek_salt()));
 
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FNEK()));
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FNEK_SIG()));
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FNEK_SALT()));
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.fnek()));
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.fnek_sig()));
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.fnek_salt()));
 }
 
 TEST_F(VaultKeysetTest, DeserializeTest) {
@@ -103,26 +104,26 @@ TEST_F(VaultKeysetTest, DeserializeTest) {
   VaultKeyset new_vault_keyset;
   new_vault_keyset.FromKeysBlob(blob);
 
-  EXPECT_EQ(vault_keyset.FEK().size(), new_vault_keyset.FEK().size());
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FEK(),
-                                              new_vault_keyset.FEK()));
-  EXPECT_EQ(vault_keyset.FEK_SIG().size(), new_vault_keyset.FEK_SIG().size());
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FEK_SIG(),
-                                              new_vault_keyset.FEK_SIG()));
-  EXPECT_EQ(vault_keyset.FEK_SALT().size(), new_vault_keyset.FEK_SALT().size());
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FEK_SALT(),
-                                              new_vault_keyset.FEK_SALT()));
+  EXPECT_EQ(vault_keyset.fek().size(), new_vault_keyset.fek().size());
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.fek(),
+                                              new_vault_keyset.fek()));
+  EXPECT_EQ(vault_keyset.fek_sig().size(), new_vault_keyset.fek_sig().size());
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.fek_sig(),
+                                              new_vault_keyset.fek_sig()));
+  EXPECT_EQ(vault_keyset.fek_salt().size(), new_vault_keyset.fek_salt().size());
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.fek_salt(),
+                                              new_vault_keyset.fek_salt()));
 
-  EXPECT_EQ(vault_keyset.FNEK().size(), new_vault_keyset.FNEK().size());
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FNEK(),
-                                              new_vault_keyset.FNEK()));
-  EXPECT_EQ(vault_keyset.FNEK_SIG().size(), new_vault_keyset.FNEK_SIG().size());
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FNEK_SIG(),
-                                              new_vault_keyset.FNEK_SIG()));
-  EXPECT_EQ(vault_keyset.FNEK_SALT().size(),
-            new_vault_keyset.FNEK_SALT().size());
-  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FNEK_SALT(),
-                                              new_vault_keyset.FNEK_SALT()));
+  EXPECT_EQ(vault_keyset.fnek().size(), new_vault_keyset.fnek().size());
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.fnek(),
+                                              new_vault_keyset.fnek()));
+  EXPECT_EQ(vault_keyset.fnek_sig().size(), new_vault_keyset.fnek_sig().size());
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.fnek_sig(),
+                                              new_vault_keyset.fnek_sig()));
+  EXPECT_EQ(vault_keyset.fnek_salt().size(),
+            new_vault_keyset.fnek_salt().size());
+  EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.fnek_salt(),
+                                              new_vault_keyset.fnek_salt()));
 }
 
 ACTION_P(CopyToSecureBlob, b) {

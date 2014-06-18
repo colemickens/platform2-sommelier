@@ -246,7 +246,7 @@ void TestUser::GenerateCredentials() {
 
 void TestUser::InjectKeyset(MockPlatform* platform, bool enumerate) {
   // TODO(wad) Update to support multiple keys
-  EXPECT_CALL(*platform, FileExists(keyset_path))
+  EXPECT_CALL(*platform, FileExists(StartsWith(keyset_path)))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, ReadFile(keyset_path, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(credentials),
@@ -329,7 +329,8 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
                        StartsWith(vault_mount_path),
                        StartsWith(user_mount_path),
                        StartsWith(root_mount_path),
-                       StartsWith(new_user_path))))
+                       StartsWith(new_user_path),
+                       StartsWith(keyset_path))))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, SetGroupAccessible(
                             AnyOf(StartsWith(legacy_user_mount_path),

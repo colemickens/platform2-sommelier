@@ -370,6 +370,16 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
     return false;
   }
+
+  if (!serialized.has_wrapped_chaps_key()) {
+    is_pkcs11_passkey_migration_required_ = true;
+    vault_keyset.CreateRandomChapsKey();
+    ReEncryptVaultKeyset(credentials, vault_keyset, index, &serialized);
+  }
+
+  SecureBlob local_chaps_key(vault_keyset.chaps_key().begin(),
+                             vault_keyset.chaps_key().end());
+  pkcs11_token_auth_data_.swap(local_chaps_key);
   crypto_->ClearKeyset();
 
   // Before we use the matching keyset, make sure it isn't being misused.
@@ -378,7 +388,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   //
   // In the future we may provide some assurance by wrapping privileges
   // with the wrapped_key, but that is still of limited benefit.
-  if (serialized.has_key_data() && // legacy keys are full privs
+  if (serialized.has_key_data() &&  // legacy keys are full privs
       !serialized.key_data().privileges().mount()) {
     // TODO(wad): Convert to CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED
     // TODO(wad): Expose the safe-printable label rather than the Chrome
@@ -388,7 +398,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // Add the decrypted key to the keyring so that ecryptfs can use it
+  // Add the decrypted key to the keyring so that ecryptfs can use it.
   string key_signature, fnek_signature;
   if (!crypto_->AddKeyset(vault_keyset, &key_signature, &fnek_signature)) {
     LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
@@ -398,7 +408,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // Specify the ecryptfs options for mounting the user's cryptohome
+  // Specify the ecryptfs options for mounting the user's cryptohome.
   string ecryptfs_options = StringPrintf("ecryptfs_cipher=aes"
                                          ",ecryptfs_key_bytes=%d"
                                          ",ecryptfs_fnek_sig=%s"
@@ -528,7 +538,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_NONE;
   }
 
-  credentials.GetPasskey(&pkcs11_passkey_);
+  if (is_pkcs11_passkey_migration_required_) {
+    credentials.GetPasskey(&legacy_pkcs11_passkey_);
+  }
   return true;
 }
 
@@ -760,7 +772,7 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   // TODO(wad) move to storage by label-derivative and not number.
   if (!StoreVaultKeysetForUser(
        credentials.GetObfuscatedUsername(system_salt_),
-       0, // first key
+       0,  // first key
        serialized)) {
     platform_->SetMask(original_mask);
     LOG(ERROR) << "Failed to store vault keyset for new user";
@@ -1018,7 +1030,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
   }
   std::vector<int>::const_iterator iter = key_indices.begin();
-  for ( ;iter != key_indices.end(); ++iter) {
+  for ( ; iter != key_indices.end(); ++iter) {
     // Load the encrypted keyset
     if (!LoadVaultKeysetForUser(obfuscated_username, *iter, serialized)) {
       LOG(ERROR) << "Could not parse keyset " << *iter
@@ -1395,7 +1407,6 @@ bool Mount::InsertPkcs11Token() {
   std::string username = current_user_->username();
   FilePath token_dir = homedirs_->GetChapsTokenDir(username);
   FilePath legacy_token_dir = homedirs_->GetLegacyChapsTokenDir(username);
-
   if (!CheckChapsDirectory(token_dir.value(),
                            legacy_token_dir.value()))
     return false;
@@ -1404,37 +1415,37 @@ bool Mount::InsertPkcs11Token() {
 
   // Derive authorization data for the token from the passkey.
   FilePath salt_file = homedirs_->GetChapsTokenSaltPath(username);
-  SecureBlob auth_data;
-  if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
-    return false;
+
   scoped_ptr<chaps::TokenManagerClient> chaps_client(
       chaps_client_factory_->New());
+
   // If migration is required, send it before the login event.
   if (is_pkcs11_passkey_migration_required_) {
     LOG(INFO) << "Migrating authorization data.";
     SecureBlob old_auth_data;
-    if (!crypto_->PasskeyToTokenAuthData(pkcs11_old_passkey_,
+    if (!crypto_->PasskeyToTokenAuthData(legacy_pkcs11_passkey_,
                                          salt_file,
                                          &old_auth_data))
       return false;
     chaps_client->ChangeTokenAuthData(
         token_dir,
         old_auth_data,
-        auth_data);
+        pkcs11_token_auth_data_);
     is_pkcs11_passkey_migration_required_ = false;
-    pkcs11_old_passkey_.clear_contents();
+    legacy_pkcs11_passkey_.clear_contents();
   }
+
   Pkcs11Init pkcs11init;
   int slot_id = 0;
   if (!chaps_client->LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir,
-      auth_data,
+      pkcs11_token_auth_data_,
       pkcs11init.GetTpmTokenLabelForUser(current_user_->username()),
       &slot_id)) {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
   }
-  pkcs11_passkey_.clear_contents();
+  pkcs11_token_auth_data_.clear_contents();
   return true;
 }
 
@@ -1731,7 +1742,7 @@ base::Value* Mount::GetStatus() {
   std::vector<int> key_indices;
   if (user.length() && homedirs_->GetVaultKeysets(user, &key_indices)) {
     std::vector<int>::const_iterator iter = key_indices.begin();
-    for ( ;iter != key_indices.end(); ++iter) {
+    for ( ; iter != key_indices.end(); ++iter) {
       base::DictionaryValue* keyset_dict = new base::DictionaryValue();
       if (LoadVaultKeysetForUser(user, *iter, &keyset)) {
         bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;

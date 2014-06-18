@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_CRYPTOLIB_H_
 #define CRYPTOHOME_CRYPTOLIB_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
@@ -127,8 +129,9 @@ class CryptoLib {
       const chromeos::SecureBlob& hmac_key);
 
   static std::string ConvertBlobToString(const chromeos::Blob& blob);
+  static chromeos::SecureBlob ConvertStringToBlob(const std::string& str);
 };
 
 }  // namespace cryptohome
 
-#endif  // !CRYPTOHOME_CRYPTOLIB_H_
+#endif  // CRYPTOHOME_CRYPTOLIB_H_

@@ -36,4 +36,6 @@ message SerializedVaultKeyset {
 
   // This will come from system_api once we're finalized on the API.
   optional KeyData key_data = 9;
+
+  optional bytes wrapped_chaps_key = 10;
 }

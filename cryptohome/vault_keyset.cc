@@ -122,6 +122,12 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
   return true;
 }
 
+void VaultKeyset::CreateRandomChapsKey() {
+  chaps_key_.clear_contents();
+  chaps_key_.resize(CRYPTOHOME_CHAPS_KEY_LENGTH);
+  CryptoLib::GetSecureRandom(&chaps_key_[0], chaps_key_.size());
+}
+
 void VaultKeyset::CreateRandom() {
   CHECK(crypto_);
   fek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
@@ -141,30 +147,44 @@ void VaultKeyset::CreateRandom() {
 
   fnek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   CryptoLib::GetSecureRandom(&fnek_salt_[0], fnek_salt_.size());
+
+  CreateRandomChapsKey();
 }
 
-const SecureBlob& VaultKeyset::FEK() const {
+const SecureBlob& VaultKeyset::fek() const {
   return fek_;
 }
 
-const SecureBlob& VaultKeyset::FEK_SIG() const {
+const SecureBlob& VaultKeyset::fek_sig() const {
   return fek_sig_;
 }
 
-const SecureBlob& VaultKeyset::FEK_SALT() const {
+const SecureBlob& VaultKeyset::fek_salt() const {
   return fek_salt_;
 }
 
-const SecureBlob& VaultKeyset::FNEK() const {
+const SecureBlob& VaultKeyset::fnek() const {
   return fnek_;
 }
 
-const SecureBlob& VaultKeyset::FNEK_SIG() const {
+const SecureBlob& VaultKeyset::fnek_sig() const {
   return fnek_sig_;
 }
 
-const SecureBlob& VaultKeyset::FNEK_SALT() const {
+const SecureBlob& VaultKeyset::fnek_salt() const {
   return fnek_salt_;
+}
+
+void VaultKeyset::set_chaps_key(const SecureBlob& chaps_key) {
+  CHECK(chaps_key.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
+  SecureBlob tmp = chaps_key;
+  chaps_key_.swap(tmp);
+}
+
+void VaultKeyset::clear_chaps_key() {
+  CHECK(chaps_key_.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
+  chaps_key_.clear_contents();
+  chaps_key_.resize(0);
 }
 
 bool VaultKeyset::Load(const std::string& filename) {
@@ -220,11 +240,11 @@ bool VaultKeyset::Save(const std::string& filename) {
   std::string path = filename + ".new";
   bool ok = true;
   if (platform_->WriteFile(path, contents)) {
-   if (!platform_->Rename(path, filename)) {
-     ok = false;
-     // Delete the temporary file.
-     platform_->DeleteFile(path, false);
-   }
+    if (!platform_->Rename(path, filename)) {
+      ok = false;
+      // Delete the temporary file.
+      platform_->DeleteFile(path, false);
+    }
   }
   platform_->SetMask(previous_mask);
   return ok;

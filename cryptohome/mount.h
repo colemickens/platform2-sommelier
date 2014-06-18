@@ -12,6 +12,9 @@
 #ifndef CRYPTOHOME_MOUNT_H_
 #define CRYPTOHOME_MOUNT_H_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -758,12 +761,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Used to track the user's passkey. PKCS #11 initialization consumes and
   // clears this value.
-  chromeos::SecureBlob pkcs11_passkey_;
+  chromeos::SecureBlob pkcs11_token_auth_data_;
 
   // Used to track the user's old passkey during passkey migration. PKCS #11
   // initialization consumes and clears this value. This value is valid only if
   // is_pkcs11_passkey_migration_required_ is set to true.
-  chromeos::SecureBlob pkcs11_old_passkey_;
+  chromeos::SecureBlob legacy_pkcs11_passkey_;
 
   // Used to track whether passkey migration has occurred and PKCS #11 migration
   // of authorization data based on the passkey needs to be performed also.
@@ -786,6 +789,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   scoped_ptr<BootLockbox> default_boot_lockbox_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
+  FRIEND_TEST(MountTest, MountCryptohomeChapsKey);
+  FRIEND_TEST(MountTest, MountCryptohomeNoChapsKey);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);
   FRIEND_TEST(MountTest, GoodReDecryptTest);
   FRIEND_TEST(MountTest, MountCryptohomeNoChange);

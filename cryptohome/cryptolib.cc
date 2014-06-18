@@ -558,4 +558,11 @@ string CryptoLib::ConvertBlobToString(const chromeos::Blob& blob) {
                 blob.size());
 }
 
+chromeos::SecureBlob CryptoLib::ConvertStringToBlob(const string& str) {
+  if (str.length() == 0) {
+    return chromeos::SecureBlob();
+  }
+  return chromeos::SecureBlob(str.data(), str.length());
+}
+
 }  // namespace cryptohome

@@ -27,6 +27,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "crypto.h"
+#include "cryptohome_common.h"
 #include "cryptolib.h"
 #include "homedirs.h"
 #include "make_tests.h"
@@ -853,6 +854,133 @@ TEST_F(MountTest, MountCryptohome) {
   EXPECT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
 }
 
+TEST_F(MountTest, MountCryptohomeChapsKey) {
+  // Test to check if Cryptohome mount saves the chaps key correctly,
+  // and doesn't regenerate it.
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit());
+
+  InsertTestUsers(&kDefaultUsers[0], 1);
+  TestUser* user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  user->InjectKeyset(&platform_, false);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, mount_->crypto());
+  SerializedVaultKeyset serialized;
+  MountError error;
+  int key_index = -1;
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+                          Return(true)));
+
+  // First we decrypt the vault to load the chaps key.
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
+                                        &key_index, &error));
+  EXPECT_EQ(key_index, key_indices[0]);
+  EXPECT_EQ(serialized.has_wrapped_chaps_key(), true);
+
+  SecureBlob local_chaps(vault_keyset.chaps_key().begin(),
+                         vault_keyset.chaps_key().end());
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
+
+  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              CreateDirectory(mount_->GetNewUserPath(user->username)))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
+                                        &key_index, &error));
+
+  // Compare the pre mount chaps key to the post mount key.
+  ASSERT_EQ(local_chaps.size(), vault_keyset.chaps_key().size());
+  ASSERT_EQ(0, chromeos::SafeMemcmp(local_chaps.const_data(),
+    vault_keyset.chaps_key().const_data(), local_chaps.size()));
+}
+
+TEST_F(MountTest, MountCryptohomeNoChapsKey) {
+  // This test checks if the mount operation recreates the chaps key
+  // if it isn't present in the vault.
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit());
+
+  InsertTestUsers(&kDefaultUsers[0], 1);
+  TestUser* user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  user->InjectKeyset(&platform_, false);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, mount_->crypto());
+  SerializedVaultKeyset serialized;
+  MountError error;
+  int key_index = -1;
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+                          Return(true)));
+  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
+    .WillOnce(DoAll(SetArgumentPointee<1>(user->credentials),
+                         Return(true)));
+
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
+                                        &key_index, &error));
+
+  vault_keyset.clear_chaps_key();
+  EXPECT_CALL(platform_, FileExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(_,_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Move(_,_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+    .WillRepeatedly(DoAll(SaveArg<1>(&(user->credentials)), Return(true)));
+  ASSERT_TRUE(mount_->ReEncryptVaultKeyset(up, vault_keyset, key_index,
+                                           &serialized));
+  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->credentials),
+                          Return(true)));
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
+                                        &key_index, &error));
+
+  EXPECT_EQ(key_index, key_indices[0]);
+  EXPECT_EQ(serialized.has_wrapped_chaps_key(), false);
+
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
+
+  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              CreateDirectory(mount_->GetNewUserPath(user->username)))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->credentials),
+                          Return(true)));
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
+                                        &key_index, &error));
+  EXPECT_EQ(serialized.has_wrapped_chaps_key(), true);
+  EXPECT_EQ(vault_keyset.chaps_key().size(), CRYPTOHOME_CHAPS_KEY_LENGTH);
+}
+
 TEST_F(MountTest, MountCryptohomeNoChange) {
   // Checks that cryptohome doesn't by default re-save the cryptohome on mount.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
@@ -1278,6 +1406,7 @@ class AltImageTest : public MountTest {
   }
 
   std::vector<std::string> vaults_;
+
  protected:
   std::vector<int> key_indices_;
 

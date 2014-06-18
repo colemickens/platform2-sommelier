@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VAULT_KEYSET_H_
-#define VAULT_KEYSET_H_
+#ifndef CRYPTOHOME_VAULT_KEYSET_H_
+#define CRYPTOHOME_VAULT_KEYSET_H_
+
+#include <string>
 
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>
@@ -32,15 +34,15 @@ class VaultKeyset {
   virtual bool FromKeysBlob(const chromeos::SecureBlob& keys_blob);
   virtual bool ToKeys(VaultKeysetKeys* keys) const;
   virtual bool ToKeysBlob(chromeos::SecureBlob* keys_blob) const;
-
+  virtual void CreateRandomChapsKey();
   virtual void CreateRandom();
 
-  virtual const chromeos::SecureBlob& FEK() const;
-  virtual const chromeos::SecureBlob& FEK_SIG() const;
-  virtual const chromeos::SecureBlob& FEK_SALT() const;
-  virtual const chromeos::SecureBlob& FNEK() const;
-  virtual const chromeos::SecureBlob& FNEK_SIG() const;
-  virtual const chromeos::SecureBlob& FNEK_SALT() const;
+  virtual const chromeos::SecureBlob& fek() const;
+  virtual const chromeos::SecureBlob& fek_sig() const;
+  virtual const chromeos::SecureBlob& fek_salt() const;
+  virtual const chromeos::SecureBlob& fnek() const;
+  virtual const chromeos::SecureBlob& fnek_sig() const;
+  virtual const chromeos::SecureBlob& fnek_salt() const;
 
   virtual bool Load(const std::string& filename);
   // Load must be called first.
@@ -63,6 +65,12 @@ class VaultKeyset {
   virtual const int legacy_index() const {
     return legacy_index_;
   }
+  virtual const chromeos::SecureBlob& chaps_key() const {
+    return chaps_key_;
+  }
+  virtual void set_chaps_key(const chromeos::SecureBlob& chaps_key);
+  virtual void clear_chaps_key();
+
 
  private:
   chromeos::SecureBlob fek_;
@@ -71,6 +79,7 @@ class VaultKeyset {
   chromeos::SecureBlob fnek_;
   chromeos::SecureBlob fnek_sig_;
   chromeos::SecureBlob fnek_salt_;
+  chromeos::SecureBlob chaps_key_;
 
   Platform* platform_;
   Crypto* crypto_;
@@ -86,4 +95,4 @@ class VaultKeyset {
 
 }  // namespace cryptohome
 
-#endif  // VAULT_KEYSET_H_
+#endif  // CRYPTOHOME_VAULT_KEYSET_H_
