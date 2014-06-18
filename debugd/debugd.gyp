@@ -135,7 +135,6 @@
           'target_name': 'modem_status',
           'type': 'executable',
           'dependencies': [
-            '<(platform_root)/system_api/system_api.gyp:system_api-headers',
             'debugd-proxies',
           ],
           'sources': [
@@ -170,7 +169,6 @@
           'target_name': 'wimax_status',
           'type': 'executable',
           'dependencies': [
-            '<(platform_root)/system_api/system_api.gyp:system_api-headers',
             'debugd-proxies',
           ],
           'sources': [
