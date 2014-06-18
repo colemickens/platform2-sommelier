@@ -116,45 +116,51 @@ void ComputeMD5(unsigned char digest[16], const int width, const int height) {
 void RunTest(TestBase* test, const char* testname, const double coefficient,
              const int width, const int height, bool inverse) {
   double value;
+  char name_png[512] = "";
   GLenum error = glGetError();
-  if (error == GL_NO_ERROR) {
-    value = Bench(test);
-    char name_png[512] = "none";
 
-    if (test->IsDrawTest()) {
-      // save as png with MD5 as hex string attached
-      char          pixmd5[33];
-      unsigned char d[16];
-      ComputeMD5(d, width, height);
-      // translate to hexadecimal ASCII of MD5
-      sprintf(pixmd5,
-        "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-        d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
-        d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
-      sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
-
-      if (FLAGS_save)
-        SaveImage(name_png, width, height);
-    }
-
-    // TODO(ihf) adjust string length based on longest test name
-    int length = strlen(testname);
-    if (length > MAX_TESTNAME)
-      printf("# Warning: adjust string formatting to length = %d\n",
-             length);
-    // Results are marked using a leading '@RESULT: ' to allow parsing.
-    if (value == 0.0)
-      printf("@RESULT:  %-*s=          0   []\n", MAX_TESTNAME, testname);
-    else
-      printf("@RESULT: %-*s= %10.2f   [%s]\n", MAX_TESTNAME, testname,
-             coefficient * (inverse ? 1.0 / value : value),
-             name_png);
-  } else {
+  if (error != GL_NO_ERROR) {
+    value = -1.0;
     printf("# Error: %s aborted, glGetError returned 0x%02x.\n",
-            testname, error);
-    // float() in python will happily parse Nan.
-    printf("%-*s=        Nan   []\n", MAX_TESTNAME, testname);
+           testname, error);
+    sprintf(name_png, "glGetError=0x%02x", error);
+  } else {
+    value = Bench(test);
+
+    // Bench returns 0.0 if it ran max iterations in less than a min test time.
+    if (value == 0.0) {
+      strcpy(name_png, "no_score");
+    } else {
+      value = coefficient * (inverse ? 1.0 / value : value);
+
+      if (!test->IsDrawTest()) {
+        strcpy(name_png, "none");
+      } else {
+        // save as png with MD5 as hex string attached
+        char          pixmd5[33];
+        unsigned char d[16];
+        ComputeMD5(d, width, height);
+        // translate to hexadecimal ASCII of MD5
+        sprintf(pixmd5,
+          "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+          d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
+          d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
+        sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
+
+        if (FLAGS_save)
+          SaveImage(name_png, width, height);
+      }
+    }
   }
+
+  // TODO(ihf) adjust string length based on longest test name
+  int length = strlen(testname);
+  if (length > MAX_TESTNAME)
+    printf("# Warning: adjust string formatting to length = %d\n",
+             length);
+  // Results are marked using a leading '@RESULT: ' to allow parsing.
+  printf("@RESULT: %-*s = %10.2f [%s]\n",
+         MAX_TESTNAME, testname, value, name_png);
 }
 
 bool DrawArraysTestFunc::TestFunc(uint64_t iterations) {
