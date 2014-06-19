@@ -4,12 +4,12 @@
   },
   'target_defaults': {
     'dependencies': [
-      '<(platform_root)/libchromeos/libchromeos-<(libbase_ver).gyp:libchromeos-<(libbase_ver)',
       '<(platform_root)/system_api/system_api.gyp:system_api-headers',
     ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
         'libcurl',
       ],
     },

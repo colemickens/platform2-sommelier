@@ -5,12 +5,10 @@
 {
   'target_defaults': {
     'includes': ['../common-mk/common.gypi'],
-    'dependencies': [
-      '<(platform2_root)/libchromeos/libchromeos-<(libbase_ver).gyp:*',
-    ],
     'variables': {
       'deps': [  # This is a list of pkg-config dependencies
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
         'openssl'
       ]
     },

@@ -5,18 +5,14 @@
 {
   'target_defaults': {
     'dependencies': [
-      '<(platform_root)/libchromeos/libchromeos-<(libbase_ver).gyp:*',
       '<(platform_root)/system_api/system_api.gyp:*',
     ],
     'variables': {
       'deps': [  # This is a list of pkg-config dependencies
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
+        'protobuf',
       ]
-    },
-    'link_settings': {
-      'libraries': [
-        '-lprotobuf',
-      ],
     },
     'cflags_cc': [ '-std=gnu++11' ],
   },
