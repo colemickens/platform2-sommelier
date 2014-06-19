@@ -461,7 +461,6 @@
       'type': 'executable',
       'variables': {
         'deps': [
-          'libmnl',
           'libnetfilter_queue',
           'libnfnetlink',
         ],
@@ -530,7 +529,6 @@
           'variables': {
             'deps': [
               'nss',
-              'libmnl',
               'libnetfilter_queue',
               'libnfnetlink',
             ],
