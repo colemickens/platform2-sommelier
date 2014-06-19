@@ -24,7 +24,6 @@ namespace shill {
 class CertificateFile;
 class EapListener;
 class EthernetEapProvider;
-class NSS;
 class ProxyFactory;
 class Sockets;
 class SupplicantEAPStateHandler;
@@ -120,9 +119,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   std::string supplicant_interface_path_;
   std::string supplicant_network_path_;
 
-  // NSS and certificate file instances are needed to generate public key
-  // data for remote authentication.
-  NSS *nss_;
+  // Certificate file instance to generate public key data for remote
+  // authentication.
   CertificateFile certificate_file_;
 
   // Make sure TryEapAuthenticationTask is only queued for execution once

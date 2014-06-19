@@ -35,7 +35,6 @@ class ControlInterface;
 class DeviceInfo;
 class Error;
 class Metrics;
-class NSS;
 class OpenVPNManagementServer;
 class ProcessKiller;
 
@@ -260,7 +259,6 @@ class OpenVPNDriver : public VPNDriver,
   GLib *glib_;
   Sockets sockets_;
   scoped_ptr<OpenVPNManagementServer> management_server_;
-  NSS *nss_;
   scoped_ptr<CertificateFile> certificate_file_;
   scoped_ptr<CertificateFile> extra_certificates_file_;
   ProcessKiller *process_killer_;

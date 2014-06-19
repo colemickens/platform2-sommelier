@@ -109,7 +109,7 @@ def main(argv):
                 params["Provider.Host"] = args[2]
                 params["VPN.Domain"] = args[3]
                 if vpn_type == "l2tpipsec-cert" and len(args) == 10:
-                    params["L2TPIPsec.CACertNSS"] = args[4]
+                    params["L2TPIPsec.CACertPEM"] = [ args[4] ]
                     params["L2TPIPsec.ClientCertSlot"] = args[5]
                     params["L2TPIPsec.ClientCertID"] = args[6]
                     params["L2TPIPsec.PIN"] = args[7]
@@ -117,7 +117,7 @@ def main(argv):
                     params["L2TPIPsec.User"] = args[8]
                     params["L2TPIPsec.Password"] = args[9]
                 elif vpn_type == "l2tpipsec-psk" and len(args) == 7:
-                    params["L2TPIPsec.CACertNSS"] = ""
+                    params["L2TPIPsec.CACertPEM"] = []
                     params["L2TPIPsec.ClientCertSlot"] = ""
                     params["L2TPIPsec.ClientCertID"] = ""
                     params["L2TPIPsec.PIN"] = ""

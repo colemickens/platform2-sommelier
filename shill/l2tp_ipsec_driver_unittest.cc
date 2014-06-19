@@ -20,7 +20,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_nss.h"
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_vpn_service.h"
@@ -56,7 +55,6 @@ class L2TPIPSecDriverTest : public testing::Test,
                                   kInterfaceName, kInterfaceIndex)),
         certificate_file_(new MockCertificateFile()),
         weak_ptr_factory_(this) {
-    driver_->nss_ = &nss_;
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
   }
 
@@ -189,7 +187,6 @@ class L2TPIPSecDriverTest : public testing::Test,
   L2TPIPSecDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockPPPDevice> device_;
-  MockNSS nss_;
   MockCertificateFile *certificate_file_;  // Owned by |driver_|.
   base::WeakPtrFactory<L2TPIPSecDriverTest> weak_ptr_factory_;
 };
@@ -284,20 +281,21 @@ TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
 
 TEST_F(L2TPIPSecDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
-  static const char kCaCertNSS[] = "{1234}";
   static const char kPSK[] = "foobar";
   static const char kXauthUser[] = "silly";
   static const char kXauthPassword[] = "rabbit";
+  const vector<string> kCaCertPEM{ "Insert PEM encoded data here" };
+  static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
+  FilePath pem_cert(kPEMCertfile);
 
   SetArg(kProviderHostProperty, kHost);
-  SetArg(kL2tpIpsecCaCertNssProperty, kCaCertNSS);
   SetArg(kL2tpIpsecPskProperty, kPSK);
   SetArg(kL2tpIpsecXauthUserProperty, kXauthUser);
   SetArg(kL2tpIpsecXauthPasswordProperty, kXauthPassword);
+  SetArgArray(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
 
-  FilePath empty_cert;
-  EXPECT_CALL(nss_, GetDERCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
-
+  EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
+      .WillOnce(Return(pem_cert));
   const FilePath temp_dir(temp_dir_.path());
   // Once each for PSK and Xauth options.
   EXPECT_CALL(manager_, run_path())
@@ -315,6 +313,7 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
   ASSERT_FALSE(driver_->xauth_credentials_file_.empty());
   ExpectInFlags(options, "--xauth_credentials_file",
                 driver_->xauth_credentials_file_.value());
+  ExpectInFlags(options, "--server_ca_file", kPEMCertfile);
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
@@ -348,27 +347,6 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->psk_file_.value().c_str(), &buf));
   EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, buf.st_mode);
-}
-
-TEST_F(L2TPIPSecDriverTest, InitNSSOptions) {
-  static const char kHost[] = "192.168.2.254";
-  static const char kCaCertNSS[] = "{1234}";
-  static const char kNSSCertfile[] = "/tmp/nss-cert";
-  FilePath empty_cert;
-  FilePath nss_cert(kNSSCertfile);
-  SetArg(kProviderHostProperty, kHost);
-  SetArg(kL2tpIpsecCaCertNssProperty, kCaCertNSS);
-  EXPECT_CALL(nss_,
-              GetDERCertfile(kCaCertNSS,
-                             ElementsAreArray(kHost, arraysize(kHost) - 1)))
-      .WillOnce(Return(empty_cert))
-      .WillOnce(Return(nss_cert));
-
-  vector<string> options;
-  driver_->InitNSSOptions(&options);
-  EXPECT_TRUE(options.empty());
-  driver_->InitNSSOptions(&options);
-  ExpectInFlags(options, "--server_ca_file", kNSSCertfile);
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {

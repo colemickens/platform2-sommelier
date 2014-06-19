@@ -30,7 +30,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/nss.h"
 #include "shill/profile.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
@@ -63,7 +62,6 @@ Ethernet::Ethernet(ControlInterface *control_interface,
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(dispatcher, interface_index)),
-      nss_(NSS::GetInstance()),
       proxy_factory_(ProxyFactory::GetInstance()),
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {
@@ -262,9 +260,8 @@ bool Ethernet::StartSupplicant() {
 
 bool Ethernet::StartEapAuthentication() {
   map<string, DBus::Variant> params;
-  vector<char> nss_identifier(link_name().begin(), link_name().end());
   GetEapService()->eap()->PopulateSupplicantProperties(
-      &certificate_file_, nss_, nss_identifier, &params);
+      &certificate_file_, &params);
   params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
       append_string(WPASupplicant::kKeyManagementIeee8021X);
   params[WPASupplicant::kNetworkPropertyEapolFlags].writer().

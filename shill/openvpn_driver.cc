@@ -19,7 +19,6 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/nss.h"
 #include "shill/openvpn_management_server.h"
 #include "shill/process_killer.h"
 #include "shill/rpc_task.h"
@@ -146,7 +145,6 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       device_info_(device_info),
       glib_(glib),
       management_server_(new OpenVPNManagementServer(this, glib)),
-      nss_(NSS::GetInstance()),
       certificate_file_(new CertificateFile()),
       extra_certificates_file_(new CertificateFile()),
       process_killer_(ProcessKiller::GetInstance()),
@@ -722,8 +720,6 @@ bool OpenVPNDriver::InitCAOptions(
     vector<vector<string>> *options, Error *error) {
   string ca_cert =
       args()->LookupString(kOpenVPNCaCertProperty, "");
-  string ca_cert_nss =
-      args()->LookupString(kOpenVPNCaCertNSSProperty, "");
   vector<string> ca_cert_pem;
   if (args()->ContainsStrings(kOpenVPNCaCertPemProperty)) {
     ca_cert_pem = args()->GetStrings(kOpenVPNCaCertPemProperty);
@@ -731,8 +727,6 @@ bool OpenVPNDriver::InitCAOptions(
 
   int num_ca_cert_types = 0;
   if (!ca_cert.empty())
-      num_ca_cert_types++;
-  if (!ca_cert_nss.empty())
       num_ca_cert_types++;
   if (!ca_cert_pem.empty())
       num_ca_cert_types++;
@@ -743,26 +737,12 @@ bool OpenVPNDriver::InitCAOptions(
   } else if (num_ca_cert_types > 1) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments,
-        "Can't specify more than one of CACert, CACertNSS and CACertPEM.");
+        "Can't specify more than one of CACert and CACertPEM.");
     return false;
   }
   string cert_file;
-  if (!ca_cert_nss.empty()) {
-    DCHECK(ca_cert.empty() && ca_cert_pem.empty());
-    const string &vpnhost = args()->GetString(kProviderHostProperty);
-    vector<char> id(vpnhost.begin(), vpnhost.end());
-    FilePath certfile = nss_->GetPEMCertfile(ca_cert_nss, id);
-    if (certfile.empty()) {
-      Error::PopulateAndLog(
-          error,
-          Error::kInvalidArguments,
-          "Unable to extract NSS CA certificate: " + ca_cert_nss);
-      return false;
-    }
-    AppendOption("ca", certfile.value(), options);
-    return true;
-  } else if (!ca_cert_pem.empty()) {
-    DCHECK(ca_cert.empty() && ca_cert_nss.empty());
+  if (!ca_cert_pem.empty()) {
+    DCHECK(ca_cert.empty());
     FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_cert_pem);
     if (certfile.empty()) {
       Error::PopulateAndLog(
@@ -774,7 +754,7 @@ bool OpenVPNDriver::InitCAOptions(
     AppendOption("ca", certfile.value(), options);
     return true;
   }
-  DCHECK(!ca_cert.empty() && ca_cert_nss.empty() && ca_cert_pem.empty());
+  DCHECK(!ca_cert.empty() && ca_cert_pem.empty());
   AppendOption("ca", ca_cert, options);
   return true;
 }
@@ -1068,8 +1048,7 @@ void OpenVPNDriver::ReportConnectionMetrics() {
       Metrics::kVpnDriverOpenVpn,
       Metrics::kMetricVpnDriverMax);
 
-  if (args()->LookupString(kOpenVPNCaCertNSSProperty, "") != "" ||
-      args()->LookupString(kOpenVPNCaCertProperty, "") != "" ||
+  if (args()->LookupString(kOpenVPNCaCertProperty, "") != "" ||
       (args()->ContainsStrings(kOpenVPNCaCertPemProperty) &&
        !args()->GetStrings(kOpenVPNCaCertPemProperty).empty())) {
     metrics_->SendEnumToUMA(

@@ -20,7 +20,6 @@ class CertificateFile;
 class Error;
 class KeyValueStore;
 class Metrics;
-class NSS;
 class PropertyStore;
 class StoreInterface;
 
@@ -75,11 +74,9 @@ class EapCredentials {
 
   // Populate the wpa_supplicant DBus parameter map |params| with the
   // credentials in |this|.  To do so, this function may use |certificate_file|
-  // or |nss| to export CA certificates to be passed to wpa_supplicant.
+  // to export CA certificates to be passed to wpa_supplicant.
   virtual void PopulateSupplicantProperties(
       CertificateFile *certificate_file,
-      NSS *nss,
-      const std::vector<char> nss_identifier,
       std::map<std::string, DBus::Variant> *params) const;
 
   // Populate the WiMax connection parameters |params| with the

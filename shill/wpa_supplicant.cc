@@ -6,18 +6,11 @@
 
 #include <map>
 #include <string>
-#include <vector>
 
-#include <base/files/file_path.h>
+#include "shill/logging.h"
 
-#include "shill/certificate_file.h"
-#include "shill/eap_credentials.h"
-#include "shill/nss.h"
-
-using base::FilePath;
 using std::map;
 using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -152,8 +145,8 @@ const char WPASupplicant::kSupplicantConfPath[] =
 
 // static
 bool WPASupplicant::ExtractRemoteCertification(
-      const std::map<std::string, DBus::Variant> &properties,
-      std::string *subject, uint32 *depth) {
+      const map<string, DBus::Variant> &properties,
+      string *subject, uint32 *depth) {
   map<string, ::DBus::Variant>::const_iterator depth_it =
       properties.find(WPASupplicant::kInterfacePropertyDepth);
   if (depth_it == properties.end()) {

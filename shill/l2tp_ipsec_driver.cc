@@ -35,7 +35,6 @@
 #include "shill/external_task.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/nss.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/vpn_service.h"
@@ -103,7 +102,6 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       metrics_(metrics),
       device_info_(device_info),
       glib_(glib),
-      nss_(NSS::GetInstance()),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       certificate_file_(new CertificateFile()),
       weak_ptr_factory_(this) {}
@@ -236,11 +234,8 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 
-  // Accept a PEM CA certificate or an NSS certificate, but not both.
-  // Prefer PEM to NSS.
-  if (!InitPEMOptions(options)) {
-    InitNSSOptions(options);
-  }
+  // Accept a PEM CA certificate.
+  InitPEMOptions(options);
 
   AppendValueOption(kL2tpIpsecClientCertIdProperty,
                     "--client_cert_id", options);
@@ -285,22 +280,6 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
     options->push_back(psk_file_.value());
   }
   return true;
-}
-
-void L2TPIPSecDriver::InitNSSOptions(vector<string> *options) {
-  string ca_cert =
-      args()->LookupString(kL2tpIpsecCaCertNssProperty, "");
-  if (!ca_cert.empty()) {
-    const string &vpnhost = args()->GetString(kProviderHostProperty);
-    vector<char> id(vpnhost.begin(), vpnhost.end());
-    FilePath certfile = nss_->GetDERCertfile(ca_cert, id);
-    if (certfile.empty()) {
-      LOG(ERROR) << "Unable to extract certificate: " << ca_cert;
-    } else {
-      options->push_back("--server_ca_file");
-      options->push_back(certfile.value());
-    }
-  }
 }
 
 bool L2TPIPSecDriver::InitPEMOptions(vector<string> *options) {
@@ -494,13 +473,6 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
   bool has_remote_authentication = false;
-  if (args()->LookupString(kL2tpIpsecCaCertNssProperty, "") != "") {
-    metrics_->SendEnumToUMA(
-        Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
-        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
-    has_remote_authentication = true;
-  }
   if (args()->LookupString(kL2tpIpsecPskProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,

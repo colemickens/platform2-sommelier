@@ -26,7 +26,6 @@ class EventDispatcher;
 class Error;
 class Manager;
 class Metrics;
-class NSS;
 class WiFiProvider;
 
 class WiFiService : public Service {
@@ -305,7 +304,6 @@ class WiFiService : public Service {
   // Flag indicating if service disconnect is initiated by user for
   // connecting to other service.
   bool expecting_disconnect_;
-  NSS *nss_;
   scoped_ptr<CertificateFile> certificate_file_;
   // Bare pointer is safe because WiFi service instances are owned by
   // the WiFiProvider and are guaranteed to be deallocated by the time

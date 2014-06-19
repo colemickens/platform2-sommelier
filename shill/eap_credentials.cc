@@ -15,7 +15,6 @@
 #include "shill/logging.h"
 #include "shill/key_value_store.h"
 #include "shill/metrics.h"
-#include "shill/nss.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
@@ -60,8 +59,6 @@ EapCredentials::~EapCredentials() {}
 // static
 void EapCredentials::PopulateSupplicantProperties(
     CertificateFile *certificate_file,
-    NSS *nss,
-    const vector<char> nss_identifier,
     map<string, DBus::Variant> *params) const {
   string ca_cert = ca_cert_;
   if (!ca_cert_pem_.empty()) {
@@ -69,13 +66,6 @@ void EapCredentials::PopulateSupplicantProperties(
         certificate_file->CreatePEMFromStrings(ca_cert_pem_);
     if (certfile.empty()) {
       LOG(ERROR) << "Unable to extract PEM certificate.";
-    } else {
-      ca_cert = certfile.value();
-    }
-  } else if (!ca_cert_nss_.empty()) {
-    FilePath certfile = nss->GetDERCertfile(ca_cert_nss_, nss_identifier);
-    if (certfile.empty()) {
-      LOG(ERROR) << "Unable to extract DER certificate: " << ca_cert_nss_;
     } else {
       ca_cert = certfile.value();
     }

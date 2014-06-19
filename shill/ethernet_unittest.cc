@@ -426,7 +426,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   MockEapCredentials mock_eap_credentials;
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _, _));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Throw(DBus::Error(
@@ -444,7 +444,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _, _));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   const char kFirstNetworkPath[] = "/network/first-path";
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Return(kFirstNetworkPath));
@@ -461,7 +461,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, RemoveNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
-  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _, _));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   const char kSecondNetworkPath[] = "/network/second-path";
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Return(kSecondNetworkPath));

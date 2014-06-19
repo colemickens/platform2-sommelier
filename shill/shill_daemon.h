@@ -24,7 +24,6 @@ class Error;
 class GLib;
 class Metrics;
 class NetlinkManager;
-class NSS;
 class ProxyFactory;
 class RoutingTable;
 class RTNLHandler;
@@ -61,7 +60,6 @@ class Daemon {
   GLib glib_;
   Sockets sockets_;
   scoped_ptr<Metrics> metrics_;
-  NSS *nss_;
   ProxyFactory *proxy_factory_;
   RTNLHandler *rtnl_handler_;
   RoutingTable *routing_table_;

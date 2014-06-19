@@ -26,7 +26,6 @@
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
-#include "shill/mock_nss.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -542,7 +541,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   service->OnEapCredentialsChanged();
   service->Connect(NULL, "in test");
 
-  EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _, _, _));
+  EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _));
   // The mocked function does not actually set EAP parameters so we cannot
   // expect them to be set.
   service->GetSupplicantConfigurationParameters();

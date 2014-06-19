@@ -358,7 +358,6 @@
         'netlink_socket.cc',
         'nl80211_attribute.cc',
         'nl80211_message.cc',
-        'nss.cc',
         'pending_activation_store.cc',
         'portal_detector.cc',
         'power_manager.cc',
@@ -444,20 +443,6 @@
       ]
     },
     {
-      'target_name': 'nss-get-cert',
-      'type': 'executable',
-      'dependencies': ['libshill'],
-      'variables': {
-        'deps': [
-          'nss',
-        ],
-      },
-      'sources': [
-        'shims/certificates.cc',
-        'shims/nss_get_cert.cc',
-      ]
-    },
-    {
       'target_name': 'netfilter-queue-helper',
       'type': 'executable',
       'variables': {
@@ -529,7 +514,6 @@
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'variables': {
             'deps': [
-              'nss',
               'libnetfilter_queue',
               'libnfnetlink',
             ],
@@ -626,7 +610,6 @@
             'mock_metrics.cc',
             'mock_minijail.cc',
             'mock_netlink_manager.cc',
-            'mock_nss.cc',
             'mock_pending_activation_store.cc',
             'mock_portal_detector.cc',
             'mock_power_manager.cc',
@@ -661,7 +644,6 @@
             'netlink_message_unittest.cc',
             'netlink_socket_unittest.cc',
             'nice_mock_control.cc',
-            'nss_unittest.cc',
             'pending_activation_store_unittest.cc',
             'portal_detector_unittest.cc',
             'power_manager_unittest.cc',
@@ -686,8 +668,6 @@
             'service_unittest.cc',
             'shill_time_unittest.cc',
             'shill_unittest.cc',
-            'shims/certificates.cc',
-            'shims/certificates_unittest.cc',
             'shims/netfilter_queue_processor.cc',
             'shims/netfilter_queue_processor_unittest.cc',
             'socket_info_reader_unittest.cc',

@@ -25,10 +25,8 @@ class MockEapCredentials : public EapCredentials {
   MOCK_METHOD2(Load, void(StoreInterface *store, const std::string &id));
   MOCK_CONST_METHOD2(OutputConnectionMetrics,
                      void(Metrics *metrics, Technology::Identifier technology));
-  MOCK_CONST_METHOD4(PopulateSupplicantProperties, void(
+  MOCK_CONST_METHOD2(PopulateSupplicantProperties, void(
       CertificateFile *certificate_file,
-      NSS *nss,
-      const std::vector<char> nss_identifier,
       std::map<std::string, DBus::Variant> *params));
   MOCK_CONST_METHOD1(PopulateWiMaxProperties, void(KeyValueStore *params));
   MOCK_CONST_METHOD3(Save, void(

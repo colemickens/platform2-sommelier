@@ -28,7 +28,6 @@ class DeviceInfo;
 class ExternalTask;
 class GLib;
 class Metrics;
-class NSS;
 class PPPDeviceFactory;
 
 class L2TPIPSecDriver : public VPNDriver,
@@ -62,7 +61,6 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, Disconnect);
   FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
   FRIEND_TEST(L2TPIPSecDriverTest, InitEnvironment);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitNSSOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPEMOptions);
@@ -83,7 +81,6 @@ class L2TPIPSecDriver : public VPNDriver,
 
   bool InitOptions(std::vector<std::string> *options, Error *error);
   bool InitPSKOptions(std::vector<std::string> *options, Error *error);
-  void InitNSSOptions(std::vector<std::string> *options);
   bool InitPEMOptions(std::vector<std::string> *options);
   bool InitXauthOptions(std::vector<std::string> *options, Error *error);
 
@@ -139,7 +136,6 @@ class L2TPIPSecDriver : public VPNDriver,
   Metrics *metrics_;
   DeviceInfo *device_info_;
   GLib *glib_;
-  NSS *nss_;
   PPPDeviceFactory *ppp_device_factory_;
 
   VPNServiceRefPtr service_;

@@ -13,7 +13,6 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_nss.h"
 #include "shill/mock_property_store.h"
 #include "shill/mock_store.h"
 #include "shill/technology.h"
@@ -40,8 +39,7 @@ class EapCredentialsTest : public testing::Test {
 
  protected:
   void PopulateSupplicantProperties() {
-    eap_.PopulateSupplicantProperties(&certificate_file_, &nss_,
-                                      nss_identifier_, &params_);
+    eap_.PopulateSupplicantProperties(&certificate_file_, &params_);
   }
 
   void SetAnonymousIdentity(const string &anonymous_identity) {
@@ -122,8 +120,6 @@ class EapCredentialsTest : public testing::Test {
 
   EapCredentials eap_;
   MockCertificateFile certificate_file_;
-  MockNSS nss_;
-  vector<char> nss_identifier_;
   map<string, ::DBus::Variant> params_;
 };
 
@@ -383,22 +379,6 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngine));
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEngineId));
   EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapCaCertId));
-}
-
-TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNSS) {
-  const string kNSSNickname("nss_nickname");
-  SetCACertNSS(kNSSNickname);
-  const string kNSSCertfile("/tmp/nss-cert");
-  FilePath nss_cert(kNSSCertfile);
-  nss_identifier_ = vector<char>(1, 'a');
-  EXPECT_CALL(nss_, GetDERCertfile(kNSSNickname, nss_identifier_))
-      .WillOnce(Return(nss_cert));
-  PopulateSupplicantProperties();
-  EXPECT_TRUE(ContainsKey(params_, WPASupplicant::kNetworkPropertyEapCaCert));
-  if (ContainsKey(params_, WPASupplicant::kNetworkPropertyEapCaCert)) {
-    EXPECT_EQ(kNSSCertfile, params_[WPASupplicant::kNetworkPropertyEapCaCert]
-              .reader().get_string());
-  }
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {

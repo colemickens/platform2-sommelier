@@ -28,7 +28,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/nss.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/wifi.h"
@@ -78,7 +77,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid),
       ieee80211w_required_(false),
       expecting_disconnect_(false),
-      nss_(NSS::GetInstance()),
       certificate_file_(new CertificateFile()),
       provider_(provider) {
   PropertyStore *store = this->mutable_store();
@@ -578,9 +576,7 @@ DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
   }
 
   if (Is8021x()) {
-    vector<char> nss_identifier(ssid_.begin(), ssid_.end());
-    eap()->PopulateSupplicantProperties(
-        certificate_file_.get(), nss_, nss_identifier, &params);
+    eap()->PopulateSupplicantProperties(certificate_file_.get(), &params);
   } else if (security_ == kSecurityPsk ||
              security_ == kSecurityRsn ||
              security_ == kSecurityWpa) {

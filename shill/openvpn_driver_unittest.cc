@@ -25,7 +25,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_nss.h"
 #include "shill/mock_openvpn_management_server.h"
 #include "shill/mock_process_killer.h"
 #include "shill/mock_service.h"
@@ -104,7 +103,6 @@ class OpenVPNDriverTest
         extra_certificates_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
     driver_->management_server_.reset(management_server_);
-    driver_->nss_ = &nss_;
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->extra_certificates_file_.reset(
         extra_certificates_file_);  // Passes ownership.
@@ -256,7 +254,6 @@ class OpenVPNDriverTest
   scoped_refptr<MockVirtualDevice> device_;
   MockCertificateFile *certificate_file_;  // Owned by |driver_|.
   MockCertificateFile *extra_certificates_file_;  // Owned by |driver_|.
-  MockNSS nss_;
   MockProcessKiller process_killer_;
   base::ScopedTempDir temporary_directory_;
 
@@ -761,7 +758,6 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kCaCert[] = "foo";
   static const char kCaCertNSS[] = "{1234}";
-  static const char kNSSCertfile[] = "/tmp/nss-cert";
 
   Error error;
   vector<vector<string>> options;
@@ -775,42 +771,30 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   ExpectInFlags(options, "ca", kCaCert);
   EXPECT_TRUE(error.IsSuccess());
 
+  // We should ignore the CaCertNSS property.
   SetArg(kOpenVPNCaCertNSSProperty, kCaCertNSS);
-  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Can't specify more than one of CACert, CACertNSS and CACertPEM.",
-            error.message());
+  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
+  ExpectInFlags(options, "ca", kCaCert);
+  EXPECT_TRUE(error.IsSuccess());
 
   SetArg(kOpenVPNCaCertProperty, "");
   SetArg(kProviderHostProperty, kHost);
   FilePath empty_cert;
-  FilePath nss_cert(kNSSCertfile);
-  EXPECT_CALL(nss_,
-              GetPEMCertfile(kCaCertNSS,
-                             ElementsAreArray(kHost, arraysize(kHost) - 1)))
-      .WillOnce(Return(empty_cert))
-      .WillOnce(Return(nss_cert));
-
   error.Reset();
-  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Unable to extract NSS CA certificate: {1234}", error.message());
-
-  error.Reset();
-  options.clear();
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "ca", kNSSCertfile);
+  ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
   EXPECT_TRUE(error.IsSuccess());
 
+  SetArg(kOpenVPNCaCertProperty, kCaCert);
   const vector<string> kCaCertPEM{ "---PEM CONTENTS---" };
   SetArgArray(kOpenVPNCaCertPemProperty, kCaCertPEM);
   EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Can't specify more than one of CACert, CACertNSS and CACertPEM.",
+  EXPECT_EQ("Can't specify more than one of CACert and CACertPEM.",
             error.message());
 
   options.clear();
-  SetArg(kOpenVPNCaCertNSSProperty, "");
+  SetArg(kOpenVPNCaCertProperty, "");
   SetArg(kProviderHostProperty, "");
   static const char kPEMCertfile[] = "/tmp/pem-cert";
   FilePath pem_cert(kPEMCertfile);
