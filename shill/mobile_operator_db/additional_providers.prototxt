@@ -303,6 +303,7 @@ mno {
   data {
     uuid : "d9d788e1-7838-4167-aa96-d0926cb6ebad"
     country : "in"
+    provider_type : CDMA
     localized_name {
       name : "MTS"
     }

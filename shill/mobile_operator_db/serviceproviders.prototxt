@@ -7066,27 +7066,6 @@ mno {
 
 mno {
   data {
-    uuid : "ae2c1617-3e59-4d2d-bf6c-ac6cd1ea9a24"
-    country : "in"
-    provider_type : CDMA
-    localized_name {
-      name : "MTS MBlaze"
-    }
-    sid : "14554"
-    sid : "14555"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "MTS MBlaze"
-      }
-      username : "internet@internet.mtsindia.in"
-      password : "mts"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "a1aba289-0825-43de-90b0-b7b4a9f5cdeb"
     country : "in"
     provider_type : GSM
