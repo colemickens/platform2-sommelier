@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
   log("USB path: %s", usb_path);
   log("device path: %s", qmi_device_path);
 
-  int fd;
+  int fd = -1;
   ULONG rc;
 
   if (use_qcwwan) {
@@ -225,12 +225,15 @@ int main(int argc, char *argv[])
     if (rc != 0) {
       log("Failed on disconnect: %d", rc);
     }
-  } else {
+  }
+
+  if (fd >= 0) {
     rc = close(fd);
     if (rc != 0) {
       log("Failed on close: %d", rc);
     }
   }
+
   log("exiting");
   return 0;
 }
