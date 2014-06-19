@@ -389,7 +389,8 @@ class FlimFlam(object):
             self.manager.EnableTechnology(tech)
         except dbus.exceptions.DBusException, error:
             if error.get_dbus_name() not in [
-                FlimFlam.SHILL_DBUS_INTERFACE + ".Error.AlreadyEnabled" ]:
+                    FlimFlam.SHILL_DBUS_INTERFACE + ".Error.AlreadyEnabled",
+                    FlimFlam.SHILL_DBUS_INTERFACE + ".Error.InProgress" ]:
                 raise error
 
     def DisableTechnology(self, tech):
