@@ -1,8 +1,5 @@
 {
   'target_defaults': {
-    'dependencies': [
-      '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
-    ],
     'libraries': [
       '-lminijail',
       '-lrootdev',
@@ -16,6 +13,7 @@
         'gthread-2.0',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libmetrics-<(libbase_ver)',
         'libudev',
       ],
       # cros-disks uses try/catch to interact with dbus-c++.
