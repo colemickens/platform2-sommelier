@@ -5,10 +5,6 @@
     {
       'target_name': 'All',
       'type': 'none',
-      'dependencies': [
-        '<(DEPTH)/platform/metrics/libmetrics-271506.gyp:*',
-        '<(DEPTH)/platform/metrics/metrics.gyp:*',
-      ],
       'conditions': [
         ['USE_cros_host == 0', {
           'conditions': [

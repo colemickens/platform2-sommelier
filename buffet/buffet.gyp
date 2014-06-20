@@ -1,14 +1,12 @@
 {
   'target_defaults': {
-    'dependencies': [
-      '<(platform_root)/metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
-    ],
     'variables': {
       'deps': [
         'dbus-1',
         'libchrome-<(libbase_ver)',
         'libchrome-test-<(libbase_ver)',
         'libcurl',
+        'libmetrics-<(libbase_ver)',
       ],
     },
     'link_settings': {
