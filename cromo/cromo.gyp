@@ -1,8 +1,5 @@
 {
   'target_defaults': {
-    'dependencies': [
-      '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
-    ],
     'variables': {
       'deps': [
         'dbus-c++-1',
@@ -10,6 +7,7 @@
         'gobject-2.0',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libmetrics-<(libbase_ver)',
       ],
       # cromo uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,
