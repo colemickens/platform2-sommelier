@@ -857,5 +857,21 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
                                &error));
   EXPECT_EQ("type_mismatch", error->GetFirstError()->GetCode());
   error.reset();
+
+  schema_str = "{"
+  "'param1':{'minimum':1, 'enum':[1,2,3]}"  // can't have min/max & enum.
+  "}";
+  EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
+                               &error));
+  EXPECT_EQ("unexpected_parameter", error->GetFirstError()->GetCode());
+  error.reset();
+
+  schema_str = "{"
+  "'param1':{'maximum':1, 'blah':2}"  // 'blah' is unexpected.
+  "}";
+  EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
+                               &error));
+  EXPECT_EQ("unexpected_parameter", error->GetFirstError()->GetCode());
+  error.reset();
 }
 
