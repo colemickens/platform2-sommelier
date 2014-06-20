@@ -164,7 +164,6 @@
       'target_name': 'libshill',
       'type': 'static_library',
       'dependencies': [
-        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
         'mobile_operator_db',
         'shill-adaptors',
         'shill-proxies',
@@ -176,6 +175,7 @@
           'gio-2.0',
           'glib-2.0',
           'libcares',
+          'libmetrics-<(libbase_ver)',
           'libnl-3.0',
           'libnl-genl-3.0',
           'protobuf-lite',
