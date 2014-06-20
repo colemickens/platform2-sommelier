@@ -107,13 +107,11 @@
         {
           'target_name': 'cromo_server_unittest',
           'type': 'executable',
+          'dependencies': ['libcromo'],
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'carrier.cc',
             'cromo_server_unittest.cc',
-            'cromo_server.cc',
-            'hooktable.cc',
-            'syslog_helper.cc',
           ]
         },
         {
