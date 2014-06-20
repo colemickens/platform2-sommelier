@@ -6,6 +6,7 @@
 
 #include <sys/resource.h>
 
+#include <algorithm>
 #include <cstdarg>
 #include <ctime>
 
