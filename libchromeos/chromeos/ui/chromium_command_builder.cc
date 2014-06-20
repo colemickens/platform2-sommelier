@@ -398,7 +398,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
   // On boards with ARM NEON support, force libvpx to use the NEON-optimized
   // code paths. Remove once http://crbug.com/161834 is fixed.
   // This is needed because libvpx cannot check cpuinfo within the sandbox.
-  if (UseFlagIsSet("exynos"))
+  if (UseFlagIsSet("neon"))
     AddEnvVar("VPX_SIMD_CAPS", "0xf");
 
   if (UseFlagIsSet("highdpi")) {
