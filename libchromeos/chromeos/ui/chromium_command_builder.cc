@@ -392,7 +392,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
   AddArg("--ui-enable-per-tile-painting");
   AddArg("--ui-prioritize-in-gpu-process");
 
-  if (UseFlagIsSet("egl"))
+  if (UseFlagIsSet("opengles"))
     AddArg("--use-gl=egl");
 
   // On boards with ARM NEON support, force libvpx to use the NEON-optimized
