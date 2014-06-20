@@ -10,6 +10,9 @@ $ModLoad imklog.so # kernel logging (formerly provided by rklogd)
 $PrivDropToUser syslog
 $PrivDropToGroup syslog
 
+# Include PID in log messages
+$SystemLogUsePIDFromSystem on
+
 $SystemLogRateLimitInterval 0
 $RepeatedMsgReduction on
 
