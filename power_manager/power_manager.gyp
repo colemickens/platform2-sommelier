@@ -24,9 +24,21 @@
     {
       'target_name': 'libutil',
       'type': 'static_library',
-      'dependencies': [
-        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
-      ],
+      'variables': {
+        'exported_deps': [
+          'libmetrics-<(libbase_ver)',
+        ],
+        'deps': [
+          '<@(exported_deps)',
+        ],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'sources': [
         'common/clock.cc',
         'common/dbus_sender.cc',
@@ -111,6 +123,21 @@
         'libsystem',
         'libutil',
       ],
+      'variables': {
+        'exported_deps': [
+          'libmetrics-<(libbase_ver)',
+        ],
+        'deps': [
+          '<@(exported_deps)',
+        ],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'sources': [
         'powerd/daemon.cc',
         'powerd/metrics_collector.cc',
