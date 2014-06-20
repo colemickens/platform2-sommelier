@@ -47,7 +47,6 @@
       'target_name': 'liblorgnette',
       'type': 'static_library',
       'dependencies': [
-        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
         'lorgnette-adaptors',
         'lorgnette-proxies',
       ],
@@ -56,6 +55,7 @@
           'dbus-c++-1',
           'gio-2.0',
           'glib-2.0',
+          'libmetrics-<(libbase_ver)',
         ],
         'deps': ['<@(exported_deps)'],
       },
