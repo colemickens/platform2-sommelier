@@ -92,6 +92,13 @@ void InitLog(int init_flags) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   logging::InitLogging(settings);
+
+  const bool kOptionPID = false;
+  const bool kOptionTID = false;
+  const bool kOptionTimestamp = false;
+  const bool kOptionTickcount = false;
+  logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
+                       kOptionTickcount);
   logging::SetLogMessageHandler(HandleMessage);
   SetLogFlags(init_flags);
 }
