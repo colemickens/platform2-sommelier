@@ -18,7 +18,10 @@ namespace shill {
 
 namespace {
 
-const char *kErrorGprsNotSubscribed =
+const char *kErrorGprsMissingOrUnknownApn =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsMissingOrUnknownApn";
+
+const char *kErrorGprsServiceOptionNotSubscribed =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsServiceOptionNotSubscribed";
 
 const char *kErrorIncorrectPassword =
@@ -55,7 +58,9 @@ void CellularError::FromMM1DBusError(const DBus::Error &dbus_error,
     type = Error::kPinRequired;
   else if (name == kErrorSimPuk)
     type = Error::kPinBlocked;
-  else if (name == kErrorGprsNotSubscribed)
+  else if (name == kErrorGprsMissingOrUnknownApn)
+    type = Error::kInvalidApn;
+  else if (name == kErrorGprsServiceOptionNotSubscribed)
     type = Error::kInvalidApn;
   else if (name == kErrorWrongState)
     type = Error::kWrongState;
