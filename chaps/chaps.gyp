@@ -96,8 +96,12 @@
       'dependencies': [
         'chaps-protos',
         'libchaps_static',
-        '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
       ],
+      'variables': {
+        'deps': [
+          'libmetrics-<(libbase_ver)',
+        ],
+      },
       'libraries': [
         '-ldl',
         '-lleveldb',
@@ -264,8 +268,12 @@
           'type': 'executable',
           'dependencies': [
             'libchaps_static',
-            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
           ],
+          'variables': {
+            'deps': [
+              'libmetrics-<(libbase_ver)',
+            ],
+          },
           'libraries': [
             '-lleveldb',
             '-lmemenv',
@@ -282,8 +290,12 @@
           'dependencies': [
             'libchaps_static',
             'libchaps_test',
-            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
           ],
+          'variables': {
+            'deps': [
+              'libmetrics-<(libbase_ver)',
+            ],
+          },
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'opencryptoki_importer.cc',
@@ -296,8 +308,12 @@
           'dependencies': [
             'libchaps_static',
             'libchaps_test',
-            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
           ],
+          'variables': {
+            'deps': [
+              'libmetrics-<(libbase_ver)',
+            ],
+          },
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'token_file_manager_chromeos.cc',
