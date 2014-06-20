@@ -634,7 +634,6 @@ TEST_F(ConnectionHealthCheckerTest, OnConnectionComplete) {
   ExpectGetSocketInfoReturns(
       CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished));
   EXPECT_CALL(*socket_, Send(kProxyFD, _, Gt(0), _)).WillOnce(Return(-1));
-  EXPECT_CALL(*socket_, Error()).WillOnce(Return(kSocketError));
   EXPECT_CALL(*socket_, Close(kProxyFD));
   ExpectStop();
   EXPECT_CALL(

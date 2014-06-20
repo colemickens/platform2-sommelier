@@ -284,7 +284,6 @@ void Service::Connect(Error */*error*/, const char *reason) {
 
 void Service::Disconnect(Error */*error*/) {
   LOG(INFO) << "Disconnecting from service " << unique_name_;
-  MemoryLog::GetInstance()->FlushToDisk();
 }
 
 void Service::DisconnectWithFailure(ConnectFailure failure, Error *error) {

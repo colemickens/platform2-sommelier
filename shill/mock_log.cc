@@ -8,8 +8,6 @@
 
 #include <gtest/gtest.h>
 
-#include "shill/memory_log.h"
-
 using std::string;
 using testing::_;
 using testing::AnyNumber;
