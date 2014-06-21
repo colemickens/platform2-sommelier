@@ -22,12 +22,12 @@ class DBusSenderInterface;
 class PrefsInterface;
 
 namespace system {
+class DarkResumeInterface;
 class Input;
 }  // namespace system
 
 namespace policy {
 
-class DarkResumePolicy;
 class SuspendDelayController;
 
 // Suspender is responsible for suspending the system.  The typical flow is
@@ -177,7 +177,7 @@ class Suspender : public SuspendDelayObserver {
 
   void Init(Delegate* delegate,
             DBusSenderInterface* dbus_sender,
-            DarkResumePolicy* dark_resume_policy,
+            system::DarkResumeInterface* dark_resume,
             PrefsInterface* prefs);
 
   // Starts the suspend process. Note that suspending happens
@@ -251,7 +251,7 @@ class Suspender : public SuspendDelayObserver {
 
   Delegate* delegate_;  // weak
   DBusSenderInterface* dbus_sender_;  // weak
-  DarkResumePolicy* dark_resume_policy_;  // weak
+  system::DarkResumeInterface* dark_resume_;  // weak
 
   scoped_ptr<Clock> clock_;
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;

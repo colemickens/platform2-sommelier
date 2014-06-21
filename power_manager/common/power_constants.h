@@ -114,10 +114,6 @@ extern const char kDarkResumeSuspendDurationsPref[];
 extern const char kDarkResumeDevicesPref[];
 extern const char kDarkResumeSourcesPref[];
 
-// Newline-separated battery margins used for dark resume, with each line taking
-// the form "<battery-level> <margin>".
-extern const char kDarkResumeBatteryMarginsPref[];
-
 // If true, policies sent by Chrome will be ignored.
 extern const char kIgnoreExternalPolicyPref[];
 

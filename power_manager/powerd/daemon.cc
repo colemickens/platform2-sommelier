@@ -31,10 +31,13 @@
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
+#include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/powerd/system/internal_backlight.h"
+#include "power_manager/powerd/system/peripheral_battery_watcher.h"
+#include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
@@ -477,7 +480,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       power_supply_(new system::PowerSupply),
-      dark_resume_policy_(new policy::DarkResumePolicy),
+      dark_resume_(new system::DarkResume),
       suspender_delegate_(new SuspenderDelegate(this)),
       suspender_(new policy::Suspender),
       metrics_collector_(new MetricsCollector),
@@ -574,9 +577,9 @@ void Daemon::Init() {
 
   OnPowerStatusUpdate();
 
-  dark_resume_policy_->Init(power_supply_.get(), prefs_.get());
+  dark_resume_->Init(power_supply_.get(), prefs_.get());
   suspender_->Init(suspender_delegate_.get(), dbus_sender_.get(),
-                   dark_resume_policy_.get(), prefs_.get());
+                   dark_resume_.get(), prefs_.get());
 
   CHECK(input_->Init(prefs_.get(), udev_.get()));
   input_controller_->Init(input_.get(), this, display_watcher_.get(),

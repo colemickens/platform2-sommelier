@@ -15,8 +15,8 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
+#include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -41,7 +41,7 @@ bool Suspender::TestApi::TriggerRetryTimeout() {
 Suspender::Suspender()
     : delegate_(NULL),
       dbus_sender_(NULL),
-      dark_resume_policy_(NULL),
+      dark_resume_(NULL),
       clock_(new Clock),
       waiting_for_readiness_(false),
       suspend_id_(0),
@@ -58,11 +58,11 @@ Suspender::~Suspender() {
 
 void Suspender::Init(Delegate *delegate,
                      DBusSenderInterface *dbus_sender,
-                     DarkResumePolicy *dark_resume_policy,
+                     system::DarkResumeInterface *dark_resume,
                      PrefsInterface *prefs) {
   delegate_ = delegate;
   dbus_sender_ = dbus_sender;
-  dark_resume_policy_ = dark_resume_policy;
+  dark_resume_ = dark_resume;
 
   const int initial_id = delegate_->GetInitialId();
   suspend_id_ = initial_id - 1;
@@ -218,7 +218,7 @@ void Suspender::Suspend() {
   // must be updated.
   LOG(INFO) << "Starting suspend";
 
-  bool dark_resume = false;
+  bool in_dark_resume = false;
   Delegate::SuspendResult result = Delegate::SUSPEND_SUCCESSFUL;
   bool success = false;
   const base::Time start_wall_time = clock_->GetCurrentWallTime();
@@ -226,20 +226,19 @@ void Suspender::Suspend() {
   delegate_->PrepareForSuspend();
 
   do {
+    system::DarkResumeInterface::Action action;
     base::TimeDelta suspend_duration;
-    DarkResumePolicy::Action action = dark_resume_policy_->GetAction();
+    dark_resume_->PrepareForSuspendAttempt(&action, &suspend_duration);
     switch (action) {
-      case DarkResumePolicy::SHUT_DOWN:
+      case system::DarkResumeInterface::SHUT_DOWN:
         LOG(INFO) << "Shutting down from dark resume";
         delegate_->ShutDownForDarkResume();
         return;
-      case DarkResumePolicy::SUSPEND_FOR_DURATION:
-        suspend_duration = dark_resume_policy_->GetSuspendDuration();
-        LOG(INFO) << "Suspending for " << suspend_duration.InSeconds()
-                  << " seconds";
-        break;
-      case DarkResumePolicy::SUSPEND_INDEFINITELY:
-        suspend_duration = base::TimeDelta();
+      case system::DarkResumeInterface::SUSPEND:
+        if (suspend_duration != base::TimeDelta()) {
+          LOG(INFO) << "Suspending for " << suspend_duration.InSeconds()
+                    << " seconds";
+        }
         break;
       default:
         NOTREACHED() << "Unhandled dark resume action " << action;
@@ -249,23 +248,23 @@ void Suspender::Suspend() {
     // kernel may not have initialized some of the devices to make the dark
     // resume as inconspicuous as possible, so allowing the user to use the
     // system in this state would be bad.
-    result = delegate_->Suspend(
-        wakeup_count_, wakeup_count_valid_ && !dark_resume, suspend_duration);
+    result = delegate_->Suspend(wakeup_count_,
+        wakeup_count_valid_ && !in_dark_resume, suspend_duration);
     success = result == Delegate::SUSPEND_SUCCESSFUL;
-    dark_resume = dark_resume_policy_->CurrentlyInDarkResume();
+    in_dark_resume = dark_resume_->InDarkResume();
 
     // Failure handling for dark resume. We don't want to process events during
     // a dark resume, even if we fail to suspend. To solve this, instead of
     // scheduling a retry later, delay here and retry without returning from
     // this function.
-    if (!success && dark_resume) {
+    if (!success && in_dark_resume) {
       if (ShutDownIfRetryLimitReached())
         return;
       LOG(WARNING) << "Retry #" << num_attempts_ << " from dark resume";
       sleep(retry_delay_.InSeconds());
       num_attempts_++;
     }
-  } while (dark_resume);
+  } while (in_dark_resume);
 
   // Don't retry if an external wakeup count was supplied and the suspend
   // attempt failed due to a wakeup count mismatch -- a test probably triggered
@@ -290,8 +289,6 @@ void Suspender::Suspend() {
     retry_suspend_timer_.Start(FROM_HERE, retry_delay_, this,
                                &Suspender::RetrySuspend);
   }
-
-  dark_resume_policy_->HandleResume();
 
   // Protect against the system clock having gone backwards.
   base::TimeDelta elapsed_time = std::max(base::TimeDelta(),

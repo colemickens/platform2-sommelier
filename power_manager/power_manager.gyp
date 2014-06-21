@@ -49,6 +49,7 @@
         'powerd/system/ambient_light_sensor.cc',
         'powerd/system/async_file_reader.cc',
         'powerd/system/audio_client.cc',
+        'powerd/system/dark_resume.cc',
         'powerd/system/display/display_info.cc',
         'powerd/system/display/display_power_setter.cc',
         'powerd/system/display/display_watcher.cc',
@@ -67,6 +68,7 @@
       'sources': [
         'powerd/system/ambient_light_sensor_stub.cc',
         'powerd/system/backlight_stub.cc',
+        'powerd/system/dark_resume_stub.cc',
         'powerd/system/display/display_power_setter_stub.cc',
         'powerd/system/display/display_watcher_stub.cc',
         'powerd/system/input_stub.cc',
@@ -84,7 +86,6 @@
        },
       'sources': [
         'powerd/policy/ambient_light_handler.cc',
-        'powerd/policy/dark_resume_policy.cc',
         'powerd/policy/external_backlight_controller.cc',
         'powerd/policy/input_controller.cc',
         'powerd/policy/internal_backlight_controller.cc',
@@ -224,6 +225,7 @@
             'common/testrunner.cc',
             'powerd/system/ambient_light_sensor_unittest.cc',
             'powerd/system/async_file_reader_unittest.cc',
+            'powerd/system/dark_resume_unittest.cc',
             'powerd/system/display/display_watcher_unittest.cc',
             'powerd/system/display/external_display_unittest.cc',
             'powerd/system/input_unittest.cc',
@@ -248,7 +250,6 @@
           'sources': [
             'common/testrunner.cc',
             'powerd/policy/ambient_light_handler_unittest.cc',
-            'powerd/policy/dark_resume_policy_unittest.cc',
             'powerd/policy/external_backlight_controller_unittest.cc',
             'powerd/policy/input_controller_unittest.cc',
             'powerd/policy/internal_backlight_controller_unittest.cc',

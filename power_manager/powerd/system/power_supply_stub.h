@@ -16,6 +16,7 @@ class PowerSupplyStub : public PowerSupplyInterface {
   PowerSupplyStub();
   virtual ~PowerSupplyStub();
 
+  void set_refresh_result(bool result) { refresh_result_ = result; }
   void set_status(const PowerStatus& status) { status_ = status; }
 
   // PowerSupplyInterface implementation:
@@ -26,6 +27,9 @@ class PowerSupplyStub : public PowerSupplyInterface {
   virtual void SetSuspended(bool suspended) OVERRIDE;
 
  private:
+  // Result to return from RefreshImmediately().
+  bool refresh_result_;
+
   // Status to return.
   PowerStatus status_;
 

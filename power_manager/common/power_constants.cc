@@ -54,7 +54,6 @@ const char kDisableDarkResumePref[] = "disable_dark_resume";
 const char kDarkResumeSuspendDurationsPref[] = "dark_resume_suspend_durations";
 const char kDarkResumeDevicesPref[] = "dark_resume_devices";
 const char kDarkResumeSourcesPref[] = "dark_resume_sources";
-const char kDarkResumeBatteryMarginsPref[] = "dark_resume_battery_margins";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 const char kAllowDockedModePref[] = "allow_docked_mode";
 const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";

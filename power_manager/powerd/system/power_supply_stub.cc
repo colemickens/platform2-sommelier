@@ -7,7 +7,7 @@
 namespace power_manager {
 namespace system {
 
-PowerSupplyStub::PowerSupplyStub() {}
+PowerSupplyStub::PowerSupplyStub() : refresh_result_(true) {}
 
 PowerSupplyStub::~PowerSupplyStub() {}
 
@@ -24,7 +24,7 @@ PowerStatus PowerSupplyStub::GetPowerStatus() const {
 }
 
 bool PowerSupplyStub::RefreshImmediately() {
-  return true;
+  return refresh_result_;
 }
 
 void PowerSupplyStub::SetSuspended(bool suspended) {}

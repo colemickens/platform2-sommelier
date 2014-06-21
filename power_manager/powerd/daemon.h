@@ -10,7 +10,6 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>
@@ -20,11 +19,8 @@
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
-#include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/input_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
-#include "power_manager/powerd/system/peripheral_battery_watcher.h"
-#include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 
 class MetricsSender;
@@ -46,10 +42,13 @@ class Suspender;
 namespace system {
 class AmbientLightSensor;
 class AudioClient;
+class DarkResume;
 class DisplayPowerSetter;
 class DisplayWatcher;
 class Input;
 class InternalBacklight;
+class PeripheralBatteryWatcher;
+class PowerSupply;
 class Udev;
 }  // namespace system
 
@@ -237,7 +236,7 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
   scoped_ptr<system::PowerSupply> power_supply_;
-  scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
+  scoped_ptr<system::DarkResume> dark_resume_;
   scoped_ptr<SuspenderDelegate> suspender_delegate_;
   scoped_ptr<policy::Suspender> suspender_;
 

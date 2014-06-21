@@ -17,7 +17,7 @@
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/dark_resume_policy.h"
+#include "power_manager/powerd/system/dark_resume_stub.h"
 
 namespace power_manager {
 namespace policy {
@@ -191,14 +191,13 @@ class SuspenderTest : public testing::Test {
   void Init() {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
-    dark_resume_policy_.Init(NULL, &prefs_);
-    suspender_.Init(&delegate_, &dbus_sender_, &dark_resume_policy_, &prefs_);
+    suspender_.Init(&delegate_, &dbus_sender_, &dark_resume_, &prefs_);
   }
 
   FakePrefs prefs_;
   TestDelegate delegate_;
   DBusSenderStub dbus_sender_;
-  DarkResumePolicy dark_resume_policy_;
+  system::DarkResumeStub dark_resume_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
 
