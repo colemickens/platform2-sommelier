@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
       base::FilePath(power_manager::kPowerStatusPath), &prefs, &udev);
   CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
-      power_supply.power_status().line_power_on ?
+      power_supply.GetPowerStatus().line_power_on ?
       power_manager::POWER_AC : power_manager::POWER_BATTERY;
 
   // Mimic powerd startup and grab the brightness level that's used.

@@ -105,8 +105,8 @@ int main(int argc, char** argv) {
   power_supply.Init(path, &prefs, &udev);
 
   CHECK(power_supply.RefreshImmediately());
-  const power_manager::system::PowerStatus& status =
-      power_supply.power_status();
+  const power_manager::system::PowerStatus status =
+      power_supply.GetPowerStatus();
 
   // NOTE, autotests (see autotest/files/client/cros/power_status.py) rely on
   // parsing this information below.

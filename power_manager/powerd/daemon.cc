@@ -567,10 +567,10 @@ void Daemon::Init() {
   power_supply_->Init(base::FilePath(kPowerStatusPath),
                       prefs_.get(), udev_.get());
   power_supply_->RefreshImmediately();
+  const system::PowerStatus power_status = power_supply_->GetPowerStatus();
 
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
-                           keyboard_backlight_controller_.get(),
-                           power_supply_->power_status());
+                           keyboard_backlight_controller_.get(), power_status);
 
   OnPowerStatusUpdate();
 
@@ -583,7 +583,7 @@ void Daemon::Init() {
                           dbus_sender_.get(), prefs_.get());
 
   const PowerSource power_source =
-      power_supply_->power_status().line_power_on ? POWER_AC : POWER_BATTERY;
+      power_status.line_power_on ? POWER_AC : POWER_BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
                           power_source, input_->QueryLidState());
   state_controller_initialized_ = true;
@@ -743,7 +743,7 @@ void Daemon::OnAudioStateChange(bool active) {
 }
 
 void Daemon::OnPowerStatusUpdate() {
-  const system::PowerStatus& status = power_supply_->power_status();
+  const system::PowerStatus status = power_supply_->GetPowerStatus();
   if (status.battery_is_present)
     LOG(INFO) << GetPowerStatusBatteryDebugString(status);
 
@@ -1179,7 +1179,7 @@ scoped_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
 scoped_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
     dbus::MethodCall* method_call) {
   PowerSupplyProperties protobuf;
-  CopyPowerStatusToProtocolBuffer(power_supply_->power_status(), &protobuf);
+  CopyPowerStatusToProtocolBuffer(power_supply_->GetPowerStatus(), &protobuf);
   scoped_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());

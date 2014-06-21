@@ -198,7 +198,7 @@ class PowerSupplyTest : public ::testing::Test {
     if (!power_supply_->RefreshImmediately())
       return false;
 
-    *status = power_supply_->power_status();
+    *status = power_supply_->GetPowerStatus();
     return true;
   }
 
@@ -396,7 +396,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   current_time += kStartupDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_FALSE(status.is_calculating_battery_time);
   EXPECT_EQ(kPollDelay.InMilliseconds(),
@@ -412,7 +412,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   test_api_->SetCurrentTime(current_time);
   WriteValue("ac/online", kOffline);
   power_supply_->SetSuspended(false);
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
   EXPECT_EQ((kResumeDelay + kSlack).InMilliseconds(),
@@ -422,7 +422,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   current_time += kResumeDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_FALSE(status.is_calculating_battery_time);
 
@@ -430,7 +430,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   WriteValue("ac/online", kOnline);
   power_supply_->OnUdevEvent(
       PowerSupply::kUdevSubsystem, "AC", UdevObserver::ACTION_CHANGE);
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
   EXPECT_EQ((kACDelay + kSlack).InMilliseconds(),
@@ -440,7 +440,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   current_time += kACDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_FALSE(status.is_calculating_battery_time);
 
@@ -448,7 +448,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   WriteValue("ac/online", kOffline);
   power_supply_->OnUdevEvent(
       PowerSupply::kUdevSubsystem, "AC", UdevObserver::ACTION_CHANGE);
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
   EXPECT_EQ((kBatteryDelay + kSlack).InMilliseconds(),
@@ -458,7 +458,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   current_time += kBatteryDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
-  status = power_supply_->power_status();
+  status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_FALSE(status.is_calculating_battery_time);
 }

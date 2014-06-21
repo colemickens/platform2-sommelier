@@ -70,6 +70,7 @@
         'powerd/system/display/display_power_setter_stub.cc',
         'powerd/system/display/display_watcher_stub.cc',
         'powerd/system/input_stub.cc',
+        'powerd/system/power_supply_stub.cc',
         'powerd/system/udev_stub.cc',
       ],
     },

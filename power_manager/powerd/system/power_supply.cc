@@ -216,6 +216,10 @@ void PowerSupply::RemoveObserver(PowerSupplyObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
+PowerStatus PowerSupply::GetPowerStatus() const {
+  return power_status_;
+}
+
 bool PowerSupply::RefreshImmediately() {
   const bool success = UpdatePowerStatus();
   if (!is_suspended_)

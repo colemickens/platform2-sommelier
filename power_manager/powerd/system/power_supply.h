@@ -139,9 +139,31 @@ struct PowerStatus {
   std::string battery_technology;
 };
 
-// Used to read power supply status from sysfs, e.g. whether on AC or battery,
-// charge and voltage level, current, etc.
-class PowerSupply : public UdevObserver {
+// Fetches the system's power status, e.g. whether on AC or battery, charge and
+// voltage level, current, etc.
+class PowerSupplyInterface {
+ public:
+  PowerSupplyInterface() {}
+  virtual ~PowerSupplyInterface() {}
+
+  // Adds or removes an observer.
+  virtual void AddObserver(PowerSupplyObserver* observer) = 0;
+  virtual void RemoveObserver(PowerSupplyObserver* observer) = 0;
+
+  // Returns the last-read status.
+  virtual PowerStatus GetPowerStatus() const = 0;
+
+  // Updates the status synchronously, returning true on success. If successful,
+  // observers will be notified asynchronously.
+  virtual bool RefreshImmediately() = 0;
+
+  // On suspend, stops polling. On resume, updates the status immediately and
+  // schedules a poll for the near future.
+  virtual void SetSuspended(bool suspended) = 0;
+};
+
+// Real implementation of PowerSupplyInterface that reads from sysfs.
+class PowerSupply : public PowerSupplyInterface, public UdevObserver {
  public:
   // Helper class for testing PowerSupply.
   class TestApi {
@@ -193,8 +215,6 @@ class PowerSupply : public UdevObserver {
   PowerSupply();
   virtual ~PowerSupply();
 
-  const PowerStatus& power_status() const { return power_status_; }
-
   base::TimeTicks battery_stabilized_timestamp() const {
     return battery_stabilized_timestamp_;
   }
@@ -205,18 +225,12 @@ class PowerSupply : public UdevObserver {
             PrefsInterface *prefs,
             UdevInterface* udev);
 
-  // Adds or removes an observer.
-  void AddObserver(PowerSupplyObserver* observer);
-  void RemoveObserver(PowerSupplyObserver* observer);
-
-  // Updates |power_status_| synchronously, schedules a future poll, and
-  // returns true on success.  If successful, |observers_| will be notified
-  // asynchronously.
-  bool RefreshImmediately();
-
-  // On suspend, stops polling.  On resume, updates |power_status_|
-  // immediately and schedules a poll for the near future.
-  void SetSuspended(bool suspended);
+  // PowerSupplyInterface implementation:
+  virtual void AddObserver(PowerSupplyObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(PowerSupplyObserver* observer) OVERRIDE;
+  virtual PowerStatus GetPowerStatus() const OVERRIDE;
+  virtual bool RefreshImmediately() OVERRIDE;
+  virtual void SetSuspended(bool suspended) OVERRIDE;
 
   // UdevObserver implementation:
   virtual void OnUdevEvent(const std::string& subsystem,

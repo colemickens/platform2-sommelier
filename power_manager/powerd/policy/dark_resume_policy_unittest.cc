@@ -94,7 +94,7 @@ class DarkResumePolicyTest : public ::testing::Test {
 
     ASSERT_TRUE(power_supply_->RefreshImmediately());
     ASSERT_DOUBLE_EQ(charge_percent,
-                     power_supply_->power_status().battery_percentage);
+                     power_supply_->GetPowerStatus().battery_percentage);
   }
 
   FakePrefs prefs_;
