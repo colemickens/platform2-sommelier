@@ -36,7 +36,7 @@ static bool match_vaapi_capabilities(VADisplay va_display,
     VAProfile* required_profiles,
     VAEntrypoint entrypoint, unsigned int format) {
   int i;
-  bool found;
+  bool found = false;
   int num_supported_profiles;
   VAStatus va_res;
   VAProfile* profiles;
