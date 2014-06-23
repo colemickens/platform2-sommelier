@@ -11,6 +11,8 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
+      # Chaps uses try/catch to interact with dbus-c++.
+      'enable_exceptions': 1,
     },
   },
   'targets': [
