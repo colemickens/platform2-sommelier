@@ -157,8 +157,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kOperatorAccessTechnologyProperty[];
 
   // Modem Model ID strings.  From modem firmware via modemmanager.
-  static const char kALT3100ModelId[];
   static const char kE362ModelId[];
+
+  // Plugin strings via modemmanager.
+  static const char kAltairLTEMMPlugin[];
 
   static const int64 kActivationRegistrationTimeoutMilliseconds;
   static const int64 kEnterPinTimeoutMilliseconds;
@@ -214,11 +216,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemALT3100);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemAltair);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              StopModemALT3100DeleteBearerFailure);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              StopModemALT3100NotConnected);
+              StopModemAltairDeleteBearerFailure);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,

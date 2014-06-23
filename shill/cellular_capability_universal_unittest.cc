@@ -528,7 +528,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   set_power_state_callback.Run(Error(Error::kOperationFailed));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StopModemALT3100) {
+TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
@@ -540,7 +540,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemALT3100) {
                          kBearerDBusPath,
                          cellular_->dbus_service()));  // Passes ownership.
 
-  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
+  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
   Error error;
   ResultCallback callback =
@@ -575,7 +575,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemALT3100) {
 }
 
 TEST_F(CellularCapabilityUniversalMainTest,
-       StopModemALT3100DeleteBearerFailure) {
+       StopModemAltairDeleteBearerFailure) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
@@ -587,7 +587,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
                          kBearerDBusPath,
                          cellular_->dbus_service()));  // Passes ownership.
 
-  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
+  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
   Error error;
   ResultCallback callback =
@@ -621,13 +621,13 @@ TEST_F(CellularCapabilityUniversalMainTest,
   set_power_state_callback.Run(Error(Error::kSuccess));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StopModemALT3100NotConnected) {
+TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
   capability_->set_active_bearer(NULL);
-  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
+  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
   Error error;
   ResultCallback callback =
@@ -2037,7 +2037,7 @@ TEST_F(CellularCapabilityUniversalMainTest, GetOutOfCreditsDetectionType) {
   cellular_->set_model_id("");;
   EXPECT_EQ(OutOfCreditsDetector::OOCTypeNone,
             capability_->GetOutOfCreditsDetectionType());
-  cellular_->set_model_id(CellularCapabilityUniversal::kALT3100ModelId);
+  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
   EXPECT_EQ(OutOfCreditsDetector::OOCTypeSubscriptionState,
             capability_->GetOutOfCreditsDetectionType());
 }

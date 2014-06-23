@@ -64,7 +64,7 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
     "operator-code";
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
-const char CellularCapabilityUniversal::kALT3100ModelId[] = "ALT3100";
+const char CellularCapabilityUniversal::kAltairLTEMMPlugin[] = "Altair LTE";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
@@ -296,7 +296,7 @@ void CellularCapabilityUniversal::StopModem(Error *error,
   // the bearer. To do that, we just remove the bearer from the list so
   // ModemManager doesn't try to disconnect it during disable.
   Closure task;
-  if (cellular()->model_id() == kALT3100ModelId) {
+  if (cellular()->mm_plugin() == kAltairLTEMMPlugin) {
     task = Bind(&CellularCapabilityUniversal::Stop_DeleteActiveBearer,
                 weak_ptr_factory_.GetWeakPtr(),
                 callback);
@@ -1235,6 +1235,10 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
                                 &string_value))
     cellular()->set_model_id(string_value);
   if (DBusProperties::GetString(properties,
+                                MM_MODEM_PROPERTY_PLUGIN,
+                                &string_value))
+    cellular()->set_mm_plugin(string_value);
+  if (DBusProperties::GetString(properties,
                                MM_MODEM_PROPERTY_REVISION,
                                &string_value))
     OnModemRevisionChanged(string_value);
@@ -1747,8 +1751,7 @@ void CellularCapabilityUniversal::OnOperatorIdChanged(
 
 OutOfCreditsDetector::OOCType
 CellularCapabilityUniversal::GetOutOfCreditsDetectionType() const {
-  const string &model_id = cellular()->model_id();
-  if (model_id == kALT3100ModelId) {
+  if (cellular()->mm_plugin() == kAltairLTEMMPlugin) {
     return OutOfCreditsDetector::OOCTypeSubscriptionState;
   } else {
     return OutOfCreditsDetector::OOCTypeNone;

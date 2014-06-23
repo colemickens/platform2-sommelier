@@ -1296,7 +1296,7 @@ void Cellular::set_esn(const string &esn) {
   adaptor()->EmitStringChanged(kEsnProperty, esn_);
 }
 
-void Cellular::set_firmware_revision(const std::string &firmware_revision) {
+void Cellular::set_firmware_revision(const string &firmware_revision) {
   if (firmware_revision_ == firmware_revision)
     return;
 
@@ -1304,7 +1304,7 @@ void Cellular::set_firmware_revision(const std::string &firmware_revision) {
   adaptor()->EmitStringChanged(kFirmwareRevisionProperty, firmware_revision_);
 }
 
-void Cellular::set_hardware_revision(const std::string &hardware_revision) {
+void Cellular::set_hardware_revision(const string &hardware_revision) {
   if (hardware_revision_ == hardware_revision)
     return;
 
@@ -1314,7 +1314,7 @@ void Cellular::set_hardware_revision(const std::string &hardware_revision) {
 
 // TODO(armansito): The following methods should probably log their argument
 // values. Need to learn if any of them need to be scrubbed.
-void Cellular::set_imei(const std::string &imei) {
+void Cellular::set_imei(const string &imei) {
   if (imei_ == imei)
     return;
 
@@ -1322,7 +1322,7 @@ void Cellular::set_imei(const std::string &imei) {
   adaptor()->EmitStringChanged(kImeiProperty, imei_);
 }
 
-void Cellular::set_imsi(const std::string &imsi) {
+void Cellular::set_imsi(const string &imsi) {
   if (imsi_ == imsi)
     return;
 
@@ -1330,7 +1330,7 @@ void Cellular::set_imsi(const std::string &imsi) {
   adaptor()->EmitStringChanged(kImsiProperty, imsi_);
 }
 
-void Cellular::set_mdn(const std::string &mdn) {
+void Cellular::set_mdn(const string &mdn) {
   if (mdn_ == mdn)
     return;
 
@@ -1338,7 +1338,7 @@ void Cellular::set_mdn(const std::string &mdn) {
   adaptor()->EmitStringChanged(kMdnProperty, mdn_);
 }
 
-void Cellular::set_meid(const std::string &meid) {
+void Cellular::set_meid(const string &meid) {
   if (meid_ == meid)
     return;
 
@@ -1346,7 +1346,7 @@ void Cellular::set_meid(const std::string &meid) {
   adaptor()->EmitStringChanged(kMeidProperty, meid_);
 }
 
-void Cellular::set_min(const std::string &min) {
+void Cellular::set_min(const string &min) {
   if (min_ == min)
     return;
 
@@ -1354,7 +1354,7 @@ void Cellular::set_min(const std::string &min) {
   adaptor()->EmitStringChanged(kMinProperty, min_);
 }
 
-void Cellular::set_manufacturer(const std::string &manufacturer) {
+void Cellular::set_manufacturer(const string &manufacturer) {
   if (manufacturer_ == manufacturer)
     return;
 
@@ -1362,12 +1362,16 @@ void Cellular::set_manufacturer(const std::string &manufacturer) {
   adaptor()->EmitStringChanged(kManufacturerProperty, manufacturer_);
 }
 
-void Cellular::set_model_id(const std::string &model_id) {
+void Cellular::set_model_id(const string &model_id) {
   if (model_id_ == model_id)
     return;
 
   model_id_ = model_id;
   adaptor()->EmitStringChanged(kModelIDProperty, model_id_);
+}
+
+void Cellular::set_mm_plugin(const string &mm_plugin) {
+  mm_plugin_ = mm_plugin;
 }
 
 void Cellular::set_scanning(bool scanning) {
@@ -1397,7 +1401,7 @@ void Cellular::set_scanning(bool scanning) {
   }
 }
 
-void Cellular::set_selected_network(const std::string &selected_network) {
+void Cellular::set_selected_network(const string &selected_network) {
   if (selected_network_ == selected_network)
     return;
 

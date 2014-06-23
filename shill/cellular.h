@@ -272,6 +272,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   const std::string &min() const { return min_; }
   const std::string &manufacturer() const { return manufacturer_; }
   const std::string &model_id() const { return model_id_; }
+  const std::string &mm_plugin() const { return mm_plugin_; }
   bool scanning() const { return scanning_; }
 
   const std::string &selected_network() const { return selected_network_; }
@@ -298,6 +299,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   void set_min(const std::string &min);
   void set_manufacturer(const std::string &manufacturer);
   void set_model_id(const std::string &model_id);
+  void set_mm_plugin(const std::string &mm_plugin);
   void set_scanning(bool scanning);
 
   void set_selected_network(const std::string &selected_network);
@@ -541,6 +543,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   std::string meid_;
   std::string min_;
   std::string model_id_;
+  std::string mm_plugin_;
   bool scanning_;
 
   // GSM only properties.
