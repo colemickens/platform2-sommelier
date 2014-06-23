@@ -5,6 +5,8 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
+      # shill uses try/catch to interact with dbus-c++.
+      'enable_exceptions': 1,
     },
     'cflags': [
       '-Wextra',
