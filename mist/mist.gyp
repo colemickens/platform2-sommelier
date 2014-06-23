@@ -1,7 +1,7 @@
 {
   'target_defaults': {
     'dependencies': [
-      '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
+      '../../platform/metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
     ],
     'variables': {
       'deps': [
