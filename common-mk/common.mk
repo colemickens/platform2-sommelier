@@ -100,6 +100,7 @@ VALGRIND ?= 0
 COLOR ?= 1
 VERBOSE ?= 0
 MODE ?= opt
+CXXEXCEPTIONS ?= 0
 ARCH ?= $(shell uname -m)
 
 # Put objects in a separate tree based on makefile locations
@@ -315,6 +316,11 @@ CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 
+# Disable exceptions based on the CXXEXCEPTIONS setting.
+ifeq ($(CXXEXCEPTIONS),0)
+  CXXFLAGS := $(CXXFLAGS) -fno-exceptions -fno-unwind-tables \
+    -fno-asynchronous-unwind-tables
+endif
 
 ifeq ($(MODE),opt)
   # Up the optimizations.
@@ -674,6 +680,7 @@ ifneq ($(MAKECMDGOALS),clean)
   $(info - NOSTRIP=$(NOSTRIP))
   $(info - VALGRIND=$(VALGRIND))
   $(info - COLOR=$(COLOR))
+  $(info - CXXEXCEPTIONS=$(CXXEXCEPTIONS))
   $(info - ARCH=$(ARCH))
   $(info - QEMU_ARCH=$(QEMU_ARCH))
   $(info - USE_QEMU=$(USE_QEMU))
