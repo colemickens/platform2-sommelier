@@ -12,6 +12,9 @@
     # Set this to 0 if you'd like to disable -clang-syntax.
     'clang_syntax%': 1,
 
+    # Set this to 1 if your C++ code throws or catches exceptions.
+    'enable_exceptions%': 0,
+
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
     'USE_attestation%': 0,
@@ -94,6 +97,13 @@
       ['USE_cros_host == 0 and clang_syntax == 1', {
         'cflags': [
           '-clang-syntax',
+        ],
+      }],
+      ['enable_exceptions == 0', {
+        'cflags_cc': [
+          '-fno-exceptions',
+          '-fno-unwind-tables',
+          '-fno-asynchronous-unwind-tables',
         ],
       }],
       ['USE_cros_host == 0', {
