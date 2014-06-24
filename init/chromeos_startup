@@ -35,6 +35,13 @@ mount_or_fail()
   cleanup_mounts
 }
 
+# Mount debugfs as bootstat depends on /sys/kernel/debug
+mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
+  debugfs /sys/kernel/debug
+
+# bootstat writes timings to both tmpfs and debugfs.
+bootstat pre-startup
+
 # Some startup functions are split into a separate library which may be
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
