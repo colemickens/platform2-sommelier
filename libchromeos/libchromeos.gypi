@@ -17,6 +17,7 @@
       'target_name': 'libchromeos-<(libbase_ver)',
       'type': 'none',
       'dependencies': [
+        'libchromeos-bootstat-<(libbase_ver)',
         'libchromeos-core-<(libbase_ver)',
         'libchromeos-cryptohome-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
@@ -67,7 +68,6 @@
       'type': 'shared_library',
       'variables': {
         'exported_deps': [
-          'bootstat',
           'openssl',
         ],
         'deps': ['<@(exported_deps)'],
@@ -90,20 +90,12 @@
     {
       'target_name': 'libchromeos-ui-<(libbase_ver)',
       'type': 'shared_library',
-      'variables': {
-        'exported_deps': ['openssl'],
-        'deps': ['<@(exported_deps)'],
-      },
+      'dependencies': [
+        'libchromeos-bootstat-<(libbase_ver)',
+      ],
       'cflags': [
         '-fvisibility=default',
       ],
-      'all_dependent_settings': {
-        'variables': {
-          'deps': [
-            '<@(exported_deps)',
-          ],
-        },
-      },
       'sources': [
         'chromeos/ui/chromium_command_builder.cc',
         'chromeos/ui/util.cc',
@@ -139,6 +131,19 @@
         'chromeos/policy/device_policy.cc',
         'chromeos/policy/device_policy_impl.cc',
         'chromeos/policy/libpolicy.cc',
+      ],
+    },
+    {
+      'target_name': 'libchromeos-bootstat-<(libbase_ver)',
+      'type': 'shared_library',
+      'sources': [
+        'chromeos/bootstat/bootstat_log.c',
+      ],
+      'cflags': [
+        '-fvisibility=default',
+      ],
+      'libraries': [
+        '-lrootdev',
       ],
     },
   ],
@@ -186,6 +191,19 @@
           'sources': [
             'chromeos/policy/tests/libpolicy_unittest.cc',
           ]
+        },
+        {
+          'target_name': 'libbootstat_unittests',
+          'type': 'executable',
+          'dependencies': [
+            'libchromeos-bootstat-<(libbase_ver)',
+          ],
+          'includes': [
+            '../common-mk/common_test.gypi',
+          ],
+          'sources': [
+            'chromeos/bootstat/log_unit_tests.cc',
+          ],
         },
       ],
     }],

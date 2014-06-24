@@ -6,13 +6,14 @@
 // 'bootstat' facility.  The command provides a command line wrapper
 // around the key functionality declared in "bootstat.h"
 
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "bootstat.h"
 
-static void usage(const char* cmd)
+static void usage(char* cmd)
 {
   fprintf(stderr, "usage: %s <event-name>\n", basename(cmd));
   exit(EXIT_FAILURE);
