@@ -1,0 +1,9 @@
+prefix=/usr
+exec_prefix=${prefix}
+includedir=${prefix}/include
+
+Name: bootstat
+Description: Library to generate performance statistics during boot.
+Version: 1
+Cflags: -I${includedir}
+Libs: -lbootstat -lrootdev
