@@ -50,7 +50,7 @@
             }],
             ['USE_gdmwimax == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/wimax_manager/wimax_manager.gyp:*',
+                '<(DEPTH)/platform2/wimax_manager/wimax_manager.gyp:*',
               ],
             }],
             ['USE_lorgnette == 1', {
