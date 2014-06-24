@@ -144,6 +144,9 @@ list_usb_disks() {
 list_mmc_disks() {
   local mmc
   for mmc in /sys/block/mmcblk*; do
+    if [ ! -r "${mmc}/size" ]; then
+      continue
+    fi
     # We only select deivce that are 1GB or larger.
     if [ "$(cat "${mmc}/size")" -ge 2097152 ]; then
       echo "${mmc##*/}"
