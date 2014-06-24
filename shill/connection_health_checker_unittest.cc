@@ -59,7 +59,6 @@ const char kProxyURLRemote[] = "http://www.google.com";
 const int kProxyFD = 100;
 const int16_t kProxyPortLocal = 5540;
 const int16_t kProxyPortRemote = 80;
-const int kSocketError = 3000;
 }  // namespace
 
 MATCHER_P(IsSameIPAddress, ip_addr, "") {
