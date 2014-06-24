@@ -273,7 +273,7 @@
         }],
         ['USE_wimax == 1', {
           'dependencies' : [
-            '../wimax_manager/wimax_manager.gyp:wimax_manager-proxies',
+            '../../platform2/wimax_manager/wimax_manager.gyp:wimax_manager-proxies',
           ],
           'sources': [
             'wimax.cc',
