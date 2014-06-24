@@ -1,0 +1,39 @@
+// Copyright (c) 2009 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+package cryptohome;
+
+import "key.proto";
+
+message SerializedVaultKeyset {
+  enum Flags {
+    NONE = 0;
+    TPM_WRAPPED = 1;
+    SCRYPT_WRAPPED = 2;
+  }
+  required int32 flags = 1;
+  required bytes salt = 2;
+  required bytes wrapped_keyset = 3;
+  optional bytes tpm_key = 4;
+  optional bytes tpm_public_key_hash = 5;
+  optional int32 password_rounds = 6;
+  repeated string deprecated_tracked_subdirectories = 7;
+  optional int64 last_activity_timestamp = 8;
+
+  // Metadata that should be defined in one file
+  // per principal (not per key).
+  // TODO(wad) ^^^
+  // optional string human_readable_name;
+  // required bytes identifier; // Unique to the origin
+  // required string origin;
+  // optional string idp_uri; // authoritative uri for the key
+  // message OptionalMetadata {
+  //   required string name = 1;
+  //   required bytes value = 2;
+  // }
+  // repeated OptionalMetadata metadata;
+
+  // This will come from system_api once we're finalized on the API.
+  optional KeyData key_data = 9;
+}

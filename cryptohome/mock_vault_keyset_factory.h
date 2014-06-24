@@ -1,0 +1,23 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef CRYPTOHOME_MOCK_VAULT_KEYSET_FACTORY_H_
+#define CRYPTOHOME_MOCK_VAULT_KEYSET_FACTORY_H_
+
+#include <gmock/gmock.h>
+
+namespace cryptohome {
+class VaultKeyset;
+class Platform;
+class Crypto;
+
+class MockVaultKeysetFactory : public VaultKeysetFactory {
+ public:
+  MockVaultKeysetFactory() {}
+  virtual ~MockVaultKeysetFactory() {}
+  MOCK_METHOD2(New, VaultKeyset*(Platform*, Crypto*));
+};
+}  // namespace cryptohome
+
+#endif  // CRYPTOHOME_MOCK_VAULT_KEYSET_FACTORY_H_

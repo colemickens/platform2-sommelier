@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+
+     dbus-binding-tool -mode=glib-server -prefix=cryptohome cryptohome.xml
+                        &gt; bindings/server.h
+-->
+<node name="/org/chromium/">
+  <interface name="org.chromium.CryptohomeInterface">
+    <annotation name="org.freedesktop.DBus.GLib.CSymbol"
+                value="cryptohome"/>
+    <method name="IsMounted">
+      <arg type="b" name="is_mounted" direction="out" />
+    </method>
+    <method name="IsMountedForUser">
+      <arg type="s" name="username" direction="in" />
+      <arg type="b" name="is_mounted" direction="out" />
+      <arg type="b" name="is_ephemeral_mount" direction="out" />
+    </method>
+    <method name="CheckKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncCheckKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="CheckKeyEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="check_key_request" direction="in" />
+      <arg type="ay" name="check_key_reply" direction="out" />
+    </method>
+    <method name="RemoveKeyEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="remove_key_request" direction="in" />
+      <arg type="ay" name="remove_key_reply" direction="out" />
+    </method>
+    <method name="GetKeyDataEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <!-- This should be an empty AuthorizationRequest.
+           In the future, authorization may be used to decrypt and return
+           secrets, like the UpdateAuthorization secret.
+        -->
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="get_key_data_request" direction="in" />
+      <arg type="ay" name="get_key_data_reply" direction="out" />
+    </method>
+    <method name="MigrateKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="from_key" direction="in" />
+      <arg type="s" name="to_key" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncMigrateKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="from_key" direction="in" />
+      <arg type="s" name="to_key" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="AddKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="s" name="new_key" direction="in" />
+      <arg type="i" name="key_id" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncAddKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="s" name="new_key" direction="in" />
+      <!-- key_id will be returned in the return_code -->
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <!-- This may be called asynchronously. -->
+    <method name="AddKeyEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="add_key_request" direction="in" />
+      <arg type="ay" name="add_key_reply" direction="out" />
+    </method>
+    <!-- This method looks like an AddKeyEx(clobber=true)
+         but it updates the authorizing key exclusively.
+    -->
+    <method name="UpdateKeyEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="update_key_request" direction="in" />
+      <arg type="ay" name="update_key_reply" direction="out" />
+    </method>
+    <method name="Remove">
+      <arg type="s" name="username" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncRemove">
+      <arg type="s" name="username" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="GetSystemSalt">
+      <arg type="ay" name="salt" direction="out" />
+    </method>
+    <method name="GetSanitizedUsername">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="sanitized" direction="out" />
+    </method>
+    <method name="Mount">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="b" name="create_if_missing" direction="in" />
+      <arg type="b" name="ensure_ephemeral" direction="in" />
+      <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
+      <arg type="i" name="error_num" direction="out" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="AsyncMount">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="b" name="create_if_missing" direction="in" />
+      <arg type="b" name="ensure_ephemeral" direction="in" />
+      <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <!-- This may be called asynchronously. -->
+    <method name="MountEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="mount_request" direction="in" />
+      <arg type="ay" name="mount_reply" direction="out" />
+    </method>
+    <method name="MountGuest">
+      <arg type="i" name="error_num" direction="out" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="AsyncMountGuest">
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="MountPublic">
+      <arg type="s" name="public_mount_id" direction="in" />
+      <arg type="b" name="create_if_missing" direction="in" />
+      <arg type="b" name="ensure_ephemeral" direction="in" />
+      <arg type="i" name="error_num" direction="out" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="AsyncMountPublic">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="s" name="public_mount_id" direction="in" />
+      <arg type="b" name="create_if_missing" direction="in" />
+      <arg type="b" name="ensure_ephemeral" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="Unmount">
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="UnmountForUser">
+      <arg type="s" name="username" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="DoAutomaticFreeDiskSpaceControl">
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="AsyncDoAutomaticFreeDiskSpaceControl">
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="UpdateCurrentUserActivityTimestamp">
+      <arg type="i" name="time_shift_sec" direction="in" />
+    </method>
+    <method name="TpmIsReady">
+      <arg type="b" name="ready" direction="out" />
+    </method>
+    <method name="TpmIsEnabled">
+      <arg type="b" name="enabled" direction="out" />
+    </method>
+    <method name="TpmGetPassword">
+      <arg type="s" name="password" direction="out" />
+    </method>
+    <method name="TpmIsOwned">
+      <arg type="b" name="owned" direction="out" />
+    </method>
+    <method name="TpmIsBeingOwned">
+      <arg type="b" name="owning" direction="out" />
+    </method>
+    <method name="TpmCanAttemptOwnership">
+    </method>
+    <method name="TpmClearStoredPassword">
+    </method>
+    <method name="TpmIsAttestationPrepared">
+      <arg type="b" name="prepared" direction="out" />
+    </method>
+    <method name="TpmVerifyAttestationData">
+      <arg type="b" name="verified" direction="out" />
+    </method>
+    <method name="TpmVerifyEK">
+      <arg type="b" name="verified" direction="out" />
+    </method>
+    <method name="TpmAttestationCreateEnrollRequest">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="ay" name="pca_request" direction="out" />
+    </method>
+    <method name="AsyncTpmAttestationCreateEnrollRequest">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationEnroll">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="ay" name="pca_response" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncTpmAttestationEnroll">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="ay" name="pca_response" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationCreateCertRequest">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="i" name="certificate_profile" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="request_origin" direction="in" />
+      <arg type="ay" name="pca_request" direction="out" />
+    </method>
+    <method name="AsyncTpmAttestationCreateCertRequest">
+      <arg type="i" name="pca_type" direction="in" />
+      <arg type="i" name="certificate_profile" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="request_origin" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationFinishCertRequest">
+      <arg type="ay" name="pca_response" direction="in" />
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="certificate" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncTpmAttestationFinishCertRequest">
+      <arg type="ay" name="pca_response" direction="in" />
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmIsAttestationEnrolled">
+      <arg type="b" name="enrolled" direction="out" />
+    </method>
+    <method name="TpmAttestationDoesKeyExist">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="b" name="exists" direction="out" />
+    </method>
+    <method name="TpmAttestationGetCertificate">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="certificate" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationGetPublicKey">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="public_key" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationRegisterKey">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationSignEnterpriseChallenge">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="s" name="domain" direction="in" />
+      <arg type="ay" name="device_id" direction="in" />
+      <arg type="b" name="include_signed_public_key" direction="in" />
+      <arg type="ay" name="challenge" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationSignSimpleChallenge">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="challenge" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationGetKeyPayload">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="payload" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationSetKeyPayload">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="payload" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationDeleteKeys">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_prefix" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationGetEK">
+      <arg type="s" name="ek_info" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationResetIdentity">
+      <arg type="s" name="reset_token" direction="in" />
+      <arg type="ay" name="reset_request" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="Pkcs11IsTpmTokenReady">
+      <arg type="b" name="ready" direction="out" />
+    </method>
+    <method name="Pkcs11IsTpmTokenReadyForUser">
+      <arg type="s" name="username" direction="in" />
+      <arg type="b" name="ready" direction="out" />
+    </method>
+    <method name="Pkcs11GetTpmTokenInfo">
+      <arg type="s" name="label" direction="out" />
+      <arg type="s" name="user_pin" direction="out" />
+      <arg type="i" name="slot" direction="out" />
+    </method>
+    <method name="Pkcs11GetTpmTokenInfoForUser">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="label" direction="out" />
+      <arg type="s" name="user_pin" direction="out" />
+      <arg type="i" name="slot" direction="out" />
+    </method>
+    <method name="Pkcs11Terminate">
+      <arg type="s" name="username" direction="in" />
+    </method>
+    <method name="GetStatusString">
+      <arg type="s" name="status" direction="out" />
+    </method>
+    <method name="InstallAttributesGet">
+      <arg type="s" name="name" direction="in" />
+      <arg type="ay" name="value" direction="out" />
+      <arg type="b" name="successful" direction="out" />
+    </method>
+    <method name="InstallAttributesSet">
+      <arg type="s" name="name" direction="in" />
+      <arg type="ay" name="value" direction="in" />
+      <arg type="b" name="successful" direction="out" />
+    </method>
+    <method name="InstallAttributesCount">
+      <arg type="i" name="count" direction="out" />
+    </method>
+    <method name="InstallAttributesFinalize">
+      <arg type="b" name="successful" direction="out" />
+    </method>
+    <method name="InstallAttributesIsReady">
+      <arg type="b" name="is_ready" direction="out" />
+    </method>
+    <method name="InstallAttributesIsSecure">
+      <arg type="b" name="is_secure" direction="out" />
+    </method>
+    <method name="InstallAttributesIsInvalid">
+      <arg type="b" name="is_invalid" direction="out" />
+    </method>
+    <method name="InstallAttributesIsFirstInstall">
+      <arg type="b" name="is_first_install" direction="out" />
+    </method>
+    <method name="StoreEnrollmentState">
+      <arg type="ay" name="enrollment_state" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="LoadEnrollmentState">
+      <arg type="ay" name="enrollment_state" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: SignBootLockboxRequest
+         reply: BaseReply with a SignBootLockboxReply extension on success
+    -->
+    <method name="SignBootLockbox">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: VerifyBootLockboxRequest
+         reply: BaseReply
+    -->
+    <method name="VerifyBootLockbox">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: FinalizeBootLockboxRequest
+         reply: BaseReply
+    -->
+    <method name="FinalizeBootLockbox">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+    <signal name="TpmInitStatus">
+      <arg type="b" name="ready" />
+      <arg type="b" name="owned" />
+      <arg type="b" name="was_owned_this_boot" />
+    </signal>
+    <signal name="AsyncCallStatus">
+      <arg type="i" name="async_id" />
+      <arg type="b" name="return_status" />
+      <arg type="i" name="return_code" />
+    </signal>
+    <signal name="AsyncCallStatusWithData">
+      <arg type="i" name="async_id" />
+      <arg type="b" name="return_status" />
+      <arg type="ay" name="data" />
+    </signal>
+  </interface>
+</node>

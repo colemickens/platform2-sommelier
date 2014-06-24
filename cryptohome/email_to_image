@@ -1,0 +1,6 @@
+#!/bin/bash
+
+IMAGE_DIR="/home/.shadow"
+USERID="$(cat $IMAGE_DIR/salt <(echo -n $1) | openssl sha1)"
+
+echo "Data belonging to $1 is stored in $IMAGE_DIR/$USERID"

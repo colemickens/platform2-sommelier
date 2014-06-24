@@ -1,0 +1,14 @@
+// Copyright (c) 2014 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+package cryptohome;
+
+option optimize_for = LITE_RUNTIME;
+
+message BootLockboxKey {
+  // The TPM-wrapped blob for the key.
+  optional bytes key_blob = 1;
+  // The DER-encoded public key corresponding to key_blob.
+  optional bytes public_key_der = 2;
+}

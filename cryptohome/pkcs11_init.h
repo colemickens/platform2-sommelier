@@ -1,0 +1,68 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Pkcs11Init - Class for handling PKCS #11 initialization.  Since the move to
+// Chaps, this class does very little.  The loading / unloading of tokens is
+// handled in mount.cc.
+
+#ifndef CRYPTOHOME_PKCS11_INIT_H_
+#define CRYPTOHOME_PKCS11_INIT_H_
+
+#include <sys/types.h>
+
+#include <string>
+
+#include <base/basictypes.h>
+#include <base/files/file_path.h>
+#include <base/memory/scoped_ptr.h>
+#include <chaps/pkcs11/cryptoki.h>
+#include <glib.h>
+
+#include "platform.h"
+
+namespace cryptohome {
+
+class Pkcs11Init {
+ public:
+  Pkcs11Init();
+  virtual ~Pkcs11Init();
+
+  virtual void GetTpmTokenInfo(gchar **OUT_label,
+                               gchar **OUT_user_pin);
+
+  virtual void GetTpmTokenInfoForUser(gchar *username,
+                                      gchar **OUT_label,
+                                      gchar **OUT_user_pin);
+
+  // Returns the same label as GetTpmTokenInfoForUser.
+  virtual std::string GetTpmTokenLabelForUser(const std::string& username);
+
+  // Gets the tpm token |slot| for the given |path|.  If no slot is found,
+  // returns false.
+  virtual bool GetTpmTokenSlotForPath(const base::FilePath& path,
+                                      CK_SLOT_ID_PTR slot);
+
+  // Check if the user's PKCS #11 token is valid.
+  virtual bool IsUserTokenOK();
+
+  static const char kDefaultPin[];
+  static const char kDefaultSystemLabel[];
+  static const char kDefaultUserLabelPrefix[];
+
+ private:
+  // Returns true if a token in the given |slot_id| passes basic sanity checks.
+  // This includes checking if the |expected_label_prefix| matches the actual
+  // token label.
+  bool CheckTokenInSlot(CK_SLOT_ID slot_id,
+                        const std::string& expected_label_prefix);
+
+  scoped_ptr<Platform> default_platform_;
+  Platform* platform_;
+
+  DISALLOW_COPY_AND_ASSIGN(Pkcs11Init);
+};
+
+}  // namespace cryptohome
+
+#endif  // CRYPTOHOME_PKCS11_INIT_H_
