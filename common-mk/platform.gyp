@@ -76,7 +76,7 @@
             }],
             ['USE_vpn == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/vpn-manager/vpn-manager.gyp:*',
+                '<(DEPTH)/platform2/vpn-manager/vpn-manager.gyp:*',
               ],
             }],
           ],
