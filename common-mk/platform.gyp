@@ -31,7 +31,7 @@
             }],
             ['USE_cros_disks == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/cros-disks/cros-disks.gyp:*',
+                '<(DEPTH)/platform2/cros-disks/cros-disks.gyp:*',
               ],
             }],
             ['USE_debugd == 1', {
