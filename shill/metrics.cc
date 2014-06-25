@@ -252,10 +252,6 @@ const char Metrics::kMetricVpnUserAuthenticationType[] =
 const int Metrics::kMetricVpnUserAuthenticationTypeMax =
     Metrics::kVpnUserAuthenticationTypeMax;
 
-// static
-const char Metrics::kMetricDHCPOptionFailureDetected[] =
-    "Network.Shill.DHCPOptionFailureDetected";
-
 const char Metrics::kMetricExpiredLeaseLengthSecondsSuffix[] =
     "ExpiredLeaseLengthSeconds";
 const int Metrics::kMetricExpiredLeaseLengthSecondsMax =
@@ -1055,36 +1051,6 @@ void Metrics::NotifyCorruptedProfile() {
   SendEnumToUMA(kMetricCorruptedProfile,
                 kCorruptedProfile,
                 kCorruptedProfileMax);
-}
-
-void Metrics::NotifyDHCPOptionFailure(const Service &service) {
-  int failure_technology = kDHCPOptionFailureTechnologyUnknown;
-  switch (service.technology()) {
-    case Technology::kCellular:
-      failure_technology = kDHCPOptionFailureTechnologyCellular;
-      break;
-    case Technology::kEthernet:
-      failure_technology = kDHCPOptionFailureTechnologyEthernet;
-      break;
-    case Technology::kEthernetEap:
-      failure_technology = kDHCPOptionFailureTechnologyEthernetEap;
-      break;
-    case Technology::kWifi:
-      failure_technology = kDHCPOptionFailureTechnologyWifi;
-      break;
-    case Technology::kWiMax:
-      failure_technology = kDHCPOptionFailureTechnologyWiMax;
-      break;
-    case Technology::kVPN:
-      failure_technology = kDHCPOptionFailureTechnologyVPN;
-      break;
-    default:
-      break;
-  }
-
-  SendEnumToUMA(kMetricDHCPOptionFailureDetected,
-                failure_technology,
-                kDHCPOptionFailureTechnologyMax);
 }
 
 void Metrics::NotifyWifiAutoConnectableServices(int num_services) {

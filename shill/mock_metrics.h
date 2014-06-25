@@ -39,7 +39,6 @@ class MockMetrics : public Metrics {
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());
-  MOCK_METHOD1(NotifyDHCPOptionFailure, void(const Service &service));
   MOCK_METHOD3(SendEnumToUMA, bool(const std::string &name, int sample,
                                    int max));
   MOCK_METHOD5(SendToUMA, bool(const std::string &name, int sample, int min,

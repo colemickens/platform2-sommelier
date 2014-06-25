@@ -394,7 +394,6 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_CALL(*service, OnDHCPFailure());
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   EXPECT_CALL(*ipconfig, ResetProperties());
@@ -414,7 +413,6 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   service->static_ip_parameters_.args_.SetInt(kPrefixlenProperty, 16);
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
-  EXPECT_CALL(*service, OnDHCPFailure());
   EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
   EXPECT_CALL(*service, SetConnection(_)).Times(0);
   // The IPConfig should retain the previous values.
@@ -438,7 +436,6 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service, OnDHCPSuccess());
   EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
@@ -791,23 +788,6 @@ TEST_F(DeviceTest, ShouldUseArpGateway) {
 }
 
 TEST_F(DeviceTest, ShouldUseMinimalDHCPConfig) {
-  // With no selected service, we should not choose a minimal config.
-  EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
-
-  MockManager manager(control_interface(),
-                      dispatcher(),
-                      metrics(),
-                      glib());
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  &manager));
-  SelectService(service);
-  EXPECT_CALL(*service, ShouldUseMinimalDHCPConfig())
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
-  EXPECT_TRUE(device_->ShouldUseMinimalDHCPConfig());
   EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
 }
 

@@ -64,9 +64,6 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(eap, const EapCredentials *());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   MOCK_METHOD1(OnPropertyChanged, void(const std::string &property));
-  MOCK_METHOD0(OnDHCPFailure, void());
-  MOCK_METHOD0(OnDHCPSuccess, void());
-  MOCK_METHOD0(ShouldUseMinimalDHCPConfig, bool());
   MOCK_METHOD0(ClearExplicitlyDisconnected, void());
 
   // Set a string for this Service via |store|.  Can be wired to Save() for

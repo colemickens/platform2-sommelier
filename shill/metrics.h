@@ -264,17 +264,6 @@ class Metrics {
     kVpnUserAuthenticationTypeMax
   };
 
-  enum DHCPOptionFailureTechnology {
-    kDHCPOptionFailureTechnologyCellular = 0,
-    kDHCPOptionFailureTechnologyEthernet,
-    kDHCPOptionFailureTechnologyEthernetEap,
-    kDHCPOptionFailureTechnologyWifi,
-    kDHCPOptionFailureTechnologyWiMax,
-    kDHCPOptionFailureTechnologyVPN,
-    kDHCPOptionFailureTechnologyUnknown,
-    kDHCPOptionFailureTechnologyMax
-  };
-
   enum UserInitiatedEvent {
     kUserInitiatedEventWifiScan = 0,
     kUserInitiatedEventMax
@@ -456,11 +445,6 @@ class Metrics {
   static const int kMetricVpnRemoteAuthenticationTypeMax;
   static const char kMetricVpnUserAuthenticationType[];
   static const int kMetricVpnUserAuthenticationTypeMax;
-
-  // We have detected that a DHCP server can only deliver leases if
-  // we reduce the number of options that we request of it.  This
-  // implies an infrastructure issue.
-  static const char kMetricDHCPOptionFailureDetected[];
 
   // The length in seconds of a lease that has expired while the DHCP
   // client was attempting to renew the lease..
@@ -685,9 +669,6 @@ class Metrics {
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();
-
-  // Notifies this object about a service with DHCP infrastructure problems.
-  virtual void NotifyDHCPOptionFailure(const Service &service);
 
   // Notifies this object about user-initiated event.
   virtual void NotifyUserInitiatedEvent(int event);

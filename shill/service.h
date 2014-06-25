@@ -73,7 +73,6 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageFavorite[];
   static const char kStorageGUID[];
   static const char kStorageHasEverConnected[];
-  static const char kStorageLastDHCPOptionFailure[];
   static const char kStorageName[];
   static const char kStoragePriority[];
   static const char kStorageProxyConfig[];
@@ -124,14 +123,7 @@ class Service : public base::RefCounted<Service> {
     kCryptoRc4,
     kCryptoAes
   };
-  enum DHCPOptionFailureState {
-    kDHCPOptionFailureNotDetected,
-    kDHCPOptionFailureSuspected,
-    kDHCPOptionFailureConfirmed,
-    kDHCPOptionFailureRetestFullRequest,
-    kDHCPOptionFailureRetestMinimalRequest,
-    kDHCPOptionFailureRetestGotNoReply
-  };
+
   static const int kPriorityNone;
 
   // A constructor for the Service object
@@ -430,15 +422,6 @@ class Service : public base::RefCounted<Service> {
   // Called by the manager once after a resume.
   virtual void OnAfterResume();
 
-  // Called by the device if a DHCP attempt fails.
-  virtual void OnDHCPFailure();
-
-  // Called by the device if a DHCP attempt succeeds.
-  virtual void OnDHCPSuccess();
-
-  // Called by the device to test for historical DHCP issues.
-  virtual bool ShouldUseMinimalDHCPConfig();
-
   // Called by the manager to clear remembered state of being explicitly
   // disconnected.
   virtual void ClearExplicitlyDisconnected();
@@ -681,15 +664,6 @@ class Service : public base::RefCounted<Service> {
   static const int kReportMisconnectsThreshold;
   static const int kMaxDisconnectEventHistory;
 
-  // The number of DHCP failures to allow before we start suspecting that
-  // this may be indirectly due to the number of options we are requesting.
-  static const int kMaxDHCPOptionFailures;
-
-  // The number of DHCP failures to allow before we start suspecting that
-  // this may be indirectly due to the number of options we are requesting.
-  static const int kDHCPOptionHoldOffPeriodSeconds;
-
-
   bool GetAutoConnect(Error *error);
 
   std::string GetCheckPortal(Error *error);
@@ -828,17 +802,6 @@ class Service : public base::RefCounted<Service> {
   scoped_ptr<Sockets> sockets_;
   Time *time_;
   DiagnosticsReporter *diagnostics_reporter_;
-
-  // Tracks the number of consecutive failed DHCP attempts.
-  int consecutive_dhcp_failures_;
-
-  // Tracks the last time we had a failure that appered correlated
-  // to the DHCP client asking for too many options.
-  Timestamp last_dhcp_option_failure_;
-
-  // Tracks the current progress in deciding if DHCP failures appear
-  // correlated to requests for a large number of DHCP options.
-  DHCPOptionFailureState dhcp_option_failure_state_;
 
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;

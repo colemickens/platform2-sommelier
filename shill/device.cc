@@ -437,7 +437,7 @@ bool Device::ShouldUseArpGateway() const {
 }
 
 bool Device::ShouldUseMinimalDHCPConfig() const {
-  return selected_service_ && selected_service_->ShouldUseMinimalDHCPConfig();
+  return false;
 }
 
 bool Device::IsUsingStaticIP() const {
@@ -556,7 +556,6 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
   // SetConnection must occur after the UpdateFromIPConfig so the
   // service can use the values derived from the connection.
   if (selected_service_) {
-    selected_service_->OnDHCPSuccess();
     selected_service_->SetConnection(connection_);
   }
   // The service state change needs to happen last, so that at the
@@ -581,8 +580,6 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
   // TODO(pstew): This logic gets yet more complex when multiple
   // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
   if (selected_service_) {
-    selected_service_->OnDHCPFailure();
-
     if (IsUsingStaticIP()) {
       // Consider three cases:
       //
