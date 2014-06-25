@@ -36,7 +36,7 @@
             }],
             ['USE_debugd == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/debugd/debugd.gyp:*',
+                '<(DEPTH)/platform2/debugd/debugd.gyp:*',
               ],
             }],
             ['USE_feedback == 1', {
