@@ -290,7 +290,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, ShouldUseArpGateway);
-  FRIEND_TEST(DeviceTest, ShouldUseMinimalDHCPConfig);
   FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, StartTrafficMonitor);
   FRIEND_TEST(DeviceTest, Stop);
@@ -460,11 +459,6 @@ class Device : public base::RefCounted<Device> {
   // Specifies whether an ARP gateway should be used for the
   // device technology.
   virtual bool ShouldUseArpGateway() const;
-
-  // Specifies whether DHCP replies have not been succeeding or we have
-  // previously noticed that requesting a minimal DHCP response seems
-  // to alleviate issues with receiving a reply.
-  bool ShouldUseMinimalDHCPConfig() const;
 
   // Indicates if the selected service is configured with a static IP address.
   bool IsUsingStaticIP() const;

@@ -17,7 +17,6 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface *control_interface,
                  string(),
                  string(),
                  false,
-                 false,
                  NULL) {}
 
 MockDHCPConfig::~MockDHCPConfig() {}

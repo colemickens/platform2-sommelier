@@ -297,7 +297,7 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   scoped_refptr<MockDHCPConfig> dhcp_config(new MockDHCPConfig(
                                                     control_interface(),
                                                     kDeviceName));
-  EXPECT_CALL(*dhcp_provider, CreateConfig(_, _, _, _, _))
+  EXPECT_CALL(*dhcp_provider, CreateConfig(_, _, _, _))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP())
       .WillOnce(Return(false));
@@ -785,10 +785,6 @@ TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
 
 TEST_F(DeviceTest, ShouldUseArpGateway) {
   EXPECT_FALSE(device_->ShouldUseArpGateway());
-}
-
-TEST_F(DeviceTest, ShouldUseMinimalDHCPConfig) {
-  EXPECT_FALSE(device_->ShouldUseMinimalDHCPConfig());
 }
 
 TEST_F(DeviceTest, PerformTDLSOperation) {

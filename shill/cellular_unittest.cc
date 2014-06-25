@@ -745,7 +745,7 @@ TEST_F(CellularTest, StartLinked) {
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->set_meid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_)).Times(3);
@@ -1254,7 +1254,7 @@ TEST_F(CellularTest, LinkEventWontDestroyService) {
 }
 
 TEST_F(CellularTest, UseNoArpGateway) {
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, false, false))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, false))
       .WillOnce(Return(dhcp_config_));
   device_->AcquireIPConfig();
 }
@@ -1442,7 +1442,7 @@ TEST_F(CellularTest, LinkEventUpWithPPP) {
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
   device_->ppp_task_ = mock_task.Pass();
   device_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .Times(0);
   EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   device_->LinkEvent(IFF_UP, 0);
@@ -1451,7 +1451,7 @@ TEST_F(CellularTest, LinkEventUpWithPPP) {
 TEST_F(CellularTest, LinkEventUpWithoutPPP) {
   // If PPP is not running, fire up DHCP.
   device_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP());
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_)).Times(AnyNumber());
@@ -2045,7 +2045,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));

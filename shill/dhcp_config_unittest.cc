@@ -49,7 +49,6 @@ const char kLeaseFileSuffix[] = "leasefilesuffix";
 const bool kArpGateway = true;
 const bool kHasHostname = true;
 const bool kHasLeaseSuffix = true;
-const bool kMinimalConfig = true;
 }  // namespace
 
 class DHCPConfigTest : public PropertyStoreTest {
@@ -64,7 +63,6 @@ class DHCPConfigTest : public PropertyStoreTest {
                                kHostName,
                                kLeaseFileSuffix,
                                kArpGateway,
-                               !kMinimalConfig,
                                glib())) {}
 
   virtual void SetUp() {
@@ -83,12 +81,10 @@ class DHCPConfigTest : public PropertyStoreTest {
 
   DHCPConfigRefPtr CreateMockMinijailConfig(const string &hostname,
                                             const string &lease_suffix,
-                                            bool arp_gateway,
-                                            bool minimal_config);
+                                            bool arp_gateway);
   DHCPConfigRefPtr CreateRunningConfig(const string &hostname,
                                        const string &lease_suffix,
-                                       bool arp_gateway,
-                                       bool minimal_config);
+                                       bool arp_gateway);
   void StopRunningConfigAndExpect(DHCPConfigRefPtr config,
                                   bool lease_file_exists);
 
@@ -112,8 +108,7 @@ const unsigned int DHCPConfigTest::kTag = 77;
 DHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
     const string &hostname,
     const string &lease_suffix,
-    bool arp_gateway,
-    bool minimal_config) {
+    bool arp_gateway) {
   DHCPConfigRefPtr config(new DHCPConfig(&control_,
                                          dispatcher(),
                                          DHCPProvider::GetInstance(),
@@ -121,18 +116,15 @@ DHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
                                          hostname,
                                          lease_suffix,
                                          arp_gateway,
-                                         minimal_config,
                                          glib()));
   config->minijail_ = minijail_.get();
 
   return config;
 }
 
-DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(
-    const string &hostname,
-    const string &lease_suffix,
-    bool arp_gateway,
-    bool minimal_config) {
+DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
+                                                     const string &lease_suffix,
+                                                     bool arp_gateway) {
   DHCPConfigRefPtr config(new DHCPConfig(&control_,
                                          dispatcher(),
                                          DHCPProvider::GetInstance(),
@@ -140,7 +132,6 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(
                                          hostname,
                                          lease_suffix,
                                          arp_gateway,
-                                         minimal_config,
                                          glib()));
   config->minijail_ = minijail_.get();
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _))
@@ -312,8 +303,7 @@ TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_EQ(0, config_->pid_);
 }
 
-MATCHER_P4(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix,
-           has_minimal_config, "") {
+MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
   if (string(arg[0]) != "/sbin/dhcpcd" ||
       string(arg[1]) != "-B" ||
       string(arg[2]) != "-q") {
@@ -337,14 +327,6 @@ MATCHER_P4(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix,
     end_offset += 2;
   }
 
-  if (has_minimal_config) {
-    if (string(arg[end_offset]) != "-f" ||
-        string(arg[end_offset + 1]) != "/etc/dhcpcd-minimal.conf") {
-      return false;
-    }
-    end_offset += 2;
-  }
-
   string device_arg = has_lease_suffix ?
       string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
   return string(arg[end_offset]) == device_arg && arg[end_offset + 1] == NULL;
@@ -353,8 +335,7 @@ MATCHER_P4(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix,
 TEST_F(DHCPConfigTest, StartWithHostname) {
   EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDArgs(kHasHostname,
                                                         kArpGateway,
-                                                        kHasLeaseSuffix,
-                                                        !kMinimalConfig), _))
+                                                        kHasLeaseSuffix), _))
       .WillOnce(Return(false));
   EXPECT_FALSE(config_->Start());
 }
@@ -362,12 +343,10 @@ TEST_F(DHCPConfigTest, StartWithHostname) {
 TEST_F(DHCPConfigTest, StartWithoutHostname) {
   DHCPConfigRefPtr config = CreateMockMinijailConfig("",
                                                      kLeaseFileSuffix,
-                                                     kArpGateway,
-                                                     !kMinimalConfig);
+                                                     kArpGateway);
   EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDArgs(!kHasHostname,
                                                         kArpGateway,
-                                                        kHasLeaseSuffix,
-                                                        !kMinimalConfig), _))
+                                                        kHasLeaseSuffix), _))
       .WillOnce(Return(false));
   EXPECT_FALSE(config->Start());
 }
@@ -375,12 +354,10 @@ TEST_F(DHCPConfigTest, StartWithoutHostname) {
 TEST_F(DHCPConfigTest, StartWithoutArpGateway) {
   DHCPConfigRefPtr config = CreateMockMinijailConfig(kHostName,
                                                      kLeaseFileSuffix,
-                                                     !kArpGateway,
-                                                     !kMinimalConfig);
+                                                     !kArpGateway);
   EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDArgs(kHasHostname,
                                                         !kArpGateway,
-                                                        kHasLeaseSuffix,
-                                                        !kMinimalConfig), _))
+                                                        kHasLeaseSuffix), _))
       .WillOnce(Return(false));
   EXPECT_FALSE(config->Start());
 }
@@ -388,25 +365,10 @@ TEST_F(DHCPConfigTest, StartWithoutArpGateway) {
 TEST_F(DHCPConfigTest, StartWithoutLeaseSuffix) {
   DHCPConfigRefPtr config = CreateMockMinijailConfig(kHostName,
                                                      kDeviceName,
-                                                     kArpGateway,
-                                                     !kMinimalConfig);
+                                                     kArpGateway);
   EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDArgs(kHasHostname,
                                                         kArpGateway,
-                                                        !kHasLeaseSuffix,
-                                                        !kMinimalConfig), _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(config->Start());
-}
-
-TEST_F(DHCPConfigTest, StartWithMinimalConfig) {
-  DHCPConfigRefPtr config = CreateMockMinijailConfig(kHostName,
-                                                     kLeaseFileSuffix,
-                                                     kArpGateway,
-                                                     kMinimalConfig);
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDArgs(kHasHostname,
-                                                        kArpGateway,
-                                                        kHasLeaseSuffix,
-                                                        kMinimalConfig), _))
+                                                        !kHasLeaseSuffix), _))
       .WillOnce(Return(false));
   EXPECT_FALSE(config->Start());
 }
@@ -721,14 +683,13 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
 
 TEST_F(DHCPConfigTest, StartSuccessEphemeral) {
   DHCPConfigRefPtr config =
-      CreateRunningConfig(kHostName, kDeviceName, kArpGateway, !kMinimalConfig);
+      CreateRunningConfig(kHostName, kDeviceName, kArpGateway);
   StopRunningConfigAndExpect(config, false);
 }
 
 TEST_F(DHCPConfigTest, StartSuccessPersistent) {
   DHCPConfigRefPtr config =
-      CreateRunningConfig(kHostName, kLeaseFileSuffix, kArpGateway,
-                          !kMinimalConfig);
+      CreateRunningConfig(kHostName, kLeaseFileSuffix, kArpGateway);
   StopRunningConfigAndExpect(config, true);
 }
 

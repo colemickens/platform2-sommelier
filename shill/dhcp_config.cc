@@ -48,7 +48,6 @@ const char DHCPConfig::kConfigurationKeyWebProxyAutoDiscoveryUrl[] =
     "WebProxyAutoDiscoveryUrl";
 const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
 const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
-const char DHCPConfig::kDHCPCDMinimalConfig[] = "/etc/dhcpcd-minimal.conf";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s.pid";
@@ -72,7 +71,6 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
                        const string &request_hostname,
                        const string &lease_file_suffix,
                        bool arp_gateway,
-                       bool is_minimal_config,
                        GLib *glib)
     : IPConfig(control_interface, device_name, kType),
       proxy_factory_(ProxyFactory::GetInstance()),
@@ -80,7 +78,6 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       request_hostname_(request_hostname),
       lease_file_suffix_(lease_file_suffix),
       arp_gateway_(arp_gateway),
-      is_minimal_config_(is_minimal_config),
       pid_(0),
       child_watch_tag_(0),
       is_lease_active_(false),
@@ -239,10 +236,6 @@ bool DHCPConfig::Start() {
   if (arp_gateway_) {
     args.push_back(const_cast<char *>("-R"));  // ARP for default gateway.
     args.push_back(const_cast<char *>("-U"));  // Enable unicast ARP on renew.
-  }
-  if (is_minimal_config_) {
-    args.push_back(const_cast<char *>("-f"));  // Supply a configuration file.
-    args.push_back(const_cast<char *>(kDHCPCDMinimalConfig));
   }
   string interface_arg(device_name());
   if (lease_file_suffix_ != device_name()) {

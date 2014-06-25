@@ -202,7 +202,7 @@ TEST_F(WiMaxTest, OnStatusChanged) {
 }
 
 TEST_F(WiMaxTest, UseNoArpGateway) {
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestLinkName, _, _, false, false))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestLinkName, _, _, false))
       .WillOnce(Return(dhcp_config_));
   device_->AcquireIPConfig();
 }

@@ -436,10 +436,6 @@ bool Device::ShouldUseArpGateway() const {
   return false;
 }
 
-bool Device::ShouldUseMinimalDHCPConfig() const {
-  return false;
-}
-
 bool Device::IsUsingStaticIP() const {
   if (!selected_service_) {
     return false;
@@ -458,8 +454,7 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_,
                                            manager_->GetHostName(),
                                            lease_name,
-                                           arp_gateway,
-                                           ShouldUseMinimalDHCPConfig());
+                                           arp_gateway);
   ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
                                          weak_ptr_factory_.GetWeakPtr()));
   ipconfig_->RegisterFailureCallback(Bind(&Device::OnIPConfigFailed,

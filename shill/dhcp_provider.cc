@@ -54,8 +54,7 @@ void DHCPProvider::Init(ControlInterface *control_interface,
 DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
                                             const string &host_name,
                                             const string &lease_file_suffix,
-                                            bool arp_gateway,
-                                            bool minimal_config) {
+                                            bool arp_gateway) {
   SLOG(DHCP, 2) << __func__ << " device: " << device_name;
   return new DHCPConfig(control_interface_,
                         dispatcher_,
@@ -64,7 +63,6 @@ DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
                         host_name,
                         lease_file_suffix,
                         arp_gateway,
-                        minimal_config,
                         glib_);
 }
 
