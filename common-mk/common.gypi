@@ -43,6 +43,12 @@
 
     'deps%': '',
     'libdir%': '/usr/lib',
+
+    'cflags_no_exceptions': [
+      '-fno-exceptions',
+      '-fno-unwind-tables',
+      '-fno-asynchronous-unwind-tables',
+    ],
   },
   'conditions': [
     ['USE_cros_host == 1', {
@@ -69,10 +75,10 @@
       '-Wa,--noexecstack',
     ],
     'cflags_c': [
-      '<(external_cflags)',
+      '<@(external_cflags)',
     ],
     'cflags_cc': [
-      '<(external_cxxflags)',
+      '<@(external_cxxflags)',
     ],
     'link_settings': {
       'ldflags': [
@@ -101,9 +107,19 @@
       }],
       ['enable_exceptions == 0', {
         'cflags_cc': [
-          '-fno-exceptions',
-          '-fno-unwind-tables',
-          '-fno-asynchronous-unwind-tables',
+          '<@(cflags_no_exceptions)',
+        ],
+        'cflags_c': [
+          '<@(cflags_no_exceptions)',
+        ],
+      }],
+      ['enable_exceptions == 1', {
+        # Remove the no-exceptions flags from both cflags_cc and cflags_c.
+        'cflags_cc!': [
+          '<@(cflags_no_exceptions)',
+        ],
+        'cflags_c!': [
+          '<@(cflags_no_exceptions)',
         ],
       }],
       ['USE_cros_host == 0', {
