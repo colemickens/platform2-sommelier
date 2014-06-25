@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.debugd">
+    <method name="PingStart">
+      <tp:docstring>
+        Starts pinging the specified hostname with the specified options, with
+        output directed to the given output file descriptor. The returned opaque
+        string functions as a handle for this particular ping. Multiple pings
+        can be running at once.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="destination" type="s" direction="in">
+        <tp:docstring>
+          Destination host to connect to.
+        </tp:docstring>
+      </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options to pass to the ping command. Accepted keys include:
+            broadcast (bool): Send broadcast pings.
+            count (int default 4): Number of packets to send.
+            interval (int): Time to wait between packets.
+            numeric (bool): Print numeric remote hosts.
+            packetsize (int): Size of each packet sent.
+            waittime (int): Time to wait for a response.
+          Unrecognized keys return a DBus error and print no output to the
+          supplied file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this ping.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="PingStop">
+      <tp:docstring>
+        Stops a running ping.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the ping to stop. If an empty string is passed, stops all
+        running pings.
+      </arg>
+    </method>
+    <method name="SystraceStart">
+      <tp:docstring>
+        Start system/kernel tracing.  If tracing is already enabled it is
+        stopped first and any collected events are discarded.  The kernel
+        must have been configured to support tracing.
+      </tp:docstring>
+      <arg name="categories" type="s" direction="in">
+        <tp:docstring>
+          Trace event categories to enable.  If none are specified then
+          all known events are enabled.  Multiple categories are specified
+          separated by spaces.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SystraceStop">
+      <tp:docstring>
+        Stop system/kernel tracing and write the collected event data.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send event data to.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SystraceStatus">
+      <tp:docstring>
+        Return current status for system/kernel tracing including whether it
+        is enabled, the tracing clock, and the set of events enabled.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+    </method>
+    <method name="TracePathStart">
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="destination" type="s" direction="in">
+        <tp:docstring>
+          Destination host[/port] to trace a path to.
+        </tp:docstring>
+      </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options to pass to the tracepath command:
+            numeric (bool): Print numeric remote hosts.
+          Unrecognized keys return a DBus error and print no output to the
+          supplied file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this ping.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="TracePathStop">
+      <tp:docstring>
+        Stops a running tracepath.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the tracepath to stop. If an empty string is passed, stops
+          all running tracepaths.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetRoutes">
+      <tp:docstring>
+        Returns the routing table.
+      </tp:docstring>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options:
+            numeric (bool): Use numeric remote hosts.
+            v6 (bool): Use ipv6.
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="as" direction="out">
+        <tp:docstring>
+          The list of routes.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetModemStatus">
+      <tp:docstring>
+        Returns modem information as a JSON string. See the design document for
+        a rationale.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          Modem information as a JSON string.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="RunModemCommand">
+      <tp:docstring>
+        Runs the specified command through the modem serial interface and
+        returns the output.
+      </tp:docstring>
+      <arg name="command" type="s" direction="in">
+        <tp:docstring>
+          Supported commands: get-oma-status, start-oma, get-prl, ciprl-update,
+          get-service.
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="s" direction="out" />
+    </method>
+    <method name="GetNetworkStatus">
+      <tp:docstring>
+        Returns network information as a JSON string. See the design document
+        for a rationale.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          Network information as a JSON string.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetWiMaxStatus">
+      <tp:docstring>
+        Returns WiMAX information as a JSON string. See the design document for
+        a rationale.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          WiMAX information as a JSON string.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetRichPerfData">
+      <tp:docstring>
+        Returns perf event data. Does systemwide profiling. It can profile
+        events other than cycles (example: iTLB-misses), and can collect branch
+        profiles. The exact profile to be collected is chosen at random
+        and depends on what CPU is used by the system (certain CPUs do not
+        support certain profiling modes).
+      </tp:docstring>
+      <arg name="duration" type="u" direction="in">
+        <tp:docstring>
+          Duration to run perf.
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="ay" direction="out">
+        <tp:docstring>
+          Perf event data as a protobuf.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetDebugLogs">
+      <tp:docstring>
+        Packages up system logs into a .tar.gz and returns it over the supplied
+        file descriptor.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to emit the .tar.gz file over.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SetDebugMode">
+      <tp:docstring>
+        Enables or disables debug mode for a specified subsystem.
+      </tp:docstring>
+      <arg name="subsystem" type="s" direction="in">
+        <tp:docstring>
+          Subsystem to change the debug mode of. One of "cellular", "wifi",
+          "wimax", "ethernet" or "none".
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetLog">
+      <tp:docstring>
+        Fetches the contents of a single system log, identified by name. See
+        /src/log_tool.cc for a list of valid names.
+      </tp:docstring>
+      <arg name="log" type="s" direction="in" />
+      <arg name="contents" type="s" direction="out" />
+    </method>
+    <method name="GetAllLogs">
+      <tp:docstring>
+        Returns all the system logs.
+      </tp:docstring>
+      <arg name="logs" type="a{ss}" direction="out" />
+    </method>
+    <method name="GetFeedbackLogs">
+      <tp:docstring>
+        Returns system logs for feedback reports.
+      </tp:docstring>
+      <arg name="logs" type="a{ss}" direction="out" />
+    </method>
+    <method name="GetUserLogFiles">
+      <tp:docstring>
+        Returns list of User log file names that Chrome itself must collect.
+        These logfiles are relative to the user's profile path and must be
+        collected separately for each user.
+      </tp:docstring>
+      <arg name="user_log_files" type="a{ss}" direction="out" />
+    </method>
+    <method name="GetExample">
+      <tp:docstring>
+        Example method. See /doc/hacking.md.
+      </tp:docstring>
+      <arg name="result" type="s" direction="out" />
+    </method>
+    <method name="GetInterfaces">
+      <tp:docstring>
+        Returns information about network interfaces as a JSON string.
+      </tp:docstring>
+      <arg name="result" type="s" direction="out" />
+    </method>
+    <method name="TestICMP">
+      <tp:docstring>
+        Tests ICMP connectivity to a specified host.
+      </tp:docstring>
+      <arg name="host" type="s" direction="in" />
+      <arg name="result" type="s" direction="out" />
+    </method>
+    <method name="TestICMPWithOptions">
+      <tp:docstring>
+        Tests ICMP connectivity to a specified host (with options).
+      </tp:docstring>
+      <arg name="host" type="s" direction="in" />
+      <arg name="options" type="a{ss}" direction="in" />
+      <arg name="result" type="s" direction="out" />
+    </method>
+    <method name="Smartctl">
+      <tp:docstring>
+        Runs Smartctl utility.
+      </tp:docstring>
+      <arg name="option" type="s" direction="in">
+        <tp:docstring>
+          Option to pass to the Smartctl command:
+            abort_test: aborts the offline test.
+            attributes: prints device attributes.
+            capabilities: prints generic smart capabilities.
+            error: prints device error messages.
+            health: prints device health status.
+            selftest: prints offline test results.
+            short_test: starts a short offline test.
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="s" direction="out">
+        <tp:docstring>
+          Smartctl command output.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="MemtesterStart">
+      <tp:docstring>
+        Starts running memtester.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="memory" type="u" direction="in">
+        <tp:docstring>
+          The amount of memory to allocate and test in megabytes.
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle to the memtester.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="MemtesterStop">
+      <tp:docstring>
+        Stops running memtester.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the memtester to stop. If an empty string is passed, stops
+          all running memtests.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="BadblocksStart">
+      <tp:docstring>
+        Starts running badblocks test.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle to the badblocks.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="BadblocksStop">
+      <tp:docstring>
+        Stops running badblocks.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the badblocks to stop. If an empty string is passed, stops
+          all running badblocks.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="PacketCaptureStart">
+      <tp:docstring>
+        Starts a packet capture with the specified options, with diagnostic
+        status directed to the "statfd" file descriptor and packet capture
+        data sent to the "outfd" file descriptor.  The returned opaque string
+        functions as a handle for this particular packet capture.  Multiple
+        captures can be running at once.  Captures can be initiated on
+        Ethernet-like devices or WiFi devices in "client mode" (showing only
+        Ethernet frames) by specifying the "device" parameter (see below).
+        By specifying a channel, the script will find or create a "monitor
+        mode" interface if one is available and produce an "over the air"
+        packet capture.  The name of the output packet capture file is sent
+        to the output file descriptor.
+      </tp:docstring>
+      <arg name="statfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send status information to.
+        </tp:docstring>
+      </arg>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send packet capture output to.
+        </tp:docstring>
+      </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options to pass to the packet capture command. Accepted keys include:
+            device (string): An existing device to perform a packet capture on.
+            frequency (int): Radio frequency (in MHz) to perform capture on.
+            ht_location (string): The string "above" or "below", representing
+                the offset of any secondary channel used in a 40 MHz HT
+                (high throughput) caputre.
+            monitor_connection_on (string): Instead of providing the "frequency"
+                and "ht_location" parameters above, this paramter specifies the
+                name of a currently connected 802.11 interface.  A packet
+                capture is initated on the same channel as this connection.
+          Unrecognized keys return a DBus error and print no output to the
+          supplied file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this packet capture.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="PacketCaptureStop">
+      <tp:docstring>
+        Stops a running packet capture.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the packet capture to stop. If an empty string is passed,
+        stops all running packet captures.
+      </arg>
+    </method>
+    <method name="LogKernelTaskStates">
+      <tp:docstring>
+        Triggers show-task-states(T) SysRq.
+        See https://www.kernel.org/doc/Documentation/sysrq.txt.
+      </tp:docstring>
+    </method>
+    <method name="UploadCrashes">
+      <tp:docstring>
+        Triggers uploading of system crashes (the crash_sender program).
+      </tp:docstring>
+    </method>
+  </interface>
+</node>
