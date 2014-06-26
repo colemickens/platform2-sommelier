@@ -14,7 +14,6 @@
 #include <base/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/platform_file.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
