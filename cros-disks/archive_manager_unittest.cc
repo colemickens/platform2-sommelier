@@ -187,18 +187,18 @@ TEST_F(ArchiveManagerTest, GetFileExtension) {
 TEST_F(ArchiveManagerTest, GetAVFSPath) {
   manager_.RegisterFileExtension("zip", "#uzip");
 
-  EXPECT_EQ("/var/run/avfsroot/users/user/Downloads/a.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/users/user/Downloads/a.zip#uzip",
             manager_.GetAVFSPath("/home/chronos/user/Downloads/a.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/users/u-0123456789abcdef0123456789abcdef01234567"
+  EXPECT_EQ("/run/avfsroot/users/u-0123456789abcdef0123456789abcdef01234567"
             "/Downloads/a.zip#uzip",
             manager_.GetAVFSPath(
                 "/home/chronos/u-0123456789abcdef0123456789abcdef01234567"
                 "/Downloads/a.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/media/archive/test.zip/doc.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/archive/test.zip/doc.zip#uzip",
             manager_.GetAVFSPath("/media/archive/test.zip/doc.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/media/removable/disk1/test.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/removable/disk1/test.zip#uzip",
             manager_.GetAVFSPath("/media/removable/disk1/test.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/media/removable/disk1/test.ZIP#uzip",
+  EXPECT_EQ("/run/avfsroot/media/removable/disk1/test.ZIP#uzip",
             manager_.GetAVFSPath("/media/removable/disk1/test.ZIP", "zip"));
 }
 
@@ -219,41 +219,41 @@ TEST_F(ArchiveManagerTest, GetAVFSPathWithUnsupportedExtensions) {
 TEST_F(ArchiveManagerTest, GetAVFSPathWithNestedArchives) {
   manager_.RegisterFileExtension("zip", "#uzip");
 
-  EXPECT_EQ("/var/run/avfsroot/media/archive/l2.zip/l1.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/archive/l2.zip/l1.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip", "zip"));
 
   // archive within an archive
   manager_.AddMountVirtualPath("/media/archive/l2.zip",
-                               "/var/run/avfsroot/media/l2.zip#uzip");
-  EXPECT_EQ("/var/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip",
+                               "/run/avfsroot/media/l2.zip#uzip");
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/media/l2.zip#uzip/t/l1.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/t/l1.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l2.zip/t/l1.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/media/l2.zip#uzip/t/doc/l1.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/t/doc/l1.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l2.zip/t/doc/l1.zip", "zip"));
 
   // archive within an archive within an archive
   manager_.AddMountVirtualPath(
       "/media/archive/l1.zip",
-      "/var/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip");
-  EXPECT_EQ("/var/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip/l0.zip#uzip",
+      "/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip");
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip/l0.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l1.zip/l0.zip", "zip"));
-  EXPECT_EQ("/var/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip/test/l0.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/l1.zip#uzip/test/l0.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l1.zip/test/l0.zip", "zip"));
   manager_.RemoveMountVirtualPath("/media/archive/l1.zip");
 
   manager_.AddMountVirtualPath(
       "/media/archive/l1.zip",
-      "/var/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip");
-  EXPECT_EQ("/var/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/l0.zip#uzip",
+      "/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip");
+  EXPECT_EQ("/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/l0.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l1.zip/l0.zip", "zip"));
   EXPECT_EQ(
-      "/var/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/test/l0.zip#uzip",
+      "/run/avfsroot/media/l2.zip#uzip/test/l1.zip#uzip/test/l0.zip#uzip",
       manager_.GetAVFSPath("/media/archive/l1.zip/test/l0.zip", "zip"));
   manager_.RemoveMountVirtualPath("/media/archive/l1.zip");
 
   manager_.RemoveMountVirtualPath("/media/archive/l2.zip");
-  EXPECT_EQ("/var/run/avfsroot/media/archive/l2.zip/l1.zip#uzip",
+  EXPECT_EQ("/run/avfsroot/media/archive/l2.zip/l1.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip", "zip"));
 }
 

@@ -44,10 +44,10 @@ const char kAVFSMountUser[] = "avfs";
 const char kAVFSSeccompFilterPolicyFile[] =
     "/opt/google/cros-disks/avfsd-seccomp.policy";
 const char kAVFSMountProgram[] = "/usr/bin/avfsd";
-const char kAVFSRootDirectory[] = "/var/run/avfsroot";
-const char kAVFSLogFile[] = "/var/run/avfsroot/avfs.log";
-const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
-const char kAVFSUsersDirectory[] = "/var/run/avfsroot/users";
+const char kAVFSRootDirectory[] = "/run/avfsroot";
+const char kAVFSLogFile[] = "/run/avfsroot/avfs.log";
+const char kAVFSMediaDirectory[] = "/run/avfsroot/media";
+const char kAVFSUsersDirectory[] = "/run/avfsroot/users";
 const char kMediaDirectory[] = "/media";
 const char kUserRootDirectory[] = "/home/chronos";
 const AVFSPathMapping kAVFSPathMapping[] = {
@@ -217,11 +217,11 @@ string ArchiveManager::GetAVFSPath(const string& path,
   // When mounting an archive within another mounted archive, we need to
   // resolve the virtual path of the inner archive to the "unfolded"
   // form within the AVFS mount, such as
-  //   "/var/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#"
+  //   "/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#"
   // instead of the "nested" form, such as
-  //   "/var/run/avfsroot/media/archive/layer2.zip/test/doc/layer1.zip#"
+  //   "/run/avfsroot/media/archive/layer2.zip/test/doc/layer1.zip#"
   // where "/media/archive/layer2.zip" is a mount point to the virtual
-  // path "/var/run/avfsroot/media/layer2.zip#".
+  // path "/run/avfsroot/media/layer2.zip#".
   //
   // Mounting the inner archive using the nested form may cause problems
   // reading files from the inner archive. To avoid that, we first try to
@@ -232,9 +232,9 @@ string ArchiveManager::GetAVFSPath(const string& path,
   //
   // e.g. Given |path| is "/media/archive/layer2.zip/test/doc/layer1.zip",
   //      and "/media/archive/layer2.zip" is a mount point to the virtual
-  //      path "/var/run/avfsroot/media/layer2.zip#" within the AVFS mount.
+  //      path "/run/avfsroot/media/layer2.zip#" within the AVFS mount.
   //      The following code should return the virtual path of |path| as
-  //      "/var/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#".
+  //      "/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#".
   map<string, string>::const_iterator handler_iterator =
       extension_handlers_.find(extension);
   if (handler_iterator == extension_handlers_.end())
