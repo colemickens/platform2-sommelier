@@ -20,7 +20,7 @@
             }],
             ['USE_cellular == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/cromo/cromo.gyp:*',
+                '<(DEPTH)/platform2/cromo/cromo.gyp:*',
                 '<(DEPTH)/platform2/mist/mist.gyp:*',
               ],
             }],
