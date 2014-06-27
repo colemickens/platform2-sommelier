@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.CrosDisks">
+    <tp:struct name="DiskDevice" array-name="DiskDevices">
+      <tp:member name="DeviceIsDrive" type="b"> </tp:member>
+      <tp:member name="DevicePresentationHide" type="b"> </tp:member>
+      <tp:member name="DeviceIsMounted" type="b"> </tp:member>
+      <tp:member name="DeviceMediaType" type="u"> </tp:member>
+      <tp:member name="DeviceMountPaths" type="s"> </tp:member>
+      <tp:member name="DeviceIsMediaAvailable" type="b"> </tp:member>
+      <tp:member name="DeviceIsOnBootDevice" type="b"> </tp:member>
+      <tp:member name="DeviceIsVirtual" type="b"> </tp:member>
+      <tp:member name="IdUuid" type="s"> </tp:member>
+      <tp:member name="IdLabel" type="s"> </tp:member>
+      <tp:member name="VendorId" type="s"> </tp:member>
+      <tp:member name="VendorName" type="s"> </tp:member>
+      <tp:member name="ProductId" type="s"> </tp:member>
+      <tp:member name="ProductName" type="s"> </tp:member>
+      <tp:member name="DeviceFile" type="s"> </tp:member>
+      <tp:member name="DriveModel" type="s"> </tp:member>
+      <tp:member name="DriveIsRotational" type="b"> </tp:member>
+      <tp:member name="DeviceIsReadOnly" type="b"> </tp:member>
+      <tp:member name="DeviceSize" type="t"> </tp:member>
+    </tp:struct>
+    <tp:struct name="MountEntry" array-name="MountEntries">
+      <tp:member name="Status" type="u"> </tp:member>
+      <tp:member name="SourcePath" type="s"> </tp:member>
+      <tp:member name="SourceType" type="u"> </tp:member>
+      <tp:member name="MountPath" type="s"> </tp:member>
+    </tp:struct>
+    <method name="Mount">
+      <arg name="path" type="s" direction="in">
+      </arg>
+      <arg name="filesystemType" type="s" direction="in">
+      </arg>
+      <arg name="options" type="as" direction="in">
+      </arg>
+    </method>
+    <method name="Unmount">
+      <arg name="path" type="s" direction="in">
+      </arg>
+      <arg name="options" type="as" direction="in">
+      </arg>
+    </method>
+    <method name="UnmountAll">
+    </method>
+    <method name="EnumerateDevices">
+      <arg name="devices" type="as" direction="out">
+      </arg>
+    </method>
+    <method name="EnumerateAutoMountableDevices">
+      <arg name="devices" type="as" direction="out">
+      </arg>
+    </method>
+    <method name="EnumerateMountEntries">
+      <arg name="mountEntries" type="a(usus)" direction="out"
+           tp:type="MountEntries">
+      </arg>
+    </method>
+    <method name="GetDeviceProperties">
+      <arg name="devicePath" type="s" direction="in">
+      </arg>
+      <arg name="device" type="a{sv}" direction="out" tp:type="DiskDevices">
+      </arg>
+    </method>
+    <method name="Format">
+      <arg name="path" type="s" direction="in">
+      </arg>
+      <arg name="filesystemType" type="s" direction="in">
+      </arg>
+      <arg name="options" type="as" direction="in">
+      </arg>
+    </method>
+    <method name="IsAlive">
+      <tp:docstring>
+        Test method to verify that CrosDisks service is working.
+      </tp:docstring>
+      <arg name="result" type="b" direction="out">
+        <tp:docstring>
+          Boolean indicating whether CrosDisks service is alive.
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <property name="ExperimentalFeaturesEnabled" type="b" access="readwrite"/>
+
+    <signal name="DeviceAdded">
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DeviceRemoved">
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DeviceScanned">
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DiskAdded">
+      <arg name="disk" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DiskRemoved">
+      <arg name="disk" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DiskChanged">
+      <arg name="disk" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="MountCompleted">
+      <arg name="status" type="u" direction="out">
+      </arg>
+      <arg name="sourcePath" type="s" direction="out">
+      </arg>
+      <arg name="sourceType" type="u" direction="out">
+      </arg>
+      <arg name="mountPath" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="FormatCompleted">
+      <arg name="status" type="u" direction="out">
+      </arg>
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+  </interface>
+</node>
