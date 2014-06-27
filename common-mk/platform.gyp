@@ -26,7 +26,7 @@
             }],
             ['USE_crash_reporting == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/crash-reporter/crash-reporter.gyp:*',
+                '<(DEPTH)/platform2/crash-reporter/crash-reporter.gyp:*',
               ],
             }],
             ['USE_cros_disks == 1', {
