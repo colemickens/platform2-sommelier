@@ -232,6 +232,8 @@ enum ShutdownReason {
   SHUTDOWN_REASON_SUSPEND_FAILED   = 3,
   // Battery level was below threshold during dark resume from suspend.
   SHUTDOWN_REASON_DARK_RESUME      = 4,
+  // System is being rebooted to apply an update.
+  SHUTDOWN_REASON_SYSTEM_UPDATE    = 5,
 };
 
 // Returns human-readable descriptions of enum values.

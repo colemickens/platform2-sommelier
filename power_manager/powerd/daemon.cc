@@ -1013,15 +1013,33 @@ void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
 
 scoped_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
     dbus::MethodCall* method_call) {
-  LOG(INFO) << "Got " << kRequestShutdownMethod << " message";
+  LOG(INFO) << "Got " << kRequestShutdownMethod << " message from "
+            << method_call->GetSender();
   ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
   return scoped_ptr<dbus::Response>();
 }
 
 scoped_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
     dbus::MethodCall* method_call) {
-  LOG(INFO) << "Got " << kRequestRestartMethod << " message";
-  ShutDown(SHUTDOWN_MODE_REBOOT, SHUTDOWN_REASON_USER_REQUEST);
+  LOG(INFO) << "Got " << kRequestRestartMethod << " message from "
+            << method_call->GetSender();
+  ShutdownReason shutdown_reason = SHUTDOWN_REASON_USER_REQUEST;
+
+  dbus::MessageReader reader(method_call);
+  int32 arg = 0;
+  if (reader.PopInt32(&arg)) {
+    switch (static_cast<RequestRestartReason>(arg)) {
+      case REQUEST_RESTART_FOR_USER:
+        shutdown_reason = SHUTDOWN_REASON_USER_REQUEST;
+        break;
+      case REQUEST_RESTART_FOR_UPDATE:
+        shutdown_reason = SHUTDOWN_REASON_SYSTEM_UPDATE;
+        break;
+      default:
+        LOG(WARNING) << "Got unknown restart reason " << arg;
+    }
+  }
+  ShutDown(SHUTDOWN_MODE_REBOOT, shutdown_reason);
   return scoped_ptr<dbus::Response>();
 }
 
@@ -1036,7 +1054,8 @@ scoped_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
             << (got_external_wakeup_count ?
                 base::StringPrintf(" with external wakeup count %" PRIu64,
-                                   external_wakeup_count).c_str() : "");
+                                   external_wakeup_count).c_str() : "")
+            << " from " << method_call->GetSender();
   Suspend(got_external_wakeup_count, external_wakeup_count);
   return scoped_ptr<dbus::Response>();
 }
@@ -1276,7 +1295,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
       RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str, false);
       break;
     case SHUTDOWN_MODE_REBOOT:
-      LOG(INFO) << "Restarting";
+      LOG(INFO) << "Restarting, reason: " << reason_str;
       RunSetuidHelper("reboot", "", false);
       break;
   }
