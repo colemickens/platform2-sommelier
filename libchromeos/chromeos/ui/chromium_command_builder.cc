@@ -418,6 +418,10 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("gpu_sandbox_allow_sysv_shm"))
     AddArg("--gpu-sandbox-allow-sysv-shm");
 
+  if (UseFlagIsSet("gpu_sandbox_start_early"))
+    AddArg("--gpu-sandbox-start-early");
+
+  // TODO(jorgelo): remove this once crbug.com/356959 is fixed.
   if (UseFlagIsSet("gpu_sandbox_start_after_initialization"))
     AddArg("--gpu-sandbox-start-after-initialization");
 
