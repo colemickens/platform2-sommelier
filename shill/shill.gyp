@@ -70,7 +70,6 @@
       },
       'sources': [
         '<(protoc_text_dir)/serviceproviders.prototxt',
-        '<(protoc_text_dir)/additional_providers.prototxt',
       ],
       'includes': ['../../platform2/common-mk/protoctxt.gypi'],
     },

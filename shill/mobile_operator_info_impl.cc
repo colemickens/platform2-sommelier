@@ -37,9 +37,8 @@ using std::vector;
 namespace shill {
 
 // static
-const char * const MobileOperatorInfoImpl::kDefaultDatabasePaths[] =
-    {"/usr/share/shill/serviceproviders.pbf",
-     "/usr/share/shill/additional_providers.pbf"};
+const char *MobileOperatorInfoImpl::kDefaultDatabasePath =
+    "/usr/share/shill/serviceproviders.pbf";
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 
 namespace {
@@ -65,9 +64,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher *dispatcher,
       requires_roaming_(false),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
-  for (const auto &database_path : kDefaultDatabasePaths) {
-    AddDatabasePath(FilePath(database_path));
-  }
+  AddDatabasePath(FilePath(kDefaultDatabasePath));
 }
 
 MobileOperatorInfoImpl::~MobileOperatorInfoImpl() {}

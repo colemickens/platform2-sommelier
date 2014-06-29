@@ -74,7 +74,7 @@ class MobileOperatorInfoImpl {
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
   // Default databases to load.
-  static const char *const kDefaultDatabasePaths[];
+  static const char *kDefaultDatabasePath;
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
   // the length of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;
