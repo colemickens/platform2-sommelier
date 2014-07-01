@@ -410,6 +410,10 @@ class ManagerTest : public PropertyStoreTest {
     ethernet_eap_provider_->set_service(service);
   }
 
+  void InitializePowerManagement() {
+    manager()->InitializePowerManagement();
+  }
+
   NiceMock<MockProxyFactory> proxy_factory_;
   scoped_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
@@ -2792,6 +2796,8 @@ TEST_F(ManagerTest, Stop) {
                                 manager()));
   manager()->RegisterService(service);
   manager()->RegisterDevice(mock_devices_[0]);
+  SetPowerManager();
+  EXPECT_TRUE(manager()->power_manager());
   EXPECT_CALL(*profile.get(),
               UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
       .WillOnce(Return(true));
@@ -2799,6 +2805,7 @@ TEST_F(ManagerTest, Stop) {
   EXPECT_CALL(*profile.get(), Save()).WillOnce(Return(true));
   EXPECT_CALL(*service.get(), Disconnect(_)).Times(1);
   manager()->Stop();
+  EXPECT_FALSE(manager()->power_manager());
 }
 
 TEST_F(ManagerTest, UpdateServiceConnected) {
@@ -3007,9 +3014,14 @@ TEST_F(ManagerTest, Suspend) {
   Mock::VerifyAndClearExpectations(mock_devices_[0]);
 }
 
-TEST_F(ManagerTest, AddTerminationAction) {
+TEST_F(ManagerTest, InitializePowerManagement) {
+  // For cleanup, see Stop test.
   EXPECT_CALL(*power_manager_, AddSuspendDelay(_, _, _, _, _));
   SetPowerManager();
+  InitializePowerManagement();
+}
+
+TEST_F(ManagerTest, AddTerminationAction) {
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction("action1", base::Closure());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
@@ -3020,30 +3032,20 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
   const char kKey1[] = "action1";
   const char kKey2[] = "action2";
 
-  MockPowerManager &power_manager = *power_manager_;
-  SetPowerManager();
-
   // Removing an action when the hook table is empty.
-  EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->RemoveTerminationAction("unknown");
-  Mock::VerifyAndClearExpectations(&power_manager);
 
-  EXPECT_CALL(power_manager, AddSuspendDelay(_, _, _, _, _))
-      .WillOnce(Return(true));
+  // Fill hook table with two items.
   manager()->AddTerminationAction(kKey1, base::Closure());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction(kKey2, base::Closure());
-  Mock::VerifyAndClearExpectations(&power_manager);
 
   // Removing an action that ends up with a non-empty hook table.
-  EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   manager()->RemoveTerminationAction(kKey1);
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
-  Mock::VerifyAndClearExpectations(&power_manager);
 
   // Removing the last action.
-  EXPECT_CALL(power_manager, RemoveSuspendDelay(_)).Times(0);
   manager()->RemoveTerminationAction(kKey2);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
 }

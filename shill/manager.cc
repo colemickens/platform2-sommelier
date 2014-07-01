@@ -200,7 +200,7 @@ void Manager::Start() {
 
   power_manager_.reset(
       new PowerManager(dispatcher_, ProxyFactory::GetInstance()));
-  power_manager_->Start(dbus_manager());
+  InitializePowerManagement();
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
@@ -1054,21 +1054,6 @@ void Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
 
 void Manager::AddTerminationAction(const string &name,
                                    const base::Closure &start) {
-  if (termination_actions_.IsEmpty() && power_manager_.get() &&
-      !suspend_delay_registered_) {
-    // TODO(benchan): We can probably combine PowerManager::Start() and
-    // PowerManager::AddSuspendDelay() after simplifying PowerManager to support
-    // only one suspend delay. As PowerManager observes the presence of powerd,
-    // it's also more robust to retry the suspend delay registration via
-    // PowerManager::OnPowerManagerAppeared (crbug.com/373348).
-    suspend_delay_registered_ = power_manager_->AddSuspendDelay(
-        kPowerManagerKey,
-        kSuspendDelayDescription,
-        base::TimeDelta::FromMilliseconds(
-            kTerminationActionsTimeoutMilliseconds),
-        Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
-        Bind(&Manager::OnSuspendDone, AsWeakPtr()));
-  }
   termination_actions_.Add(name, start);
 }
 
@@ -1995,6 +1980,22 @@ void Manager::UpdateProviderMapping() {
 #if !defined(DISABLE_WIMAX)
   providers_[Technology::kWiMax] = wimax_provider_.get();
 #endif  // DISABLE_WIMAX
+}
+
+void Manager::InitializePowerManagement() {
+  power_manager_->Start(dbus_manager());
+  // TODO(benchan): We can probably combine PowerManager::Start() and
+  // PowerManager::AddSuspendDelay() after simplifying PowerManager to support
+  // only one suspend delay. As PowerManager observes the presence of powerd,
+  // it's also more robust to retry the suspend delay registration via
+  // PowerManager::OnPowerManagerAppeared (crbug.com/373348).
+  suspend_delay_registered_ = power_manager_->AddSuspendDelay(
+      kPowerManagerKey,
+      kSuspendDelayDescription,
+      base::TimeDelta::FromMilliseconds(
+          kTerminationActionsTimeoutMilliseconds),
+      Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
+      Bind(&Manager::OnSuspendDone, AsWeakPtr()));
 }
 
 }  // namespace shill

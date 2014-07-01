@@ -542,6 +542,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // or connected).
   bool IsWifiIdle();
 
+  void InitializePowerManagement();
+
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
   void UpdateProviderMapping();

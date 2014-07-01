@@ -30,6 +30,7 @@ class MockPowerManager : public PowerManager {
   MOCK_METHOD1(RemoveSuspendDelay, bool(const std::string &key));
   MOCK_METHOD2(ReportSuspendReadiness,
                bool(const std::string &key, int suspend_id));
+  MOCK_METHOD1(Start, void(DBusManager *dbus_manager));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManager);

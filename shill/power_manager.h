@@ -52,7 +52,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   bool suspending() const { return suspending_; }
 
   // Requires a |DBusManager| that has been |Start|'ed.
-  void Start(DBusManager *dbus_manager);
+  virtual void Start(DBusManager *dbus_manager);
 
   // Registers a suspend delay with the power manager under the unique name
   // |key|.  See PowerManagerProxyInterface::RegisterSuspendDelay() for
