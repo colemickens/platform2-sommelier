@@ -35,6 +35,10 @@ class PerfSerializer : public PerfParser {
   // output files.
   bool Deserialize(const quipper::PerfDataProto& perf_data_proto);
 
+  void set_serialize_sorted_events(bool sorted) {
+    serialize_sorted_events_ = sorted;
+  }
+
  private:
   bool SerializePerfFileAttr(
       const PerfFileAttr& perf_file_attr,
@@ -59,6 +63,9 @@ class PerfSerializer : public PerfParser {
 
   bool SerializeEvent(const ParsedEvent& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
+  bool SerializeEventPointer(
+      const ParsedEvent* event,
+      quipper::PerfDataProto_PerfEvent* event_proto) const;
   bool DeserializeEvent(
       const quipper::PerfDataProto_PerfEvent& event_proto,
       ParsedEvent* event) const;
@@ -211,6 +218,9 @@ bool name(const RepeatedPtrField<proto_type>& from, \
   SERIALIZEVECTORFUNCTION(SerializeEvents, ParsedEvent,
                           quipper::PerfDataProto_PerfEvent,
                           SerializeEvent)
+  SERIALIZEVECTORFUNCTION(SerializeEventPointers, ParsedEvent*,
+                          quipper::PerfDataProto_PerfEvent,
+                          SerializeEventPointer)
   DESERIALIZEVECTORFUNCTION(DeserializeEvents, ParsedEvent,
                             quipper::PerfDataProto_PerfEvent,
                             DeserializeEvent)
@@ -244,6 +254,10 @@ bool name(const RepeatedPtrField<proto_type>& from, \
                             PerfNodeTopologyMetadata,
                             quipper::PerfDataProto_PerfNodeTopologyMetadata,
                             DeserializeNodeTopologyMetadata)
+
+  // Set this flag to serialize perf events in chronological order, rather than
+  // the order in which they appear in the raw data.
+  bool serialize_sorted_events_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

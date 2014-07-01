@@ -33,6 +33,44 @@ string UintToString(uint64 value) {
 
 namespace quipper {
 
+namespace {
+
+// Gets the timestamp from an event field in PerfDataProto.
+const uint64 GetSampleTimestampFromEventProto(
+    const PerfDataProto_PerfEvent& event) {
+  // Get SampleInfo from the correct type-specific event field for the event.
+  if (event.has_mmap_event()) {
+    return event.mmap_event().sample_info().sample_time_ns();
+  } else if (event.has_sample_event()) {
+    return event.sample_event().sample_time_ns();
+  } else if (event.has_comm_event()) {
+    return event.comm_event().sample_info().sample_time_ns();
+  } else if (event.has_fork_event()) {
+    return event.fork_event().sample_info().sample_time_ns();
+  } else if (event.has_lost_event()) {
+    return event.lost_event().sample_info().sample_time_ns();
+  } else if (event.has_throttle_event()) {
+    return event.throttle_event().sample_info().sample_time_ns();
+  } else if (event.has_read_event()) {
+    return event.read_event().sample_info().sample_time_ns();
+  }
+  return 0;
+}
+
+// Verifies that |proto|'s events are in chronological order. No event should
+// have an earlier timestamp than a preceding event.
+void CheckChronologicalOrderOfSerializedEvents(const PerfDataProto& proto) {
+  uint64 prev_time_ns = 0;
+  for (int i = 0; i < proto.events_size(); ++i) {
+    // Compare each timestamp against the previous event's timestamp.
+    uint64 time_ns = GetSampleTimestampFromEventProto(proto.events(i));
+    if (i > 0) {
+      EXPECT_GE(time_ns, prev_time_ns);
+    }
+    prev_time_ns = time_ns;
+  }
+}
+
 void SerializeAndDeserialize(const string& input,
                              const string& output,
                              bool do_remap,
@@ -65,11 +103,24 @@ void SerializeAndDeserialize(const string& input,
 
 void SerializeToFileAndBack(const string& input,
                             const string& output) {
-  PerfDataProto input_perf_data_proto;
   struct timeval pre_serialize_time;
   gettimeofday(&pre_serialize_time, NULL);
-  PerfSerializer serializer;
-  EXPECT_TRUE(serializer.SerializeFromFile(input, &input_perf_data_proto));
+
+  // Serialize with and without sorting by chronological order.
+  PerfDataProto input_perf_data_proto;
+
+  // Serialize with and without sorting by chronological order.
+  PerfSerializer sorted_serializer;
+  sorted_serializer.set_serialize_sorted_events(true);
+  EXPECT_TRUE(
+      sorted_serializer.SerializeFromFile(input, &input_perf_data_proto));
+  CheckChronologicalOrderOfSerializedEvents(input_perf_data_proto);
+
+  input_perf_data_proto.Clear();
+  PerfSerializer unsorted_serializer;
+  unsorted_serializer.set_serialize_sorted_events(false);
+  EXPECT_TRUE(
+      unsorted_serializer.SerializeFromFile(input, &input_perf_data_proto));
 
   // Make sure the timestamp_sec was properly recorded.
   EXPECT_TRUE(input_perf_data_proto.has_timestamp_sec());
@@ -103,6 +154,8 @@ void SerializeToFileAndBack(const string& input,
   remove(input_filename.c_str());
   remove(output_filename.c_str());
 }
+
+}  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
   ScopedTempDir output_dir;

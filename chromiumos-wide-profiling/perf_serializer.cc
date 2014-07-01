@@ -17,7 +17,7 @@
 
 namespace quipper {
 
-PerfSerializer::PerfSerializer() {
+PerfSerializer::PerfSerializer() : serialize_sorted_events_(true) {
 }
 
 PerfSerializer::~PerfSerializer() {
@@ -37,8 +37,17 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
     return false;
   }
 
-  if (!ParseRawEvents() ||
+  if (!ParseRawEvents()) {
+    return false;
+  }
+
+  // Serialize events in either chronological or raw data order.
+  if (!serialize_sorted_events_ &&
       !SerializeEvents(parsed_events_, perf_data_proto->mutable_events())) {
+    return false;
+  } else if (serialize_sorted_events_ &&
+      !SerializeEventPointers(parsed_events_sorted_by_time_,
+                              perf_data_proto->mutable_events())) {
     return false;
   }
 
@@ -249,6 +258,13 @@ bool PerfSerializer::DeserializePerfEventType(
 bool PerfSerializer::SerializeEvent(
     const ParsedEvent& event,
     PerfDataProto_PerfEvent* event_proto) const {
+  return SerializeEventPointer(&event, event_proto);
+}
+
+bool PerfSerializer::SerializeEventPointer(
+    const ParsedEvent* event_ptr,
+    PerfDataProto_PerfEvent* event_proto) const {
+  const ParsedEvent& event = *event_ptr;
   const perf_event_header& header = (*event.raw_event)->header;
   const event_t& raw_event = **event.raw_event;
   if (!SerializeEventHeader(header, event_proto->mutable_header()))
