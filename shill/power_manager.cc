@@ -35,8 +35,8 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
 
 PowerManager::~PowerManager() {
   for (const auto &delay_entry : suspend_delays_) {
-    ignore_result(power_manager_proxy_->UnregisterSuspendDelay(
-        delay_entry.second.delay_id));
+    power_manager_proxy_->UnregisterSuspendDelay(
+        delay_entry.second.delay_id);
   }
 }
 
@@ -156,7 +156,7 @@ void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
     // where |AddSuspendDelay| managed to register a suspend delay with the
     // newly appeared powerd instance before this function had a chance to
     // run.
-    ignore_result(power_manager_proxy_->UnregisterSuspendDelay(delay.delay_id));
+    power_manager_proxy_->UnregisterSuspendDelay(delay.delay_id);
 
     int delay_id = delay.delay_id;
     if (!power_manager_proxy_->RegisterSuspendDelay(
