@@ -6,6 +6,11 @@
 
 #include "service.h"
 
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <base/at_exit.h>
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
@@ -16,12 +21,11 @@
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
-#include <string>
-#include <vector>
 
 #include "crypto.h"
 #include "make_tests.h"
 #include "mock_attestation.h"
+#include "mock_boot_attributes.h"
 #include "mock_boot_lockbox.h"
 #include "mock_crypto.h"
 #include "mock_dbus_transition.h"
@@ -46,6 +50,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::SetArgumentPointee;
@@ -668,7 +673,7 @@ TEST(Standalone, StoreEnrollmentState) {
   std::string encrypted_data = "so_encrypted";
 
   // Test successful encryption.
-  EXPECT_CALL(crypto, EncryptWithTpm(_,_)).WillOnce(DoAll(
+  EXPECT_CALL(crypto, EncryptWithTpm(_, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(encrypted_data), Return(true)));
 
   // Should write file as this device is enterprise enrolled.
@@ -738,6 +743,7 @@ class ExTest : public ::testing::Test {
     service_.set_platform(&platform_);
     service_.set_chaps_client(&chaps_client_);
     service_.set_boot_lockbox(&lockbox_);
+    service_.set_boot_attributes(&boot_attributes_);
     service_.set_reply_factory(&reply_factory_);
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
@@ -745,6 +751,8 @@ class ExTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
         .WillRepeatedly(Return(false));
+    EXPECT_CALL(boot_attributes_, Load())
+        .WillRepeatedly(Return(true));
 
     g_error_ = NULL;
     // Fast path through Initialize()
@@ -824,6 +832,7 @@ class ExTest : public ::testing::Test {
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockInstallAttributes> attrs_;
   NiceMock<MockBootLockbox> lockbox_;
+  NiceMock<MockBootAttributes> boot_attributes_;
   MockDBusReplyFactory reply_factory_;
 
   scoped_ptr<AccountIdentifier> id_;
@@ -1145,6 +1154,91 @@ TEST_F(ExTest, BootLockboxFinalizeError) {
   BaseReply reply = GetLastReply();
   EXPECT_TRUE(reply.has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_TPM_COMM_ERROR, reply.error());
+}
+
+TEST_F(ExTest, GetBootAttributeSuccess) {
+  SetupReply();
+  EXPECT_CALL(boot_attributes_, Get(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>("1234"), Return(true)));
+
+  GetBootAttributeRequest request;
+  request.set_name("test");
+  service_.DoGetBootAttribute(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_TRUE(reply.HasExtension(GetBootAttributeReply::reply));
+  EXPECT_EQ("1234",
+            reply.GetExtension(GetBootAttributeReply::reply).value());
+}
+
+TEST_F(ExTest, GetBootAttributeBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoGetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
+TEST_F(ExTest, GetBootAttributeError) {
+  SetupReply();
+  EXPECT_CALL(boot_attributes_, Get(_, _))
+      .WillRepeatedly(Return(false));
+
+  GetBootAttributeRequest request;
+  request.set_name("test");
+  service_.DoGetBootAttribute(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND, reply.error());
+}
+
+TEST_F(ExTest, SetBootAttributeSuccess) {
+  SetupReply();
+  SetBootAttributeRequest request;
+  request.set_name("test");
+  request.set_value("1234");
+  service_.DoSetBootAttribute(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+}
+
+TEST_F(ExTest, SetBootAttributeBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoSetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
+TEST_F(ExTest, FlushAndSignBootAttributesSuccess) {
+  SetupReply();
+  EXPECT_CALL(boot_attributes_, FlushAndSign())
+      .WillRepeatedly(Return(true));
+
+  FlushAndSignBootAttributesRequest request;
+  service_.DoFlushAndSignBootAttributes(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+}
+
+TEST_F(ExTest, FlushAndSignBootAttributesBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoFlushAndSignBootAttributes(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
+TEST_F(ExTest, FlushAndSignBootAttributesError) {
+  SetupReply();
+  EXPECT_CALL(boot_attributes_, FlushAndSign())
+      .WillRepeatedly(Return(false));
+
+  FlushAndSignBootAttributesRequest request;
+  service_.DoFlushAndSignBootAttributes(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN, reply.error());
 }
 
 TEST_F(ExTest, GetKeyDataExNoMatch) {

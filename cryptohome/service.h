@@ -4,6 +4,10 @@
 #ifndef CRYPTOHOME_SERVICE_H_
 #define CRYPTOHOME_SERVICE_H_
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include <base/logging.h>
 #include <base/gtest_prod_util.h>
 #include <base/memory/ref_counted.h>
@@ -40,6 +44,7 @@ namespace gobject {
 struct Cryptohome;
 }  // namespace gobject
 
+class BootAttributes;
 class BootLockbox;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
@@ -159,6 +164,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   virtual void set_boot_lockbox(BootLockbox* boot_lockbox) {
     boot_lockbox_ = boot_lockbox;
+  }
+
+  virtual void set_boot_attributes(BootAttributes* boot_attributes) {
+    boot_attributes_ = boot_attributes;
   }
 
   // Service implementation functions as wrapped in interface.cc
@@ -486,6 +495,22 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean FinalizeBootLockbox(const GArray* request,
                                        DBusGMethodInvocation* context);
 
+  // Runs on the mount thread.
+  virtual void DoGetBootAttribute(const chromeos::SecureBlob& request,
+                                  DBusGMethodInvocation* context);
+  virtual gboolean GetBootAttribute(const GArray* request,
+                                    DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoSetBootAttribute(const chromeos::SecureBlob& request,
+                                  DBusGMethodInvocation* context);
+  virtual gboolean SetBootAttribute(const GArray* request,
+                                    DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoFlushAndSignBootAttributes(const chromeos::SecureBlob& request,
+                                            DBusGMethodInvocation* context);
+  virtual gboolean FlushAndSignBootAttributes(const GArray* request,
+                                              DBusGMethodInvocation* context);
+
  protected:
   FRIEND_TEST(Standalone, StoreEnrollmentState);
   FRIEND_TEST(Standalone, LoadEnrollmentState);
@@ -639,6 +664,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   scoped_ptr<BootLockbox> default_boot_lockbox_;
   // After construction, this should only be used on the mount thread.
   BootLockbox* boot_lockbox_;
+  scoped_ptr<BootAttributes> default_boot_attributes_;
+  // After construction, this should only be used on the mount thread.
+  BootAttributes* boot_attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

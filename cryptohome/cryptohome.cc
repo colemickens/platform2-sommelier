@@ -32,6 +32,7 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/syslog_logging.h>
 #include <chromeos/utility.h>
+#include <google/protobuf/message_lite.h>
 
 #include "bindings/client.h"
 #include "attestation.h"
@@ -116,6 +117,9 @@ namespace switches {
     "sign_lockbox",
     "verify_lockbox",
     "finalize_lockbox",
+    "get_boot_attribute",
+    "set_boot_attribute",
+    "flush_and_sign_boot_attributes",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -166,7 +170,10 @@ namespace switches {
     ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT,
     ACTION_SIGN_LOCKBOX,
     ACTION_VERIFY_LOCKBOX,
-    ACTION_FINALIZE_LOCKBOX
+    ACTION_FINALIZE_LOCKBOX,
+    ACTION_GET_BOOT_ATTRIBUTE,
+    ACTION_SET_BOOT_ATTRIBUTE,
+    ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -185,6 +192,15 @@ namespace switches {
   static const char kFileSwitch[] = "file";
   static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
 }  // namespace switches
+
+#define DBUS_METHOD(method_name) \
+    org_chromium_CryptohomeInterface_ ## method_name
+
+typedef void (*ProtoDBusReplyMethod)(DBusGProxy*, GArray*, GError*, gpointer);
+typedef gboolean (*ProtoDBusMethod)(
+    DBusGProxy*, const GArray*, GArray**, GError**);
+typedef DBusGProxyCall* (*ProtoDBusAsyncMethod)(
+    DBusGProxy*, const GArray*, ProtoDBusReplyMethod, gpointer);
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   chromeos::glib::ScopedError error;
@@ -295,8 +311,7 @@ bool ConfirmRemove(const std::string& user) {
   return true;
 }
 
-template<class ProtoBuf>
-GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
+GArray* GArrayFromProtoBuf(const google::protobuf::MessageLite& pb) {
   guint len = pb.ByteSize();
   GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
   g_array_set_size(ary, len);
@@ -534,6 +549,46 @@ bool WaitForTPMOwnership(chromeos::dbus::Proxy* proxy) {
   return result;
 }
 
+bool MakeProtoDBusCall(const std::string& name,
+                       ProtoDBusMethod method,
+                       ProtoDBusAsyncMethod async_method,
+                       CommandLine* cl,
+                       chromeos::dbus::Proxy* proxy,
+                       const google::protobuf::MessageLite& request,
+                       cryptohome::BaseReply* reply) {
+  chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+  if (cl->HasSwitch(switches::kAsyncSwitch)) {
+    ClientLoop loop;
+    loop.Initialize(proxy);
+    DBusGProxyCall* call = (*async_method)(proxy->gproxy(),
+                                           request_ary.get(),
+                                           &ClientLoop::ParseReplyThunk,
+                                           static_cast<gpointer>(&loop));
+    if (!call) {
+      printf("Failed to call %s!\n", name.c_str());
+      return false;
+    }
+    loop.Run();
+    *reply = loop.reply();
+  } else {
+    chromeos::glib::ScopedError error;
+    chromeos::glib::ScopedArray reply_ary;
+    if (!(*method)(proxy->gproxy(),
+                   request_ary.get(),
+                   &chromeos::Resetter(&reply_ary).lvalue(),
+                   &chromeos::Resetter(&error).lvalue())) {
+      printf("Failed to call %s!\n", name.c_str());
+      return false;
+    }
+    ParseBaseReply(reply_ary.get(), reply);
+  }
+  if (reply->has_error()) {
+    printf("%s error: %d\n", name.c_str(), reply->error());
+    return false;
+  }
+
+  return true;
+}
 
 int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
@@ -2177,42 +2232,17 @@ int main(int argc, char **argv) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
     }
+
     cryptohome::SignBootLockboxRequest request;
     request.set_data(data);
-    chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
     cryptohome::BaseReply reply;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_sign_boot_lockbox_async(
-              proxy.gproxy(),
-              request_ary.get(),
-              &ClientLoop::ParseReplyThunk,
-              static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call SignBootLockbox!\n");
-        return -1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      chromeos::glib::ScopedError error;
-      chromeos::glib::ScopedArray reply_ary;
-      if (!org_chromium_CryptohomeInterface_sign_boot_lockbox(
-            proxy.gproxy(),
-            request_ary.get(),
-            &chromeos::Resetter(&reply_ary).lvalue(),
-            &chromeos::Resetter(&error).lvalue())) {
-        printf("Failed to call SignBootLockbox!\n");
-        return -1;
-      }
-      ParseBaseReply(reply_ary.get(), &reply);
+    if (!MakeProtoDBusCall("SignBootLockbox",
+                           DBUS_METHOD(sign_boot_lockbox),
+                           DBUS_METHOD(sign_boot_lockbox_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
     }
-    if (reply.has_error()) {
-      printf("SignBootLockbox error: %d\n", reply.error());
-      return reply.error();
-    }
+
     if (!reply.HasExtension(cryptohome::SignBootLockboxReply::reply)) {
       printf("SignBootLockboxReply missing.\n");
       return -1;
@@ -2236,82 +2266,89 @@ int main(int argc, char **argv) {
       printf("Failed to read input file: %s\n", signature_file.value().c_str());
       return 1;
     }
+
     cryptohome::VerifyBootLockboxRequest request;
     request.set_data(data);
     request.set_signature(signature);
-    chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
     cryptohome::BaseReply reply;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_verify_boot_lockbox_async(
-              proxy.gproxy(),
-              request_ary.get(),
-              &ClientLoop::ParseReplyThunk,
-              static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call VerifyBootLockbox!\n");
-        return -1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      chromeos::glib::ScopedError error;
-      chromeos::glib::ScopedArray reply_ary;
-      if (!org_chromium_CryptohomeInterface_verify_boot_lockbox(
-            proxy.gproxy(),
-            request_ary.get(),
-            &chromeos::Resetter(&reply_ary).lvalue(),
-            &chromeos::Resetter(&error).lvalue())) {
-        printf("Failed to call VerifyBootLockbox!\n");
-        return -1;
-      }
-      ParseBaseReply(reply_ary.get(), &reply);
-    }
-    if (reply.has_error()) {
-      printf("VerifyBootLockbox error: %d\n", reply.error());
-      return reply.error();
+    if (!MakeProtoDBusCall("VerifyBootLockbox",
+                           DBUS_METHOD(verify_boot_lockbox),
+                           DBUS_METHOD(verify_boot_lockbox_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
     }
     printf("VerifyBootLockbox success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_FINALIZE_LOCKBOX],
                      action.c_str())) {
     cryptohome::FinalizeBootLockboxRequest request;
-    chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
     cryptohome::BaseReply reply;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_finalize_boot_lockbox_async(
-              proxy.gproxy(),
-              request_ary.get(),
-              &ClientLoop::ParseReplyThunk,
-              static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call FinalizeBootLockbox!\n");
-        return -1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      chromeos::glib::ScopedError error;
-      chromeos::glib::ScopedArray reply_ary;
-      if (!org_chromium_CryptohomeInterface_finalize_boot_lockbox(
-            proxy.gproxy(),
-            request_ary.get(),
-            &chromeos::Resetter(&reply_ary).lvalue(),
-            &chromeos::Resetter(&error).lvalue())) {
-        printf("Failed to call FinalizeBootLockbox!\n");
-        return -1;
-      }
-      ParseBaseReply(reply_ary.get(), &reply);
-    }
-    if (reply.has_error()) {
-      printf("FinalizeBootLockbox error: %d\n", reply.error());
-      return reply.error();
+    if (!MakeProtoDBusCall("FinalizeBootLockbox",
+                           DBUS_METHOD(finalize_boot_lockbox),
+                           DBUS_METHOD(finalize_boot_lockbox_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
     }
     printf("FinalizeBootLockbox success.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_GET_BOOT_ATTRIBUTE],
+                     action.c_str())) {
+    std::string name;
+    if (!GetAttrName(cl, &name)) {
+      printf("No attribute name specified.\n");
+      return 1;
+    }
+
+    cryptohome::GetBootAttributeRequest request;
+    request.set_name(name);
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("GetBootAttribute",
+                           DBUS_METHOD(get_boot_attribute),
+                           DBUS_METHOD(get_boot_attribute_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    if (!reply.HasExtension(cryptohome::GetBootAttributeReply::reply)) {
+      printf("GetBootAttributeReply missing.\n");
+      return -1;
+    }
+    std::string value =
+        reply.GetExtension(cryptohome::GetBootAttributeReply::reply).value();
+    printf("%s\n", value.c_str());
+  } else if (!strcmp(switches::kActions[switches::ACTION_SET_BOOT_ATTRIBUTE],
+                     action.c_str())) {
+    std::string name;
+    if (!GetAttrName(cl, &name)) {
+      printf("No attribute name specified.\n");
+      return 1;
+    }
+    std::string value;
+    if (!GetAttrValue(cl, &value)) {
+      printf("No attribute value specified.\n");
+      return 1;
+    }
+
+    cryptohome::SetBootAttributeRequest request;
+    request.set_name(name);
+    request.set_value(value);
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("SetBootAttribute",
+                           DBUS_METHOD(set_boot_attribute),
+                           DBUS_METHOD(set_boot_attribute_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    printf("SetBootAttribute success.\n");
+  } else if (!strcmp(switches::kActions[
+      switches::ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES], action.c_str())) {
+
+    cryptohome::FlushAndSignBootAttributesRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("FlushAndSignBootAttributes",
+                           DBUS_METHOD(flush_and_sign_boot_attributes),
+                           DBUS_METHOD(flush_and_sign_boot_attributes_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    printf("FlushAndSignBootAttributes success.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

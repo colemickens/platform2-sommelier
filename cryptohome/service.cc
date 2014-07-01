@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "attestation_task.h"
+#include "boot_attributes.h"
 #include "boot_lockbox.h"
 #include "cryptohome_event_source.h"
 #include "crypto.h"
@@ -172,7 +173,7 @@ CertificateProfile GetProfile(int profile_value) {
   if (!CertificateProfile_IsValid(profile_value))
     return ENTERPRISE_USER_CERTIFICATE;
   return static_cast<CertificateProfile>(profile_value);
-};
+}
 
 // A helper function which maps an integer to a valid Attestation::PCAType.
 Attestation::PCAType GetPCAType(int value) {
@@ -277,7 +278,9 @@ Service::Service()
       default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()),
       default_boot_lockbox_(new BootLockbox(tpm_, platform_, crypto_)),
-      boot_lockbox_(default_boot_lockbox_.get()) {
+      boot_lockbox_(default_boot_lockbox_.get()),
+      default_boot_attributes_(new BootAttributes(boot_lockbox_, platform_)),
+      boot_attributes_(default_boot_attributes_.get()) {
 }
 
 Service::~Service() {
@@ -323,12 +326,12 @@ bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
 }
 
 CryptohomeErrorCode Service::MountErrorToCryptohomeError(
-   const MountError code) const {
+    const MountError code) const {
   switch (code) {
   case MOUNT_ERROR_FATAL:
     return CRYPTOHOME_ERROR_MOUNT_FATAL;
   case MOUNT_ERROR_KEY_FAILURE:
-   return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   case MOUNT_ERROR_MOUNT_POINT_BUSY:
     return CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
   case MOUNT_ERROR_TPM_COMM_ERROR:
@@ -540,6 +543,8 @@ bool Service::Initialize() {
     recovery.PerformReboot();
   }
 
+  boot_attributes_->Load();
+
   return result;
 }
 
@@ -719,10 +724,10 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     }
     LOG(ERROR) << "PKCS#11 initialization failed.";
     result->mount()->set_pkcs11_state(cryptohome::Mount::kIsFailed);
-  } if (!strcmp(event->GetEventName(), kDBusErrorReplyEventType)) {
+  } else if (!strcmp(event->GetEventName(), kDBusErrorReplyEventType)) {
     DBusErrorReply* result = static_cast<DBusErrorReply*>(event);
     result->Run();
-  } if (!strcmp(event->GetEventName(), kDBusReplyEventType)) {
+  } else if (!strcmp(event->GetEventName(), kDBusReplyEventType)) {
     DBusReply* result = static_cast<DBusReply*>(event);
     result->Run();
   }
@@ -1886,7 +1891,6 @@ gboolean Service::AsyncMount(const gchar *userid,
                              gboolean create_if_missing,
                              gboolean ensure_ephemeral,
                              DBusGMethodInvocation *context) {
-
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
@@ -1913,8 +1917,7 @@ gboolean Service::AsyncMount(const gchar *userid,
                  false,
                  mount_task));
 
-
-   return TRUE;
+  return TRUE;
 }
 
 gboolean Service::MountGuest(gint *OUT_error_code,
@@ -2023,7 +2026,6 @@ gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
                                    gboolean create_if_missing,
                                    gboolean ensure_ephemeral,
                                    DBusGMethodInvocation *context) {
-
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
@@ -2734,6 +2736,76 @@ gboolean Service::FinalizeBootLockbox(const GArray* request,
                                       DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoGetBootAttribute(const chromeos::SecureBlob& request,
+                                 DBusGMethodInvocation* context) {
+  GetBootAttributeRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad GetBootAttributeRequest");
+    return;
+  }
+  BaseReply reply;
+  std::string value;
+  if (!boot_attributes_->Get(request_pb.name(), &value)) {
+    reply.set_error(CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND);
+  } else {
+    reply.MutableExtension(GetBootAttributeReply::reply)->set_value(value);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::GetBootAttribute(const GArray* request,
+                                   DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoGetBootAttribute, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoSetBootAttribute(const chromeos::SecureBlob& request,
+                                 DBusGMethodInvocation* context) {
+  SetBootAttributeRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad SetBootAttributeRequest");
+    return;
+  }
+  BaseReply reply;
+  boot_attributes_->Set(request_pb.name(), request_pb.value());
+  SendReply(context, reply);
+}
+
+gboolean Service::SetBootAttribute(const GArray* request,
+                                   DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoSetBootAttribute, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoFlushAndSignBootAttributes(const chromeos::SecureBlob& request,
+                                           DBusGMethodInvocation* context) {
+  FlushAndSignBootAttributesRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad FlushAndSignBootAttributesRequest");
+    return;
+  }
+  BaseReply reply;
+  if (!boot_attributes_->FlushAndSign()) {
+    reply.set_error(CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::FlushAndSignBootAttributes(const GArray* request,
+                                             DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoFlushAndSignBootAttributes, base::Unretained(this),
                  SecureBlob(request->data, request->len),
                  base::Unretained(context)));
   return TRUE;

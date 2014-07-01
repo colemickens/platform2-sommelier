@@ -688,6 +688,25 @@ gboolean cryptohome_finalize_boot_lockbox(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(FinalizeBootLockbox, request);
 }
 
+gboolean cryptohome_get_boot_attribute(Cryptohome* self,
+                                       GArray* request,
+                                       DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetBootAttribute, request);
+}
+
+gboolean cryptohome_set_boot_attribute(Cryptohome* self,
+                                       GArray* request,
+                                       DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(SetBootAttribute, request);
+}
+
+gboolean cryptohome_flush_and_sign_boot_attributes(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(FlushAndSignBootAttributes, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

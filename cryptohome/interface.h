@@ -410,6 +410,15 @@ gboolean cryptohome_verify_boot_lockbox(Cryptohome* self,
 gboolean cryptohome_finalize_boot_lockbox(Cryptohome* self,
                                           GArray* request,
                                           DBusGMethodInvocation* resp);
+gboolean cryptohome_get_boot_attribute(Cryptohome* self,
+                                       GArray* request,
+                                       DBusGMethodInvocation* resp);
+gboolean cryptohome_set_boot_attribute(Cryptohome* self,
+                                       GArray* request,
+                                       DBusGMethodInvocation* resp);
+gboolean cryptohome_flush_and_sign_boot_attributes(Cryptohome* self,
+                                                   GArray* request,
+                                                   DBusGMethodInvocation* resp);
 
 }  // namespace gobject
 }  // namespace cryptohome
