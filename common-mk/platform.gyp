@@ -66,7 +66,7 @@
             }],
             ['USE_shill == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/shill/shill.gyp:*',
+                '<(DEPTH)/platform2/shill/shill.gyp:*',
               ],
             }],
             ['USE_tpm == 1', {
