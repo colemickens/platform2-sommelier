@@ -1,0 +1,28 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Every command listed here will be executed and logged to our feedback
+# mechanism. The format is comma delimited and the first term will be the key.
+# if no key is provided then the command will be used as the key and the value.
+#
+# Lines starting with # will be ignored.
+#
+# Arguments will be included
+# N.B.: don't assume the path on Linux is the same as the path on ChromeOS.
+# Simple example: it's /bin/lsmod on ChromeOS and /sbin/lsmod on Linux.
+# Further, the path at present is /bin:/usr/bin:/usr/bin/X11
+# so (e.g.) lspci needs the full path.
+
+cras,/usr/bin/cras_test_client --dump_server_info --dump_audio_thread
+env,set
+setxkbmap,/usr/bin/setxkbmap -print -query
+xinput,/usr/bin/xinput list --long
+xrandr,/usr/bin/xrandr --verbose
+debugd,/usr/bin/dbus-send --system --print-reply --dest=org.chromium.debugd /org/chromium/debugd org.chromium.debugd.GetFeedbackLogs
+hack-33025-touchpad,/opt/google/touchpad/tpcontrol status
+hack-33025-touchpad_activity,/opt/google/input/cmt_feedback
+hack-33025-touchscreen_activity,/opt/google/input/evdev_feedback
+touch-noise,/opt/google/touchscreen/touch_noise_feedback
+chrome_user_log,/bin/cat /home/chronos/user/log/chrome
+logout-times,/bin/cat /home/chronos/user/logout-times
