@@ -1,0 +1,6 @@
+*~
+/build/
+/shill
+/shill_unittest
+cscope.*
+tags
