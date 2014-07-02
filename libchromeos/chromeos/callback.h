@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PLATFORM_BASE_CALLBACK_H_
-#define PLATFORM_BASE_CALLBACK_H_
+#ifndef LIBCHROMEOS_CHROMEOS_CALLBACK_H_
+#define LIBCHROMEOS_CHROMEOS_CALLBACK_H_
 
 #include <google/protobuf/stubs/common.h>
 
@@ -18,4 +18,4 @@ using google::protobuf::NewCallback;
 
 }  // namespace chromeos
 
-#endif  // PLATFORM_BASE_PORT_H_
+#endif  // LIBCHROMEOS_CHROMEOS_CALLBACK_H_

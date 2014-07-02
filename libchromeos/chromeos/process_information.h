@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef LIBCHROMEOS_CHROMEOS_PROCESS_INFORMATION_H_
+#define LIBCHROMEOS_CHROMEOS_PROCESS_INFORMATION_H_
+
 #include <set>
 #include <string>
 #include <vector>
@@ -66,3 +69,5 @@ class ProcessInformation {
 };
 
 }  // namespace chromeos
+
+#endif  // LIBCHROMEOS_CHROMEOS_PROCESS_INFORMATION_H_

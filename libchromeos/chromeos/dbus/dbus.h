@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_DBUS_H_
-#define CHROMEOS_DBUS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_DBUS_DBUS_H_
+#define LIBCHROMEOS_CHROMEOS_DBUS_DBUS_H_
 
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
@@ -196,7 +196,7 @@ bool RegisterExclusiveService(const BusConnection& connection,
                               const char* service_path,
                               GObject* object);
 
-template <typename F> // F is a function signature
+template <typename F>  // F is a function signature
 class MonitorConnection;
 
 template <typename A1>
@@ -433,11 +433,10 @@ bool RetrieveProperty(const Proxy& proxy,
                            G_TYPE_STRING, property,
                            G_TYPE_INVALID,
                            G_TYPE_VALUE, &value,
-                           G_TYPE_INVALID)){
+                           G_TYPE_INVALID)) {
     LOG(ERROR) << "Getting property failed: "
                << (error->message ? error->message : "Unknown Error.");
     return false;
-
   }
   return glib::Retrieve(value, result);
 }
@@ -475,8 +474,8 @@ class SignalWatcher {
   SignalWatcher() {}
   ~SignalWatcher();
   void StartMonitoring(const std::string& interface, const std::string& signal);
- private:
 
+ private:
   // Callback invoked on the given signal arrival.
   virtual void OnSignal(DBusMessage* message) = 0;
 
@@ -494,4 +493,4 @@ class SignalWatcher {
 }  // namespace dbus
 }  // namespace chromeos
 
-#endif  // CHROMEOS_DBUS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_DBUS_DBUS_H_

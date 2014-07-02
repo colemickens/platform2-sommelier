@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_GLIB_OBJECT_H_
-#define CHROMEOS_GLIB_OBJECT_H_
+#ifndef LIBCHROMEOS_CHROMEOS_GLIB_OBJECT_H_
+#define LIBCHROMEOS_CHROMEOS_GLIB_OBJECT_H_
 
 #include <glib-object.h>
 
@@ -104,7 +104,7 @@ class Value;
 template < >
 inline ::GType type_to_gtypeid<const Value*>() {
   return G_TYPE_VALUE;
-};
+}
 
 template < >
 inline ::GType type_to_gtypeid< ::uint32>() {
@@ -112,17 +112,17 @@ inline ::GType type_to_gtypeid< ::uint32>() {
   // assumes sizeof(guint) == sizeof(guint32). Need a static_assert to assert
   // that.
   return G_TYPE_UINT;
-};
+}
 
 template < >
 inline ::GType type_to_gtypeid< ::int64>() {
   return G_TYPE_INT64;
-};
+}
 
 template < >
 inline ::GType type_to_gtypeid< ::int32>() {
   return G_TYPE_INT;
-};
+}
 
 // \brief Value (and Retrieve) support using std::string as well as const char*
 // by promoting from const char* to the string. promote_from provides a mapping
@@ -335,7 +335,6 @@ typedef ::scoped_ptr< ::GArray, FreeArray> ScopedArray;
 template <typename T>  // T models pointer
 class ScopedPtrArray {
  public:
-
   typedef ::GPtrArray element_type;
 
   typedef T value_type;
@@ -501,4 +500,4 @@ class ScopedHashTable {
 }  // namespace glib
 }  // namespace chromeos
 
-#endif  // GLIB_OBJECT_H_
+#endif  // LIBCHROMEOS_CHROMEOS_GLIB_OBJECT_H_

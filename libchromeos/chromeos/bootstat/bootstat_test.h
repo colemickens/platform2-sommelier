@@ -7,8 +7,8 @@
 // test code only, and is not intended to be exported for general
 // use.
 
-#ifndef BOOTSTAT_TEST_H_
-#define BOOTSTAT_TEST_H_
+#ifndef LIBCHROMEOS_CHROMEOS_BOOTSTAT_BOOTSTAT_TEST_H_
+#define LIBCHROMEOS_CHROMEOS_BOOTSTAT_BOOTSTAT_TEST_H_
 
 #if defined(__cplusplus)
 extern "C" {
@@ -21,4 +21,4 @@ extern void bootstat_set_disk_file_name_for_test(const char*);
 #if defined(__cplusplus)
 }
 #endif
-#endif  // BOOTSTAT_TEST_H_
+#endif  // LIBCHROMEOS_CHROMEOS_BOOTSTAT_BOOTSTAT_TEST_H_

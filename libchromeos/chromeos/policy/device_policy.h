@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBPOLICY_DEVICE_POLICY_H_
-#define LIBPOLICY_DEVICE_POLICY_H_
+#ifndef LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_H_
+#define LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_H_
 
 #include <set>
 #include <string>
@@ -158,4 +158,4 @@ class DevicePolicy {
 
 #pragma GCC visibility pop
 
-#endif  // LIBPOLICY_DEVICE_POLICY_H_
+#endif  // LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_H_

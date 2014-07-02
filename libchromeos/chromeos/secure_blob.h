@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_SECURE_BLOB_H_
-#define CHROMEOS_SECURE_BLOB_H_
+#ifndef LIBCHROMEOS_CHROMEOS_SECURE_BLOB_H_
+#define LIBCHROMEOS_CHROMEOS_SECURE_BLOB_H_
 
-#include "utility.h"
+#include <string>
+
+#include "chromeos/utility.h"
 
 namespace chromeos {
 
@@ -35,4 +37,4 @@ class SecureBlob : public chromeos::Blob {
 
 }  // namespace chromeos
 
-#endif  // CHROMEOS_SECURE_BLOB_H_
+#endif  // LIBCHROMEOS_CHROMEOS_SECURE_BLOB_H_

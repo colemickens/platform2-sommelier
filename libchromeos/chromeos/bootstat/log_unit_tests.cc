@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bootstat.h"
-#include "bootstat_test.h"
+#include "chromeos/bootstat/bootstat.h"
+#include "chromeos/bootstat/bootstat_test.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -34,14 +34,14 @@ static void RemoveFile(const string& file_path) {
 // event files.  After logging, the expected content is tested
 // against the actual content.
 class EventTracker {
-  public:
+ public:
     EventTracker(const string& name, const string& uptime_prefix,
                const string& disk_prefix);
     void TestLogEvent(const string& uptime, const string& diskstats);
     void TestLogSymlink(const string& dirname, bool create_target);
     void Reset();
 
-  private:
+ private:
     string event_name_;
     string uptime_file_name_;
     string uptime_content_;
@@ -190,7 +190,7 @@ void EventTracker::Reset() {
 // selected by this test.  This class also redirects the location for
 // the event files created by bootstat_log() to a temporary directory.
 class BootstatTest : public ::testing::Test {
-  protected:
+ protected:
     virtual void SetUp();
     virtual void TearDown();
 
@@ -206,7 +206,7 @@ class BootstatTest : public ::testing::Test {
 
     string stats_output_dir_;
 
-  private:
+ private:
     string uptime_event_prefix_;
     string disk_event_prefix_;
 
@@ -319,11 +319,10 @@ TEST_F(BootstatTest, ContentGeneration) {
 TEST_F(BootstatTest, EventNameTruncation) {
   static const char kMostVoluminousEventName[] =
     //             16              32              48              64
-    "event-6789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef" //  64
-    "=064+56789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef" // 128
-    "=128+56789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef" // 191
-    "=191+56789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef" // 256
-    ;
+    "event-6789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef"  //  64
+    "=064+56789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef"  // 128
+    "=128+56789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef"  // 191
+    "=191+56789abcdef_123456789ABCDEF.123456789abcdef0123456789abcdef";  // 256
 
   string very_long(kMostVoluminousEventName);
   SetMockStats(bootstat_data[0], bootstat_data[1]);

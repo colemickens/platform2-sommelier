@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef _CHROMEOS_TEST_HELPERS_H_
-#define _CHROMEOS_TEST_HELPERS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_TEST_HELPERS_H_
+#define LIBCHROMEOS_CHROMEOS_TEST_HELPERS_H_
 
 #include "gtest/gtest.h"
 
@@ -13,7 +13,8 @@
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <chromeos/syslog_logging.h>
+
+#include "chromeos/syslog_logging.h"
 
 inline void ExpectFileEquals(const char* golden,
                              const char* file_path) {
@@ -29,4 +30,4 @@ inline void SetUpTests(int *argc, char** argv, bool log_to_stderr) {
   ::testing::InitGoogleTest(argc, argv);
 }
 
-#endif  // _CHROMEOS_TEST_HELPERS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_TEST_HELPERS_H_

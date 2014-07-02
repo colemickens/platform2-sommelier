@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_EXCEPTION_H_
-#define CHROMEOS_EXCEPTION_H_
+#ifndef LIBCHROMEOS_CHROMEOS_EXCEPTION_H_
+#define LIBCHROMEOS_CHROMEOS_EXCEPTION_H_
 
 #include <base/logging.h>
 
@@ -181,5 +181,5 @@ void TerminalError(const T& x) {
 
 /******************************************************************************/
 
-#endif  // CHROMEOS_EXCEPTION_H_
+#endif  // LIBCHROMEOS_CHROMEOS_EXCEPTION_H_
 

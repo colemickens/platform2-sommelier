@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libpolicy.h"
+#include "policy/libpolicy.h"
 
 #include <base/logging.h>
 
-#include "device_policy_impl.h"
+#include "policy/device_policy_impl.h"
 
 namespace policy {
 

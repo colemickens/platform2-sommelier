@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBPOLICY_DEVICE_POLICY_IMPL_H_
-#define LIBPOLICY_DEVICE_POLICY_IMPL_H_
+#ifndef LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_IMPL_H_
+#define LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_IMPL_H_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -13,7 +14,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
-#include "device_policy.h"
+#include "policy/device_policy.h"
 
 #pragma GCC visibility push(default)
 
@@ -83,4 +84,4 @@ class DevicePolicyImpl : public DevicePolicy {
 
 #pragma GCC visibility pop
 
-#endif  // LIBPOLICY_DEVICE_POLICY_IMPL_H_
+#endif  // LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_IMPL_H_

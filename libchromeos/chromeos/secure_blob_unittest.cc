@@ -4,12 +4,12 @@
 
 // Unit tests for SecureBlob.
 
-#include "secure_blob.h"
+#include "chromeos/secure_blob.h"
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include "utility.h"
+#include "chromeos/utility.h"
 
 namespace chromeos {
 using std::string;
@@ -92,4 +92,4 @@ TEST_F(SecureBlobTest, ResizeTest) {
   EXPECT_EQ(0, static_cast<unsigned char*>(blob.data())[length - 1]);
 }
 
-}  // namespace cryptohome
+}  // namespace chromeos

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_PROCESS_H_
-#define CHROMEOS_PROCESS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_PROCESS_H_
+#define LIBCHROMEOS_CHROMEOS_PROCESS_H_
 
 #include <sys/types.h>
 
@@ -177,4 +177,4 @@ class ProcessImpl : public Process {
 
 }  // namespace chromeos
 
-#endif  // CHROMEOS_PROCESS_H
+#endif  // LIBCHROMEOS_CHROMEOS_PROCESS_H_

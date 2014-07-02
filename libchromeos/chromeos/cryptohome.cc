@@ -130,6 +130,6 @@ void SetSystemSalt(std::string* value) {
   salt = value;
 }
 
-} // namespace home
-} // namespace cryptohome
-} // namespace chromeos
+}  // namespace home
+}  // namespace cryptohome
+}  // namespace chromeos

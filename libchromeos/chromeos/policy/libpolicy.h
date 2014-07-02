@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POLICY_LIBPOLICY_H_
-#define POLICY_LIBPOLICY_H_
+#ifndef LIBCHROMEOS_CHROMEOS_POLICY_LIBPOLICY_H_
+#define LIBCHROMEOS_CHROMEOS_POLICY_LIBPOLICY_H_
 
 #include <string>
 
@@ -26,7 +26,7 @@ class PolicyProvider {
   virtual ~PolicyProvider();
 
   // Contructor for tests only!
-  PolicyProvider(DevicePolicy* device_policy);
+  explicit PolicyProvider(DevicePolicy* device_policy);
 
   // This function will ensure the freshnes of the contents that the getters
   // are delivering. Normally contents are cached to prevent unneccessary load.
@@ -47,4 +47,4 @@ class PolicyProvider {
 
 #pragma GCC visibility pop
 
-#endif  // POLICY_LIBPOLICY_H_
+#endif  // LIBCHROMEOS_CHROMEOS_POLICY_LIBPOLICY_H_

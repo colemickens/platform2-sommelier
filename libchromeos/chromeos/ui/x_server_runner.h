@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_UI_X_SERVER_RUNNER_H_
-#define CHROMEOS_UI_X_SERVER_RUNNER_H_
+#ifndef LIBCHROMEOS_CHROMEOS_UI_X_SERVER_RUNNER_H_
+#define LIBCHROMEOS_CHROMEOS_UI_X_SERVER_RUNNER_H_
 
 #include <sys/types.h>
 
@@ -80,4 +80,4 @@ class XServerRunner {
 }  // namespace ui
 }  // namespace chromeos
 
-#endif  // CHROMEOS_UI_X_SERVER_RUNNER_H_
+#endif  // LIBCHROMEOS_CHROMEOS_UI_X_SERVER_RUNNER_H_

@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_UTILITY_H_
-#define CHROMEOS_UTILITY_H_
+#ifndef LIBCHROMEOS_CHROMEOS_UTILITY_H_
+#define LIBCHROMEOS_CHROMEOS_UTILITY_H_
 
 #include <cstdlib>
 #include <cstring>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -113,4 +114,4 @@ bool SecureRandomString(size_t len, std::string* result);
 }  // namespace chromeos
 
 
-#endif /* CHROMEOS_UTILITY_H_ */
+#endif  // LIBCHROMEOS_CHROMEOS_UTILITY_H_

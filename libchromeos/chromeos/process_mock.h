@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_PROCESS_MOCK_H_
-#define CHROMEOS_PROCESS_MOCK_H_
+#ifndef LIBCHROMEOS_CHROMEOS_PROCESS_MOCK_H_
+#define LIBCHROMEOS_CHROMEOS_PROCESS_MOCK_H_
 
 #include <string>
 
-#include <chromeos/process.h>
 #include <gmock/gmock.h>
+
+#include "chromeos/process.h"
 
 namespace chromeos {
 
@@ -37,4 +38,4 @@ class ProcessMock : public Process {
 
 }  // namespace chromeos
 
-#endif  // CHROMEOS_PROCESS_MOCK_H_
+#endif  // LIBCHROMEOS_CHROMEOS_PROCESS_MOCK_H_

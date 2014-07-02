@@ -30,4 +30,4 @@ TEST_F(SyslogLoggingDeathTest, FatalLoggingIsFatal) {
   SetLogFlags(old_flags);
 }
 
-}  // namespace cryptohome
+}  // namespace chromeos

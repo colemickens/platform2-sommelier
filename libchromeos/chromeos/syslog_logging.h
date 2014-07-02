@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_SYSLOG_LOGGING_H_
-#define CHROMEOS_SYSLOG_LOGGING_H_
+#ifndef LIBCHROMEOS_CHROMEOS_SYSLOG_LOGGING_H_
+#define LIBCHROMEOS_CHROMEOS_SYSLOG_LOGGING_H_
 
 #include <string>
 
@@ -43,4 +43,4 @@ bool FindLog(const char* string);
 
 }  // namespace chromeos
 
-#endif  // CHROMEOS_SYSLOG_LOGGING_H_
+#endif  // LIBCHROMEOS_CHROMEOS_SYSLOG_LOGGING_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_CRYPTOHOME_H_
-#define CHROMEOS_CRYPTOHOME_H_
+#ifndef LIBCHROMEOS_CHROMEOS_CRYPTOHOME_H_
+#define LIBCHROMEOS_CHROMEOS_CRYPTOHOME_H_
 
 #include <string>
 
@@ -66,8 +66,8 @@ void SetSystemSalt(std::string* salt);
 // Returns the system salt.
 std::string* GetSystemSalt();
 
-} // namespace home
-} // namespace cryptohome
-} // namespace chromeos
+}  // namespace home
+}  // namespace cryptohome
+}  // namespace chromeos
 
-#endif // CHROMEOS_CRYPTOHOME_H_
+#endif  // LIBCHROMEOS_CHROMEOS_CRYPTOHOME_H_

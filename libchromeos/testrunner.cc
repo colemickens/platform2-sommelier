@@ -4,9 +4,10 @@
 
 // based on pam_google_testrunner.cc
 
-#include <chromeos/test_helpers.h>
 #include <gtest/gtest.h>
 #include <glib-object.h>
+
+#include "chromeos/test_helpers.h"
 
 int main(int argc, char** argv) {
   ::g_type_init();
