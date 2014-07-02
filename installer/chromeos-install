@@ -1,0 +1,798 @@
+#!/bin/sh -u
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# A script to install from removable media to hard disk.
+
+# If we're not running as root, restart as root.
+if [ ${UID:-$(id -u)} -ne 0 ]; then
+  exec sudo "$0" "$@"
+fi
+
+# Load functions and constants for chromeos-install.
+. /usr/share/misc/chromeos-common.sh || exit 1
+. /usr/share/misc/shflags || exit 1
+
+# TODO(installer): Clean up all these flags. There are way too many flags in
+# this script.
+
+DEFINE_string dst "" "Destination device"
+DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \
+  "Skip check to ensure source is removable"
+DEFINE_boolean skip_dst_removable ${FLAGS_FALSE} \
+  "Skip check to ensure destination is not removable"
+DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
+  "Skip installing the rootfs; Only set up partition table"
+DEFINE_boolean yes ${FLAGS_FALSE} \
+  "Answer yes to everything"
+DEFINE_boolean skip_vblock ${FLAGS_FALSE} \
+  "Skip copying the HD vblock to install destination"
+DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
+  "Don't create a new filesystem for the stateful partition. Be careful \
+using this option as this may make the stateful partition not mountable."
+DEFINE_string arch "" \
+  "Architecture for this image, must be one of 'ARM' or 'INTEL'.  If \
+unset, auto-detect."
+DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
+the device's hard drive"
+DEFINE_boolean use_payload_kern_b ${FLAGS_FALSE} \
+  "Copy KERN-B instead of KERN-A from payload_image."
+DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
+layout"
+DEFINE_string pmbr_code "" "Path to PMBR code to be installed"
+DEFINE_string target_bios "" "Bios type to boot with (see postinst --bios)"
+DEFINE_boolean mtd_layout ${FLAGS_FALSE} "This system uses MTD for \
+partitioning rather than GPT"
+DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output"
+DEFINE_boolean large_test_partitions ${FLAGS_FALSE} \
+  "Make partitions 9 and 10 large (for filesystem testing)"
+DEFINE_boolean skip_postinstall ${FLAGS_FALSE} \
+  "Skip postinstall for situations where you're building for a \
+non-native arch. Note that this will probably break verity."
+
+
+# Parse command line
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
+# Be aggressive.
+set -eu
+
+SUB_CMD_DEBUG_FLAG=""
+if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
+  set -x
+  SUB_CMD_DEBUG_FLAG="--debug"
+fi
+
+# Determine our architecture
+if [ -z "$FLAGS_arch" ]; then
+  case $(uname -m) in
+  i?86|x86_64)
+    ARCH="INTEL"
+    ;;
+  arm*)
+    ARCH="ARM"
+    ;;
+  *)
+    echo "Error: Failed to auto detect architecture" >&2
+    exit 1
+  esac
+else
+  case ${FLAGS_arch} in
+  INTEL|ARM)
+    ;;
+  *)
+    echo "Error: Unknown architecture '$FLAGS_arch'." >& 2
+    exit 1
+  esac
+  ARCH="$FLAGS_arch"
+fi
+
+fast_dd() {
+  # Usage: fast_dd <block size> <count> <seek> <skip> other dd args
+  local user_block_size="$1"
+  shift
+  local user_count="$1"
+  shift
+  local user_seek="$1"
+  shift
+  local user_skip="$1"
+  shift
+  local ideal_block_size=$((2 * 1024 * 1024))  # 2 MiB
+  if [ $(($ideal_block_size % $user_block_size)) -eq 0 ]; then
+    local factor=$(($ideal_block_size / $user_block_size))
+    if [ $(($user_count % $factor)) -eq 0 -a \
+         $(($user_seek % $factor)) -eq 0 -a \
+         $(($user_skip % $factor)) -eq 0 ]; then
+      local count_arg=""
+      if [ "$user_count" -ne 0 ]; then
+        count_arg="count=$(($user_count / $factor))"
+      fi
+      dd $* bs="$ideal_block_size" seek=$(($user_seek / $factor)) \
+          skip=$(($user_skip / $factor)) $count_arg
+      return
+    fi
+  fi
+  # Give up and do the user's slow dd
+  echo
+  echo WARNING: DOING A SLOW dd OPERATION. PLEASE FIX
+  echo
+  local count_arg=""
+  if [ "$user_count" -ne 0 ]; then
+    count_arg="count=$user_count"
+  fi
+  dd $* bs="$user_block_size" seek="$user_seek" skip="$user_skip" \
+    $count_arg
+}
+
+get_format() {
+  local part=$1
+  eval echo \${FORMAT_${part}}
+}
+
+get_fs_format() {
+  local part=$1
+  eval echo \${FS_FORMAT_${part}}
+}
+
+# Update a specific partition in the destination device.
+write_partition() {
+  local user_part="$1"
+  local user_count="$2"
+  local user_seek="$3"
+  local user_skip="$4"
+  local src="$5"
+  local dst="$6"
+  local format fs_format
+
+  if [ ${user_count} -eq 0 ]; then
+    echo "Skipping partition as it does not exist"
+    return 0
+  fi
+
+  format=$(get_format ${user_part})
+  case ${format} in
+  nand)
+    flash_erase "/dev/mtd${user_part}" 0 0
+    fast_dd 512 "${user_count}" "0" "${user_skip}" \
+      if="${src}" of="/dev/mtdblock${user_part} " conv=notrunc
+    ;;
+
+  ubi)
+    local phy_ubi="/dev/ubi${user_part}"
+    local log_ubi="${phy_ubi}_0"
+    local sysfs_name="/sys/class/mtd/mtd${user_part}/name"
+
+    # Do we have to initialize it first?
+    if [ ! -e ${phy_ubi} ]; then
+      ubiformat -y -e 0 /dev/mtd${user_part}
+      ubiattach -d ${user_part} -m ${user_part}
+    fi
+    if [ ! -e ${log_ubi} ]; then
+      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
+    fi
+
+    fs_format=$(get_fs_format ${user_part})
+    case ${fs_format} in
+    ubifs)
+      local src_mnt="${TMPMNT}/src" dst_mnt="${TMPMNT}/dst"
+      mkdir -p "${src_mnt}" "${dst_mnt}"
+
+      mkfs.ubifs -y -x none -R 0 "${log_ubi}"
+      mount "${log_ubi}" "${dst_mnt}"
+
+      # Have to copy the files over by hand as the source partition is a
+      # different filesystem type (like ext4).
+      loop_offset_setup "${src}" "${user_seek}"
+      TMPMNT="${src_mnt}" mount_on_loop_dev
+      cp -a "${src_mnt}"/* "${dst_mnt}"/
+      TMPMNT="${src_mnt}" umount_from_loop_dev
+      loop_offset_cleanup
+
+      umount "${log_ubi}"
+      ;;
+    *)
+      ubiupdatevol --skip $((user_skip * 512)) --size $((user_count * 512)) \
+        ${log_ubi} "${src}"
+      ;;
+    esac
+    ;;
+
+  *)
+    fast_dd 512 "${user_count}" "${user_seek}" "${user_skip}" \
+      if="${src}" of="${dst}" conv=notrunc
+    ;;
+  esac
+}
+
+# Find root partition of the block device that we are installing from
+get_root_device() {
+  rootdev -s
+}
+
+# Check for optional payload image
+if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" -a -s "$FLAGS_gpt_layout" ]; then
+  # Usually this is used for partition setup.
+  SRC=""
+  ROOT=""
+elif [ -z "$FLAGS_payload_image" ]; then
+  # Find root partition of the root block device
+  SRC=$(get_block_dev_from_partition_dev $(get_root_device))
+  ROOT=""
+
+  if [ "$FLAGS_skip_src_removable" -eq "${FLAGS_FALSE}" ]; then
+    if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
+      # Work around ARM kernel bug http://crosbug.com/14871
+      # Removable flag is implemented inconsistantly for ARM sdcard reader.
+      if [ "${SRC}" != "/dev/mmcblk1" ]; then
+        echo "Error: Source does not look like a removable device: $SRC"
+        exit 1
+      fi
+    fi
+  fi
+else
+  if [ ! -e "$FLAGS_payload_image" ]; then
+    echo "Error: No payload image found at $FLAGS_payload_image"
+    exit 1
+  fi
+
+  # Needed to copy PMBR code off image
+  SRC="$FLAGS_payload_image"
+  ROOT="$(mktemp -d)"
+fi
+
+##############################################################################
+# Helpful constants and functions.
+
+# Where to store any related hardware diagnostics data.
+HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
+PMBRCODE=/tmp/gptmbr.bin
+TMPMNT=/tmp/install-mount-point
+mkdir -p ${TMPMNT}
+
+# Clean any mounts that might be present to avoid
+# aliasing access to block devices.
+prepare_disk() {
+  if [ -e /etc/init/cros-disks.conf ]; then
+    initctl stop cros-disks || true
+  fi
+  # Often times, nothing is mounted, so swallow the warnings.
+  umount -f /media/*/* 2>&1 | \
+    grep -v -i \
+      -e 'No such file or directory' \
+      -e 'not found' || true
+}
+
+# Like mount but keeps track of the current mounts so that they can be cleaned
+# up automatically.
+tracked_mount() {
+  local last_arg
+  eval last_arg=\$$#
+  MOUNTS="${last_arg}${MOUNTS:+ }${MOUNTS:-}"
+  mount "$@"
+}
+
+# Unmount with tracking.
+tracked_umount() {
+  # dash doesnt support ${//} expansions
+  local new_mounts
+  for mount in $MOUNTS; do
+    if [ "$mount" != "$1" ]; then
+      new_mounts="${new_mounts:-}${new_mounts+ }$mount"
+    fi
+  done
+  MOUNTS=${new_mounts:-}
+
+  umount "$1"
+}
+
+# Create a loop device on the given file at a specified (sector) offset.
+# Remember the loop device using the global variable LOOP_DEV.
+# Invoke as: command
+# Args: FILE OFFSET
+loop_offset_setup() {
+  local filename=$1
+  local offset=$2
+
+  LOOP_DEV=$(losetup -f)
+  if [ -z "$LOOP_DEV" ]; then
+    echo "No free loop device. Free up a loop device or reboot. Exiting."
+    exit 1
+  fi
+  losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
+
+  LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
+}
+
+# Delete the current loop device.
+loop_offset_cleanup() {
+  # dash doesnt support ${//} expansions
+  local new_loops
+  for loop in $LOOPS; do
+    if [ "$loop" != "$LOOP_DEV" ]; then
+      new_loops="${new_loops:-}${new_loops+ }$loop"
+    fi
+  done
+  LOOPS=${new_loops:-}
+
+  # losetup -a doesn't always show every active device, so we'll always try to
+  # delete what we think is the active one without checking first. Report
+  # success no matter what.
+  losetup -d ${LOOP_DEV} || /bin/true
+}
+
+# Mount the existing loop device at the mountpoint in $TMPMNT.
+# Args: optional 'readwrite'. If present, mount read-write, otherwise read-only.
+mount_on_loop_dev() {
+  local rw_flag=${1-readonly}
+  local mount_flags=""
+  if [ "${rw_flag}" != "readwrite" ]; then
+    mount_flags="-o ro"
+  fi
+  tracked_mount ${mount_flags} ${LOOP_DEV} ${TMPMNT}
+}
+
+# Unmount loop-mounted device.
+umount_from_loop_dev() {
+  mount | grep -q " on ${TMPMNT} " && tracked_umount ${TMPMNT}
+}
+
+# Check if all arguments are non-empty values
+check_non_empty_values() {
+  local value
+  for value in "$@"; do
+    if [ -z "$value" ]; then
+      return ${FLAGS_FALSE}
+    fi
+  done
+  return ${FLAGS_TRUE}
+}
+
+# Undo all mounts and loops and runs hw diagnostics on failure.
+cleanup_on_failure() {
+  set +e
+
+  # Generate the diagnostics log that can be used by a caller.
+  echo "Running a hw diagnostics test -- this might take a couple minutes."
+  badblocks -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
+
+  # Run a few extra diagnostics and then them to stdout. These will be stored
+  # as part of the recovery.log for recovery images.
+  if which smartctl >/dev/null 2>&1; then
+    smartctl -l error "${DST}"
+    smartctl -l selftest "${DST}"
+    smartctl -a "${DST}"
+  fi
+
+  cleanup
+}
+
+# Undo all mounts and loops.
+cleanup() {
+  set +e
+
+  local mount_point
+  for mount_point in ${MOUNTS:-}; do
+    umount "$mount_point" || /bin/true
+  done
+  MOUNTS=""
+
+  local loop_dev
+  for loop_dev in ${LOOPS:-}; do
+    losetup -d "$loop_dev" || /bin/true
+  done
+  LOOPS=""
+
+  if [ ! -z "$ROOT" ]; then
+    rmdir "$ROOT"
+  fi
+}
+
+# Copy kernel verification block to target HD
+# TODO(installer): Remove once crbug.com/320117 is fixed.
+copy_kernel_vblock() {
+  local ret=0
+
+  if [ -s $VERIFY_BLOB ]; then
+    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
+        of="${DST}" conv=notrunc
+      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
+        of="${DST}" conv=notrunc
+    else
+      # We have to erase before we write else you get a boatload of I/O errors
+      flash_erase "/dev/mtd${KERNEL_PART}" 0 0
+      flash_erase "/dev/mtd${KERNEL_B_PART}" 0 0
+
+      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
+        of="/dev/mtdblock${KERNEL_PART}" conv=notrunc
+      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
+        of="/dev/mtdblock${KERNEL_B_PART}" conv=notrunc
+    fi
+
+    ret=1
+  fi
+  echo ${ret}
+}
+
+check_removable() {
+  if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
+    return
+  fi
+
+  local removable
+
+  if ! removable=$(cat /sys/block/${DST#/dev/}/removable); then
+    echo "Error: Invalid destination device (must be whole device): ${DST}"
+    exit 1
+  fi
+
+  if [ "${removable}" != "0" ]; then
+    echo "Error: Attempt to install to a removeable device: $DST"
+    exit 1
+  fi
+}
+
+STATEFUL_PART=1
+# This is defined later once we have mounted the ROOT.
+STATEFUL_FORMAT=
+
+# Wipes and expands the stateful partition.
+wipe_stateful() {
+  echo "Clearing the stateful partition..."
+  local stateful_fs_format=$(get_fs_format ${STATEFUL_PART})
+
+  case ${STATEFUL_FORMAT} in
+  ubi)
+    local phy_ubi="/dev/ubi${STATEFUL_PART}"
+    local log_ubi="${phy_ubi}_0"
+    local sysfs_name="/sys/class/mtd/mtd${STATEFUL_PART}/name"
+
+    # Do we have to initialize it first?
+    if [ ! -e ${phy_ubi} ]; then
+      ubiformat -y -e 0 /dev/mtd${STATEFUL_PART}
+      ubiattach -d ${STATEFUL_PART} -m ${STATEFUL_PART}
+    fi
+    if [ ! -e ${log_ubi} ]; then
+      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
+    fi
+    ;;
+  *)
+    loop_offset_setup ${DST} ${START_STATEFUL}
+    ;;
+  esac
+
+  # We always make any ext* stateful partitions ext4.
+  case ${stateful_fs_format} in
+  ext[234])
+    mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+      $((NUM_STATEFUL_SECTORS / 8))
+    ;;
+  ubifs)
+    mkfs.ubifs -y -x none -R 0 /dev/ubi${STATEFUL_PART}_0
+    ;;
+  esac
+
+  case ${STATEFUL_FORMAT} in
+  ubi) ;;
+  *)
+    # Need to synchronize before releasing loop device, otherwise calling
+    # loop_offset_cleanup may return "device busy" error.
+    sync
+    loop_offset_cleanup
+    ;;
+  esac
+}
+
+# Install the stateful partition content
+# Method handles copying data over to the stateful partition. This is done
+# differently than other partitions due to the EXPAND option i.e. src partition
+# and dst partitions are of different sizes. In addition, there are some special
+# tweaks we do for stateful here for various workflows.
+install_stateful() {
+  # In general, the system isn't allowed to depend on anything
+  # being in the stateful partition at startup.  We make some
+  # exceptions for dev images (only), as enumerated below:
+  #
+  # var_overlay
+  #   These are included to support gmerge, and must be kept in
+  #   sync with those listed in /etc/init/var-overlay.conf:
+  #      db/pkg
+  #      lib/portage
+  #
+  # dev_image
+  #   This provides tools specifically chosen to be mounted at
+  #   /usr/local as development only tools.
+  #
+  # Every exception added makes the dev image different from
+  # the release image, which could mask bugs.  Make sure every
+  # item you add here is well justified.
+  echo "Installing the stateful partition..."
+  case ${STATEFUL_FORMAT} in
+  ubi)
+    # We modify the global used here as it affects how we unmount later.
+    LOOP_DEV="/dev/ubi${STATEFUL_PART}_0"
+    ;;
+  *)
+    loop_offset_setup ${DST} ${START_STATEFUL}
+    ;;
+  esac
+  mount_on_loop_dev readwrite
+
+  # Whitelist files to copy onto the stateful partition.
+  #
+  # When adding to the whitelist, consider the need for related changes in
+  # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
+  #
+  local dirlist="unencrypted/import_extensions"
+  if crossystem 'cros_debug?1'; then
+    dirlist="
+      ${dirlist}
+      var_overlay/db/pkg
+      var_overlay/lib/portage
+      dev_image
+    "
+  fi
+
+  if crossystem 'devsw_boot?1' ; then
+    # This is a base build, and the dev switch was on when we booted;
+    # we assume it will be on for the next boot.  We touch
+    # ".developer_mode" to avoid a pointless delay after reboot while
+    # chromeos_startup wipes an empty stateful partition.
+    #
+    # See chromeos_startup for the companion code that checks for this
+    # file.
+    #
+    touch ${TMPMNT}/.developer_mode
+  fi
+
+  # Does our copy of 'cp' support -u? Not sure why -u is desired, but
+  # may be related to --preserve_stateful.
+  #
+  local opt_u=""
+  if cp -u /dev/null /dev/zero 2>/dev/null; then
+    opt_u="u"
+  fi
+
+  local dir
+  for dir in ${dirlist}; do
+    if [ ! -d "${ROOT}/mnt/stateful_partition/${dir}" ]; then
+      continue
+    fi
+    local parent=$(dirname "${dir}")
+    mkdir -p "${TMPMNT}/${parent}"
+    cp -a${opt_u} "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${dir}"
+  done
+
+  umount_from_loop_dev
+  case ${STATEFUL_FORMAT} in
+  ubi) ;;
+  *)
+    loop_offset_cleanup
+    ;;
+  esac
+}
+
+# Partition numbers that have assumptions about them. This list should be kept
+# to a minimal. Check copy_partition for most special casing.
+KERNEL_A_PART=2
+ROOTFS_A_PART=3
+KERNEL_B_PART=4
+ROOTFS_B_PART=5
+
+# Copy partition from src to dst (figures out partition offsets). Note, this
+# has some special casing for rootfs, kernel, and stateful partitions. In
+# addition, it only copies partitions that are equally sized over one another.
+# $1 - Partition number we are copying to.
+# $2 - src image
+# $3 - dst image.
+copy_partition() {
+  local part_num=$1
+  local src=$2
+  local dst=$3
+  local part_size=$(partsize ${src} ${part_num})
+  local src_offset=$(partoffset ${src} ${part_num})
+  local dst_offset=$(partoffset ${dst} ${part_num})
+
+  echo "Installing partition ${part_num} to ${dst}"
+
+  case ${part_num} in
+  ${STATEFUL_PART})
+    install_stateful
+    ;;
+  ${ROOTFS_A_PART}|${ROOTFS_B_PART})
+    # Always copy from ROOT_A for rootfs partitions.
+    part_size=$(partsize ${src} ${ROOTFS_A_PART})
+    src_offset=$(partoffset ${src} ${ROOTFS_A_PART})
+    write_partition ${part_num} ${part_size} ${dst_offset} \
+      ${src_offset} ${src} ${dst}
+    ;;
+  ${KERNEL_A_PART}|${KERNEL_B_PART})
+    if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_FALSE} ]; then
+      part_size=$(partsize ${src} ${KERNEL_A_PART})
+      src_offset=$(partoffset ${src} ${KERNEL_A_PART})
+    else
+      part_size=$(partsize ${src} ${KERNEL_B_PART})
+      src_offset=$(partoffset ${src} ${KERNEL_B_PART})
+    fi
+    write_partition ${part_num} ${part_size} ${dst_offset} \
+      ${src_offset} ${src} ${dst}
+    ;;
+  *)
+    local dst_part_size=$(partsize ${dst} ${part_num})
+    if [ ${part_size} -ne ${dst_part_size} -o ${part_size} -le 4096 ]; then
+      # We only copy partitions that are equally sized and greater than the
+      # min fs block size. This matches the build_image logic.
+      return
+    fi
+    write_partition ${part_num} ${part_size} ${dst_offset} \
+      ${src_offset} ${src} ${dst}
+    ;;
+  esac
+}
+
+##############################################################################
+
+# Start main logic. As little code as possible should go in here. Please make
+# sure put any helper methods above this point to make this main component as
+# simple as possible.
+
+# We untrap on success and run cleanup ourselves. Othewise, on any failure, run
+# our custom trap method to gather any diagnostic data before cleaning up.
+trap cleanup_on_failure EXIT
+
+# Clean media browser mounts if they've popped up.
+prepare_disk
+
+locate_gpt
+
+# Special handling for payload_image. This is passed in for recovery images
+# and usb installs. This is done first so we can read the gpt partition
+# file below.
+if [ -n "${FLAGS_payload_image}" ]; then
+  SRC="${FLAGS_payload_image}"
+  # Mount files that are required to be referenced (when not already mounted).
+  loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${ROOTFS_A_PART})
+  tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
+  loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${STATEFUL_PART})
+  tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
+fi
+
+# Load the GPT helper functions and the image settings.
+. "${ROOT}/usr/sbin/write_gpt.sh"
+load_base_vars
+
+# Now that we have loaded the partition table we can actually read the format
+# and partition information.
+STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
+
+# Find our destination device.
+# If the user hasn't selected a destination,
+# we expect that the disk layout declares it for us.
+DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
+if [ -z "${DST}" ]; then
+  echo "Error: can not determine destination device. Specify --dst yourself."
+  exit 1
+fi
+
+if [ "${DST}" = "/dev/ubi" ]; then
+  FLAGS_mtd_layout=${FLAGS_TRUE}
+fi
+
+# Check out the dst device.
+if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  FLAGS_skip_dst_removable=${FLAGS_TRUE}
+elif [ ! -b "${DST}" ]; then
+  echo "Error: Unable to find destination block device: ${DST}"
+  exit 1
+fi
+
+check_removable
+
+if [ "$DST" = "$SRC" ]; then
+  echo "Error: src and dst are the same: $SRC = $DST"
+  exit 1
+fi
+
+# Ask for confirmation to be sure.
+echo "This will install from '$SRC' to '$DST'."
+echo "This will erase all data at this destination: $DST"
+if [ ${FLAGS_yes} -eq ${FLAGS_FALSE} ]; then
+  read -p "Are you sure (y/N)? " SURE
+  if [ "$SURE" != "y" ]; then
+    echo "Ok, better safe than sorry; you answered '$SURE'."
+    # Don't run diagnostics if the user explictly bailed out.
+    trap - EXIT
+    cleanup
+    exit 1
+  fi
+fi
+
+if [ -n "${FLAGS_pmbr_code}" ]; then
+  PMBRCODE="${FLAGS_pmbr_code}"
+elif [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  : nop it
+elif [ "$ARCH" = "ARM" ]; then
+  # Store the existing PMBR from the destination in the temp pmbr file so we can
+  # restore it when we're installing the GPT. This ensures that we preserve
+  # settings set by crossystem (such as dev_boot_usb).
+  dd bs=512 count=1 if=$DST of=$PMBRCODE
+else
+  # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
+  # on legacy-BIOS devices.
+  dd bs=512 count=1 if=$SRC of=$PMBRCODE
+fi
+
+# Write the GPT using the board specific script.
+if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+  write_base_table ${DST} ${PMBRCODE}
+  /sbin/blockdev --rereadpt ${DST}
+  legacy_offset_size_export "${DST}"
+else
+  legacy_offset_size_export "${SRC}"
+fi
+
+if [ ${FLAGS_skip_rootfs} -eq ${FLAGS_TRUE} ]; then
+  echo Done installing partitons.
+  exit 0
+fi
+
+if [ ${FLAGS_preserve_stateful} -eq ${FLAGS_FALSE} ]; then
+  wipe_stateful
+fi
+
+# Install the content. Do so in reverse order to have stateful get installed
+# last. The order shouldn't matter but legacy behavior has us go in reverse
+# order.
+for CURRENT_PART in $(seq 12 -1 1); do
+  copy_partition ${CURRENT_PART} ${SRC} ${DST}
+done
+
+
+################################################################################
+# Post partition copying work and special casing
+################################################################################
+
+# The recovery image is signed with different keys from the hard-disk image. We
+# need to copy the hard disk verification block from the stateful partition so
+# that reboot from HD can be verified.
+VERIFY_BLOB="${ROOT}/mnt/stateful_partition/vmlinuz_hd.vblock"
+if [ ${FLAGS_skip_vblock} -eq ${FLAGS_FALSE} ]; then
+  if [ $(copy_kernel_vblock) -eq 1 ]; then
+    echo "Copied kernel verification blob from ${VERIFY_BLOB}"
+  else
+    echo "Error: kernel verification blob not found in stateful partition"
+    exit 1
+  fi
+fi
+
+POSTINST_BIOS_ARGS=""
+if [ -n "${FLAGS_target_bios}" ]; then
+  POSTINST_BIOS_ARGS="--bios ${FLAGS_target_bios}"
+fi
+
+# Now run the postinstall script on one new rootfs. Note that even though
+# we're passing the new destination partition number as an arg, the postinst
+# script had better not try to access it, for the reasons we just gave.
+# We can't run this if the target arch isn't the same as the host arch
+if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
+  loop_offset_setup ${DST} ${START_ROOTFS_A}
+  mount_on_loop_dev
+  IS_INSTALL="1" ${TMPMNT}/postinst \
+    $(make_partition_dev ${DST} ${ROOTFS_A_PART}) \
+    ${SUB_CMD_DEBUG_FLAG} "${POSTINST_BIOS_ARGS}"
+  umount_from_loop_dev
+  loop_offset_cleanup
+fi
+
+# Force data to disk before we declare done.
+sync
+
+cleanup
+trap - EXIT
+
+echo "------------------------------------------------------------"
+echo ""
+echo "Installation to '$DST' complete."
+echo "Please shutdown, remove the USB device, cross your fingers, and reboot."
