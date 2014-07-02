@@ -498,6 +498,22 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
          operator_code_type_ == kOperatorCodeTypeSID ||
          (user_mccmnc_.empty() && user_sid_.empty()));
 
+  // TODO(pprabhu) Remove this despicable hack. (crosbug.com/p/30200)
+  // We currently have no principled way to handle an MVNO for which the
+  // database does not have MCCMNC data. It is possible that some other MNO
+  // matches the MCCMNC, while the MVNO matches the operator name. We special
+  // case one such operator here and override all the logic below.
+  const char kCubicUUID[] = "2de39b14-c3ba-4143-abb5-c67a390034ee";
+  for (auto candidate_by_name : candidates_by_name_) {
+    CHECK(candidate_by_name->has_data());
+    CHECK(candidate_by_name->data().has_uuid());
+    if (candidate_by_name->data().uuid() == kCubicUUID) {
+      current_mno_ = candidate_by_name;
+      RefreshDBInformation();
+      return true;
+    }
+  }
+
   if (candidates_by_operator_code_.size() == 1) {
     candidate = candidates_by_operator_code_[0];
     if (candidates_by_name_.size() > 0) {
