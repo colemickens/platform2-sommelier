@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DBUS_CONTROL_
-#define SHILL_DBUS_CONTROL_
+#ifndef SHILL_DBUS_CONTROL_H_
+#define SHILL_DBUS_CONTROL_H_
 
 #include <base/memory/scoped_ptr.h>
 #include <dbus-c++/glib-integration.h>
@@ -35,4 +35,4 @@ class DBusControl : public ControlInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_DBUS_CONTROL_
+#endif  // SHILL_DBUS_CONTROL_H_

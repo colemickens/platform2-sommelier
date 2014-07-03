@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_POWER_MANAGER_PROXY_
-#define SHILL_POWER_MANAGER_PROXY_
+#ifndef SHILL_POWER_MANAGER_PROXY_H_
+#define SHILL_POWER_MANAGER_PROXY_H_
 
 // An implementation of PowerManagerProxyInterface.  It connects to the dbus and
 // listens for events from the power manager.  When they occur, the delegate's
@@ -70,4 +70,4 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_POWER_MANAGER_PROXY_
+#endif  // SHILL_POWER_MANAGER_PROXY_H_

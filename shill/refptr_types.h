@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_REFPTR_TYPES_
-#define SHILL_REFPTR_TYPES_
+#ifndef SHILL_REFPTR_TYPES_H_
+#define SHILL_REFPTR_TYPES_H_
 
 #include <base/memory/ref_counted.h>
 
@@ -88,4 +88,4 @@ typedef scoped_refptr<Connection> ConnectionRefPtr;
 
 }  // namespace shill
 
-#endif  // SHILL_REFPTR_TYPES_
+#endif  // SHILL_REFPTR_TYPES_H_

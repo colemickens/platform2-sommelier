@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_RPC_TASK_
-#define SHILL_RPC_TASK_
+#ifndef SHILL_RPC_TASK_H_
+#define SHILL_RPC_TASK_H_
 
 #include <map>
 #include <string>
@@ -66,4 +66,4 @@ class RPCTask {
 
 }  // namespace shill
 
-#endif  // SHILL_RPC_TASK_
+#endif  // SHILL_RPC_TASK_H_

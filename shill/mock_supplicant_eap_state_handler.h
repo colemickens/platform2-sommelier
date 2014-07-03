@@ -30,4 +30,4 @@ class MockSupplicantEAPStateHandler : public SupplicantEAPStateHandler {
 
 }  // namespace shill
 
-#endif  // SHILL_SUPPLICANT_EAP_STATE_HANDLER_H_
+#endif  // SHILL_MOCK_SUPPLICANT_EAP_STATE_HANDLER_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOBILE_OPERATOR_H_
-#define SHILL_MOBILE_OPERATOR_H_
+#ifndef SHILL_MOBILE_OPERATOR_INFO_H_
+#define SHILL_MOBILE_OPERATOR_INFO_H_
 
 #include <string>
 #include <vector>
@@ -213,4 +213,4 @@ class MobileOperatorInfo {
 
 }  // namespace shill
 
-#endif  //  SHILL_MOBILE_OPERATOR_H_
+#endif  // SHILL_MOBILE_OPERATOR_INFO_H_

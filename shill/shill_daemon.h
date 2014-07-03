@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DAEMON_H_
-#define SHILL_DAEMON_H_
+#ifndef SHILL_SHILL_DAEMON_H_
+#define SHILL_SHILL_DAEMON_H_
 
 #include <string>
 
@@ -71,4 +71,4 @@ class Daemon {
 
 }  // namespace shill
 
-#endif  // SHILL_DAEMON_H_
+#endif  // SHILL_SHILL_DAEMON_H_

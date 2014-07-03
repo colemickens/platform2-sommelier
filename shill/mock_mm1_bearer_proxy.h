@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MM1_MOCK_BEARER_PROXY_H_
-#define SHILL_MM1_MOCK_BEARER_PROXY_H_
+#ifndef SHILL_MOCK_MM1_BEARER_PROXY_H_
+#define SHILL_MOCK_MM1_BEARER_PROXY_H_
 
 #include <string>
 
@@ -31,4 +31,4 @@ class MockBearerProxy : public BearerProxyInterface {
 }  // namespace mm1
 }  // namespace shill
 
-#endif  // SHILL_MM1_MOCK_BEARER_PROXY_H_
+#endif  // SHILL_MOCK_MM1_BEARER_PROXY_H_

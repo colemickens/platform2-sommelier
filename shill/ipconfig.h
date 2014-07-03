@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_IPCONFIG_
-#define SHILL_IPCONFIG_
+#ifndef SHILL_IPCONFIG_H_
+#define SHILL_IPCONFIG_H_
 
 #include <string>
 #include <vector>
@@ -201,4 +201,4 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
 }  // namespace shill
 
-#endif  // SHILL_IPCONFIG_
+#endif  // SHILL_IPCONFIG_H_

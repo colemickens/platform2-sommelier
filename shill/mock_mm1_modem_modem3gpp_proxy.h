@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MM1_MOCK_MODEM_MODEM3GPP_PROXY_
-#define SHILL_MM1_MOCK_MODEM_MODEM3GPP_PROXY_
+#ifndef SHILL_MOCK_MM1_MODEM_MODEM3GPP_PROXY_H_
+#define SHILL_MOCK_MM1_MODEM_MODEM3GPP_PROXY_H_
 
 #include <string>
 
@@ -35,4 +35,4 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
 }  // namespace mm1
 }  // namespace shill
 
-#endif  // SHILL_MM1_MOCK_MODEM_MODEM3GPP_PROXY_
+#endif  // SHILL_MOCK_MM1_MODEM_MODEM3GPP_PROXY_H_

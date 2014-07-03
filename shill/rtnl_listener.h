@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_RTNL_LISTENER_
-#define SHILL_RTNL_LISTENER_
+#ifndef SHILL_RTNL_LISTENER_H_
+#define SHILL_RTNL_LISTENER_H_
 
 #include <base/callback.h>
 
@@ -28,4 +28,4 @@ class RTNLListener {
 
 }  // namespace shill
 
-#endif  // SHILL_RTNL_LISTENER_
+#endif  // SHILL_RTNL_LISTENER_H_

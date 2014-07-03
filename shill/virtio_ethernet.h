@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_VIRTIO_ETHERNET_
-#define SHILL_VIRTIO_ETHERNET_
+#ifndef SHILL_VIRTIO_ETHERNET_H_
+#define SHILL_VIRTIO_ETHERNET_H_
 
 #include <string>
 
@@ -30,4 +30,4 @@ class VirtioEthernet : public Ethernet {
 
 }  // namespace shill
 
-#endif  // SHILL_VIRTIO_ETHERNET_
+#endif  // SHILL_VIRTIO_ETHERNET_H_

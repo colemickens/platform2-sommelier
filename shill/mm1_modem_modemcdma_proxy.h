@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MM1_MODEM_MODEMCDMA_PROXY_
-#define SHILL_MM1_MODEM_MODEMCDMA_PROXY_
+#ifndef SHILL_MM1_MODEM_MODEMCDMA_PROXY_H_
+#define SHILL_MM1_MODEM_MODEMCDMA_PROXY_H_
 
 #include <string>
 
@@ -76,4 +76,4 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
 }  // namespace mm1
 }  // namespace shill
 
-#endif  // SHILL_MM1_MODEM_MODEMCDMA_PROXY_
+#endif  // SHILL_MM1_MODEM_MODEMCDMA_PROXY_H_

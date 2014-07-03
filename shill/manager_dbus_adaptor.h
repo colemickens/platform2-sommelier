@@ -139,4 +139,5 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 };
 
 }  // namespace shill
+
 #endif  // SHILL_MANAGER_DBUS_ADAPTOR_H_

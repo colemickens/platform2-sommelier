@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MM1_MOCK_MODEM_TIME_PROXY_H_
-#define SHILL_MM1_MOCK_MODEM_TIME_PROXY_H_
+#ifndef SHILL_MOCK_MM1_MODEM_TIME_PROXY_H_
+#define SHILL_MOCK_MM1_MODEM_TIME_PROXY_H_
 
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
@@ -33,4 +33,4 @@ class MockModemTimeProxy : public ModemTimeProxyInterface {
 }  // namespace mm1
 }  // namespace shill
 
-#endif  // SHILL_MOCK_MODEM_TIME_PROXY_H_
+#endif  // SHILL_MOCK_MM1_MODEM_TIME_PROXY_H_

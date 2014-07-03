@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ROUTING_TABLE_ENTRY_
-#define SHILL_ROUTING_TABLE_ENTRY_
+#ifndef SHILL_ROUTING_TABLE_ENTRY_H_
+#define SHILL_ROUTING_TABLE_ENTRY_H_
 
 #include <base/basictypes.h>
 
@@ -101,4 +101,4 @@ struct RoutingTableEntry {
 }  // namespace shill
 
 
-#endif  // SHILL_ROUTING_TABLE_ENTRY_
+#endif  // SHILL_ROUTING_TABLE_ENTRY_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ARES_H_
-#define SHILL_ARES_H_
+#ifndef SHILL_SHILL_ARES_H_
+#define SHILL_SHILL_ARES_H_
 
 #include <ares.h>
 
@@ -62,4 +62,4 @@ class Ares {
 
 }  // namespace shill
 
-#endif  // SHILL_ARES_H_
+#endif  // SHILL_SHILL_ARES_H_

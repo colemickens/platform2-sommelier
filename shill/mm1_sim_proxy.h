@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MM1_SIM_PROXY_
-#define SHILL_MM1_SIM_PROXY_
+#ifndef SHILL_MM1_SIM_PROXY_H_
+#define SHILL_MM1_SIM_PROXY_H_
 
 #include <string>
 
@@ -84,4 +84,4 @@ class SimProxy : public SimProxyInterface {
 }  // namespace mm1
 }  // namespace shill
 
-#endif  // SHILL_MM1_SIM_PROXY_
+#endif  // SHILL_MM1_SIM_PROXY_H_

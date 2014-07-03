@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_IP_ADDRESS_
-#define SHILL_IP_ADDRESS_
+#ifndef SHILL_IP_ADDRESS_H_
+#define SHILL_IP_ADDRESS_H_
 
 #include <string>
 
@@ -136,4 +136,4 @@ class IPAddress {
 
 }  // namespace shill
 
-#endif  // SHILL_IP_ADDRESS_
+#endif  // SHILL_IP_ADDRESS_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_ERROR_
-#define SHILL_CELLULAR_ERROR_
+#ifndef SHILL_CELLULAR_ERROR_H_
+#define SHILL_CELLULAR_ERROR_H_
 
 #include <dbus-c++/error.h>
 
@@ -23,4 +23,4 @@ class CellularError {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_ERROR_
+#endif  // SHILL_CELLULAR_ERROR_H_

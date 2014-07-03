@@ -199,4 +199,5 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
 };
 
 }  // namespace shill
+
 #endif  // SHILL_PROPERTY_STORE_UNITTEST_H_

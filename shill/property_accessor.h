@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_ACCESSOR_
-#define SHILL_PROPERTY_ACCESSOR_
+#ifndef SHILL_PROPERTY_ACCESSOR_H_
+#define SHILL_PROPERTY_ACCESSOR_H_
 
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
@@ -338,4 +338,4 @@ class CustomMappedAccessor : public AccessorInterface<T> {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_ACCESSOR_
+#endif  // SHILL_PROPERTY_ACCESSOR_H_

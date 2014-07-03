@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SUPPLICANT_PROCESS_PROXY_H_
-#define SUPPLICANT_PROCESS_PROXY_H_
+#ifndef SHILL_SUPPLICANT_PROCESS_PROXY_H_
+#define SHILL_SUPPLICANT_PROCESS_PROXY_H_
 
 #include <map>
 #include <string>
@@ -56,4 +56,4 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
 
 }  // namespace shill
 
-#endif   // SUPPLICANT_PROCESS_PROXY_H_
+#endif  // SHILL_SUPPLICANT_PROCESS_PROXY_H_

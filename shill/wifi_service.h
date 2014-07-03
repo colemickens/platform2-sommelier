@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIFI_SERVICE_
-#define SHILL_WIFI_SERVICE_
+#ifndef SHILL_WIFI_SERVICE_H_
+#define SHILL_WIFI_SERVICE_H_
 
 #include <set>
 #include <string>
@@ -315,4 +315,4 @@ class WiFiService : public Service {
 
 }  // namespace shill
 
-#endif  // SHILL_WIFI_SERVICE_
+#endif  // SHILL_WIFI_SERVICE_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ENDPOINT_
-#define SHILL_ENDPOINT_
+#ifndef SHILL_ENDPOINT_H_
+#define SHILL_ENDPOINT_H_
 
 #include <base/memory/ref_counted.h>
 
@@ -22,4 +22,4 @@ class Endpoint : public base::RefCounted<Endpoint> {
 
 }  // namespace shill
 
-#endif  // SHILL_ENDPOINT_
+#endif  // SHILL_ENDPOINT_H_

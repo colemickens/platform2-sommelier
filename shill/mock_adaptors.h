@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_ADAPTORS_
-#define SHILL_MOCK_ADAPTORS_
+#ifndef SHILL_MOCK_ADAPTORS_H_
+#define SHILL_MOCK_ADAPTORS_H_
 
 #include <string>
 #include <vector>
@@ -163,4 +163,5 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
 };
 
 }  // namespace shill
-#endif  // SHILL_MOCK_ADAPTORS_
+
+#endif  // SHILL_MOCK_ADAPTORS_H_

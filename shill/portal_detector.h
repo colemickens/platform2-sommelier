@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PORTAL_DETECTOR_
-#define SHILL_PORTAL_DETECTOR_
+#ifndef SHILL_PORTAL_DETECTOR_H_
+#define SHILL_PORTAL_DETECTOR_H_
 
 #include <string>
 #include <vector>
@@ -176,4 +176,4 @@ class PortalDetector {
 
 }  // namespace shill
 
-#endif  // SHILL_PORTAL_DETECTOR_
+#endif  // SHILL_PORTAL_DETECTOR_H_

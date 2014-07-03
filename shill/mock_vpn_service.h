@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_VPN_SERVICE_
-#define SHILL_MOCK_VPN_SERVICE_
+#ifndef SHILL_MOCK_VPN_SERVICE_H_
+#define SHILL_MOCK_VPN_SERVICE_H_
 
 #include <gmock/gmock.h>
 
@@ -31,4 +31,4 @@ class MockVPNService : public VPNService {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_VPN_SERVICE_
+#endif  // SHILL_MOCK_VPN_SERVICE_H_

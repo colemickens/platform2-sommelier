@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef SHILL_SERVICE_UNDER_TEST_H_
+#define SHILL_SERVICE_UNDER_TEST_H_
+
 #include <string>
 #include <vector>
 
@@ -47,3 +50,5 @@ class ServiceUnderTest : public Service {
 };
 
 }  // namespace shill
+
+#endif  // SHILL_SERVICE_UNDER_TEST_H_

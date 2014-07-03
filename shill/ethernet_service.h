@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ETHERNET_SERVICE_
-#define SHILL_ETHERNET_SERVICE_
+#ifndef SHILL_ETHERNET_SERVICE_H_
+#define SHILL_ETHERNET_SERVICE_H_
 
 #include <string>
 
@@ -57,4 +57,4 @@ class EthernetService : public Service {
 
 }  // namespace shill
 
-#endif  // SHILL_ETHERNET_SERVICE_
+#endif  // SHILL_ETHERNET_SERVICE_H_

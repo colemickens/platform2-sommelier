@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MODEM_SIMPLE_PROXY_INTERFACE_
-#define SHILL_MODEM_SIMPLE_PROXY_INTERFACE_
+#ifndef SHILL_MODEM_SIMPLE_PROXY_INTERFACE_H_
+#define SHILL_MODEM_SIMPLE_PROXY_INTERFACE_H_
 
 #include "shill/callbacks.h"
 #include "shill/dbus_properties.h"
@@ -28,4 +28,5 @@ class ModemSimpleProxyInterface {
 };
 
 }  // namespace shill
-#endif  // SHILL_MODEM_SIMPLE_PROXY_INTERFACE_
+
+#endif  // SHILL_MODEM_SIMPLE_PROXY_INTERFACE_H_

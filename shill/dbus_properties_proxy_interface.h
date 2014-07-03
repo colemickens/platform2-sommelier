@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
-#define SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
+#ifndef SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_H_
+#define SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_H_
 
 #include <string>
 #include <vector>
@@ -46,4 +46,4 @@ class DBusPropertiesProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
+#endif  // SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_H_

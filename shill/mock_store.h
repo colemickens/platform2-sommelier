@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_STORE_
-#define SHILL_MOCK_STORE_
+#ifndef SHILL_MOCK_STORE_H_
+#define SHILL_MOCK_STORE_H_
 
 #include <set>
 #include <string>
@@ -76,4 +76,4 @@ class MockStore : public StoreInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_STORE_
+#endif  // SHILL_MOCK_STORE_H_

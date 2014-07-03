@@ -61,4 +61,5 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
 };
 
 }  // namespace shill
+
 #endif  // SHILL_IPCONFIG_DBUS_ADAPTOR_H_

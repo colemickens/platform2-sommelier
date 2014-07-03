@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_GLIB_IO_READY_HANDLER_
-#define SHILL_GLIB_IO_READY_HANDLER_
+#ifndef SHILL_GLIB_IO_READY_HANDLER_H_
+#define SHILL_GLIB_IO_READY_HANDLER_H_
 
 #include <stdio.h>
 #include <glib.h>
@@ -40,4 +40,4 @@ class GlibIOReadyHandler : public IOHandler {
 
 }  // namespace shill
 
-#endif  // SHILL_GLIB_IO_READY_HANDLER_
+#endif  // SHILL_GLIB_IO_READY_HANDLER_H_

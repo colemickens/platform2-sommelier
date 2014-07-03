@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_VPN_SERVICE_
-#define SHILL_VPN_SERVICE_
+#ifndef SHILL_VPN_SERVICE_H_
+#define SHILL_VPN_SERVICE_H_
 
 #include <string>
 
@@ -80,4 +80,4 @@ class VPNService : public Service {
 
 }  // namespace shill
 
-#endif  // SHILL_VPN_SERVICE_
+#endif  // SHILL_VPN_SERVICE_H_

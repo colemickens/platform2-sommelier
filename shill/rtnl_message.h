@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_RTNL_MESSAGE_
-#define SHILL_RTNL_MESSAGE_
+#ifndef SHILL_RTNL_MESSAGE_H_
+#define SHILL_RTNL_MESSAGE_H_
 
 #include <unordered_map>
 
@@ -189,4 +189,4 @@ class RTNLMessage {
 
 }  // namespace shill
 
-#endif  // SHILL_RTNL_MESSAGE_
+#endif  // SHILL_RTNL_MESSAGE_H_

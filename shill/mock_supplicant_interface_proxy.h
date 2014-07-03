@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_SUPPLICANT_INTERFACE_PROXY_H_
-#define MOCK_SUPPLICANT_INTERFACE_PROXY_H_
+#ifndef SHILL_MOCK_SUPPLICANT_INTERFACE_PROXY_H_
+#define SHILL_MOCK_SUPPLICANT_INTERFACE_PROXY_H_
 
 #include <map>
 #include <string>
@@ -54,4 +54,4 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
 
 }  // namespace shill
 
-#endif  // MOCK_SUPPLICANT_INTERFACE_PROXY_H_
+#endif  // SHILL_MOCK_SUPPLICANT_INTERFACE_PROXY_H_

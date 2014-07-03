@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_EVENT_DISPATCHER_
-#define SHILL_EVENT_DISPATCHER_
+#ifndef SHILL_EVENT_DISPATCHER_H_
+#define SHILL_EVENT_DISPATCHER_H_
 
 #include <base/basictypes.h>
 #include <base/callback.h>
@@ -57,4 +57,4 @@ class EventDispatcher {
 
 }  // namespace shill
 
-#endif  // SHILL_EVENT_DISPATCHER_
+#endif  // SHILL_EVENT_DISPATCHER_H_

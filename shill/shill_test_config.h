@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_TEST_CONFIG_
-#define SHILL_TEST_CONFIG_
+#ifndef SHILL_SHILL_TEST_CONFIG_H_
+#define SHILL_SHILL_TEST_CONFIG_H_
 
 #include <string>
 
@@ -29,4 +29,4 @@ class TestConfig : public Config {
 
 }  // namespace shill
 
-#endif  // SHILL_TEST_CONFIG_
+#endif  // SHILL_SHILL_TEST_CONFIG_H_

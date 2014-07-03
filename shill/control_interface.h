@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CONTROL_INTERFACE_
-#define SHILL_CONTROL_INTERFACE_
+#ifndef SHILL_CONTROL_INTERFACE_H_
+#define SHILL_CONTROL_INTERFACE_H_
 
 #include <algorithm>
 #include <string>
@@ -46,4 +46,5 @@ class ControlInterface {
 };
 
 }  // namespace shill
-#endif  // SHILL_CONTROL_INTERFACE_
+
+#endif  // SHILL_CONTROL_INTERFACE_H_

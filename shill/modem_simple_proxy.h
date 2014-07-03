@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MODEM_SIMPLE_PROXY_
-#define SHILL_MODEM_SIMPLE_PROXY_
+#ifndef SHILL_MODEM_SIMPLE_PROXY_H_
+#define SHILL_MODEM_SIMPLE_PROXY_H_
 
 #include <string>
 
@@ -61,4 +61,4 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_MODEM_SIMPLE_PROXY_
+#endif  // SHILL_MODEM_SIMPLE_PROXY_H_

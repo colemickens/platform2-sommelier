@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ACCESSOR_INTERFACE_
-#define SHILL_ACCESSOR_INTERFACE_
+#ifndef SHILL_ACCESSOR_INTERFACE_H_
+#define SHILL_ACCESSOR_INTERFACE_H_
 
 #include <map>
 #include <string>
@@ -84,4 +84,4 @@ typedef std::shared_ptr<AccessorInterface<uint64>> Uint64Accessor;
 
 }  // namespace shill
 
-#endif  // SHILL_ACCESSOR_INTERFACE_
+#endif  // SHILL_ACCESSOR_INTERFACE_H_

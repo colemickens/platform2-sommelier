@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SERVICE_SORTER_
-#define SERVICE_SORTER_
+#ifndef SHILL_SERVICE_SORTER_H_
+#define SHILL_SERVICE_SORTER_H_
 
 #include <vector>
 
@@ -39,4 +39,4 @@ class ServiceSorter {
 
 }  // namespace shill
 
-#endif  // SERVICE_SORTER_
+#endif  // SHILL_SERVICE_SORTER_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ADAPTOR_INTERFACES_
-#define SHILL_ADAPTOR_INTERFACES_
+#ifndef SHILL_ADAPTOR_INTERFACES_H_
+#define SHILL_ADAPTOR_INTERFACES_H_
 
 #include <string>
 #include <vector>
@@ -152,4 +152,5 @@ class ServiceAdaptorInterface {
 };
 
 }  // namespace shill
-#endif  // SHILL_ADAPTOR_INTERFACES_
+
+#endif  // SHILL_ADAPTOR_INTERFACES_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WPA_SUPPLICANT_H
-#define SHILL_WPA_SUPPLICANT_H
+#ifndef SHILL_WPA_SUPPLICANT_H_
+#define SHILL_WPA_SUPPLICANT_H_
 
 #include <map>
 #include <string>
@@ -150,4 +150,4 @@ class WPASupplicant {
 
 }  // namespace shill
 
-#endif  // SHILL_WPA_SUPPLICANT_H
+#endif  // SHILL_WPA_SUPPLICANT_H_

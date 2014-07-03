@@ -1,8 +1,9 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef DBUS_PROPERTY_MATCHERS_H_
-#define DBUS_PROPERTY_MATCHERS_H_
+
+#ifndef SHILL_DBUS_PROPERTY_MATCHERS_H_
+#define SHILL_DBUS_PROPERTY_MATCHERS_H_
 
 #include <gmock/gmock.h>
 
@@ -18,4 +19,4 @@ MATCHER_P2(HasDBusPropertyWithValueI32, key, value, "") {
   return it != arg.end() && value == it->second.reader().get_int32();
 }
 
-#endif  // DBUS_PROPERTY_MATCHERS_H_
+#endif  // SHILL_DBUS_PROPERTY_MATCHERS_H_

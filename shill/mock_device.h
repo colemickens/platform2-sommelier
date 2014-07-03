@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_DEVICE_
-#define SHILL_MOCK_DEVICE_
+#ifndef SHILL_MOCK_DEVICE_H_
+#define SHILL_MOCK_DEVICE_H_
 
 #include <string>
 #include <vector>
@@ -62,4 +62,4 @@ class MockDevice : public Device {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_DEVICE_
+#endif  // SHILL_MOCK_DEVICE_H_

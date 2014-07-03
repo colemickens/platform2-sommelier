@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DNS_CLIENT_
-#define SHILL_DNS_CLIENT_
+#ifndef SHILL_DNS_CLIENT_H_
+#define SHILL_DNS_CLIENT_H_
 
 #include <string>
 #include <vector>
@@ -95,4 +95,4 @@ class DNSClient {
 
 }  // namespace shill
 
-#endif  // SHILL_DNS_CLIENT_
+#endif  // SHILL_DNS_CLIENT_H_

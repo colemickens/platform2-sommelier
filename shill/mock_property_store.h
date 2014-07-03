@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_PROPERTY_STORE_
-#define SHILL_MOCK_PROPERTY_STORE_
+#ifndef SHILL_MOCK_PROPERTY_STORE_H_
+#define SHILL_MOCK_PROPERTY_STORE_H_
 
 #include <string>
 
@@ -46,4 +46,4 @@ class MockPropertyStore : public PropertyStore {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_PROPERTY_STORE_
+#endif  // SHILL_MOCK_PROPERTY_STORE_H_

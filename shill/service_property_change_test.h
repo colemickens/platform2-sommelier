@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_TEST_COMMON_H_
-#define SHILL_TEST_COMMON_H_
+#ifndef SHILL_SERVICE_PROPERTY_CHANGE_TEST_H_
+#define SHILL_SERVICE_PROPERTY_CHANGE_TEST_H_
 
 #include "shill/refptr_types.h"
 
@@ -30,4 +30,4 @@ void TestCommonCustomSetterNoopChange(ServiceRefPtr service,
                                       MockManager *mock_manager);
 }  // namespace shill
 
-#endif  // SHILL_TEST_COMMON_H_
+#endif  // SHILL_SERVICE_PROPERTY_CHANGE_TEST_H_

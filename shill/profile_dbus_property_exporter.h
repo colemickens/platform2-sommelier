@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROFILE_DBUS_PROPERTY_EXPORTER_
-#define SHILL_PROFILE_DBUS_PROPERTY_EXPORTER_
+#ifndef SHILL_PROFILE_DBUS_PROPERTY_EXPORTER_H_
+#define SHILL_PROFILE_DBUS_PROPERTY_EXPORTER_H_
 
 #include <map>
 #include <string>
@@ -62,4 +62,4 @@ class ProfileDBusPropertyExporter {
 
 }  // namespace shill
 
-#endif  // SHILL_PROFILE_DBUS_PROPERTY_EXPORTER_
+#endif  // SHILL_PROFILE_DBUS_PROPERTY_EXPORTER_H_

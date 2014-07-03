@@ -88,4 +88,5 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
 };
 
 }  // namespace shill
+
 #endif  // SHILL_DEVICE_DBUS_ADAPTOR_H_

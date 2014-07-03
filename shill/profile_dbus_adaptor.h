@@ -65,4 +65,5 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
 };
 
 }  // namespace shill
+
 #endif  // SHILL_PROFILE_DBUS_ADAPTOR_H_

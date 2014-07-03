@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DEVICE_INFO_
-#define SHILL_DEVICE_INFO_
+#ifndef SHILL_DEVICE_INFO_H_
+#define SHILL_DEVICE_INFO_H_
 
 #include <map>
 #include <set>
@@ -282,4 +282,4 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
 }  // namespace shill
 
-#endif  // SHILL_DEVICE_INFO_
+#endif  // SHILL_DEVICE_INFO_H_

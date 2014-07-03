@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_VPN_DRIVER_
-#define SHILL_MOCK_VPN_DRIVER_
+#ifndef SHILL_MOCK_VPN_DRIVER_H_
+#define SHILL_MOCK_VPN_DRIVER_H_
 
 #include <string>
 
@@ -38,4 +38,4 @@ class MockVPNDriver : public VPNDriver {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_VPN_DRIVER_
+#endif  // SHILL_MOCK_VPN_DRIVER_H_

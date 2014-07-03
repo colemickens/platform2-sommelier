@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_GEOLOCATION_INFO_
-#define SHILL_GEOLOCATION_INFO_
+#ifndef SHILL_GEOLOCATION_INFO_H_
+#define SHILL_GEOLOCATION_INFO_H_
 
 #include <map>
 #include <string>
@@ -42,4 +42,4 @@ typedef std::vector<GeolocationInfo> GeolocationInfos;
 
 }  // namespace shill
 
-#endif  // SHILL_GEOLOCATION_INFO_
+#endif  // SHILL_GEOLOCATION_INFO_H_

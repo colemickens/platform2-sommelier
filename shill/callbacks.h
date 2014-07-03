@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CALLBACKS_
-#define SHILL_CALLBACKS_
+#ifndef SHILL_CALLBACKS_H_
+#define SHILL_CALLBACKS_H_
 
 #include <string>
 #include <vector>
@@ -39,4 +39,5 @@ typedef base::Callback<void(const Stringmaps &,
                             const Error &)> ResultStringmapsCallback;
 
 }  // namespace shill
-#endif  // SHILL_CALLBACKS_
+
+#endif  // SHILL_CALLBACKS_H_

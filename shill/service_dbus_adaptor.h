@@ -77,4 +77,5 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
 };
 
 }  // namespace shill
+
 #endif  // SHILL_SERVICE_DBUS_ADAPTOR_H_

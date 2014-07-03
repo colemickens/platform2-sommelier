@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_TECHNOLOGY_
-#define SHILL_TECHNOLOGY_
+#ifndef SHILL_TECHNOLOGY_H_
+#define SHILL_TECHNOLOGY_H_
 
 #include <string>
 #include <vector>
@@ -71,4 +71,4 @@ class Technology {
 
 }  // namespace shill
 
-#endif  // SHILL_TECHNOLOGY_
+#endif  // SHILL_TECHNOLOGY_H_

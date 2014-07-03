@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_STATIC_IP_PARAMETERS_
-#define SHILL_STATIC_IP_PARAMETERS_
+#ifndef SHILL_STATIC_IP_PARAMETERS_H_
+#define SHILL_STATIC_IP_PARAMETERS_H_
 
 #include <string>
 #include <vector>
@@ -104,4 +104,4 @@ class StaticIPParameters {
 
 }  // namespace shill
 
-#endif  // SHILL_STATIC_IP_PARAMETERS_
+#endif  // SHILL_STATIC_IP_PARAMETERS_H_

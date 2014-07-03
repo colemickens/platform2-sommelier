@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CRYPTO_ROT47_
-#define SHILL_CRYPTO_ROT47_
+#ifndef SHILL_CRYPTO_ROT47_H_
+#define SHILL_CRYPTO_ROT47_H_
 
 #include <string>
 
@@ -31,4 +31,4 @@ class CryptoROT47 : public CryptoInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_CRYPTO_ROT47_
+#endif  // SHILL_CRYPTO_ROT47_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROXY_FACTORY_
-#define SHILL_PROXY_FACTORY_
+#ifndef SHILL_PROXY_FACTORY_H_
+#define SHILL_PROXY_FACTORY_H_
 
 #include <string>
 
@@ -188,4 +188,4 @@ class ProxyFactory {
 
 }  // namespace shill
 
-#endif  // SHILL_PROXY_FACTORY_
+#endif  // SHILL_PROXY_FACTORY_H_

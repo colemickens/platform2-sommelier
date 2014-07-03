@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_HTTP_REQUEST_
-#define SHILL_HTTP_REQUEST_
+#ifndef SHILL_HTTP_REQUEST_H_
+#define SHILL_HTTP_REQUEST_H_
 
 #include <string>
 #include <vector>
@@ -134,4 +134,4 @@ class HTTPRequest {
 
 }  // namespace shill
 
-#endif  // SHILL_HTTP_REQUEST_
+#endif  // SHILL_HTTP_REQUEST_H_

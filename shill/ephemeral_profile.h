@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_EPHEMERAL_PROFILE_
-#define SHILL_EPHEMERAL_PROFILE_
+#ifndef SHILL_EPHEMERAL_PROFILE_H_
+#define SHILL_EPHEMERAL_PROFILE_H_
 
 #include <string>
 #include <vector>
@@ -45,4 +45,4 @@ class EphemeralProfile : public Profile {
 
 }  // namespace shill
 
-#endif  // SHILL_EPHEMERAL_PROFILE_
+#endif  // SHILL_EPHEMERAL_PROFILE_H_

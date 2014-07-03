@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_OBSERVER_
-#define SHILL_PROPERTY_OBSERVER_
+#ifndef SHILL_PROPERTY_OBSERVER_H_
+#define SHILL_PROPERTY_OBSERVER_H_
 
 #include <base/basictypes.h>
 #include <base/callback.h>
@@ -58,4 +58,4 @@ class PropertyObserver : public PropertyObserverInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_OBSERVER_
+#endif  // SHILL_PROPERTY_OBSERVER_H_

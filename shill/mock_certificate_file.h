@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_CERTFICATE_FILE_H_
-#define SHILL_MOCK_CERTFICATE_FILE_H_
+#ifndef SHILL_MOCK_CERTIFICATE_FILE_H_
+#define SHILL_MOCK_CERTIFICATE_FILE_H_
 
 #include <string>
 #include <vector>

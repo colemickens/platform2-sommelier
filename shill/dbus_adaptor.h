@@ -154,4 +154,5 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
 };
 
 }  // namespace shill
+
 #endif  // SHILL_DBUS_ADAPTOR_H_

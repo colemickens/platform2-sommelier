@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_STORE_INTERFACE_
-#define SHILL_STORE_INTERFACE_
+#ifndef SHILL_STORE_INTERFACE_H_
+#define SHILL_STORE_INTERFACE_H_
 
 #include <set>
 #include <string>
@@ -133,4 +133,4 @@ class StoreInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_STORE_INTERFACE_
+#endif  // SHILL_STORE_INTERFACE_H_

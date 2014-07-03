@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CRYPTO_INTERFACE_
-#define SHILL_CRYPTO_INTERFACE_
+#ifndef SHILL_CRYPTO_INTERFACE_H_
+#define SHILL_CRYPTO_INTERFACE_H_
 
 #include <string>
 
@@ -28,4 +28,4 @@ class CryptoInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_CRYPTO_INTERFACE_
+#endif  // SHILL_CRYPTO_INTERFACE_H_

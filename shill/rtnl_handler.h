@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_RTNL_HANDLER_
-#define SHILL_RTNL_HANDLER_
+#ifndef SHILL_RTNL_HANDLER_H_
+#define SHILL_RTNL_HANDLER_H_
 
 #include <string>
 #include <vector>
@@ -153,4 +153,4 @@ class RTNLHandler {
 
 }  // namespace shill
 
-#endif  // SHILL_RTNL_HANDLER_
+#endif  // SHILL_RTNL_HANDLER_H_

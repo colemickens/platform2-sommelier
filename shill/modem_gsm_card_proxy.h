@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MODEM_GSM_CARD_PROXY_
-#define SHILL_MODEM_GSM_CARD_PROXY_
+#ifndef SHILL_MODEM_GSM_CARD_PROXY_H_
+#define SHILL_MODEM_GSM_CARD_PROXY_H_
 
 #include <string>
 
@@ -97,4 +97,4 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_MODEM_GSM_CARD_PROXY_
+#endif  // SHILL_MODEM_GSM_CARD_PROXY_H_

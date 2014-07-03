@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ASYNC_CONNECTION_
-#define SHILL_ASYNC_CONNECTION_
+#ifndef SHILL_ASYNC_CONNECTION_H_
+#define SHILL_ASYNC_CONNECTION_H_
 
 #include <string>
 
@@ -76,4 +76,4 @@ class AsyncConnection {
 
 }  // namespace shill
 
-#endif  // SHILL_ASYNC_CONNECTION_
+#endif  // SHILL_ASYNC_CONNECTION_H_

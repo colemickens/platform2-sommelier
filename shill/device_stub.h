@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_STUB_DEVICE_
-#define SHILL_STUB_DEVICE_
+#ifndef SHILL_DEVICE_STUB_H_
+#define SHILL_DEVICE_STUB_H_
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -49,4 +49,4 @@ class DeviceStub : public Device {
 
 }  // namespace shill
 
-#endif  // SHILL_STUB_DEVICE_
+#endif  // SHILL_DEVICE_STUB_H_

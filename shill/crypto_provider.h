@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CRYPTO_PROVIDER_
-#define SHILL_CRYPTO_PROVIDER_
+#ifndef SHILL_CRYPTO_PROVIDER_H_
+#define SHILL_CRYPTO_PROVIDER_H_
 
 #include <string>
 
@@ -56,4 +56,4 @@ class CryptoProvider {
 
 }  // namespace shill
 
-#endif  // SHILL_CRYPTO_PROVIDER_
+#endif  // SHILL_CRYPTO_PROVIDER_H_

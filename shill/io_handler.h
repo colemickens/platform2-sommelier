@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_IO_HANDLER_
-#define SHILL_IO_HANDLER_
+#ifndef SHILL_IO_HANDLER_H_
+#define SHILL_IO_HANDLER_H_
 
 namespace shill {
 
@@ -37,4 +37,4 @@ class IOHandler {
 
 }  // namespace shill
 
-#endif  // SHILL_IO_HANDLER_
+#endif  // SHILL_IO_HANDLER_H_

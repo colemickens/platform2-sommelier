@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_CHANGE_NOTIFIER_
-#define SHILL_PROPERTY_CHANGE_NOTIFIER_
+#ifndef SHILL_SERVICE_PROPERTY_CHANGE_NOTIFIER_H_
+#define SHILL_SERVICE_PROPERTY_CHANGE_NOTIFIER_H_
 
 #include <string>
 #include <vector>
@@ -65,4 +65,4 @@ class ServicePropertyChangeNotifier {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_CHANGE_NOTIFIER_
+#endif  // SHILL_SERVICE_PROPERTY_CHANGE_NOTIFIER_H_

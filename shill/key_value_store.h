@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_KEY_VALUE_STORE_
-#define SHILL_KEY_VALUE_STORE_
+#ifndef SHILL_KEY_VALUE_STORE_H_
+#define SHILL_KEY_VALUE_STORE_H_
 
 #include <map>
 #include <string>
@@ -105,4 +105,4 @@ class KeyValueStore {
 
 }  // namespace shill
 
-#endif  // SHILL_KEY_VALUE_STORE_
+#endif  // SHILL_KEY_VALUE_STORE_H_

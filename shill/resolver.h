@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_RESOLVER_
-#define SHILL_RESOLVER_
+#ifndef SHILL_RESOLVER_H_
+#define SHILL_RESOLVER_H_
 
 #include <string>
 #include <vector>
@@ -66,4 +66,4 @@ class Resolver {
 
 }  // namespace shill
 
-#endif  // SHILL_RESOLVER_
+#endif  // SHILL_RESOLVER_H_

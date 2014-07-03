@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIFI_ENDPOINT_
-#define SHILL_WIFI_ENDPOINT_
+#ifndef SHILL_WIFI_ENDPOINT_H_
+#define SHILL_WIFI_ENDPOINT_H_
 
 #include <map>
 #include <set>
@@ -223,4 +223,4 @@ class WiFiEndpoint : public Endpoint {
 
 }  // namespace shill
 
-#endif  // SHILL_WIFI_ENDPOINT_
+#endif  // SHILL_WIFI_ENDPOINT_H_

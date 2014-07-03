@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_HTTP_URL_
-#define SHILL_HTTP_URL_
+#ifndef SHILL_HTTP_URL_H_
+#define SHILL_HTTP_URL_H_
 
 #include <base/basictypes.h>
 
@@ -50,4 +50,4 @@ class HTTPURL {
 
 }  // namespace shill
 
-#endif  // SHILL_HTTP_URL_
+#endif  // SHILL_HTTP_URL_H_

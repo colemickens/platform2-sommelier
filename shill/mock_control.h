@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_CONTROL_
-#define SHILL_MOCK_CONTROL_
+#ifndef SHILL_MOCK_CONTROL_H_
+#define SHILL_MOCK_CONTROL_H_
 
 #include <base/basictypes.h>
 
@@ -32,4 +32,4 @@ class MockControl : public ControlInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_CONTROL_
+#endif  // SHILL_MOCK_CONTROL_H_

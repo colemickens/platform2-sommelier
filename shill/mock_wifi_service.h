@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_WIFI_SERVICE_
-#define SHILL_MOCK_WIFI_SERVICE_
+#ifndef SHILL_MOCK_WIFI_SERVICE_H_
+#define SHILL_MOCK_WIFI_SERVICE_H_
 
 #include <string>
 #include <vector>
@@ -62,4 +62,4 @@ class MockWiFiService : public WiFiService {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_WIFI_SERVICE_
+#endif  // SHILL_MOCK_WIFI_SERVICE_H_

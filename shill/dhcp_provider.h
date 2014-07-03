@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DHCP_PROVIDER_
-#define SHILL_DHCP_PROVIDER_
+#ifndef SHILL_DHCP_PROVIDER_H_
+#define SHILL_DHCP_PROVIDER_H_
 
 #include <map>
 #include <string>
@@ -113,4 +113,4 @@ class DHCPProvider {
 
 }  // namespace shill
 
-#endif  // SHILL_DHCP_PROVIDER_
+#endif  // SHILL_DHCP_PROVIDER_H_

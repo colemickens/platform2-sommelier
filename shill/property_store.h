@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_STORE_
-#define SHILL_PROPERTY_STORE_
+#ifndef SHILL_PROPERTY_STORE_H_
+#define SHILL_PROPERTY_STORE_H_
 
 #include <map>
 #include <string>
@@ -269,4 +269,4 @@ class PropertyStore {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_STORE_
+#endif  // SHILL_PROPERTY_STORE_H_
