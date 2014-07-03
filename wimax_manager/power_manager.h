@@ -77,4 +77,4 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
 
 }  // namespace wimax_manager
 
-#endif  // WIMAX_MANAGER_NETWORK_H_
+#endif  // WIMAX_MANAGER_POWER_MANAGER_H_
