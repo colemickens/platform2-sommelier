@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CROS_DISKS_SERVER_IMPL_H_
-#define CROS_DISKS_SERVER_IMPL_H_
+#ifndef CROS_DISKS_CROS_DISKS_SERVER_H_
+#define CROS_DISKS_CROS_DISKS_SERVER_H_
 
 #include <string>
 #include <vector>
@@ -156,4 +156,4 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
 
 }  // namespace cros_disks
 
-#endif  // CROS_DISKS_SERVER_IMPL_H_
+#endif  // CROS_DISKS_CROS_DISKS_SERVER_H_
