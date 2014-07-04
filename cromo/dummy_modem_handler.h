@@ -5,11 +5,12 @@
 #ifndef CROMO_DUMMY_MODEM_HANDLER_H_
 #define CROMO_DUMMY_MODEM_HANDLER_H_
 
-#include "base/basictypes.h"
+#include <vector>
 
+#include <base/basictypes.h>
 #include <dbus-c++/types.h>
 
-#include "modem_handler.h"
+#include "cromo/modem_handler.h"
 
 class CromoServer;
 
@@ -17,12 +18,13 @@ class DummyModemHandler : public ModemHandler {
  public:
   explicit DummyModemHandler(CromoServer& server);
 
-  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error &error);
+  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
 
  protected:
   virtual bool Initialize();
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(DummyModemHandler);
 };
 
-#endif // CROMO_DUMMY_MODEM_HANDLER_H_
+#endif  // CROMO_DUMMY_MODEM_HANDLER_H_

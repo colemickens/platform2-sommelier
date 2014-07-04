@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SYSLOG_HELPER_H
-#define SYSLOG_HELPER_H
+#ifndef CROMO_SYSLOG_HELPER_H_
+#define CROMO_SYSLOG_HELPER_H_
 
-void SysLogHelperInit(void);
+#include <string>
+
+void SysLogHelperInit();
 int SysLogHelperSetLevel(const std::string& level);
 
-#endif // SYSLOG_HELPER_H
+#endif  // CROMO_SYSLOG_HELPER_H_

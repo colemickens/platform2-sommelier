@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cromo_server.h"
-
 #include <signal.h>
 #include <stdio.h>
 #include <sys/signalfd.h>
@@ -17,18 +15,19 @@
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
-#include "carrier.h"
-#include "plugin_manager.h"
-#include "sandbox.h"
-#include "syslog_helper.h"
+#include "cromo/carrier.h"
+#include "cromo/cromo_server.h"
+#include "cromo/plugin_manager.h"
+#include "cromo/sandbox.h"
+#include "cromo/syslog_helper.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
 #endif
 
 DBus::Glib::BusDispatcher dispatcher;
-GMainLoop *main_loop;
-static CromoServer *server;
+GMainLoop* main_loop;
+static CromoServer* server;
 
 static const int kExitMaxTries = 10;
 static int kExitTries = 0;
@@ -51,8 +50,8 @@ static const char kHelpMessage[] = "\n"
 // exit-ok hooks to see if they are all ready for the program to exit; it also
 // keeps track of tries so that we time out appropriately if one of the devices
 // isn't disconnecting properly.
-static gboolean test_for_exit(void *arg) {
-  int *tries = static_cast<int*>(arg);
+static gboolean test_for_exit(void* arg) {
+  int* tries = static_cast<int*>(arg);
   if ((*tries)++ < kExitMaxTries && !server->exit_ok_hooks().Run())
     // Event needs to be scheduled again.
     return TRUE;
@@ -73,7 +72,7 @@ static void exit_main_loop(void) {
   g_timeout_add_seconds(1, test_for_exit, &kExitTries);
 }
 
-static gboolean do_signal(void *arg) {
+static gboolean do_signal(void* arg) {
   long sig = reinterpret_cast<long>(arg);
   LOG(INFO) << "Signal: " << sig;
 
@@ -84,7 +83,7 @@ static gboolean do_signal(void *arg) {
   return FALSE;
 }
 
-static void *handle_signals(void *arg) {
+static void* handle_signals(void* arg) {
   sigset_t sigs;
   siginfo_t info;
   info.si_signo = 0;

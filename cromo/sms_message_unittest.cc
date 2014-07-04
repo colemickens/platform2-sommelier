@@ -3,11 +3,10 @@
 // found in the LICENSE file.
 // Unit tests for SMS message creation
 
+#include "cromo/sms_message.h"
+
 #include <base/logging.h>
-
 #include <gtest/gtest.h>
-
-#include "sms_message.h"
 
 // TODO(ers) Add more negative test cases
 

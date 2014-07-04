@@ -2,25 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dummy_modem_handler.h"
+#include "cromo/dummy_modem_handler.h"
 
-#include <iostream>
+#include <base/logging.h>
 
-#include "dummy_modem.h"
-#include "cromo_server.h"
-#include "plugin.h"
+#include "cromo/cromo_server.h"
+#include "cromo/dummy_modem.h"
+#include "cromo/plugin.h"
 
 using std::vector;
-using std::cout;
-using std::cerr;
-using std::endl;
 
 DummyModemHandler::DummyModemHandler(CromoServer& server)
     : ModemHandler(server, "dummy") {
 }
 
-bool
-DummyModemHandler::Initialize() {
+bool DummyModemHandler::Initialize() {
   // ... do any modem-manager-specific initialization ...
   RegisterSelf();
   return true;
@@ -38,10 +34,10 @@ vector<DBus::Path> DummyModemHandler::EnumerateDevices(DBus::Error& error) {
 }
 
 void onload(CromoServer* server) {
-  cout << __FILE__ << ": onload() called" << endl;
+  LOG(INFO) << __FILE__ << ": onload() called";
   ModemHandler* mh = new DummyModemHandler(*server);
   if (!mh->Initialize())
-    cerr << "Failed to initialize DummyModemHandler" << endl;
+    LOG(ERROR) << "Failed to initialize DummyModemHandler";
 }
 
 static void onunload() {

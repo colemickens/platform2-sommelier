@@ -9,29 +9,32 @@
 #include <string>
 
 class HookTable {
-  public:
-    HookTable();
-    ~HookTable();
+ public:
+  typedef bool (*Function)(void*);
 
-    void Add(const std::string& name, bool (*func)(void *), void *arg);
+  HookTable();
+  ~HookTable();
 
-    // Removes a hook from this table by name. The specified hook must exist in
-    // the table.
-    void Del(const std::string& name);
+  void Add(const std::string &name, Function func, void* arg);
 
-    // Executes all the hooks in the table in an undefined order. Returns
-    // whether all hooks completed successfully. Hooks indicate success by
-    // returning true and failure by returning false.
-    bool Run();
-  private:
-    struct Hook {
-      Hook(bool (*func)(void *), void *arg);
-      ~Hook();
-      bool (*func_)(void *arg);
-      void *arg_;
-    };
-    typedef std::map<const std::string, Hook*> HookMap;
-    HookMap hooks_;
+  // Removes a hook from this table by name. The specified hook must exist in
+  // the table.
+  void Del(const std::string& name);
+
+  // Executes all the hooks in the table in an undefined order. Returns
+  // whether all hooks completed successfully. Hooks indicate success by
+  // returning true and failure by returning false.
+  bool Run();
+
+ private:
+  struct Hook {
+    Hook(Function func, void* arg);
+    ~Hook();
+    bool (*func_)(void* arg);
+    void* arg_;
+  };
+  typedef std::map<const std::string, Hook*> HookMap;
+  HookMap hooks_;
 };
 
-#endif /* !CROMO_HOOKTABLE_H_ */
+#endif  // CROMO_HOOKTABLE_H_

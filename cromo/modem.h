@@ -12,16 +12,19 @@ class Modem_adaptor;
 namespace Modem {
 class Cdma_adaptor;
 class Simple_adaptor;
-}}}}
+}  // namespace Modem
+}  // namespace ModemManager
+}  // namespace freedesktop
+}  // namespace org
 
 class Modem {
-  public:
-    typedef org::freedesktop::ModemManager::Modem_adaptor ModemAdaptor;
-    typedef org::freedesktop::ModemManager::Modem::Cdma_adaptor CdmaAdaptor;
-    typedef org::freedesktop::ModemManager::Modem::Simple_adaptor SimpleAdaptor;
-    virtual ModemAdaptor *modem_adaptor() = 0;
-    virtual CdmaAdaptor *cdma_adaptor() = 0;
-    virtual SimpleAdaptor *simple_adaptor() = 0;
+ public:
+  typedef org::freedesktop::ModemManager::Modem_adaptor ModemAdaptor;
+  typedef org::freedesktop::ModemManager::Modem::Cdma_adaptor CdmaAdaptor;
+  typedef org::freedesktop::ModemManager::Modem::Simple_adaptor SimpleAdaptor;
+  virtual ModemAdaptor* modem_adaptor() = 0;
+  virtual CdmaAdaptor* cdma_adaptor() = 0;
+  virtual SimpleAdaptor* simple_adaptor() = 0;
 };
 
-#endif /* !CROMO_MODEM_H_ */
+#endif  // CROMO_MODEM_H_

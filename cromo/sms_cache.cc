@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <mm/mm-modem.h>  // for MM_ERROR_MODEM_GSM_INVALIDINDEX
 
-#include "sms_cache.h"
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
+
+#include "cromo/sms_cache.h"
 
 namespace cromo {
 

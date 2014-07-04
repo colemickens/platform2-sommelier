@@ -5,13 +5,15 @@
 // Plugin tests link against this file, but not against the rest of
 // cromo.  Therefore this file should not have dependencies on the
 // rest of cromo.
-#include "utilities.h"
+
+#include "cromo/utilities.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 #include <base/logging.h>
 
@@ -29,7 +31,7 @@ const char* ExtractString(const DBusPropertyMap properties,
       to_return = p->second.reader().get_string();
     }
   } catch (const DBus::Error& e) {
-    LOG(ERROR)<<"Bad type for: " << key;
+    LOG(ERROR) << "Bad type for: " << key;
     // Setting an already-set error causes an assert fail inside dbus-c++.
     if (!error.is_set()) {
     // NB: the copy constructor for DBus::Error causes a template to
@@ -52,7 +54,7 @@ uint32_t ExtractUint32(const DBusPropertyMap properties,
       to_return = p->second.reader().get_uint32();
     }
   } catch (const DBus::Error& e) {
-    LOG(ERROR)<<"Bad type for: " << key;
+    LOG(ERROR) << "Bad type for: " << key;
     // Setting an already-set error causes an assert fail inside dbus-c++.
     if (!error.is_set()) {
     // NB: the copy constructor for DBus::Error causes a template to
@@ -132,7 +134,7 @@ static uint8_t ExtGsm7ToUtf8Map[][5] = {
   {0x65, 0xe2, 0x82, 0xac}
 };
 
-static std::map<std::pair<uint8_t, uint8_t>,char> Utf8ToGsm7Map;
+static std::map<std::pair<uint8_t, uint8_t>, char> Utf8ToGsm7Map;
 
 /*
  * Convert a packed GSM7 encoded string to UTF-8 by first unpacking
@@ -209,9 +211,8 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
 
 static void InitializeUtf8ToGsm7Map() {
   for (int i = 0; i < 128; i++) {
-    Utf8ToGsm7Map[std::pair<uint8_t,uint8_t>(Gsm7ToUtf8Map[i][0],
-                                             Gsm7ToUtf8Map[i][1])] = i;
-
+    Utf8ToGsm7Map[std::pair<uint8_t, uint8_t>(Gsm7ToUtf8Map[i][0],
+                                              Gsm7ToUtf8Map[i][1])] = i;
   }
 }
 
@@ -241,7 +242,7 @@ std::vector<uint8_t> Utf8StringToGsm7(const std::string& input) {
       chpair.second = input.at(++i);
       thirdch = input.at(++i);
     }
-    std::map<std::pair<uint8_t,uint8_t>, char>::iterator it;
+    std::map<std::pair<uint8_t, uint8_t>, char>::iterator it;
     it = Utf8ToGsm7Map.find(chpair);
     if (it != Utf8ToGsm7Map.end()) {
       septets.push_back(it->second);
@@ -288,7 +289,7 @@ std::vector<uint8_t> Utf8StringToGsm7(const std::string& input) {
   return octets;
 }
 
-std::string Ucs2ToUtf8String(const uint8_t *ucs2, size_t length) {
+std::string Ucs2ToUtf8String(const uint8_t* ucs2, size_t length) {
   std::string str;
   uint8_t num_chars = length >> 1;
 
@@ -309,8 +310,7 @@ std::string Ucs2ToUtf8String(const uint8_t *ucs2, size_t length) {
   return str;
 }
 
-std::vector<uint8_t> Utf8StringToUcs2(const std::string& input)
-{
+std::vector<uint8_t> Utf8StringToUcs2(const std::string& input) {
   std::vector<uint8_t> octets;
   size_t length = input.length();
 

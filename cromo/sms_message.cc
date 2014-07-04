@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sms_message.h"
+#include "cromo/sms_message.h"
 
 #include <base/logging.h>
 
-#include "utilities.h"
+#include "cromo/utilities.h"
 
 namespace cromo {
 
@@ -106,9 +106,9 @@ class Bytes {
 
   // Return a pointer to the next N bytes, or NULL if there aren't that many.
   // Advances the internal pointer by N if successful.
-  const uint8_t *NextBytes(int n) {
+  const uint8_t* NextBytes(int n) {
     if (BytesLeft() >= n) {
-      const uint8_t *bytes = pdu_ + offset_;
+      const uint8_t* bytes = pdu_ + offset_;
       offset_ += n;
       return bytes;
     } else {
@@ -118,7 +118,7 @@ class Bytes {
 
  private:
   // Buffer of bytes.
-  const uint8_t *pdu_;
+  const uint8_t* pdu_;
   // Length of the buffer.
   const int len_;
   // Current position in the buffer.
@@ -460,8 +460,7 @@ const std::string& SmsMessage::GetMessageText() {
 
 std::vector<int>* SmsMessage::MessageIndexList() const {
   std::vector<int>* ret = new std::vector<int>();
-  for (std::vector<SmsMessageFragment*>::const_iterator it =
-           fragments_.begin();
+  for (std::vector<SmsMessageFragment*>::const_iterator it = fragments_.begin();
        it != fragments_.end();
        ++it) {
     if (*it != NULL)

@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
 #include <syslog.h>
 
-#include "base/basictypes.h"
+#include <string>
+
+#include <base/basictypes.h>
 
 // Moved syslog related functionality to this file to avoid
 // conflicts with defintions in base/logging.h
 
 int SysLogHelperSetLevel(const std::string& level) {
   int mask = 0;
-  const char *cstr = level.c_str();
+  const char* cstr = level.c_str();
 
   if (strcasecmp(cstr, "debug") == 0) {
     mask = LOG_UPTO(LOG_DEBUG);

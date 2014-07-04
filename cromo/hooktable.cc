@@ -4,17 +4,16 @@
 
 #include <base/logging.h>
 
-#include "hooktable.h"
+#include "cromo/hooktable.h"
 
-HookTable::Hook::Hook(bool (*func)(void *), void *arg)
-                    : func_(func), arg_(arg) { }
+HookTable::Hook::Hook(Function func, void* arg) : func_(func), arg_(arg) {}
 
-HookTable::Hook::~Hook() { }
+HookTable::Hook::~Hook() {}
 
-HookTable::HookTable() { }
-HookTable::~HookTable() { }
+HookTable::HookTable() {}
+HookTable::~HookTable() {}
 
-void HookTable::Add(const std::string& name, bool (*func)(void *), void *arg) {
+void HookTable::Add(const std::string& name, Function func, void* arg) {
   Hook* h = new Hook(func, arg);
   hooks_[name] = h;
 }
@@ -25,15 +24,13 @@ void HookTable::Del(const std::string& name) {
   hooks_.erase(name);
 }
 
-bool HookTable::Run(void) {
-  HookMap::iterator it;
-  bool res;
+bool HookTable::Run() {
   bool retval = true;
 
-  for (it = hooks_.begin(); it != hooks_.end(); it++) {
+  for (HookMap::iterator it = hooks_.begin(); it != hooks_.end(); it++) {
     LOG(INFO) << "hooktable: start " << it->first;
-    Hook *hook = it->second;
-    res = hook->func_(hook->arg_);
+    Hook* hook = it->second;
+    bool res = hook->func_(hook->arg_);
     retval = retval && res;
     LOG(INFO) << "hooktable: end " << it->first << " " << res;
   }

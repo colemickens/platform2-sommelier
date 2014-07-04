@@ -2,77 +2,75 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dummy_modem.h"
-#include <mm/mm-modem.h>
-#include <iostream>
+#include "cromo/dummy_modem.h"
 
-using std::cout;
-using std::endl;
+#include <mm/mm-modem.h>
+
+#include <base/logging.h>
+
 using std::string;
 
-DummyModem::DummyModem(DBus::Connection& connection,
-                       const DBus::Path& path)
-    : DBus::ObjectAdaptor(connection, path) {
-}
+DummyModem::DummyModem(DBus::Connection& connection, const DBus::Path& path)
+    : DBus::ObjectAdaptor(connection, path) {}
 
 // DBUS Methods: Modem
 void DummyModem::Enable(const bool& enable, DBus::Error& error) {
-  cout << "Enable: " << enable << endl;
+  LOG(INFO) << "Enable: " << enable;
 }
 
 void DummyModem::Connect(const string& number, DBus::Error& error) {
-  cout << "Connect: " << number << endl;
+  LOG(INFO) << "Connect: " << number;
 }
 
 void DummyModem::Disconnect(DBus::Error& error) {
-  cout << "Disconnect" << endl;
+  LOG(INFO) << "Disconnect";
 }
 
 void DummyModem::FactoryReset(const string& code, DBus::Error& error) {
-  cout << "FactoryReset: " << code << endl;
+  LOG(INFO) << "FactoryReset: " << code;
 }
 
 DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> DummyModem::GetIP4Config(
     DBus::Error& error) {
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> result;
 
-  cout << "GetIP4Config" << endl;
+  LOG(INFO) << "GetIP4Config";
 
   return result;
 }
 
 DBus::Struct<string, string, string> DummyModem::GetInfo(DBus::Error& error) {
   DBus::Struct<string, string, string> result;
-  cout << "GetInfo" << endl;
+  LOG(INFO) << "GetInfo";
   return result;
 }
 
 void DummyModem::Reset(DBus::Error& error) {
-  cout << "Reset" << endl;
+  LOG(INFO) << "Reset";
 }
 
 // DBUS Methods: ModemSimple
 void DummyModem::Connect(const PropertyMap& properties, DBus::Error& error) {
-  cout << "Simple.Connect" << endl;
+  LOG(INFO) << "Simple.Connect";
 }
 
 PropertyMap DummyModem::GetStatus(DBus::Error& error) {
   PropertyMap result;
 
-  cout << "GetStatus" << endl;
+  LOG(INFO) << "GetStatus";
 
   return result;
 }
 
-  // DBUS Methods: ModemCDMA
+// DBUS Methods: ModemCDMA
 uint32_t DummyModem::GetSignalQuality(DBus::Error& error) {
-  cout << "GetSignalQuality" << endl;
+  LOG(INFO) << "GetSignalQuality";
 
   return 50;
 }
 
 string DummyModem::GetEsn(DBus::Error& error) {
-  cout << "GetEsn" << endl;
+  LOG(INFO) << "GetEsn";
 
   return "12345";
 }
@@ -81,30 +79,28 @@ DBus::Struct<uint32_t, string, uint32_t> DummyModem::GetServingSystem(
     DBus::Error& error) {
   DBus::Struct<uint32_t, string, uint32_t> result;
 
-  cout << "GetServingSystem" << endl;
+  LOG(INFO) << "GetServingSystem";
 
   return result;
 }
 
 void DummyModem::GetRegistrationState(uint32_t& cdma_1x_state,
                                       uint32_t& evdo_state,
-                                      DBus::Error& error
-                                      ) {
-  cout << "GetRegistrationState" << endl;
+                                      DBus::Error& error) {
+  LOG(INFO) << "GetRegistrationState";
 }
 
-uint32_t DummyModem::Activate(const std::string& carrier, DBus::Error &error) {
-  cout << "Activate" << endl;
+uint32_t DummyModem::Activate(const std::string& carrier, DBus::Error& error) {
+  LOG(INFO) << "Activate";
   return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
 }
 
 void DummyModem::ActivateManual(const PropertyMap& properties,
-                                DBus::Error &error) {
-  cout << "ActivateManual" << endl;
+                                DBus::Error& error) {
+  LOG(INFO) << "ActivateManual";
 }
 
 void DummyModem::ActivateManualDebug(
-    const std::map<std::string, std::string> &properties,
-    DBus::Error &error) {
-  cout << "ActivateManualDebug" << endl;
+    const std::map<std::string, std::string>& properties, DBus::Error& error) {
+  LOG(INFO) << "ActivateManualDebug";
 }

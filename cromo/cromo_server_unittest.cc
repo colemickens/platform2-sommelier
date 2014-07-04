@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "carrier.h"
+#include "cromo/cromo_server.h"
+
+#include <mm/mm-modem.h>
 
 #include <base/logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <gtest/gtest.h>
-#include <mm/mm-modem.h>
 
-#include "cromo_server.h"
+#include "cromo/carrier.h"
 
 TEST(Carrier, Find) {
   DBus::Glib::BusDispatcher dispatcher;
@@ -25,22 +26,22 @@ TEST(Carrier, Find) {
 
   static const char kTestName[] = "test_carrier";
 
-  CromoServer *server = new CromoServer(conn);
+  CromoServer* server = new CromoServer(conn);
 
-  Carrier *not_found = server->FindCarrierByName(kTestName);
+  Carrier* not_found = server->FindCarrierByName(kTestName);
   EXPECT_EQ(NULL, not_found);
   not_found = server->FindCarrierByCarrierId(38747);
   EXPECT_EQ(NULL, not_found);
 
-  Carrier *test_carrier = new Carrier(
+  Carrier* test_carrier = new Carrier(
       kTestName, "dir", 17, MM_MODEM_TYPE_CDMA, Carrier::kNone, "activation");
 
   server->AddCarrier(test_carrier);
 
-  Carrier *by_id = server->FindCarrierByCarrierId(17);
+  Carrier* by_id = server->FindCarrierByCarrierId(17);
   EXPECT_EQ(test_carrier, by_id);
 
-  Carrier *by_name = server->FindCarrierByName(kTestName);
+  Carrier* by_name = server->FindCarrierByName(kTestName);
   EXPECT_EQ(test_carrier, by_name);
 
   // Testing carrier ctor, accessors
@@ -51,8 +52,7 @@ TEST(Carrier, Find) {
   EXPECT_STREQ("activation", by_name->activation_code());
 }
 
-
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
 
   return RUN_ALL_TESTS();

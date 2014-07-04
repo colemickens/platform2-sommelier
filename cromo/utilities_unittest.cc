@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 // Unit tests for utilities for the cromo modem manager
 
-#include "utilities.h"
+#include "cromo/utilities.h"
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
@@ -137,7 +137,6 @@ TEST(Utilities, Gsm7ToUtf8) {
                            0);
     EXPECT_EQ(gsm7_test_data[i].utf8_string, out);
   }
-
 }
 
 TEST(Utilities, Utf8ToGsm7) {

@@ -10,8 +10,8 @@
 
 #include <dbus-c++/types.h>  // for DBus::Error &
 
-#include "utilities.h"
-#include "sms_message.h"
+#include "cromo/utilities.h"
+#include "cromo/sms_message.h"
 
 namespace cromo {
 

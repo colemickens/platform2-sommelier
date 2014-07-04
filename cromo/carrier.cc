@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "carrier.h"
+#include "cromo/carrier.h"
 
 #include <mm/mm-modem.h>
 
-#include "cromo_server.h"
+#include "cromo/cromo_server.h"
 
-void AddBaselineCarriers(CromoServer *server) {
+void AddBaselineCarriers(CromoServer* server) {
   server->AddCarrier(new Carrier(
       "Vodafone", "0", 202, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
   server->AddCarrier(new Carrier(

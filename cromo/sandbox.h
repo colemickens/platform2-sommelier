@@ -6,8 +6,8 @@
 #define CROMO_SANDBOX_H_
 
 class Sandbox {
-  public:
-   static void Enter();
+ public:
+  static void Enter();
 };
 
-#endif /* !CROMO_SANDBOX_H_ */
+#endif  // CROMO_SANDBOX_H_

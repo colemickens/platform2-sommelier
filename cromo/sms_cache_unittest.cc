@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 // Unit tests for SMS message caching
 
-#include "sms_cache.h"
+#include "cromo/sms_cache.h"
+
+#include <utility>
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
-
-#include <utility>
 
 namespace cromo {
 namespace {

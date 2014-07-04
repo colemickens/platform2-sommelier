@@ -5,9 +5,10 @@
 #ifndef CROMO_SMS_MESSAGE_H_
 #define CROMO_SMS_MESSAGE_H_
 
-#include <base/basictypes.h>
 #include <string>
 #include <vector>
+
+#include <base/basictypes.h>
 
 namespace cromo {
 

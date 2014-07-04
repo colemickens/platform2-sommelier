@@ -5,8 +5,11 @@
 #ifndef CROMO_MODEM_HANDLER_H_
 #define CROMO_MODEM_HANDLER_H_
 
-#include "base/basictypes.h"
+#include <map>
+#include <string>
+#include <vector>
 
+#include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
 typedef std::map<DBus::Path, DBus::ObjectAdaptor*> ModemMap;
@@ -18,14 +21,14 @@ class ModemHandler {
   // Constructor. |tag| is a vendor-specific tag supplied
   // by each sub-class to identify each class of modem
   // uniquely. The tag becomes part of the dbus path
-  // used externally to name each modem object. 
+  // used externally to name each modem object.
   ModemHandler(CromoServer& server, const std::string& tag);
   virtual ~ModemHandler() {}
   virtual bool Initialize() = 0;
 
   virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error) = 0;
 
-  std::string vendor_tag() const { return vendor_tag_; }
+  const std::string& vendor_tag() const { return vendor_tag_; }
   CromoServer& server() const { return server_; }
 
  protected:
@@ -44,4 +47,4 @@ class ModemHandler {
   DISALLOW_COPY_AND_ASSIGN(ModemHandler);
 };
 
-#endif // CROMO_MODEM_HANDLER_H_
+#endif  // CROMO_MODEM_HANDLER_H_

@@ -8,14 +8,15 @@
 #include <string>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "plugin.h"
+#include <base/basictypes.h>
+
+#include "cromo/plugin.h"
 
 class CromoServer;
 
 class PluginManager {
  public:
-  static void LoadPlugins(CromoServer* server, std::string& plugins);
+  static void LoadPlugins(CromoServer* server, const std::string& plugins);
   static void UnloadPlugins(bool dlclose_plugins);
 
  private:

@@ -5,22 +5,23 @@
 #ifndef CROMO_DUMMY_MODEM_H_
 #define CROMO_DUMMY_MODEM_H_
 
-#include "base/basictypes.h"
+#include <map>
+#include <string>
 
+#include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
-#include "dbus_adaptors/org.freedesktop.ModemManager.Modem.Cdma.h"
 #include "dbus_adaptors/org.freedesktop.ModemManager.Modem.h"
+#include "dbus_adaptors/org.freedesktop.ModemManager.Modem.Cdma.h"
 #include "dbus_adaptors/org.freedesktop.ModemManager.Modem.Simple.h"
 
 typedef std::map<std::string, DBus::Variant> PropertyMap;
 
-class DummyModem
-    : public org::freedesktop::ModemManager::Modem_adaptor,
-      public org::freedesktop::ModemManager::Modem::Simple_adaptor,
-      public org::freedesktop::ModemManager::Modem::Cdma_adaptor,
-      public DBus::IntrospectableAdaptor,
-      public DBus::ObjectAdaptor {
+class DummyModem : public org::freedesktop::ModemManager::Modem_adaptor,
+                   public org::freedesktop::ModemManager::Modem::Simple_adaptor,
+                   public org::freedesktop::ModemManager::Modem::Cdma_adaptor,
+                   public DBus::IntrospectableAdaptor,
+                   public DBus::ObjectAdaptor {
  public:
   DummyModem(DBus::Connection& connection, const DBus::Path& path);
 
@@ -46,12 +47,13 @@ class DummyModem
       DBus::Error& error);
   void GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state,
                             DBus::Error& error);
-  uint32_t Activate(const std::string &carrier, DBus::Error &error);
-  void ActivateManual(const PropertyMap &properties, DBus::Error &error);
-  void ActivateManualDebug(const std::map<std::string, std::string> &properties,
-                           DBus::Error &error);
+  uint32_t Activate(const std::string& carrier, DBus::Error& error);
+  void ActivateManual(const PropertyMap& properties, DBus::Error& error);
+  void ActivateManualDebug(const std::map<std::string, std::string>& properties,
+                           DBus::Error& error);
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(DummyModem);
 };
 
-#endif // CROMO_DUMMY_MODEM_H_
+#endif  // CROMO_DUMMY_MODEM_H_

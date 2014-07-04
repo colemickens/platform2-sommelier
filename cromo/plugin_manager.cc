@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "plugin_manager.h"
+#include "cromo/plugin_manager.h"
 
 #include <dirent.h>
 #include <dlfcn.h>
@@ -21,8 +21,7 @@ using std::vector;
 
 vector<PluginManager::Plugin*> PluginManager::loaded_plugins_;
 
-void PluginManager::LoadPlugins(CromoServer* server,
-                                string& plugins) {
+void PluginManager::LoadPlugins(CromoServer* server, const string& plugins) {
   DIR* pdir = opendir(PLUGINDIR);
   struct dirent* dirent;
 
@@ -44,8 +43,8 @@ void PluginManager::LoadPlugins(CromoServer* server,
       LOG(ERROR) << "Cannot load plugin: " << dlerror();
       continue;
     }
-    cromo_plugin_descriptor* pdesc =
-        (cromo_plugin_descriptor*)dlsym(handle, "plugin_descriptor");
+    cromo_plugin_descriptor* pdesc = reinterpret_cast<cromo_plugin_descriptor*>(
+        dlsym(handle, "plugin_descriptor"));
     if (pdesc == NULL) {
       LOG(ERROR) << "Plugin does not contain descriptor: " << dlerror();
       dlclose(handle);

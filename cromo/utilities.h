@@ -7,10 +7,11 @@
 #ifndef CROMO_UTILITIES_H_
 #define CROMO_UTILITIES_H_
 
-#include <base/basictypes.h>
 #include <map>
 #include <string>
+#include <vector>
 
+#include <base/basictypes.h>
 #include <dbus/dbus.h>
 #include <dbus-c++/dbus.h>
 
@@ -88,4 +89,4 @@ void DumpHex(const uint8_t* buf, size_t size);
 
 }  // namespace utilities
 
-#endif  /* CROMO_UTILITIES_H_ */
+#endif  // CROMO_UTILITIES_H_
