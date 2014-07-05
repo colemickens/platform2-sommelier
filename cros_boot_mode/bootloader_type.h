@@ -11,24 +11,27 @@
 // - A debug override can use cros_debug.
 // This done by walking /proc/cmdline.
 //
+
 #ifndef CROS_BOOT_MODE_BOOTLOADER_TYPE_H_
 #define CROS_BOOT_MODE_BOOTLOADER_TYPE_H_
 
 #include <sys/types.h>
 
-#include "platform_reader.h"
+#include "cros_boot_mode/platform_reader.h"
 
 namespace cros_boot_mode {
 
 class BootloaderType : public PlatformReader {
  public:
-  static const char *kBootloaderTypePath;
   enum {
     kDebug = 0,
     kChromeOS,
     kEFI,
     kLegacy,
   };
+
+  static const char *kBootloaderTypePath;
+
   // API-exposed names
   static const char *kBootloaderTypeText[];
   static const size_t kBootloaderTypeCount;
@@ -36,7 +39,6 @@ class BootloaderType : public PlatformReader {
   static const int kMaxKernelCmdlineSize;
   // Functional names found in /proc/cmdline.
   static const char *kSupportedBootloaders[];
-
 
   BootloaderType();
   virtual ~BootloaderType();
@@ -61,4 +63,5 @@ class BootloaderType : public PlatformReader {
 };
 
 }  // namespace cros_boot_mode
+
 #endif  // CROS_BOOT_MODE_BOOTLOADER_TYPE_H_

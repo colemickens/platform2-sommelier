@@ -4,25 +4,27 @@
 //
 // Defines the ActiveMainFirmware class which extracts the firmware volume used
 // for boot.
+
 #ifndef CROS_BOOT_MODE_ACTIVE_MAIN_FIRMWARE_H_
 #define CROS_BOOT_MODE_ACTIVE_MAIN_FIRMWARE_H_
 
 #include <sys/types.h>
 
-#include "platform_reader.h"
+#include "cros_boot_mode/platform_reader.h"
 
 namespace cros_boot_mode {
 
 class ActiveMainFirmware : public PlatformReader {
  public:
-  ActiveMainFirmware();
-  virtual ~ActiveMainFirmware();
-
   enum {
     kRecovery = 0,
     kReadWriteA,
     kReadWriteB,
   };
+
+  ActiveMainFirmware();
+  virtual ~ActiveMainFirmware();
+
   static const char *kActiveMainFirmwareText[];
   static const size_t kActiveMainFirmwareCount;
 
@@ -40,4 +42,5 @@ class ActiveMainFirmware : public PlatformReader {
 };
 
 }  // namespace cros_boot_mode
+
 #endif  // CROS_BOOT_MODE_ACTIVE_MAIN_FIRMWARE_H_

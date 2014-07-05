@@ -4,18 +4,18 @@
 //
 // ActiveMainFirmware implementation
 
-#include "active_main_firmware.h"
+#include "cros_boot_mode/active_main_firmware.h"
 
 #include <sys/types.h>
 
-#include "helpers.h"
+#include "cros_boot_mode/helpers.h"
 
 namespace cros_boot_mode {
 
 const char *ActiveMainFirmware::kActiveMainFirmwareText[] = {
- "recovery",
- "a",
- "b",
+  "recovery",
+  "a",
+  "b",
 };
 
 const char *ActiveMainFirmware::c_str() const {
@@ -25,8 +25,8 @@ const char *ActiveMainFirmware::c_str() const {
 const size_t ActiveMainFirmware::kActiveMainFirmwareCount =
   sizeof(kActiveMainFirmwareText) / sizeof(*kActiveMainFirmwareText);
 
-ActiveMainFirmware::ActiveMainFirmware() { }
-ActiveMainFirmware::~ActiveMainFirmware() { }
+ActiveMainFirmware::ActiveMainFirmware() {}
+ActiveMainFirmware::~ActiveMainFirmware() {}
 
 int ActiveMainFirmware::Process(const char *contents, size_t length) {
   int volume = helpers::to_int(contents, length);

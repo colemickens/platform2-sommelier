@@ -3,13 +3,15 @@
 // found in the LICENSE file.
 //
 // Tests for cros_boot_mode::BootloaderType default behavior.
-#include "bootloader_type.h"
+
+#include "cros_boot_mode/bootloader_type.h"
+
+#include <string>
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
-#include <string>
 
 class BootloaderTypeTest : public ::testing::Test {
  public:
@@ -19,6 +21,7 @@ class BootloaderTypeTest : public ::testing::Test {
     type_file_path_.append("cmdline");
     type_.set_platform_file_path(type_file_path_.c_str());
   }
+
   void TearDown() {
     base::DeleteFile(temp_dir_, true);
   }
@@ -33,10 +36,11 @@ class BootloaderTypeTest : public ::testing::Test {
         cros_boot_mode::BootloaderType::kBootloaderTypeText[type];
     EXPECT_STREQ(expected_c_str, type_.c_str());
   }
+
  protected:
-   std::string type_file_path_;
-   base::FilePath temp_dir_;
-   cros_boot_mode::BootloaderType type_;
+  std::string type_file_path_;
+  base::FilePath temp_dir_;
+  cros_boot_mode::BootloaderType type_;
 };
 
 TEST_F(BootloaderTypeTest, ChromeOSBare) {
@@ -112,4 +116,3 @@ TEST_F(BootloaderTypeTest, FirstMatchInEnumOrderIsUsed) {
   type_.Initialize();
   ExpectType(cros_boot_mode::BootloaderType::kDebug);
 }
-

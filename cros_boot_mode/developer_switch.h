@@ -12,10 +12,11 @@
 // platform switch value.  The developer switch is allocated the 6th
 // bit (0x20).  The file in use (CHSW) indicates the boot-time position
 // of the switch and not a current measurement (available in GPIO.* files).
+
 #ifndef CROS_BOOT_MODE_DEVELOPER_SWITCH_H_
 #define CROS_BOOT_MODE_DEVELOPER_SWITCH_H_
 
-#include "platform_switch.h"
+#include "cros_boot_mode/platform_switch.h"
 
 namespace cros_boot_mode {
 
@@ -32,4 +33,5 @@ class DeveloperSwitch : public PlatformSwitch {
 };
 
 }  // namespace cros_boot_mode
+
 #endif  // CROS_BOOT_MODE_DEVELOPER_SWITCH_H_

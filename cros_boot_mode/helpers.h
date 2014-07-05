@@ -21,4 +21,5 @@ size_t read_file(const char *path, char *buf, size_t max_bytes);
 
 }  // namespace helpers
 }  // namespace cros_boot_mode
+
 #endif  // CROS_BOOT_MODE_HELPERS_H_

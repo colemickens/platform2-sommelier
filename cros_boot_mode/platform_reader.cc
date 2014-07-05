@@ -6,16 +6,16 @@
 // from a file and assigned it to a PlatformValue which is
 // implementation-specific.
 
-#include "platform_reader.h"
+#include "cros_boot_mode/platform_reader.h"
 
 #include <sys/types.h>
 
 namespace cros_boot_mode {
 
-PlatformReader::PlatformReader() :
-  value_(kUnsupported), platform_file_path_(NULL) { }
+PlatformReader::PlatformReader()
+    : value_(kUnsupported), platform_file_path_(NULL) {}
 
-PlatformReader::~PlatformReader() { }
+PlatformReader::~PlatformReader() {}
 
 const char *PlatformReader::platform_file_path() const {
   if (platform_file_path_)
@@ -25,13 +25,11 @@ const char *PlatformReader::platform_file_path() const {
 
 void PlatformReader::Initialize() {
   char *buf = new char[max_size() + 1];
-  size_t bytes_read = helpers::read_file(platform_file_path(),
-                                         buf,
-                                         max_size());
+  size_t bytes_read = helpers::read_file(platform_file_path(), buf, max_size());
   // read_file doesn't NUL-terminate.
   buf[bytes_read] = '\0';
   set_value(Process(buf, bytes_read));
-  delete [] buf;
+  delete[] buf;
 }
 
 }  // namespace cros_boot_mode

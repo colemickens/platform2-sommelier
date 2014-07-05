@@ -6,16 +6,16 @@
 // its contents to an unsigned integer which is bitwise-ANDed with the
 // subclass-defined bitmask().
 
-#include "platform_switch.h"
+#include "cros_boot_mode/platform_switch.h"
 
-#include "helpers.h"
+#include "cros_boot_mode/helpers.h"
 
 namespace cros_boot_mode {
 
 const char *PlatformSwitch::kPositionText[] = { "disabled", "enabled" };
 
-PlatformSwitch::PlatformSwitch() { }
-PlatformSwitch::~PlatformSwitch() { }
+PlatformSwitch::PlatformSwitch() {}
+PlatformSwitch::~PlatformSwitch() {}
 
 const char *PlatformSwitch::c_str() const {
   return (value() >= 0 ? kPositionText[value()] : "unsupported");

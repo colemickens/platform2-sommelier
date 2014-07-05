@@ -4,13 +4,14 @@
 //
 // Tests for cros_boot_mode::BootMode
 
-#include "boot_mode.h"
+#include "cros_boot_mode/boot_mode.h"
+
+#include <string>
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
-#include <string>
 
 class BootModeTest : public ::testing::Test {
  public:
@@ -36,6 +37,7 @@ class BootModeTest : public ::testing::Test {
   ~BootModeTest() {
     TearDown();
   }
+
   void TearDown() {
     if (!temp_dir_.empty())
       base::DeleteFile(temp_dir_, true);
@@ -81,15 +83,16 @@ class BootModeTest : public ::testing::Test {
   static const char *kCrosEfi;
   static const char *kCrosLegacy;
   static const char *kCrosSecure;
+
  protected:
-   base::FilePath temp_dir_;
-   cros_boot_mode::BootMode boot_mode_;
-   cros_boot_mode::DeveloperSwitch developer_switch_;
-   std::string developer_switch_path_;
-   cros_boot_mode::ActiveMainFirmware active_main_firmware_;
-   std::string firmware_path_;
-   cros_boot_mode::BootloaderType bootloader_type_;
-   std::string bootloader_type_path_;
+  base::FilePath temp_dir_;
+  cros_boot_mode::BootMode boot_mode_;
+  cros_boot_mode::DeveloperSwitch developer_switch_;
+  std::string developer_switch_path_;
+  cros_boot_mode::ActiveMainFirmware active_main_firmware_;
+  std::string firmware_path_;
+  cros_boot_mode::BootloaderType bootloader_type_;
+  std::string bootloader_type_path_;
 };
 
 const char *BootModeTest::kUnsupportedText = "unsupported";

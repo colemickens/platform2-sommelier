@@ -4,12 +4,13 @@
 //
 // DeveloperSwitch implementation
 
+#include "cros_boot_mode/developer_switch.h"
+
 #include <sys/types.h>
-#include "developer_switch.h"
 
 namespace cros_boot_mode {
 
-DeveloperSwitch::DeveloperSwitch() { }
-DeveloperSwitch::~DeveloperSwitch() { }
+DeveloperSwitch::DeveloperSwitch() {}
+DeveloperSwitch::~DeveloperSwitch() {}
 
 }  // namespace cros_boot_mode

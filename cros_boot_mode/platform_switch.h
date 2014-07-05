@@ -12,17 +12,16 @@
 #ifndef CROS_BOOT_MODE_PLATFORM_SWITCH_H_
 #define CROS_BOOT_MODE_PLATFORM_SWITCH_H_
 
-#include "platform_reader.h"
+#include "cros_boot_mode/platform_reader.h"
 
 namespace cros_boot_mode {
 
 class PlatformSwitch : public PlatformReader {
  public:
+  enum { kDisabled, kEnabled };
+
   PlatformSwitch();
   virtual ~PlatformSwitch();
-
-  enum { kDisabled, kEnabled };
-  static const char *kPositionText[];
 
   virtual const char *c_str() const;
   virtual const char *default_platform_file_path() const {
@@ -36,7 +35,10 @@ class PlatformSwitch : public PlatformReader {
   // To be overriden by the implementation
   virtual unsigned int bitmask() const = 0;
   virtual const char *name() const = 0;
+
+  static const char *kPositionText[];
 };
 
 }  // namespace cros_boot_mode
+
 #endif  // CROS_BOOT_MODE_PLATFORM_SWITCH_H_

@@ -10,24 +10,24 @@
 #include <getopt.h>
 #include <err.h>
 
-#include "boot_mode.h"
-#include "developer_switch.h"
-#include "active_main_firmware.h"
-#include "bootloader_type.h"
+#include "cros_boot_mode/active_main_firmware.h"
+#include "cros_boot_mode/boot_mode.h"
+#include "cros_boot_mode/bootloader_type.h"
+#include "cros_boot_mode/developer_switch.h"
 
 void usage(const char *self) {
   fprintf(stderr,
     "Usage: %s [options]\n\n"
     "Options:\n"
-    "  [empty]		Prints the current mode\n"
+    "  [empty]          Prints the current mode\n"
     "  -unsupported_as_developer\n"
-    "  -u		Treats an unsupported platform as developer mode\n"
+    "  -u               Treats an unsupported platform as developer mode\n"
     "  -ignore_bootloader\n"
-    "  -b		Ignores the bootloader configuration\n"
+    "  -b               Ignores the bootloader configuration\n"
     "  -strict_match\n"
-    "  -s		With -m, performs a strict match\n"
+    "  -s               With -m, performs a strict match\n"
     "  -in_mode\n"
-    "  -m [mode]	Tests if the given mode is active instead of printing\n"
+    "  -m [mode]        Tests if the given mode is active instead of printing\n"
     "\n"
     "Mode:\n"
     "  normal\n"
@@ -92,7 +92,7 @@ static void parse_args(int argc, char **argv) {
   if (optind < argc) {
     fprintf(stderr, "Too many free arguments: %d\n", argc - optind);
     flag_help = 1;
-   }
+  }
 }
 
 int main(int argc, char **argv) {

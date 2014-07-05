@@ -10,18 +10,18 @@
 
 #include <string>
 
-#include "bootloader_type.h"
+#include "cros_boot_mode/bootloader_type.h"
 
 namespace cros_boot_mode {
 
 const char *BootloaderType::kBootloaderTypeText[] = {
- "debug",  // cros_debug (cros_fw with developer override)
- "chromeos",  // cros_fw (any platform)
- "efi",  // cros_efi
- "legacy",  // cros_legacy
+  "debug",  // cros_debug (cros_fw with developer override)
+  "chromeos",  // cros_fw (any platform)
+  "efi",  // cros_efi
+  "legacy",  // cros_legacy
 };
 const size_t BootloaderType::kBootloaderTypeCount =
-  sizeof(kBootloaderTypeText) / sizeof(*kBootloaderTypeText);
+    sizeof(kBootloaderTypeText) / sizeof(*kBootloaderTypeText);
 // These values are expected to be found in the kernel commandline with space
 // or '\0' word boundaries.  The ordering of this array must correspond to
 // the array above and the defined enum.
@@ -34,8 +34,8 @@ const char *BootloaderType::kSupportedBootloaders[] = {
 
 const int BootloaderType::kMaxKernelCmdlineSize = 4096;  // one page.
 
-BootloaderType::BootloaderType()  { }
-BootloaderType::~BootloaderType() { }
+BootloaderType::BootloaderType() {}
+BootloaderType::~BootloaderType() {}
 
 // This function looks for given argument space or nul delimited in
 // a /proc/cmdline style char array. See bootloader_type.h for details.

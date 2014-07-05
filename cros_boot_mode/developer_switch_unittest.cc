@@ -5,12 +5,14 @@
 // Tests for cros_boot_mode::DeveloperSwitch default behavior.
 // This also acts as the canonical unittest for PlatformSwitch default
 // behavior.
-#include "developer_switch.h"
+
+#include "cros_boot_mode/developer_switch.h"
+
+#include <string>
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
 #include <gtest/gtest.h>
-#include <string>
 
 class DeveloperSwitchTest : public ::testing::Test {
  public:
@@ -34,10 +36,11 @@ class DeveloperSwitchTest : public ::testing::Test {
       expected_c_str = cros_boot_mode::PlatformSwitch::kPositionText[pos];
     EXPECT_STREQ(expected_c_str, switch_.c_str());
   }
+
  protected:
-   std::string switch_file_path_;
-   base::FilePath temp_dir_;
-   cros_boot_mode::DeveloperSwitch switch_;
+  std::string switch_file_path_;
+  base::FilePath temp_dir_;
+  cros_boot_mode::DeveloperSwitch switch_;
 };
 
 TEST_F(DeveloperSwitchTest, Disabled) {

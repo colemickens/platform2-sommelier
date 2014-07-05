@@ -4,22 +4,20 @@
 //
 // boot_mode uses BINF.0, BINF.1, and CHSW to provide a confident guess as
 // to the current boot state.
+
 #ifndef CROS_BOOT_MODE_BOOT_MODE_H_
 #define CROS_BOOT_MODE_BOOT_MODE_H_
 
 #include <stdio.h>
 
-#include "active_main_firmware.h"
-#include "bootloader_type.h"
-#include "developer_switch.h"
+#include "cros_boot_mode/active_main_firmware.h"
+#include "cros_boot_mode/bootloader_type.h"
+#include "cros_boot_mode/developer_switch.h"
 
 namespace cros_boot_mode {
 
 class BootMode {
  public:
-  BootMode();
-  virtual ~BootMode();
-
   enum Mode {
     kUnsupported = -1,
     kNormal = 0,
@@ -28,6 +26,9 @@ class BootMode {
     kNormalRecovery,
     kDeveloperRecovery,
   };
+
+  BootMode();
+  virtual ~BootMode();
 
   // Initializes the class by reading from the platform-specific
   // implementation.  Even if something fails, the class will be in

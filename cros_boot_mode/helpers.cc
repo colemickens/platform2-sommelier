@@ -5,12 +5,12 @@
 // Provides the implementation of the helper functions for PlatformReader
 // and derived classes.
 
-#include "helpers.h"
+#include "cros_boot_mode/helpers.h"
 
 #include <stdio.h>
 #include <sys/types.h>
 
-#include "platform_reader.h"
+#include "cros_boot_mode/platform_reader.h"
 
 namespace cros_boot_mode {
 namespace helpers {

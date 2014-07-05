@@ -7,31 +7,31 @@
 // developer mode switch value, and the bootloader kernel commandline
 // boot parameter to determine the "boot mode".
 
+#include "cros_boot_mode/boot_mode.h"
+
 #include <sys/types.h>
 
-#include "active_main_firmware.h"
-#include "bootloader_type.h"
-#include "developer_switch.h"
-
-#include "boot_mode.h"
+#include "cros_boot_mode/active_main_firmware.h"
+#include "cros_boot_mode/bootloader_type.h"
+#include "cros_boot_mode/developer_switch.h"
 
 namespace cros_boot_mode {
 
 const char *BootMode::kBootModeText[] = {
- "normal",
- "developer",
- "normal recovery",
- "developer recovery",
+  "normal",
+  "developer",
+  "normal recovery",
+  "developer recovery",
 };
 const size_t BootMode::kBootModeCount =
-  sizeof(kBootModeText) / sizeof(*kBootModeText);
+    sizeof(kBootModeText) / sizeof(*kBootModeText);
 
-BootMode::BootMode() :
-  mode_(kUnsupported),
-  developer_switch_(&default_developer_switch_),
-  active_main_firmware_(&default_active_main_firmware_),
-  bootloader_type_(&default_bootloader_type_) { }
-BootMode::~BootMode()  { }
+BootMode::BootMode()
+    : mode_(kUnsupported),
+      developer_switch_(&default_developer_switch_),
+      active_main_firmware_(&default_active_main_firmware_),
+      bootloader_type_(&default_bootloader_type_) {}
+BootMode::~BootMode() {}
 
 void BootMode::Initialize(bool unsupported_is_developer, bool use_bootloader) {
   if (use_bootloader) {
@@ -94,10 +94,10 @@ void BootMode::set_developer_switch(DeveloperSwitch *ds) {
 }
 
 void BootMode::set_active_main_firmware(ActiveMainFirmware *amf) {
- if (amf)
-   active_main_firmware_ = amf;
+  if (amf)
+    active_main_firmware_ = amf;
   else
-   active_main_firmware_ = &default_active_main_firmware_;
+    active_main_firmware_ = &default_active_main_firmware_;
 }
 
 void BootMode::set_bootloader_type(BootloaderType *bt) {
