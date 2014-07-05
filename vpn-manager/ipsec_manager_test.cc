@@ -235,7 +235,7 @@ TEST_F(IpsecManagerTest, FormatSecretsNoSlot) {
   DoInitialize(1, false, false);
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
-  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0@crypto_module:0a \"123456\"\n",
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN %smartcard0@crypto_module:0a \"123456\"\n",
             formatted);
 }
 
@@ -244,7 +244,7 @@ TEST_F(IpsecManagerTest, FormatSecretsNonZeroSlot) {
   DoInitialize(1, false, false);
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
-  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard1@crypto_module:0a \"123456\"\n",
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN %smartcard1@crypto_module:0a \"123456\"\n",
             formatted);
 }
 
@@ -358,7 +358,7 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(
 
   expected.append(
       "\trekey=yes\n"
-      "\tleft=\"\%defaultroute\"\n"
+      "\tleft=\"%defaultroute\"\n"
       "\tleftprotoport=\"17/1701\"\n"
       "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
       "\tright=\"1.2.3.4\"\n"
@@ -413,7 +413,7 @@ TEST_F(IpsecManagerTestIkeV1Certs, Initialize) {
 TEST_F(IpsecManagerTestIkeV1Certs, FormatSecrets) {
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
-  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0@crypto_module:0a \"123456\"\n",
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN %smartcard0@crypto_module:0a \"123456\"\n",
             formatted);
 }
 
@@ -430,8 +430,8 @@ std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
       "\tesp=\"aes128-sha1,3des-sha1,aes128-md5,3des-md5\"\n"
       "\tkeyexchange=\"ikev1\"\n"
       "\trekey=yes\n"
-      "\tleft=\"\%defaultroute\"\n"
-      "\tleftcert=\"\%smartcard0@crypto_module:0a\"\n"
+      "\tleft=\"%defaultroute\"\n"
+      "\tleftcert=\"%smartcard0@crypto_module:0a\"\n"
       "\tleftprotoport=\"17/1701\"\n"
       "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
       "\tright=\"1.2.3.4\"\n"

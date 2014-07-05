@@ -154,15 +154,15 @@ bool ServiceManager::ConvertSockAddrToIPString(
   char str[INET6_ADDRSTRLEN] = { 0 };
   switch (address.sa_family) {
     case AF_INET:
-      if (!inet_ntop(AF_INET, &reinterpret_cast<const sockaddr_in*>(
-              &address)->sin_addr, str, sizeof(str))) {
+      if (!inet_ntop(AF_INET, &(reinterpret_cast<const sockaddr_in*>(
+              &address)->sin_addr), str, sizeof(str))) {
         PLOG(ERROR) << "inet_ntop failed";
         return false;
       }
       break;
     case AF_INET6:
-      if (!inet_ntop(AF_INET6, &reinterpret_cast<const sockaddr_in6*>(
-              &address)->sin6_addr, str, sizeof(str))) {
+      if (!inet_ntop(AF_INET6, &(reinterpret_cast<const sockaddr_in6*>(
+              &address)->sin6_addr), str, sizeof(str))) {
         PLOG(ERROR) << "inet_ntop failed";
         return false;
       }
