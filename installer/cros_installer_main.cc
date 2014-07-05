@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "inst_util.h"
-#include "chromeos_install_config.h"
-#include "chromeos_legacy.h"
-#include "chromeos_postinst.h"
-
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <string>
+
+#include "installer/chromeos_install_config.h"
+#include "installer/chromeos_legacy.h"
+#include "installer/chromeos_postinst.h"
+#include "installer/inst_util.h"
 
 using std::string;
 
@@ -29,7 +30,6 @@ int showHelp() {
 }
 
 int main(int argc, char** argv) {
-
   struct option long_options[] = {
     {"bios", required_argument, NULL, 'b'},
     {"debug", no_argument, NULL, 'd'},
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     string install_dev = argv[optind++];
 
     int exit_code = 0;
-    if (!RunPostInstall(install_dev, install_dir, bios_type, exit_code)) {
+    if (!RunPostInstall(install_dev, install_dir, bios_type, &exit_code)) {
       if (!exit_code)
         exit_code = 1;
     }

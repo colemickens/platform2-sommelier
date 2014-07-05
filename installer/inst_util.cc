@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "inst_util.h"
+#include "installer/inst_util.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -19,10 +19,11 @@
 #include <unistd.h>
 
 extern "C" {
-#include "vboot_host.h"
+#include <vboot/vboot_host.h>
 }
 
 using std::string;
+using std::vector;
 
 // Used by LoggingTimerStart/Finish methods.
 static time_t START_TIME = 0;
@@ -80,9 +81,7 @@ string StringPrintf(const char* format, ...) {
   return result;
 }
 
-void SplitString(const string& str,
-                 char split,
-                 std::vector<string>* output) {
+void SplitString(const string& str, char split, vector<string>* output) {
   output->clear();
 
   size_t i = 0;
@@ -97,17 +96,15 @@ void SplitString(const string& str,
   output->push_back(str.substr(i));
 }
 
-void JoinStrings(const std::vector<std::string>& strs,
+void JoinStrings(const vector<string>& strs,
                 const string& split,
-                std::string* output) {
+                string* output) {
   output->clear();
 
   bool first_line = true;
 
-  for (std::vector<string>::const_iterator line = strs.begin();
-       line != strs.end();
+  for (vector<string>::const_iterator line = strs.begin(); line != strs.end();
        line++) {
-
     if (first_line)
       first_line = false;
     else
@@ -192,7 +189,7 @@ bool WriteStringToFile(const string& contents, const string& path) {
   }
 
   bool success = (write(fd, contents.c_str(), contents.size()) ==
-                  (int)contents.size());
+                  static_cast<int>(contents.size()));
 
   if (close(fd) != 0)
     return false;
@@ -244,19 +241,17 @@ bool CopyFile(const string& from_path, const string& to_path) {
 // Look up a keyed value from a /etc/lsb-release formatted file.
 // TODO(dgarrett): If we ever call this more than once, cache
 // file contents to avoid reparsing.
-bool LsbReleaseValue(const string& file,
-                     const string& key,
-                     string* result) {
+bool LsbReleaseValue(const string& file, const string& key, string* result) {
   string preamble = key + "=";
 
   string file_contents;
   if (!ReadFileToString(file, &file_contents))
     return false;
 
-  std::vector<string> file_lines;
+  vector<string> file_lines;
   SplitString(file_contents, '\n', &file_lines);
 
-  std::vector<string>::iterator line;
+  vector<string>::iterator line;
   for (line = file_lines.begin(); line < file_lines.end(); line++) {
     if (line->compare(0, preamble.size(), preamble) == 0) {
       *result = line->substr(preamble.size());
@@ -268,10 +263,9 @@ bool LsbReleaseValue(const string& file,
 }
 
 // If less is a lower version number than right
-bool VersionLess(const string& left,
-                 const string& right) {
-  std::vector<string> left_parts;
-  std::vector<string> right_parts;
+bool VersionLess(const string& left, const string& right) {
+  vector<string> left_parts;
+  vector<string> right_parts;
 
   SplitString(left, '.', &left_parts);
   SplitString(right, '.', &right_parts);
@@ -285,7 +279,7 @@ bool VersionLess(const string& left,
     return true;
 
   // There should be no other way for the lengths to be different
-  //assert(left_parts.length() == right_parts.length());
+  // assert(left_parts.length() == right_parts.length());
 
   for (unsigned int i = 0; i < left_parts.size(); i++) {
     int left_value = atoi(left_parts[i].c_str());
@@ -314,7 +308,6 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
 
   for (const char **nd = begin(numbered_devices);
        nd != end(numbered_devices); nd++) {
-
     size_t nd_len = strlen(*nd);
     // numbered_devices are of the form "/dev/mmcblk12p34"
     if (partition_dev.compare(0, nd_len, *nd) == 0) {
@@ -360,7 +353,6 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
 }
 
 string MakePartitionDev(const string& block_dev, int partition) {
-
   for (const char **nd = begin(numbered_devices);
        nd != end(numbered_devices); nd++) {
     size_t nd_len = strlen(*nd);
@@ -408,7 +400,7 @@ bool RemovePackFiles(const string& dirname) {
     unlink(full_filename.c_str());
   }
 
-  closedir (dp);
+  closedir(dp);
 
   return true;
 }
@@ -451,12 +443,12 @@ bool ReplaceInFile(const string& pattern,
   return true;
 }
 
-void ReplaceAll(string& target, const string& pattern, const string& value) {
+void ReplaceAll(string* target, const string& pattern, const string& value) {
   for (size_t offset = 0;;) {
-    offset = target.find(pattern, offset);
+    offset = target->find(pattern, offset);
     if (offset == string::npos)
       return;
-    target.replace(offset, pattern.length(), value);
+    target->replace(offset, pattern.length(), value);
     offset += value.length();
   }
 }
@@ -489,7 +481,7 @@ bool R10FileSystemPatch(const string& dev_name) {
 }
 
 bool MakeFileSystemRw(const string& dev_name, bool rw) {
-  const int offset = 0x464 + 3; // Set 'highest' byte
+  const int offset = 0x464 + 3;  // Set 'highest' byte
 
   int fd = open(dev_name.c_str(), O_WRONLY);
 
@@ -563,7 +555,6 @@ bool FindKernelArgValueOffsets(const string& kernel_config,
                                const string& key,
                                size_t* value_offset,
                                size_t* value_length) {
-
   // We are really looking for key=value
   string preamble = key + "=";
 
@@ -571,7 +562,6 @@ bool FindKernelArgValueOffsets(const string& kernel_config,
 
   // Search for arg...
   for (i = 0; i < kernel_config.size(); i++) {
-
     // If we hit a " while searching, skip to matching quote
     if (kernel_config[i] == '"') {
       i++;

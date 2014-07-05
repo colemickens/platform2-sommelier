@@ -2,26 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "installer/chromeos_install_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "chromeos_install_config.h"
-#include "chromeos_postinst.h"
-#include "inst_util.h"
+#include <gtest/gtest.h>
+
+#include "installer/chromeos_postinst.h"
+#include "installer/inst_util.h"
 
 using std::string;
 
-void TestConfigureInstall(const std::string& install_dev,
-                          const std::string& install_path,
+void TestConfigureInstall(const string& install_dev,
+                          const string& install_path,
                           bool expected_success,
-                          const std::string& expected_slot,
-                          const std::string& expected_root,
-                          const std::string& expected_kernel,
-                          const std::string& expected_boot) {
-
+                          const string& expected_slot,
+                          const string& expected_root,
+                          const string& expected_kernel,
+                          const string& expected_boot) {
   InstallConfig install_config;
 
   BiosType expected_bios = kBiosTypeSecure;

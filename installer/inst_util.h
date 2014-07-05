@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INST_UTIL_H_
-#define INST_UTIL_H_
+#ifndef INSTALLER_INST_UTIL_H_
+#define INSTALLER_INST_UTIL_H_
 
 #include <string>
 #include <vector>
@@ -82,7 +82,7 @@ bool ReplaceInFile(const std::string& pattern,
                    const std::string& path);
 
 // Replace all instances of pattern in target with value
-void ReplaceAll(std::string& target,
+void ReplaceAll(std::string* target,
                 const std::string& pattern,
                 const std::string& value);
 
@@ -115,4 +115,4 @@ bool SetKernelArg(const std::string& tag,
 // or /dev/dm-1.
 bool IsReadonly(const std::string& device);
 
-#endif // INST_UTIL_H_
+#endif  // INSTALLER_INST_UTIL_H_

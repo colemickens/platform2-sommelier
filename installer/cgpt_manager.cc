@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "installer/cgpt_manager.h"
+
 #include <string.h>
 
-#include "CgptManager.h"
-
 extern "C" {
-#include "vboot_host.h"
+#include <vboot/vboot_host.h>
 }
 
 using std::string;
@@ -79,7 +79,8 @@ CgptErrorCode CgptManager::AddPartition(const string& label,
   return kCgptSuccess;
 }
 
-CgptErrorCode CgptManager::GetNumNonEmptyPartitions(uint8_t* num_partitions) const {
+CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
+    uint8_t* num_partitions) const {
   if (!is_initialized_)
     return kCgptNotInitialized;
 

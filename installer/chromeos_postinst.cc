@@ -2,27 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos_postinst.h"
+#include "installer/chromeos_postinst.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "CgptManager.h"
-
-#include "chromeos_legacy.h"
-#include "chromeos_install_config.h"
-#include "chromeos_setimage.h"
-#include "inst_util.h"
+#include "installer/cgpt_manager.h"
+#include "installer/chromeos_install_config.h"
+#include "installer/chromeos_legacy.h"
+#include "installer/chromeos_setimage.h"
+#include "installer/inst_util.h"
 
 using std::string;
 
-bool ConfigureInstall(
-    const std::string& install_dev,
-    const std::string& install_path,
-    BiosType bios_type,
-    InstallConfig* install_config) {
-
+bool ConfigureInstall(const string& install_dev,
+                      const string& install_path,
+                      BiosType bios_type,
+                      InstallConfig* install_config) {
   Partition root = Partition(install_dev, install_path);
 
   string slot;
@@ -47,7 +44,7 @@ bool ConfigureInstall(
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.
-  if (( bios_type == kBiosTypeUnknown) && !DetectBiosType(&bios_type)) {
+  if (bios_type == kBiosTypeUnknown && !DetectBiosType(&bios_type)) {
     return false;
   }
 
@@ -62,7 +59,6 @@ bool ConfigureInstall(
 }
 
 bool DetectBiosType(BiosType* bios_type) {
-
   // Look up the current kernel command line
   string kernel_cmd_line;
   if (!ReadFileToString("/proc/cmdline", &kernel_cmd_line)) {
@@ -74,7 +70,6 @@ bool DetectBiosType(BiosType* bios_type) {
 }
 
 bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
-
   if (kernel_config.find("cros_secure") != string::npos) {
     *type = kBiosTypeSecure;
     return true;
@@ -160,10 +155,8 @@ int FirmwareUpdate(const string &install_dir, bool is_update) {
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             string src_version,
-                            int& exit_code) {
-
-  printf("ChromeosChrootPostinst(%s)\n",
-         src_version.c_str());
+                            int* exit_code) {
+  printf("ChromeosChrootPostinst(%s)\n", src_version.c_str());
 
   // Extract External ENVs
   bool is_factory_install = getenv("IS_FACTORY_INSTALL");
@@ -178,7 +171,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     printf("Patching new rootfs\n");
     if (!R10FileSystemPatch(install_config.root.device()))
       return false;
-    make_dev_readonly=true;
+    make_dev_readonly = true;
   }
 
   // TODO(dgarrett): Remove when chromium:216338 is fixed.
@@ -297,8 +290,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   // In factory process, firmware is either pre-flashed or assigned by
   // mini-omaha server, and we don't want to try updates inside postinst.
   if (attempt_firmware_update) {
-    exit_code = FirmwareUpdate(install_config.root.mount(), is_update);
-    if (exit_code != 0) {
+    *exit_code = FirmwareUpdate(install_config.root.mount(), is_update);
+    if (*exit_code != 0) {
       // Note: This will only rollback the ChromeOS verified boot target.
       // The assumption is that systems running firmware autoupdate
       // are not running legacy (non-ChromeOS) firmware. If the firmware
@@ -354,7 +347,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 bool RunPostInstall(const string& install_dir,
                     const string& install_dev,
                     BiosType bios_type,
-                    int& exit_code) {
+                    int* exit_code) {
   InstallConfig install_config;
 
   if (!ConfigureInstall(install_dir,
@@ -431,8 +424,7 @@ bool RunPostInstall(const string& install_dir,
 
   bool success = true;
 
-  switch (install_config.bios_type)
-  {
+  switch (install_config.bios_type) {
     case kBiosTypeUnknown:
     case kBiosTypeSecure:
       printf("Unexpected BiosType %d.\n", install_config.bios_type);

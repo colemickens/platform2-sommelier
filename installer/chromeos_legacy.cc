@@ -2,14 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos_legacy.h"
+#include "installer/chromeos_legacy.h"
 
 #include <stdio.h>
 #include <unistd.h>
 
-#include "inst_util.h"
+#include <vector>
+
+#include "installer/inst_util.h"
 
 using std::string;
+using std::vector;
 
 bool UpdateLegacyKernel(const InstallConfig& install_config) {
   string kernel_from = StringPrintf("%s/boot/vmlinuz",
@@ -22,18 +25,18 @@ bool UpdateLegacyKernel(const InstallConfig& install_config) {
   return CopyFile(kernel_from, kernel_to);
 }
 
-std::string ExplandVerityArguments(const std::string& kernel_config,
-                                   const std::string& root_uuid) {
+string ExplandVerityArguments(const string& kernel_config,
+                              const string& root_uuid) {
   string kernel_config_dm = ExtractKernelArg(kernel_config, "dm");
 
   // The verity config from the kernel contains short hand symbols for
   // partition names that we have to expand to specific UUIDs.
 
   // %U+1 -> XXX-YYY-ZZZ
-  ReplaceAll(kernel_config_dm, "%U+1", root_uuid);
+  ReplaceAll(&kernel_config_dm, "%U+1", root_uuid);
 
   // PARTUUID=%U/PARTNROFF=1 -> PARTUUID=XXX-YYY-ZZZ
-  ReplaceAll(kernel_config_dm, "%U/PARTNROFF=1", root_uuid);
+  ReplaceAll(&kernel_config_dm, "%U/PARTNROFF=1", root_uuid);
 
   return kernel_config_dm;
 }
@@ -168,28 +171,21 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   return true;
 }
 
-bool EfiGrubUpdate(const std::string& input,
-                   const std::string& slot,
-                   const std::string& root_uuid,
-                   const std::string& verity_args,
-                  std::string* output) {
-
-
-
+bool EfiGrubUpdate(const string& input,
+                   const string& slot,
+                   const string& root_uuid,
+                   const string& verity_args,
+                   string* output) {
   // Split the file contents into lines.
-  std::vector<string> file_lines;
+  vector<string> file_lines;
   SplitString(input, '\n', &file_lines);
 
   // Search pattern for lines are related to our slot.
   string kernel_pattern = StringPrintf("/syslinux/vmlinuz.%s", slot.c_str());
 
-
-  for (std::vector<string>::iterator line = file_lines.begin();
-       line < file_lines.end();
-       line++) {
-
+  for (vector<string>::iterator line = file_lines.begin();
+       line < file_lines.end(); line++) {
     if (line->find(kernel_pattern) != string::npos) {
-
       if (ExtractKernelArg(*line, "dm").empty()) {
         // If it's an unverified boot line, just set the root partition to boot.
         if (!SetKernelArg("root",
@@ -200,9 +196,8 @@ bool EfiGrubUpdate(const std::string& input,
           return false;
         }
       } else {
-
         // Unescape quotes in the line.
-        ReplaceAll(*line, "\\\"", "\"");
+        ReplaceAll(&(*line), "\\\"", "\"");
 
         if (!SetKernelArg("dm", verity_args, &(*line))) {
           printf("Unable to update verified dm flag.\n");
@@ -210,7 +205,7 @@ bool EfiGrubUpdate(const std::string& input,
         }
 
         // Escape quotes in the line.
-        ReplaceAll(*line, "\"", "\\\"");
+        ReplaceAll(&(*line), "\"", "\\\"");
       }
     }
   }

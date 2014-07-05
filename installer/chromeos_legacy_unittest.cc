@@ -2,24 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "installer/chromeos_legacy.h"
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include "chromeos_install_config.h"
-#include "chromeos_legacy.h"
+#include "installer/chromeos_install_config.h"
 
 using std::string;
 
 class LegacyTest : public ::testing::Test {};
 
 TEST(LegacyTest, EfiGrubUpdateTest) {
-
   // this string is a grub file stripped down to (mostly) just what we update.
-  std::string input =
+  string input =
     "unrelated line\n"
     "\n"
     "  linux /syslinux/vmlinuz.A cros_efi cros_debug "
@@ -34,7 +30,7 @@ TEST(LegacyTest, EfiGrubUpdateTest) {
       "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
 
-  std::string expected =
+  string expected =
     "unrelated line\n"
     "\n"
     "  linux /syslinux/vmlinuz.A cros_efi cros_debug "
@@ -49,11 +45,8 @@ TEST(LegacyTest, EfiGrubUpdateTest) {
       "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
 
-  std::string output = "";
-
+  string output;
   EXPECT_TRUE(EfiGrubUpdate(input, "A", "fake_root_uuid", "verity args",
                             &output));
   EXPECT_EQ(output, expected);
 }
-
-

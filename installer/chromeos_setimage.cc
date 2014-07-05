@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos_setimage.h"
-#include "chromeos_verity.h"
+#include "installer/chromeos_setimage.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "chromeos_install_config.h"
-#include "inst_util.h"
+#include <vector>
+
+#include "installer/chromeos_install_config.h"
+#include "installer/chromeos_verity.h"
+#include "installer/inst_util.h"
 
 using std::string;
 
@@ -46,7 +48,6 @@ using std::string;
 
 
 bool SetImage(const InstallConfig& install_config) {
-
   printf("SetImage\n");
 
   // Re-hash the root filesystem and use the table for dm-verity.

@@ -2,24 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos_install_config.h"
+#include "installer/chromeos_install_config.h"
 
 #include <stdio.h>
 
-#include "CgptManager.h"
+#include "installer/cgpt_manager.h"
 
 using std::string;
 
 bool StrToBiosType(string name, BiosType* bios_type) {
-  if (name == "secure")
+  if (name == "secure") {
     *bios_type = kBiosTypeSecure;
-  else if (name == "uboot")
+  } else if (name == "uboot") {
     *bios_type = kBiosTypeUBoot;
-  else if (name == "legacy")
+  } else if (name == "legacy") {
     *bios_type = kBiosTypeLegacy;
-  else if (name == "efi")
+  } else if (name == "efi") {
     *bios_type = kBiosTypeEFI;
-  else {
+  } else {
     printf("Bios type %s is not one of secure, legacy, efi, or uboot\n",
            name.c_str());
     return false;

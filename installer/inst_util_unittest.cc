@@ -2,18 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include "installer/inst_util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "chromeos_install_config.h"
-#include "chromeos_postinst.h"
-#include "inst_util.h"
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include "installer/chromeos_install_config.h"
+#include "installer/chromeos_postinst.h"
 
 using std::string;
+using std::vector;
 
 class UtilTest : public ::testing::Test { };
 
@@ -31,7 +33,7 @@ TEST(UtilTest, StringPrintfTest) {
 }
 
 TEST(UtilTest, SplitStringTest) {
-  std::vector<std::string> result;
+  vector<string> result;
 
   SplitString("My Stuff", ',', &result);
   ASSERT_THAT(result, testing::ElementsAre("My Stuff"));
@@ -47,18 +49,18 @@ TEST(UtilTest, SplitStringTest) {
 }
 
 TEST(UtilTest, JoinStringsTest) {
-  std::string result;
+  string result;
 
-  std::vector<std::string> empty;
+  vector<string> empty;
   JoinStrings(empty, " ", &result);
   EXPECT_EQ(result, "");
 
-  std::vector<std::string> one;
+  vector<string> one;
   one.push_back("One");
   JoinStrings(one, " ", &result);
   EXPECT_EQ(result, "One");
 
-  std::vector<std::string> three;
+  vector<string> three;
   three.push_back("One");
   three.push_back("Two");
   three.push_back("Three");
@@ -69,8 +71,8 @@ TEST(UtilTest, JoinStringsTest) {
   JoinStrings(three, ", ", &result);
   EXPECT_EQ(result, "One, Two, Three");
 
-  std::string initial;
-  std::vector<std::string> intermediate;
+  string initial;
+  vector<string> intermediate;
 
   initial = "One Two Three";
   SplitString(initial, ' ', &intermediate);
@@ -213,19 +215,19 @@ TEST(UtilTest, LsbReleaseValueTest) {
                             &result_string),
             true);
   EXPECT_EQ(result_string, "http://blah.blah:8080/update");
-};
+}
 
 TEST(UtilTest, VersionLessTest) {
-  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.2.4"), false); // 4 digit ==
-  EXPECT_EQ(VersionLess("12.13.2.3", "12.13.2.4"), true);  // 4 digit <
-  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.2.3"), false); // 4 digit >
-  EXPECT_EQ(VersionLess("12.13.2", "12.13.2"), false);     // 3 digit ==
-  EXPECT_EQ(VersionLess("12.13.1", "12.13.2"), true);      // 3 digit <
-  EXPECT_EQ(VersionLess("12.13.4", "12.13.3"), false);     // 3 digit >
-  EXPECT_EQ(VersionLess("12.13.2", "12.14.1"), true);      // 3 digit >
-  EXPECT_EQ(VersionLess("12.13.2", "1.13.2.4"), false);    // 3 digit, 4 digit
-  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.1"), true);    // 4 digit, 3 digit
-};
+  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.2.4"), false);  // 4 digit ==
+  EXPECT_EQ(VersionLess("12.13.2.3", "12.13.2.4"), true);   // 4 digit <
+  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.2.3"), false);  // 4 digit >
+  EXPECT_EQ(VersionLess("12.13.2", "12.13.2"), false);      // 3 digit ==
+  EXPECT_EQ(VersionLess("12.13.1", "12.13.2"), true);       // 3 digit <
+  EXPECT_EQ(VersionLess("12.13.4", "12.13.3"), false);      // 3 digit >
+  EXPECT_EQ(VersionLess("12.13.2", "12.14.1"), true);       // 3 digit >
+  EXPECT_EQ(VersionLess("12.13.2", "1.13.2.4"), false);     // 3 digit, 4 digit
+  EXPECT_EQ(VersionLess("12.13.2.4", "12.13.1"), true);     // 4 digit, 3 digit
+}
 
 TEST(UtilTest, GetBlockDevFromPartitionDev) {
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda3"), "/dev/sda");
@@ -372,7 +374,7 @@ TEST(UtilTest, R10FileSystemPatchTest) {
   EXPECT_EQ(stats.st_size, 1402);
 
   unlink(file.c_str());
-};
+}
 
 TEST(UtilTest, ExtractKernelArgTest) {
   string kernel_config =
@@ -455,14 +457,12 @@ TEST(UtilTest, IsReadonlyTest) {
 TEST(UtilTest, ReplaceAllTest) {
   string a = "abcdeabcde";
   string b = a;
-  ReplaceAll(b, "xyz", "lmnop");
+  ReplaceAll(&b, "xyz", "lmnop");
   EXPECT_EQ(a, b);
-  ReplaceAll(b, "ea", "ea");
+  ReplaceAll(&b, "ea", "ea");
   EXPECT_EQ(a, b);
-  ReplaceAll(b, "ea", "xyz");
+  ReplaceAll(&b, "ea", "xyz");
   EXPECT_EQ(b, "abcdxyzbcde");
-  ReplaceAll(b, "bcd", "rs");
+  ReplaceAll(&b, "bcd", "rs");
   EXPECT_EQ(b, "arsxyzrse");
 }
-
-

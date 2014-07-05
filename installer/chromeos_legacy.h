@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_LEGACY_H_
-#define CHROMEOS_LEGACY_H_
+#ifndef INSTALLER_CHROMEOS_LEGACY_H_
+#define INSTALLER_CHROMEOS_LEGACY_H_
 
-#include "chromeos_install_config.h"
+#include <string>
+
+#include "installer/chromeos_install_config.h"
 
 // Attempts to update boot files needed by the legacy bios boot
 // (syslinux config files) on the boot partition. Returns false on error.
@@ -27,4 +29,4 @@ bool EfiGrubUpdate(const std::string& input,
                    std::string* output);
 
 
-#endif  // CHROMEOS_LEGACY_H_
+#endif  // INSTALLER_CHROMEOS_LEGACY_H_

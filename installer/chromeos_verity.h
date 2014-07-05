@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CHROMEOS_VERITY_H_
-#define CHROMEOS_VERITY_H_
+#ifndef INSTALLER_CHROMEOS_VERITY_H_
+#define INSTALLER_CHROMEOS_VERITY_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,4 +38,4 @@ int chromeos_verity(const char *alg,
 }
 #endif
 
-#endif // CHROMEOS_VERITY_H_
+#endif  // INSTALLER_CHROMEOS_VERITY_H_

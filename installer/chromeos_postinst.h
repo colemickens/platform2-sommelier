@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_POSTINST_H_
-#define CHROMEOS_POSTINST_H_
-
-#include "chromeos_install_config.h"
+#ifndef INSTALLER_CHROMEOS_POSTINST_H_
+#define INSTALLER_CHROMEOS_POSTINST_H_
 
 #include <string>
+
+#include "installer/chromeos_install_config.h"
 
 // Create the configuration structure used during an install.
 bool ConfigureInstall(
@@ -31,6 +31,6 @@ bool KernelConfigToBiosType(const std::string& kernel_config, BiosType* type);
 bool RunPostInstall(const std::string& install_dir,
                     const std::string& install_dev,
                     BiosType bios_type,
-                    int& exit_code);
+                    int* exit_code);
 
-#endif // CHROMEOS_POSTINST_H_
+#endif  // INSTALLER_CHROMEOS_POSTINST_H_

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMEOS_INSTALL_CONFIG
-#define CHROMEOS_INSTALL_CONFIG
-
-#include "inst_util.h"
+#ifndef INSTALLER_CHROMEOS_INSTALL_CONFIG_H_
+#define INSTALLER_CHROMEOS_INSTALL_CONFIG_H_
 
 #include <string>
+
+#include "installer/inst_util.h"
 
 enum BiosType {
   kBiosTypeUnknown,
@@ -28,10 +28,10 @@ bool StrToBiosType(std::string name, BiosType* bios_type);
 // Mount point (optional) "/tmp/root.mnt"
 class Partition {
  public:
-  Partition() {};
-  Partition(std::string device) : device_(device) {};
-  Partition(std::string device, std::string mount) :
-      device_(device), mount_(mount) {};
+  Partition() {}
+  explicit Partition(std::string device) : device_(device) {}
+  Partition(std::string device, std::string mount)
+      : device_(device), mount_(mount) {}
 
   // Get/Set the partition device, usually of form: /dev/sda3
   std::string device() const { return device_; }
@@ -71,4 +71,4 @@ struct InstallConfig {
   BiosType bios_type;
 };
 
-#endif  // CHROMEOS_INSTALL_CONFIG
+#endif  // INSTALLER_CHROMEOS_INSTALL_CONFIG_H_
