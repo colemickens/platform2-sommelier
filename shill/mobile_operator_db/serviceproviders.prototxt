@@ -14818,9 +14818,16 @@ mno {
   data {
     uuid : "54717e81-35be-4d3c-beec-2ee05db18ec4"
     country : "us"
-    provider_type : CDMA
     localized_name {
       name : "Sprint"
+    }
+    mccmnc : "310120"
+    mobile_apn {
+      apn : "r.ispsn"
+      plan : POSTPAID
+      localized_name {
+        name : "Internet"
+      }
     }
     sid : "4103"
     sid : "4106"
