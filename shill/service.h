@@ -149,10 +149,12 @@ class Service : public base::RefCounted<Service> {
   virtual void Connect(Error *error, const char *reason);
   // Disconnect this service.  Override this method to add your service specific
   // disconnect logic, but call the super class's Disconnect() first.
-  virtual void Disconnect(Error *error);
+  virtual void Disconnect(Error *error, const char *reason);
   // Disconnects this service via Disconnect().  Marks the service as having
   // failed with |failure|.  Do not override this method.
-  virtual void DisconnectWithFailure(ConnectFailure failure, Error *error);
+  virtual void DisconnectWithFailure(ConnectFailure failure,
+                                     Error *error,
+                                     const char *reason);
   // Disconnects this service via Disconnect(). The service will not be eligible
   // for auto-connect until a subsequent call to Connect, or Load.  Do not
   // override this method.

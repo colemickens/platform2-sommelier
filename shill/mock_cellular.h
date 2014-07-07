@@ -28,7 +28,7 @@ class MockCellular : public Cellular {
   virtual ~MockCellular();
 
   MOCK_METHOD1(Connect, void(Error *error));
-  MOCK_METHOD1(Disconnect, void(Error *error));
+  MOCK_METHOD2(Disconnect, void(Error *error, const char *reason));
   MOCK_METHOD3(OnDBusPropertiesChanged, void(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,

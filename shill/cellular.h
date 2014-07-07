@@ -129,7 +129,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   // Asynchronously disconnects the modem from the network and populates
   // |error| on failure, leaves it unchanged otherwise.
-  virtual void Disconnect(Error *error);
+  virtual void Disconnect(Error *error, const char *reason);
 
   // Asynchronously activates the modem. Returns an error on failure.
   void Activate(const std::string &carrier, Error *error,

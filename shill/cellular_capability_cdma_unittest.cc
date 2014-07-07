@@ -27,6 +27,7 @@ using testing::_;
 using testing::InSequence;
 using testing::Invoke;
 using testing::Return;
+using testing::StrEq;
 
 namespace shill {
 
@@ -166,7 +167,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   {
     InSequence dummy;
 
-    EXPECT_CALL(*cellular_, Disconnect(_));
+    EXPECT_CALL(*cellular_, Disconnect(_, StrEq("Activate")));
     EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                   CellularCapability::kTimeoutActivate))
         .WillOnce(Invoke(this,
@@ -201,7 +202,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
   {
     InSequence dummy;
 
-    EXPECT_CALL(*cellular_, Disconnect(_));
+    EXPECT_CALL(*cellular_, Disconnect(_, StrEq("Activate")));
     EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                   CellularCapability::kTimeoutActivate))
         .Times(0);

@@ -760,11 +760,11 @@ void Cellular::OnConnected() {
   SetState(kStateConnected);
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
-    Disconnect(NULL);
+    Disconnect(NULL, "no celluar service");
   } else if (!capability_->AllowRoaming() &&
       service_->roaming_state() == kRoamingStateRoaming) {
     LOG(INFO) << "Disconnecting due to roaming.";
-    Disconnect(NULL);
+    Disconnect(NULL, "roaming");
   } else {
     EstablishLink();
   }
@@ -775,8 +775,8 @@ void Cellular::OnConnectFailed(const Error &error) {
     service_->SetFailure(Service::kFailureUnknown);
 }
 
-void Cellular::Disconnect(Error *error) {
-  SLOG(Cellular, 2) << __func__;
+void Cellular::Disconnect(Error *error, const char *reason) {
+  SLOG(Cellular, 2) << __func__ << ": " << reason;
   if (state_ != kStateConnected && state_ != kStateLinked) {
     Error::PopulateAndLog(
         error, Error::kNotConnected, "Not connected; request ignored.");
@@ -980,7 +980,7 @@ bool Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
   if (!capability_->AllowRoaming() &&
       capability_->GetRoamingStateString() == kRoamingStateRoaming) {
     Error error;
-    Disconnect(&error);
+    Disconnect(&error, __func__);
   }
   adaptor()->EmitBoolChanged(kCellularAllowRoamingProperty, value);
   return true;
@@ -1175,7 +1175,7 @@ void Cellular::OnPPPDisconnected() {
     SetServiceFailure(Service::kFailureUnknown);
   }
   Error error;
-  Disconnect(&error);
+  Disconnect(&error, __func__);
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {

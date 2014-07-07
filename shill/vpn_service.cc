@@ -67,9 +67,9 @@ void VPNService::Connect(Error *error, const char *reason) {
   driver_->Connect(this, error);
 }
 
-void VPNService::Disconnect(Error *error) {
+void VPNService::Disconnect(Error *error, const char *reason) {
   LOG(INFO) << "Disconnect from service " << unique_name();
-  Service::Disconnect(error);
+  Service::Disconnect(error, reason);
   driver_->Disconnect();
 }
 

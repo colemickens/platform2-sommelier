@@ -1216,7 +1216,7 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
     // Avoid a reporting failure twice by resetting EAP state handler early.
     eap_state_handler_->Reset();
     Error unused_error;
-    current_service_->DisconnectWithFailure(failure, &unused_error);
+    current_service_->DisconnectWithFailure(failure, &unused_error, __func__);
   }
 }
 
@@ -1704,7 +1704,8 @@ void WiFi::OnIPConfigFailure() {
     // may not be correct.
     Error error;
     current_service_->DisconnectWithFailure(Service::kFailureBadPassphrase,
-                                            &error);
+                                            &error,
+                                            __func__);
     return;
   }
 
@@ -1797,7 +1798,7 @@ void WiFi::PendingTimeoutHandler() {
   SetScanState(kScanFoundNothing, scan_method_, __func__);
   WiFiServiceRefPtr pending_service = pending_service_;
   pending_service_->DisconnectWithFailure(
-      Service::kFailureOutOfRange, &unused_error);
+      Service::kFailureOutOfRange, &unused_error, __func__);
 
   // A hidden service may have no endpoints, since wpa_supplicant
   // failed to attain a CurrentBSS.  If so, the service has no

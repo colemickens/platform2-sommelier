@@ -393,7 +393,9 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
+                                              _,
+                                              StrEq("OnIPConfigFailure")));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   EXPECT_CALL(*ipconfig, ResetProperties());
   OnIPConfigFailed(ipconfig.get());
@@ -412,7 +414,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   service->static_ip_parameters_.args_.SetInt(kPrefixlenProperty, 16);
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
+  EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
   EXPECT_CALL(*service, SetConnection(_)).Times(0);
   // The IPConfig should retain the previous values.
   EXPECT_CALL(*ipconfig, ResetProperties()).Times(0);

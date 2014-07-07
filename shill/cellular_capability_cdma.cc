@@ -156,7 +156,7 @@ void CellularCapabilityCDMA::Activate(const string &carrier,
              cellular()->state() == Cellular::kStateLinked) {
     pending_activation_callback_ = callback;
     pending_activation_carrier_ = carrier;
-    cellular()->Disconnect(error);
+    cellular()->Disconnect(error, __func__);
   } else {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Unable to activate in " +

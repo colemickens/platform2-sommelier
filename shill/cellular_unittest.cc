@@ -1162,7 +1162,7 @@ TEST_F(CellularTest, Connect) {
 TEST_F(CellularTest, Disconnect) {
   Error error;
   device_->state_ = Cellular::kStateRegistered;
-  device_->Disconnect(&error);
+  device_->Disconnect(&error, "in test");
   EXPECT_EQ(Error::kNotConnected, error.type());
   error.Reset();
 
@@ -1171,7 +1171,7 @@ TEST_F(CellularTest, Disconnect) {
               Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   GetCapabilityClassic()->proxy_.reset(proxy_.release());
-  device_->Disconnect(&error);
+  device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
@@ -1187,12 +1187,12 @@ TEST_F(CellularTest, DisconnectFailure) {
        .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
   GetCapabilityClassic()->proxy_.reset(proxy_.release());
   device_->modem_state_ = Cellular::kModemStateDisconnecting;
-  device_->Disconnect(&error);
+  device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 
   device_->modem_state_ = Cellular::kModemStateConnected;
-  device_->Disconnect(&error);
+  device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
@@ -1704,7 +1704,7 @@ TEST_F(CellularTest, StopPPPOnDisconnect) {
   StartPPP(kPID);
   FakeUpConnectedPPP();
   ExpectPPPStopped();
-  device_->Disconnect(&error);
+  device_->Disconnect(&error, "in test");
   VerifyPPPStopped();
 }
 

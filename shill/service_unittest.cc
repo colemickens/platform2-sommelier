@@ -866,7 +866,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A non-user initiated Disconnect doesn't change anything.
-  service_->Disconnect(&error);
+  service_->Disconnect(&error, "in test");
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A resume also re-enables auto-connect.

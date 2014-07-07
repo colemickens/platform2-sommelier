@@ -136,7 +136,7 @@ TEST_F(VPNServiceTest, ConnectAlreadyConnected) {
 TEST_F(VPNServiceTest, Disconnect) {
   Error error;
   EXPECT_CALL(*driver_, Disconnect());
-  service_->Disconnect(&error);
+  service_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
 }
 

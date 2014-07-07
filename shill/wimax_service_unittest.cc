@@ -253,12 +253,12 @@ TEST_F(WiMaxServiceTest, Connect) {
   EXPECT_CALL(*eap_, set_password(_)).Times(0);
   EXPECT_CALL(*device_, DisconnectFrom(_, _));
   error.Reset();
-  service_->Disconnect(&error);
+  service_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->connectable());
 
   // Disconnect while not connected.
-  service_->Disconnect(&error);
+  service_->Disconnect(&error, "in test");
   EXPECT_EQ(Error::kNotConnected, error.type());
 }
 

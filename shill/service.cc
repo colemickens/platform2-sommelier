@@ -278,17 +278,19 @@ void Service::Connect(Error */*error*/, const char *reason) {
     SetState(kStateIdle);
 }
 
-void Service::Disconnect(Error */*error*/) {
-  LOG(INFO) << "Disconnecting from service " << unique_name_;
+void Service::Disconnect(Error */*error*/, const char *reason) {
+  LOG(INFO) << "Disconnecting from service " << unique_name_ << ": " << reason;
 }
 
-void Service::DisconnectWithFailure(ConnectFailure failure, Error *error) {
-  Disconnect(error);
+void Service::DisconnectWithFailure(ConnectFailure failure,
+                                    Error *error,
+                                    const char *reason) {
+  Disconnect(error, reason);
   SetFailure(failure);
 }
 
 void Service::UserInitiatedDisconnect(Error *error) {
-  Disconnect(error);
+  Disconnect(error, "D-Bus RPC");
   explicitly_disconnected_ = true;
 }
 
@@ -502,7 +504,7 @@ bool Service::Unload() {
   ClearEAPCertification();
 
   Error error;  // Ignored.
-  Disconnect(&error);
+  Disconnect(&error, __func__);
   return false;
 }
 

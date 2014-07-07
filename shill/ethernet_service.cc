@@ -51,7 +51,8 @@ void EthernetService::Connect(Error *error, const char *reason) {
   ethernet_->ConnectTo(this);
 }
 
-void EthernetService::Disconnect(Error */*error*/) {
+void EthernetService::Disconnect(Error *error, const char *reason) {
+  Service::Disconnect(error, reason);
   ethernet_->DisconnectFrom(this);
 }
 

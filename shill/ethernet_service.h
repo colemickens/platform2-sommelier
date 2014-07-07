@@ -32,7 +32,7 @@ class EthernetService : public Service {
 
   // Inherited from Service.
   virtual void Connect(Error *error, const char *reason);
-  virtual void Disconnect(Error *error);
+  virtual void Disconnect(Error *error, const char *reason);
 
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier() const;

@@ -245,7 +245,7 @@ void Manager::Stop() {
 
   Error e;
   for (const auto &service : services_) {
-    service->Disconnect(&e);
+    service->Disconnect(&e, __func__);
   }
 
   adaptor_->UpdateRunning();

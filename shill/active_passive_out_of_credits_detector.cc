@@ -161,7 +161,7 @@ void ActivePassiveOutOfCreditsDetector::OnConnectionHealthCheckerResult(
       ReportOutOfCredits(true);
       SLOG(Cellular, 2) << "Disconnecting due to out-of-credit scenario.";
       Error error;
-      service()->Disconnect(&error);
+      service()->Disconnect(&error, "out-of-credits");
     }
   }
 }

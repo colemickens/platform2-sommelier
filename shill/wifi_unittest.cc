@@ -1754,7 +1754,9 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   EXPECT_FALSE(pending_timeout.IsCancelled());
   EXPECT_EQ(service, GetPendingService());
   // Simulate a service with a wifi_ reference calling DisconnectFrom().
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _))
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
+                                              _,
+                                              StrEq("PendingTimeoutHandler")))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::ResetPendingService));
   EXPECT_CALL(*service, HasEndpoints()).Times(0);
   // DisconnectFrom() should not be called directly from WiFi.
@@ -1790,7 +1792,9 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   EXPECT_EQ(service, GetPendingService());
   // We expect the service to get a disconnect call, but in this scenario
   // the service does nothing.
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
+                                              _,
+                                              StrEq("PendingTimeoutHandler")));
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
   // DisconnectFrom() should be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
@@ -2647,7 +2651,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // If there was an increased byte-count while we were timing out DHCP,
   // this should be considered a DHCP failure and not a credential failure.
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
+                                              _,
+                                              StrEq("OnIPConfigFailure")));
   ReportIPConfigFailure();
   Mock::VerifyAndClearExpectations(service);
 
@@ -2655,7 +2661,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // due to a passphrase issue.
   EXPECT_CALL(*service, AddSuspectedCredentialFailure())
       .WillOnce(Return(false));
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
+                                              _,
+                                              StrEq("OnIPConfigFailure")));
   ReportIPConfigFailure();
   Mock::VerifyAndClearExpectations(service);
 
@@ -2664,7 +2672,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   EXPECT_CALL(*service, AddSuspectedCredentialFailure())
       .WillOnce(Return(true));
   EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureBadPassphrase, _));
+              DisconnectWithFailure(Service::kFailureBadPassphrase,
+                                    _,
+                                    StrEq("OnIPConfigFailure")));
   ReportIPConfigFailure();
 }
 
@@ -3069,7 +3079,9 @@ TEST_F(WiFiMainTest, EAPEvent) {
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailureOutOfRange),
                 Return(false)));
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
+                                              _,
+                                              StrEq("EAPEventTask")));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
   MockEapCredentials *eap = new MockEapCredentials();
@@ -3082,7 +3094,9 @@ TEST_F(WiFiMainTest, EAPEvent) {
   // We need a real string object since it will be returned by reference below.
   const string kEmptyPin;
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kEmptyPin));
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailurePinMissing, _));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailurePinMissing,
+                                              _,
+                                              StrEq("EAPEventTask")));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
@@ -3091,7 +3105,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   // We need a real string object since it will be returned by reference below.
   const string kPin("000000");
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kPin));
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
+  EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               NetworkReply(StrEq(kNetworkRpcId),
                            StrEq(WPASupplicant::kEAPRequestedParameterPIN),

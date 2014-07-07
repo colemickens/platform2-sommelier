@@ -300,7 +300,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest, OnNoNetworkRouting) {
 TEST_F(ActivePassiveOutOfCreditsDetectorTest,
     OnConnectionHealthCheckerResult) {
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
-  EXPECT_CALL(*service_, Disconnect(_)).Times(0);
+  EXPECT_CALL(*service_, Disconnect(_, _)).Times(0);
   out_of_credits_detector_->OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::kResultUnknown);
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
@@ -309,7 +309,9 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest,
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
   Mock::VerifyAndClearExpectations(service_);
 
-  EXPECT_CALL(*service_, Disconnect(_)).Times(1);
+  EXPECT_CALL(*service_, Disconnect(_,
+      ::testing::StrEq("out-of-credits"))).
+          Times(1);
   out_of_credits_detector_->OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::kResultCongestedTxQueue);
   EXPECT_TRUE(out_of_credits_detector_->out_of_credits());

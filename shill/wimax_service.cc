@@ -158,14 +158,14 @@ void WiMaxService::Connect(Error *error, const char *reason) {
   }
 }
 
-void WiMaxService::Disconnect(Error *error) {
+void WiMaxService::Disconnect(Error *error, const char *reason) {
   SLOG(WiMax, 2) << __func__;
   if (!device_) {
     Error::PopulateAndLog(
         error, Error::kNotConnected, "Not connected.");
     return;
   }
-  Service::Disconnect(error);
+  Service::Disconnect(error, reason);
   device_->DisconnectFrom(this, error);
   SetDevice(NULL);
 }

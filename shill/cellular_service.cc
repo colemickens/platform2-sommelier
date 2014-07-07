@@ -314,9 +314,9 @@ void CellularService::Connect(Error *error, const char *reason) {
     out_of_credits_detector_->ResetDetector();
 }
 
-void CellularService::Disconnect(Error *error) {
-  Service::Disconnect(error);
-  cellular_->Disconnect(error);
+void CellularService::Disconnect(Error *error, const char *reason) {
+  Service::Disconnect(error, reason);
+  cellular_->Disconnect(error, reason);
 }
 
 void CellularService::ActivateCellularModem(const string &carrier,

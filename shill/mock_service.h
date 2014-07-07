@@ -28,9 +28,10 @@ class MockService : public Service {
 
   MOCK_METHOD0(AutoConnect, void());
   MOCK_METHOD2(Connect, void(Error *error, const char *reason));
-  MOCK_METHOD1(Disconnect, void(Error *error));
-  MOCK_METHOD2(DisconnectWithFailure, void(Service::ConnectFailure failure,
-                                           Error *error));
+  MOCK_METHOD2(Disconnect, void(Error *error, const char *reason));
+  MOCK_METHOD3(DisconnectWithFailure, void(Service::ConnectFailure failure,
+                                           Error *error,
+                                           const char *reason));
   MOCK_METHOD1(UserInitiatedDisconnect, void(Error *error));
   MOCK_METHOD1(CalculateState, std::string(Error *error));
   MOCK_CONST_METHOD0(state, ConnectState());

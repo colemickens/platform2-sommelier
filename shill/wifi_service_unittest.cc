@@ -1088,14 +1088,14 @@ TEST_F(WiFiServiceTest, DisconnectWithWiFi) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
   EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
   Error error;
-  service->Disconnect(&error);
+  service->Disconnect(&error, "in test");
 }
 
 TEST_F(WiFiServiceTest, DisconnectWithoutWiFi) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityWep);
   EXPECT_CALL(*wifi(), DisconnectFrom(_)).Times(0);
   Error error;
-  service->Disconnect(&error);
+  service->Disconnect(&error, "in test");
   EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
@@ -1108,7 +1108,7 @@ TEST_F(WiFiServiceTest, DisconnectWithoutWiFiWhileAssociating) {
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        HasSubstr("WiFi endpoints do not (yet) exist.")));
   Error error;
-  service->Disconnect(&error);
+  service->Disconnect(&error, "in test");
   EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 

@@ -86,7 +86,7 @@ TEST_F(EthernetServiceTest, ConnectDisconnectDelegation) {
   service_->AutoConnect();
   EXPECT_CALL(*ethernet_, DisconnectFrom(service_.get()));
   Error error;
-  service_->Disconnect(&error);
+  service_->Disconnect(&error, "in test");
 }
 
 TEST_F(EthernetServiceTest, PropertyChanges) {
