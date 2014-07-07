@@ -24,11 +24,6 @@
                 '<(DEPTH)/platform2/mist/mist.gyp:*',
               ],
             }],
-            ['USE_crash_reporting == 1', {
-              'dependencies': [
-                '<(DEPTH)/platform2/crash-reporter/crash-reporter.gyp:*',
-              ],
-            }],
             ['USE_cros_disks == 1', {
               'dependencies': [
                 '<(DEPTH)/platform2/cros-disks/cros-disks.gyp:*',
