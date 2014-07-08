@@ -34,10 +34,13 @@ const char kAppShellPath[] = "/opt/google/chrome/app_shell";
 // Subdirectory under $DATA_DIR where user data should be stored.
 const char kUserSubdir[] = "user";
 
-// File in $DATA_DIR containing the name of a preferred network to connect to.
-const char kPreferredNetworkFile[] = ".preferred_network";
+// Files in $DATA_DIR containing the ID of the app that should be loaded and the
+// name of a preferred network to connect to.
+const char kAppIdFile[] = "app_id";
+const char kPreferredNetworkFile[] = "preferred_network";
 
-// Subdirectory under $DATA_DIR from which an app should be loaded.
+// Subdirectory under $DATA_DIR from which an app is loaded if kAppIdFile
+// doesn't exist.
 const char kAppSubdir[] = "app";
 
 // Adds app_shell-specific flags.
@@ -49,6 +52,16 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(user_path, builder->uid(), builder->gid(), 0700));
   builder->AddArg("--data-path=" + user_path.value());
 
+  std::string app_id;
+  if (base::ReadFileToString(data_dir.Append(kAppIdFile), &app_id)) {
+    base::TrimWhitespaceASCII(app_id, base::TRIM_ALL, &app_id);
+    builder->AddArg("--app-shell-app-id=" + app_id);
+  } else {
+    const base::FilePath app_path = data_dir.Append(kAppSubdir);
+    if (base::PathExists(app_path))
+      builder->AddArg("--app-shell-app-path=" + app_path.value());
+  }
+
   std::string preferred_network;
   if (base::ReadFileToString(data_dir.Append(kPreferredNetworkFile),
                              &preferred_network)) {
@@ -56,12 +69,6 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
         preferred_network, base::TRIM_ALL, &preferred_network);
     builder->AddArg("--app-shell-preferred-network=" + preferred_network);
   }
-
-  // If an app is present on disk, tell app_shell to run it.
-  // TODO(derat): Pass an app ID instead once app_shell supports downloading.
-  const base::FilePath app_path = data_dir.Append(kAppSubdir);
-  if (base::PathExists(app_path))
-    builder->AddArg("--app-shell-app-path=" + app_path.value());
 }
 
 // Does X-related setup.
