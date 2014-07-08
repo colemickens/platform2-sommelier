@@ -72,7 +72,7 @@ const char *WiFi::kDefaultBgscanMethod =
     WPASupplicant::kNetworkBgscanMethodSimple;
 const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
 const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
-const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
+const uint16 WiFi::kDefaultScanIntervalSeconds = 60;
 const uint16 WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
 // Scan interval while connected.
 const uint16 WiFi::kBackgroundScanIntervalSeconds = 3601;
