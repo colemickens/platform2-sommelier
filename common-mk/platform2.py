@@ -198,6 +198,7 @@ class Platform2(object):
         '--depth=%s' % src_root,
         '--toplevel-dir=%s' % self.get_platform2_root(),
         '--generator-output=%s' % self.get_buildroot(),
+        '-DOS=linux',
         '-Dpkg-config=%s' % self.pkgconfig,
         '-Dsysroot=%s' % self.sysroot,
         '-Dlibdir=%s' % self.libdir,
