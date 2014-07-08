@@ -131,7 +131,13 @@ TEST_F(CellularPropertyTest, SetProperty) {
 class CellularTest : public testing::Test {
  public:
   CellularTest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+      : kHomeProviderCode("10001"),
+        kHomeProviderCountry("us"),
+        kHomeProviderName("HomeProviderName"),
+        kServingOperatorCode("10002"),
+        kServingOperatorCountry("ca"),
+        kServingOperatorName("ServingOperatorName"),
+        modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
         device_info_(modem_info_.control_interface(), &dispatcher_,
                      modem_info_.metrics(), modem_info_.manager()),
         dhcp_config_(new MockDHCPConfig(modem_info_.control_interface(),
@@ -436,13 +442,14 @@ class CellularTest : public testing::Test {
   static const Stringmaps kTestNetworksGSM;
   static const Stringmaps kTestNetworksCellular;
   static const int kStrength;
+
   // Must be std::string so that we can safely ReturnRef.
-  static string kHomeProviderCode;
-  static string kHomeProviderCountry;
-  static string kHomeProviderName;
-  static string kServingOperatorCode;
-  static string kServingOperatorCountry;
-  static string kServingOperatorName;
+  const string kHomeProviderCode;
+  const string kHomeProviderCountry;
+  const string kHomeProviderName;
+  const string kServingOperatorCode;
+  const string kServingOperatorCountry;
+  const string kServingOperatorName;
 
   class TestProxyFactory : public ProxyFactory {
    public:
@@ -608,12 +615,6 @@ const Stringmaps CellularTest::kTestNetworksCellular =
       {kLongNameProperty, "some_long_name"},
       {kShortNameProperty, "short"}}};
 const int CellularTest::kStrength = 90;
-string CellularTest::kHomeProviderCode = "10001";  // NOLINT(runtime/string)
-string CellularTest::kHomeProviderCountry = "us";                   // NOLINT
-string CellularTest::kHomeProviderName = "HomeProviderName";        // NOLINT
-string CellularTest::kServingOperatorCode = "10002";                // NOLINT
-string CellularTest::kServingOperatorCountry = "ca";                // NOLINT
-string CellularTest::kServingOperatorName = "ServingOperatorName";  // NOLINT
 
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",

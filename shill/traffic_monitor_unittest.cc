@@ -35,13 +35,13 @@ namespace shill {
 
 class TrafficMonitorTest : public Test {
  public:
-  static const string kLocalIpAddr;
+  static const char kLocalIpAddr[];
   static const uint16 kLocalPort1;
   static const uint16 kLocalPort2;
   static const uint16 kLocalPort3;
   static const uint16 kLocalPort4;
   static const uint16 kLocalPort5;
-  static const string kRemoteIpAddr;
+  static const char kRemoteIpAddr[];
   static const uint16 kRemotePort;
   static const uint64 kTxQueueLength1;
   static const uint64 kTxQueueLength2;
@@ -134,13 +134,13 @@ class TrafficMonitorTest : public Test {
 };
 
 // static
-const string TrafficMonitorTest::kLocalIpAddr = "127.0.0.1";  // NOLINT - string
+const char TrafficMonitorTest::kLocalIpAddr[] = "127.0.0.1";
 const uint16 TrafficMonitorTest::kLocalPort1 = 1234;
 const uint16 TrafficMonitorTest::kLocalPort2 = 2345;
 const uint16 TrafficMonitorTest::kLocalPort3 = 3456;
 const uint16 TrafficMonitorTest::kLocalPort4 = 4567;
 const uint16 TrafficMonitorTest::kLocalPort5 = 4567;
-const string TrafficMonitorTest::kRemoteIpAddr = "192.168.1.1";  // NOLINT - str
+const char TrafficMonitorTest::kRemoteIpAddr[] = "192.168.1.1";
 const uint16 TrafficMonitorTest::kRemotePort = 5678;
 const uint64 TrafficMonitorTest::kTxQueueLength1 = 111;
 const uint64 TrafficMonitorTest::kTxQueueLength2 = 222;
