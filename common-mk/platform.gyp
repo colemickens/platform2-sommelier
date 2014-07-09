@@ -71,7 +71,7 @@
             }],
             ['USE_tpm == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/chaps/chaps.gyp:*',
+                '<(DEPTH)/platform2/chaps/chaps.gyp:*',
               ],
             }],
             ['USE_vpn == 1', {
