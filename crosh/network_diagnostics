@@ -11,6 +11,7 @@ IW=/usr/sbin/iw
 ARP=/sbin/arp
 ARPING=/sbin/arping
 TLSDATE=/usr/bin/tlsdate
+ETHTOOL=/usr/sbin/ethtool
 anonymize_macs=${ANONYMIZE_MACS-yes}
 default_run=yes
 
@@ -531,7 +532,11 @@ diag_link_cellular () {
 
 diag_link_wired () {
   fn_enter ${FUNCNAME} $*
-  # No tests yet
+  local ifc=$1
+
+  echo "Output from ethtool ${ifc}:"
+  ${ETHTOOL} ${ifc}
+
   return 0
 }
 
