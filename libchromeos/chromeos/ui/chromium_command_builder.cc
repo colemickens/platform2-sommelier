@@ -439,7 +439,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddArg("--default-tile-height=512");
   }
 
-  if (IsBoard("link"))
+  if (IsBoard("link") || IsBoard("link_freon"))
     AddArg("--touch-calibration=0,0,0,50");
 
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
