@@ -108,6 +108,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                              DBus::Error& error);  // NOLINT
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
                             DBus::Error& error);  // NOLINT
+  virtual void DumpDebugLogs(const bool& is_compressed,
+                             const DBus::FileDescriptor& fd,
+                             DBus::Error& error);  // NOLINT
   virtual void SetDebugMode(const std::string& subsystem,
                             DBus::Error& error);  // NOLINT
   virtual std::string GetLog(const std::string& name,

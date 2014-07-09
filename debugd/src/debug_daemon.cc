@@ -124,7 +124,15 @@ std::vector<uint8> DebugDaemon::GetRichPerfData(const uint32_t& duration,
 
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
                                DBus::Error& error) {  // NOLINT
-  debug_logs_tool_->GetDebugLogs(fd, &error);
+  debug_logs_tool_->GetDebugLogs(true,  // is_compressed,
+                                 fd,
+                                 &error);
+}
+
+void DebugDaemon::DumpDebugLogs(const bool& is_compressed,
+                                const DBus::FileDescriptor& fd,
+                                DBus::Error& error) {  // NOLINT
+  debug_logs_tool_->GetDebugLogs(is_compressed, fd, &error);
 }
 
 void DebugDaemon::SetDebugMode(const std::string& subsystem,

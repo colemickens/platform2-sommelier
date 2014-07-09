@@ -200,9 +200,27 @@
     </method>
     <method name="GetDebugLogs">
       <tp:docstring>
+        DEPRECATED: Use DumpDebugLogs instead.
         Packages up system logs into a .tar.gz and returns it over the supplied
         file descriptor.
       </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to emit the .tar.gz file over.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="DumpDebugLogs">
+      <tp:docstring>
+        Packages up system logs into a .tar(.gz) and returns it over the
+        supplied file descriptor.
+      </tp:docstring>
+      <arg name="is_compressed" type="b" direction="in">
+        <tp:docstring>
+          If true, output content should be compressed (.tar.gz), otherwise
+          output content is uncompressed (.tar).
+        </tp:docstring>
+      </arg>
       <arg name="outfd" type="h" direction="in">
         <tp:docstring>
           File descriptor to emit the .tar.gz file over.

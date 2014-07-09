@@ -16,12 +16,15 @@ const char* const kSystemLogs = "/var/log";
 DebugLogsTool::DebugLogsTool() { }
 DebugLogsTool::~DebugLogsTool() { }
 
-void DebugLogsTool::GetDebugLogs(const DBus::FileDescriptor& fd,
+void DebugLogsTool::GetDebugLogs(bool is_compressed,
+                                 const DBus::FileDescriptor& fd,
                                  DBus::Error* error) {
   chromeos::ProcessImpl p;
   p.AddArg(kTar);
   p.AddArg("-c");
-  p.AddArg("-z");
+  if (is_compressed)
+    p.AddArg("-z");
+
   p.AddArg(kSystemLogs);
   p.BindFd(fd.get(), STDOUT_FILENO);
   p.Run();
