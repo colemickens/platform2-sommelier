@@ -56,7 +56,7 @@
             }],
             ['USE_power_management == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/power_manager/power_manager.gyp:*',
+                '<(DEPTH)/platform2/power_manager/power_manager.gyp:*',
               ],
             }],
             ['USE_profile == 1', {
