@@ -1,0 +1,21 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Per-platform global values
+//
+
+#ifndef CHAPS_PLATFORM_GLOBALS_H_
+#define CHAPS_PLATFORM_GLOBALS_H_
+
+namespace chaps {
+
+const extern char kChapsdProcessUser[];
+const extern char kChapsdProcessGroup[];
+
+const extern char kServiceRedirectProcessUser[];
+const extern char kServiceRedirectProcessGroup[];
+
+}  // namespace chaps
+
+#endif  // CHAPS_PLATFORM_GLOBALS_H_
