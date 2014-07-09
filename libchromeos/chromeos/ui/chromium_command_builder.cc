@@ -444,7 +444,10 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddArg("--ignore-resolution-limits-for-accelerated-video-decode");
 
   // Ozone platform configuration.
-  if (UseFlagIsSet("ozone_platform_dri")) {
+  if (IsBoard("link_freon") && UseFlagIsSet("ozone_platform_gbm")) {
+    // TODO(spang): Use freon/chromeos platform, not GBM example platform.
+    AddArg("--ozone-platform=gbm");
+  } else if (UseFlagIsSet("ozone_platform_dri")) {
     // TODO(spang): Use freon/chromeos platform, not DRI example platform.
     AddArg("--ozone-platform=dri");
 
