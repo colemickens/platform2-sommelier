@@ -691,6 +691,18 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   EXPECT_FALSE(ContainsKey(params, WPASupplicant::kPropertySecurityProtocol));
 }
 
+TEST_F(WiFiServiceTest, SetPassphraseResetHasEverConnected) {
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityRsn);
+  const string kPassphrase = "abcdefgh";
+
+  Error error;
+  // A changed passphrase should reset has_ever_connected_ field.
+  wifi_service->has_ever_connected_ = true;
+  EXPECT_TRUE(wifi_service->has_ever_connected());
+  wifi_service->SetPassphrase(kPassphrase, &error);
+  EXPECT_FALSE(wifi_service->has_ever_connected());
+}
+
 TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityRsn);
 
@@ -1823,15 +1835,22 @@ TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
   EXPECT_TRUE(service->AddSuspectedCredentialFailure());
   // Make sure the failure state does not reset just because we ask again.
   EXPECT_TRUE(service->AddSuspectedCredentialFailure());
-  // Make sure the failure state does not reset because of a credential change.
+  // Make sure the failure state resets because of a credential change.
+  // A credential change changes the has_ever_connected to false and
+  // immediately returns true when attempting to add the failure.
   Error error;
   service->SetPassphrase("Panchromatic Resonance", &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  EXPECT_EQ(0, service->suspected_credential_failures_);
 
+  // Make sure that we still return true after resetting the failure
+  // count.
+  service->suspected_credential_failures_ = 3;
+  EXPECT_EQ(3, service->suspected_credential_failures_);
   service->ResetSuspectedCredentialFailures();
   EXPECT_EQ(0, service->suspected_credential_failures_);
-  EXPECT_FALSE(service->AddSuspectedCredentialFailure());
+  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
 }
 
 TEST_F(WiFiServiceTest, GetTethering) {

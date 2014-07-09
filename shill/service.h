@@ -354,6 +354,9 @@ class Service : public base::RefCounted<Service> {
   bool SetGuid(const std::string &guid, Error *error);
 
   bool has_ever_connected() const { return has_ever_connected_; }
+  // Sets the has_ever_connected_ property of the service
+  // and broadcasts the new value
+  void SetHasEverConnected(bool has_ever_connected);
 
   int32 priority() const { return priority_; }
   bool SetPriority(const int32 &priority, Error *error);
@@ -638,6 +641,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, UniqueAttributes);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
+  FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.

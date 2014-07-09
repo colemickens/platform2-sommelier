@@ -1405,6 +1405,13 @@ bool Service::SetNameProperty(const string &name, Error *error) {
   return false;
 }
 
+void Service::SetHasEverConnected(bool has_ever_connected) {
+  if (has_ever_connected_ == has_ever_connected)
+    return;
+  has_ever_connected_ = has_ever_connected;
+  SaveToProfile();
+}
+
 int32 Service::GetPriority(Error *error) {
   return priority_;
 }

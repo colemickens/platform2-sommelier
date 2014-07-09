@@ -250,6 +250,8 @@ bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   passphrase_ = passphrase;
   ClearCachedCredentials();
   UpdateConnectable();
+  SetHasEverConnected(false);
+  ResetSuspectedCredentialFailures();
   return true;
 }
 
