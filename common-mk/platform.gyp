@@ -51,7 +51,7 @@
             }],
             ['USE_lorgnette == 1', {
               'dependencies': [
-                '<(DEPTH)/platform/lorgnette/lorgnette.gyp:*',
+                '<(DEPTH)/platform2/lorgnette/lorgnette.gyp:*',
               ],
             }],
             ['USE_power_management == 1', {
