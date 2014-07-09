@@ -14,7 +14,7 @@
 # @return "<device0>\n<device1>..."
 get_device_list ()
 {
-  ifconfig -a | grep '^[^ ]' | awk '{ print $1 }'
+  ifconfig -a | grep '^[^ ]' | awk '{ print $1 }' | sed 's/:$//'
 }
 
 
@@ -108,7 +108,7 @@ create_monitor ()
 
   # There are no likely collisions here since the caller has already searched
   # for monitor devices over all phys.
-  device="${phy}_mon"
+  local device="${phy}_mon"
   if ! iw phy "${phy}" interface add "${device}" type monitor ; then
     return
   fi
@@ -158,9 +158,9 @@ get_monitor_device ()
   local wiphy="${3}"
   local connected_monitor_device
   local connected_monitor_phy
-  local device
 
   # See if there is a monitor device already around.
+  local device
   for device in $(get_device_list); do
     local -a phy_info=($(get_phy_info "$device"))
     if [[ "${phy_info[0]}" != "monitor" ]] ; then
@@ -181,6 +181,7 @@ get_monitor_device ()
   done
 
   # Find a monitor-capable phy and try to create a device on it.
+  local phy
   for phy in $(get_monitor_phy_list "${frequency}"); do
     if [[ "${phy}" = "phy${wiphy}" ]] ; then
       # Try this phy as a last resort.
@@ -190,15 +191,17 @@ get_monitor_device ()
 
     # Shutdown any un-connected interfaces on this phy.
     local -a phy_devices=($(get_devices_for_phy "${phy}"))
+    local check_device
     for check_device in $(get_devices_for_phy "${phy}") ; do
       local -a phy_info=($(get_phy_info "$check_device"))
       if [[ "${phy_info[0]}" == "monitor" ]] ; then
-        # We have already tried to use this monitor device  and failed in
+        # We have already tried to use this monitor device and failed in
         # the first loop.  Skip this phy.
         continue 2
       fi
     done
 
+    local unused_device
     for unused_device in $(get_devices_for_phy "${phy}") ; do
       local link_info=($(get_link_info "$unused_device"))
       if [[ ${#link_info[@]} -eq 0 ]] ; then
@@ -232,30 +235,61 @@ get_monitor_device ()
   if [[ -n "$connected_monitor_device" ]] ; then
     device="${connected_monitor_device}"
     if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
-      return
+      return 1
     fi
   elif [[ -n "${connected_monitor_phy}" ]] ; then
     device=$(create_monitor "${connected_monitor_phy}")
     if [[ -z "${device}" ]] ; then
-      return
+      return 1
     fi
 
     if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
       iw dev "${device}" del
-      return
+      return 1
     fi
   else
     # The connected phy cannot be used for a monitor either.  We have failed.
     error "Could not find a device to monitor ${frequency} MHz.  It is likely"
     error "that none of your wireless devices are capable of monitor-mode."
-    return
+    return 1
   fi
   echo "${device}"
 }
 
+# get_monitor_on_phy attempts to find, or create, a monitor device on |phy|
+# Does not change the channel or other parameters of |phy|.
+#
+# @param phy, the phy on which we want to monitor
+# @return "<device>" a monitor device on |phy|, or an empty string indicating
+#     failure
+get_monitor_on_phy()
+{
+  local target_phy="${1}"
+
+  # See if there is a monitor device already around.
+  local device
+  for device in $(get_device_list); do
+    local -a phy_info=($(get_phy_info "$device"))
+    if [[ "${phy_info[0]}" != "monitor" ]] ; then
+      continue
+    fi
+    if [[ "${phy_info[1]}" == "${target_phy}" ]] ; then
+      echo "$device"
+      return
+    fi
+  done
+
+  # No existing monitor interface for the device. Create one.
+  create_monitor "phy${target_phy}"
+}
 
 # get_monitor_for_link does a "best effort" capture on the specified device.
-# If |device| is a connected managed-mode WiFi device, the best case
+#
+# If |device| is specified, we configure it with the same parameters as
+# |monitored_device|. Otherwise, we attempt to find a suitable capture
+# device, as follows...
+#
+# If |monitored_device| is a connected managed-mode WiFi device, the best case
 # scenario is to find an unconnected monitor-capable wireless device that
 # can perform a capture on the same channel.  Failing this, if the monitored
 # device can enter monitor mode, this would be the second best choice.  Failing
@@ -287,7 +321,9 @@ get_monitor_for_link ()
   local frequency="${link_info[1]}"
   local ht_info=$(get_ht_info "${monitored_device}" "${bssid}" "${frequency}")
   if [[ -z "${device}" ]] ; then
-    device=$(get_monitor_device "${frequency}" "${ht_info}" "${phy_info[1]}")
+    device=$(
+      get_monitor_device "${frequency}" "${ht_info}" "${phy_info[1]}" ||
+      get_monitor_on_phy "${phy_info[1]}")
   elif ! configure_monitor "${device}" "${frequency}" "${ht_info}" ; then
     error "Cannot monitor ${monitored_device}: ${device} did not configure."
     return
@@ -427,7 +463,13 @@ main ()
     command_line_error "The --output-file argument is mandatory"
   fi
 
+  # WP2 does not permit us to set parameters like power-save and
+  # beacon filtering via the monitor device. So stash away the
+  # user specified device here.
+  local user_device="${device}"
+
   if [[ -n "${monitor_connection_on}" ]] ; then
+    user_device="${monitor_connection_on}"
     device=$(get_monitor_for_link "${monitor_connection_on}" "${device}")
     if [[ -z "${device}" ]] ; then
       fatal_error "Cannot create a device to monitor ${monitor_connection_on}"
@@ -448,8 +490,21 @@ main ()
   elif [[ -n "${ht_location}" ]] ; then
     command_line_error "Channel was not specified but ht_location was."
   fi
+
+  if get_phy_info "${user_device}" >& /dev/null; then
+    iw dev "${user_device}" set power_save off
+    for bf_params in \
+        /sys/kernel/debug/ieee80211/*/netdev:"${user_device}"/iwlmvm/bf_params;
+    do
+      [[ -e $bf_params ]] || break  # unmatched glob expands to itself
+      echo "bf_enable_beacon_filter=0" > "${bf_params}"
+    done
+  fi
+
   start_capture "${device}" "${output_file}"
 }
 
-set -e
+set -e  # exit on failures
+set -o pipefail  # make pipelines fail if any stage fails
+
 main $@

@@ -177,12 +177,55 @@ test_get_monitor_device ()
   expect_eq "Created monitor #2" "phy0_mon" "$(get_monitor_device 1000 "" 0)"
 }
 
+test_get_monitor_on_phy()
+{
+  # A monitor device already exists for the phy.
+  get_device_list() {
+    echo "phy0_mon"
+  }
+  get_phy_info() {
+    echo "monitor 0"
+  }
+  create_monitor() {
+    true
+  }
+  expect_eq "Monitor device" "phy0_mon" "$(get_monitor_on_phy 0)"
+
+  # A monitor device exists, but does not match.
+  get_device_list() {
+    echo "phy1_mon"
+  }
+  get_phy_info() {
+    echo "monitor 1"
+  }
+  create_monitor() {
+    echo "phy0_mon"
+  }
+  expect_eq "Monitor device" "phy0_mon" "$(get_monitor_on_phy 0)"
+
+  # A monitor device exists, but does not match. Additionally,
+  # creating a new monitor fails.
+  get_device_list() {
+    echo "phy1_mon"
+  }
+  get_phy_info() {
+    echo "monitor 1"
+  }
+  create_monitor() {
+    return
+  }
+  expect_eq "Monitor device" "" "$(get_monitor_on_phy 0)"
+}
+
 test_get_monitor_for_link ()
 {
+  # Fail because device is not in managed mode.
   get_phy_info () {
     echo "mumble 0"
   }
   expect_eq "Non-managed phy" "" "$(get_monitor_for_link int0)"
+
+  # Fail because device is not connected.
   get_phy_info () {
     echo "managed 0"
   }
@@ -190,6 +233,8 @@ test_get_monitor_for_link ()
     return
   }
   expect_eq "No link exists" "" "$(get_monitor_for_link int0)"
+
+  # Fail because monitor device could not be found/created.
   get_link_info () {
     echo "00:11:22 1000"
   }
@@ -200,15 +245,30 @@ test_get_monitor_for_link ()
     return
   }
   expect_eq "get_monitor_device failed" "" "$(get_monitor_for_link int0)"
+
+  # Success: get_monitor_device gives us a device.
   get_monitor_device () {
     expect_eq "get_monitor_device args" "1000 above 0" "$*"
     echo "mon0"
   }
   expect_eq "get_monitor_device succeeded" "mon0" "$(get_monitor_for_link int0)"
+
+  # Success: get_monitor_device fails, but get_monitor_on_phy succeeds.
+  get_monitor_device () {
+    return 1
+  }
+  get_monitor_on_phy() {
+    echo "mon0"
+  }
+  expect_eq "get_monitor_device succeeded" "mon0" "$(get_monitor_for_link int0)"
+
+  # Failure: we fail to configure |int1| to monitor the connection of |int0|.
   configure_monitor () {
     return 1
   }
   expect_eq "configure failed" "" "$(get_monitor_for_link int0 int1)"
+
+  # Success: we configure |int1| to monitor the connection of |int0|.
   configure_monitor () {
     return 0
   }
@@ -248,7 +308,7 @@ test_get_phy_info ()
 main ()
 {
   # Load the capture utility functions.  Set the command line to something
-  # inocuous so the capture main function returns cleanly without exiting.
+  # innocuous so the capture main function returns cleanly without exiting.
   set -- --help
   . $(dirname $0)/capture_utility.sh >/dev/null
 
@@ -264,6 +324,7 @@ main ()
       get_link_info \
       get_monitor_device \
       get_monitor_for_link \
+      get_monitor_on_phy \
       get_monitor_phy_list \
       get_phy_info; do
     if (test_${test}) ; then
