@@ -1,0 +1,459 @@
+#!/bin/bash
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a wrapper around a lot of different DBus calls, written in sh; this is
+# meant to replace parts of flimflam-test, and also to be callable from crosh.
+
+. /usr/lib/connectivity-common.sh
+. /usr/lib/modem-common.sh
+
+# Wait for a modem to reset itself and come back with a new DBus name
+# args:
+#   $1 - dbus name of the modem before reset
+#   $2 - timeout in seconds
+wait_for_modem_reset() {
+  local modem
+  local oldmodem="$1"
+  local timeout="$2"
+  local status="Timed out"
+  echo -n "Waiting..."
+  while test ${timeout} -gt 0; do
+    modem=$(default_modem)
+    if [ -n "${modem}" -a "${modem}" != "${oldmodem}" ]; then
+      status="Done"
+      break
+    fi
+    sleep 1
+    timeout=$((timeout - 1))
+    echo -n "."
+  done
+  echo "${status}"
+}
+
+# Wait for a modem to reset itself and come back with a new DBus name,
+# or for the activation state to change from "1"
+# MM_MODEM_ACTIVATION_STATE_ACTIVATING to something else
+# Success is determined by the activation state changing or by having
+# the newly assigned MDN.
+#
+# args:
+#   $1 - dbus name of the modem before activation
+#   $2 - activation state of modem before activation call
+#   $3 - timeout in seconds
+#   $4 - new mdn
+#
+wait_for_activation_change() {
+  local modem
+  local oldmodem="$1"
+  local oldstate="$2"
+  local timeout="$3"
+  local expected_mdn="$4"
+  local status="Timed out"
+  local activation_state
+  echo -n "Waiting..."
+  while test ${timeout} -gt 0 ; do
+    modem=$(default_modem)
+    if [ -n "${modem}" -a "${modem}" != "${oldmodem}" ]; then
+      status="Done"
+      break
+    fi
+    if [ -n "${modem}" ]; then
+      activation_state=$(mm_modem_activation_state "${modem}")
+      if [ -n "${activation_state}" ]; then
+        if [ ${activation_state} -gt 1 ]; then
+          status="Done"
+          break
+        fi
+      fi
+    fi
+    sleep 1
+    timeout=$((timeout - 1))
+    echo -n "."
+  done
+  activation_state=$(mm_modem_activation_state "${modem}")
+  if [ -z "${activation_state}" ]; then
+    status="Failed"
+  elif [ ${activation_state} -le ${oldstate} ]; then
+    status="Failed"
+  fi
+  if [ -n "${expected_mdn}" ]; then
+    local mdn=$(mm_modem_status "${modem}" mdn)
+    if [ "${expected_mdn}" = "${mdn}" ]; then
+      status="Done"
+    fi
+  fi
+  echo "${status}"
+}
+
+activate_manual() {
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+  local args=$(echo "$@" | sed -e 's/ /,/g')
+
+  if is_mm1_modem "${modem}"; then
+    error_exit "Manual activation is not supported on this modem."
+  fi
+
+  args=$(require "${args}" min)
+  args=$(require "${args}" mdn)
+  args=$(require "${args}" spc)
+  args=$(require "${args}" system_id)
+  local oldstate=$(mm_modem_activation_state "${modem}")
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.ActivateManualDebug" \
+    "dict:string:string:${args}"
+  local mdn=$(echo "${args}" | sed -e s'/.*mdn,\([^,]*\).*/\1/g')
+  wait_for_activation_change "${modem}" "${oldstate}" 40 "${mdn}"
+}
+
+activate() {
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+  # Work around braindead crosh quoting semantics (i.e., there are none,
+  # arguments are tokenized on spaces). Sigh.
+  local carrier=$(echo "$@")
+
+  if is_mm1_modem "${modem}"; then
+    mmcli -m "${modem}" --cdma-activate="${carrier}"
+    return
+  fi
+
+  # TODO(jglasgow): verify that we can pass an empty string
+  local oldstate=$(mm_modem_activation_state "${modem}")
+  local status=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.Activate" \
+    "string:${carrier}")
+  if [ ${status} != 0 ]; then
+    error "Failed to activate (error ${status})."
+  else
+    wait_for_activation_change "${modem}" "${oldstate}" 40
+  fi
+}
+
+connect() {
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+  # Work around braindead quoting again...
+  local args=$(echo "$@")
+
+  if is_mm1_modem "${modem}"; then
+    [ -n "${args}" ] && args="number=${args}"
+    mmcli -m "${modem}" --simple-connect="${args}"
+    return
+  fi
+
+  [ -z "${args}" ] && args='ignored'
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM}.Connect" "string:${args}"
+}
+
+factory_reset() {
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+  $(arg_or_prompt spc 000000)
+
+  if is_mm1_modem "${modem}"; then
+    # TODO(benchan): Evaluate if a warning should be given when factory
+    # resetting under certain modem configurations.
+    mmcli -m "${modem}" --factory-reset="${spc}"
+    return
+  fi
+
+  technology=$(mm_modem_status "${modem}" technology)
+  if [ "${technology}" = "CDMA" ]; then
+    cat <<-EOF
+
+    WARNING: Unless you have been instructed to do so by a cellular service
+    provider customer service representative, factory resetting your modem will
+    prevent you from re-connecting to your cellular service.
+
+    If you have been instructed to issue the 'modem factory-reset' command,
+    please make sure to issue the 'modem activate' command afterwards to
+    re-activate your modem.  Do not use the graphic user interface to do so.
+
+EOF
+    $(arg_or_prompt continue n)
+    if [ "${continue}" != "y" -a "${continue}" != "Y" ]; then
+      echo "Factory reset cancelled."
+      return
+    fi
+  fi
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM}.FactoryReset" "string:${spc}"
+  wait_for_modem_reset "${modem}" 40
+}
+
+reset() {
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+
+  if is_mm1_modem "${modem}"; then
+    mmcli -m "${modem}" --reset
+  else
+    dbus_call "${MM}" "${modem}" org.chromium.ModemManager.Modem.Gobi.SoftReset
+  fi
+
+  wait_for_modem_reset "${modem}" 40
+}
+
+status() {
+  all_modem_status 2>/dev/null
+}
+
+status_feedback() {
+  all_modem_status 2>/dev/null | mask_modem_properties
+}
+
+update_prl() {
+  local modem
+  local mdn
+  local min
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+
+  if is_mm1_modem "${modem}"; then
+    error_exit "Updating PRL is not supported on this modem."
+  fi
+
+  $(needarg prlfile)
+  mdn=$(mm_modem_status "${modem}" mdn)
+  min=$(mm_modem_status "${modem}" min)
+  if [ -z "${mdn}" -o -z "${min}" ]; then
+    error_exit "Cannot update PRL: MDN/MIN are unknown."
+  fi
+  if [ ! -r "${prlfile}" ]; then
+    error_exit "Cannot read PRL file \"${prlfile}\"."
+  fi
+  # Because cromo runs as a different user than this script,
+  # it may not have access to the specified file, even when
+  # the script does. A specific example is the Downloads folder,
+  # which only the "chronos" user has access to. To work
+  # around this problem, we copy the PRL file to /tmp.
+  local tmpfile=$(mktemp --tmpdir prl.XXXXXXXXXX)
+  trap "rm -f ${tmpfile}" 1 2 13 15
+  cp "${prlfile}" "${tmpfile}"
+  if [ $? -ne 0 ]; then
+    rm -f "${tmpfile}"
+    error_exit "Cannot copy \"${prlfile}\" to \"${tmpfile}\" directory."
+  fi
+  chmod 644 "${tmpfile}"
+  local oldstate=$(mm_modem_activation_state "${modem}")
+  args="mdn,${mdn},min,${min},prlfile,${tmpfile}"
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.ActivateManualDebug" \
+    "dict:string:string:${args}"
+  wait_for_modem_reset "${modem}" 40
+  rm -f "${tmpfile}"
+}
+
+ussd() {
+  local modem
+  local operation="$1"
+  local data="$2"
+
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+
+  if ! is_mm1_modem "${modem}"; then
+    error_exit "USSD is not supported on this modem."
+  fi
+
+  if [ -z "${operation}" ]; then
+    echo "Valid USSD operations are: status, initiate, respond, cancel"
+    return
+  fi
+
+  case "${operation}" in
+    status)
+      mmcli -m "${modem}" --3gpp-ussd-status
+      ;;
+    initiate)
+      [ -z "${data}" ] && error_exit "Missing USSD data."
+      mmcli -m "${modem}" --3gpp-ussd-initiate="${data}"
+      ;;
+    respond)
+      [ -z "${data}" ] && error_exit "Missing USSD data."
+      mmcli -m "${modem}" --3gpp-ussd-respond="${data}"
+      ;;
+    cancel)
+      mmcli -m "${modem}" --3gpp-ussd-cancel
+      ;;
+    *)
+      error_exit "'${operation}' is not valid USSD operation."
+      ;;
+  esac
+}
+
+set_carrier() {
+  local modem
+
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+
+  if is_mm1_modem "${modem}"; then
+    error_exit "Setting carrier is not supported on this modem."
+  fi
+
+  if [ $# -eq 0 ]; then
+    echo "Missing argument: carrier"
+    usage
+  fi
+  local carrier="$*"
+
+  echo "Setting carrier to ${carrier}.  This could take up to two minutes."
+  echo "Using modem ${modem}"
+
+  dbus-send                                         \
+    --reply-timeout=120000                          \
+    --system                                        \
+    --print-reply                                   \
+    --dest="${MM}"                                  \
+    "${modem}"                                      \
+    org.chromium.ModemManager.Modem.Gobi.SetCarrier \
+    "string:${carrier}"
+}
+
+set_logging() {
+  local level="$1"
+  local manager
+
+  if [ -z "${level}" ]; then
+    echo "Valid logging levels are: debug, info, warn, error"
+    return
+  fi
+
+  case "${level}" in
+    debug|info|warn|error)
+      for manager in $(modem_managers); do
+        set_modem_manager_logging "${manager}" "${level}"
+      done
+      ;;
+    *)
+      error_exit "'${level}' is not a valid logging level."
+      ;;
+  esac
+}
+
+MADISON_CONFIG_GROUP_LOCATION=/var/lib/cromo/madison-config-group
+
+set_madison_config() {
+  local group="$*"
+
+  if [ -z "${group}" ]; then
+    echo "No config group specified."
+    echo "Usage: modem set-madison-config <config-group-name>"
+    return
+  fi
+
+  if [ ! -w "${MADISON_CONFIG_GROUP_LOCATION}" ]; then
+    echo "${MADISON_CONFIG_GROUP_LOCATION} is not a writable file."
+    echo "Please reboot (or restart cromo) and try again.";
+    return
+  fi
+
+  if [ "$(readlink -f ${MADISON_CONFIG_GROUP_LOCATION})" != \
+       "${MADISON_CONFIG_GROUP_LOCATION}" ]; then
+    echo "${MADISON_CONFIG_GROUP_LOCATION} points somewhere strange."
+    echo "Please reboot (or restart cromo) and try again."
+    return
+  fi
+
+  echo "Setting madison config group to ${group}."
+
+  echo "${group}" > "${MADISON_CONFIG_GROUP_LOCATION}"
+
+  echo "Please reboot (or restart cromo) to use the new config group."
+}
+
+run_modem_command() {
+  $(needarg cmd)
+  dbus-send --system --print-reply --dest=org.chromium.debugd \
+    /org/chromium/debugd org.chromium.debugd.RunModemCommand "string:${cmd}"
+}
+
+usage() {
+  echo "Usage: $(basename $0) <command> [args...]"
+  echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
+  echo "  activate-manual [-modem <modem>] [args...]   Activate modem manually"
+  echo "  ciprl-update                                " \
+    "Enable and perform client initiated PRL update"
+  echo "  connect [-modem <modem>] [phone number]      Connect modem"
+  echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
+  echo "  get-oma-status                               Current OMA-DM setting"
+  echo "  get-prl                                      Current PRL"
+  echo "  get-service                                 " \
+    "Integer index of data service"
+  echo "  reset [-modem <modem>]                       Reset the modem"
+  echo "  set-carrier [-modem <modem>] <carrier-name> " \
+    "Set modem carrier firmware"
+  echo "  set-logging (debug|info|warn|error)          Set logging level"
+  echo "  set-madison-config <config-group-name>       Set Madison config group"
+  echo "  start-oma                                   " \
+    "Enable and launch OMA session"
+  echo "  status                                       Display modem status"
+  echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
+  echo "  ussd [-modem <modem>] status                " \
+    "Show status of ongoing USSD session"
+  echo "  ussd [-modem <modem>] initiate <command>     Initiate a USSD session"
+  echo "  ussd [-modem <modem>] respond <response>    " \
+    "Respond to a USSD request"
+  echo "  ussd [-modem <modem>] cancel                " \
+    "Cancel ongoing USSD session"
+  exit 0
+}
+
+$(needarg cmd)
+case "${cmd}" in
+  activate)
+    activate "$@"
+    ;;
+  activate-manual)
+    activate_manual "$@"
+    ;;
+  ciprl-update)
+    run_modem_command ciprl-update
+    ;;
+  connect)
+    connect "$@"
+    ;;
+  factory-reset)
+    factory_reset "$@"
+    ;;
+  get-oma-status)
+    run_modem_command get-oma-status
+    ;;
+  get-prl)
+    run_modem_command get-prl
+    ;;
+  get-service)
+    run_modem_command get-service
+    ;;
+  reset)
+    reset "$@"
+    ;;
+  set-carrier)
+    set_carrier "$@"
+    ;;
+  set-logging)
+    set_logging "$@"
+    ;;
+  set-madison-config)
+    set_madison_config "$@"
+    ;;
+  start-oma)
+    run_modem_command start-oma
+    ;;
+  status)
+    status "$@"
+    ;;
+  status-feedback)
+    status_feedback "$@"
+    ;;
+  update-prl)
+    update_prl "$@"
+    ;;
+  ussd)
+    ussd "$@"
+    ;;
+  *)
+    usage
+    ;;
+esac
