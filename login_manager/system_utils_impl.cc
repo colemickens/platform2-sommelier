@@ -23,7 +23,6 @@
 #include <base/files/important_file_writer.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -35,16 +34,6 @@ using std::vector;
 namespace login_manager {
 namespace gobject {
 struct SessionManager;
-}
-
-// Write |data| to |fd|, retrying on EINTR.
-void SystemUtils::RetryingWrite(int fd, const char* data, size_t data_length) {
-  size_t written = 0;
-  do {
-    int rv = HANDLE_EINTR(write(fd, data + written, data_length - written));
-    RAW_CHECK(rv >= 0);
-    written += rv;
-  } while (written < data_length);
 }
 
 SystemUtilsImpl::SystemUtilsImpl() {}

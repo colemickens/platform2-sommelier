@@ -14,6 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/asynchronous_signal_handler.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 
@@ -24,7 +25,8 @@
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/server_backed_state_key_generator.h"
 #include "login_manager/session_manager_interface.h"
-#include "login_manager/termination_handler.h"
+
+struct signalfd_siginfo;
 
 class MessageLoop;
 
@@ -208,6 +210,9 @@ class SessionManagerService
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(base::TimeDelta timeout);
 
+  // Callback when receiving a termination signal.
+  bool OnTerminationSignal(const struct signalfd_siginfo& info);
+
   scoped_ptr<BrowserJobInterface> browser_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
@@ -235,8 +240,8 @@ class SessionManagerService
   scoped_ptr<SessionManagerInterface> impl_;
   scoped_ptr<SessionManagerDBusAdaptor> adaptor_;
 
+  chromeos::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler child_exit_handler_;
-  TerminationHandler term_handler_;
   bool shutting_down_;
   bool shutdown_already_;
   ExitCode exit_code_;

@@ -14,6 +14,7 @@
 
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <chromeos/asynchronous_signal_handler.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/job_manager.h"
@@ -49,19 +50,21 @@ class FakeJobManager : public JobManagerInterface {
 class ChildExitHandlerTest : public ::testing::Test {
  public:
   ChildExitHandlerTest()
-      : handler_(&system_utils_), fake_manager_(&run_loop_) {}
+      : fake_manager_(&run_loop_) {}
   virtual ~ChildExitHandlerTest() {}
 
   virtual void SetUp() {
     std::vector<JobManagerInterface*> managers;
     managers.push_back(&fake_manager_);
-    handler_.Init(managers);
+    signal_handler_.Init();
+    handler_.Init(&signal_handler_, managers);
   }
 
  protected:
   base::MessageLoopForIO loop_;
   base::RunLoop run_loop_;
   SystemUtilsImpl system_utils_;
+  chromeos::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler handler_;
   FakeJobManager fake_manager_;
 

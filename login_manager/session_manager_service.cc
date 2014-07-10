@@ -43,13 +43,15 @@
 #include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
-#include "login_manager/termination_handler.h"
 #include "login_manager/upstart_signal_emitter.h"
 
 namespace em = enterprise_management;
 namespace login_manager {
 
 namespace {
+
+const int kSignals[] = { SIGTERM, SIGINT, SIGHUP };
+const int kNumSignals = sizeof(kSignals) / sizeof(int);
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
@@ -112,8 +114,6 @@ SessionManagerService::SessionManagerService(
       state_key_generator_(utils),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
-      child_exit_handler_(utils),
-      term_handler_(this),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
@@ -122,7 +122,6 @@ SessionManagerService::SessionManagerService(
 
 SessionManagerService::~SessionManagerService() {
   RevertHandlers();
-  TerminationHandler::RevertHandlers();
 }
 
 bool SessionManagerService::Initialize() {
@@ -344,8 +343,13 @@ void SessionManagerService::SetUpHandlers() {
   std::vector<JobManagerInterface*> job_managers;
   job_managers.push_back(this);
   job_managers.push_back(&key_gen_);
-  child_exit_handler_.Init(job_managers);
-  term_handler_.Init();
+  signal_handler_.Init();
+  child_exit_handler_.Init(&signal_handler_, job_managers);
+  for (int i = 0; i < kNumSignals; ++i) {
+    signal_handler_.RegisterHandler(
+        kSignals[i], base::Bind(&SessionManagerService::OnTerminationSignal,
+                                base::Unretained(this)));
+  }
 }
 
 void SessionManagerService::RevertHandlers() {
@@ -433,7 +437,7 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   exit_code_ = code;
   impl_->AnnounceSessionStoppingIfNeeded();
 
-  ChildExitHandler::RevertHandlers();
+  child_exit_handler_.Reset();
   liveness_checker_->Stop();
   CleanupChildren(GetKillTimeout());
   impl_->AnnounceSessionStopped();
@@ -447,6 +451,12 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
   key_gen_.RequestJobExit();
   EnsureJobExit(timeout);
   key_gen_.EnsureJobExit(timeout);
+}
+
+bool SessionManagerService::OnTerminationSignal(
+    const struct signalfd_siginfo& info) {
+  ScheduleShutdown();
+  return true;
 }
 
 }  // namespace login_manager

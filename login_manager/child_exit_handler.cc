@@ -4,76 +4,47 @@
 
 #include "login_manager/child_exit_handler.h"
 
-#include <fcntl.h>
-#include <signal.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
-#include <base/file_util.h>
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <chromeos/asynchronous_signal_handler.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/job_manager.h"
-#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
-namespace {
-static int g_child_pipe_write_fd = -1;
-static int g_child_pipe_read_fd = -1;
-
-void SIGCHLDHandler(int signal, siginfo_t* info, void*) {
-  RAW_CHECK(signal == SIGCHLD);
-  RAW_LOG(INFO, "Handling SIGCHLD.");
-
-  RAW_CHECK(g_child_pipe_write_fd != -1);
-  RAW_CHECK(g_child_pipe_read_fd != -1);
-
-  SystemUtils::RetryingWrite(g_child_pipe_write_fd,
-                             reinterpret_cast<const char*>(info),
-                             sizeof(siginfo_t));
-  RAW_LOG(INFO, "Successfully wrote to child pipe.");
-}
-
-}  // anonymous namespace
-
-ChildExitHandler::ChildExitHandler(SystemUtils* system)
-    : fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher),
-      system_(system) {
-  int pipefd[2];
-  PLOG_IF(FATAL, pipe2(pipefd,
-                       O_CLOEXEC | O_NONBLOCK) < 0) << "Failed to create pipe";
-  g_child_pipe_read_fd = pipefd[0];
-  g_child_pipe_write_fd = pipefd[1];
-}
+ChildExitHandler::ChildExitHandler() {}
 
 ChildExitHandler::~ChildExitHandler() {
-  RevertHandlers();
-  close(g_child_pipe_write_fd);
-  g_child_pipe_write_fd = -1;
-  close(g_child_pipe_read_fd);
-  g_child_pipe_read_fd = -1;
+  Reset();
 }
 
-void ChildExitHandler::Init(const std::vector<JobManagerInterface*>& managers) {
+void ChildExitHandler::Init(chromeos::AsynchronousSignalHandler* signal_handler,
+                            const std::vector<JobManagerInterface*>& managers) {
+  signal_handler_ = signal_handler;
   managers_ = managers;
 
-  SetUpHandler();
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          g_child_pipe_read_fd, true, base::MessageLoopForIO::WATCH_READ,
-          fd_watcher_.get(), this)) {
-    LOG(FATAL) << "Watching child pipe failed. Can't manage browser process.";
-  }
+  signal_handler_->RegisterHandler(
+      SIGCHLD,
+      base::Bind(&ChildExitHandler::OnSigChld, base::Unretained(this)));
 }
 
-void ChildExitHandler::OnFileCanReadWithoutBlocking(int fd) {
-  siginfo_t info;
-  while (base::ReadFromFD(fd, reinterpret_cast<char*>(&info), sizeof(info)))
-    DCHECK(info.si_signo == SIGCHLD) << "Wrong signal!";
+void ChildExitHandler::Reset() {
+  signal_handler_->UnregisterHandler(SIGCHLD);
+}
 
+bool ChildExitHandler::OnSigChld(const struct signalfd_siginfo& sig_info) {
+  DCHECK(sig_info.ssi_signo == SIGCHLD) << "Wrong signal!";
+  if (sig_info.ssi_code == CLD_STOPPED || sig_info.ssi_code == CLD_CONTINUED) {
+    return false;
+  }
+  siginfo_t info;
   // Reap all terminated children.
   while (true) {
     memset(&info, 0, sizeof(info));
@@ -87,18 +58,8 @@ void ChildExitHandler::OnFileCanReadWithoutBlocking(int fd) {
       break;
     Dispatch(info);
   }
-}
-
-void ChildExitHandler::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
-}
-
-// static
-void ChildExitHandler::RevertHandlers() {
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-  action.sa_handler = SIG_DFL;
-  CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
+  // Continue listening to SIGCHLD
+  return false;
 }
 
 void ChildExitHandler::Dispatch(const siginfo_t& info) {
@@ -125,22 +86,6 @@ void ChildExitHandler::Dispatch(const siginfo_t& info) {
     LOG(ERROR) << "  Exited with signal " << info.si_status;
   }
   (*job_manager)->HandleExit(info);
-}
-
-void ChildExitHandler::SetUpHandler() {
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-
-  // Manually set an action for SIGCHLD, so that we can convert
-  // receiving a signal on child exit to file descriptor
-  // activity. This way we can handle this kind of event in a
-  // MessageLoop.  The flags are set such that the action receives a
-  // siginfo struct with handy exit status info, but only when the
-  // child actually exits -- as opposed to also when it gets STOP or CONT.
-  memset(&action, 0, sizeof(action));
-  action.sa_flags = (SA_SIGINFO | SA_NOCLDSTOP);
-  action.sa_sigaction = SIGCHLDHandler;
-  CHECK(sigaction(SIGCHLD, &action, NULL) == 0);
 }
 
 }  // namespace login_manager

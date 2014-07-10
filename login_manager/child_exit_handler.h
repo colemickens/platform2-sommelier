@@ -14,42 +14,38 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
 
+struct signalfd_siginfo;
+
+namespace chromeos {
+class AsynchronousSignalHandler;
+}
+
 namespace login_manager {
 class JobManagerInterface;
 class SystemUtils;
 
-// Sets up signal handler for SIGCHLD, and converts signal receipt
-// into a write on a pipe. The data written contains the child's exit status.
-// Also watches the other end of this pipe and, when data appears, the info
-// is read and the appropriate object that manages that child is informed.
-class ChildExitHandler : public base::MessageLoopForIO::Watcher {
+// Listen for SIGCHLD and informs the appropriate object that manages that
+// child.
+class ChildExitHandler {
  public:
-  explicit ChildExitHandler(SystemUtils* system);
+  ChildExitHandler();
   virtual ~ChildExitHandler();
 
-  void Init(const std::vector<JobManagerInterface*>& managers);
-
-  // Implementation of Watcher
-  virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
-  virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
-
-  // Revert signal handlers registered by this class.
-  static void RevertHandlers();
-
+  void Init(chromeos::AsynchronousSignalHandler* signal_handler,
+            const std::vector<JobManagerInterface*>& managers);
+  void Reset();
  private:
+  // Called by the |AsynchronousSignalHandler| when a new SIGCHLD is received.
+  bool OnSigChld(const struct signalfd_siginfo& info);
   // Determines which JobManagers' child exited, and handles appropriately.
   void Dispatch(const siginfo_t& info);
 
-  // Set up handler for SIGCHLD.
-  void SetUpHandler();
+  // Handler that notifies of signals. Owned by the caller.
+  chromeos::AsynchronousSignalHandler* signal_handler_;
 
   // Objects that are managing a child job.
   std::vector<JobManagerInterface*> managers_;
 
-  // Controller used to manage watching of shutdown pipe.
-  scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
-
-  SystemUtils* system_;
   DISALLOW_COPY_AND_ASSIGN(ChildExitHandler);
 };
 
