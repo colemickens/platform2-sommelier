@@ -287,6 +287,9 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*ui/display/chromeos*=1");
   builder->AddVmodulePattern("*ash/display*=1");
 
+  // Turn on basic logging for Ozone platform implementations.
+  builder->AddVmodulePattern("*ui/ozone*=1");
+
   // Turn on plugin loading failure logging for crbug.com/314301.
   builder->AddVmodulePattern("*zygote*=1");
   builder->AddVmodulePattern("*plugin*=2");
