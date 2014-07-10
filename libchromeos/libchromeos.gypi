@@ -54,6 +54,7 @@
         },
       },
       'sources': [
+        'chromeos/asynchronous_signal_handler.cc',
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
         'chromeos/process_information.cc',
@@ -174,6 +175,7 @@
             }],
           ],
           'sources': [
+            'chromeos/asynchronous_signal_handler_unittest.cc',
             'chromeos/glib/object_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',
