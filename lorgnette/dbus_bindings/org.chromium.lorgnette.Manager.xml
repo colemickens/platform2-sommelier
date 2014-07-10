@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensio
+ns-v0">
+  <interface name="org.chromium.lorgnette.Manager">
+    <method name="ListScanners">
+      <tp:docstring>
+      </tp:docstring>
+      <arg name="scanner_list" type="a{sa{ss}}" direction="out">
+        <tp:docstring>
+          The list of attached scanners.  Returns a dict keyed by the string
+          name of the device, which can be passed as the first argument to
+          the "ScanImage" call.  For each device, the possible dict keys are:
+
+            Manufacturer (string): Name of the manufacturer of the device.
+            Model (string): Model name of the device.
+            Type (string): Type of device (e.g, "flatbed scanner").
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="ScanImage">
+      <tp:docstring>
+        Initiates a scan on |device_name|, and output PNG data to |outfd|.
+      </tp:docstring>
+      <arg name="device_name" type="s" direction="in"/>
+        <tp:docstring>
+          Device name (gained from "ListScanners").
+        </tp:docstring>
+      <arg name="outfd" type="h" direction="in"/>
+        <tp:docstring>
+          Output file descriptor.  PNG image data will be written to this fd.
+        </tp:docstring>
+      <arg name="scan_properties" type="a{sv}" direction="in"/>
+        <tp:docstring>
+          A dict of key-value pairs which define parameters of the scan.
+          Accepted keys are.
+
+            Mode (string): Capture mode (can be "Color", "Gray",
+                "Lineart".)
+            Resolution (uint32): Image resolution in DPI.
+        </tp:docstring>
+    </method>
+  </interface>
+</node>
