@@ -194,6 +194,13 @@ TEST_F(WiMaxServiceTest, Connectable) {
   EXPECT_FALSE(service_->connectable());
 }
 
+TEST_F(WiMaxServiceTest, ChangeCredResetHasEverConnected) {
+  service_->has_ever_connected_ = true;
+  EXPECT_TRUE(service_->has_ever_connected());
+  service_->OnEapCredentialsChanged();
+  EXPECT_FALSE(service_->has_ever_connected());
+}
+
 TEST_F(WiMaxServiceTest, ConvertIdentifierToNetworkId) {
   EXPECT_EQ("00000000", WiMaxService::ConvertIdentifierToNetworkId(0));
   EXPECT_EQ("abcd1234", WiMaxService::ConvertIdentifierToNetworkId(0xabcd1234));

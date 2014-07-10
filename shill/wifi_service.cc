@@ -248,10 +248,7 @@ bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   }
 
   passphrase_ = passphrase;
-  ClearCachedCredentials();
-  UpdateConnectable();
-  SetHasEverConnected(false);
-  ResetSuspectedCredentialFailures();
+  OnCredentialChange();
   return true;
 }
 
@@ -1084,8 +1081,14 @@ void WiFiService::ClearCachedCredentials() {
 }
 
 void WiFiService::OnEapCredentialsChanged() {
+  OnCredentialChange();
+}
+
+void WiFiService::OnCredentialChange() {
   ClearCachedCredentials();
+  SetHasEverConnected(false);
   UpdateConnectable();
+  ResetSuspectedCredentialFailures();
 }
 
 void WiFiService::OnProfileConfigured() {

@@ -39,6 +39,11 @@ string EthernetEapService::GetDeviceRpcId(Error */*error*/) const {
 }
 
 void EthernetEapService::OnEapCredentialsChanged() {
+  // Although the has_ever_connected_ field is not used in the
+  // same manner as the other services, we still make this call
+  // to maintain consistent behavior by the EAP Credential Change
+  // call.
+  SetHasEverConnected(false);
   manager()->ethernet_eap_provider()->OnCredentialsChanged();
 }
 

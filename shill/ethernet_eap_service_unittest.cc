@@ -54,9 +54,12 @@ TEST_F(EthernetEapServiceTest, MethodOverrides) {
 }
 
 TEST_F(EthernetEapServiceTest, OnEapCredentialsChanged) {
+  service_->has_ever_connected_ = true;
+  EXPECT_TRUE(service_->has_ever_connected());
   EXPECT_CALL(manager_, ethernet_eap_provider()).WillOnce(Return(&provider_));
   EXPECT_CALL(provider_, OnCredentialsChanged());
   service_->OnEapCredentialsChanged();
+  EXPECT_FALSE(service_->has_ever_connected());
 }
 
 TEST_F(EthernetEapServiceTest, OnEapCredentialPropertyChanged) {

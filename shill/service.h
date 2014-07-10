@@ -649,8 +649,11 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
+  FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
+  FRIEND_TEST(WiMaxServiceTest, ChangeCredResetHasEverConnected);
+  FRIEND_TEST(EthernetEapServiceTest, OnEapCredentialsChanged);
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];

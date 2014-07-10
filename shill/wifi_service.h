@@ -139,6 +139,10 @@ class WiFiService : public Service {
   // when the EAP credentials change for 802.1x networks.
   void OnEapCredentialsChanged();
 
+  // Called by WiFiService to reset state associated with prior success
+  // of a connection with particular EAP credentials or a passphrase.
+  void OnCredentialChange();
+
   // Override from parent Service class to register hidden services once they
   // have been configured.
   virtual void OnProfileConfigured();

@@ -207,6 +207,7 @@ bool WiMaxService::IsVisible() const {
 
 void WiMaxService::OnEapCredentialsChanged() {
   need_passphrase_ = !eap()->IsConnectableUsingPassphrase();
+  SetHasEverConnected(false);
   UpdateConnectable();
 }
 

@@ -756,8 +756,12 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
   {
     // Any change to EAP parameters (including a null one) will trigger cache
     // removal.  This is a lot less granular than the passphrase checks above.
+    // Changes in EAP parameters should also clear has_ever_connected_.
+    wifi_service->has_ever_connected_ = true;
+    EXPECT_TRUE(wifi_service->has_ever_connected());
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     wifi_service->OnEapCredentialsChanged();
+    EXPECT_FALSE(wifi_service->has_ever_connected());
     Mock::VerifyAndClearExpectations(wifi());
   }
 }
