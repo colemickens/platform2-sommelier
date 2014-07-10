@@ -13,9 +13,6 @@ ARPING=/sbin/arping
 TLSDATE=/usr/bin/tlsdate
 ETHTOOL=/usr/sbin/ethtool
 anonymize_macs=${ANONYMIZE_MACS-yes}
-default_run=yes
-
-test_host=www.google.com
 fail_count=0
 declare -A fn_entry
 
@@ -683,18 +680,18 @@ diag_connectivity () {
 
 # Get information from flimflam about its state over D-Bus.
 dbus_get_object_properties () {
-  local entity=$1
-  local object_type=$2
-  local object_path=${3-/}
+  local entity="${1}"
+  local object_type="${2}"
+  local object_path="${3-/}"
   dbus-send --fixed --system --dest="${entity}" --print-reply \
     ${object_path} ${entity}.${object_type}.GetProperties
 }
 
 dbus_get_object_list () {
-  local entity=$1
-  local parent=$2
-  local child=$3
-  local parent_path=${4-/}
+  local entity="${1}"
+  local parent="${2}"
+  local child="${3}"
+  local parent_path="${4-/}"
   # The child (property) we are looking for is something like "Devices"
   # or "LinkMonitorResponseTime".  The sed manipulation below will return
   # the list of values for each entry.  For example, with an output that
@@ -993,7 +990,7 @@ diag_gateway_latency () {
 
 usage () {
   echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help|"
-  echo "           --wifi-mon] <host>"
+  echo "           --wifi-mon] [host]"
   echo "    --date:      Diagnose time-of-day"
   echo "                 (<host> must support SSL)"
   echo "    --dhcp:      Display DHCP information"
@@ -1007,100 +1004,129 @@ usage () {
   echo "    --wifi:      Display driver-specific debugging information"
   echo "    --wifi-mon:  Monitor WiFi performance metrics"
   echo "    --help:      Display this message"
-  echo "    <host>       Hostname to perform web access test on"
+  echo "    [host]       Hostname to perform web access test on " \
+                         "(default: www.google.com)"
+}
+
+check_no_arg () {
+  if [ "$2" == "yes" ]; then
+    echo "Option $1 does not take any arguments"
+    usage
+    exit 1
+  fi
 }
 
 main () {
-  if [ $# -gt 0 ]; then
-    default_run=yes
-    declare -a rest
-    for param in $@; do
-      # Arguments that modify the behavior of diagnostic modules
-      # should be placed here. This ensures that they are processed
-      # before running the diagnostics.
-      case $param in
-        --show-macs)
-          anonymize_macs=no
-          ;;
-        *)
-          rest+=($param)
-          ;;
-      esac
-    done
-    for param in ${rest[@]}; do
-      case $param in
-        --date)
-          default_run=no
-          diag_date ${test_host}
-          ;;
-        --dhcp)
-          default_run=no
-          diag_dhcp_lease
-          ;;
-        --flimflam)
-          default_run=no
-          diag_flimflam
-          ;;
-        --interface)
-          default_run=no
-          diag_ifall
-          ;;
-        --latency)
-          default_run=no
-          diag_gateway_latency
-          ;;
-        --link)
-          default_run=no
-          diag_linkall
-          ;;
-        --route)
-          default_run=no
-          diag_route
-          ;;
-        --no-log)
-          : # Handled below before starting main
-          ;;
-        --wifi)
-          default_run=no
-          diag_wifi
-          ;;
-        --wifi-internal)
-          # Only called by debugd.
-          diag_wifi_internal
-          exit 0
-          ;;
-        --wifi-mon)
-          default_run=no
-          diag_wifi_monitor
-          ;;
-        --help|-help|-h)
-          usage
-          exit 0
-          ;;
-        -*)
-          echo "Unknown parameter: $param"
-          usage
-          exit 1
-          ;;
-        *)
-          test_host=$param
-          ;;
-      esac
-    done
-    if [ "${default_run}" = "no" ] ; then
-      exit ${fail_count}
-    fi
+  local test_host=www.google.com
+  local option_and_arg_provided=no
+  local option
+  local param
+  local rest=()
+  for param in "$@"; do
+    # Arguments that modify the behavior of diagnostic modules
+    # should be placed here. This ensures that they are processed
+    # before running the diagnostics.
+    case ${param} in
+      --show-macs)
+        anonymize_macs=no
+        ;;
+      --no-log)
+        # Handled below before starting main
+        ;;
+      *)
+        rest+=( "${param}" )
+        ;;
+    esac
+  done
+  case ${#rest[@]} in
+    0)
+      diag_run ${test_host}
+      return
+      ;;
+    1)
+      if [[ ${rest[0]} == --* ]]; then
+        option=${rest[0]}
+      else
+        test_host=${rest[0]}
+        diag_run ${test_host}
+        return
+      fi
+      ;;
+    2)
+      option=${rest[0]}
+      test_host=${rest[1]}
+      option_and_arg_provided=yes
+      ;;
+    *)
+      echo "Too many arguments"
+      usage
+      exit 1
+      ;;
+  esac
+  if [ -n "${option}" ]; then
+    case ${option} in
+      --date)
+        diag_date ${test_host}
+        ;;
+      --dhcp)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_dhcp_lease
+        ;;
+      --flimflam)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_flimflam
+        ;;
+      --interface)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_ifall
+        ;;
+      --latency)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_gateway_latency
+        ;;
+      --link)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_linkall
+        ;;
+      --route)
+        diag_route ${test_host}
+        ;;
+      --wifi)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_wifi
+        ;;
+      --wifi-internal)
+        # Only called by debugd.
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_wifi_internal
+        exit 0
+        ;;
+      --wifi-mon)
+        check_no_arg ${option} ${option_and_arg_provided}
+        diag_wifi_monitor
+        ;;
+      --help|-help|-h)
+        check_no_arg ${option} ${option_and_arg_provided}
+        usage
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $option"
+        usage
+        exit 1
+        ;;
+    esac
+    exit ${fail_count}
   fi
-  diag_run ${test_host}
 }
 
 if [ -d /home/${USER}/user/Downloads ] && \
     ! expr "$*" : '.*--no-log' >/dev/null; then
   # Log this output to somewhere the user can upload from
-  main $@ 2>&1 | \
+  main "$@" 2>&1 | \
     tee $(unique_file /home/${USER}/user/Downloads/network_diagnostics_\*.txt)
 else
-  main $@
+  main "$@"
 fi
 
 
