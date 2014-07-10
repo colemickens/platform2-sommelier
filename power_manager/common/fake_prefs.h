@@ -1,0 +1,55 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef POWER_MANAGER_COMMON_FAKE_PREFS_H_
+#define POWER_MANAGER_COMMON_FAKE_PREFS_H_
+
+#include <map>
+#include <string>
+
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+
+#include "power_manager/common/prefs.h"
+
+namespace power_manager {
+
+// Fake implementation of PrefsInterface for tests that just stores prefs
+// in-memory.
+class FakePrefs : public PrefsInterface {
+ public:
+  FakePrefs();
+  virtual ~FakePrefs();
+
+  // Deletes |name| from |*_prefs_|.
+  void Unset(const std::string& name);
+
+  // Notifies |observers_| that a pref has changed.
+  void NotifyObservers(const std::string& name);
+
+  // PrefsInterface implementation:
+  virtual void AddObserver(PrefsObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(PrefsObserver* observer) OVERRIDE;
+  virtual bool GetString(const std::string& name, std::string* value) OVERRIDE;
+  virtual bool GetInt64(const std::string& name, int64* value) OVERRIDE;
+  virtual bool GetDouble(const std::string& name, double* value) OVERRIDE;
+  virtual bool GetBool(const std::string& name, bool* value) OVERRIDE;
+  virtual void SetString(const std::string& name,
+                         const std::string& value) OVERRIDE;
+  virtual void SetInt64(const std::string& name, int64 value) OVERRIDE;
+  virtual void SetDouble(const std::string& name, double value) OVERRIDE;
+
+ private:
+  ObserverList<PrefsObserver> observers_;
+
+  std::map<std::string, int64> int64_prefs_;
+  std::map<std::string, double> double_prefs_;
+  std::map<std::string, std::string> string_prefs_;
+
+  DISALLOW_COPY_AND_ASSIGN(FakePrefs);
+};
+
+}  // namespace power_manager
+
+#endif  // POWER_MANAGER_COMMON_FAKE_PREFS_H_

@@ -1,0 +1,24 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_OBSERVER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_AUDIO_OBSERVER_H_
+
+namespace power_manager {
+namespace system {
+
+// Interface for classes interested in observing audio activity detected by
+// the AudioDetector class.
+class AudioObserver {
+ public:
+  virtual ~AudioObserver() {}
+
+  // Called when audio activity starts or stops.
+  virtual void OnAudioStateChange(bool active) = 0;
+};
+
+}  // namespace system
+}  // namespace power_manager
+
+#endif  // POWER_MANAGER_POWERD_SYSTEM_AUDIO_OBSERVER_H_

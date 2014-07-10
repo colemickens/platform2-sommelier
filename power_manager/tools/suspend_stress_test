@@ -1,0 +1,205 @@
+#!/bin/sh
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+. /usr/share/misc/shflags
+
+DEFINE_integer count 10000 "number of iterations" c
+DEFINE_integer suspend_max 10 "Max seconds to suspend"
+DEFINE_integer suspend_min 5 "Min seconds to suspend"
+DEFINE_integer wake_max 10 "Max seconds to stay awake for"
+DEFINE_integer wake_min 5 "Min seconds to stay awake for"
+DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
+DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
+DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
+DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
+DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
+DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
+
+# Minimum value for --suspend_min when --memory_check is true.
+MEMORY_TEST_SUSPEND_MIN_DELAY=10
+
+get_failed_count() {
+  awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
+}
+
+random() {
+  hexdump -n 2 -e '/2 "%u"' /dev/urandom
+}
+
+boolean_value() {
+  if [ $1 -eq ${FLAGS_TRUE} ]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+# Restarts powerd and blocks until it's re-registered its D-Bus name.
+restart_powerd() {
+  restart powerd
+  while ! dbus-send --system --print-reply --dest=org.freedesktop.DBus \
+      /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner \
+      string:org.chromium.PowerManager | grep -q true; do
+    sleep 0.1
+  done
+}
+
+disable_dark_resume() {
+  temp_prefs=$(mktemp -d /tmp/power_manager.XXXXXXXXXXXX)
+  echo 1 > ${temp_prefs}/disable_dark_resume
+  mount --bind /var/lib/power_manager ${temp_prefs}
+  restart_powerd
+}
+
+restore_dark_resume_state() {
+  umount ${temp_prefs}
+  rm -rf ${temp_prefs}
+  restart_powerd
+}
+
+dump_stats_and_exit() {
+  echo $preserved_pm_print_times > /sys/power/pm_print_times
+  restore_dark_resume_state
+  echo ""
+  echo "Finished ${cur} iterations."
+  echo "Suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
+  echo "Suspend command failures: ${suspend_cmd_failures}"
+  echo "Firmware log errors: ${firmware_errors}"
+  exit 0
+}
+
+FLAGS "$@" || exit 1
+
+if [ "$USER" != root ]; then
+  echo "This script must be run as root." 1>&2
+  exit 1
+fi
+
+if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
+  [ ! -e /sys/class/rtc/rtc1/wakealarm ]; then
+  echo "rtc1 not present, not setting second wakealarm"
+  FLAGS_backup_rtc=${FLAGS_FALSE}
+fi
+
+if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
+  free_kb=$(grep MemFree: /proc/meminfo | awk '{ print $2}')
+  inactive_kb=$(grep Inactive: /proc/meminfo | awk '{ print $2}')
+  slack_kb=100000
+  bytes=$(((free_kb + inactive_kb - slack_kb) * 1024))
+  suspend_cmd="memory_suspend_test --size=${bytes}"
+
+  # Writing to memory can take a while. Make it less likely that the
+  # wake alarm will fire before the system has suspended.
+  if [ $FLAGS_suspend_min -lt $MEMORY_TEST_SUSPEND_MIN_DELAY ]; then
+    local orig_diff=$(($FLAGS_suspend_max - $FLAGS_suspend_min))
+    FLAGS_suspend_min=$MEMORY_TEST_SUSPEND_MIN_DELAY
+    FLAGS_suspend_max=$(($FLAGS_suspend_min + $orig_diff))
+  fi
+else
+  suspend_cmd="powerd_dbus_suspend --delay=0"
+fi
+
+echo "Running ${FLAGS_count} iterations with:"
+echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
+echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
+echo "  backup_rtc: $(boolean_value ${FLAGS_backup_rtc})"
+echo "  errors_fatal: $(boolean_value ${FLAGS_errors_fatal})"
+echo "  bugs fatal:  $(boolean_value ${FLAGS_bug_fatal})"
+echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
+echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
+echo "  suspend command: ${suspend_cmd}"
+
+initial_failed=$(get_failed_count)
+suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
+wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
+preserved_pm_print_times=$(cat /sys/power/pm_print_times)
+
+echo 1 > /sys/power/pm_print_times
+
+trap dump_stats_and_exit INT
+disable_dark_resume
+
+cur=0
+firmware_errors=0
+last_failed=${initial_failed}
+suspend_cmd_failures=0
+exit_loop=0
+
+while true; do
+  : $(( cur += 1 ))
+  printf "Suspend %5d of ${FLAGS_count}: " ${cur}
+
+  sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
+  printf "sleep for %2d seconds..." ${sus_time}
+  echo 0 > /sys/class/rtc/rtc0/wakealarm
+  echo "+${sus_time}" > /sys/class/rtc/rtc0/wakealarm
+  if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
+    echo 0 > /sys/class/rtc/rtc1/wakealarm
+    echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
+  fi
+
+  if ! eval $suspend_cmd; then
+    echo "Suspend command failed"
+    : $(( suspend_cmd_failures += 1))
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      exit_loop=1
+    fi
+  fi
+
+  # Look for errors in firmware log.
+  # Exempt a specific error string in Coreboot that is not a real error.
+  # TODO(shawnn): Remove this exemption once all devices have firmware with
+  # this error string changed.
+  if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log | \
+    grep -v "attempting to recover by searching for header"; then
+    echo "Firmware error found."
+    : $(( firmware_errors += 1 ))
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      exit_loop=1
+    fi
+  fi
+  # Make sure suspend succeeded
+  cur_failed=$(get_failed_count)
+  if [ ${cur_failed} -gt ${last_failed} ]; then
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      echo "Suspend failed."
+      exit_loop=1
+    fi
+    printf "(suspend failed, ignoring)"
+    last_failed=${cur_failed}
+  fi
+  # For BUG and CRC errors counting existing occurrences in dmesg
+  # is not that useful as dmesg will wrap so we would need to account
+  # for the count shrinking over time.
+  # Exit on BUG
+  if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] &&
+        dmesg | grep -w BUG; then
+    echo "BUG found."
+    exit_loop=1
+  fi
+  # Exit on WARNING
+  if [ ${FLAGS_warn_fatal} -eq ${FLAGS_TRUE} ] &&
+        dmesg | grep -w WARNING; then
+    echo "WARNING found."
+    exit_loop=1
+  fi
+  # Exit on CRC error
+  if [ ${FLAGS_crc_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep "CRC.*error"; then
+    echo "CRC error found."
+    exit_loop=1
+  fi
+  # Exit the loop if requested from errors or done with iterations
+  if [ ${cur} -eq ${FLAGS_count} ] || [ ${exit_loop} -eq 1 ]; then
+    echo ""
+    break
+  fi
+  wake_time=$(( ( $(random) % wake_interval ) + FLAGS_wake_min ))
+  printf " wake for %2d seconds..." ${wake_time}
+  sleep ${wake_time}
+  echo ""
+done
+
+dump_stats_and_exit

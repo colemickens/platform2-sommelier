@@ -1,0 +1,282 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script is responsible for suspending and resuming the system.  It is run
+# as root by powerd_setuid_helper, which is run by powerd.
+
+. /usr/share/misc/shflags
+
+DEFINE_integer wakeup_count -1 \
+    "wakeup event count from start of suspend. -1 to disable" w
+DEFINE_integer suspend_duration -1 \
+    "indicates that the system should wake up after this many seconds" d
+
+# Exit codes returned by this script and reported via the
+# Power.SuspendResult histogram:
+
+# The system successfully suspended and resumed.
+readonly RESULT_SUCCESS=0
+
+# A suspend failure occurred in the kernel after writing to /sys/power/state
+# (i.e. the write to /sys/power/state failed with a non-EBUSY reason).
+readonly RESULT_FAILURE=1
+
+# The suspend attempt was canceled as the result of a wakeup event occurring
+# between powerd's read from /sys/power/wakeup_count and this script's write to
+# it (i.e. the write to wakeup_count failed).
+readonly RESULT_CANCELED_EARLY=2
+
+# The suspend attempt was canceled as the result of a wakeup event occurring
+# between the write to /sys/power/wakeup_count and the write to
+# /sys/power/state (i.e. the write to /sys/power/state failed with EBUSY).
+readonly RESULT_CANCELED_LATE=3
+
+# Histogram-only max value.
+readonly RESULT_MAX=4
+
+# Directory where this script and send_metrics_on_resume (running as root)
+# write temporary state files.
+readonly ROOT_RUN_DIR=/var/run/power_manager/root
+
+# For testing: write RTC resume timestamp to this file if it exists
+readonly TIMESTAMP_FILE=${ROOT_RUN_DIR}/hwclock-on-resume
+
+# File used to record the power status (AC vs. battery) before suspending.  Read
+# by send_metrics_on_resume (but only when run after resuming; this doesn't
+# need to persist across reboots).
+readonly POWER_STATUS_ON_SUSPEND_FILE=${ROOT_RUN_DIR}/power-status-on-suspend
+
+# File containing resume-related timing information.  Written by
+# send_metrics_on_resume and read by autotests; doesn't need to persist
+# across reboots.
+readonly LAST_RESUME_TIMINGS_FILE=${ROOT_RUN_DIR}/last_resume_timings
+
+# Directory where this script (running as root) writes files that must
+# persist across reboots.
+readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
+
+# File containing the time at which we started suspending.  Read by
+# send_metrics_on_resume.
+readonly SUSPEND_TO_RAM_TIME_FILE=${ROOT_SPOOL_DIR}/suspend-to-ram-time
+
+log_msg() {
+    logger -t "powerd_suspend[$$]" -- $@
+}
+
+log_msg_from_file() {
+    logger -t "powerd_suspend[$$]" -f $1
+}
+
+log_wakeup_count() {
+    log_msg "wakeup_count is $(cat /sys/power/wakeup_count)"
+}
+
+enable_debug() {
+    # Enable debug info.
+    if [ -e /sys/module/printk/parameters/console_suspend ]; then
+        echo -n 'N' > /sys/module/printk/parameters/console_suspend
+    fi
+    if [ -e /sys/power/pm_print_times ]; then
+        echo -n '1' > /sys/power/pm_print_times
+    fi
+}
+
+is_lumpy() {
+    crossystem hwid | grep -q "LUMPY"
+}
+
+# Checks if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
+has_gobi_modem() {
+    lsusb -d 1410:a021 || lsusb -d 1410:a023
+}
+
+# Toggles the power and off GPIOs connected to gobi modem in order to
+# revive it.
+do_lumpy_gobi_modem_revive() {
+    cd /sys/class/gpio
+
+    # TODO(snanda): Get the gpio base from crossystem instead of assuming
+    # that it will always be 160 for lumpy.
+    if [ ! -d gpio198 ]; then
+        echo 198 > export
+    fi
+    if [ ! -d gpio203 ]; then
+        echo 203 > export
+    fi
+
+    echo out > gpio198/direction
+    echo out > gpio203/direction
+
+    echo 1 > gpio203/value
+    echo 0 > gpio198/value
+
+    echo 0 > gpio203/value
+    echo 1 > gpio198/value
+}
+
+# Writes the wakeup count that was passed to this script to
+# /sys/power/wakeup_count.  Returns success if the write fails, indicating
+# that one or more wakeup events occurred in the meantime.
+saw_wakeup_event() {
+    if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
+       echo "${FLAGS_wakeup_count}" > "/sys/power/wakeup_count"; then
+        return 1
+    else
+        log_msg "Aborting suspend, wake event received"
+        log_wakeup_count
+        return 0
+    fi
+}
+
+
+# Sends suspend result (one of the above RESULT_* values) to UMA.
+send_uma_result() {
+    metrics_client -e Power.SuspendResult $1 $RESULT_MAX &
+}
+
+setup_dark_resume() {
+    if [ "${FLAGS_suspend_duration}" -ne -1 ]; then
+        echo 0 > /sys/class/rtc/rtc0/wakealarm
+        echo "+${FLAGS_suspend_duration}" > /sys/class/rtc/rtc0/wakealarm
+    fi
+}
+
+# Encourage people to use powerd_dbus_suspend instead of running this
+# script directly so that e.g. suspend delays and VT locking will happen.
+if [ -z "$POWERD_SETUID_HELPER" ]; then
+  echo "This script is called by powerd. Please run powerd_dbus_suspend" 1>&2
+  echo "to manually exercise the full suspend path." 1>&2
+  exit 1
+fi
+
+# Note: Don't change or remove this line without also updating
+# send_metrics_on_resume.
+log_msg "Going to suspend-to-RAM state: args=$@"
+
+# Parse command line.
+FLAGS "$@" || exit 1
+eval set -- "$FLAGS_ARGV"
+
+# The metrics library requires a max value of 2 rather than 1
+# (http://crbug.com/338015).
+metrics_client -e Power.SuspendAttempt 0 2 &
+
+# Log the time before going to suspend (no-op if no RTC).
+cp /sys/class/rtc/rtc0/since_epoch $SUSPEND_TO_RAM_TIME_FILE \
+    2> /dev/null || true
+
+# Remove last_resume_timings to ensure the file is fresh on resume.
+rm -f $LAST_RESUME_TIMINGS_FILE
+
+# Store the current power status.
+power_supply_info 2> /dev/null \
+    | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
+if [ $? -eq 0 ]; then
+    echo OnBattery > $POWER_STATUS_ON_SUSPEND_FILE
+else
+    echo OnAC > $POWER_STATUS_ON_SUSPEND_FILE
+fi
+
+# Is this a Lumpy system with Gobi modem?
+lumpy_with_gobi_modem=0
+if is_lumpy && has_gobi_modem; then
+    log_msg "Lumpy with gobi modem"
+    lumpy_with_gobi_modem=1
+fi
+
+enable_debug
+
+log_msg "Explicit sync"
+sync
+
+result=$RESULT_FAILURE
+
+if saw_wakeup_event; then
+    # Note: The client/cros/power_suspend.py module in autotest depends on
+    # this message.
+    log_msg "Cancel suspend at kernel"
+
+    # This file is usually removed by send_metrics_on_resume, but that script
+    # isn't run if the suspend attempt is unsuccessful.
+    rm -f $SUSPEND_TO_RAM_TIME_FILE
+
+    result=$RESULT_CANCELED_EARLY
+else
+    log_msg "Finalizing suspend"
+    # Make sure that hwclock is cached for when we wake up, this way we don't
+    # wait for io and get a more accurate time for wakeup
+    # -V prints a little version information and exits, loading .so but not
+    # making actual RTC accesses. Do *NOT* change this to a normal execution...
+    # it will trigger an RTC interrupt that may count as a wakeup reason, abort
+    # your suspend and cause you hours of pain and confusion!
+    if [ -f "${TIMESTAMP_FILE}" ]; then
+        /sbin/hwclock -V > /dev/null
+    else
+        # We don't want to overwrite the alarm for whatever test might be
+        # running.
+        setup_dark_resume
+    fi
+
+    # Suspend to RAM. This is piped through cat since we want to determine
+    # the causes of failures -- dash's "echo" command appears to not print
+    # anything in response to write errors.
+    error=$( (echo -n mem | cat > /sys/power/state) 2>&1)
+    if [ $? = 0 ]; then
+        # On resume:
+        result=$RESULT_SUCCESS
+
+        if [ -f "${TIMESTAMP_FILE}" ]; then
+            # Record the hwclock time at resume for the power_Resume test.
+            TIME=$(/sbin/hwclock --utc --debug)
+            echo ${TIME} > "${TIMESTAMP_FILE}"
+            log_msg "Recorded hwclock time for test"
+        fi
+
+        if [ -e "/sys/firmware/log" ]; then
+            # Grep /sys/firmware/log for WAK
+            wakeup_source=$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)
+            if [ -z "${wakeup_source}" ]; then
+                wakeup_source="unknown"
+            fi
+            log_msg "wake source: ${wakeup_source}"
+        fi
+
+        # Send UMA metrics.
+        send_metrics_on_resume &
+
+        # Revive the modem if it was present prior to suspending but is absent
+        # now.
+        if [ $lumpy_with_gobi_modem -eq 1 ]; then
+            if ! has_gobi_modem ; then
+                log_msg "Reviving lumpy gobi modem"
+                do_lumpy_gobi_modem_revive
+            fi
+        fi
+    else
+        log_msg "Error writing to /sys/power/state: ${error}"
+        log_msg_from_file /sys/kernel/debug/suspend_stats
+
+        # The write will fail with EBUSY if additional wakeup events have
+        # occurred since the earlier write to /sys/power/wakeup_count.
+        if echo "${error}" | grep -q 'Device or resource busy'; then
+            log_wakeup_count
+            result=$RESULT_CANCELED_LATE
+        else
+            result=$RESULT_FAILURE
+        fi
+    fi
+fi
+
+send_uma_result $result
+
+initctl emit system-resumed &
+
+# Refresh mosys eventlog to help feedback reports pick up the latest snapshot.
+/usr/share/userfeedback/scripts/eventlog &
+
+log_msg "Resume finished"
+
+return $result
