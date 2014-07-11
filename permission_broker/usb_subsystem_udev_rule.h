@@ -16,7 +16,7 @@ namespace permission_broker {
 // ignored by this rule.
 class UsbSubsystemUdevRule : public UdevRule {
  public:
-  UsbSubsystemUdevRule(const std::string &name);
+  explicit UsbSubsystemUdevRule(const std::string &name);
   virtual ~UsbSubsystemUdevRule();
 
   // Called with every device belonging to the USB subsystem. The return value

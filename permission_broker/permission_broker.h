@@ -43,7 +43,7 @@ class PermissionBroker {
 
  protected:
   // This constructor is for use by test code only.
-  PermissionBroker(const gid_t access_group);
+  explicit PermissionBroker(const gid_t access_group);
 
  private:
   friend class PermissionBrokerTest;

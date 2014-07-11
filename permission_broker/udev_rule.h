@@ -17,7 +17,7 @@ namespace permission_broker {
 
 class UdevRule : public Rule {
  public:
-  UdevRule(const std::string& name);
+  explicit UdevRule(const std::string& name);
   virtual ~UdevRule();
 
   virtual Result ProcessDevice(struct udev_device *device) = 0;

@@ -5,13 +5,15 @@
 #ifndef PERMISSION_BROKER_DENY_USB_DEVICE_CLASS_RULE_H_
 #define PERMISSION_BROKER_DENY_USB_DEVICE_CLASS_RULE_H_
 
+#include <string>
+
 #include "permission_broker/usb_subsystem_udev_rule.h"
 
 namespace permission_broker {
 
 class DenyUsbDeviceClassRule : public UsbSubsystemUdevRule {
  public:
-  DenyUsbDeviceClassRule(const uint8_t device_class);
+  explicit DenyUsbDeviceClassRule(const uint8_t device_class);
   virtual ~DenyUsbDeviceClassRule();
 
   virtual Result ProcessUsbDevice(struct udev_device *device);

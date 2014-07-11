@@ -37,4 +37,4 @@ class DenyClaimedUsbDeviceRule : public Rule {
 
 }  // namespace permission_broker
 
-#endif  // PERMISSION_BROKER_CLAIMED_USB_DEVICE_RULE_H_
+#endif  // PERMISSION_BROKER_DENY_CLAIMED_USB_DEVICE_RULE_H_

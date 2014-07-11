@@ -6,8 +6,6 @@
 
 #include <libudev.h>
 
-using std::string;
-
 namespace permission_broker {
 
 AllowUsbDeviceRule::AllowUsbDeviceRule()

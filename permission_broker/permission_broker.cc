@@ -167,7 +167,7 @@ void PermissionBroker::WaitForEmptyUdevQueue() {
 
   const char *run_path = udev_get_run_path(udev_);
   int watch = inotify_add_watch(udev_poll.fd, run_path, IN_MOVED_TO);
-  CHECK(watch != -1) << "Could not add watch for udev run path.";
+  CHECK_NE(watch, -1) << "Could not add watch for udev run path.";
 
   while (!udev_queue_get_queue_is_empty(queue)) {
     if (poll(&udev_poll, 1, FLAGS_poll_interval) > 0) {

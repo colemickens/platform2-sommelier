@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
-
 #include "permission_broker/usb_subsystem_udev_rule.h"
 
 #include <libudev.h>
+
+#include <string>
 
 using std::string;
 

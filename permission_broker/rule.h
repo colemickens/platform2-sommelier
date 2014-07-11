@@ -31,7 +31,7 @@ class Rule {
                          const int interface_id) = 0;
 
  protected:
-  Rule(const std::string &name);
+  explicit Rule(const std::string &name);
 
  private:
   const std::string name_;
