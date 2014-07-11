@@ -1758,7 +1758,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::ResetPendingService));
   EXPECT_CALL(*service, HasEndpoints()).Times(0);
   // DisconnectFrom() should not be called directly from WiFi.
-  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(0);
+  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
 
   // Innocuous redundant call to NotifyDeviceScanFinished.
@@ -1772,6 +1772,8 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
                        HasSubstr("-> PROGRESSIVE_FINISHED_NOCONNECTION")));
   pending_timeout.callback().Run();
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+  // Service state should be idle, so it is connectable again.
+  EXPECT_EQ(Service::kStateIdle, service->state());
   Mock::VerifyAndClearExpectations(service);
 
   ScopeLogger::GetInstance()->set_verbose_level(0);

@@ -1795,6 +1795,7 @@ void WiFi::PendingTimeoutHandler() {
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   CHECK(pending_service_);
   SetScanState(kScanFoundNothing, scan_method_, __func__);
+  WiFiServiceRefPtr pending_service = pending_service_;
   pending_service_->DisconnectWithFailure(
       Service::kFailureOutOfRange, &unused_error);
 
@@ -1808,6 +1809,10 @@ void WiFi::PendingTimeoutHandler() {
     LOG(INFO) << "Hidden service was not found.";
     DisconnectFrom(pending_service_);
   }
+
+  // DisconnectWithFailure will leave the pending service's state in failure
+  // state. Reset its state back to idle, to allow it to be connectable again.
+  pending_service->SetState(Service::kStateIdle);
 }
 
 void WiFi::StartReconnectTimer() {
