@@ -1,5 +1,5 @@
-#ifndef PLUGIN_GOBI_SDK_WRAPPER_H_
-#define PLUGIN_GOBI_SDK_WRAPPER_H_
+#ifndef GOBI_CROMO_PLUGIN_GOBI_SDK_WRAPPER_H_
+#define GOBI_CROMO_PLUGIN_GOBI_SDK_WRAPPER_H_
 
 /*===========================================================================
   FILE:
@@ -23,16 +23,17 @@
   without the express written permission of QUALCOMM Incorporated.
   ==========================================================================*/
 
-#include <stdlib.h>
 #include <pthread.h>
+#include <stdlib.h>
 
-#include <base/basictypes.h> // for DISALLOW_COPY_AND_ASSIGN
-#include <base/memory/scoped_ptr.h>
-#include <dbus/dbus.h>  // for DBus::Path &
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <map>
 #include <string>
 #include <vector>
+
+#include <base/basictypes.h>  // for DISALLOW_COPY_AND_ASSIGN
+#include <base/memory/scoped_ptr.h>
+#include <dbus/dbus.h>  // for DBus::Path &
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "gobi/GobiConnectionMgmtAPI.h"
 
@@ -129,7 +130,7 @@ enum PowerMode {
   kOffline = 3,
   kReset = 4,
   kPowerOff = 5,
-  kPersistentLowPower = 6, // airplane mode
+  kPersistentLowPower = 6,  // airplane mode
 };
 
 enum RegistrationState {
@@ -395,7 +396,7 @@ class Sdk {
   // SdkErrorSink is called if an SDK function returns an error.
   // The GobiModem class uses this to decide if an error warrants
   // resetting the modem
-  Sdk(SdkErrorSink sink) : sdk_error_sink_(sink) {}
+  explicit Sdk(SdkErrorSink sink) : sdk_error_sink_(sink) {}
   virtual ~Sdk() {}
 
   virtual void set_current_modem_path(const std::string &path) {
@@ -1027,7 +1028,6 @@ class Sdk {
   virtual GobiType GetDeviceType();
 
  protected:
-
   class CallWrapper {
    public:
     CallWrapper(Sdk *sdk, const char *name);
@@ -1081,6 +1081,7 @@ class Sdk {
  private:
   DISALLOW_COPY_AND_ASSIGN(Sdk);
 };  // Class Sdk
-}   // Namespace Gobi
 
-#endif /* PLUGIN_GOBI_SDK_WRAPPER_H_ */
+}   // namespace gobi
+
+#endif  // GOBI_CROMO_PLUGIN_GOBI_SDK_WRAPPER_H_

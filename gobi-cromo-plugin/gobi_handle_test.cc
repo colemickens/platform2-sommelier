@@ -32,8 +32,7 @@ static void log(const char *format, ...) {
 
 /* Returns true if the supplied devid string is valid. Valid devid strings are
  * of the form: [0-9]+ '-' [0-9]+ */
-static bool isdevid(const char *devid)
-{
+static bool isdevid(const char *devid) {
   const char *d = devid;
 
   /* Check the part before the dash... */
@@ -57,8 +56,7 @@ static bool isdevid(const char *devid)
   return *d == '\0';
 }
 
-static int reset(const char *dev)
-{
+static int reset(const char *dev) {
   char path[PATH_MAX];
   int fd = -1;
   int to_return = 1;
@@ -97,8 +95,7 @@ done:
   return to_return;
 }
 
-static void usage(const char *progname)
-{
+static void usage(const char *progname) {
   fprintf(stderr, "Usage: %s <file | api> <usb-dev-id> <qcqmi-dev>\n",
           progname);
   fprintf(stderr, "\tExample: %s api 1-2 /dev/qcqmi0\n", progname);
@@ -113,8 +110,7 @@ struct DEVICE_ELEMENT {
 };
 
 // Connect to first modem present.  Returns 0 on success.
-int connect_modem()
-{
+int connect_modem() {
   const int MAX_MODEMS = 16;
   ULONG rc;
 
@@ -122,7 +118,7 @@ int connect_modem()
   BYTE num_devices = MAX_MODEMS;
 
   rc = QCWWANEnumerateDevices(&num_devices,
-                              (BYTE *) devices);
+                              reinterpret_cast<BYTE*>(devices));
   if (rc != 0) {
     log("Could not enumerate: %d", rc);
     return -1;
@@ -142,8 +138,7 @@ int connect_modem()
 }
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   char usb_path[PATH_MAX];
   bool use_qcwwan = 1;
 

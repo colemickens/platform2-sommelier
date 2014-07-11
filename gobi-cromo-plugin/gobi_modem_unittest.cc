@@ -2,15 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "gobi-cromo-plugin/gobi_modem.h"
+
+#include <vector>
+
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "gobi_cdma_modem.h"
-#include "gobi_modem.h"
-#include "gobi_modem_handler.h"
-#include "mock_gobi_sdk_wrapper.h"
+#include "gobi-cromo-plugin/gobi_cdma_modem.h"
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
+#include "gobi-cromo-plugin/mock_gobi_sdk_wrapper.h"
 
 using utilities::DBusPropertyMap;
 
@@ -24,11 +27,11 @@ using ::testing::StrEq;
 using ::testing::_;
 
 class MockGobiModemHandler : public GobiModemHandler {
-  public:
-    MockGobiModemHandler(CromoServer& server) : GobiModemHandler(server) {}
-    MOCK_METHOD1(EnumerateDevices,
-                 std::vector<DBus::Path> (DBus::Error& error));
-    MOCK_METHOD0(Initialize, bool());
+ public:
+  explicit MockGobiModemHandler(CromoServer &server)
+      : GobiModemHandler(server) {}
+  MOCK_METHOD1(EnumerateDevices, std::vector<DBus::Path>(DBus::Error &error));
+  MOCK_METHOD0(Initialize, bool());
 };
 
 // SetQString<argument # for length, argument # for output>
@@ -67,10 +70,10 @@ class GobiModemTest : public ::testing::Test {
   scoped_ptr<DBus::Error> error_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(GobiModemTest);
-
   MockGobiModemHandler *handler_;
   CromoServer *server_;
+
+  DISALLOW_COPY_AND_ASSIGN(GobiModemTest);
 };
 
 

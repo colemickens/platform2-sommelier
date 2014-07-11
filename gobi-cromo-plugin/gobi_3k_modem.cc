@@ -2,16 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_3k_modem.h"
-#include "gobi_modem_handler.h"
+#include "gobi-cromo-plugin/gobi_3k_modem.h"
 
 #include <gobi3k.h>
 
-void Gobi3KModemHelper::SetCarrier(GobiModem *modem,
-                                   GobiModemHandler *handler,
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
+
+Gobi3KModemHelper::Gobi3KModemHelper(gobi::Sdk* sdk) : GobiModemHelper(sdk) {}
+
+Gobi3KModemHelper::~Gobi3KModemHelper() {}
+
+void Gobi3KModemHelper::SetCarrier(GobiModem* modem,
+                                   GobiModemHandler* handler,
                                    const std::string& carrier_name,
-                                   DBus::Error& error)
-{
+                                   DBus::Error& error) {
   gobifw_init(NULL);
   gobifw *fw = gobifw_bycarrier(carrier_name.c_str());
   enum gobifw_activate_status rc;
@@ -34,6 +38,7 @@ void Gobi3KModemHelper::SetCarrier(GobiModem *modem,
 
   if (was_connected)
     modem->ApiDisconnect();
+
   rc = gobifw_activate(fw);
   if (rc) {
     LOG(WARNING) << "Firmware activation failed: " << gobifw_lasterror();

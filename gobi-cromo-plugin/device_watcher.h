@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
-#ifndef PLUGIN_DEVICE_WATCHER_H_
-#define PLUGIN_DEVICE_WATCHER_H_
+#ifndef GOBI_CROMO_PLUGIN_DEVICE_WATCHER_H_
+#define GOBI_CROMO_PLUGIN_DEVICE_WATCHER_H_
 
 #include <glib.h>
 
@@ -16,13 +15,13 @@ struct udev_monitor;
 struct udev_device;
 
 typedef void (*DeviceCallback)(void* context,
-                               const char *action,
-                               const char *device);
+                               const char* action,
+                               const char* device);
 typedef void (*TimeoutCallback)(void*);
 
 class DeviceWatcher {
  public:
-  DeviceWatcher(const char* subsystem);
+  explicit DeviceWatcher(const char* subsystem);
   ~DeviceWatcher();
 
   void StartMonitoring();
@@ -48,4 +47,4 @@ class DeviceWatcher {
   guint timeout_id_;
 };
 
-#endif  // PLUGIN_DEVICE_WATCHER_H_
+#endif  // GOBI_CROMO_PLUGIN_DEVICE_WATCHER_H_

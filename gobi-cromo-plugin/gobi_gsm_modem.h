@@ -4,15 +4,20 @@
 
 // GSM specialization of Gobi Modem
 
-#ifndef PLUGIN_GOBI_GSM_MODEM_H_
-#define PLUGIN_GOBI_GSM_MODEM_H_
+#ifndef GOBI_CROMO_PLUGIN_GOBI_GSM_MODEM_H_
+#define GOBI_CROMO_PLUGIN_GOBI_GSM_MODEM_H_
 
-#include "gobi_modem.h"
+#include <map>
+#include <string>
+#include <vector>
+
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.h>
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.Card.h>
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.Network.h>
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Gsm.SMS.h>
 #include <cromo/sms_cache.h>
+
+#include "gobi-cromo-plugin/gobi_modem.h"
 
 class GobiModem;
 
@@ -26,7 +31,6 @@ class GobiGsmModem
       public org::freedesktop::ModemManager::Modem::Gsm::Network_adaptor,
       public org::freedesktop::ModemManager::Modem::Gsm::SMS_adaptor {
  public:
-
   GobiGsmModem(DBus::Connection& connection,
                const DBus::Path& path,
                const gobi::DeviceElement& device,
@@ -91,7 +95,7 @@ class GobiGsmModem
   // Low-level implementation routines for the SMS code
   virtual cromo::SmsMessageFragment* GetSms(int index, DBus::Error& error);
   virtual void DeleteSms(int index, DBus::Error& error);
-  virtual std::vector<int>* ListSms(DBus::Error& error) ;
+  virtual std::vector<int>* ListSms(DBus::Error& error);
 
  protected:
   void GetGsmRegistrationInfo(uint32_t* registration_state,
@@ -138,5 +142,4 @@ class GobiGsmModem
   cromo::SmsCache sms_cache_;
 };
 
-
-#endif  // PLUGIN_GOBI_GSM_MODEM_H_
+#endif  // GOBI_CROMO_PLUGIN_GOBI_GSM_MODEM_H_

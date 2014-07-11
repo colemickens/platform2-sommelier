@@ -2,18 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_2k_modem.h"
-#include "gobi_modem_handler.h"
+#include "gobi-cromo-plugin/gobi_2k_modem.h"
 
 #include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
 #include <cromo/utilities.h>
 
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
+
+Gobi2KModemHelper::Gobi2KModemHelper(gobi::Sdk *sdk) : GobiModemHelper(sdk) {}
+
+Gobi2KModemHelper::~Gobi2KModemHelper() {}
+
 void Gobi2KModemHelper::SetCarrier(GobiModem *modem,
                                    GobiModemHandler *handler,
                                    const std::string& carrier_name,
                                    DBus::Error& error) {
-
   const Carrier *carrier = handler->server().FindCarrierByName(carrier_name);
   if (carrier == NULL) {
     // TODO(rochberg):  Do we need to sanitize this string?
@@ -42,7 +46,6 @@ void Gobi2KModemHelper::SetCarrier(GobiModem *modem,
   ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kFirmwareLoadError);
 
   if (modem_carrier_id != carrier->carrier_id()) {
-
     // UpgradeFirmware doesn't pay attention to anything before the
     // last /, so we don't supply it
     std::string image_path = std::string("/") + carrier->firmware_directory();

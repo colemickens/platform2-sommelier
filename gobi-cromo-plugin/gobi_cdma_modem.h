@@ -4,12 +4,16 @@
 
 // CDMA specialization of Gobi Modem
 
-#ifndef PLUGIN_GOBI_CDMA_MODEM_H_
-#define PLUGIN_GOBI_CDMA_MODEM_H_
+#ifndef GOBI_CROMO_PLUGIN_GOBI_CDMA_MODEM_H_
+#define GOBI_CROMO_PLUGIN_GOBI_CDMA_MODEM_H_
 
-#include "gobi_modem.h"
+#include <map>
+#include <string>
+
 #include <base/files/file_path.h>
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.Cdma.h>
+
+#include "gobi-cromo-plugin/gobi_modem.h"
 
 class GobiModem;
 
@@ -17,7 +21,6 @@ class GobiCdmaModem
     : public GobiModem,
       public org::freedesktop::ModemManager::Modem::Cdma_adaptor {
  public:
-
   GobiCdmaModem(DBus::Connection& connection,
                 const DBus::Path& path,
                 const gobi::DeviceElement& device,
@@ -79,8 +82,8 @@ class GobiCdmaModem
   // ======================================================================
 
   struct ActivationStatusArgs : public CallbackArgs {
-    ActivationStatusArgs(ULONG device_activation_state)
-      : device_activation_state(device_activation_state) { }
+    explicit ActivationStatusArgs(ULONG device_activation_state)
+        : device_activation_state(device_activation_state) {}
     ULONG device_activation_state;
   };
 
@@ -152,4 +155,4 @@ class GobiCdmaModem
 };
 
 
-#endif  // PLUGIN_GOBI_CDMA_MODEM_H_
+#endif  // GOBI_CROMO_PLUGIN_GOBI_CDMA_MODEM_H_

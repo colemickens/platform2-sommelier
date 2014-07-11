@@ -2,18 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PLUGIN_GOBI_MODEM_FACTORY_H_
-#define PLUGIN_GOBI_MODEM_FACTORY_H_
-
+#ifndef GOBI_CROMO_PLUGIN_GOBI_MODEM_FACTORY_H_
+#define GOBI_CROMO_PLUGIN_GOBI_MODEM_FACTORY_H_
 
 namespace DBus {
+
 class Connection;
 struct Path;
-}
+
+}  // namespace DBus
+
 namespace gobi {
+
 struct DeviceElement;
 class Sdk;
-}
+
+}  // namespace gobi
+
 class GobiModem;
 
 class GobiModemFactory {
@@ -26,4 +31,4 @@ class GobiModemFactory {
                                 gobi::Sdk* sdk);
 };
 
-#endif  // PLUGIN_GOBI_MODEM_FACTORY_H_
+#endif  // GOBI_CROMO_PLUGIN_GOBI_MODEM_FACTORY_H_

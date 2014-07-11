@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
-#ifndef PLUGIN_GOBI_MODEM_H_
-#define PLUGIN_GOBI_MODEM_H_
+#ifndef GOBI_CROMO_PLUGIN_GOBI_MODEM_H_
+#define GOBI_CROMO_PLUGIN_GOBI_MODEM_H_
 
 #include <glib.h>
 #include <pthread.h>
+
+#include <map>
+#include <set>
+#include <string>
+
 #include <base/basictypes.h>
 // TODO(ers) remove following #include once logging spew is resolved
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
-#include <map>
-#include <string>
-#include <set>
-
 #include <cromo/cromo_server.h>
 #include <cromo/dbus_adaptors/org.freedesktop.DBus.Properties.h>
 #include <cromo/dbus_adaptors/org.freedesktop.ModemManager.Modem.h>
@@ -25,18 +25,16 @@
 #include <metrics/metrics_library.h>
 #include <mm/mm-modem.h>
 
-#include "modem_gobi_server_glue.h"
-#include "gobi_sdk_wrapper.h"
-#include "metrics_stopwatch.h"
+#include "gobi-cromo-plugin/gobi_sdk_wrapper.h"
+#include "gobi-cromo-plugin/metrics_stopwatch.h"
+#include "gobi-cromo-plugin/modem_gobi_server_glue.h"
 
 // TODO(rochberg)  Fix namespace pollution
 #define METRIC_BASE_NAME "Network.3G.Gobi."
 
-#define DEFINE_ERROR(name) \
-  extern const char* k##name##Error;
-#define DEFINE_MM_ERROR(name, str) \
-  extern const char* kError##name;
-#include "gobi_modem_errors.h"
+#define DEFINE_ERROR(name) extern const char* k##name##Error;
+#define DEFINE_MM_ERROR(name, str) extern const char* kError##name;
+#include "gobi-cromo-plugin/gobi_modem_errors.h"  // NOLINT(build/include_alpha)
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
 
@@ -59,7 +57,7 @@ unsigned int QMIReasonToMMReason(unsigned int qmireason);
     } while (0)                                            \
 
 #define ENSURE_SDK_SUCCESS(function, rc, errtype)   \
-        ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype,)
+        ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype, )
 
 // from mm-modem.h in ModemManager. This enum
 // should move into an XML file to become part
@@ -93,7 +91,7 @@ class PendingEnable;
 
 class ScopedGSource {
  public:
-  ScopedGSource() : id_(0) { }
+  ScopedGSource() : id_(0) {}
   ~ScopedGSource() { Remove(); }
 
   // Remove old timeout if exists and add a new one
@@ -114,21 +112,21 @@ class ScopedGSource {
       id_ = 0;
     }
   }
-  DISALLOW_COPY_AND_ASSIGN(ScopedGSource);
+
  private:
   uint32 id_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedGSource);
 };
 
-class GobiModem
-    : public Modem,
-      public org::freedesktop::ModemManager::Modem_adaptor,
-      public org::freedesktop::ModemManager::Modem::Simple_adaptor,
-
-      public org::chromium::ModemManager::Modem::Gobi_adaptor,
-      public org::freedesktop::DBus::Properties_adaptor,
-      public DBus::IntrospectableAdaptor,
-      public DBus::PropertiesAdaptor,
-      public DBus::ObjectAdaptor {
+class GobiModem : public Modem,
+                  public org::freedesktop::ModemManager::Modem_adaptor,
+                  public org::freedesktop::ModemManager::Modem::Simple_adaptor,
+                  public org::chromium::ModemManager::Modem::Gobi_adaptor,
+                  public org::freedesktop::DBus::Properties_adaptor,
+                  public DBus::IntrospectableAdaptor,
+                  public DBus::PropertiesAdaptor,
+                  public DBus::ObjectAdaptor {
  public:
   enum NetworkPreference {
     kNetworkPreferenceAutomatic = 0,
@@ -149,10 +147,8 @@ class GobiModem
 
   virtual void Init();
 
-  int last_seen() {return last_seen_;}
-  void set_last_seen(int scan_count) {
-    last_seen_ = scan_count;
-  }
+  int last_seen() { return last_seen_; }
+  void set_last_seen(int scan_count) { last_seen_ = scan_count; }
 
   uint32_t mm_state() { return mm_state_; }
   void SetMmState(uint32_t new_state, uint32_t reason);
@@ -169,15 +165,15 @@ class GobiModem
   std::string GetUSBAddress();
 
   // Modem methods.
-  virtual ModemAdaptor *modem_adaptor() {
-    return static_cast<ModemAdaptor *>(this);
+  virtual ModemAdaptor* modem_adaptor() {
+    return static_cast<ModemAdaptor*>(this);
   }
 
-  virtual SimpleAdaptor *simple_adaptor() {
-    return static_cast<SimpleAdaptor *>(this);
+  virtual SimpleAdaptor* simple_adaptor() {
+    return static_cast<SimpleAdaptor*>(this);
   }
 
-  virtual CdmaAdaptor *cdma_adaptor() {
+  virtual CdmaAdaptor* cdma_adaptor() {
     LOG(WARNING) << "Modem::cdma_adaptor() called on non-CDMA modem.";
     return NULL;
   }
@@ -188,11 +184,12 @@ class GobiModem
   virtual void Disconnect(DBus::Error& error);
   virtual void FactoryReset(const std::string& number, DBus::Error& error);
 
-  virtual ::DBus::Struct<
-  uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config(DBus::Error& error);
+  virtual ::DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config(
+      DBus::Error& error);
 
-  virtual ::DBus::Struct<
-    std::string, std::string, std::string> GetInfo(DBus::Error& error);
+  virtual ::DBus::Struct<std::string, std::string, std::string> GetInfo(
+      DBus::Error& error);
+
   virtual void Reset(DBus::Error& error);
 
   // DBUS Methods: ModemSimple
@@ -259,20 +256,22 @@ class GobiModem
   unsigned int QCStateToMMState(ULONG qcstate);
 
   struct CallbackArgs {
-    CallbackArgs() : path(NULL) { }
-    explicit CallbackArgs(DBus::Path *path) : path(path) { }
+    CallbackArgs() : path(NULL) {}
+    explicit CallbackArgs(DBus::Path* path) : path(path) {}
     ~CallbackArgs() { delete path; }
     DBus::Path* path;
+
    private:
     DISALLOW_COPY_AND_ASSIGN(CallbackArgs);
   };
 
   struct CallbackArgsWrapper {
-    CallbackArgsWrapper() : callback(NULL), callback_id(0), args(NULL) { }
+    CallbackArgsWrapper() : callback(NULL), callback_id(0), args(NULL) {}
     ~CallbackArgsWrapper() { delete args; }
     GSourceFunc callback;
     guint callback_id;
-    CallbackArgs *args;
+    CallbackArgs* args;
+
    private:
     DISALLOW_COPY_AND_ASSIGN(CallbackArgsWrapper);
   };
@@ -311,10 +310,8 @@ class GobiModem
   }
 
   struct SessionStateArgs : public CallbackArgs {
-    SessionStateArgs(ULONG state,
-                     ULONG session_end_reason)
-      : state(state),
-        session_end_reason(session_end_reason) { }
+    SessionStateArgs(ULONG state, ULONG session_end_reason)
+        : state(state), session_end_reason(session_end_reason) {}
     ULONG state;
     ULONG session_end_reason;
   };
@@ -322,13 +319,13 @@ class GobiModem
   static void SessionStateCallbackTrampoline(ULONG state,
                                              ULONG session_end_reason) {
     PostCallbackRequest(SessionStateCallback,
-                        new SessionStateArgs(state,
-                                             session_end_reason));
+                        new SessionStateArgs(state, session_end_reason));
   }
   static gboolean SessionStateCallback(gpointer data);
 
   struct DataBearerTechnologyArgs : public CallbackArgs {
-    DataBearerTechnologyArgs(ULONG technology) : technology(technology) {}
+    explicit DataBearerTechnologyArgs(ULONG technology)
+        : technology(technology) {}
     ULONG technology;
   };
 
@@ -357,10 +354,8 @@ class GobiModem
   static gboolean RegistrationStateCallback(gpointer data);
 
   struct SignalStrengthArgs : public CallbackArgs {
-    SignalStrengthArgs(INT8 signal_strength,
-                       ULONG radio_interface)
-      : signal_strength(signal_strength),
-        radio_interface(radio_interface) { }
+    SignalStrengthArgs(INT8 signal_strength, ULONG radio_interface)
+        : signal_strength(signal_strength), radio_interface(radio_interface) {}
     INT8 signal_strength;
     ULONG radio_interface;
   };
@@ -374,7 +369,7 @@ class GobiModem
   static gboolean SignalStrengthCallback(gpointer data);
 
   struct DormancyStatusArgs : public CallbackArgs {
-    DormancyStatusArgs(ULONG status) : status(status) { }
+    explicit DormancyStatusArgs(ULONG status) : status(status) {}
     ULONG status;
   };
 
@@ -386,11 +381,11 @@ class GobiModem
   static gboolean DormancyStatusCallback(gpointer data);
 
   struct DataCapabilitiesArgs : public CallbackArgs {
-    DataCapabilitiesArgs(BYTE num_caps, BYTE* data)
-      : num_data_caps(num_caps) {
+    DataCapabilitiesArgs(BYTE num_caps, BYTE* data) : num_data_caps(num_caps) {
       ULONG* dcp = reinterpret_cast<ULONG*>(data);
       if (num_data_caps > 12)
         num_data_caps = 12;
+
       for (int i = 0; i < num_data_caps; i++)
         data_caps[i] = dcp[i];
     }
@@ -408,7 +403,7 @@ class GobiModem
   static gboolean DataCapabilitiesCallback(gpointer data);
 
   struct SdkErrorArgs : public CallbackArgs {
-    SdkErrorArgs(ULONG error) : error(error) { }
+    explicit SdkErrorArgs(ULONG error) : error(error) {}
     ULONG error;
   };
   static gboolean SdkErrorHandler(gpointer data);
@@ -425,7 +420,7 @@ class GobiModem
   // all run in the main thread.
   virtual void RegistrationStateHandler() = 0;
   virtual void DataCapabilitiesHandler(BYTE num_data_caps,
-                               ULONG* data_caps) = 0;
+                                       ULONG* data_caps) = 0;
   virtual void SignalStrengthHandler(INT8 signal_strength,
                                      ULONG radio_interface) = 0;
 
@@ -433,9 +428,9 @@ class GobiModem
   virtual void DataBearerTechnologyHandler(ULONG technology);
   virtual void PowerModeHandler();
 
-  static GobiModemHandler *handler_;
+  static GobiModemHandler* handler_;
   // Wraps the Gobi SDK for dependency injection
-  gobi::Sdk *sdk_;
+  gobi::Sdk* sdk_;
   scoped_ptr<GobiModemHelper> modem_helper_;
   gobi::DeviceElement device_;
   int last_seen_;  // Updated every scan where the modem is present
@@ -452,7 +447,7 @@ class GobiModem
     mutex_wrapper_() { pthread_mutex_init(&mutex_, NULL); }
     pthread_mutex_t mutex_;
   };
-  static GobiModem *connected_modem_;
+  static GobiModem* connected_modem_;
   static mutex_wrapper_ modem_mutex_;
 
   bool exiting_;
@@ -470,10 +465,10 @@ class GobiModem
   static gboolean RetryDisableCallback(gpointer data);
   bool EnableHelper(const bool& enable, DBus::Error& error,
                     const bool& user_initiated);
-  void FinishEnable(const DBus::Error &error);
+  void FinishEnable(const DBus::Error& error);
   void PerformDeferredDisable();
 
-  static gobi::RegistrationState GetRegistrationState(gobi::Sdk *sdk);
+  static gobi::RegistrationState GetRegistrationState(gobi::Sdk* sdk);
 
   friend class GobiModemTest;
 
@@ -501,8 +496,8 @@ class GobiModem
 
   std::string hooks_name_;
 
-  friend bool StartExitTrampoline(void *arg);
-  friend bool ExitOkTrampoline(void *arg);
+  friend bool StartExitTrampoline(void* arg);
+  friend bool ExitOkTrampoline(void* arg);
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
 
@@ -518,7 +513,7 @@ class GobiModem
     GOBI_EVENT_MAX
   };
 
-  static int EventKeyToIndex(const char *key);
+  static int EventKeyToIndex(const char* key);
   void RequestEvent(const std::string req, DBus::Error& error);
   bool event_enabled[GOBI_EVENT_MAX];
 
@@ -534,13 +529,15 @@ class GobiModem
   friend class Gobi3KModemHelper;  // a bad idea, but necessary until
                                    // code is restructured
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };
 
 class ScopedApiConnection {
  public:
-  ScopedApiConnection(GobiModem &modem) : modem_(modem),
-                                   was_connected_(modem_.IsApiConnected()) { }
+  explicit ScopedApiConnection(GobiModem& modem)
+      : modem_(modem), was_connected_(modem_.IsApiConnected()) {}
+
   ~ScopedApiConnection() {
     if (!was_connected_ && modem_.IsApiConnected())
       modem_.ApiDisconnect();
@@ -559,26 +556,29 @@ class ScopedApiConnection {
   }
 
  private:
-  GobiModem &modem_;
+  GobiModem& modem_;
   bool was_connected_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedApiConnection);
 };
 
 class GobiModemHelper {
  public:
-  GobiModemHelper(gobi::Sdk* sdk) : sdk_(sdk) { };
-  virtual ~GobiModemHelper() { };
+  explicit GobiModemHelper(gobi::Sdk* sdk) : sdk_(sdk) {}
+  virtual ~GobiModemHelper() {}
 
-  virtual void SetCarrier(GobiModem *modem,
-                          GobiModemHandler *handler,
+  virtual void SetCarrier(GobiModem* modem,
+                          GobiModemHandler* handler,
                           const std::string& carrier_name,
                           DBus::Error& error) = 0;
-
-  DISALLOW_COPY_AND_ASSIGN(GobiModemHelper);
 
  protected:
   static const char kErrorUnknownCarrier[];
 
   gobi::Sdk* sdk_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GobiModemHelper);
 };
 
-#endif  // PLUGIN_GOBI_MODEM_H_
+#endif  // GOBI_CROMO_PLUGIN_GOBI_MODEM_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_modem_handler.h"
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
 
 #include <glib.h>
 extern "C" {
@@ -18,11 +18,11 @@ extern "C" {
 #include <cromo/cromo_server.h>
 #include <cromo/plugin.h>
 
-#include "device_watcher.h"
-#include "gobi_modem.h"
-#include "gobi_cdma_modem.h"
-#include "gobi_modem_factory.h"
-#include "gobi_sdk_wrapper.h"
+#include "gobi-cromo-plugin/device_watcher.h"
+#include "gobi-cromo-plugin/gobi_cdma_modem.h"
+#include "gobi-cromo-plugin/gobi_modem.h"
+#include "gobi-cromo-plugin/gobi_modem_factory.h"
+#include "gobi-cromo-plugin/gobi_sdk_wrapper.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -288,8 +288,7 @@ vector<DBus::Path> GobiModemHandler::EnumerateDevices(DBus::Error& error) {
   return to_return;
 }
 
-GobiModem* GobiModemHandler::LookupByDbusPath(const std::string& dbuspath)
-{
+GobiModem* GobiModemHandler::LookupByDbusPath(const std::string& dbuspath) {
   for (ControlPathToModem::iterator p = control_path_to_modem_.begin();
        p != control_path_to_modem_.end(); ++p) {
     GobiModem* m = p->second;

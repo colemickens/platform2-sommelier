@@ -20,7 +20,7 @@
   without the express written permission of QUALCOMM Incorporated.
   ==========================================================================*/
 
-#include "gobi_sdk_wrapper.h"
+#include "gobi-cromo-plugin/gobi_sdk_wrapper.h"
 
 #include <base/logging.h>
 
@@ -29,7 +29,7 @@
 
 namespace gobi {
 
-static const char *kServiceMapping[] = {
+const char *kServiceMapping[] = {
   // Entries starting with "+" define a new service.  The rest are
   // function names that belong to that service.  These names are
   // taken from the tables at the beginning of service in the CMAPI
@@ -259,12 +259,12 @@ void Sdk::InitGetServiceFromName(const char *services[]) {
   int service_index = -1;
   for (int i = 0; services[i]; ++i) {
     const char *name = services[i];
-    CHECK(*name != 0) << "Empty servicename: " << i;
+    CHECK(*name) << "Empty servicename: " << i;
     if (name[0] == '+') {
       service_index++;
       index_to_service_name_[service_index] = name + 1;
     } else {
-      CHECK(service_index >= 0);
+      CHECK_GE(service_index, 0);
       name_to_service_[std::string(name)] = service_index;
     }
   }
@@ -291,7 +291,7 @@ int Sdk::GetServiceBound(int service) {
 ULONG Sdk::EnterSdk(const char *function_name) {
   ULONG to_return = 0;
   int rc = pthread_mutex_lock(&service_to_function_mutex_);
-  CHECK(rc == 0) << "lock failed: rc = " << rc;
+  CHECK_EQ(rc, 0) << "lock failed: rc = " << rc;
   int service = GetServiceFromName(function_name);
   for (int i = service; i < GetServiceBound(service); ++i) {
     if (service_to_function_[i]) {
@@ -307,13 +307,13 @@ ULONG Sdk::EnterSdk(const char *function_name) {
     }
   }
   rc = pthread_mutex_unlock(&service_to_function_mutex_);
-  CHECK(rc == 0) << "rc = " << rc;
+  CHECK_EQ(rc, 0) << "rc = " << rc;
   return to_return;
 }
 
 void Sdk::LeaveSdk(const char *function_name) {
   int rc = pthread_mutex_lock(&service_to_function_mutex_);
-  CHECK(rc == 0) << "lock failed: rc = " << rc;
+  CHECK_EQ(rc, 0) << "lock failed: rc = " << rc;
 
   int service = GetServiceFromName(function_name);
   for (int i = service; i < GetServiceBound(service); ++i) {
@@ -328,7 +328,7 @@ void Sdk::LeaveSdk(const char *function_name) {
     service_to_function_[i] = NULL;
   }
   rc = pthread_mutex_unlock(&service_to_function_mutex_);
-  CHECK(rc == 0) << "rc = " << rc;
+  CHECK_EQ(rc, 0) << "rc = " << rc;
 }
 
 ULONG Sdk::CancelStartDataSession() {
@@ -342,7 +342,7 @@ ULONG Sdk::CancelStartDataSession() {
 
   // Sanity checks
   int rc = pthread_mutex_lock(&service_to_function_mutex_);
-  CHECK(rc == 0) << "lock failed: rc = " << rc;
+  CHECK_EQ(rc, 0) << "lock failed: rc = " << rc;
 
   int wireless_data_service_index = name_to_service_[to_cancel];
   const char *current_wireless_data_fn =
@@ -362,7 +362,7 @@ ULONG Sdk::CancelStartDataSession() {
     }
   }
   rc = pthread_mutex_unlock(&service_to_function_mutex_);
-  CHECK(rc == 0) << "rc = " << rc;
+  CHECK_EQ(rc, 0) << "rc = " << rc;
 
   // Sanity checks complete
   return ::CancelDataSession();
@@ -377,8 +377,7 @@ do {                                            \
   }                                             \
 } while (0);
 
-GobiType Sdk::GetDeviceType()
-{
+GobiType Sdk::GetDeviceType() {
   return ::GetDeviceType();
 }
 
@@ -1904,4 +1903,4 @@ ULONG Sdk::SetOMADMStateCallback(tFNOMADMState pCallback) {
   return cw.CheckReturn(::SetOMADMStateCallback(pCallback));
 }
 
-}   // Namespace Gobi
+}  // namespace gobi

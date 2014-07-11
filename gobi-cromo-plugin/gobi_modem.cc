@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_modem.h"
-#include "gobi_modem_handler.h"
+#include "gobi-cromo-plugin/gobi_modem.h"
+
+#include <algorithm>
 #include <sstream>
+#include <vector>
 
 #include <dbus/dbus.h>
-
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -17,7 +18,7 @@
 extern "C" {
 #include <libudev.h>
 #include <time.h>
-};
+}
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -25,6 +26,7 @@ extern "C" {
 #include <cromo/cromo_server.h>
 #include <cromo/utilities.h>
 
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
 
 // This ought to be in a header file somewhere, but if it is, I can't find it.
 #ifndef NDEBUG
@@ -34,12 +36,11 @@ static const int DEBUG = 0;
 #endif
 
 #define DEFINE_ERROR(name) \
-  const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
+    const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
 #define DEFINE_MM_ERROR(name, str) \
-  const char* kError##name = \
-    "org.freedesktop.ModemManager.Modem.Gsm." str;
+    const char* kError##name = "org.freedesktop.ModemManager.Modem.Gsm." str;
 
-#include "gobi_modem_errors.h"
+#include "gobi-cromo-plugin/gobi_modem_errors.h"
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
 
@@ -227,10 +228,11 @@ class SessionStarter {
   int fault_inject_sleep_time_ms_;
   pthread_t thread_;
   DBus::Tag continuation_tag_;
- private:
-  DISALLOW_COPY_AND_ASSIGN(SessionStarter);
 
+ private:
   friend class GobiModem;
+
+  DISALLOW_COPY_AND_ASSIGN(SessionStarter);
 };
 
 // Tracks a call to Enable (enable or disable) because the Enable
@@ -239,15 +241,18 @@ class SessionStarter {
 // progress)
 class PendingEnable {
  public:
-  PendingEnable(bool enable) : enable_(enable) {}
-  DBus::Tag tag_;
+  explicit PendingEnable(bool enable) : enable_(enable) {}
+  ~PendingEnable() {}
+
   // NB: contrary to our style guide, this throws an exception that
   // dbus catches
   void RecordEnableAndReturnLater(GobiModem *modem) {
     modem->return_later(&tag_);
   }
-  virtual ~PendingEnable() {}
+
+  DBus::Tag tag_;
   const bool enable_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(PendingEnable);
 };
@@ -286,8 +291,7 @@ ULONG GobiModem::MapDataBearerToRfi(ULONG data_bearer_technology) {
   }
 }
 
-static struct udev_enumerate *enumerate_net_devices(struct udev *udev)
-{
+static struct udev_enumerate *enumerate_net_devices(struct udev *udev) {
   int rc;
   struct udev_enumerate *udev_enumerate = udev_enumerate_new(udev);
 
@@ -453,8 +457,7 @@ gboolean GobiModem::RetryDisableCallback(gpointer data) {
 //           not be completed, or the operation would have no effect.
 //
 bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error,
-                             const bool &user_initiated)
-{
+                             const bool &user_initiated) {
   if (enable && Enabled()) {
     ScopedApiConnection connection(*this);
     connection.ApiConnect(error);
@@ -569,8 +572,7 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   Connect(properties, error);
 }
 
-ULONG GobiModem::StopDataSession(ULONG session_id)
-{
+ULONG GobiModem::StopDataSession(ULONG session_id) {
   disconnect_time_.Start();
   ULONG rc = sdk_->StopDataSession(session_id);
   if (rc != 0)
@@ -704,8 +706,7 @@ void GobiModem::FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error) {
   }
 }
 
-void GobiModem::FinishEnable(const DBus::Error &error)
-{
+void GobiModem::FinishEnable(const DBus::Error &error) {
   scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
   retry_disable_callback_source_.Remove();
   FinishDeferredCall(&scoped_enable->tag_, error);
@@ -748,7 +749,6 @@ void GobiModem::PerformDeferredDisable() {
 }
 
 void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
-
   session_starter_in_flight_ = false;
   if (injected_faults_["ConnectFailsWithErrorSendingQmiRequest"]) {
     LOG(ERROR) << "Fault injection: Making StartDataSession return QMI error";
@@ -989,9 +989,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
 
 // This is only in debug builds; if you add actual code here, see
 // RegisterCallbacks().
-static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
-
-}
+static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {}
 
 // This is only in debug builds; if you add actual code here, see
 // RegisterCallbacks().
@@ -1037,9 +1035,8 @@ void GobiModem::RegisterCallbacks() {
   }
 
   static int num_thresholds = kSignalStrengthNumLevels - 1;
-  int interval =
-      (kMaxSignalStrengthDbm - kMinSignalStrengthDbm) /
-      (kSignalStrengthNumLevels - 1);
+  int interval = (kMaxSignalStrengthDbm - kMinSignalStrengthDbm) /
+                 (kSignalStrengthNumLevels - 1);
   INT8 thresholds[num_thresholds];
   for (int i = 0; i < num_thresholds; i++) {
     thresholds[i] = kMinSignalStrengthDbm + interval * i;
@@ -1194,7 +1191,7 @@ void GobiModem::LogGobiInformation() {
   if (rc != 0 && rc != gobi::kNotSupportedByDevice) {
     LOG(WARNING) << "GetAMIPP: " << rc;
   } else {
-    LOG(INFO) << "Mobile IP profile: " << (int)index;
+    LOG(INFO) << "Mobile IP profile: " << static_cast<int>(index);
   }
 }
 
@@ -1317,9 +1314,9 @@ void GobiModem::GetSignalStrengthDbm(int& output,
 void GobiModem::GetPowerState() {
   ULONG power_mode;
   ULONG rc = sdk_->GetPower(&power_mode);
-  if (rc != 0)
+  if (rc != 0) {
     LOG(INFO) << "Cannot determine initial power mode: Error " << rc;
-  else {
+  } else {
     LOG(INFO) << "Initial power mode: " << power_mode;
     if (power_mode == gobi::kOnline) {
       SetEnabled(true);
@@ -1586,8 +1583,7 @@ void GobiModem::DataBearerTechnologyHandler(ULONG technology) {
 
 // Set DBus properties that pertain to the modem hardware device.
 // The properties set here are Device, MasterDevice, and Driver.
-void GobiModem::SetDeviceProperties()
-{
+void GobiModem::SetDeviceProperties() {
   struct udev *udev = udev_new();
   if (udev == NULL) {
     LOG(WARNING) << "udev == NULL";
@@ -1605,7 +1601,6 @@ void GobiModem::SetDeviceProperties()
   for (entry = udev_enumerate_get_list_entry(udev_enumerate);
        entry != NULL;
        entry = udev_list_entry_get_next(entry)) {
-
     std::string syspath(udev_list_entry_get_name(entry));
 
     struct udev_device *udev_device =

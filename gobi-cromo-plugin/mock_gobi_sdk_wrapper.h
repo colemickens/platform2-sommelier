@@ -19,6 +19,9 @@
   without the express written permission of QUALCOMM Incorporated.
   ==========================================================================*/
 
+#ifndef GOBI_CROMO_PLUGIN_MOCK_GOBI_SDK_WRAPPER_H_
+#define GOBI_CROMO_PLUGIN_MOCK_GOBI_SDK_WRAPPER_H_
+
 #include <gtest/gtest.h>
 
 namespace gobi {
@@ -31,7 +34,7 @@ namespace gobi {
 
 class ErrorSdk : public gobi::Sdk {
  public:
-  ErrorSdk() : Sdk(NULL),strict_(false) {}
+  ErrorSdk() : Sdk(NULL), strict_(false) {}
 
   virtual ULONG QCWWANEnumerateDevices(
       BYTE *                     pDevicesSize,
@@ -1301,3 +1304,5 @@ class BootstrapSdk : public ErrorSdk {
 };
 
 }  // namespace gobi
+
+#endif  // GOBI_CROMO_PLUGIN_MOCK_GOBI_SDK_WRAPPER_H_

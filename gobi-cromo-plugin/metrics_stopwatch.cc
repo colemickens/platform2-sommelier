@@ -2,34 +2,36 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "metrics_stopwatch.h"
+#include "gobi-cromo-plugin/metrics_stopwatch.h"
 
-#include <limits.h>
 #include <time.h>
+
+#include <limits>
 
 #include <base/logging.h>
 #include <metrics/metrics_library.h>
 
-static const unsigned long long kInvalid = ULLONG_MAX;
+static const uint64_t kInvalid = std::numeric_limits<uint64_t>::max();
 
 class MetricsLibraryInterface;
 
-MetricsStopwatch::MetricsStopwatch(const char *name,
+MetricsStopwatch::MetricsStopwatch(const char* name,
                                    int min,
                                    int max,
                                    int nbuckets)
-    : name_(name),
+    : metrics_(new MetricsLibrary()),
+      name_(name),
       min_(min),
       max_(max),
-      nbuckets_(nbuckets) {
-  Reset();
-  metrics_.reset(new MetricsLibrary());
+      nbuckets_(nbuckets),
+      start_(kInvalid),
+      stop_(kInvalid) {
   metrics_->Init();
 }
 
-unsigned long long MetricsStopwatch::GetTimeMs(void) {
+uint64_t MetricsStopwatch::GetTimeMs() {
   struct timespec ts;
-  unsigned long long rv;
+  uint64_t rv;
 
   clock_gettime(CLOCK_MONOTONIC, &ts);
   rv = ts.tv_sec;
@@ -70,20 +72,20 @@ void MetricsStopwatch::ReportAndReset() {
   Reset();
 }
 
-void MetricsStopwatch::SetStart(unsigned long long start) {
+void MetricsStopwatch::SetStart(uint64_t start) {
   start_ = start;
   if (start_ != kInvalid && stop_ != kInvalid) {
     ReportAndReset();
   }
 }
 
-void MetricsStopwatch::SetStop(unsigned long long stop) {
+void MetricsStopwatch::SetStop(uint64_t stop) {
   stop_ = stop;
   if (start_ != kInvalid && stop_ != kInvalid) {
     ReportAndReset();
   }
 }
 
-void MetricsStopwatch::SetMetrics(MetricsLibraryInterface *m) {
+void MetricsStopwatch::SetMetrics(MetricsLibraryInterface* m) {
   metrics_.reset(m);
 }

@@ -2,23 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CROMO_GOBI_MODEM_HANDLER_H_
-#define CROMO_GOBI_MODEM_HANDLER_H_
-
-#include "base/basictypes.h"
-#include "base/memory/scoped_ptr.h"
+#ifndef GOBI_CROMO_PLUGIN_GOBI_MODEM_HANDLER_H_
+#define GOBI_CROMO_PLUGIN_GOBI_MODEM_HANDLER_H_
 
 #include <map>
+#include <string>
+#include <vector>
 
+#include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
+#include <cromo/modem_handler.h>
 #include <dbus-c++/types.h>
 
-#include <cromo/modem_handler.h>
-#include "gobi_modem.h"
+#include "gobi-cromo-plugin/gobi_modem.h"
 
 class DeviceWatcher;
+
 namespace gobi {
+
 class Sdk;
-}
+
+}  // namespace gobi
 
 // This class cares about two orthogonal kinds of path: control paths and DBus
 // paths. Control paths are only used internally, and are the names of the qcqmi
@@ -70,5 +74,4 @@ class GobiModemHandler : public ModemHandler {
   DISALLOW_COPY_AND_ASSIGN(GobiModemHandler);
 };
 
-
-#endif  // CROMO_GOBI_MODEM_HANDLER_H_
+#endif  // GOBI_CROMO_PLUGIN_GOBI_MODEM_HANDLER_H_

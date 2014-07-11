@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_modem_factory.h"
-
-#include "gobi_cdma_modem.h"
-#include "gobi_gsm_modem.h"
-#include "gobi_2k_modem.h"
-#include "gobi_3k_modem.h"
+#include "gobi-cromo-plugin/gobi_modem_factory.h"
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+
+#include "gobi-cromo-plugin/gobi_2k_modem.h"
+#include "gobi-cromo-plugin/gobi_3k_modem.h"
+#include "gobi-cromo-plugin/gobi_cdma_modem.h"
+#include "gobi-cromo-plugin/gobi_gsm_modem.h"
 
 GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
                                          const DBus::Path& path,
@@ -42,7 +42,7 @@ GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
   }
   GobiType devtype = GetDeviceType();
   scoped_ptr<GobiModemHelper> helper;
-  switch(devtype) {
+  switch (devtype) {
     case GOBITYPE_2K:
       helper.reset(new Gobi2KModemHelper(sdk));
       break;

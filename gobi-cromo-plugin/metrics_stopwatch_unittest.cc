@@ -7,14 +7,13 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "metrics_stopwatch.h"
+#include "gobi-cromo-plugin/metrics_stopwatch.h"
 
 using ::testing::AllOf;
 using ::testing::Gt;
 using ::testing::Lt;
 using ::testing::StrEq;
 using ::testing::_;
-
 
 class MetricsStopwatchTest : public ::testing::Test {
  public:

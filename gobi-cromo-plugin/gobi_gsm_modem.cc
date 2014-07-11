@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_gsm_modem.h"
+#include "gobi-cromo-plugin/gobi_gsm_modem.h"
 
-#include "gobi_modem_handler.h"
+#include <ctype.h>  // for isspace(), to implement TrimWhitespaceASCII()
+#include <stdio.h>  // for sscanf()
+
+#include <sstream>
+
 #include <base/memory/scoped_ptr.h>
 #include <cromo/carrier.h>
 #include <cromo/sms_message.h>
 #include <mm/mm-modem.h>
 
-#include <ctype.h> // for isspace(), to implement TrimWhitespaceASCII()
-#include <stdio.h> // for sscanf()
-#include <sstream>
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
 
 using cromo::SmsMessage;
 using cromo::SmsMessageFragment;
@@ -21,8 +23,7 @@ static const uint32_t kPinRetriesNotKnown = 999;
 
 //======================================================================
 // Construct and destruct
-GobiGsmModem::~GobiGsmModem() {
-}
+GobiGsmModem::~GobiGsmModem() {}
 
 //======================================================================
 // Callbacks and callback utilities
@@ -83,11 +84,11 @@ void GobiGsmModem::RegistrationStateHandler() {
           mm_modem_state = MM_MODEM_STATE_SEARCHING;
         break;
       case MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN:
-        mm_modem_state = MM_MODEM_STATE_ENABLED; // ???
+        mm_modem_state = MM_MODEM_STATE_ENABLED;  // ???
         break;
       default:
         LOG(ERROR) << "Unknown registration status: " << registration_status;
-        mm_modem_state = MM_MODEM_STATE_ENABLED; // ???
+        mm_modem_state = MM_MODEM_STATE_ENABLED;  // ???
         break;
     }
     if (mm_modem_state != MM_MODEM_STATE_REGISTERED ||
@@ -164,7 +165,7 @@ void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
   if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING &&
       session_starter_in_flight_)
     return;
-  switch(registration_status) {
+  switch (registration_status) {
     case MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE:
     case MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED:
       RegistrationInfo(registration_status, operator_code, operator_name);
@@ -277,16 +278,13 @@ static std::string MakeOperatorCode(WORD mcc, WORD mnc) {
 
 // Trims any whitespace from both ends of the input string
 // Local implementation to avoid the need to pull in <base/string_util.h>
-static void TrimWhitespaceASCII(const std::string &input, std::string *output)
-{
+static void TrimWhitespaceASCII(const std::string& input, std::string* output) {
   size_t start, end, size;
 
   size = input.size();
 
-  for (start = 0 ; start < size && isspace(input[start]); start++)
-    ;
-  for (end = size; end > start && isspace(input[end-1]); end--)
-    ;
+  for (start = 0; start < size && isspace(input[start]); start++) {}
+  for (end = size; end > start && isspace(input[end - 1]); end--) {}
 
   *output = input.substr(start, end-start);
 }
@@ -514,10 +512,11 @@ ScannedNetworkList GobiGsmModem::Scan(DBus::Error& error) {
 
   // This is a blocking call, and may take a while (i.e., a minute or more)
   LOG(INFO) << "Beginning network scan";
-  ULONG rc = sdk_->PerformNetworkScan(&num_networks,
-                                    static_cast<BYTE*>((void *)&networks[0]));
+  ULONG rc = sdk_->PerformNetworkScan(
+      &num_networks, static_cast<BYTE*>(reinterpret_cast<void*>(&networks[0])));
   ENSURE_SDK_SUCCESS_WITH_RESULT(PerformNetworkScan, rc, kSdkError, list);
-  LOG(INFO) << "Network scan returned " << (int)num_networks << " networks";
+  LOG(INFO) << "Network scan returned " << static_cast<int>(num_networks)
+            << " networks";
   for (int i = 0; i < num_networks; i++) {
     gobi::GsmNetworkInfoInstance *net = &networks[i];
     std::map<std::string, std::string> netprops;
@@ -714,18 +713,18 @@ std::string GobiGsmModem::GetSpn(DBus::Error& error) {
   }
 
   switch (names[0]) {
-  case 0x00: // ASCII
-    {
+    case 0x00: {  // ASCII
       const char *spnAscii = (const char *)names + 2;
       result = std::string(spnAscii, spnLen);
     }
     break;
-  case 0x01: // UCS2
-    {
+
+    case 0x01: {  // UCS2
       const uint8_t *spnUcs2 = (const uint8_t *)names + 2;
       result = std::string(utilities::Ucs2ToUtf8String(spnUcs2, spnLen));
     }
     break;
+
   default:
     LOG(WARNING) << "GetSpn: invalid encoding byte " << names[0];
     break;
@@ -747,8 +746,7 @@ std::string GobiGsmModem::GetMsIsdn(DBus::Error& error) {
 //======================================================================
 // DBUS Methods: Modem.Gsm.SMS
 
-SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error)
-{
+SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error) {
   ULONG tag, format, size;
   BYTE message[200];
 
@@ -769,21 +767,19 @@ SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error)
   return fragment;
 }
 
-void GobiGsmModem::DeleteSms(int index, DBus::Error& error)
-{
+void GobiGsmModem::DeleteSms(int index, DBus::Error& error) {
   ULONG lindex = index;
   ULONG rc = sdk_->DeleteSMS(gobi::kSmsNonVolatileMemory, &lindex, NULL);
   ENSURE_SDK_SUCCESS(DeleteSMS, rc, kSdkError);
 }
 
-std::vector<int>* GobiGsmModem::ListSms(DBus::Error& error)
-{
+std::vector<int>* GobiGsmModem::ListSms(DBus::Error& error) {
   ULONG items[100];
   ULONG num_items;
 
   num_items = sizeof(items) / (2 * sizeof(items[0]));
-  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL,
-                              &num_items, (BYTE *)items);
+  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL, &num_items,
+                              reinterpret_cast<BYTE*>(items));
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, NULL);
   LOG(INFO) << "GetSmsList: got " << num_items << " messages";
 

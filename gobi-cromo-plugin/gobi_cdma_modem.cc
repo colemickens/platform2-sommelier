@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gobi_cdma_modem.h"
-#include "gobi_modem_handler.h"
+#include "gobi-cromo-plugin/gobi_cdma_modem.h"
 
 extern "C" {
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-};
+}
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 #include <cromo/carrier.h>
 #include <mm/mm-modem.h>
+
+#include "gobi-cromo-plugin/gobi_modem_handler.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -694,7 +695,8 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiCdmaModem::GetServingSystem(
   gobi::RfInfoInstance rf_info[10];
   BYTE rf_info_size = sizeof(rf_info) / sizeof(rf_info[0]);
 
-  rc = sdk_->GetRFInfo(&rf_info_size, static_cast<BYTE*>((void *)&rf_info[0]));
+  rc = sdk_->GetRFInfo(
+      &rf_info_size, static_cast<BYTE*>(reinterpret_cast<void*>(&rf_info[0])));
   if (rc == gobi::kInformationElementUnavailable) {
     error.set(kErrorNoNetwork, "No network service is available");
     return result;
