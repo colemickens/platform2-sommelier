@@ -47,9 +47,6 @@ const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
 const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
-const int64_t
-CellularCapabilityUniversal::kActivationRegistrationTimeoutMilliseconds =
-    20000;
 const int64_t CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
@@ -140,8 +137,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       resetting_(false),
       subscription_state_(kSubscriptionStateUnknown),
       reset_done_(false),
-      activation_registration_timeout_milliseconds_(
-          kActivationRegistrationTimeoutMilliseconds),
       registration_dropped_update_timeout_milliseconds_(
           kRegistrationDroppedUpdateTimeoutMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
@@ -436,35 +431,6 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
   }
 }
 
-void CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout() {
-  SLOG(Cellular, 3) << __func__;
-  const string &sim_identifier = cellular()->sim_identifier();
-  if (sim_identifier.empty() ||
-      modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierICCID,
-          sim_identifier) == PendingActivationStore::kStateActivated) {
-    SLOG(Cellular, 2) << "Modem is already scheduled to be reset.";
-    return;
-  }
-  if (IsMdnValid()) {
-    SLOG(Cellular, 2) << "MDN is valid. Already activated.";
-    return;
-  }
-  if (reset_done_) {
-    SLOG(Cellular, 2) << "Already done with reset.";
-    return;
-  }
-
-  // Still not activated after timeout. Reset the modem.
-  SLOG(Cellular, 2) << "Still not registered after timeout. Reset directly "
-                    << "to update MDN.";
-  modem_info()->pending_activation_store()->SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      sim_identifier,
-      PendingActivationStore::kStatePendingTimeout);
-  ResetAfterActivation();
-}
-
 void CellularCapabilityUniversal::CompleteActivation(Error *error) {
   SLOG(Cellular, 3) << __func__;
 
@@ -478,29 +444,14 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
     return;
   }
 
-  if (IsMdnValid()) {
-    SLOG(Cellular, 2) << "Already acquired a valid MDN. Already activated.";
-    return;
-  }
-
-  // There should be a cellular service at this point.
-  if (cellular()->service().get()) {
-    if (cellular()->service()->activation_state() == kActivationStateActivated)
-      return;
-
-    cellular()->service()->SetActivationState(kActivationStateActivating);
-  }
   modem_info()->pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierICCID,
       sim_identifier,
       PendingActivationStore::kStatePending);
+  UpdatePendingActivationState();
 
-  activation_wait_for_registration_callback_.Reset(
-      Bind(&CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout,
-           weak_ptr_factory_.GetWeakPtr()));
-  cellular()->dispatcher()->PostDelayedTask(
-      activation_wait_for_registration_callback_.callback(),
-      activation_registration_timeout_milliseconds_);
+  SLOG(Cellular, 2) << "Resetting modem for activation.";
+  ResetAfterActivation();
 }
 
 void CellularCapabilityUniversal::ResetAfterActivation() {
@@ -525,7 +476,6 @@ void CellularCapabilityUniversal::OnResetAfterActivationReply(
     return;
   }
   reset_done_ = true;
-  activation_wait_for_registration_callback_.Cancel();
   UpdatePendingActivationState();
 }
 
@@ -559,15 +509,6 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
       // Either no service or already activated. Nothing to do.
       return;
 
-  // Besides the indicators above, a connected service also indicates an
-  // activated SIM.
-  if (activated || cellular()->state() == Cellular::kStateConnected ||
-      cellular()->state() == Cellular::kStateLinked) {
-    SLOG(Cellular, 2) << "Marking service as activated.";
-    service->SetActivationState(kActivationStateActivated);
-    return;
-  }
-
   // If the ICCID is not available, the following logic can be delayed until it
   // becomes available.
   if (sim_identifier.empty())
@@ -588,10 +529,6 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
             PendingActivationStore::kIdentifierICCID,
             sim_identifier,
             PendingActivationStore::kStateActivated);
-      } else if (registered) {
-        SLOG(Cellular, 2) << "Resetting modem for activation.";
-        activation_wait_for_registration_callback_.Cancel();
-        ResetAfterActivation();
       }
       break;
     case PendingActivationStore::kStateActivated:
@@ -600,18 +537,6 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
         SLOG(Cellular, 2) << "Modem has been reset at least once, try to "
                           << "autoconnect to force MDN to update.";
         service->AutoConnect();
-      }
-      break;
-    case PendingActivationStore::kStatePendingTimeout:
-      SLOG(Cellular, 2) << "Modem failed to register within timeout, but has "
-                        << "been reset at least once.";
-      if (registered) {
-        SLOG(Cellular, 2) << "Registered to network, marking as activated.";
-        modem_info()->pending_activation_store()->SetActivationState(
-            PendingActivationStore::kIdentifierICCID,
-            sim_identifier,
-            PendingActivationStore::kStateActivated);
-        service->SetActivationState(kActivationStateActivated);
       }
       break;
     case PendingActivationStore::kStateUnknown:
@@ -672,8 +597,7 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
   if ((subscription_state_ == kSubscriptionStateUnknown ||
        subscription_state_ == kSubscriptionStateUnprovisioned) &&
       !sim_identifier.empty() &&
-      (state == PendingActivationStore::kStatePending ||
-       state == PendingActivationStore::kStatePendingTimeout)) {
+      state == PendingActivationStore::kStatePending) {
     activation_state = kActivationStateActivating;
   } else if (activation_required) {
     activation_state = kActivationStateNotActivated;

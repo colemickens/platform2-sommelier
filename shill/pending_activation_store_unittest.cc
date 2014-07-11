@@ -83,10 +83,6 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
       PendingActivationStore::kIdentifierMEID,
       kEntry1,
       PendingActivationStore::kStateActivated));
-  EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierMEID,
-      kEntry2,
-      PendingActivationStore::kStatePendingTimeout));
 
   EXPECT_EQ(PendingActivationStore::kStatePending,
             store_.GetActivationState(
@@ -97,9 +93,6 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
   EXPECT_EQ(PendingActivationStore::kStateActivated,
             store_.GetActivationState(
                 PendingActivationStore::kIdentifierMEID, kEntry1));
-  EXPECT_EQ(PendingActivationStore::kStatePendingTimeout,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
 
   EXPECT_TRUE(store_.SetActivationState(
       PendingActivationStore::kIdentifierICCID,
@@ -129,9 +122,6 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
   EXPECT_EQ(PendingActivationStore::kStateActivated,
             store_.GetActivationState(
                 PendingActivationStore::kIdentifierMEID, kEntry1));
-  EXPECT_EQ(PendingActivationStore::kStatePendingTimeout,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
 
   EXPECT_TRUE(store_.RemoveEntry(
       PendingActivationStore::kIdentifierMEID, kEntry1));
@@ -147,9 +137,6 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
   EXPECT_EQ(PendingActivationStore::kStateActivated,
             store_.GetActivationState(
                 PendingActivationStore::kIdentifierICCID, kEntry1));
-  EXPECT_EQ(PendingActivationStore::kStatePendingTimeout,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
 
   EXPECT_TRUE(store_.RemoveEntry(
       PendingActivationStore::kIdentifierICCID, kEntry1));

@@ -35,8 +35,6 @@ string StateToString(PendingActivationStore::State state) {
       return "Pending";
     case PendingActivationStore::kStateActivated:
       return "Activated";
-    case PendingActivationStore::kStatePendingTimeout:
-      return "PendingTimeout";
     default:
       return "Invalid";
   }

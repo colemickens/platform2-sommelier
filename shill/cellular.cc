@@ -580,14 +580,6 @@ void Cellular::OnScanReply(const Stringmaps &found_networks,
 void Cellular::HandleNewRegistrationState() {
   SLOG(Cellular, 2) << __func__
                     << ": (new state " << GetStateString(state_) << ")";
-  if (capability_->IsServiceActivationRequired()) {
-    if (state_ == kStateEnabled && !service_.get()) {
-      SLOG(Cellular, 2) << "Service activation required. Creating dummy "
-                        << "service.";
-      CreateService();
-    }
-    return;
-  }
   if (!capability_->IsRegistered()) {
     if (!explicit_disconnect_ &&
         (state_ == kStateLinked || state_ == kStateConnected) &&

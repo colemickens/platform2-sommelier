@@ -1260,38 +1260,6 @@ TEST_F(CellularTest, UseNoArpGateway) {
   device_->AcquireIPConfig();
 }
 
-TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
-    {"some@url", "some_method", "some_post_data"}
-  };
-
-  SetCellularType(Cellular::kTypeUniversal);
-  SetMockMobileOperatorInfoObjects();
-  // Service gets created in this test, so set defaults.
-  mock_home_provider_info_->SetEmptyDefaultsForProperties();
-
-  // Service activation is needed
-  device_->set_mdn("0000000000");
-  // |CellularCapabilityUniversal| expects the |olp_list| from
-  // |cellular->home_provider_info()|.
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, olp_list())
-      .WillRepeatedly(ReturnRef(olp_list));
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_, _))
-      .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
-
-  device_->state_ = Cellular::kStateDisabled;
-  device_->HandleNewRegistrationState();
-  EXPECT_FALSE(device_->service_.get());
-
-  device_->state_ = Cellular::kStateEnabled;
-  device_->HandleNewRegistrationState();
-  EXPECT_TRUE(device_->service_.get());
-  EXPECT_TRUE(device_->service_->activate_over_non_cellular_network());
-}
-
 TEST_F(CellularTest, ModemStateChangeEnable) {
   EXPECT_CALL(*simple_proxy_,
               GetModemStatus(_, _, CellularCapability::kTimeoutDefault))

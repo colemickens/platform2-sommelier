@@ -368,10 +368,6 @@ class CellularCapabilityUniversal : public CellularCapability {
                       const DBus::Path &bearer,
                       const Error &error);
 
-  // Timeout callback that is called if the modem takes too long to register to
-  // a network after online payment is complete. Resets the modem.
-  void OnActivationWaitForRegisterTimeout();
-
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
   // path is accepted to be valid, as long as it is not equal to one of ""
   // and "/".
@@ -433,9 +429,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // If the modem is not in a state to be enabled when StartModem is called,
   // enabling is deferred using this callback.
   base::Closure deferred_enable_modem_callback_;
-
-  base::CancelableClosure activation_wait_for_registration_callback_;
-  int64_t activation_registration_timeout_milliseconds_;
 
   // Sometimes flaky cellular network causes the 3GPP registration state to
   // rapidly change from registered --> searching and back. Delay such updates
