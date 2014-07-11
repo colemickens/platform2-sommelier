@@ -18,16 +18,16 @@ declare -A fn_entry
 
 # Annotate function entry.
 fn_enter () {
-  local fn=${1}
-  fn_entry[${fn}]=1
+  local fn="$1"
+  fn_entry["${fn}"]=1
   echo "Entering $*"
 }
 
 # Annotate function entry.  Also, return non-zero if function has
 # been called more than once
 fn_enter_once () {
-  local fn=${1}
-  [ -n "${fn_entry[${fn}]}" ] && return 1
+  local fn="$1"
+  [ -n "${fn_entry["${fn}"]}" ] && return 1
   fn_enter "$@"
 }
 
@@ -37,7 +37,7 @@ pass () {
 }
 fail () {
     echo "FAIL: $*"
-    fail_count=$((fail_count+1))
+    fail_count="$((fail_count+1))"
 }
 
 # Create a unique filename -- this is a "non secure" implementation (we would
@@ -45,13 +45,13 @@ fail () {
 # easy way to tell which file is more recent.  Also, make a symlink to the most
 # recent file
 unique_file () {
-    local out_template=$1
-    out_file=$(echo "${out_template}" | \
-      sed -e 's/\*/'$(date +'%Y-%m-%d.%H:%M:%S')'/')
-    link_file=$(echo "${out_template}" | sed -e 's/\*/latest/')
-    rm -f ${out_file} ${link_file}
-    ln -s $(basename $out_file) ${link_file}
-    echo $out_file
+    local out_template="$1"
+    out_file="$(echo "${out_template}" | \
+      sed -e 's/\*/'$(date +'%Y-%m-%d.%H:%M:%S')'/')"
+    link_file="$(echo "${out_template}" | sed -e 's/\*/latest/')"
+    rm -f "${out_file}" "${link_file}"
+    ln -s "$(basename $out_file)" "${link_file}"
+    echo "$out_file"
 }
 
 # Split a dotted decimal string
@@ -61,11 +61,11 @@ do_address_parts () {
 
 # Perform a mask (binary "&") between two dotted-decimal strings
 do_netmask () {
-  local -a ip=($(do_address_parts $1))
-  local -a mask=($(do_address_parts $2))
+  local -a ip=($(do_address_parts "$1"))
+  local -a mask=($(do_address_parts "$2"))
   local -a ret
   for part in ${!ip[@]}; do
-    ret+=($((ip[part] & mask[part])))
+    ret+=("$((ip[part] & mask[part]))")
   done
   (IFS=.; echo "${ret[*]}")
 }
@@ -75,15 +75,15 @@ do_netmask () {
 # @route_flags: Search for this value in the "Flags" column
 # @part: Column from the netstat output to return
 get_route () {
-  local ip=$1
-  local route_flags=$2
+  local ip="$1"
+  local route_flags="$2"
   shift ; shift
   netstat -nr | while read line; do
     local -a netstat=(${line})
-    if [ ${netstat[3]} = "${route_flags}" -a \
-      $(do_netmask ${ip} ${netstat[2]}) = ${netstat[0]} ] ; then
-      for part in $*; do
-        echo ${netstat[${part}]}
+    if [ "${netstat[3]}" = "${route_flags}" -a \
+      "$(do_netmask "${ip}" "${netstat[2]}")" = "${netstat[0]}" ] ; then
+      for part in "$@"; do
+        echo "${netstat["${part}"]}"
       done
       return 0
     fi
@@ -93,28 +93,28 @@ get_route () {
 
 # Return the interface through which traffic to given neigbor IP should go
 get_if_route () {
-  get_route $1 U 7
+  get_route "$1" U 7
 }
 
 # Return the gateway IP to which traffic to given remote IP should be forwarded
 get_gw_route () {
-  get_route $1 UG 1 7
+  get_route "$1" UG 1 7
 }
 
 # Trace down a symbolic link until we reach a dead-end (or a real file)
 get_tracelink () {
-  local file=$1
+  local file="$1"
   local link_count=0
-  while [ -h ${file} -o -e ${file} ] ; do
-    ls -ld ${file}
-    new_file=$(readlink -f ${file})
+  while [ -h "${file}" -o -e "${file}" ] ; do
+    ls -ld "${file}"
+    new_file="$(readlink -f "${file}")"
     [ "${new_file}" = "${file}" ] && return
-    if [ ${link_count} -ge 10 ] ; then
+    if [ "${link_count}" -ge 10 ] ; then
       fail "Gave up after ${link_count} steps"
       return
     fi
-    link_count=$((link_count + 1))
-    file=${new_file}
+    link_count="$((link_count + 1))"
+    file="${new_file}"
   done
   fail "${file} does not exist"
 }
@@ -136,25 +136,25 @@ get_default_if () {
 
 # Return IP address of a given network interface
 get_if_addr () {
-  ifc=$1
-  ${IFCONFIG} ${ifc} | grep "inet addr" | sed  -e 's/.*addr://; s/ .*//'
+  ifc="$1"
+  ${IFCONFIG} "${ifc}" | grep "inet addr" | sed  -e 's/.*addr://; s/ .*//'
 }
 
 # Super-gross method for looking up IP address of a given hostname
 get_host_addr () {
   # TODO(pstew): super gross -- but there's no host/dig/nslookup/dnsquery
-  local host=$1
-  ping -c1 ${host} | head -1 | awk -v FS='[()]' '{print $2}'
+  local host="$1"
+  ping -c1 "${host}" | head -1 | awk -v FS='[()]' '{print $2}'
 }
 
 # Find a the device name of a device given the driver's name
 get_class_driver () {
-  local find_pat=$1
-  local find_driver=$2
+  local find_pat="$1"
+  local find_driver="$2"
   for device in /sys/class/${find_pat}*; do
-    local driver=$(basename $(readlink ${device}/device/driver))
+    local driver="$(basename $(readlink "${device}/device/driver"))"
     if [ "${driver}" = "${find_driver}" ] ; then
-      echo $(basename ${device})
+      echo "$(basename "${device}")"
       return 0
     fi
   done
@@ -162,26 +162,26 @@ get_class_driver () {
 
 # The "status" command can't be run as non-root, so we fake it here
 get_status () {
-  pid=$(pgrep ${1})
+  pid="$(pgrep $1)"
   if [ -n "${pid}" ] ; then
-    pass "${1} is running, pid ${pid}"
+    pass "$1 is running, pid ${pid}"
     return 0
   else
-    fail "${1} is stopped"
+    fail "$1 is stopped"
     return 1
   fi
 }
 
 # Join the rest of the arguments using the first argument as a delimiter.
 join () {
-  local delim=$1
+  local delim="$1"
   shift
   echo $(IFS="${delim}"; echo "$*")
 }
 
 seconds_compare () {
-  local test_time=$1
-  local reference_time=$2
+  local test_time="$1"
+  local reference_time="$2"
   if [ $test_time -gt $reference_time ] ; then
     echo "$((test_time - reference_time)) seconds from now"
   else
@@ -191,12 +191,12 @@ seconds_compare () {
 
 # Read a DHCPCD lease file
 read_dhcp_lease () {
-  local file=$1
+  local file="$1"
   local message_types=(UNKNOWN DISCOVER OFFER REQUEST DECLINE \
                        ACK NACK RELEASE INFORM)
-  local now=$(date +%s)
-  local lease_start=$(stat -c %Y $file)
-  local lease_age=$((now-lease_start))
+  local now="$(date +%s)"
+  local lease_start="$(stat -c %Y $file)"
+  local lease_age="$((now-lease_start))"
   echo "  Lease file age: $lease_age"
   local lease_int=($(od --address-radix=n --format=u1 \
                          --output-duplicates ${file}))
@@ -204,7 +204,7 @@ read_dhcp_lease () {
                          --output-duplicates ${file}))
   echo "  Client MAC address: $(join : ${lease_hex[*]:28:6})"
   echo "  Leased address: $(join . ${lease_int[*]:16:4})"
-  local server_address=$(join . ${lease_int[*]:20:4})
+  local server_address="$(join . ${lease_int[*]:20:4})"
   if [ "${server_address}" != "0.0.0.0" ]; then
     echo "  Server address: ${server_address}"
   fi
@@ -214,11 +214,11 @@ read_dhcp_lease () {
   fi
   local idx=240
   while [ -n "${lease_int[$idx]}" -a -n "${lease_int[$((idx+1))]}" ] ; do
-    local opt=${lease_int[$idx]}
-    local len=${lease_int[$((idx+1))]}
+    local opt="${lease_int[$idx]}"
+    local len="${lease_int[$((idx+1))]}"
     local data_int=(${lease_int[*]:$((idx+2)):$len})
     local data_hex=(${lease_hex[*]:$((idx+2)):$len})
-    idx=$((idx + 2 + len))
+    idx="$((idx + 2 + len))"
     case $opt in
       0)
         break
@@ -227,21 +227,22 @@ read_dhcp_lease () {
         echo "  Netmask: $(join . ${data_int[*]})"
         ;;
       51)
-        local lease_time=$(printf "%d"  0x$(join '' ${data_hex[*]}))
-        local lease_time_comment=$(seconds_compare $lease_time $lease_age)
+        local lease_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
+        local lease_time_comment="$(seconds_compare "$lease_time" "$lease_age")"
         echo "  Lease Time: ${lease_time} seconds (${lease_time_comment})"
         ;;
       53)
         echo "  Message type: ${message_types[$data_int]-UNKNOWN}"
         ;;
       58)
-        local renew_time=$(printf "%d"  0x$(join '' ${data_hex[*]}))
-        local renew_time_comment=$(seconds_compare $renew_time $lease_age)
+        local renew_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
+        local renew_time_comment="$(seconds_compare "$renew_time" "$lease_age")"
         echo "  Renew Time: $renew_time seconds (${renew_time_comment})"
         ;;
       59)
-        local rebind_time=$(printf "%d"  0x$(join '' ${data_hex[*]}))
-        local rebind_time_comment=$(seconds_compare $rebind_time $lease_age)
+        local rebind_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
+        local rebind_time_comment="$(seconds_compare \
+                                     "$rebind_time" "$lease_age")"
         echo "  Rebinding Time: $rebind_time seconds (${rebind_time_comment})"
         ;;
     esac
@@ -267,11 +268,11 @@ mac_anonymize () {
 
 # Read the logs
 tail_logs () {
-  files=$(for f in /var/log/messages{.2,.1,} ; do
-    [ -f ${f} ] && echo ${f};
-    done)
+  files="$(for f in /var/log/messages{.2,.1,} ; do
+    [ -f "${f}" ] && echo "${f}";
+    done)"
   if [ -n "$*" ] ; then
-    tail $* ${files} | mac_anonymize
+    tail "$@" ${files} | mac_anonymize
   else
     cat ${files} | mac_anonymize
   fi
@@ -279,19 +280,19 @@ tail_logs () {
 
 # List all ethernet devices and their unique manufacturer strings
 get_device_list () {
-  fn_enter_once ${FUNCNAME} || return
+  fn_enter_once "${FUNCNAME}" || return
   echo "Device list:"
   for ifc in $(get_iflist); do
-    dir=$(readlink -f /sys/class/net/${ifc}/device)
-    driver=$(basename $(readlink ${dir}/driver))
-    if expr ${dir} : '.*usb' > /dev/null; then
+    dir="$(readlink -f "/sys/class/net/${ifc}/device")"
+    driver="$(basename "$(readlink "${dir}/driver")")"
+    if expr "${dir}" : '.*usb' > /dev/null; then
       type=usb
-      vendor=$(cat < ${dir}/../idVendor)
-      device=$(cat ${dir}/../idProduct)
-    elif expr ${dir} : '.*pci' > /dev/null; then
+      vendor="$(cat < "${dir}/../idVendor")"
+      device="$(cat "${dir}/../idProduct")"
+    elif expr "${dir}" : '.*pci' > /dev/null; then
       type=pci
-      vendor=$(sed -e 's/0x//' < ${dir}/vendor)
-      device=$(sed -e 's/0x//' < ${dir}/device)
+      vendor="$(sed -e 's/0x//' < "${dir}/vendor")"
+      device="$(sed -e 's/0x//' < "${dir}/device")"
     else
       type=unknown
     fi
@@ -301,24 +302,24 @@ get_device_list () {
 
 # List all USB and PCI devices
 diag_devs () {
-  fn_enter_once ${FUNCNAME} || return
+  fn_enter_once "${FUNCNAME}" || return
   ${LSUSB}
   ${LSPCI}
 }
 
 # Check whether we are in sync with the time server
 diag_date () {
-  local host=$1
-  fn_enter ${FUNCNAME} $*
+  local host="$1"
+  fn_enter "${FUNCNAME}" "$@"
   echo "Local time of day: $(date)"
-  date_out=$(${TLSDATE} -nv -H ${host} 2>&1 >/dev/null)
-  date_exit=$?
-  offset=$(echo "$date_out" | grep 'difference is' | cut -f8 -d' ')
+  date_out="$("${TLSDATE}" -nv -H "${host}" 2>&1 >/dev/null)"
+  date_exit="$?"
+  offset="$(echo "$date_out" | grep 'difference is' | cut -f8 -d' ')"
   if [ "${date_exit}" != 0 ]; then
     fail "Unable to get date via tlsdate from ${host}: ${date_out}"
   elif [ "${offset}" = 0 ] ; then
     pass "Time appears to be correct"
-  elif [ ${offset} -lt -3600 -o ${offset} -gt 3600 ] ; then
+  elif [ "${offset}" -lt -3600 -o "${offset}" -gt 3600 ] ; then
     fail "Time offset = ${offset}"
   else
     pass "Time offset is small (${offset})"
@@ -327,14 +328,14 @@ diag_date () {
 
 # Try to detect IP address collisions
 diag_ip_collision () {
-  fn_enter ${FUNCNAME} $*
-  local ifc=$1
-  ip=$(get_if_addr ${ifc})
+  fn_enter "${FUNCNAME}" "$@"
+  local ifc="$1"
+  ip="$(get_if_addr "${ifc}")"
   if [ -z "${ip}" ]; then
     fail "${ifc} does not have IP address"
     return 1
   fi
-  if ! ${ARPING} -c 3 -I ${ifc} -D ${ip}; then
+  if ! "${ARPING}" -c 3 -I "${ifc}" -D "${ip}"; then
     fail "IP Address Collision Detected!"
     return 1
   fi
@@ -343,28 +344,28 @@ diag_ip_collision () {
 
 # Make sure we have an ARP table entry for $ip through $ifc
 diag_arp () {
-  fn_enter ${FUNCNAME} $*
-  local ip=$1
-  local ifc=$2
+  fn_enter "${FUNCNAME}" "$@"
+  local ip="$1"
+  local ifc="$2"
   local failures=0
 
   if [ -n "${ip}" ] ; then
-    arp=$(${ARP} -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')
+    arp="$(${ARP} -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')"
     if [ -z "${arp}" ]; then
       fail "Arp table does not contain entry for ${ip}"
-      failures=$((failures + 1))
+      failures="$((failures + 1))"
     elif [ "${arp}" = "<incomplete>" ] ; then
       fail "Can't arp for ${ip}"
-      diag_ip_collision ${ifc}
-      failures=$((failures + 1))
+      diag_ip_collision "${ifc}"
+      failures="$((failures + 1))"
     else
       pass "ARP for ${ip} is ${arp}" | mac_anonymize
     fi
   fi
 
-  fn_enter_once ${FUNCNAME}_table && ${ARP} -an | mac_anonymize
+  fn_enter_once "${FUNCNAME}_table" && "${ARP}" -an | mac_anonymize
 
-  return ${failures}
+  return "${failures}"
 }
 
 show_routes () {
@@ -376,34 +377,34 @@ show_routes () {
 
 # Make sure we have a route to each host
 diag_route () {
-  fn_enter ${FUNCNAME} $*
+  fn_enter "${FUNCNAME}" "$@"
   local failures=0
-  for ip in $*; do
-    ifinfo=$(get_if_route ${ip})
-    gwinfo=$(get_gw_route ${ip})
+  for ip in "$@"; do
+    ifinfo="$(get_if_route "${ip}")"
+    gwinfo="$(get_gw_route "${ip}")"
     if [ -n "${ifinfo}" ]; then
-      diag_arp ${ip} ${ifinfo} || failures=$((failures + 1))
+      diag_arp "${ip}" "${ifinfo}" || failures="$((failures + 1))"
     elif [ -n "${gwinfo}" ]; then
-      diag_arp ${gwinfo} || failures=$((failures + 1))
+      diag_arp "${gwinfo}" || failures="$((failures + 1))"
     else
       fail "No route to host ${ip}"
-      diag_ifall || failures=$((failures + 1))
+      diag_ifall || failures="$((failures + 1))"
     fi
   done
 
-  fn_enter_once ${FUNCNAME}_table && show_routes
+  fn_enter_once "${FUNCNAME}_table" && show_routes
 
-  return ${failures}
+  return "${failures}"
 }
 
 # Figure whether we have IP connectivity to each host
 diag_ping () {
-  fn_enter ${FUNCNAME} $*
+  fn_enter "${FUNCNAME}" "$@"
   local failures=0
-  for ip in $*; do
-    if ping -c 3 ${ip} | grep -q '0 received'; then
+  for ip in "$@"; do
+    if ping -c 3 "${ip}" | grep -q '0 received'; then
       fail "Ping to ${ip} failed"
-      if diag_route ${ip}; then
+      if diag_route "${ip}"; then
         fail "We were able to reach the router but we cannot get packets to"
         fail "any machines on the other side.  The problem is probably with"
         fail "the router configuration or connectivity and not this system."
@@ -414,27 +415,27 @@ diag_ping () {
         diag_linkall
         diag_dhcp_lease
       fi
-      failures=$((failures + 1))
+      failures="$((failures + 1))"
     else
       pass "address ${ip}: ping OK"
     fi
   done
 
-  return ${failures}
+  return "${failures}"
 }
 
 # Report the last DHCP interaction for a given network interface
 diag_dhcp () {
-  fn_enter_once ${FUNCNAME} || return
-  local ifc=$1
+  fn_enter_once "${FUNCNAME}" || return
+  local ifc="$1"
   shift
 
-  local -a dhcp_event=($(tail_logs $* | \
+  local -a dhcp_event=($(tail_logs "$@" | \
     grep "dhcpcd.*event.*on interface ${ifc}" | \
     sed -e 's/^\([^ ]*\).*event \([A-Z]*\).*/\1 \2/' | tail -1))
 
-  last_dhcpcd_event_time=${dhcp_event[0]}
-  last_dhcpcd_event_type=${dhcp_event[1]}
+  last_dhcpcd_event_time="${dhcp_event[0]}"
+  last_dhcpcd_event_type="${dhcp_event[1]}"
   case ${last_dhcpcd_event_type} in
     RENEW|BOUND|REBOOT)
       pass "${ifc}: last dhcp event was successful:" \
@@ -450,26 +451,26 @@ diag_dhcp () {
 
 # Perform diagnostics on an 802.11 interface
 diag_link_wifi () {
-  fn_enter ${FUNCNAME} $*
-  ifc=$1
+  fn_enter "${FUNCNAME}" "$@"
+  ifc="$1"
 
   echo "wifi stats (all interfaces):"
   diag_wifi
 
-  last_connect=$(grep -n "${ifc}: connect SSID" /var/log/messages{.1,})
+  last_connect="$(grep -n "${ifc}: connect SSID" /var/log/messages{.1,})"
   if [ -z "${last_connect}" ] ; then
     fail "${ifc}: no recent 802.11 connection attempts"
     return 1
   fi
 
-  local -a lastconn_info=($(IFS=" :"; echo ${last_connect}))
-  file=${lastconn_info[0]}
-  line=${lastconn_info[1]}
-  size=$(wc -l ${file} | awk '{print $1}')
-  tail=$((size - line + 1))
-  state_changes=$(tail -${tail} ${file} | grep 'state change')
-  last_state_change=$(grep 'state change' ${file} | tail -1 | \
-                      sed -e 's/.*state change //')
+  local -a lastconn_info=($(IFS=" :"; echo "${last_connect}"))
+  file="${lastconn_info[0]}"
+  line="${lastconn_info[1]}"
+  size="$(wc -l "${file}" | awk '{print $1}')"
+  tail="$((size - line + 1))"
+  state_changes="$(tail -"${tail}" "${file}" | grep 'state change')"
+  last_state_change="$(grep 'state change' "${file}" | tail -1 | \
+                      sed -e 's/.*state change //')"
   echo "${ifc}: last flimflam state change: ${last_state_change}"
   if echo "${state_changes}" | grep -q ' -> COMPLETED'; then
     pass "${ifc}: last connection attempt appears successful"
@@ -482,12 +483,12 @@ diag_link_wifi () {
   echo "wpa_supplicant network blocks:"
   wpa_cli list_networks
 
-  diag_dhcp ${ifc} -${tail} ${file}
+  diag_dhcp "${ifc}" "-${tail}" "${file}"
 }
 
 # Print out WiFi debugging info
 diag_wifi () {
-  fn_enter_once ${FUNCNAME} || return
+  fn_enter_once "${FUNCNAME}" || return
 
   # Call out to debugd (which in turn calls this script's diag_wifi_internal
   # function with the debugd privileges needed to read debugfs contents).
@@ -498,29 +499,29 @@ diag_wifi () {
 diag_wifi_internal () {
   # Only callable by debugd or root, since debugfs is locked down.
   for dir in /sys/kernel/debug/ieee80211/phy*/ath9k; do
-    [ -d "${dir}" ] && head -1000 ${dir}/{dma,interrupt,recv,xmit,samples} | \
+    [ -d "${dir}" ] && head -1000 "${dir}"/{dma,interrupt,recv,xmit,samples} | \
       mac_anonymize
   done
   for ifc in $(get_iflist); do
-    if is_wifi ${ifc} ; then
+    if is_wifi "${ifc}" ; then
       echo "iw dev ${ifc} survey dump:"
-      ${IW} dev ${ifc} survey dump | mac_anonymize
+      "${IW}" dev "${ifc}" survey dump | mac_anonymize
       echo "iw dev ${ifc} station dump:"
-      ${IW} dev ${ifc} station dump | mac_anonymize
+      "${IW}" dev "${ifc}" station dump | mac_anonymize
       echo "iw dev ${ifc} scan dump:"
-      ${IW} dev ${ifc} scan dump | mac_anonymize | grep -v SSID
+      "${IW}" dev "${ifc}" scan dump | mac_anonymize | grep -v SSID
       echo "iw dev ${ifc} link:"
-      ${IW} dev ${ifc} link | mac_anonymize | grep -v SSID
+      "${IW}" dev "${ifc}" link | mac_anonymize | grep -v SSID
     fi
   done
 }
 
 # Perform diagnostics on a WAN interface
 diag_link_cellular () {
-  fn_enter ${FUNCNAME} $*
+  fn_enter "${FUNCNAME}" "$@"
   diag_cellular_dbus
   diag_devs
-  qcdev=$(get_class_driver tty/ttyUSB qcserial)
+  qcdev="$(get_class_driver tty/ttyUSB qcserial)"
   if [ -n "${qcdev}" ] ; then
     echo "QCSerial device is ${qcdev}"
   fi
@@ -528,11 +529,11 @@ diag_link_cellular () {
 }
 
 diag_link_wired () {
-  fn_enter ${FUNCNAME} $*
-  local ifc=$1
+  fn_enter "${FUNCNAME}" "$@"
+  local ifc="$1"
 
   echo "Output from ethtool ${ifc}:"
-  ${ETHTOOL} ${ifc}
+  "${ETHTOOL}" "${ifc}"
 
   return 0
 }
@@ -540,13 +541,13 @@ diag_link_wired () {
 # Tests to check to see if this is a modem.  Very abstract adaptation
 # from flimflam's tests
 is_modem () {
-  local ifc=$1
-  driver=$(basename $(readlink /sys/class/net/${ifc}/device/driver))
+  local ifc="$1"
+  driver="$(basename "$(readlink "/sys/class/net/${ifc}/device/driver")")"
   # Whitelist certain device types
   [ "${driver}" = "QCUSBNet2k" ] && return 0
 
   # See if there is a TTY device that is associated the same USB device
-  dev_root=$(readlink -f /sys/class/net/${ifc}/device)
+  dev_root="$(readlink -f /sys/class/net/${ifc}/device)"
   if expr "${dev_root}" : '.*usb' > /dev/null; then
     local -a tty_devs=($(echo $(dirname ${dev_root})/*/*/tty))
     [ -e "${tty_devs[0]}" ] && return 0
@@ -556,9 +557,9 @@ is_modem () {
 }
 
 is_wifi () {
-  local ifc=$1
+  local ifc="$1"
   if expr ${ifc} : wlan > /dev/null || \
-     [ -e /sys/class/net/${ifc}/phy80211 ] ; then
+     [ -e "/sys/class/net/${ifc}/phy80211" ] ; then
     return 0
   fi
   return 1
@@ -566,21 +567,21 @@ is_wifi () {
 
 # Perform type-specific link diagnostics on a network interface
 diag_link () {
-  fn_enter ${FUNCNAME} $*
-  ifc=$1
+  fn_enter "${FUNCNAME}" "$@"
+  ifc="$1"
 
-  if [ "$(cat /sys/class/net/${ifc}/carrier)" -eq 1 ]; then
+  if [ "$(cat "/sys/class/net/${ifc}/carrier")" -eq 1 ]; then
     pass "${ifc}: link detected"
   else
     pass "${ifc}: link not detected"
   fi
 
-  if is_wifi ${ifc} ; then
-    diag_link_wifi ${ifc}
-  elif is_modem ${ifc}; then
-    diag_link_cellular ${ifc}
+  if is_wifi "${ifc}" ; then
+    diag_link_wifi "${ifc}"
+  elif is_modem "${ifc}"; then
+    diag_link_cellular "${ifc}"
   else
-    diag_link_wired ${ifc}
+    diag_link_wired "${ifc}"
   fi
 
   echo "Last 10 kernel messages for ${ifc}:"
@@ -588,19 +589,19 @@ diag_link () {
 }
 
 diag_linkall () {
-  fn_enter_once ${FUNCNAME} || return
+  fn_enter_once "${FUNCNAME}" || return
   for ifc in $(get_iflist); do
-    diag_link ${ifc}
+    diag_link "${ifc}"
   done
 }
 
 # Perform generic diagnostics on a network interface
 diag_if () {
-  fn_enter ${FUNCNAME} $*
-  ifc=$1
-  config=$(${IFCONFIG} ${ifc})
+  fn_enter "${FUNCNAME}" "$@"
+  ifc="$1"
+  config="$("${IFCONFIG}" "${ifc}")"
   ret=0
-  ${IFCONFIG} ${ifc} | mac_anonymize
+  ${IFCONFIG} "${ifc}" | mac_anonymize
   if ! echo "${config}" | grep -q ' UP '; then
     fail "${ifc} is not listed as up"
     ret=1
@@ -609,28 +610,28 @@ diag_if () {
     ret=1
   fi
 
-  addr=$(get_if_addr ${ifc})
+  addr="$(get_if_addr "${ifc}")"
   if [ -n "${addr}" ]; then
     pass "${ifc} assigned IP address ${addr}"
-    diag_dhcp ${ifc}
+    diag_dhcp "${ifc}"
   else
     fail "${ifc} is not assigned an IP address"
     ret=1
   fi
-  diag_link ${ifc}
-  return ${ret}
+  diag_link "${ifc}"
+  return "${ret}"
 }
 
 # Query interface status on all network interfaces, and return an error if
 # none of them appear to be up
 diag_ifall () {
-  fn_enter_once ${FUNCNAME} || return
+  fn_enter_once "${FUNCNAME}" || return
 
   local good_ifs=0
   for ifc in $(get_iflist); do
-    diag_if ${ifc} && good_ifs=$((good_ifs + 1))
+    diag_if "${ifc}" && good_ifs="$((good_ifs + 1))"
   done
-  if [ ${good_ifs} -eq 0 ] ; then
+  if [ "${good_ifs}" -eq 0 ] ; then
     fail "No good interfaces found.  You are not connected to a network."
     get_status shill
     get_status wpa_supplicant
@@ -643,15 +644,15 @@ diag_ifall () {
 
 # Diagnose nameserver connectivity
 diag_nameservers () {
-  fn_enter_once ${FUNCNAME} || return
-  nameservers=$(get_nameservers)
+  fn_enter_once "${FUNCNAME}" || return
+  nameservers="$(get_nameservers)"
   if [ -z "${nameservers}" ] ; then
     fail "No nameservers -- this is either a network failure or net misconfig"
     get_tracelink /etc/resolv.conf
     diag_ifall
   else
     echo "Testing connectivity to nameservers"
-    if diag_ping $(get_nameservers); then
+    if diag_ping "$(get_nameservers)"; then
       fail "We can reach the nameservers but were not able to resolve hostnames"
       fail "You may be behind a captive portal or there may be a DNS"
       fail "configuration problem"
@@ -661,9 +662,9 @@ diag_nameservers () {
 
 # See if we can connect to a given host
 diag_connectivity () {
-  fn_enter_once ${FUNCNAME} $* || exit 0
-  local host=$1
-  local ip=$(get_host_addr $host)
+  fn_enter_once "${FUNCNAME}" "$@" || exit 0
+  local host="$1"
+  local ip="$(get_host_addr "$host")"
   if [ -z "${ip}" ] ; then
     fail "Could not lookup host ${host}"
     diag_route
@@ -671,7 +672,7 @@ diag_connectivity () {
     return 1
   fi
 
-  if diag_ping ${ip}; then
+  if diag_ping "${ip}"; then
     fail "We were able to ping ${host} but were not able to connect to it."
     fail "This probably means that you are behind a portal or (unlikely)"
     fail "${host} is encountering technical difficulties"
@@ -684,7 +685,7 @@ dbus_get_object_properties () {
   local object_type="${2}"
   local object_path="${3-/}"
   dbus-send --fixed --system --dest="${entity}" --print-reply \
-    ${object_path} ${entity}.${object_type}.GetProperties
+    "${object_path}" "${entity}.${object_type}.GetProperties"
 }
 
 dbus_get_object_list () {
@@ -706,7 +707,7 @@ dbus_get_object_list () {
 }
 
 diag_flimflam_dbus () {
-  fn_enter_once ${FUNCNAME} $*
+  fn_enter_once "${FUNCNAME}" "$@"
   local ff="org.chromium.flimflam"
   if [ -z "$1" ] ; then
     echo "Flimflam Manager:"
@@ -716,16 +717,17 @@ diag_flimflam_dbus () {
     # For each Device defined in the Manager, list its properties
     diag_flimflam_dbus Manager Device
   else
-    local parent=$1
-    local child=$2
-    local parent_path=${3-/}
+    local parent="$1"
+    local child="$2"
+    local parent_path="${3-/}"
     for path in \
-      $(dbus_get_object_list ${ff} ${parent} ${child}s ${parent_path}); do
+      $(dbus_get_object_list "${ff}" "${parent}" "${child}s" \
+        "${parent_path}"); do
       echo "${child} ${path}" | mac_anonymize
       dbus_get_object_properties "${ff}" "${child}" "${path}" | mac_anonymize
       if [ "${child}" = Device ] ; then
         # For each Network defined in each Device, list its properties
-        diag_flimflam_dbus Device Network ${path}
+        diag_flimflam_dbus Device Network "${path}"
       fi
     done
   fi
@@ -733,7 +735,7 @@ diag_flimflam_dbus () {
 
 # Get information from ModemManager about its state over D-Bus
 diag_cellular_dbus () {
-  fn_enter ${FUNCNAME} $*
+  fn_enter "${FUNCNAME}" "$@"
   dbus-send --fixed --system --print-reply --dest=org.chromium.ModemManager \
     /org/chromium/ModemManager \
     org.freedesktop.ModemManager.EnumerateDevices || \
@@ -742,23 +744,23 @@ diag_cellular_dbus () {
 
 # Read lease information
 diag_dhcp_lease () {
-  fn_enter ${FUNCNAME} $*
+  fn_enter "${FUNCNAME}" "$@"
   local lease_dir=/var/lib/dhcpcd
   for file in ${lease_dir}/*.lease; do
     echo "DHCP Lease file ${file}"
-    read_dhcp_lease ${file} | mac_anonymize
+    read_dhcp_lease "${file}" | mac_anonymize
   done
 }
 
 # Probe process status of flimflam and its process descendants
 diag_flimflam () {
-  fn_enter_once ${FUNCNAME} || return
-  local status=$(get_status shill)
+  fn_enter_once "${FUNCNAME}" || return
+  local status="$(get_status shill)"
   echo "${status}"
-  if ! echo ${status} | fgrep -q 'running'; then
+  if ! echo "${status}" | fgrep -q 'running'; then
     return
   fi
-  local pid=$(echo ${status} | awk '{print $4}')
+  local pid="$(echo ${status} | awk '{print $4}')"
   ps jx | awk '/^ *'${pid}'/ {print $10,$11,$12}' | sort | uniq -c
   echo "Listing of /var/run/shill"
   ls -al /var/run/shill
@@ -766,18 +768,18 @@ diag_flimflam () {
 }
 
 run_webget () {
-  local url=${1}
+  local url="$1"
   local timeout_secs=10
   echo "Trying to contact ${url} ... (waiting up to ${timeout_secs} seconds)"
-  curl -s "${url}" --max-time ${timeout_secs} > /dev/null
+  curl -s "${url}" --max-time "${timeout_secs}" > /dev/null
 }
 
 # Try to connect to a host via SSL, diagnose failures
 diag_webget () {
-  local host=${1}
+  local host="$1"
   local url="https://${host}"
-  run_webget ${url}
-  local err=$?
+  run_webget "${url}"
+  local err="$?"
 
   case ${err} in
     0)
@@ -793,20 +795,20 @@ diag_webget () {
     7)
       # Failed to connect to host
       fail "Got connection error -- trying to debug connection to host"
-      diag_connectivity ${host}
+      diag_connectivity "${host}"
       ;;
 
     28)
       # Operation timed out
       fail "Operation timed out during connection to ${host}"
-      diag_connectivity ${host}
+      diag_connectivity "${host}"
       diag_ifall
       ;;
 
     35)
       # SSL connect error. The SSL handshaking failed
       fail "SSL connect error. The SSL handshaking failed"
-      diag_connectivity ${host}
+      diag_connectivity "${host}"
       diag_ifall
       ;;
 
@@ -819,16 +821,16 @@ diag_webget () {
       fail "Encountered unhandled curl error ${err}"
       ;;
   esac
-  if [ ${err} -ne 0 ] ; then
+  if [ "${err}" -ne 0 ] ; then
       get_device_list
       diag_flimflam
   fi
-  return $err
+  return "$err"
 }
 
 # Do standard run of tests
 diag_run () {
-  local host=$1
+  local host="$1"
   if run_webget "https://${host}"; then
     pass "Loaded $host via HTTPS"
   elif run_webget "http://${host}"; then
@@ -836,60 +838,60 @@ diag_run () {
   else
     diag_webget "${host}"
   fi
-  diag_date ${host}
-  diag_gateway_latency ${host}
+  diag_date "${host}"
+  diag_gateway_latency "${host}"
 }
 
 
 monitor_get_stats () {
-  local tmp_file=$(mktemp /tmp/iwlink.XXXXX)
-  local err_file=$(mktemp /tmp/iwlink.XXXXX)
-  ${IW} dev ${mon_wlan_device} link > ${tmp_file}
-  if ! grep -q 'Connected to' ${tmp_file}; then
+  local tmp_file="$(mktemp /tmp/iwlink.XXXXX)"
+  local err_file="$(mktemp /tmp/iwlink.XXXXX)"
+  "${IW}" dev "${mon_wlan_device}" link > "${tmp_file}"
+  if ! grep -q 'Connected to' "${tmp_file}"; then
     values_reset=0
-    unlink ${tmp_file}
-    unlink ${err_file}
+    unlink "${tmp_file}"
+    unlink "${err_file}"
     return
   fi
   for param in ${mon_link_params[@]}; do
-    val=$(grep "${param}" ${tmp_file} | \
-          sed -e "s/.*${param}:*[ 	]*\([^ 	]*\).*/\1/")
-    mon_current[${param}]=${val}
+    val="$(grep "${param}" "${tmp_file}" | \
+          sed -e "s/.*${param}:*[ 	]*\([^ 	]*\).*/\1/")"
+    mon_current["${param}"]="${val}"
   done
-  ${IW} dev ${mon_wlan_device} station dump 2>${err_file} > ${tmp_file}
-  if [ $? -ne 0 -o -s ${err_file} ] ; then
+  "${IW}" dev "${mon_wlan_device}" station dump 2>"${err_file}" > "${tmp_file}"
+  if [ "$?" -ne 0 -o -s "${err_file}" ] ; then
     values_reset=0
-    unlink ${tmp_file}
-    unlink ${err_file}
+    unlink "${tmp_file}"
+    unlink "${err_file}"
     return
   fi
   for param in ${mon_station_params[@]}; do
-    val=$(grep "${param}" ${tmp_file} | \
-          sed -e "s/.*${param}:*[ 	]*\([^ 	]*\).*/\1/")
-    mon_current[${param}]=${val}
+    val="$(grep "${param}" "${tmp_file}" | \
+          sed -e "s/.*${param}:*[ 	]*\([^ 	]*\).*/\1/")"
+    mon_current["${param}"]="${val}"
   done
-  ${IW} dev ${mon_wlan_device} survey dump 2>${err_file} | \
-    grep -A6 "${mon_current[freq]}" > ${tmp_file}
-  if [ $? -ne 0 -o -s ${err_file} ] ; then
+  "${IW}" dev "${mon_wlan_device}" survey dump 2>"${err_file}" | \
+    grep -A6 "${mon_current[freq]}" > "${tmp_file}"
+  if [ "$?" -ne 0 -o -s "${err_file}" ] ; then
     values_reset=0
-    unlink ${tmp_file}
-    unlink ${err_file}
+    unlink "${tmp_file}"
+    unlink "${err_file}"
     return
   fi
   for param in ${mon_survey_params[@]}; do
-    val=$(grep "${param}" ${tmp_file} | \
-          sed -e "s/.*${param}:*[ 	]*\([^ 	]*\).*/\1/")
-    mon_current[${param}]=${val}
+    val="$(grep "${param}" "${tmp_file}" | \
+          sed -e "s/.*${param}:*[ 	]*\([^ 	]*\).*/\1/")"
+    mon_current["${param}"]="${val}"
   done
-  echo -n $(date +%s)
+  echo -n "$(date +%s)"
   for param in ${mon_delta_params[@]}; do
     if [ -n "${values_reset}" ] ; then
       prev=0
     else
-      prev=${mon_last[${param}]-0}
+      prev="${mon_last["${param}"]-0}"
     fi
-    val=$((mon_current[${param}] - $prev))
-    mon_last[${param}]=${mon_current[${param}]}
+    val="$((mon_current[${param}] - $prev))"
+    mon_last["${param}"]="${mon_current["${param}"]}"
     echo -n " ${param}:${val}"
   done
   for param in ${mon_static_params[@]}; do
@@ -897,13 +899,13 @@ monitor_get_stats () {
   done
   echo
   values_reset=
-  unlink ${tmp_file}
-  unlink ${err_file}
+  unlink "${tmp_file}"
+  unlink "${err_file}"
 }
 
 monitor_cleanup () {
-  kill ${mon_event_proc}
-  [ -n "${mon_msgs_proc}" ] && kill ${mon_msgs_proc}
+  kill "${mon_event_proc}"
+  [ -n "${mon_msgs_proc}" ] && kill "${mon_msgs_proc}"
   echo -n TOTALS:
   for param in ${mon_delta_params[@]} ${mon_static_params[@]}; do
     echo -n " ${param}:${mon_current[${param}]}"
@@ -929,31 +931,31 @@ diag_wifi_monitor () {
   mon_delta_station_params=( 'rx.bytes' 'tx.bytes' 'rx.packets' \
                              'tx.packets' 'tx.retries' 'tx.failed' )
   mon_static_station_params=( 'inactive.time' 'signal.avg' )
-  mon_station_params=(${mon_static_station_params[@]} \
-                      ${mon_delta_station_params[@]})
+  mon_station_params=("${mon_static_station_params[@]}" \
+                      "${mon_delta_station_params[@]}")
   declare -a mon_delta_survey_params
   declare -a mon_static_survey_params
   declare -a mon_survey_params
   mon_delta_survey_params=( 'channel.active.time' 'channel.busy.time' \
                             'channel.receive.time' 'channel.transmit.time' )
   mon_static_survey_params=( noise )
-  mon_survey_params=(${mon_static_survey_params[@]} \
-                     ${mon_delta_survey_params[@]})
-  mon_static_params=(${mon_static_survey_params[@]} ${mon_link_params[@]} \
-                     ${mon_static_station_params[@]})
-  mon_delta_params=(${mon_delta_survey_params[@]} \
-                    ${mon_delta_station_params[@]})
+  mon_survey_params=("${mon_static_survey_params[@]}" \
+                     "${mon_delta_survey_params[@]}")
+  mon_static_params=("${mon_static_survey_params[@]}" "${mon_link_params[@]}" \
+                     "${mon_static_station_params[@]}")
+  mon_delta_params=("${mon_delta_survey_params[@]}" \
+                    "${mon_delta_station_params[@]}")
   values_reset=0
 
   trap monitor_cleanup SIGINT SIGTERM
-  ${IW} event -t &
-  mon_event_proc=$!
+  "${IW}" event -t &
+  mon_event_proc="$!"
   mon_debug_file=/sys/kernel/debug/ieee80211/phy0/ath9k/debug
-  if [ -f ${mon_debug_file} -a -r /proc/kmsg ] ; then
-    [ -w ${mon_debug_file} ] && echo 0x440 > ${mon_debug_file}
+  if [ -f "${mon_debug_file}" -a -r /proc/kmsg ] ; then
+    [ -w "${mon_debug_file}" ] && echo 0x440 > "${mon_debug_file}"
     # NB: Even if we can't write to the flag, debug might already enabled
     egrep 'ath:.*(cal|ANI)' /proc/kmsg &
-    mon_msgs_proc=$!
+    mon_msgs_proc="$!"
   fi
   while sleep 1; do
     monitor_get_stats
@@ -962,29 +964,29 @@ diag_wifi_monitor () {
 
 diag_gateway_latency () {
   local ff="org.chromium.flimflam"
-  local services=($(dbus_get_object_list ${ff} Manager Services /))
-  local service=${services[0]}
+  local services=($(dbus_get_object_list "${ff}" Manager Services /))
+  local service="${services[0]}"
   local latency_threshold=800  # milliseconds
   if [ -z "${service}" ]; then
     fail "Found no services."
     return
   fi
-  local device=$(dbus_get_object_list "${ff}" Service Device ${service})
+  local device="$(dbus_get_object_list "${ff}" Service Device "${service}")"
   if [ -z "${device}" ]; then
     fail "Service ${service} does not have an associated Device."
     return
   fi
-  local monitor_val=$(dbus_get_object_list "${ff}" Device \
-                      LinkMonitorResponseTime ${device})
+  local monitor_val="$(dbus_get_object_list "${ff}" Device \
+                      LinkMonitorResponseTime "${device}")"
   if [ -z "${monitor_val}" ]; then
     echo "Service ${service} on device ${device} has no current latency value"
     return
   fi
   message="Current LinkMonitor latency for ${device} is ${monitor_val}ms"
-  if [ ${monitor_val} -le ${latency_threshold} ]; then
-    pass $message
+  if [ "${monitor_val}" -le "${latency_threshold}" ]; then
+    pass "$message"
   else
-    fail $message
+    fail "$message"
   fi
 }
 
@@ -992,7 +994,7 @@ usage () {
   echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help|"
   echo "           --wifi-mon] [host]"
   echo "    --date:      Diagnose time-of-day"
-  echo "                 (<host> must support SSL)"
+  echo "                 ([host] must support SSL)"
   echo "    --dhcp:      Display DHCP information"
   echo "    --flimflam:  Diagnose flimflam status"
   echo "    --interface: Diagnose interface status"
@@ -1066,47 +1068,47 @@ main () {
   if [ -n "${option}" ]; then
     case ${option} in
       --date)
-        diag_date ${test_host}
+        diag_date "${test_host}"
         ;;
       --dhcp)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_dhcp_lease
         ;;
       --flimflam)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_flimflam
         ;;
       --interface)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_ifall
         ;;
       --latency)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_gateway_latency
         ;;
       --link)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_linkall
         ;;
       --route)
-        diag_route ${test_host}
+        diag_route "${test_host}"
         ;;
       --wifi)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_wifi
         ;;
       --wifi-internal)
         # Only called by debugd.
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_wifi_internal
         exit 0
         ;;
       --wifi-mon)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         diag_wifi_monitor
         ;;
       --help|-help|-h)
-        check_no_arg ${option} ${option_and_arg_provided}
+        check_no_arg "${option}" "${option_and_arg_provided}"
         usage
         exit 0
         ;;
@@ -1116,18 +1118,19 @@ main () {
         exit 1
         ;;
     esac
-    exit ${fail_count}
+    exit "${fail_count}"
   fi
 }
 
-if [ -d /home/${USER}/user/Downloads ] && \
+if [ -d "/home/${USER}/user/Downloads" ] && \
     ! expr "$*" : '.*--no-log' >/dev/null; then
   # Log this output to somewhere the user can upload from
   main "$@" 2>&1 | \
-    tee $(unique_file /home/${USER}/user/Downloads/network_diagnostics_\*.txt)
+    tee "$(unique_file \
+           "/home/${USER}/user/Downloads/network_diagnostics_\*.txt")"
 else
   main "$@"
 fi
 
 
-exit ${fail_count}
+exit "${fail_count}"
