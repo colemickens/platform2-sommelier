@@ -29,6 +29,9 @@ class DBusControl : public ControlInterface {
   DBus::Connection *connection() { return connection_.get(); }
 
  private:
+  template <typename Object, typename AdaptorInterface, typename Adaptor>
+  AdaptorInterface *CreateAdaptor(Object *object);
+
   scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
   scoped_ptr<DBus::Connection> connection_;
 };

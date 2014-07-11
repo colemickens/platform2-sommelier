@@ -23,64 +23,49 @@ DBusControl::DBusControl() {}
 
 DBusControl::~DBusControl() {}
 
-DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
-  DeviceAdaptorInterface *result = NULL;
+template <typename Object, typename AdaptorInterface, typename Adaptor>
+AdaptorInterface *DBusControl::CreateAdaptor(Object *object) {
+  AdaptorInterface *adaptor = NULL;
   try {
-    result = new DeviceDBusAdaptor(connection_.get(), device);
+    adaptor = new Adaptor(connection_.get(), object);
+  } catch(const DBus::ErrorObjectPathInUse &error) {
+    LOG(FATAL) << error.message() << " (object path in use)";
+  } catch(const DBus::ErrorNoMemory &error) {
+    LOG(FATAL) << error.message() << " (no memory)";
   } catch(const DBus::Error &error) {
     LOG(FATAL) << error.message();
   }
-  return result;
+  return adaptor;
+}
+
+DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
+  return CreateAdaptor<Device, DeviceAdaptorInterface, DeviceDBusAdaptor>(
+      device);
 }
 
 IPConfigAdaptorInterface *DBusControl::CreateIPConfigAdaptor(IPConfig *config) {
-  IPConfigAdaptorInterface *result = NULL;
-  try {
-    result = new IPConfigDBusAdaptor(connection_.get(), config);
-  } catch(const DBus::Error &error) {
-    LOG(FATAL) << error.message();
-  }
-  return result;
+  return CreateAdaptor<IPConfig, IPConfigAdaptorInterface, IPConfigDBusAdaptor>(
+      config);
 }
 
 ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
-  ManagerAdaptorInterface *result = NULL;
-  try {
-    result = new ManagerDBusAdaptor(connection_.get(), manager);
-  } catch(const DBus::Error &error) {
-    LOG(FATAL) << error.message();
-  }
-  return result;
+  return CreateAdaptor<Manager, ManagerAdaptorInterface, ManagerDBusAdaptor>(
+      manager);
 }
 
 ProfileAdaptorInterface *DBusControl::CreateProfileAdaptor(Profile *profile) {
-  ProfileAdaptorInterface *result = NULL;
-  try {
-    result = new ProfileDBusAdaptor(connection_.get(), profile);
-  } catch(const DBus::Error &error) {
-    LOG(FATAL) << error.message();
-  }
-  return result;
+  return CreateAdaptor<Profile, ProfileAdaptorInterface, ProfileDBusAdaptor>(
+      profile);
 }
 
 RPCTaskAdaptorInterface *DBusControl::CreateRPCTaskAdaptor(RPCTask *task) {
-  RPCTaskAdaptorInterface *result = NULL;
-  try {
-    result = new RPCTaskDBusAdaptor(connection_.get(), task);
-  } catch(const DBus::Error &error) {
-    LOG(FATAL) << error.message();
-  }
-  return result;
+  return CreateAdaptor<RPCTask, RPCTaskAdaptorInterface, RPCTaskDBusAdaptor>(
+      task);
 }
 
 ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
-  ServiceAdaptorInterface *result = NULL;
-  try {
-    result = new ServiceDBusAdaptor(connection_.get(), service);
-  } catch(const DBus::Error &error) {
-    LOG(FATAL) << error.message();
-  }
-  return result;
+  return CreateAdaptor<Service, ServiceAdaptorInterface, ServiceDBusAdaptor>(
+      service);
 }
 
 void DBusControl::Init() {
