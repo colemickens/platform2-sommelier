@@ -749,6 +749,8 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultSuccess));
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+      .Times(0);
   service_->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(metrics());
 
@@ -758,7 +760,10 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultFailure));
-  service_->SetState(Service::kStateFailure);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(
+      Metrics::kMetricWifiUserInitiatedConnectionFailureReason,
+      Service::kFailureDHCP));
+  service_->SetFailure(Service::kFailureDHCP);
   Mock::VerifyAndClearExpectations(metrics());
 
   // User-initiated connection attempt aborted.
@@ -768,6 +773,8 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultAborted));
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+      .Times(0);
   service_->SetState(Service::kStateIdle);
   Mock::VerifyAndClearExpectations(metrics());
 
@@ -775,6 +782,8 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(&error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+      .Times(0);
   service_->SetState(Service::kStateAssociating);
   service_->SetState(Service::kStateConfiguring);
   Mock::VerifyAndClearExpectations(metrics());
@@ -783,6 +792,8 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->SetState(Service::kStateIdle);
   service_->Connect(&error, "in test");
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+      .Times(0);
   service_->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(metrics());
 
@@ -791,7 +802,9 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(&error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
-  service_->SetState(Service::kStateConnected);
+  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
+      .Times(0);
+  service_->SetFailure(Service::kFailureDHCP);
   Mock::VerifyAndClearExpectations(metrics());
 }
 

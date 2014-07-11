@@ -50,6 +50,9 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyWifiTxBitrate, void(int bitrate));
   MOCK_METHOD2(NotifyUserInitiatedConnectionResult,
                void(const std::string &name, int result));
+  MOCK_METHOD2(NotifyUserInitiatedConnectionFailureReason,
+               void(const std::string &name,
+                    const Service::ConnectFailure failure));
   MOCK_METHOD2(NotifyNetworkProblemDetected,
                void(Technology::Identifier technology_id, int reason));
   MOCK_METHOD2(NotifyFallbackDNSTestResult,

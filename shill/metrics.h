@@ -297,6 +297,21 @@ class Metrics {
     kConnectionStatusMax
   };
 
+  enum UserInitiatedConnectionFailureReason {
+    kUserInitiatedConnectionFailureReasonUnknown = 0,
+    kUserInitiatedConnectionFailureReasonBadPassphrase = 1,
+    kUserInitiatedConnectionFailureReasonBadWEPKey = 2,
+    kUserInitiatedConnectionFailureReasonConnect = 3,
+    kUserInitiatedConnectionFailureReasonDHCP = 4,
+    kUserInitiatedConnectionFailureReasonDNSLookup = 5,
+    kUserInitiatedConnectionFailureReasonEAPAuthentication = 6,
+    kUserInitiatedConnectionFailureReasonEAPLocalTLS = 7,
+    kUserInitiatedConnectionFailureReasonEAPRemoteTLS = 8,
+    kUserInitiatedConnectionFailureReasonOutOfRange = 9,
+    kUserInitiatedConnectionFailureReasonPinMissing = 10,
+    kUserInitiatedConnectionFailureReasonMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -492,6 +507,9 @@ class Metrics {
   // User-initiated wifi connection attempt result.
   static const char kMetricWifiUserInitiatedConnectionResult[];
 
+  // The reason of failed user-initiated wifi connection attempt.
+  static const char kMetricWifiUserInitiatedConnectionFailureReason[];
+
   // DNS test result.
   static const char kMetricFallbackDNSTestResultSuffix[];
 
@@ -677,6 +695,11 @@ class Metrics {
   // attempt.
   virtual void NotifyUserInitiatedConnectionResult(const std::string &name,
                                                    int result);
+
+  // Notifies this object about the reason of failed user-initiated connection
+  // attempt.
+  virtual void NotifyUserInitiatedConnectionFailureReason(
+      const std::string &name, const Service::ConnectFailure failure);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();

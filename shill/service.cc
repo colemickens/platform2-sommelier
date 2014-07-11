@@ -931,6 +931,8 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
       break;
     case kStateFailure:
       result = Metrics::kUserInitiatedConnectionResultFailure;
+      metrics_->NotifyUserInitiatedConnectionFailureReason(
+          Metrics::kMetricWifiUserInitiatedConnectionFailureReason, failure_);
       break;
     case kStateIdle:
       // This assumes the device specific class (wifi, cellular) will advance

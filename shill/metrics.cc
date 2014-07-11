@@ -297,6 +297,10 @@ const char Metrics::kMetricWifiUserInitiatedConnectionResult[] =
     "Network.Shill.WiFi.UserInitiatedConnectionResult";
 
 // static
+const char Metrics::kMetricWifiUserInitiatedConnectionFailureReason[] =
+    "Network.Shill.WiFi.UserInitiatedConnectionFailureReason";
+
+// static
 const char Metrics::kMetricFallbackDNSTestResultSuffix[] =
     "FallbackDNSTestResult";
 
@@ -1100,6 +1104,49 @@ void Metrics::NotifyUserInitiatedConnectionResult(const string &name,
   SendEnumToUMA(name,
                 result,
                 kUserInitiatedConnectionResultMax);
+}
+
+void Metrics::NotifyUserInitiatedConnectionFailureReason(
+    const string &name, const Service::ConnectFailure failure) {
+  UserInitiatedConnectionFailureReason reason;
+  switch (failure) {
+    case Service::kFailureBadPassphrase:
+      reason = kUserInitiatedConnectionFailureReasonBadPassphrase;
+      break;
+    case Service::kFailureBadWEPKey:
+      reason = kUserInitiatedConnectionFailureReasonBadWEPKey;
+      break;
+    case Service::kFailureConnect:
+      reason = kUserInitiatedConnectionFailureReasonConnect;
+      break;
+    case Service::kFailureDHCP:
+      reason = kUserInitiatedConnectionFailureReasonDHCP;
+      break;
+    case Service::kFailureDNSLookup:
+      reason = kUserInitiatedConnectionFailureReasonDNSLookup;
+      break;
+    case Service::kFailureEAPAuthentication:
+      reason = kUserInitiatedConnectionFailureReasonEAPAuthentication;
+      break;
+    case Service::kFailureEAPLocalTLS:
+      reason = kUserInitiatedConnectionFailureReasonEAPLocalTLS;
+      break;
+    case Service::kFailureEAPRemoteTLS:
+      reason = kUserInitiatedConnectionFailureReasonEAPRemoteTLS;
+      break;
+    case Service::kFailureOutOfRange:
+      reason = kUserInitiatedConnectionFailureReasonOutOfRange;
+      break;
+    case Service::kFailurePinMissing:
+      reason = kUserInitiatedConnectionFailureReasonPinMissing;
+      break;
+    default:
+      reason = kUserInitiatedConnectionFailureReasonUnknown;
+      break;
+  }
+  SendEnumToUMA(name,
+                reason,
+                kUserInitiatedConnectionFailureReasonMax);
 }
 
 void Metrics::NotifyFallbackDNSTestResult(Technology::Identifier technology_id,
