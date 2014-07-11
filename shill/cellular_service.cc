@@ -58,12 +58,16 @@ CellularService::CellularService(ModemInfo *modem_info,
               Technology::kCellular),
       weak_ptr_factory_(this),
       activate_over_non_cellular_network_(false),
+      activation_type_(kActivationTypeUnknown),
       cellular_(device),
       is_auto_connecting_(false) {
   SetConnectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
                            &activate_over_non_cellular_network_);
+  HelpRegisterDerivedString(kActivationTypeProperty,
+                            &CellularService::CalculateActivationType,
+                            NULL);
   store->RegisterConstString(kActivationStateProperty, &activation_state_);
   HelpRegisterDerivedStringmap(kCellularApnProperty,
                                &CellularService::GetApn,
@@ -116,6 +120,16 @@ bool CellularService::IsAutoConnectable(const char **reason) const {
   return Service::IsAutoConnectable(reason);
 }
 
+void CellularService::HelpRegisterDerivedString(
+    const string &name,
+    string(CellularService::*get)(Error *error),
+    bool(CellularService::*set)(const string &value, Error *error)) {
+  mutable_store()->RegisterDerivedString(
+      name,
+      StringAccessor(
+          new CustomAccessor<CellularService, string>(this, get, set)));
+}
+
 void CellularService::HelpRegisterDerivedStringmap(
     const string &name,
     Stringmap(CellularService::*get)(Error *error),
@@ -148,6 +162,10 @@ Stringmap *CellularService::GetLastGoodApn() {
   if (it == last_good_apn_info_.end() || it->second.empty())
     return NULL;
   return &last_good_apn_info_;
+}
+
+string CellularService::CalculateActivationType(Error *error) {
+  return GetActivationTypeString();
 }
 
 Stringmap CellularService::GetApn(Error */*error*/) {
@@ -356,6 +374,34 @@ void CellularService::SetActivateOverNonCellularNetwork(bool state) {
   }
   activate_over_non_cellular_network_ = state;
   adaptor()->EmitBoolChanged(kActivateOverNonCellularNetworkProperty, state);
+}
+
+
+void CellularService::SetActivationType(ActivationType type) {
+  if (type == activation_type_) {
+    return;
+  }
+  activation_type_ = type;
+  adaptor()->EmitStringChanged(kActivationTypeProperty,
+                               GetActivationTypeString());
+}
+
+string CellularService::GetActivationTypeString() const {
+  switch (activation_type_) {
+    case kActivationTypeNonCellular:
+      return shill::kActivationTypeNonCellular;
+    case kActivationTypeOMADM:
+      return shill::kActivationTypeOMADM;
+    case kActivationTypeOTA:
+      return shill::kActivationTypeOTA;
+    case kActivationTypeOTASP:
+      return shill::kActivationTypeOTASP;
+    case kActivationTypeUnknown:
+      return "";
+    default:
+      NOTREACHED();
+      return "";  // Make compiler happy.
+  }
 }
 
 void CellularService::SetActivationState(const string &state) {

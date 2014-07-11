@@ -184,6 +184,8 @@ bool CellularCapabilityUniversalCDMA::IsActivated() const {
 
 void CellularCapabilityUniversalCDMA::OnServiceCreated() {
   SLOG(Cellular, 2) << __func__;
+  cellular()->service()->SetActivationType(
+      CellularService::kActivationTypeOTASP);
   UpdateServiceActivationStateProperty();
   HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);
   UpdatePendingActivationState();

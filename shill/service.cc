@@ -157,7 +157,7 @@ Service::Service(ControlInterface *control_interface,
                           &Service::SetAutoConnectFull,
                           &Service::ClearAutoConnect);
 
-  // kActivateOverNonCellularNetworkProperty: Registered in CellularService
+  // kActivationTypeProperty: Registered in CellularService
   // kActivationStateProperty: Registered in CellularService
   // kCellularApnProperty: Registered in CellularService
   // kCellularLastGoodApnProperty: Registered in CellularService

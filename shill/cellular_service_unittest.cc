@@ -465,11 +465,9 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, adaptor_);
   TestAutoConnectPropertyChange(service_, adaptor_);
 
-  bool activate_over_non_cellular =
-      service_->activate_over_non_cellular_network();
   EXPECT_CALL(*adaptor_,
-              EmitBoolChanged(kActivateOverNonCellularNetworkProperty, _));
-  service_->SetActivateOverNonCellularNetwork(!activate_over_non_cellular);
+              EmitStringChanged(kActivationTypeProperty, _));
+  service_->SetActivationType(CellularService::kActivationTypeOTA);
   Mock::VerifyAndClearExpectations(adaptor_);
 
   EXPECT_NE(kActivationStateNotActivated, service_->activation_state());

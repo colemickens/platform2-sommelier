@@ -27,6 +27,14 @@ class OutOfCreditsDetector;
 
 class CellularService : public Service {
  public:
+  enum ActivationType {
+    kActivationTypeNonCellular,  // For future use
+    kActivationTypeOMADM,  // For future use
+    kActivationTypeOTA,
+    kActivationTypeOTASP,
+    kActivationTypeUnknown
+  };
+
   CellularService(ModemInfo *modem_info,
                   const CellularRefPtr &device);
   virtual ~CellularService();
@@ -50,6 +58,9 @@ class CellularService : public Service {
   bool activate_over_non_cellular_network() const {
     return activate_over_non_cellular_network_;
   }
+
+  void SetActivationType(ActivationType type);
+  std::string GetActivationTypeString() const;
 
   virtual void SetActivationState(const std::string &state);
   virtual const std::string &activation_state() const {
@@ -147,6 +158,10 @@ class CellularService : public Service {
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
 
+  void HelpRegisterDerivedString(
+      const std::string &name,
+      std::string(CellularService::*get)(Error *error),
+      bool(CellularService::*set)(const std::string &value, Error *error));
   void HelpRegisterDerivedStringmap(
       const std::string &name,
       Stringmap(CellularService::*get)(Error *error),
@@ -157,6 +172,8 @@ class CellularService : public Service {
       bool(CellularService::*set)(const bool&, Error *));
 
   virtual std::string GetDeviceRpcId(Error *error) const;
+
+  std::string CalculateActivationType(Error *error);
 
   Stringmap GetApn(Error *error);
   bool SetApn(const Stringmap &value, Error *error);
@@ -187,6 +204,7 @@ class CellularService : public Service {
 
   // Properties
   bool activate_over_non_cellular_network_;
+  ActivationType activation_type_;
   std::string activation_state_;
   Cellular::Operator serving_operator_;
   std::string network_technology_;

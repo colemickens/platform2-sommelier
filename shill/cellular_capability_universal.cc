@@ -698,6 +698,7 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
 }
 
 void CellularCapabilityUniversal::OnServiceCreated() {
+  cellular()->service()->SetActivationType(CellularService::kActivationTypeOTA);
   UpdateServiceActivationState();
 
   // WORKAROUND:

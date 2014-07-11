@@ -100,6 +100,8 @@ bool CellularCapabilityCDMA::AllowRoaming() {
 void CellularCapabilityCDMA::OnServiceCreated() {
   SLOG(Cellular, 2) << __func__;
   cellular()->service()->SetUsageURL(usage_url_);
+  cellular()->service()->SetActivationType(
+      CellularService::kActivationTypeOTASP);
   HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
 
