@@ -68,6 +68,11 @@ class Disk {
     is_on_boot_device_ = is_on_boot_device;
   }
 
+  bool is_on_removable_device() const { return is_on_removable_device_; }
+  void set_is_on_removable_device(bool is_on_removable_device) {
+    is_on_removable_device_ = is_on_removable_device;
+  }
+
   bool is_rotational() const { return is_rotational_; }
   void set_is_rotational(bool is_rotational) { is_rotational_ = is_rotational; }
 
@@ -153,6 +158,7 @@ class Disk {
   bool is_mounted_;
   bool is_media_available_;
   bool is_on_boot_device_;
+  bool is_on_removable_device_;
   bool is_rotational_;
   bool is_read_only_;
   bool is_virtual_;

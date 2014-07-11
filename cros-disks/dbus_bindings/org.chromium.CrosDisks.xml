@@ -10,6 +10,7 @@
       <tp:member name="DeviceMountPaths" type="s"> </tp:member>
       <tp:member name="DeviceIsMediaAvailable" type="b"> </tp:member>
       <tp:member name="DeviceIsOnBootDevice" type="b"> </tp:member>
+      <tp:member name="DeviceIsOnRemovableDevice" type="b"> </tp:member>
       <tp:member name="DeviceIsVirtual" type="b"> </tp:member>
       <tp:member name="IdUuid" type="s"> </tp:member>
       <tp:member name="IdLabel" type="s"> </tp:member>

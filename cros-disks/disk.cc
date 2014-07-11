@@ -28,6 +28,7 @@ Disk::Disk()
       is_mounted_(false),
       is_media_available_(false),
       is_on_boot_device_(true),
+      is_on_removable_device_(false),
       is_rotational_(false),
       is_read_only_(false),
       is_virtual_(true),
@@ -69,6 +70,8 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDeviceIsMounted].writer().append_bool(is_mounted());
   disk[kDeviceIsMediaAvailable].writer().append_bool(is_media_available());
   disk[kDeviceIsOnBootDevice].writer().append_bool(is_on_boot_device());
+  disk[kDeviceIsOnRemovableDevice].writer().append_bool(
+      is_on_removable_device());
   disk[kDeviceIsVirtual].writer().append_bool(is_virtual());
   disk[kNativePath].writer().append_string(native_path().c_str());
   disk[kDeviceFile].writer().append_string(device_file().c_str());

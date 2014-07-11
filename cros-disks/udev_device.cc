@@ -414,6 +414,7 @@ Disk UdevDevice::ToDisk() {
   disk.set_is_hidden(IsHidden());
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_is_on_boot_device(IsOnBootDevice());
+  disk.set_is_on_removable_device(IsOnRemovableDevice());
   disk.set_is_virtual(IsVirtual());
   disk.set_media_type(GetDeviceMediaType());
   disk.set_filesystem_type(GetPropertyFromBlkId(kPropertyBlkIdFilesystemType));
