@@ -153,6 +153,8 @@ class Platform2Test(object):
       ld_paths = [self.removeSysrootPrefix(path) for path in ld_paths]
 
     env['LD_LIBRARY_PATH'] = ':'.join(ld_paths)
+    env['PATH'] = os.environ.get('PATH')
+    env['SYSROOT'] = os.environ.get('SYSROOT')
 
     # Passthrough TERM so that we get colors in test output where supported.
     env['TERM'] = os.environ.get("TERM")
