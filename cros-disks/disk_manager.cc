@@ -117,20 +117,28 @@ DiskManager::~DiskManager() {
 bool DiskManager::Initialize() {
   RegisterDefaultFilesystems();
 
-  // Initialize |disks_detected_| with auto-mountable devices that already
-  // exist when disk manager starts since there is no udev add event that adds
-  // these devices to |disks_detected_|.
-  for (const auto& disk : EnumerateDisks()) {
-    if (disk.is_auto_mountable()) {
-      disks_detected_.insert(std::make_pair(disk.native_path(), set<string>()));
-    }
-  }
+  // Since there are no udev add events for the devices that already exist
+  // when the disk manager starts, emulate udev add events for these devices
+  // to correctly populate |disks_detected_|.
+  EnumerateBlockDevices(base::Bind(&DiskManager::EmulateBlockDeviceEvent,
+                                   base::Unretained(this),
+                                   kUdevAddAction));
 
   return MountManager::Initialize();
 }
 
 bool DiskManager::StopSession() {
   return UnmountAll();
+}
+
+bool DiskManager::EmulateBlockDeviceEvent(const char* action,
+                                          udev_device* dev) {
+  DCHECK(dev);
+
+  DeviceEventList events;
+  ProcessBlockDeviceEvents(dev, action, &events);
+
+  return true;  // Continue the enumeration.
 }
 
 vector<Disk> DiskManager::EnumerateDisks() const {

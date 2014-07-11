@@ -118,6 +118,11 @@ class DiskManager : public MountManager,
   // Otherwise, it returns NULL.
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
 
+  // An EnumerateBlockDevices callback that emulates a block device event
+  // defined by |action| on |device|. Always returns true to continue
+  // enumeration in EnumerateBlockDevices.
+  bool EmulateBlockDeviceEvent(const char* action, udev_device* device);
+
   // Enumerates the block devices on the system and invokes |callback| for each
   // device found during the enumeration. The ownership of |udev_device| is not
   // transferred to |callback|. The enumeration stops if |callback| returns
