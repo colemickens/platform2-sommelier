@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>
 
@@ -116,6 +117,13 @@ class DiskManager : public MountManager,
   // Returns a Filesystem object if a given filesystem type is supported.
   // Otherwise, it returns NULL.
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
+
+  // Enumerates the block devices on the system and invokes |callback| for each
+  // device found during the enumeration. The ownership of |udev_device| is not
+  // transferred to |callback|. The enumeration stops if |callback| returns
+  // false.
+  void EnumerateBlockDevices(
+      const base::Callback<bool(udev_device* dev)>& callback) const;
 
   // Determines one or more device/disk events from a udev block device change.
   void ProcessBlockDeviceEvents(struct udev_device* device, const char *action,

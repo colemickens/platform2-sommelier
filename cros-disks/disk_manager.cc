@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/mount.h>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
@@ -30,6 +31,8 @@ using std::set;
 using std::string;
 using std::vector;
 
+namespace cros_disks {
+
 namespace {
 
 const char kBlockSubsystem[] = "block";
@@ -42,9 +45,47 @@ const char kUdevRemoveAction[] = "remove";
 const char kPropertyDiskEjectRequest[] = "DISK_EJECT_REQUEST";
 const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 
-}  // namespace
+// An EnumerateBlockDevices callback that appends a Disk object, created from
+// |dev|, to |disks| if |dev| should not be ignored by cros-disks. Always
+// returns true to continue the enumeration in EnumerateBlockDevices.
+bool AppendDiskIfNotIgnored(vector<Disk>* disks, udev_device* dev) {
+  DCHECK(disks);
+  DCHECK(dev);
 
-namespace cros_disks {
+  UdevDevice device(dev);
+  if (!device.IsIgnored())
+    disks->push_back(device.ToDisk());
+
+  return true;  // Continue the enumeration.
+}
+
+// An EnumerateBlockDevices callback that checks if |dev| matches |path|. If
+// it's a match, sets |match| to true and |disk| (if not NULL) to a Disk object
+// created from |dev|, and returns false to stop the enumeration in
+// EnumerateBlockDevices. Otherwise, sets |match| to false, leaves |disk|
+// unchanged, and returns true to continue the enumeration in
+// EnumerateBlockDevices.
+bool MatchDiskByPath(const string& path, bool* match, Disk* disk,
+                     udev_device* dev) {
+  DCHECK(match);
+  DCHECK(dev);
+
+  const char* sys_path = udev_device_get_syspath(dev);
+  const char* dev_path = udev_device_get_devpath(dev);
+  const char* dev_file = udev_device_get_devnode(dev);
+  *match = (sys_path && path == sys_path) ||
+           (dev_path && path == dev_path) ||
+           (dev_file && path == dev_file);
+  if (!*match)
+    return true;  // Not a match. Continue the enumeration.
+
+  if (disk)
+    *disk = UdevDevice(dev).ToDisk();
+
+  return false;  // Match. Stop enumeration.
+}
+
+}  // namespace
 
 DiskManager::DiskManager(const string& mount_root, Platform* platform,
                          Metrics* metrics, DeviceEjector* device_ejector)
@@ -94,7 +135,13 @@ bool DiskManager::StopSession() {
 
 vector<Disk> DiskManager::EnumerateDisks() const {
   vector<Disk> disks;
+  EnumerateBlockDevices(
+      base::Bind(&AppendDiskIfNotIgnored, base::Unretained(&disks)));
+  return disks;
+}
 
+void DiskManager::EnumerateBlockDevices(
+    const base::Callback<bool(udev_device* dev)>& callback) const {
   struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
   udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
   udev_enumerate_scan_devices(enumerate);
@@ -122,16 +169,12 @@ vector<Disk> DiskManager::EnumerateDisks() const {
       LOG(INFO) << "      " << key << " = " << value;
     }
 
-    UdevDevice device(dev);
-    if (!device.IsIgnored()) {
-      disks.push_back(device.ToDisk());
-    }
+    bool continue_enumeration = callback.Run(dev);
     udev_device_unref(dev);
+    if (!continue_enumeration)
+      break;
   }
-
   udev_enumerate_unref(enumerate);
-
-  return disks;
 }
 
 void DiskManager::ProcessBlockDeviceEvents(
@@ -261,38 +304,11 @@ bool DiskManager::GetDiskByDevicePath(const string& device_path,
   if (device_path.empty())
     return false;
 
-  bool is_sys_path = StartsWithASCII(device_path, "/sys/", true);
-  bool is_dev_path = StartsWithASCII(device_path, "/devices/", true);
-  bool is_dev_file = StartsWithASCII(device_path, "/dev/", true);
   bool disk_found = false;
-
-  struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
-  udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
-  udev_enumerate_scan_devices(enumerate);
-
-  struct udev_list_entry *device_list, *device_list_entry;
-  device_list = udev_enumerate_get_list_entry(enumerate);
-  udev_list_entry_foreach(device_list_entry, device_list) {
-    const char *sys_path = udev_list_entry_get_name(device_list_entry);
-    udev_device *dev = udev_device_new_from_syspath(udev_, sys_path);
-    if (dev == NULL) continue;
-
-    const char *dev_path = udev_device_get_devpath(dev);
-    const char *dev_file = udev_device_get_devnode(dev);
-    if ((is_sys_path && device_path == sys_path) ||
-        (is_dev_path && device_path == dev_path) ||
-        (is_dev_file && dev_file && device_path == dev_file)) {
-      disk_found = true;
-      if (disk)
-        *disk = UdevDevice(dev).ToDisk();
-    }
-    udev_device_unref(dev);
-    if (disk_found)
-      break;
-  }
-
-  udev_enumerate_unref(enumerate);
-
+  EnumerateBlockDevices(base::Bind(&MatchDiskByPath,
+                                   device_path,
+                                   base::Unretained(&disk_found),
+                                   base::Unretained(disk)));
   return disk_found;
 }
 
