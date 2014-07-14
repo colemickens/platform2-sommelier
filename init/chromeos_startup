@@ -1,0 +1,421 @@
+#!/bin/sh
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+UNDO_MOUNTS=
+cleanup_mounts()
+{
+  # On failure unmount all saved mount points and repair stateful
+  for mount_point in ${UNDO_MOUNTS}; do
+    umount -n ${mount_point}
+  done
+  # Leave /mnt/stateful_partition mounted for clobber-state to handle.
+  chromeos-boot-alert self_repair /dev/tty1
+  clobber-log --repair "$STATE_DEV" "Self-repair incoherent stateful partition"
+  exec clobber-state "fast keepimg"
+}
+remember_mount()
+{
+    UNDO_MOUNTS="$1 ${UNDO_MOUNTS}"
+}
+mount_or_fail()
+{
+  local mount_point
+  # -c: Never canonicalize: it is a hazard to resolve symlinks.
+  # -n: Do not write to mtab: we don't use it.
+  if mount -c -n "$@" ; then
+    # Last parameter contains the mount point
+    shift $(( $# - 1 ))
+    # Push it on the undo stack if we fail later
+    remember_mount "$1"
+    return
+  fi
+  cleanup_mounts
+}
+
+# Mount debugfs as bootstat depends on /sys/kernel/debug
+mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
+  debugfs /sys/kernel/debug
+
+# bootstat writes timings to both tmpfs and debugfs.
+bootstat pre-startup
+
+# Some startup functions are split into a separate library which may be
+# different for different targets (e.g., regular Chrome OS vs. embedded).
+. /usr/share/cros/startup_utils.sh
+
+# Factory related functions
+. /usr/share/cros/factory_utils.sh
+
+mkdir -p /dev/pts /dev/shm
+mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
+mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+
+# Initialize kernel sysctl settings early so that they take effect for boot
+# processes.
+sysctl -q -p /etc/sysctl.conf
+
+# CROS_DEBUG equals one if we've booted in developer mode or we've
+# booted a developer image.
+crossystem "cros_debug?1"
+CROS_DEBUG=$((! $?))
+
+# Check whether the device is allowed to boot in dev mode. If firmware write
+# protect is off or a debug build is already installed on the system, ignore
+# block_devmode. It is pointless in these cases, as the device is already in a
+# state where the local user has full control.
+#
+# The up-front CROS_DEBUG check avoids forking a crossystem process in verified
+# mode, thus keeping the check as lightweight as possible for normal boot.
+if [ $CROS_DEBUG -eq 1 ]; then
+  if crossystem "block_devmode?1" "wpsw_boot?1" "debug_build?0" \
+                "devsw_boot?1"; then
+    chromeos-boot-alert block_devmode /dev/tty1
+  fi
+fi
+
+# Prepare to mount stateful partition
+ROOT_DEV=$(rootdev -s)
+ROOTDEV_RET_CODE=$?
+# Example root dev types we need to handle: /dev/sda2 -> /dev/sda,
+# /dev/mmcblk0p0 -> /dev/mmcblk0p, /dev/ubi2_1 -> /dev/ubi
+ROOTDEV_TYPE=$(echo $ROOT_DEV | sed 's/[0-9_]*$//')
+ROOTDEV_NAME=${ROOTDEV_TYPE##/dev/}
+ROOTDEV_REMOVABLE=$(cat "/sys/block/${ROOTDEV_NAME}/removable")
+
+# Load the GPT helper functions and the image settings.
+. "/usr/sbin/write_gpt.sh"
+if [ "${ROOTDEV_REMOVABLE}" = "1" ]; then
+  load_partition_vars
+else
+  load_base_vars
+fi
+
+# Check if we are booted on physical media. rootdev will fail if we are in
+# an initramfs or tmpfs rootfs (used for x86 factory images). When using
+# initrd+tftpboot (used for ARM factory images), ROOTDEV_TYPE will be
+# /dev/ram.
+if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
+  # Find our stateful partition. It's always partition 1.
+  # Unless we're on UBI, when it's ubi1_0.
+
+  STATE_FLAGS="nodev,noexec,nosuid"
+  if [ "${FORMAT_STATE}" = "ubi" ]; then
+    STATE_DEV="/dev/ubi1_0"
+  else
+    STATE_DEV=${ROOTDEV_TYPE}1
+    STATE_FLAGS="${STATE_FLAGS},commit=600"
+  fi
+
+  # For factory install shim, we never want to write to the SDCard.
+  # In some cases, we boot the factory install shim directly from removable
+  # media like an SDCard. In those cases we don't want to write to that
+  # removable media.
+  if [ -f /root/.factory_installer ]; then
+    mount -n -t tmpfs -o nodev,noexec,nosuid,mode=0755 tmp \
+      /mnt/stateful_partition
+    # Fetch our writeable lsb-release from the stateful
+    # partition if available.
+    TMP_STATEFUL="$(mktemp -d)"
+    FACTORY_LSB_REL="dev_image/etc/lsb-factory"
+    mkdir -p /mnt/stateful_partition/dev_image/etc
+    mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
+      "$STATE_DEV" "$TMP_STATEFUL"
+    if [ -f "${TMP_STATEFUL}/${FACTORY_LSB_REL}" ]; then
+      cp -a "${TMP_STATEFUL}/${FACTORY_LSB_REL}" \
+        /mnt/stateful_partition/${FACTORY_LSB_REL}
+    fi
+    umount "$TMP_STATEFUL"
+    rmdir "$TMP_STATEFUL"
+
+  # For all other cases, mount stateful partition from STATE_DEV.
+  elif ! mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
+         "$STATE_DEV" /mnt/stateful_partition; then
+    # Try to rebuild the stateful partition by  clobber-state
+    # (for security concern, we don't use fast mode)
+    chromeos-boot-alert self_repair /dev/tty1
+    clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
+    exec clobber-state "keepimg"
+  fi
+
+  # Mount the OEM partition.
+  # mount_or_fail isn't used since this partition only has a filesystem
+  # on some boards.
+
+  OEM_FLAGS="ro,nodev,noexec,nosuid"
+  if [ "${FORMAT_OEM}" = "ubi" ]; then
+    OEM_DEV="/dev/ubi8_0"
+  else
+    OEM_DEV=${ROOTDEV_TYPE}8
+    OEM_FLAGS="${OEM_FLAGS},commit=600"
+  fi
+  mount -n -t ${FS_FORMAT_OEM} -o ${OEM_FLAGS} ${OEM_DEV} /usr/share/oem
+fi
+
+# Sanity check the date (crosbug.com/13200)
+if [ $(date +%Y) -lt 1970 ]; then
+  date 010200001970.00
+fi
+
+# Now that stateful partition is mounted, we can check if we are in factory
+# mode.
+FACTORY_MODE=
+if is_factory_mode; then
+  FACTORY_MODE=factory
+fi
+
+# Check if we need to perform firmware update: only if fwupdate_tries is
+# non-zero or if not using normal (ex, developer or recovery) firmware.
+FIRMWARE_UPDATE_SCRIPT=/usr/sbin/chromeos-firmwareupdate
+if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
+   [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+  # This file will be collected by chromeos-setgoodkernel
+  FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/update_firmware.log
+  tries="$(crossystem fwupdate_tries || echo 0)"
+
+  # Special updating rules for legacy systems.
+  case "$(mosys platform name 2>/dev/null)" in
+    Alex | ZGB )
+      if [ "$(crossystem mainfw_type)" = developer ]; then
+        tries=0  # Prevents updates if we're in developer mode
+        chromeos-boot-alert dev_fwcheck /dev/tty1
+      fi
+      ;;
+  esac
+
+  if [ $tries -gt 0 ]; then
+    crossystem fwupdate_tries=$((tries - 1))
+    # More messages on console for developer mode and dev builds.
+    [ $CROS_DEBUG -eq 1 ] &&
+      FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS" || true
+    chromeos-boot-alert update_firmware /dev/tty1
+    (date && "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1) |
+      tee -a $FIRMWARE_UPDATE_LOGS
+    # Sends "clear screen" terminal command to clear TTY frame buffer, to
+    # prevent user seeing the messages again on system shutdown.
+    [ $CROS_DEBUG -eq 1 ] && tput clear >/dev/tty1 || true
+  fi
+fi
+
+# File used to trigger a stateful reset.  Contains arguments for
+# the "clobber-state" call.  This file may exist at boot time, as
+# some use cases operate by creating this file with the necessary
+# arguments and then rebooting.
+RESET_FILE="/mnt/stateful_partition/factory_install_reset"
+
+# This file is created by clobber-state after the transition
+# to dev mode.
+DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
+
+FIRMWARE_TYPE=$(crossystem mainfw_type)
+
+# Check for whether we need a stateful wipe, and alert the user as
+# necessary.  We can wipe for several different reasons:
+#  + Wipe for the factory build process.  This is signaled by
+#    the existence of ${RESET_FILE} prior to reboot; the arguments
+#    for clobber-state are set up before rebooting.
+#  + User requested "power wash".  This is signaled in the same
+#    way as the factory reset, but with different arguments in
+#    ${RESET_FILE}.
+#  + Switch from verified mode to dev mode.  We do this if we're in
+#    dev mode, and ${DEV_MODE_FILE} doesn't exist.  clobber-state
+#    in this case will create the file, to prevent re-wipe.
+#  + Switch from dev mode to verified mode.  We do this if we're in
+#    verified mode, and ${DEV_MODE_FILE} still exists.  (This check
+#    isn't necessarily reliable.)
+#
+# Stateful wipe for dev mode switching is skipped if the build
+# is a debug build or if we've booted in recovery mode (meaning
+# from USB); this protects various development use cases, most
+# especially booting Chromium OS on non-Chrome hardware.
+#
+if [ -O ${RESET_FILE} ]; then
+  # Wipe requested on previous boot.  In the case of a factory wipe,
+  # there can be a special splash screen with a message localized for
+  # the factory personnel.
+  ALTERNATE_WIPE_SCREEN=/mnt/stateful_partition/wipe_splash.png
+  if [ -O "$ALTERNATE_WIPE_SCREEN" ]; then
+    chromeos-boot-alert wipe /dev/tty1 "$ALTERNATE_WIPE_SCREEN"
+  else
+    chromeos-boot-alert power_wash /dev/tty1
+  fi
+elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
+  if crossystem "devsw_boot?1" ; then
+    # We've booted in dev mode.  For platforms using separated
+    # normal/developer firmware, we need to display an extra boot
+    # alert for the developer mode warning plus the 30-second delay.
+    # Note that we want this message and the delay regardless of
+    # whether we plan to wipe.
+    if [ "$FIRMWARE_TYPE" != "developer" ]; then
+      chromeos-boot-alert warn_dev /dev/tty1
+    fi
+
+    if [ ! -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
+      # We're transitioning from verified boot to dev mode.
+      # TODO(wad,wfrichar) Have user provide sudo/vt2 password here.
+      chromeos-boot-alert enter_dev /dev/tty1
+      echo "keepimg" > ${RESET_FILE}
+      clobber-log -- "Enter developer mode"
+    fi
+
+  elif [ -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
+    # We're transitioning from dev mode to verified boot.
+    # When coming back from developer mode, we don't need to
+    # clobber as aggressively.  Fast will do the trick.
+    chromeos-boot-alert leave_dev /dev/tty1
+    echo "fast keepimg" > ${RESET_FILE}
+    clobber-log -- "Leave developer mode"
+  fi
+fi
+
+if [ -O ${RESET_FILE} ]; then
+  ARGS="$(cat ${RESET_FILE})"
+  exec clobber-state "$ARGS"
+fi
+
+# Check if we have an update to stateful pending.
+STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
+if [ $CROS_DEBUG -eq 1 -a -f "$STATEFUL_UPDATE" ] ; then
+  # To remain compatible with the prior update_stateful tarballs, expect
+  # the "var_new" unpack location, but move it into the new "var_overlay"
+  # target location.
+  VAR_TARGET="/mnt/stateful_partition/var"
+  VAR_NEW="${VAR_TARGET}_new"
+  VAR_OLD="${VAR_TARGET}_old"
+  VAR_TARGET="${VAR_TARGET}_overlay"
+  DEVELOPER_TARGET="/mnt/stateful_partition/dev_image"
+  DEVELOPER_NEW="${DEVELOPER_TARGET}_new"
+  DEVELOPER_OLD="${DEVELOPER_TARGET}_old"
+  STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
+
+  # Only replace the developer and var_overlay directories if new replacements
+  # are available.
+  if [ -d "$DEVELOPER_NEW" -a -d "$VAR_NEW" ]; then
+    clobber-log -- "Updating from $DEVELOPER_NEW && $VAR_NEW."
+    rm -rf "$DEVELOPER_OLD" "$VAR_OLD"
+    mv "$VAR_TARGET" "$VAR_OLD" || true
+    mv "$DEVELOPER_TARGET" "$DEVELOPER_OLD" || true
+    mv "$VAR_NEW" "$VAR_TARGET"
+    mv "$DEVELOPER_NEW" "$DEVELOPER_TARGET"
+  else
+    clobber-log -- "Stateful update did not find $DEVELOPER_NEW && $VAR_NEW."
+    clobber-log -- "Keeping old development tools."
+  fi
+
+  # Check for clobber.
+  if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ] ; then
+    PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
+
+    # Find everything in stateful and delete it, except for protected paths, and
+    # non-empty directories. The non-empty directories contain protected content
+    # or they would already be empty from depth first traversal.
+
+    find "/mnt/stateful_partition"  -depth -mindepth 1 \
+        -not -path "/mnt/stateful_partition/.labmachine" \
+        -not -path "${DEVELOPER_TARGET}/*" \
+        -not -path "${VAR_TARGET}/*" \
+        -not -path "${PRESERVE_DIR}/*" \
+        -not -type d -print0 | xargs --null -r rm -f
+
+    find "/mnt/stateful_partition"  -depth -mindepth 1 \
+        -not -path "${DEVELOPER_TARGET}/*" \
+        -not -path "${VAR_TARGET}/*" \
+        -not -path "${PRESERVE_DIR}/*" \
+        -type d -print0 | xargs --null -r rmdir --ignore-fail-on-non-empty
+
+    # Let's really be done before coming back.
+    sync
+  fi
+
+  # Backgrounded to take off boot path.
+  rm -rf "$STATEFUL_UPDATE" "$DEVELOPER_OLD" "$VAR_OLD" &
+fi
+
+# Make sure unencrypted stateful partition has the needed common directories.
+# Any non-common directories should be created in the device implementation of
+# "mount_var_and_home_chronos".
+for d in home home/chronos home/root home/user \
+         unencrypted/cache unencrypted/preserve; do
+  mkdir -p -m 0755 /mnt/stateful_partition/$d
+done
+
+# Mount /home.  This mount inherits nodev,noexec,nosuid from
+# /mnt/stateful_partition above.
+mount_or_fail --bind /mnt/stateful_partition/home /home
+
+remember_mount /var
+remember_mount /home/chronos
+mount_var_and_home_chronos ${FACTORY_MODE} || cleanup_mounts
+
+# /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock
+# are sym links to /run and /run/lock respectively for backwards compatibility.
+if [ ! -L /var/run ]; then
+  rm -rf /var/run
+  ln -s /run /var/run
+fi
+if [ ! -L /var/lock ]; then
+  rm -rf /var/lock
+  ln -s /run/lock /var/lock
+fi
+
+# Make sure required /var subdirectories exist.
+mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
+                 /var/tmp
+
+# /var/tmp must be world-writable and sticky
+chmod 1777 /var/tmp
+# /home/root must be group-writable and sticky
+chmod 1771 /home/root
+# Selected directories must belong to the chronos user.
+chown chronos:chronos /home/chronos /var/log/metrics
+# rsyslog needs to be able to create new logfiles, but not delete other logs
+chgrp syslog /var/log
+chmod 1775 /var/log
+
+mount -n -t tmpfs -o nodev,noexec,nosuid media /media
+
+# Mount stateful partition for dev packages.
+if [ $CROS_DEBUG -eq 1 ]; then
+  # Capture a snapshot of "normal" mount state here, for auditability,
+  # before we start applying devmode-specific changes.
+  cat /proc/mounts > /var/log/mount_options.log
+  # Create dev_image directory in base images in developer mode.
+  if [ ! -d /mnt/stateful_partition/dev_image ]; then
+    mkdir -p -m 0755 /mnt/stateful_partition/dev_image
+  fi
+  # Mount and then remount to enable exec/suid.
+  mount_or_fail --bind /mnt/stateful_partition/dev_image /usr/local
+  mount -n -o remount,exec,suid /usr/local
+
+  # Set up /var elements needed by gmerge.
+  # TODO(keescook) Use dev/test package installs instead of piling more
+  # things here (crosbug.com/14091).
+  BASE=/mnt/stateful_partition/var_overlay
+  if [ -d ${BASE} ]; then
+    # Keep this list in sync with the var_overlay elements in the DIRLIST
+    # found in chromeos-install from chromeos-base/chromeos-installer.
+    DIRLIST="
+      db/pkg
+      lib/portage
+    "
+    for DIR in ${DIRLIST}; do
+      if [ ! -d ${BASE}/${DIR} ]; then
+        continue
+      fi
+      DEST=/var/${DIR}
+      if [ -e ${DEST} ]; then
+        continue
+      fi
+      PARENT=$(dirname ${DEST})
+      mkdir -p ${PARENT}
+      ln -sf ${BASE}/${DIR} ${DEST}
+    done
+  fi
+fi
+
+bootstat post-startup
+
+# Always return success to avoid killing init
+exit 0

@@ -1,0 +1,92 @@
+#!/bin/sh
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Shutdown is best-effort. We don't want to die on errors.
+set +e
+
+bootstat shutdown-start
+
+# Sync the system clock to the hardware clock.
+hwclock --systohc --utc --noadjfile &
+HWCLOCK_PID=$!
+
+. /sbin/killers
+
+# Remount root in case a developer has remounted it rw for some reason.
+mount -n -o remount,ro /
+
+# TODO: swapoff as necessary.
+
+# Kill any that may prevent us from unmounting the stateful partition
+# or the crypto-home and then unmount. These should be all that we need
+# to unmount for a clean shutdown.
+kill_with_open_files_on /mnt/stateful_partition /home/chronos /var
+
+# join hwclock setting, already in progress.
+wait $HWCLOCK_PID
+
+# Signal that the clean shutdown point was reached (or at least as
+# close to that point as we can be before stateful is unmounted).
+crash_reporter --clean_shutdown
+
+# CROS_DEBUG equals one if we've booted in developer mode or we've booted a
+# developer image.
+crossystem "cros_debug?1"
+CROS_DEBUG=$((! $?))
+
+STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
+
+if [ "$CROS_DEBUG" = "1" -a -f "$STATEFUL_UPDATE" ] ; then
+  STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
+
+  if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ] ; then
+    PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
+
+    # Measure shutdown time up to this point.
+    bootstat before_preserve
+
+    # We preserve a few files. Make sure preservation directory starts empty.
+    rm -rf "${PRESERVE_DIR}/log"
+    mkdir -p -m 0755 "${PRESERVE_DIR}"
+    cp -a "${MNTS}/var/log" "${PRESERVE_DIR}"
+
+    # We are about to put this into a directory that will shortly be wiped
+    # out. Keep a timestamp where it will be preserved as well.
+    PRESERVE_METRICS="${PRESERVE_DIR}/log/metrics"
+    bootstat_archive "${PRESERVE_METRICS}/shutdown.$(date '+%Y%m%d%H%M%S')"
+  fi
+fi
+
+# Measure shutdown time up to this point.
+bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
+
+# Lazy umount the tmpfs dirs under /var so we can immediately umount it.
+umount -n -l /var/run /var/lock
+if [ -e /dev/mapper/encstateful ]; then
+  mount-encrypted umount >/tmp/umount-encrypted.log 2>&1
+  if [ $? -ne 0 ] ; then
+    mv /tmp/umount-encrypted.log /mnt/stateful_partition/
+  fi
+  umount -n /usr/local /home /mnt/stateful_partition
+  rc=$?
+else
+  umount -n /var /usr/local /home /mnt/stateful_partition
+  rc=$?
+fi
+if [ $rc -ne 0 ] ; then
+  mount > /mnt/stateful_partition/shutdown_stateful_umount_failure
+fi
+
+# Just in case something didn't unmount properly above.
+sync
+
+# Display low battery icon if shutting down due to low battery.
+# SHUTDOWN_REASON is passed in with the runlevel event from power manager.
+if [ "$SHUTDOWN_REASON" = "low-battery" ]; then
+  display_low_battery_alert
+fi
+
+# Ensure that we always claim success.
+exit 0

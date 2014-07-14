@@ -1,0 +1,53 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+
+$ModLoad immark.so # provides --MARK-- message capability
+$ModLoad imuxsock.so # provides support for local system logging (e.g. via logger command)
+$ModLoad imklog.so # kernel logging (formerly provided by rklogd)
+
+$PrivDropToUser syslog
+$PrivDropToGroup syslog
+
+# Include PID in log messages
+$SystemLogUsePIDFromSystem on
+
+$SystemLogRateLimitInterval 0
+$RepeatedMsgReduction on
+
+# Allow messages from upstart, which logs through /dev/klog.
+$KLogPermitNonKernelFacility on
+
+# Keep network stuff in /var/log/net.log; throw away warnings, etc (see RFC 3164).
+if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 'wpa_supplicant') or ($programname == 'cromo') or ($programname == 'ModemManager') or ($programname == 'mist') or ($programname == 'nss-get-cert') or ($programname == 'openvpn') or ($programname == 'openvpn-script') or ($programname == 'l2tpipsec_vpn') or ($programname == 'pppd') or ($programname == 'wimax-manager') or ($programname == 'pseudomodem')) then -/var/log/net.log
+if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 'wpa_supplicant') or ($programname == 'cromo') or ($programname == 'ModemManager') or ($programname == 'mist') or ($programname == 'nss-get-cert') or ($programname == 'openvpn') or ($programname == 'openvpn-script') or ($programname == 'l2tpipsec_vpn') or ($programname == 'pppd') or ($programname == 'wimax-manager') or ($programname == 'pseudomodem')) and $syslogseverity >= '4' then ~
+
+$outchannel tlsdate,/var/log/tlsdate.log,65536,/usr/sbin/simple-rotate /var/log/tlsdate.log
+# Keep tlsdate stuff in /var/log/tlsdate.log
+if ($programname startswith 'tlsdate') then :omfile:$tlsdate
+& ~  # Don't log tlsdate messages anywhere else.
+
+# Log all kernel messages to the console.
+# Logging much else clutters up the screen.
+#kern.*                                                 /dev/console
+
+# Log anything (except mail) of level info or higher.
+# Don't log private authentication messages!
+*.*;mail.none;authpriv.none;local5.none                 -/var/log/messages
+
+# Copy these messages to tty8 to help with troubleshooting.
+# Don't log authentication messages, mail, or wpa_supplicant(local6).
+*.*;mail.none;authpriv.none;local6.none                 /dev/tty8
+
+# The authpriv file has restricted access.
+authpriv.*                                              /var/log/secure
+
+# Everybody gets emergency messages
+*.emerg                                                 *
+
+# Save boot messages also to boot.log
+local7.*                                                /var/log/boot.log
+
+# laptop-mode can be configured to log to local5
+local5.info                                             /var/log/laptopmode.log

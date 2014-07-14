@@ -1,0 +1,197 @@
+#!/bin/sh
+
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script should be called daily to clean up log files.
+
+CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
+NUM_DAYS_TO_PRESERVE=7
+STATEFUL="/mnt/stateful_partition"
+# Threshold for additional histogram reporting (in 1KB blocks), 1GB in total.
+ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
+SHADOW="/home/.shadow"
+
+# Paths for the CRX cache. Shared with installer/crx-import.conf
+UNVALIDATED_CRX_CACHE=${STATEFUL}/unencrypted/import_extensions
+VALIDATED_CRX_CACHE=/var/cache/external_cache
+
+# Get the percentage of space used on the stateful partition.
+get_stateful_usage_percent() {
+  local stateful_space="$(df -P ${STATEFUL} | grep -m 1 ${STATEFUL})"
+  # Remove everything after and including the "%"
+  stateful_space="${stateful_space%%%*}"
+  # Remove all fields except the last one.
+  stateful_space="${stateful_space##* }"
+  echo $stateful_space
+}
+
+# Get the free space on the stateful partition, in 1KB blocks.
+get_stateful_free_space_blocks() {
+  df -P ${STATEFUL} | grep -m 1 ${STATEFUL} | awk '{print $4}'
+}
+
+report_additional_statistics() {
+  # Number of users on device.
+  local user_count="$(find $SHADOW -maxdepth 1 -mindepth  1 -type d | wc -l)"
+  metrics_client -s Platform.DiskUsage.UsersOnDevice "${user_count}"
+
+  # Handle case when there are no users on device.
+  if [ "${user_count}" -le 0 ]; then
+    return 0
+  fi
+
+  local users_category=${user_count}Users
+  if [ "${user_count}" -eq 1 ]; then
+    users_category=1User
+  fi
+  if [ "${user_count}" -ge 7 ]; then
+    users_category=7OrMoreUsers
+  fi
+
+  local stats
+  local sum_and_max_prog='{ sum += $1;
+                            if (max < $1) max = $1;
+                          }
+                          END { print sum, max }'
+  # All pass-through directories.
+  for dir in Cache Downloads GCache; do
+    # Calculate sum and maximum over all user_count for each directory.
+    stats=$(du -sk $SHADOW/*/vault/user/$dir 2> /dev/null |
+            awk "${sum_and_max_prog}")
+    metrics_client Platform.DiskUsage.${dir}_Max.${users_category} \
+                   ${stats##* } $METRICS_ARGS
+    # Since disk usage is several orders higher that number of users, it is safe
+    # to use integer division here.
+    metrics_client Platform.DiskUsage.${dir}_Avg.${users_category} \
+                   $(( ${stats%% *} / ${user_count} )) $METRICS_ARGS
+  done
+
+  # Report days since the least frequently used account signed in.
+  # It is split over user_count, and is reported upon low disk space to provide
+  # input information for cleanup tuning.
+
+  local least_used_days=$(cryptohome --action=dump_last_activity |
+                          awk '$2 > max {max = $2} END {print max}')
+
+  metrics_client Platform.DiskUsage.LeastUsedAccountDays.${users_category} \
+                 ${least_used_days} $METRICS_ARGS
+}
+
+remove_old_dated_files() {
+  find "$1" -name "$2" -mtime +${NUM_DAYS_TO_PRESERVE} -exec rm '{}' ';'
+}
+
+rotate_file() {
+  local file="$1"
+  if [ ! -f "${file}" ]; then
+    # Avoid creating an empty file if it does not exist to begin with
+    return
+  fi
+  local basename="${file%%.*}"
+  local extension="${file#*.}"
+  if [ "${basename}" = "${extension}" ]; then
+    extension=""
+  else
+    extension=".${extension}"
+  fi
+  echo Rotating "${file}"
+  for i in $(seq ${NUM_DAYS_TO_PRESERVE} -1 2); do
+    mv -f "${basename}.$((i - 1))${extension}" "${basename}.$i${extension}"
+  done
+  mv -f "${basename}${extension}" "${basename}.1${extension}"
+  touch "${basename}${extension}"
+}
+
+rotate_logs() {
+  echo Rotating rsyslogd logs
+  for x in messages secure net.log faillog session_manager; do
+    rotate_file "/var/log/${x}"
+  done
+  chown syslog /var/log/messages /var/log/secure /var/log/net.log
+  sudo pkill -HUP rsyslogd
+}
+
+# Wipe the unencyrpted CRX cache if it still exists.
+wipe_crx_cache() {
+  # If we are on removable media or we haven't imported the crx cache,
+  # don't wipe.
+  local root_dev="$(basename "$(rootdev -s -d)")"
+  local removable="$(cat "/sys/block/${root_dev}/removable")" || :
+  local disk_percent="$(get_stateful_usage_percent)" || :
+  [ -z "${disk_percent}" ] && disk_percent=0
+  if [ ${removable:-0} -eq 0 ] && [ -d "${UNVALIDATED_CRX_CACHE}" ] && \
+      [ -f "${VALIDATED_CRX_CACHE}/.initialized" ] && \
+      [ ${disk_percent} -gt 25 ]; then
+    echo "Wiping unvalidated crx cache as it has already been imported."
+    rm -rf "${UNVALIDATED_CRX_CACHE}"
+  fi
+}
+
+if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
+  echo "Exiting early because ${CLEANUP_PAUSED_FILE} exists."
+  exit 1
+fi
+
+# Remove old chrome logs (not logged in)
+remove_old_dated_files /var/log/chrome "chrome_*-*"
+
+# Remove old chrome logs (logged in)
+remove_old_dated_files /home/chronos/user/log "chrome_*-*"
+
+# Remove old miscellaneous UI logs
+remove_old_dated_files /var/log/ui "ui.*-*"
+
+# Remove old update engine logs
+remove_old_dated_files /var/log/update_engine "update_engine.*-*"
+
+# Remove old power manager logs
+remove_old_dated_files /var/log/power_manager "power*"
+
+# Rotate other logs
+rotate_logs
+
+# Report disk usage statistics
+METRICS_ARGS="0 1073741824 50"
+metrics_client Platform.DiskUsageVar \
+               $(du -sxk /var/ | awk '{print $1}') $METRICS_ARGS
+metrics_client Platform.DiskUsageChronos \
+               $(du -sxk /home/chronos | awk '{print $1}') $METRICS_ARGS
+
+# Report overall stateful usage.
+metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
+
+NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
+metrics_client Platform.DiskUsage.NumUserHomeDirectories \
+               $NUMBER_OF_USERS 1 50 50
+
+WEEKLY_USERS_ACTIVE=$(cryptohome --action=dump_last_activity |
+                      awk '$2 <= 7 {++count} END {print count}')
+metrics_client -s Login.UsersActiveWeekly ${WEEKLY_USERS_ACTIVE}
+
+if [ $NUMBER_OF_USERS -gt 0 ] ; then
+  metrics_client -s Login.UsersActiveWeekly.Percent \
+                 $(($WEEKLY_USERS_ACTIVE * 100 / $NUMBER_OF_USERS))
+else
+  metrics_client -s Login.UsersActiveWeekly.Percent 0
+fi
+
+# Report days since the least frequently used account signed in.
+# It is reported every time to measure effect of autodeletion feature.
+DAYS_SINCE_LFU_ACCOUNT_SIGNIN=$(cryptohome --action=dump_last_activity |
+                                awk '$2 > max {max = $2} END {print max}')
+
+# Check if there are any users.
+if [ "${DAYS_SINCE_LFU_ACCOUNT_SIGNIN}" != "" ]; then
+  metrics_client Login.LeastUsedAccountDays \
+                 $DAYS_SINCE_LFU_ACCOUNT_SIGNIN 1 90 90
+fi
+
+# Report additional metrics if we are low on free space.
+if [ "$(get_stateful_free_space_blocks)" -le \
+     "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
+  report_additional_statistics
+fi
+
+wipe_crx_cache
