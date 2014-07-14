@@ -1,0 +1,14 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Extra inputrc bindings hand maintained.
+
+set show-all-if-unmodified on
+
+# Support history searching with page up/down.
+"\e[5~": history-search-backward
+"\e[6~": history-search-forward
+
+# Support tab completion of commands.
+TAB: dynamic-complete-history

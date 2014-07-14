@@ -1,0 +1,1480 @@
+#!/bin/dash
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# NOTE: This script works in dash, but is not as featureful.  Specifically,
+# dash omits readline support (history & command line editing).  So we try
+# to run through bash if it exists, otherwise we stick to dash.  All other
+# code should be coded to the POSIX standard and avoid bashisms.
+#
+# Please test that any changes continue to work in dash by running
+# '/build/$BOARD/bin/dash crosh --dash' before checking them in.
+
+# Don't allow SIGHUP to terminate crosh. This guarantees that even if the user
+# closes the crosh window, we make our way back up to the main loop, which gives
+# cleanup code in command handlers a chance to run.
+trap '' HUP
+
+# Do not let CTRL+C kill crosh itself.  This does let the user kill commands
+# that are run by crosh (like `ping`).
+trap : INT
+
+# If it exists, use $DATA_DIR to define the $HOME location, as a first step
+# to entirely removing the use of $HOME. (Though HOME should be used as
+# fall-back when DATA_DIR is unset.)
+# TODO(keescook): remove $HOME entirely crbug.com/333031
+if [ "${DATA_DIR+set}" = "set" ]; then
+  export HOME="${DATA_DIR}/user"
+fi
+
+IS_BASH=0
+try_bash() {
+  # If dash was explicitly requested, then nothing to do.
+  case " $* " in
+  *" --dash "*) return 0;;
+  esac
+
+  # If we're already bash, then nothing to do.
+  if type "history" 2>/dev/null | grep -q "shell builtin"; then
+    IS_BASH=1
+    return 0
+  fi
+
+  # Still here?  Relaunch in bash.
+  exec /bin/bash $0 "$@"
+}
+try_bash "$@"
+
+#
+# Please keep the help text in alphabetical order!
+#
+HELP='
+ exit
+  Exit crosh.
+
+ help
+  Display this help.
+
+ help_advanced
+  Display the help for more advanced commands, mainly used for debugging.
+
+ ping [-c count] [-i interval] [-n] [-s packetsize] [-W waittime] <destination>
+  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
+  then the next hop gateway for the default route is used.
+
+ ssh [optional args...]
+  Starts the ssh subsystem if invoked without any arguments.
+  "ssh <user> <host>", "ssh <user> <host> <port>", "ssh <user>@<host>",
+  or "ssh <user>@<host> <port>" connect without entering the subsystem.
+
+ ssh_forget_host
+  Remove a host from the list of known ssh hosts.  This command displays
+  a menu of known hosts and prompts for the host to forget.
+
+ top
+  Run top.
+'
+
+HELP_ADVANCED='
+ battery_test [<test length>]
+  Tests battery discharge rate for given number of seconds. No argument will
+  default to 300s test.
+
+ bt_console [<agent capability>]
+  Enters a Bluetooth debugging console. Optional argument specifies the
+  capability of a pairing agent the console will provide; see the Bluetooth
+  Core specification for valid options.
+
+ chaps_debug [start|stop|<log_level>]
+  Sets the chapsd logging level.  No arguments will start verbose logging.
+
+ connectivity
+  Shows connectivity status.  "connectivity help" for more details
+
+ experimental_storage < status | enable | disable >
+  Enable or disable experimental storage features.
+
+ ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
+  Add and remove flimflam debugging tags.
+
+ inputcontrol
+  Manually adjust advanced touchpad and mouse settings. Run
+  "inputcontrol -h" for full list of options.
+
+ memory_test
+  Performs extensive memory testing on the available free memory.
+
+ modem <command> [args...]
+  Interact with the 3G modem. Run "modem help" for detailed help.
+
+ modem_set_carrier carrier-name
+  Configures the modem for the specified carrier.
+
+ network_diag [--date] [--flimflam] [--link] [--show-macs] [--wifi] [--help]
+   [--wifi-mon] <host>
+  A function that performs a suite of network diagnostics.  Saves a copy
+  of the output to your download directory.
+
+ network_logging <wifi | cellular | ethernet>
+  A function that enables a predefined set of tags useful for
+  debugging the specified device.
+
+ p2p_update [enable|disable]
+  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
+  network. This will both, attempt to get updates from other peers in the
+  network and share the downloaded updates with them. Run this command without
+  arguments to see the current state.
+
+ rlz < status | enable | disable >
+  Enable or disable RLZ.
+
+ rollback
+  Attempt to rollback to the previous update cached on your system. Only
+  available on non-stable channels and non-enterprise enrolled devices. Please
+  note that this will powerwash your device.
+
+ route [-n] [-6]
+  Display the routing tables.
+
+ set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
+  Set the APN to use when connecting to the network specified by <network-id>.
+  If <network-id> is not specified, use the network-id of the currently
+  registered network.
+
+ set_apn -c
+  Clear the APN to be used, so that the default APN will be used instead.
+
+ set_arpgw <true | false>
+  Turn on extra network state checking to make sure the default gateway
+  is reachable.
+
+ set_cellular_ppp [-u <username>] [-p <password>]
+  Set the PPP username and/or password for an existing cellular connection.
+  If neither -u nor -p is provided, show the existing PPP username for
+  the cellular connection.
+
+ set_cellular_ppp -c
+  Clear any existing PPP username and PPP password for an existing cellular
+  connection.
+
+ set_time [<time string>]
+  Sets the system time if the the system has been unable to get it from the
+  network.  The <time string> uses the format of the GNU coreutils date command.
+
+ sound <command> <argument>
+  Low level sound configuration.  Can be used to play/record audio samples
+  and enable beam forming on Pixel.
+  "sound beamforming <on|off>" will enable/disable the feature.
+  "sound record [duration]" will start recording.
+  "sound play <filename>" will play the recorded audio samples.
+
+ storage_status
+  Reads storage device SMART health status, vendor attributes, and error log.
+
+ storage_test_1
+  Performs a short offline SMART test.
+
+ storage_test_2
+  Performs an extensive readability test.
+
+ syslog <message>
+  Logs a message to syslog.
+
+ time_info
+  Returns the current synchronization state for the time service.
+
+ tracepath [-n] <destination>[/port]
+  Trace the path/route to a network host.
+
+ update_over_cellular [enable|disable]
+  Enables or disables the auto updates over cellular networks. Run without
+  arguments to see the current state.
+
+ upload_crashes
+  Uploads available crash reports to the crash server.
+
+ wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
+  Set wpa_supplicant debugging level.
+
+ xset m [acc_mult[/acc_div] [thr]]
+ xset m default
+  Tweak the mouse acceleration rate.
+
+ xset r rate [delay [rate]]
+  Tweak autorepeat rates.  The delay is the number of milliseconds before
+  autorepeat starts.  The rate is the number of repeats per second.
+ xset r [keycode] <on|off>
+  Turn autorepeat on/off.  If keycode is specified, it affects only that
+  key.  If not specified, it affects global behavior.
+'
+
+INTRO_TEXT="Welcome to crosh, the Chrome OS developer shell.
+
+If you got here by mistake, don't panic!  Just close this tab and carry on.
+
+Type 'help' for a list of commands.
+"
+
+CHROMEOS_INSTALL=/usr/sbin/chromeos-install
+
+load_extra_crosh() {
+  # Keep `local` decl split from assignment so return code is checked.
+  local crosh_dir devmode removable src
+
+  crosh_dir=$(dirname "$0")
+
+  if [ -e /usr/share/misc/chromeos-common.sh ]; then
+    . "/usr/share/misc/chromeos-common.sh" || exit 1
+
+    src=$(get_block_dev_from_partition_dev $(rootdev -s))
+    if [ "$(cat /sys/block/${src#/dev/}/removable)" = "1" ]; then
+      removable=1
+    fi
+  fi
+
+  case "${removable}: $* " in
+  1:*|\
+  *:*" --usb "*)
+    . "${crosh_dir}/crosh-usb"
+    ;;
+  esac
+
+  # Force dev behavior on dev images.
+  if type crossystem >/dev/null 2>&1; then
+    crossystem "cros_debug?1"
+    devmode=$((!$?))
+  else
+    echo "Could not locate 'crossystem'; assuming devmode is off."
+  fi
+
+  case "${devmode}: $* " in
+  1:*|\
+  *:*" --dev "*)
+    . "${crosh_dir}/crosh-dev"
+    ;;
+  esac
+}
+
+shell_read() {
+  local prompt="$1"
+  shift
+
+  if [ "$IS_BASH" -eq "1" ]; then
+    # In bash, -e gives readline support.
+    read -p "$prompt" -e $@
+  else
+    read -p "$prompt" $@
+  fi
+}
+
+shell_history() {
+  if [ "$IS_BASH" -eq "1" ]; then
+    # In bash, the history builtin can be used to manage readline history
+    history $@
+  fi
+}
+
+cmd_help() (
+  echo "$HELP"
+)
+
+cmd_help_advanced() (
+  echo "$HELP_ADVANCED"
+)
+
+# We move the trailing brace to the next line so that we avoid the style
+# checker from rejecting the use of braces.  We cannot use subshells here
+# as we want the set the exit variable in crosh itself.
+# http://crbug.com/318368
+cmd_exit()
+{
+  exit='y'
+}
+
+check_dforward() {
+  # Matches a port number between 8000 and 8999.
+  expr "$1" : '^8[0-9][0-9][0-9]$' > /dev/null
+}
+
+check_forward() {
+  # Matches three things, separated by ':':
+  # A port number, between 8000 and 8999;
+  # A hostname
+  # A port number, unrestricted
+  expr "$1" : '^8[0-9][0-9][0-9]:[[:alnum:]][-[:alnum:].]*:[1-9][0-9]*$' \
+      > /dev/null
+}
+
+check_serveraliveinterval() {
+  # Matches a number of seconds.
+  expr "$1" : '^[0-9][0-9]*$' > /dev/null;
+}
+
+check_keyfile() {
+  # Allow files in /home/chronos/user, /media. Note that we *do* allow .., so
+  # this isn't actually a security barrier, just a molly-guard to keep users
+  # from putting keys in insecure storage.
+  if [ ! -f "$1" -a ! -f "$HOME/Downloads/$1" ]; then
+    return 1;
+  fi
+  if [ ! -r "$1" -a ! -r "$HOME/Downloads/$1" ]; then
+    return 1;
+  fi
+  (expr "$1" : "^$HOME" > /dev/null) || \
+  (expr "$1" : '^/media/' > /dev/null) || \
+  (expr "$1" : '^[^/]*$' > /dev/null)
+}
+
+cmd_set_time() (
+  local spec="$*"
+  if [ -z "${spec}" ]; then
+    echo "A date/time specification is required."
+    echo "E.g., set_time 10 February 2012 11:21am"
+    echo "(Remember to set your timezone in Settings first.)"
+    return
+  fi
+  local sec status
+  sec=$(date +%s --date="${spec}" 2>&1)
+  status=$?
+  if [ ${status} -ne 0 -o -z "${sec}" ]; then
+    echo "Unable to understand the specified time:"
+    echo "${sec}"
+    return
+  fi
+  local reply
+  reply=$(dbus-send --system --type=method_call --print-reply \
+    --dest=org.torproject.tlsdate /org/torproject/tlsdate \
+    org.torproject.tlsdate.SetTime "int64:$((sec))" 2>/dev/null)
+  status=$?
+  if [ ${status} -ne 0 ]; then
+    echo "Time not set. Unable to communicate with the time service."
+    return
+  fi
+  # Reply format: <dbus response header>\n    uint32 <code>\n
+  local code
+  code=$(echo "${reply}" | sed -n -e '$s/.*uint32 \([0-9]\).*/\1/p')
+  case "${code}" in
+  0)
+    echo "Time has been set."
+    ;;
+  1)
+    echo "Requested time was invalid (too large or too small): ${sec}"
+    ;;
+  2)
+    echo "Time not set. Network time cannot be overriden."
+    ;;
+  3)
+    echo "Time not set. There was a communication error."
+    ;;
+  *)
+    echo "An unexpected response was received: ${code}"
+    echo "Details: ${reply}"
+  esac
+)
+
+cmd_sound() (
+  case "$1" in
+  "beamforming")
+    card=$(aplay -l | egrep '^card .*\bCA0132\b' | sed 's/card \([0-9]\+\).*/\1/')
+    if [ -z "$card" ]; then
+      echo "No supported card found"
+      return 1
+    fi
+    if [ "$2" != "on" -a "$2" != "off" ]; then
+      echo "invalid option $2."
+      echo "Valid choices: on, off."
+      return 1
+    else
+      amixer -c"$card" cset name='"Voice Focus Capture Switch"' "$2"
+    fi
+    ;;
+  "play")
+    if [ -z "$2" ]; then
+      echo "Please specify the audio sample file name."
+      return 1
+    fi
+    echo "playing $2"
+    cras_test_client --playback_file "$2"
+    ;;
+  "record")
+    local record_time=0
+    if [ $# -lt 2 ]; then
+      record_time=30
+    else
+      record_time="$2"
+    fi
+    case ${record_time} in
+    ""|*[!0-9]*)
+      echo "Recording duration has to be numeric."
+      return 1
+    esac
+    if [ ${record_time} -gt 30 -o ${record_time} -lt 1 ]; then
+      echo "Recording duration has to be in between 1-30."
+      return 1
+    fi
+
+    local filename="${HOME}/Downloads/audio_$(date '+%Y%m%d%H%M%S')"
+    echo "Recording..."
+    cras_test_client --capture_file ${filename} --duration_seconds "${record_time}"
+    echo "Audio samples recorded at ${filename}"
+    ;;
+  *)
+    echo "Usage:"
+    echo "  sound beamforming <on/off>"
+    echo "  sound record [duration]"
+    echo "  sound play <filename>"
+    return 1
+    ;;
+  esac
+)
+
+check_ssh_host() {
+  check_hostname "$1" || check_ipv6 "$1";
+}
+
+cmd_ssh() (
+  local user=""
+  local host=""
+  local port="22"
+  local idfile=""
+  local dforwards=""
+  local forwards=""
+  local nocmd=""
+  local serveraliveinterval=""
+  local line
+  local cmd
+  local params
+  local exit
+  local id=$(uuidgen)
+
+  local defopts="-e none -F /etc/ssh/ssh_config"
+
+  if [ ! -z "$1" ]; then
+    # Sets the username, host, and optionally port directly.  We accept:
+    # 'user host', 'user host port', 'user@host', or 'user@host port'.
+    local at_pos=$(expr index "$1" '@')
+    if [ $at_pos = 0 ]; then
+      user="$1"
+      host="$2"
+      if [ ! -z "$3" ]; then
+        port="$3"
+      fi
+    else
+      user=$(substr "$1" "0" $(expr "$at_pos" - 1))
+      host=$(substr "$1" "$at_pos")
+      if [ ! -z "$2" ]; then
+        port="$2"
+      fi
+    fi
+  fi
+
+  if [ -z "$user" -o -z "$host" ]; then
+    while [ 1 ]; do
+      if ! shell_read "ssh> " line; then
+        echo;
+        exit=1;
+        break
+      fi
+
+      local space_pos=$(expr index "$line" ' ')
+      if [ $space_pos = 0 ]; then
+        cmd="$line"
+        params=""
+      else
+        cmd=$(substr "$line" "0" "$space_pos")
+        params=$(substr "$line" "$space_pos")
+      fi
+
+      case "$cmd" in
+
+      key)
+        if check_keyfile "$params"; then
+          mkdir -p -m 600 "$HOME/.ssh";
+          trap "rm -f $HOME/.ssh/key-$id" EXIT;
+          (cd "$HOME/Downloads" ; cp -- "$params" "$HOME/.ssh/key-$id")
+          chmod 600 "$HOME/.ssh/key-$id"
+          idfile="-i $HOME/.ssh/key-$id"
+        else
+          echo "File '$params' is not a valid key file. Key files must reside"
+          echo "under /media or $HOME. Key files in the Downloads directory may"
+          echo "be specified with an unqualified name."
+        fi
+        ;;
+
+      dynamic-forward)
+        if ! check_dforward "$params"; then
+          echo "Invalid forward '$params'."
+          echo "Note that the local port number must be in 8000-8999."
+        else
+          dforwards="$dforwards -D$params"
+        fi
+        ;;
+
+      forward)
+        if ! check_forward "$params"; then
+          echo "Invalid forward '$params'"
+          echo "Note that the local port number must be in 8000-8999."
+        else
+          forwards="$forwards -L$params"
+        fi
+        ;;
+
+      nocmd)
+        nocmd="-N"
+        ;;
+
+      server-alive-interval)
+        if ! check_serveraliveinterval "$params"; then
+          echo "Invalid ServerAliveInterval '$params'."
+        else
+          serveraliveinterval="-oServerAliveInterval=$params"
+        fi
+        ;;
+
+      port)
+        if ! check_digits "$params"; then
+          echo "Invalid port '$params'"
+        else
+          port="$params"
+        fi
+        ;;
+
+      user)
+        user="$params"
+        ;;
+
+      host)
+        host="$params"
+        ;;
+
+      exit)
+        exit=1
+        break
+        ;;
+
+      connect)
+        break
+        ;;
+
+      *)
+        echo "connect                       - connect"
+        echo "dynamic-forward port          - dynamic socks proxy (-D)"
+        echo "forward port:host:port        - static port forward (-L)"
+        echo "help                          - this"
+        echo "host <hostname>               - remote hostname"
+        echo "key <file>                    - sets private key to use (-i)"
+        echo "nocmd                         - don't execute command (-N)"
+        echo "port <num>                    - port on remote host (-p)"
+        echo "server-alive-interval <num>   - set ServerAliveInterval option"
+        echo "exit                          - exit ssh subsystem"
+        echo "user <username>               - username on remote host"
+        echo "Note that this program can only bind local ports in the range"
+        echo "8000-8999, inclusive."
+        ;;
+      esac
+    done
+  fi
+
+  if [ -z "$exit" ]; then
+    if [ -z "$user" ]; then
+      echo "No username given."
+    elif [ -z "$host" ]; then
+      echo "No host given."
+    elif ! check_username "$user"; then
+      echo "Invalid username '$user'"
+    elif ! check_ssh_host "$host"; then
+      echo "Invalid hostname '$host'"
+    else
+      ssh $defopts $idfile $dforwards $forwards $nocmd $serveraliveinterval \
+          -p "$port" -l "$user" "$host"
+    fi
+  fi
+
+  if [ -n "$idfile" ]; then
+    rm "$HOME/.ssh/key-$id";
+    trap - EXIT;
+  fi
+)
+
+cmd_ssh_forget_host() (
+  local known_hosts="$(readlink -f $HOME/.ssh/known_hosts)"
+
+  # Test that the known_hosts is a regular file and is not 0 length.
+  if [ ! -f "$known_hosts" -o ! -s "$known_hosts" ]; then
+    echo "No known hosts."
+    return
+  fi
+
+  local count="$(cat "$known_hosts" | wc -l)"
+
+  # Print an indexed list of the known hosts.
+  echo "Known hosts:"
+  awk '{ print " " NR ") " $1; }' "$known_hosts"
+
+  local hostno
+
+  while true; do
+    LINE_=""
+    shell_read "Please select a host to forget [1-$count]: " LINE_
+    if [ -z "$LINE_" ]; then
+      echo "Aborting."
+      return
+    fi
+
+    # Extract the numbers from the user input.
+    hostno="$(echo $LINE_ | sed 's/[^[:digit:]]*//g')"
+
+    # If they typed a number...
+    if [ -n "$hostno" ]; then
+      # And it was in the proper range...
+      if [ $hostno -gt 0 -a $hostno -le $count ]; then
+        # Then we can stop asking for input.
+        break
+      fi
+    fi
+
+    echo "Invalid selection.  Please enter a number between 1 and $count."
+  done
+
+  local trimmed="$(awk -v I="$hostno" 'NR != I { print }' "$known_hosts")"
+  echo "$trimmed" > "$known_hosts"
+  chmod 644 "$known_hosts"
+)
+
+cmd_swap() (
+  local swap_enable_file="/home/chronos/.swap_enabled"
+
+  case "$1" in
+  "enable")
+    if [ -z "$2" ]; then
+      # remove file in case root owns it
+      rm -f $swap_enable_file
+      touch $swap_enable_file
+    elif ! echo "$2" | grep -q "^[0-9]*$"; then
+      echo "$2 is not a valid integer literal"
+      cmd_swap usage
+      return 1
+    elif [ "$2" -ne 500 -a \
+           "$2" -ne 1000 -a \
+           "$2" -ne 2000 -a \
+           "$2" -ne 3000 -a \
+           "$2" -ne 4000 -a \
+           "$2" -ne 4500 -a \
+           "$2" -ne 6000 ]; then
+      echo "invalid size $2."
+      echo "Valid choices: 500, 1000, 2000, 3000, 4000, 4500 or 6000."
+      cmd_swap usage
+      return 1
+    else
+      # remove file in case root owns it
+      rm -f $swap_enable_file
+      echo "$2" > $swap_enable_file
+      echo "You have selected a size of $2 MB for compressed swap."
+      echo "Your choice may affect system performance in various ways."
+      echo "Presumably you know what you are doing."
+    fi
+    echo "Swap will be ON at next reboot."
+    ;;
+  "disable")
+    # remove file in case root owns it
+    rm -f $swap_enable_file
+    echo 0 > $swap_enable_file
+    echo "You are turning compressed swap off."
+    echo "This may impact system performance in various ways."
+    echo "Presumably you know what you are doing."
+    echo "Swap will be OFF at next reboot."
+    ;;
+  "status")
+    /sbin/swapon -s
+    ;;
+  *)
+    echo "Usage:"
+    echo "  swap status          print swap device max and current size (if on)"
+    echo "  swap enable [<optional swap size (MB)>]"
+    echo "  swap disable"
+    return 1
+    ;;
+  esac
+)
+
+cmd_experimental_storage() (
+  local enable=""
+  if [ -z "$1" ]; then
+    echo "Usage: experimental_storage < status | enable | disable >"
+    return 1
+  fi
+
+  case "$1" in
+    "status")
+      ;;
+    "enable")
+      enable="true"
+      ;;
+    "disable")
+      enable="false"
+      ;;
+    *)
+      echo "Invalid parameter: $1"
+      return 1
+      ;;
+  esac
+
+  if [ -z "$enable" ]; then
+    enable=$( dbus-send --system --type=method_call --print-reply \
+        --dest=org.chromium.CrosDisks /org/chromium/CrosDisks \
+        org.freedesktop.DBus.Properties.Get string:org.chromium.CrosDisks \
+        string:ExperimentalFeaturesEnabled 2>/dev/null )
+    if [ $? -eq 0 ]; then
+      if echo "$enable" | grep -iqs "true"; then
+        echo "Experimental storage features are currently enabled."
+      else
+        echo "Experimental storage features are currently disabled."
+      fi
+    else
+      echo "Could not determine the status of experimental storage features."
+    fi
+  else
+    if dbus-send --system --type=method_call --print-reply \
+        --dest=org.chromium.CrosDisks /org/chromium/CrosDisks \
+        org.freedesktop.DBus.Properties.Set \
+        string:org.chromium.CrosDisks string:ExperimentalFeaturesEnabled \
+        variant:boolean:${enable} >/dev/null 2>&1; then
+      echo "Experimental storage features have been ${1}d."
+    else
+      echo "Could not $1 experimental storage features."
+    fi
+  fi
+)
+
+cmd_time_info() (
+  echo "Last time synchronization information:"
+  dbus-send --system --type=method_call --print-reply \
+      --dest=org.torproject.tlsdate /org/torproject/tlsdate \
+      org.torproject.tlsdate.LastSyncInfo 2>/dev/null |
+    sed -n \
+        -e 's/boolean/network-synchronized:/p' \
+        -e 's/string/last-source:/p' \
+        -e 's/int64/last-synced-time:/p'
+)
+
+cmd_bt_console() (
+  if [ -x /usr/bin/bluetoothctl ]; then
+    /usr/bin/bluetoothctl "${1:+--agent=$1}"
+  else
+    echo "Bluetooth console not available"
+  fi
+)
+
+cmd_ff_debug() (
+  /usr/bin/ff_debug "$@"
+)
+
+cmd_wpa_debug() (
+  /usr/bin/wpa_debug "$@"
+)
+
+cmd_set_arpgw() (
+  /usr/bin/set_arpgw "$@"
+)
+
+cmd_network_logging() (
+  if [ -n "$1" ]; then
+    case "$1" in
+      "wifi")
+        echo; /usr/bin/ff_debug service+wifi+inet+device+manager
+        echo; /usr/bin/wpa_debug msgdump
+        echo; /usr/bin/modem set-logging info
+        ;;
+      "cellular")
+        echo; /usr/bin/ff_debug service+cellular+modem+device+manager
+        echo; /usr/bin/wpa_debug info
+        echo; /usr/bin/modem set-logging debug
+        ;;
+      "ethernet")
+        echo; /usr/bin/ff_debug service+ethernet+device+manager
+        echo; /usr/bin/wpa_debug info
+        echo; /usr/bin/modem set-logging info
+        ;;
+      "--help")
+        echo "Usage: network_logging <wifi | cellular | ethernet>"
+        ;;
+      *)
+        echo "Invalid parameter $1"
+        ;;
+    esac
+  else
+    echo "Missing parameter wifi | cellular | ethernet"
+  fi
+)
+
+cmd_network_diag() (
+  /usr/bin/network_diagnostics "$@"
+)
+
+debugd() {
+  local method="$1"; shift
+  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
+      /org/chromium/debugd "org.chromium.debugd.$method" "$@"
+}
+
+cmd_ping() (
+  local option="dict:string:variant:"
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    # Do just enough parsing to filter/map options; we
+    # depend on ping to handle final validation
+    if [ "$1" = "-i" ]; then
+      shift; option="${option}interval,int32:$1,"
+    elif [ "$1" = "-c" ]; then
+      shift; option="${option}count,int32:$1,"
+    elif [ "$1" = "-W" ]; then
+      shift; option="${option}waittime,int32:$1,"
+    elif [ "$1" = "-s" ]; then
+      shift; option="${option}packetsize,int32:$1,"
+    elif [ "$1" = "-n" ]; then
+      option="${option}numeric,boolean:true,"
+    elif [ "$1" = "-b" ]; then
+      option="${option}broadcast,boolean:true,"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: destination"
+    return 1
+  fi
+
+  local dest="$1"
+  if [ "$dest" = "gw" ]; then
+    # Convenient shorthand for the next-hop gateway attached
+    # to the default route; this means if you have a host named
+    # "gw" then you'll need to specify a FQDN or IP address.
+    dest=$(/sbin/route -n | awk '$1 == "0.0.0.0" { print $2; }')
+    if [ -z "$dest" ]; then
+      echo "Cannot determine primary gateway; routing table is:"
+      cmd_route -n
+      return 1
+    fi
+  fi
+
+  option=$(echo "$option" | sed 's/,$//')
+
+  fifo="$(mk_fifo)"
+  debugd PingStart "fd:1" "string:$dest" "$option" 2>&1 > "$fifo" &
+  read pid < "$fifo"
+  echo "pid: $pid"
+  (while read line; do echo "$line"; done) < "$fifo"
+  debugd PingStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop ping"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
+)
+
+cmd_progressive_scan() (
+  local flag_file="/home/chronos/.progressive_scan"
+  local enabled=0
+  local changed=0
+  if [ -r ${flag_file} ]; then
+    enabled=1
+  fi
+  if [ -z "$1" ]; then
+    if [ ${enabled} -eq 1 ]; then
+      echo "Currently enabled"
+    else
+      echo "Currently disabled"
+    fi
+    return
+  fi
+  if [ "$1" = "on" ]; then
+    if [ $enabled -eq 0 ]; then
+      changed=1;
+    fi
+    touch "${flag_file}"
+  else
+    if [ $enabled -eq 1 ]; then
+      changed=1
+    fi
+    rm -f "${flag_file}"
+  fi
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot (or restart shill) for this to take effect."
+  else
+    echo "No change."
+  fi
+)
+
+cmd_chaps_debug() (
+  local level=${1:--2}
+  if [ "$1" = "stop" ]; then
+    level=0
+  fi
+  if [ "$1" = "start" ]; then
+    level=-2
+  fi
+  rm -f /home/chronos/.chaps_debug*
+  if [ "${level}" = "-1" ]; then
+    touch /home/chronos/.chaps_debug_1
+  elif [ "${level}" = "-2" ]; then
+    touch /home/chronos/.chaps_debug_2
+  fi
+  /usr/bin/chaps_client --set_log_level=${level} 2> /dev/null
+  if [ $? -eq 0 ]; then
+    echo "Logging level set to ${level}."
+  else
+    echo "Failed to set logging level."
+  fi
+)
+
+cmd_route() (
+  local option="dict:string:variant:"
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    if [ "$1" = "-n" ]; then
+      option="${option}numeric,boolean:true,"
+    elif [ "$1" = "-6" ]; then
+      option="${option}v6,boolean:true,"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+  option=$(echo "$option" | sed 's/,$//')
+
+  debugd GetRoutes "$option"
+)
+
+cmd_tracepath() (
+  local option="dict:string:variant:"
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    if [ "$1" = "-n" ]; then
+      option="${option}numeric,boolean:true,"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  option=$(echo "$option" | sed 's/,$//')
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: destination"
+    return 1
+  fi
+
+  fifo="$(mk_fifo)"
+  debugd TracePathStart "fd:1" "string:$1" "$option" 2>&1 > "$fifo" &
+  read pid < "$fifo"
+  echo "pid: $pid"
+  (while read line; do echo "$line"; done) < "$fifo"
+  debugd TracePathStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop tracepath"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
+)
+
+cmd_top() (
+  # -s is "secure" mode, which disables kill, renice, and change display/sleep
+  # interval.
+  top -s
+)
+
+cmd_modem() (
+  /usr/bin/modem "$@"
+)
+
+cmd_modem_set_carrier() (
+  /usr/bin/modem set-carrier "$@"
+)
+
+cmd_set_apn() (
+  /usr/bin/set_apn "$@"
+)
+
+cmd_set_cellular_ppp() (
+  /usr/bin/set_cellular_ppp "$@"
+)
+
+cmd_connectivity() (
+  /usr/bin/connectivity "$@"
+)
+
+cmd_autest() (
+  local omaha_url="autest"
+
+  if [ "$1" = "-scheduled" ]; then
+   # pretend that this is a scheduled check as opposed to an user-initiated
+   # check for testing features that get enabled only on scheduled checks.
+   omaha_url="autest-scheduled"
+  fi
+
+  echo "Calling update_engine_client with omaha_url = $omaha_url"
+  /usr/bin/update_engine_client --omaha_url $omaha_url
+)
+
+cmd_p2p_update() (
+  case "$1" in
+    "enable")
+      param="-p2p_update=yes"
+      ;;
+
+    "disable")
+      param="-p2p_update=no"
+      ;;
+
+    "")
+      param=""
+      ;;
+
+    *)
+      echo "Usage: p2p_update [enable|disable]
+  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
+  network. This will both, attempt to get updates from other peers in the
+  network and share the downloaded updates with them. Run this command without
+  arguments to see the current state."
+      return 1
+      ;;
+  esac
+  /usr/bin/update_engine_client $param -show_p2p_update
+)
+
+cmd_rollback() (
+  if /usr/bin/update_engine_client --rollback; then
+    echo "Rollback attempt succeeded -- after a couple minutes you will" \
+         "get an update available and you should reboot to complete rollback."
+  else
+    echo "Rollback attempt failed. Check chrome://system for more information."
+  fi
+)
+
+cmd_update_over_cellular() (
+  case "$1" in
+    "enable")
+      param="-update_over_cellular=yes"
+      echo "When available, auto-updates download in the background any time " \
+           "the computer is powered on.  Note: this may incur additional " \
+           "cellular charges, including roaming and/or data charges, as per " \
+           "your carrier arrangement."
+      ;;
+
+    "disable")
+      param="-update_over_cellular=no"
+      ;;
+
+    "")
+      param=""
+      ;;
+
+    *)
+      echo "Usage: update_over_cellular [enable|disable]
+  Enables or disables the auto updates over cellular networks. Run without
+  arguments to see the current state."
+      return 1
+      ;;
+  esac
+  /usr/bin/update_engine_client $param -show_update_over_cellular
+)
+
+cmd_upload_crashes() (
+  debugd UploadCrashes
+  echo "Check chrome://crashes for status updates"
+)
+
+cmd_tpcontrol() (
+  echo "tpcontrol is deprecated. Please use inputcontrol instead."
+)
+
+cmd_try_touch_experiment() (
+  /usr/sbin/try_touch_experiment "$@"
+)
+
+cmd_inputcontrol() (
+  /opt/google/input/inputcontrol "$@"
+)
+
+cmd_rlz() (
+  local flag_file="$HOME/.rlz_disabled"
+  local enabled=1
+  local changed=0
+  if [ -r "${flag_file}" ]; then
+    enabled=0
+  fi
+  case "$1" in
+    "status")
+      if [ $enabled -eq 1 ]; then
+        echo "Currently enabled"
+      else
+        echo "Currently disabled"
+      fi
+      return
+      ;;
+
+    "enable")
+      if [ $enabled -eq 0 ]; then
+        changed=1
+      fi
+      rm -f "${flag_file}"
+      ;;
+
+    "disable")
+      if [ $enabled -eq 1 ]; then
+        changed=1
+      fi
+      touch "${flag_file}"
+      ;;
+
+    *)
+      echo "Usage: rlz < status | enable | disable >"
+      return 1
+      ;;
+  esac
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot for this to take effect."
+  else
+    echo "No change."
+  fi
+)
+
+cmd_syslog() (
+  logger -t crosh -- "$*"
+)
+
+cmd_xset() (
+  case $1 in
+  m|r|-r) ;;
+  *) set -- ;; # Gets us a usage string.
+  esac
+  xset-mini "$@"
+)
+
+mk_fifo() {
+  # We want C-c to terminate the running test so that the UI stays the same.
+  # Therefore, create a fifo to direct the output of the test to, and have a
+  # subshell read from the fifo and emit to stdout. When the subshell ends (at a
+  # C-c), we stop the test and clean up the fifo.
+  # no way to mktemp a fifo, so make a dir to hold it instead
+  dir=$(mktemp -d "/tmp/crosh-test-XXXXXXXXXX")
+  if [ $? -ne 0 ]; then
+    echo "Can't create temporary directory"
+    return 1
+  fi
+  fifo="${dir}/fifo"
+  if ! mkfifo "$fifo"; then
+    echo "Can't create fifo at $fifo"
+    return 1
+  fi
+
+  echo "$fifo"
+}
+
+cmd_storage_test_1() (
+  option="$1"
+
+  debugd Smartctl "string:abort_test" >/dev/null
+
+  test=$(debugd Smartctl "string:short_test")
+  if [ "$option" != "-v" ]; then
+    echo "$test" | sed -n '1p;2p'
+    echo ""
+    echo "$test" | grep "Please wait"
+  else
+    echo "$test"
+  fi
+
+  echo ""
+
+  while debugd Smartctl "string:capabilities" |
+        grep -q "of test remaining"; do
+    true
+  done
+
+  result=$(debugd Smartctl "string:selftest")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | grep -e "Num" -e "# 1"
+  else
+    echo "$result"
+  fi
+
+  debugd Smartctl "string:abort_test" >/dev/null
+)
+
+cmd_storage_test_2() (
+  fifo="$(mk_fifo)"
+  pid_file="$(mktemp)"
+  debugd BadblocksStart "fd:1" 2>&1 > "$fifo" &
+  (while read line; do echo "$line" | tee -a "$pid_file"; done) < "$fifo"
+  read -r pid < "$pid_file"
+  rm -f "$pid_file"
+
+  debugd BadblocksStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop badblocks"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
+)
+
+cmd_storage_status() (
+  option="$1"
+
+  result=$(debugd Smartctl "string:health")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | sed -n '1p;2p'
+    echo ""
+    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '2,$p'
+  else
+    echo "$result"
+  fi
+
+  echo ""
+
+  result=$(debugd Smartctl "string:error")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '3,$p'
+  else
+    echo "$result"
+  fi
+
+  echo ""
+
+  result=$(debugd Smartctl "string:attributes")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '3,$p'
+  else
+    echo "$result"
+  fi
+)
+
+cmd_memory_test() (
+  # Getting total free memory in KB.
+  mem=$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)
+
+  # Converting to MB.
+  mem=$(($mem / 1024))
+
+  # Giving OS 200MB free memory before hogging the rest of it.
+  mem=$(($mem - 200))
+
+  fifo="$(mk_fifo)"
+  pid_file="$(mktemp)"
+  debugd MemtesterStart "fd:1" "uint32:$mem" 2>&1 > "$fifo" &
+  (while read line; do echo "$line" | tee -a "$pid_file"; done) < "$fifo"
+  read -r pid < "$pid_file"
+  rm -f "$pid_file"
+
+  debugd MemtesterStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop memtester"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
+)
+
+cmd_battery_test() (
+  test_length="$1"
+
+  if [ -z "$test_length" ]; then
+    echo "No test length specified. Defaulting to 300s"
+    test_length=300
+  fi
+
+  # Ensuring that the parameter is an int.
+  if ! echo "${test_length}" | egrep -q '^[0-9]+$'; then
+    echo "You provided invalid test length. Exiting..."
+    return 1
+  fi
+
+  ac="$(ls /sys/class/power_supply/*/online)"
+  ac="$(dirname ${ac})"
+
+  bat="/sys/class/power_supply/*/technology"
+
+  # Checking if battery is present in the system.
+  if ! ls ${bat} >/dev/null 2>&1; then
+    echo "No battery found. Insert the battery and reboot the device."
+    return 1
+  else
+    # Battery exists. Getting its path.
+    bat="$(ls ${bat})"
+    bat="$(dirname ${bat})"
+  fi
+
+  # Figuring out if battery gauge measures energy left or charge.
+  if ls ${bat}/energy* >/dev/null 2>&1; then
+    meter="energy"
+  elif ls ${bat}/charge* >/dev/null 2>&1; then
+    meter="charge"
+  else
+    echo "Could not figure out the way to get battery status"
+    return 1
+  fi
+
+  ac_online="$(cat ${ac}/online)"
+  bat_status="$(cat ${bat}/status)"
+  bat_now="$(cat ${bat}/${meter}_now)"
+  bat_full="$(cat ${bat}/${meter}_full)"
+  bat_full_design="$(cat ${bat}/${meter}_full_design)"
+
+  echo "Battery is $bat_status ($((${bat_now}*100/${bat_full}))% left)"
+  echo "Battery health: $((${bat_full}*100/${bat_full_design}))%"
+
+  if [ "$bat_status" != "Discharging" ]; then
+    echo "Please make sure the power supply is unplugged and retry the test"
+    return 1
+  fi
+
+  echo "Please wait.."
+
+  sleep "$test_length"
+
+  bat_after="$(cat ${bat}/${meter}_now)"
+  bat_diff="$((${bat_now}-${bat_after}))"
+  bat_diff="$((${bat_diff}*100))" #this allows to have only 2 decimal digits
+
+  bat_perc="$((${bat_diff}*100/${bat_full}))"
+
+  bat_perc_int="$((${bat_perc}/100))"
+  bat_perc_dec="$((${bat_perc}%100))"
+
+  echo "Battery discharged ${bat_perc_int}.${bat_perc_dec}% in ${test_length}s"
+)
+
+cmd_dump_emk() (
+  /usr/sbin/cryptohome --action=tpm_attestation_key_status \
+                       --name=attest-ent-machine
+)
+
+substr() {
+  local str="$1"
+  local start="$2"
+  local end="$3"
+
+  if [ "$IS_BASH" = "1" ]; then
+    # NB: use printf to avoid echo interpreting -n
+    if [ -z "$end" ]; then
+      printf '%s\n' ${str:$start}
+    else
+      printf '%s\n' ${str:$start:$end}
+    fi
+    return
+  fi
+
+  start=$(expr "$start" + 1)
+
+  if [ ! -z "$end" ]; then
+    end=$(expr "$end" - 1)
+  fi
+
+  echo "$str" | cut -c${start}-${end}
+}
+
+dispatch() {
+  local line="$1"
+  local command=""
+  local params=""
+
+  local space_pos=$(expr index "$line" ' ')
+
+  if [ $space_pos = 0 ]; then
+    command=$line
+  else
+    command=$(substr "$line" "0" "$space_pos")
+    command=${command% *}
+    params=$(substr "$line" "$space_pos")
+  fi
+
+  if ! type "cmd_$command" 2>/dev/null | head -1 | grep -q "function"; then
+    echo "Unknown command: '$command'"
+  else
+    command="cmd_$command"
+    $command $params
+  fi
+}
+
+# Checks that a given string looks like a hostname or IPv4 address (starts
+# with an alphanumeric and contains only alphanumeric, '.', or '-'
+# characters).
+check_hostname() {
+  expr "$1" : '^[[:alnum:]][-[:alnum:].]*$' > /dev/null
+}
+
+# Checks that a given string could plausibly be an IPv6 address
+# (hexadecimal, ':', and '.' characters only, followed by an optional zone
+# index consisting of a '%' and a device name).
+check_ipv6() {
+  echo "$1" | /bin/grep -E -q '^[0-9a-fA-F:.]+(%[a-z0-9]+)?$'
+}
+
+# Checks that a given string starts with an alphanumeric, and contains only
+# alphanumeric and zero or more of "_:.~%$^\-"
+check_username() {
+  expr "$1" : '^[[:alnum:]][[:alnum:]_:.~%$^\-]*$' > /dev/null
+}
+
+check_digits() {
+  expr "$1" : '^[[:digit:]]*$' > /dev/null
+}
+
+repl() {
+  echo "${INTRO_TEXT}"
+  if [ "$IS_BASH" != "1" ]; then
+    echo "Sorry, line editing and command history disabled due to" \
+      "shell limitations."
+  fi
+
+  # This will be set by the 'exit' command to tell us to quit.
+  local exit
+  while [ -z "${exit}" ]; do
+    if shell_read "crosh> " LINE_; then
+      if [ ! -z "$LINE_" ]; then
+        shell_history -s "$LINE_"
+        dispatch "$LINE_"
+      fi
+    else
+      echo
+      return 1
+    fi
+  done
+}
+
+main() {
+  load_extra_crosh "$@"
+
+  INPUTRC="/usr/share/misc/inputrc.crosh"
+  if [ ! -e "${INPUTRC}" ]; then
+    # We aren't installed; use local copy for testing.
+    INPUTRC="$(dirname "$0")/inputrc.crosh"
+  fi
+  HISTFILE="${HOME}/.crosh_history"
+  shell_history -r "${HISTFILE}"
+
+  # Initialize pseudo completion support.
+  if [ ${IS_BASH} -eq 1 ]; then
+    local f
+    for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
+      # Do not add duplicates to avoid ballooning history.
+      grep -qs "^${f}$" $HISTFILE || shell_history -s $f
+    done
+  fi
+
+  repl
+
+  shell_history -w $HISTFILE
+}
+main "$@"

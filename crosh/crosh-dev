@@ -1,0 +1,122 @@
+#!/bin/sh
+# Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# dev-mode functionality for crosh
+
+if [ "$(basename $0)" = "crosh-dev" ]; then
+  exec "$(dirname $0)/crosh" --dev
+fi
+
+DEV_HELP='
+ packet_capture [ --device <device> ] [ --frequency <frequency> ]
+                [ --ht-location <above|below> ]
+                [ --monitor-connection-on <monitored_device> ]
+  Start packet capture.  Start a device-based capture on <device>,
+  or do an over-the-air capture on <frequency> with an optionally
+  provided HT channel location.  An over-the-air capture can also
+  be initiated using the channel parameters of a currently connected
+  <monitored_device>.  Note that over-the-air captures are not available
+  with all 802.11 devices.
+
+ shell
+  Open a command line shell.
+
+ systrace [<start | stop | status>]
+  Start/stop system tracing.  Turning tracing off will generate a trace
+  log file in the Downloads directory with all the events collected
+  since the last time tracing was enabled.  One can control the events
+  collected by specifying categories after "start"; e.g. "start gfx"
+  will collect only graphics-related system events.  "systrace status"
+  (or just "systrace") will display the current state of tracing, including
+  the set of events being traced.
+'
+
+HELP="$HELP$DEV_HELP"
+
+cmd_packet_capture() (
+  local option="dict:string:variant:"
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    # Do just enough parsing to filter/map options; we
+    # depend on debugd and capture_utility to handle final validation
+    if [ "$1" = "--device" ]; then
+      shift; option="${option}device,string:$1,"
+    elif [ "$1" = "--frequency" ]; then
+      shift; option="${option}frequency,int32:$1,"
+    elif [ "$1" = "--ht-location" ]; then
+      shift; option="${option}ht_location,string:$1,"
+    elif [ "$1" = "--monitor-connection-on" ]; then
+      shift; option="${option}monitor_connection_on,string:$1,"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  option=$(echo "$option" | sed 's/,$//')
+
+  local downloads_dir="/home/${USER}/user/Downloads"
+  if ! capture_file=$(mktemp ${downloads_dir}/packet_capture_XXXX.pcap); then
+    echo "Couldn't create capture file."
+    return 1
+  fi
+  local fifo="$(mk_fifo)"
+  debugd PacketCaptureStart "fd:1" "fd:3" "$option" \
+      2>&1 > "$fifo" 3>${capture_file} &
+  read pid < "$fifo"
+  echo "pid: $pid"
+  (while read line; do echo "$line"; done) < "$fifo"
+  debugd PacketCaptureStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop packet capture"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
+  if [ -s "${capture_file}" ]; then
+    echo "Capture stored in ${capture_file}"
+  else
+    echo "No packets captured!"
+    rm -f "${capture_file}"
+  fi
+)
+
+cmd_shell() (
+ local shell="/bin/sh"
+ if [ -x /bin/bash ]; then
+   shell="/bin/bash"
+ fi
+ SHELL=${shell} ${shell} -l
+)
+
+cmd_systrace() (
+  case x"$1" in
+  xstart)
+    local categories;
+    shift; categories="$*"
+    if [ -z "${categories}" ]; then
+       categories="all"
+    fi
+    debugd SystraceStart "string:${categories}"
+    ;;
+  xstop)
+    local downloads_dir="/home/${USER}/user/Downloads"
+    local data_file=$(mktemp ${downloads_dir}/systrace.XXXX)
+    if [ $? -ne 0 ]; then
+      echo "Cannot create data file ${data_file}"
+      return 1
+    fi
+    debugd SystraceStop "fd:1" > "${data_file}"
+    echo "Trace data saved to ${data_file}"
+    # add symlink to the latest capture file
+    ln -sf $(basename $data_file) ${downloads_dir}/systrace.latest
+    ;;
+  xstatus|x)
+    debugd SystraceStatus
+    ;;
+  esac
+)
