@@ -289,6 +289,14 @@ class Metrics {
     kNetworkProblemMax
   };
 
+  // Device's connection status.
+  enum ConnectionStatus {
+    kConnectionStatusOffline = 0,
+    kConnectionStatusConnected = 1,
+    kConnectionStatusOnline = 2,
+    kConnectionStatusMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -490,6 +498,9 @@ class Metrics {
   // Network problem detected by traffic monitor
   static const char kMetricNetworkProblemDetectedSuffix[];
 
+  // Device's connection status.
+  static const char kMetricDeviceConnectionStatus[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -681,6 +692,9 @@ class Metrics {
   // connected network.
   virtual void NotifyNetworkProblemDetected(
       Technology::Identifier technology_id, int reason);
+
+  // Notifies this object about current connection status (online vs offline).
+  virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

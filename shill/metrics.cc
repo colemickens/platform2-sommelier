@@ -304,6 +304,10 @@ const char Metrics::kMetricFallbackDNSTestResultSuffix[] =
 const char Metrics::kMetricNetworkProblemDetectedSuffix[] =
     "NetworkProblemDetected";
 
+// static
+const char Metrics::kMetricDeviceConnectionStatus[] =
+    "Network.Shill.DeviceConnectionStatus";
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1114,6 +1118,10 @@ void Metrics::NotifyNetworkProblemDetected(Technology::Identifier technology_id,
   SendEnumToUMA(histogram,
                 reason,
                 kNetworkProblemMax);
+}
+
+void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
+  SendEnumToUMA(kMetricDeviceConnectionStatus, status, kConnectionStatusMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

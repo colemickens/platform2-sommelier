@@ -715,7 +715,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
 
   Error error;
   vector<vector<string>> options;
@@ -745,7 +745,7 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
 
   Error error;
   vector<vector<string>> options;
@@ -1008,7 +1008,7 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOnline) {
   vector<vector<string>> options;
   EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
       .WillOnce(Return(true));
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*management_server_, ReleaseHold());
   Error error;
   EXPECT_TRUE(InitManagementChannelOptions(&options, &error));
@@ -1019,7 +1019,7 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOffline) {
   vector<vector<string>> options;
   EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
       .WillOnce(Return(true));
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
   Error error;
   EXPECT_TRUE(InitManagementChannelOptions(&options, &error));
@@ -1123,7 +1123,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   static const char kHost[] = "192.168.2.254";
   SetArg(kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
   const int kServiceCallbackTag = 1;
@@ -1221,7 +1221,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_CALL(*management_server_, Start(_, _, _))
       .Times(2)
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(manager_, IsOnline()).Times(2).WillRepeatedly(Return(false));
+  EXPECT_CALL(manager_, IsConnected()).Times(2).WillRepeatedly(Return(false));
 
   const int kPID = 234678;
   EXPECT_CALL(glib_, SpawnAsync(_, _, CheckEnv(), _, _, _, _, _))

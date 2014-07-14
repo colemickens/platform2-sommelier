@@ -837,7 +837,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   // Services with non-primary connectivity technologies should not auto-connect
   // when the system is offline.
   EXPECT_EQ(Technology::kUnknown, service_->technology());
-  EXPECT_CALL(mock_manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_CALL(mock_manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnOffline, reason);
 

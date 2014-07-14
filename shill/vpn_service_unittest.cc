@@ -256,7 +256,7 @@ TEST_F(VPNServiceTest, OnConnectionDisconnected) {
 TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
   EXPECT_TRUE(service_->connectable());
   const char *reason = NULL;
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnOffline(), reason);
 }
@@ -265,7 +265,7 @@ TEST_F(VPNServiceTest, IsAutoConnectableNeverConnected) {
   EXPECT_TRUE(service_->connectable());
   EXPECT_FALSE(service_->has_ever_connected());
   const char *reason = NULL;
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnNeverConnected(), reason);
 }
@@ -273,7 +273,7 @@ TEST_F(VPNServiceTest, IsAutoConnectableNeverConnected) {
 TEST_F(VPNServiceTest, IsAutoConnectableVPNAlreadyActive) {
   EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   MockVPNProvider *provider = new MockVPNProvider;
   SetVPNProvider(provider);
   EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(true));
@@ -291,7 +291,7 @@ TEST_F(VPNServiceTest, IsAutoConnectableNotConnectable) {
 TEST_F(VPNServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
-  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   MockVPNProvider *provider = new MockVPNProvider;
   SetVPNProvider(provider);
   EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(false));

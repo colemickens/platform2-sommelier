@@ -1178,7 +1178,7 @@ bool Service::IsAutoConnectable(const char **reason) const {
   }
 
   if (!Technology::IsPrimaryConnectivityTechnology(technology_) &&
-      !manager_->IsOnline()) {
+      !manager_->IsConnected()) {
     *reason = kAutoConnOffline;
     return false;
   }

@@ -838,7 +838,7 @@ bool OpenVPNDriver::InitManagementChannelOptions(
   // establish connection as soon as it's started. Otherwise, hold the client
   // until an underlying service connects and OnDefaultServiceChanged is
   // invoked.
-  if (manager()->IsOnline()) {
+  if (manager()->IsConnected()) {
     management_server_->ReleaseHold();
   }
   return true;

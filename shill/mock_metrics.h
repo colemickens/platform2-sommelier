@@ -54,6 +54,8 @@ class MockMetrics : public Metrics {
                void(Technology::Identifier technology_id, int reason));
   MOCK_METHOD2(NotifyFallbackDNSTestResult,
                void(Technology::Identifier technology_id, int result));
+  MOCK_METHOD1(NotifyDeviceConnectionStatus,
+               void(Metrics::ConnectionStatus status));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

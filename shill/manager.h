@@ -251,6 +251,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Returns true if at least one connection exists, and false if there's no
   // connected service.
+  virtual bool IsConnected() const;
+  // Returns true if at least one connection exists that have Internet
+  // connectivity, and false if there's no such service.
   virtual bool IsOnline() const;
   std::string CalculateState(Error *error);
 
@@ -427,6 +430,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
+  FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
@@ -436,6 +440,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const int kTerminationActionsTimeoutMilliseconds;
 
   static const char kPowerManagerKey[];
+  static const int kConnectionStatusCheckIntervalMilliseconds;
 
   void AutoConnect();
   std::vector<std::string> AvailableTechnologies(Error *error);
@@ -501,6 +506,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void SortServices();
   void SortServicesTask();
+  void ConnectionStatusCheckTask();
   bool MatchProfileWithService(const ServiceRefPtr &service);
 
   // Sets the profile of |service| to |profile|, without notifying its
@@ -612,6 +618,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   PropertyStore store_;
 
   base::CancelableClosure sort_services_task_;
+
+  // Task for periodically checking connection status.
+  base::CancelableClosure connection_status_check_task_;
 
   // TODO(petkov): Currently this handles both terminate and suspend
   // actions. Rename all relevant identifiers to capture this.

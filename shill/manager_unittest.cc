@@ -2428,6 +2428,44 @@ TEST_F(ManagerTest, SortServices) {
   manager()->DeregisterService(mock_service10);
 }
 
+TEST_F(ManagerTest, ConnectionStatusCheck) {
+  // Setup mock metrics and service.
+  MockMetrics mock_metrics(dispatcher());
+  SetMetrics(&mock_metrics);
+  scoped_refptr<MockService> mock_service = new NiceMock<MockService>(
+      control_interface(), dispatcher(), metrics(), manager());
+  manager()->RegisterService(mock_service);
+
+  // Device not connected.
+  EXPECT_CALL(*mock_service.get(), IsConnected())
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_metrics,
+      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOffline));
+  manager()->ConnectionStatusCheckTask();
+
+  // Device connected, but not online.
+  EXPECT_CALL(*mock_service.get(), IsConnected())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_service.get(), IsOnline())
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_metrics,
+      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline)).Times(0);
+  EXPECT_CALL(mock_metrics,
+      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusConnected));
+  manager()->ConnectionStatusCheckTask();
+
+  // Device connected and online.
+  EXPECT_CALL(*mock_service.get(), IsConnected())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_service.get(), IsOnline())
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_metrics,
+      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline));
+  EXPECT_CALL(mock_metrics,
+      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusConnected));
+  manager()->ConnectionStatusCheckTask();
+}
+
 TEST_F(ManagerTest, SortServicesWithConnection) {
   MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);
@@ -3211,7 +3249,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
 
 
 TEST_F(ManagerTest, CalculateStateOffline) {
-  EXPECT_FALSE(manager()->IsOnline());
+  EXPECT_FALSE(manager()->IsConnected());
   EXPECT_EQ("offline", manager()->CalculateState(NULL));
 
   MockMetrics mock_metrics(dispatcher());
@@ -3238,7 +3276,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
-  EXPECT_FALSE(manager()->IsOnline());
+  EXPECT_FALSE(manager()->IsConnected());
   EXPECT_EQ("offline", manager()->CalculateState(NULL));
 
   manager()->DeregisterService(mock_service0);
@@ -3275,7 +3313,7 @@ TEST_F(ManagerTest, CalculateStateOnline) {
   manager()->RegisterService(mock_service1);
   CompleteServiceSort();
 
-  EXPECT_TRUE(manager()->IsOnline());
+  EXPECT_TRUE(manager()->IsConnected());
   EXPECT_EQ("online", manager()->CalculateState(NULL));
 
   manager()->DeregisterService(mock_service0);

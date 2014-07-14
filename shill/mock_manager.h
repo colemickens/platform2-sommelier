@@ -52,7 +52,7 @@ class MockManager : public Manager {
                bool(const ProfileRefPtr &profile,
                     const std::string &entry_name));
   MOCK_CONST_METHOD0(GetDefaultService, ServiceRefPtr());
-  MOCK_CONST_METHOD0(IsOnline, bool());
+  MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_METHOD0(UpdateEnabledTechnologies, void());
   MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsServiceEphemeral,

@@ -82,6 +82,9 @@ const char Manager::kErrorUnsupportedServiceType[] =
 const int Manager::kTerminationActionsTimeoutMilliseconds = 9500;
 const char Manager::kPowerManagerKey[] = "manager";
 
+// Connection status check interval (3 minutes).
+const int Manager::kConnectionStatusCheckIntervalMilliseconds = 180000;
+
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
                  Metrics *metrics,
@@ -119,6 +122,8 @@ Manager::Manager(ControlInterface *control_interface,
       metrics_(metrics),
       glib_(glib),
       use_startup_portal_list_(false),
+      connection_status_check_task_(Bind(&Manager::ConnectionStatusCheckTask,
+                                         base::Unretained(this))),
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
       default_service_callback_tag_(0),
@@ -215,6 +220,10 @@ void Manager::Start() {
   for (const auto &provider_mapping : providers_) {
     provider_mapping.second->Start();
   }
+
+  // Start task for checking connection status.
+  dispatcher_->PostDelayedTask(connection_status_check_task_.callback(),
+                               kConnectionStatusCheckIntervalMilliseconds);
 }
 
 void Manager::Stop() {
@@ -247,6 +256,7 @@ void Manager::Stop() {
   modem_info_.Stop();
 #endif  // DISABLE_CELLULAR
   device_info_.Stop();
+  connection_status_check_task_.Cancel();
   sort_services_task_.Cancel();
   power_manager_.reset();
   dbus_manager_.reset();
@@ -1374,6 +1384,24 @@ void Manager::SortServicesTask() {
   AutoConnect();
 }
 
+void Manager::ConnectionStatusCheckTask() {
+  SLOG(Manager, 4) << "In " << __func__;
+  // Report current connection status.
+  Metrics::ConnectionStatus status = Metrics::kConnectionStatusOffline;
+  if (IsConnected()) {
+    status = Metrics::kConnectionStatusConnected;
+    // Check if device is online as well.
+    if (IsOnline()) {
+      metrics_->NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline);
+    }
+  }
+  metrics_->NotifyDeviceConnectionStatus(status);
+
+  // Schedule delayed task for checking connection status.
+  dispatcher_->PostDelayedTask(connection_status_check_task_.callback(),
+                               kConnectionStatusCheckIntervalMilliseconds);
+}
+
 bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {
   vector<ProfileRefPtr>::reverse_iterator it;
   for (it = profiles_.rbegin(); it != profiles_.rend(); ++it) {
@@ -1468,7 +1496,7 @@ void Manager::ConnectToBestServicesTask() {
     }
     Technology::Identifier technology = service->technology();
     if (!Technology::IsPrimaryConnectivityTechnology(technology) &&
-        !IsOnline()) {
+        !IsConnected()) {
       // Non-primary services need some other service connected first.
       continue;
     }
@@ -1494,13 +1522,18 @@ void Manager::ConnectToBestServicesTask() {
   }
 }
 
-bool Manager::IsOnline() const {
+bool Manager::IsConnected() const {
   // |services_| is sorted such that connected services are first.
   return !services_.empty() && services_.front()->IsConnected();
 }
 
+bool Manager::IsOnline() const {
+  // |services_| is sorted such that online services are first.
+  return !services_.empty() && services_.front()->IsOnline();
+}
+
 string Manager::CalculateState(Error */*error*/) {
-  return IsOnline() ? kStateOnline : kStateOffline;
+  return IsConnected() ? kStateOnline : kStateOffline;
 }
 
 void Manager::RefreshConnectionState() {
