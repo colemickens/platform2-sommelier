@@ -30,6 +30,7 @@ DEFINE_string(access_group, "", "The group which has resource access granted "
               "to it. Must not be empty.");
 DEFINE_int32(poll_interval, 100, "The interval at which to poll for udev "
              "events");
+DEFINE_string(udev_run_path, "/run/udev", "The path to udev's run path");
 
 using std::string;
 using std::vector;
@@ -44,7 +45,11 @@ PermissionBroker::PermissionBroker() : udev_(udev_new()) {
   CHECK(!FLAGS_access_group.empty()) << "You must specify a group name via the "
                                      << "--access_group flag.";
 
-  struct group *access_group = getgrnam(FLAGS_access_group.c_str());
+  struct group group_buffer;
+  struct group *access_group = NULL;
+  char buffer[256];
+  getgrnam_r(FLAGS_access_group.c_str(), &group_buffer, buffer,
+             sizeof(buffer), &access_group);
   CHECK(access_group) << "Could not resolve \"" << FLAGS_access_group << "\" "
                       << "to a named group.";
   access_group_ = access_group->gr_gid;
@@ -165,8 +170,8 @@ void PermissionBroker::WaitForEmptyUdevQueue() {
   udev_poll.fd = inotify_init();
   udev_poll.events = POLLIN;
 
-  const char *run_path = udev_get_run_path(udev_);
-  int watch = inotify_add_watch(udev_poll.fd, run_path, IN_MOVED_TO);
+  int watch = inotify_add_watch(udev_poll.fd, FLAGS_udev_run_path.c_str(),
+                                IN_MOVED_TO);
   CHECK_NE(watch, -1) << "Could not add watch for udev run path.";
 
   while (!udev_queue_get_queue_is_empty(queue)) {
