@@ -45,6 +45,9 @@ const char DefaultProfile::kStorageLinkMonitorTechnologies[] =
 // static
 const char DefaultProfile::kStorageName[] = "Name";
 // static
+const char DefaultProfile::kStorageNoAutoConnectTechnologies[] =
+    "NoAutoConnectTechnologies";
+// static
 const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
 // static
 const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
@@ -74,6 +77,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
                              &manager_props.ignored_dns_search_paths);
   store->RegisterConstString(kLinkMonitorTechnologiesProperty,
                              &manager_props.link_monitor_technologies);
+  store->RegisterConstString(kNoAutoConnectTechnologiesProperty,
+                             &manager_props.no_auto_connect_technologies);
   store->RegisterConstBool(kOfflineModeProperty, &manager_props.offline_mode);
   store->RegisterConstString(kPortalURLProperty, &manager_props.portal_url);
   store->RegisterConstInt32(kPortalCheckIntervalProperty,
@@ -104,6 +109,11 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
                             &manager_props->link_monitor_technologies)) {
     manager_props->link_monitor_technologies =
         LinkMonitor::kDefaultLinkMonitorTechnologies;
+  }
+  if (!storage()->GetString(kStorageId,
+                            kStorageNoAutoConnectTechnologies,
+                            &manager_props->no_auto_connect_technologies)) {
+    manager_props->no_auto_connect_technologies = "";
   }
   if (!storage()->GetString(kStorageId, kStoragePortalURL,
                             &manager_props->portal_url)) {
@@ -153,6 +163,9 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageLinkMonitorTechnologies,
                        props_.link_monitor_technologies);
+  storage()->SetString(kStorageId,
+                       kStorageNoAutoConnectTechnologies,
+                       props_.no_auto_connect_technologies);
   storage()->SetString(kStorageId,
                        kStoragePortalURL,
                        props_.portal_url);

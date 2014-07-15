@@ -972,6 +972,12 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   service_->SetState(Service::kStateAssociating);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
+
+  service_->SetState(Service::kStateIdle);
+  EXPECT_CALL(mock_manager_, IsTechnologyAutoConnectDisabled(
+                                 service_->technology_)).WillOnce(Return(true));
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnTechnologyNotConnectable, reason);
 }
 
 TEST_F(ServiceTest, AutoConnectLogging) {

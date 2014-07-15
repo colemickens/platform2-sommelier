@@ -138,6 +138,11 @@ TEST_F(DefaultProfileTest, Save) {
                         DefaultProfile::kStorageLinkMonitorTechnologies,
                         ""))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(),
+              SetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageNoAutoConnectTechnologies,
+                        ""))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
                                         ""))
@@ -186,6 +191,11 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                         DefaultProfile::kStorageLinkMonitorTechnologies,
                         _))
       .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageNoAutoConnectTechnologies,
+                        _))
+      .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
                                         &manager_props.portal_url))
@@ -208,6 +218,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
             manager_props.ignored_dns_search_paths);
   EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
             manager_props.link_monitor_technologies);
+  EXPECT_EQ("", manager_props.no_auto_connect_technologies);
   EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
@@ -246,6 +257,13 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(link_monitor_technologies),
                       Return(true)));
+  const string no_auto_connect_technologies("wifi,cellular");
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageNoAutoConnectTechnologies,
+                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(no_auto_connect_technologies),
+                      Return(true)));
   const string portal_url("http://www.chromium.org");
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
@@ -270,6 +288,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(ignored_paths, manager_props.ignored_dns_search_paths);
   EXPECT_EQ(link_monitor_technologies,
             manager_props.link_monitor_technologies);
+  EXPECT_EQ(no_auto_connect_technologies,
+            manager_props.no_auto_connect_technologies);
   EXPECT_EQ(portal_url, manager_props.portal_url);
   EXPECT_EQ(portal_check_interval_int,
             manager_props.portal_check_interval_seconds);

@@ -48,6 +48,8 @@ const char Service::kAutoConnConnecting[] = "connecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
 const char Service::kAutoConnNotConnectable[] = "not connectable";
 const char Service::kAutoConnOffline[] = "offline";
+const char Service::kAutoConnTechnologyNotConnectable[] =
+    "technology not connectable";
 const char Service::kAutoConnThrottled[] = "throttled";
 
 const size_t Service::kEAPMaxCertificationElements = 10;
@@ -1198,6 +1200,11 @@ string Service::CalculateState(Error */*error*/) {
 }
 
 bool Service::IsAutoConnectable(const char **reason) const {
+  if (manager_->IsTechnologyAutoConnectDisabled(technology_)) {
+    *reason = kAutoConnTechnologyNotConnectable;
+    return false;
+  }
+
   if (!connectable()) {
     *reason = kAutoConnNotConnectable;
     return false;

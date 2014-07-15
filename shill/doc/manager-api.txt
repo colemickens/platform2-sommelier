@@ -566,6 +566,12 @@ Properties 	object ActiveProfile [readwrite]
 			periodically checks for connectivity to the
 			default gateway using ARP requests.
 
+		string NoAutoConnectTechnologies [readwrite]
+
+			The list of technologies for which auto-connect is
+			disabled.  This is a comma-separated string, e.g.
+			"cellular,wimax".
+
 		boolean OfflineMode [readwrite]
 
 			The offline mode indicates the global setting for

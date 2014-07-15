@@ -77,6 +77,7 @@ class DefaultProfile : public Profile {
   static const char kStorageIgnoredDNSSearchPaths[];
   static const char kStorageLinkMonitorTechnologies[];
   static const char kStorageName[];
+  static const char kStorageNoAutoConnectTechnologies[];
   static const char kStorageOfflineMode[];
   static const char kStoragePortalCheckInterval[];
   static const char kStoragePortalURL[];

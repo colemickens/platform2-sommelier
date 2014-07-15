@@ -61,6 +61,8 @@ class MockManager : public Manager {
                      bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled,
                      bool(Technology::Identifier tech));
+  MOCK_CONST_METHOD1(IsTechnologyAutoConnectDisabled,
+                     bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsDefaultProfile, bool(const StoreInterface *storage));
   MOCK_METHOD3(RequestScan, void(Device::ScanType request_origin,
                                  const std::string &technology, Error *error));

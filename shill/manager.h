@@ -71,6 +71,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     // Comma-separated list of technologies for which link-monitoring is
     // enabled.
     std::string link_monitor_technologies;
+    // Comma-separated list of technologies for which auto-connect is disabled.
+    std::string no_auto_connect_technologies;
     // Comma-separated list of DNS search paths to be ignored.
     std::string ignored_dns_search_paths;
     // Salt value use for calculating network connection ID.
@@ -257,6 +259,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether the Wake on LAN feature is enabled.
   virtual bool IsWakeOnLanEnabled() const { return is_wake_on_lan_enabled_; }
 
+  // Return whether a technology is disabled for auto-connect.
+  virtual bool IsTechnologyAutoConnectDisabled(
+      Technology::Identifier technology) const;
+
   // Called by Profile when a |storage| completes initialization.
   void OnProfileStorageInitialized(StoreInterface *storage);
 
@@ -438,6 +444,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, IsDefaultProfile);
+  FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
@@ -450,6 +457,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
+  FRIEND_TEST(ServiceTest, IsAutoConnectable);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];

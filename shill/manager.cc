@@ -151,6 +151,8 @@ Manager::Manager(ControlInterface *control_interface,
                             &Manager::SetIgnoredDNSSearchPaths);
   store_.RegisterString(kLinkMonitorTechnologiesProperty,
                         &props_.link_monitor_technologies);
+  store_.RegisterString(kNoAutoConnectTechnologiesProperty,
+                        &props_.no_auto_connect_technologies);
   store_.RegisterBool(kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterString(kPortalURLProperty, &props_.portal_url);
   store_.RegisterInt32(kPortalCheckIntervalProperty,
@@ -704,6 +706,9 @@ RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error */*error*/) {
 
 bool Manager::IsTechnologyInList(const string &technology_list,
                                  Technology::Identifier tech) const {
+  if (technology_list.empty())
+    return false;
+
   Error error;
   vector<Technology::Identifier> technologies;
   return Technology::GetTechnologyVectorFromString(technology_list,
@@ -744,6 +749,11 @@ bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
 bool Manager::IsTechnologyLinkMonitorEnabled(
     Technology::Identifier technology) const {
   return IsTechnologyInList(props_.link_monitor_technologies, technology);
+}
+
+bool Manager::IsTechnologyAutoConnectDisabled(
+    Technology::Identifier technology) const {
+  return IsTechnologyInList(props_.no_auto_connect_technologies, technology);
 }
 
 bool Manager::IsDefaultProfile(StoreInterface *storage) {

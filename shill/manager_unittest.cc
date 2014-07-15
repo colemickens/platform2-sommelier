@@ -3417,6 +3417,16 @@ TEST_F(ManagerTest, LinkMonitorEnabled) {
       manager()->IsTechnologyLinkMonitorEnabled(Technology::kCellular));
 }
 
+TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
+  const string kNoAutoConnectTechnologies("wifi,cellular");
+  manager()->props_.no_auto_connect_technologies = kNoAutoConnectTechnologies;
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_TRUE(
+      manager()->IsTechnologyAutoConnectDisabled(Technology::kCellular));
+  EXPECT_FALSE(
+      manager()->IsTechnologyAutoConnectDisabled(Technology::kEthernet));
+}
+
 TEST_F(ManagerTest, IsDefaultProfile) {
   EXPECT_TRUE(manager()->IsDefaultProfile(NULL));
   scoped_ptr<MockStore> store0(new MockStore);
