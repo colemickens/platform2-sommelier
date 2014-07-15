@@ -72,6 +72,10 @@ bool IsEnvironmentVariableName(const std::string& name) {
 const char ChromiumCommandBuilder::kUser[] = "chronos";
 const char ChromiumCommandBuilder::kUseFlagsPath[] = "/etc/ui_use_flags.txt";
 const char ChromiumCommandBuilder::kLsbReleasePath[] = "/etc/lsb-release";
+const char ChromiumCommandBuilder::kTimeZonePath[] =
+    "/var/lib/timezone/localtime";
+const char ChromiumCommandBuilder::kDefaultZoneinfoPath[] =
+    "/usr/share/zoneinfo/US/Pacific";
 const char ChromiumCommandBuilder::kPepperPluginsPath[] =
     "/opt/google/chrome/pepper";
 const char ChromiumCommandBuilder::kDeepMemoryProfilerPrefixPath[] =
@@ -151,6 +155,21 @@ bool ChromiumCommandBuilder::SetUpChromium() {
 
   // Prevent Flash asserts from crashing the plugin process.
   AddEnvVar("DONT_CRASH_ON_ASSERT", "1");
+
+  // Create the target for the /etc/localtime symlink. This allows the Chromium
+  // process to change the time zone.
+  const base::FilePath time_zone_symlink(GetPath(kTimeZonePath));
+  // TODO(derat): Move this back into the !base::PathExists() block in M39 or
+  // later, after http://crbug.com/390188 has had time to be cleaned up.
+  CHECK(util::EnsureDirectoryExists(
+      time_zone_symlink.DirName(), uid_, gid_, 0755));
+  if (!base::PathExists(time_zone_symlink)) {
+    // base::PathExists() dereferences symlinks, so make sure that there's not a
+    // dangling symlink there before we create a new link.
+    base::DeleteFile(time_zone_symlink, false);
+    PCHECK(base::CreateSymbolicLink(
+        base::FilePath(kDefaultZoneinfoPath), time_zone_symlink));
+  }
 
   // Increase maximum file descriptors to 2048 (default is otherwise 1024).
   // Some offline websites using IndexedDB are particularly hungry for

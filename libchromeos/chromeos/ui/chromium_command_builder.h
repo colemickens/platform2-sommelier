@@ -38,6 +38,12 @@ class ChromiumCommandBuilder {
   // Location of the lsb-release file describing the system image.
   static const char kLsbReleasePath[];
 
+  // Location of the user-writable target of the /etc/localtime symlink.
+  static const char kTimeZonePath[];
+
+  // Default zoneinfo file used if the time zone hasn't been explicitly set.
+  static const char kDefaultZoneinfoPath[];
+
   // Deep-memory-profiler-related files.
   static const char kDeepMemoryProfilerPrefixPath[];
   static const char kDeepMemoryProfilerTimeIntervalPath[];

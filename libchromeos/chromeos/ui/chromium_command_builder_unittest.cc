@@ -20,7 +20,7 @@ class ChromiumCommandBuilderTest : public testing::Test {
   ChromiumCommandBuilderTest()
       : write_use_flags_file_(true),
         write_lsb_release_file_(true) {
-    CHECK(temp_dir_.CreateUniqueTempDir());
+    PCHECK(temp_dir_.CreateUniqueTempDir());
     base_path_ = temp_dir_.path();
     builder_.set_base_path_for_testing(base_path_);
 
@@ -127,6 +127,32 @@ TEST_F(ChromiumCommandBuilderTest, LsbRelease) {
 
   EXPECT_EQ(lsb_release_data_, ReadEnvVar("LSB_RELEASE"));
   EXPECT_FALSE(ReadEnvVar("LSB_RELEASE_TIME").empty());
+}
+
+TEST_F(ChromiumCommandBuilderTest, TimeZone) {
+  // Test that the builder creates a symlink for the time zone.
+  EXPECT_TRUE(Init());
+  EXPECT_TRUE(builder_.SetUpChromium());
+  const base::FilePath kSymlink(util::GetReparentedPath(
+      ChromiumCommandBuilder::kTimeZonePath, base_path_));
+  base::FilePath target;
+  ASSERT_TRUE(base::ReadSymbolicLink(kSymlink, &target));
+  EXPECT_EQ(ChromiumCommandBuilder::kDefaultZoneinfoPath, target.value());
+
+  // Delete the old symlink and create a new one with a different target.
+  // Arbitrarily use |base_path_| (we need a path that exists).
+  ASSERT_TRUE(base::DeleteFile(kSymlink, false));
+  const base::FilePath kNewTarget(base_path_);
+  ASSERT_TRUE(base::CreateSymbolicLink(kNewTarget, kSymlink));
+
+  // Initialize a second builder and check that it leaves the existing symlink
+  // alone.
+  ChromiumCommandBuilder second_builder;
+  second_builder.set_base_path_for_testing(base_path_);
+  ASSERT_TRUE(second_builder.Init());
+  EXPECT_TRUE(second_builder.SetUpChromium());
+  ASSERT_TRUE(base::ReadSymbolicLink(kSymlink, &target));
+  EXPECT_EQ(kNewTarget.value(), target.value());
 }
 
 TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
