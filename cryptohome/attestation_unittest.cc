@@ -64,7 +64,7 @@ class AttestationTest : public testing::Test {
     ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsBeingOwned()).WillByDefault(Return(false));
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-        &install_attributes_);
+                            &install_attributes_);
   }
 
   virtual bool WriteDB(const string& path, const string& db) {
@@ -293,10 +293,10 @@ class AttestationTest : public testing::Test {
 };
 
 TEST(AttestationTest_, NullTpm) {
+  Crypto crypto(NULL);
+  InstallAttributes install_attributes(NULL);
   Attestation without_tpm;
-  scoped_ptr<Crypto> crypt(new Crypto(NULL));
-  without_tpm.Initialize(NULL, NULL, NULL, crypt.get(),
-                         new InstallAttributes(NULL));
+  without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify());
