@@ -451,10 +451,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("gpu_sandbox_start_early"))
     AddArg("--gpu-sandbox-start-early");
 
-  // TODO(jorgelo): remove this once crbug.com/356959 is fixed.
-  if (UseFlagIsSet("gpu_sandbox_start_after_initialization"))
-    AddArg("--gpu-sandbox-start-after-initialization");
-
   if (IsBoard("peach_pit") || IsBoard("peach_pi") || IsBoard("nyan") ||
       IsBoard("nyan_big") || IsBoard("nyan_blaze"))
     AddArg("--enable-webrtc-hw-vp8-encoding");
