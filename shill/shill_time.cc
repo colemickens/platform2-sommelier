@@ -33,6 +33,16 @@ Time* Time::GetInstance() {
   return g_time.Pointer();
 }
 
+bool Time::GetSecondsMonotonic(time_t *seconds) {
+  struct timeval now;
+  if (GetTimeMonotonic(&now) < 0) {
+    return false;
+  } else {
+    *seconds = now.tv_sec;
+    return true;
+  }
+}
+
 int Time::GetTimeMonotonic(struct timeval *tv) {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {

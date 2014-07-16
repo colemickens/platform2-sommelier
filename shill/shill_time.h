@@ -36,7 +36,10 @@ class Time {
 
   static Time *GetInstance();
 
-  // clock_gettime(CLOCK_MONOTONIC ...
+  // Returns CLOCK_MONOTONIC time, or 0 if a failure occurred.
+  virtual bool GetSecondsMonotonic(time_t *seconds);
+
+  // On success, sets |tv| to CLOCK_MONOTONIC time, and returns 0.
   virtual int GetTimeMonotonic(struct timeval *tv);
 
   // gettimeofday
