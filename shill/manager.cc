@@ -1347,7 +1347,7 @@ void Manager::SortServicesTask() {
   }
   const bool kCompareConnectivityState = true;
   sort(services_.begin(), services_.end(),
-       ServiceSorter(kCompareConnectivityState, technology_order_));
+       ServiceSorter(this, kCompareConnectivityState, technology_order_));
 
   if (!services_.empty()) {
     ConnectionRefPtr default_connection = default_service->connection();
@@ -1438,8 +1438,9 @@ void Manager::AutoConnect() {
       if (i + 1 < services_.size()) {
         const bool kCompareConnectivityState = true;
         Service::Compare(
-            service, services_[i+1], kCompareConnectivityState,
-            technology_order_, &compare_reason);
+            this, service, services_[i+1],
+            kCompareConnectivityState, technology_order_,
+            &compare_reason);
       } else {
         compare_reason = "last";
       }
@@ -1483,7 +1484,7 @@ void Manager::ConnectToBestServicesTask() {
   vector<ServiceRefPtr> services_copy = services_;
   const bool kCompareConnectivityState = false;
   sort(services_copy.begin(), services_copy.end(),
-       ServiceSorter(kCompareConnectivityState, technology_order_));
+       ServiceSorter(this, kCompareConnectivityState, technology_order_));
   set<Technology::Identifier> connecting_technologies;
   for (const auto &service : services_copy) {
     if (!service->connectable()) {

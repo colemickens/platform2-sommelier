@@ -402,7 +402,8 @@ class Service : public base::RefCounted<Service> {
   // |tech_order| to rank services if more decisive criteria do not yield a
   // difference.  |reason| is populated with the exact criteria used for the
   // ultimate comparison.
-  static bool Compare(ServiceRefPtr a,
+  static bool Compare(Manager *manager,
+                      ServiceRefPtr a,
                       ServiceRefPtr b,
                       bool compare_connectivity_state,
                       const std::vector<Technology::Identifier> &tech_order,
@@ -673,7 +674,9 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortIsFailed[];
   static const char kServiceSortIsPortalled[];
   static const char kServiceSortPriority[];
-  static const char kServiceSortSecurityEtc[];
+  static const char kServiceSortSecurity[];
+  static const char kServiceSortProfileOrder[];
+  static const char kServiceSortEtc[];
   static const char kServiceSortSerialNumber[];
   static const char kServiceSortTechnology[];
 

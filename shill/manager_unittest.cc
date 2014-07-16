@@ -2330,6 +2330,34 @@ TEST_F(ManagerTest, SortServices) {
   manager()->UpdateService(mock_service10);
   EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
 
+
+  // Sort services based on profiles.  When comparing two services
+  // with different profiles, prefer the one that is not ephemeral.
+  // If both services have legitimate profiles, prefer the service
+  // with the more recently applied profile.
+  // Compare between an ephemeral and actual profile.
+  Error error;
+  scoped_refptr<MockProfile> default_profile(
+      new MockProfile(control_interface(), metrics(), manager(), ""));
+  string default_profile_name("/profile/default");
+  EXPECT_CALL(*default_profile, GetRpcIdentifier())
+      .WillRepeatedly(Return(default_profile_name));
+  AdoptProfile(manager(), default_profile);
+  mock_service2->set_profile(default_profile);
+  manager()->UpdateService(mock_service2);
+  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
+
+  // Compare between two different profiles
+  scoped_refptr<MockProfile> user_profile(
+      new MockProfile(control_interface(), metrics(), manager(), ""));
+  string user_profile_name("/profile/chonos/shill");
+  EXPECT_CALL(*user_profile, GetRpcIdentifier())
+      .WillRepeatedly(Return(user_profile_name));
+  AdoptProfile(manager(), user_profile);
+  mock_service10->set_profile(user_profile);
+  manager()->UpdateService(mock_service10);
+  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
+
   // Security
   mock_service2->SetSecurity(Service::kCryptoAes, true, true);
   manager()->UpdateService(mock_service2);
@@ -2341,7 +2369,6 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_CALL(*mock_service10.get(), technology())
       .WillRepeatedly(Return(Technology::kEthernet));
 
-  Error error;
   // Default technology ordering should favor Ethernet over WiFi.
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));

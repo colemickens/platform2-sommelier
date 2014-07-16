@@ -69,7 +69,9 @@ const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
 const char Service::kServiceSortIsPortalled[] = "IsPortal";
 const char Service::kServiceSortPriority[] = "Priority";
-const char Service::kServiceSortSecurityEtc[] = "SecurityEtc";
+const char Service::kServiceSortSecurity[] = "Security";
+const char Service::kServiceSortProfileOrder[] = "ProfileOrder";
+const char Service::kServiceSortEtc[] = "Etc";
 const char Service::kServiceSortSerialNumber[] = "SerialNumber";
 const char Service::kServiceSortTechnology[] = "Technology";
 
@@ -968,7 +970,8 @@ uint16 Service::SecurityLevel() {
 }
 
 // static
-bool Service::Compare(ServiceRefPtr a,
+bool Service::Compare(Manager *manager,
+                      ServiceRefPtr a,
                       ServiceRefPtr b,
                       bool compare_connectivity_state,
                       const vector<Technology::Identifier> &tech_order,
@@ -1040,9 +1043,30 @@ bool Service::Compare(ServiceRefPtr a,
     }
   }
 
-  if (DecideBetween(a->SecurityLevel(), b->SecurityLevel(), &ret) ||
-      DecideBetween(a->strength(), b->strength(), &ret)) {
-    *reason = kServiceSortSecurityEtc;
+  if (DecideBetween(a->SecurityLevel(), b->SecurityLevel(), &ret)) {
+    *reason = kServiceSortSecurity;
+    return ret;
+  }
+
+  // If the profiles for the two services are different,
+  // we want to pick the highest priority one.  The
+  // ephemeral profile is explicitly tested for since it is not
+  // listed in the manager profiles_ list.
+  if (a->profile() != b->profile()) {
+    *reason = kServiceSortProfileOrder;
+    if (manager->IsServiceEphemeral(b)) {
+      return true;
+    } else if (manager->IsServiceEphemeral(a)) {
+      return false;
+    } else if (manager->IsProfileBefore(b->profile(), a->profile())) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  if (DecideBetween(a->strength(), b->strength(), &ret)) {
+    *reason = kServiceSortEtc;
     return ret;
   }
 
