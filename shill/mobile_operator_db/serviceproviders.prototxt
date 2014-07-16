@@ -565,6 +565,7 @@ mno {
       password : "tm"
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -3359,6 +3360,7 @@ mno {
       dns : "62.134.11.4"
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -3441,6 +3443,7 @@ mno {
       dns : "193.254.160.1"
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -5187,6 +5190,7 @@ mno {
       password : "password"
     }
   }
+  earmarked : true
 }
 
 mno {
