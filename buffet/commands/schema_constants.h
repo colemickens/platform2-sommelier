@@ -23,6 +23,7 @@ extern const char kNoTypeInfo[];
 extern const char kPropertyMissing[];
 extern const char kUnknownProperty[];
 extern const char kInvalidObjectSchema[];
+extern const char kDuplicateCommandDef[];
 }  // namespace errors
 
 namespace attributes {
@@ -41,6 +42,8 @@ extern const char kOneOf_Metadata[];
 extern const char kOneOf_MetaSchema[];
 
 extern const char kObject_Properties[];
+
+extern const char kCommand_Parameters[];
 }  // namespace attributes
 
 }  // namespace commands
