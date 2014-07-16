@@ -93,6 +93,9 @@ class MobileOperatorInfoImpl {
   bool UpdateMNO();
   bool UpdateMVNO();
   bool FilterMatches(const shill::mobile_operator_db::Filter &filter);
+  const mobile_operator_db::MobileNetworkOperator *PickOneFromDuplicates(
+      const std::vector<const mobile_operator_db::MobileNetworkOperator*>
+          &duplicates) const;
   // Reloads the information about M[V]NO from the database.
   void RefreshDBInformation();
   void ClearDBInformation();

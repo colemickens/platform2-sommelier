@@ -112,6 +112,14 @@ message MobileVirtualNetworkOperator {
 message MobileNetworkOperator {
   required Data data = 1;
   repeated MobileVirtualNetworkOperator mvno = 2;
+  // The database inevitably contains some duplicate MobileNetworkOperators that
+  // are impossible to distinguish using MCCMNC/name. In such a case, this bool
+  // may be set to pick out one of the duplicates as the intended operator.
+  // Note that if you're using this property, you should DTRT, and find out why
+  // there is an ambiguous entry in the database.
+  // TODO(pprabhu): Add a presubmit-hook to ensure that no more than one of the
+  // duplicates is earmarked.
+  optional bool earmarked = 3;
 }
 
 message InternationalMobileVirtualNetworkOperator {

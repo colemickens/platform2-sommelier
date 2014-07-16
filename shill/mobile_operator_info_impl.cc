@@ -559,7 +559,8 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
                         << "] are multiple and disjoint from those suggested "
                         << "by name["
                         << user_operator_name_
-                        << "]. Can't make a decision.";
+                        << "].";
+      candidate = PickOneFromDuplicates(candidates_by_operator_code_);
     }
   } else {  // candidates_by_operator_code_.size() == 0
     // Special case: In case we had a *wrong* operator_code update, we want
@@ -577,7 +578,8 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     } else if (candidates_by_name_.size() > 1) {
       SLOG(Cellular, 1) << "Multiple MNOs suggested by name["
                         << user_operator_name_
-                        << "], and none by MCCMNC. Can't make a decision.";
+                        << "], and none by MCCMNC.";
+      candidate = PickOneFromDuplicates(candidates_by_name_);
     } else {  // candidates_by_name_.size() == 0
       SLOG(Cellular, 1) << "No candidates suggested.";
     }
@@ -622,6 +624,22 @@ bool MobileOperatorInfoImpl::UpdateMVNO() {
     return true;
   }
   return false;
+}
+
+const MobileNetworkOperator *MobileOperatorInfoImpl::PickOneFromDuplicates(
+    const vector<const MobileNetworkOperator*> &duplicates) const {
+  if (duplicates.empty())
+    return nullptr;
+
+  for (auto candidate : duplicates) {
+    if (candidate->earmarked()) {
+      SLOG(Cellular, 2) << "Picking earmarked candidate: "
+                        << candidate->data().uuid();
+      return candidate;
+    }
+  }
+  SLOG(Cellular, 2) << "No earmarked candidate found. Choosing the first.";
+  return duplicates[0];
 }
 
 bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {

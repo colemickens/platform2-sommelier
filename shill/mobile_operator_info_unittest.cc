@@ -346,7 +346,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNC) {
   VerifyNoMatch();
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleOptions) {
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleMCCMNCOptions) {
   // message: Has an MNO with no MCCMNC.
   // match by: One of the MCCMNCs of the multiple ones in the MNO.
   // verify: Observer event, uuid.
@@ -354,6 +354,16 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleOptions) {
   UpdateMCCMNC("102002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid102");
+}
+
+TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleMNOOptions) {
+  // message: Two messages with the same MCCMNC.
+  // match by: Both MNOs matched, one is earmarked.
+  // verify: The earmarked MNO is picked.
+  ExpectEventCount(1);
+  UpdateMCCMNC("124001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid124002");
 }
 
 TEST_P(MobileOperatorInfoMainTest, MNOByOperatorName) {
@@ -376,6 +386,16 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorName) {
   VerifyNoMatch();
 }
 
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleMNOOptions) {
+  // message: Two messages with the same operator name.
+  // match by: Both MNOs matched, one is earmarked.
+  // verify: The earmarked MNO is picked.
+  ExpectEventCount(1);
+  UpdateOperatorName("name125001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid125002");
+}
+
 TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameWithLang) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName.
@@ -386,7 +406,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameWithLang) {
   VerifyMNOWithUUID("uuid105");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleOptions) {
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleNameOptions) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName, one of the multiple present in the MNO.
   // verify: Observer event, fields.
@@ -398,13 +418,14 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleOptions) {
 
 TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndOperatorName) {
   // message: Has MNOs with no MVNO.
-  // match by: MCCMNC finds two candidates, Name narrows down to one.
+  // match by: MCCMNC finds two candidates (first one is chosen), Name narrows
+  //           down to one.
   // verify: Observer event, fields.
   // This is merely a MCCMNC update.
-  ExpectEventCount(0);
+  ExpectEventCount(1);
   UpdateMCCMNC("106001");
   VerifyEventCount();
-  VerifyNoMatch();
+  VerifyMNOWithUUID("uuid106001");
 
   ExpectEventCount(1);
   UpdateOperatorName("name106002");
@@ -421,13 +442,14 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndOperatorName) {
 
 TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAndMCCMNC) {
   // message: Has MNOs with no MVNO.
-  // match by: OperatorName finds two, MCCMNC narrows down to one.
+  // match by: OperatorName finds two (first one is chosen), MCCMNC narrows down
+  //           to one.
   // verify: Observer event, fields.
   // This is merely an OperatorName update.
-  ExpectEventCount(0);
+  ExpectEventCount(1);
   UpdateOperatorName("name107");
   VerifyEventCount();
-  VerifyNoMatch();
+  VerifyMNOWithUUID("uuid107001");
 
   ExpectEventCount(1);
   UpdateMCCMNC("107002");
