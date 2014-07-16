@@ -106,9 +106,12 @@ class Platform2(object):
     cmd += varnames
 
     try:
-      output = subprocess.check_output(cmd)
-    except UnboundLocalError, OSError:
-      raise AssertionError('Error running %r' % cmd)
+      p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      output, errors = p.communicate()
+    except UnboundLocalError:
+      raise AssertionError('Error running %s' % portageq_bin)
+    except OSError:
+      raise AssertionError('Error running portageq: %s' % errors)
 
     output_lines = [x for x in output.splitlines() if x]
     output_items = [x.split('=', 1) for x in output_lines]
