@@ -8,7 +8,6 @@
 #include <google/protobuf/stubs/common.h>
 
 // We currently use the callbacks from the protobuf code.
-// TODO: Better callbacks.
 
 namespace chromeos {
 

@@ -113,13 +113,21 @@ bool IsSanitizedUserName(const std::string& sanitized) {
 }
 
 void SetUserHomePrefix(const std::string& prefix) {
-  if (prefix.length() < sizeof(g_user_home_prefix))
-    strcpy(g_user_home_prefix, prefix.c_str());
+  if (prefix.length() < sizeof(g_user_home_prefix)) {
+    snprintf(g_user_home_prefix,
+             sizeof(g_user_home_prefix),
+             "%s",
+             prefix.c_str());
+  }
 }
 
 void SetRootHomePrefix(const std::string& prefix) {
-  if (prefix.length() < sizeof(g_root_home_prefix))
-    strcpy(g_root_home_prefix, prefix.c_str());
+  if (prefix.length() < sizeof(g_root_home_prefix)) {
+    snprintf(g_root_home_prefix,
+             sizeof(g_root_home_prefix),
+             "%s",
+             prefix.c_str());
+  }
 }
 
 std::string* GetSystemSalt() {
