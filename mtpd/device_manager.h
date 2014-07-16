@@ -63,44 +63,6 @@ class DeviceManager {
                                std::string* usb_bus_str,
                                uint32_t* storage_id);
 
-  // Exposed for testing.
-  // Returns true if |path_component| is a folder and writes |path_component|'s
-  // id to |file_id|.
-  static bool IsFolder(const LIBMTP_file_t* path_component,
-                       size_t component_idx,
-                       size_t num_path_components,
-                       uint32_t* file_id);
-
-  // Exposed for testing.
-  // Given |path_component|, which is the (0-based) |component_idx| out of
-  // |num_path_components|, returns true and writes |path_component|'s id to
-  // |file_id| under the following conditions:
-  // |path_component| is a folder and not the last component.
-  // |path_component| is a file and the last component.
-  static bool IsValidComponentInFilePath(const LIBMTP_file_t* path_component,
-                                         size_t component_idx,
-                                         size_t num_path_components,
-                                         uint32_t* file_id);
-
-  // Exposed for testing.
-  // Given |path_component|, which is the (0-based) |component_idx| out of
-  // |num_path_components|, returns true and writes |path_component|'s id to
-  // |file_id| under the following conditions:
-  // |path_component| is a folder or
-  // |path_component| is a file and the last component.
-  static bool IsValidComponentInFileOrFolderPath(
-      const LIBMTP_file_t* path_component,
-      size_t component_idx,
-      size_t num_path_components,
-      uint32_t* file_id);
-
-  // Reads entries from |file_path| on |storage_name|.
-  // On success, returns true and writes the file entries of |file_path| into
-  // |out|. Otherwise returns false.
-  bool ReadDirectoryByPath(const std::string& storage_name,
-                           const std::string& file_path,
-                           std::vector<FileEntry>* out);
-
   // Reads entries from |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
   // For the root node, pass in |kRootFileId|.
@@ -109,16 +71,6 @@ class DeviceManager {
   bool ReadDirectoryById(const std::string& storage_name,
                          uint32_t file_id,
                          std::vector<FileEntry>* out);
-
-  // Reads the contents of |file_path| on |storage_name|.
-  // Reads |count| bytes starting at |offset|.
-  // On success, returns true and writes the file contents of |file_path| into
-  // |out|. Otherwise returns false.
-  bool ReadFileChunkByPath(const std::string& storage_name,
-                           const std::string& file_path,
-                           uint32_t offset,
-                           uint32_t count,
-                           std::vector<uint8_t>* out);
 
   // Reads the contents of |file_id| on |storage_name|.
   // Reads |count| bytes starting at |offset|.
@@ -131,13 +83,6 @@ class DeviceManager {
                          uint32_t offset,
                          uint32_t count,
                          std::vector<uint8_t>* out);
-
-  // Reads the metafile for |file_path| on |storage_name|.
-  // On success, returns true and writes the metadata of |file_path| into
-  // |out|. Otherwise returns false.
-  bool GetFileInfoByPath(const std::string& storage_name,
-                         const std::string& file_path,
-                         FileEntry* out);
 
   // Reads the metadata for |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
@@ -177,19 +122,6 @@ class DeviceManager {
   };
   // Key: device bus location, Value: MtpDevice.
   typedef std::map<std::string, MtpDevice> MtpDeviceMap;
-
-  // On storage with |storage_id| on |device|, looks up the file id for
-  // |file_path| using |process_func| to determine if the components in
-  // |file_path| are valid.
-  // On success, returns true, and write the file id to |file_id|.
-  // Otherwise returns false.
-  // For the root node, |file_id| is set to |kPtpGohRootParent|, which may or
-  // may not be appropriate for a given context.
-  bool PathToFileId(LIBMTP_mtpdevice_t* device,
-                    uint32_t storage_id,
-                    const std::string& file_path,
-                    ProcessPathComponentFunc process_func,
-                    uint32_t* file_id);
 
   // Reads entries from |device|'s storage with |storage_id|.
   // |file_id| is the unique identifier for a directory on the given storage.

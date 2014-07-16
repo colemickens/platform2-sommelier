@@ -124,48 +124,6 @@ bool DeviceManager::ParseStorageName(const std::string& storage_name,
   return true;
 }
 
-// static
-bool DeviceManager::IsFolder(const LIBMTP_file_t* path_component,
-                             size_t component_idx,
-                             size_t num_path_components,
-                             uint32_t* file_id) {
-  if (path_component->filetype != LIBMTP_FILETYPE_FOLDER)
-    return false;
-
-  *file_id = path_component->item_id;
-  return true;
-}
-
-// static
-bool DeviceManager::IsValidComponentInFilePath(
-    const LIBMTP_file_t* path_component,
-    size_t component_idx,
-    size_t num_path_components,
-    uint32_t* file_id) {
-  bool is_file = (path_component->filetype != LIBMTP_FILETYPE_FOLDER);
-  bool is_last = (component_idx == num_path_components - 1);
-  if (is_file != is_last)
-    return false;
-
-  *file_id = path_component->item_id;
-  return true;
-}
-
-// static
-bool DeviceManager::IsValidComponentInFileOrFolderPath(
-    const LIBMTP_file_t* path_component,
-    size_t component_idx,
-    size_t num_path_components,
-    uint32_t* file_id) {
-  bool is_file = (path_component->filetype != LIBMTP_FILETYPE_FOLDER);
-  bool is_last = (component_idx == num_path_components - 1);
-  if (is_file && !is_last)
-    return false;
-
-  *file_id = path_component->item_id;
-  return true;
-}
-
 int DeviceManager::GetDeviceEventDescriptor() const {
   return udev_monitor_fd_;
 }
@@ -218,20 +176,6 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   return (storage_it != storage_map.end()) ? &(storage_it->second) : NULL;
 }
 
-bool DeviceManager::ReadDirectoryByPath(const std::string& storage_name,
-                                        const std::string& file_path,
-                                        std::vector<FileEntry>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-
-  uint32_t file_id = 0;
-  if (!PathToFileId(mtp_device, storage_id, file_path, IsFolder, &file_id))
-    return false;
-  return ReadDirectory(mtp_device, storage_id, file_id, out);
-}
-
 bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
                                       uint32_t file_id,
                                       std::vector<FileEntry>* out) {
@@ -244,24 +188,6 @@ bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
   return ReadDirectory(mtp_device, storage_id, file_id, out);
 }
 
-bool DeviceManager::ReadFileChunkByPath(const std::string& storage_name,
-                                        const std::string& file_path,
-                                        uint32_t offset,
-                                        uint32_t count,
-                                        std::vector<uint8_t>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-
-  uint32_t file_id = 0;
-  if (!PathToFileId(mtp_device, storage_id, file_path,
-                    IsValidComponentInFilePath, &file_id)) {
-    return false;
-  }
-  return ReadFileChunk(mtp_device, file_id, offset, count, out);
-}
-
 bool DeviceManager::ReadFileChunkById(const std::string& storage_name,
                                       uint32_t file_id,
                                       uint32_t offset,
@@ -272,25 +198,6 @@ bool DeviceManager::ReadFileChunkById(const std::string& storage_name,
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
   return ReadFileChunk(mtp_device, file_id, offset, count, out);
-}
-
-bool DeviceManager::GetFileInfoByPath(const std::string& storage_name,
-                                      const std::string& file_path,
-                                      FileEntry* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-
-  uint32_t file_id = 0;
-  if (!PathToFileId(mtp_device, storage_id, file_path,
-                    IsValidComponentInFileOrFolderPath, &file_id)) {
-    return false;
-  }
-
-  if (file_id == kPtpGohRootParent)
-    file_id = kRootFileId;
-  return GetFileInfo(mtp_device, storage_id, file_id, out);
 }
 
 bool DeviceManager::GetFileInfoById(const std::string& storage_name,
@@ -335,45 +242,6 @@ bool DeviceManager::AddStorageForTest(const std::string& storage_name,
     return false;
 
   existing_mtp_storage_map.insert(std::make_pair(storage_id, storage_info));
-  return true;
-}
-
-bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
-                                 uint32_t storage_id,
-                                 const std::string& file_path,
-                                 ProcessPathComponentFunc process_func,
-                                 uint32_t* file_id) {
-  std::vector<base::FilePath::StringType> path_components;
-  base::FilePath(file_path).GetComponents(&path_components);
-  uint32_t current_file_id = kPtpGohRootParent;
-  const size_t num_path_components = path_components.size();
-  for (size_t i = 0; i < num_path_components; ++i) {
-    if (path_components[i] == "/")
-      continue;
-
-    LIBMTP_file_t* files =
-        LIBMTP_Get_Files_And_Folders(device, storage_id, current_file_id);
-    // Iterate through all files.
-    const uint32_t old_file_id = current_file_id;
-    LIBMTP_file_t* file = files;
-    while (file != NULL) {
-      scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
-      file = file->next;
-      if (current_file.get()->filename != path_components[i])
-        continue;
-
-      // Found matching file name. See if it is valid.
-      if (!process_func(current_file.get(), i, num_path_components,
-                        &current_file_id)) {
-        return false;
-      }
-    }
-    // If no matching component was found.
-    if (old_file_id == current_file_id)
-      return false;
-  }
-  // Successfully iterated through all path components.
-  *file_id = current_file_id;
   return true;
 }
 

@@ -48,21 +48,6 @@
       </arg>
     </method>
 
-    <method name="ReadDirectoryByPath">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="filePath" type="s" direction="in">
-      <tp:docstring>
-        Absolute path with root as the root of the storage.
-      </tp:docstring>
-      </arg>
-      <arg name="results" type="ay" direction="out">
-      </arg>
-    </method>
-
     <method name="ReadDirectoryById">
       <arg name="handle" type="s" direction="in">
       <tp:docstring>
@@ -72,31 +57,6 @@
       <arg name="fileId" type="u" direction="in">
       </arg>
       <arg name="results" type="ay" direction="out">
-      </arg>
-    </method>
-
-    <method name="ReadFileChunkByPath">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="filePath" type="s" direction="in">
-      <tp:docstring>
-        Absolute path with root as the root of the storage.
-      </tp:docstring>
-      </arg>
-      <arg name="offset" type="u" direction="in">
-      <tp:docstring>
-        The offset into the file in bytes.
-      </tp:docstring>
-      </arg>
-      <arg name="count" type="u" direction="in">
-      <tp:docstring>
-        The number of bytes to read. At most 1 MiB.
-      </tp:docstring>
-      </arg>
-      <arg name="data" type="ay" direction="out">
       </arg>
     </method>
 
@@ -119,21 +79,6 @@
       </tp:docstring>
       </arg>
       <arg name="data" type="ay" direction="out">
-      </arg>
-    </method>
-
-    <method name="GetFileInfoByPath">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="filePath" type="s" direction="in">
-      <tp:docstring>
-        Absolute path with root as the root of the storage.
-      </tp:docstring>
-      </arg>
-      <arg name="info" type="ay" direction="out">
       </arg>
     </method>
 
