@@ -34,11 +34,10 @@ const base::FilePath::CharType kDefaultDeviceListPath[] =
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;
 
-// Number of failed init attempts before AmbientLightSensor will start logging
-// warnings.
-const int kNumInitAttemptsBeforeLogging = 5;
-
 }  // namespace
+
+const int AmbientLightSensor::kNumInitAttemptsBeforeLogging = 5;
+const int AmbientLightSensor::kNumInitAttemptsBeforeGivingUp = 20;
 
 AmbientLightSensor::AmbientLightSensor()
     : device_list_path_(kDefaultDeviceListPath),
@@ -51,6 +50,14 @@ AmbientLightSensor::~AmbientLightSensor() {}
 
 void AmbientLightSensor::Init() {
   StartTimer();
+}
+
+bool AmbientLightSensor::TriggerPollTimerForTesting() {
+  if (!poll_timer_.IsRunning())
+    return false;
+
+  ReadAls();
+  return true;
 }
 
 void AmbientLightSensor::AddObserver(AmbientLightObserver* observer) {
@@ -76,8 +83,13 @@ void AmbientLightSensor::StartTimer() {
 void AmbientLightSensor::ReadAls() {
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
-  if (!als_file_.HasOpenedFile() && !InitAlsFile())
+  if (!als_file_.HasOpenedFile() && !InitAlsFile()) {
+    if (num_init_attempts_ >= kNumInitAttemptsBeforeGivingUp) {
+      LOG(ERROR) << "Giving up on reading from sensor";
+      poll_timer_.Stop();
+    }
     return;
+  }
 
   // The timer will be restarted after the read finishes.
   poll_timer_.Stop();

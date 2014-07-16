@@ -40,6 +40,11 @@ class AmbientLightSensorInterface {
 
 class AmbientLightSensor : public AmbientLightSensorInterface {
  public:
+  // Number of failed init attempts before AmbientLightSensor will start logging
+  // warnings or stop trying entirely.
+  static const int kNumInitAttemptsBeforeLogging;
+  static const int kNumInitAttemptsBeforeGivingUp;
+
   AmbientLightSensor();
   virtual ~AmbientLightSensor();
 
@@ -53,6 +58,10 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // Starts polling.  This is separate from c'tor so that tests can call
   // set_*_for_testing() first.
   void Init();
+
+  // If |poll_timer_| is running, calls ReadAls() and returns true. Otherwise,
+  // returns false.
+  bool TriggerPollTimerForTesting();
 
   // AmbientLightSensorInterface implementation:
   virtual void AddObserver(AmbientLightObserver* observer) OVERRIDE;

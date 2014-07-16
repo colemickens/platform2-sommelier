@@ -98,6 +98,7 @@ class AmbientLightSensorTest : public ::testing::Test {
 
   scoped_ptr<AmbientLightSensor> sensor_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensorTest);
 };
 
@@ -114,6 +115,18 @@ TEST_F(AmbientLightSensorTest, Basic) {
   WriteLux(200);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(200, sensor_->GetAmbientLightLux());
+}
+
+TEST_F(AmbientLightSensorTest, GiveUpAfterTooManyFailures) {
+  // Test that the timer is eventually stopped after many failures.
+  base::DeleteFile(data_file_, false);
+  for (int i = 0; i < AmbientLightSensor::kNumInitAttemptsBeforeGivingUp; ++i) {
+    EXPECT_TRUE(sensor_->TriggerPollTimerForTesting());
+    EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
+  }
+
+  EXPECT_FALSE(sensor_->TriggerPollTimerForTesting());
+  EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
 }
 
 }  // namespace system
