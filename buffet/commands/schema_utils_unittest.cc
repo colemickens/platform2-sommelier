@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-#include <base/json/json_reader.h>
-#include <base/json/json_writer.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -15,38 +13,10 @@
 #include "buffet/commands/prop_types.h"
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_utils.h"
+#include "buffet/commands/unittest_utils.h"
 
-namespace {
-// Helper method to create base::Value from a string as a smart pointer.
-// For ease of definition in C++ code, double-quotes in the source definition
-// are replaced with apostrophes.
-std::unique_ptr<base::Value> CreateValue(const char* json) {
-  std::string json2(json);
-  // Convert apostrophes to double-quotes so JSONReader can parse the string.
-  std::replace(json2.begin(), json2.end(), '\'', '"');
-  return std::unique_ptr<base::Value>(base::JSONReader::Read(json2));
-}
-
-// Helper method to create a JSON dictionary object from a string.
-std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json) {
-  std::string json2(json);
-  std::replace(json2.begin(), json2.end(), '\'', '"');
-  base::Value* value = base::JSONReader::Read(json2);
-  base::DictionaryValue* dict;
-  value->GetAsDictionary(&dict);
-  return std::unique_ptr<base::DictionaryValue>(dict);
-}
-
-// Converts a JSON value to a string. It also converts double-quotes to
-// apostrophes for easy comparisons in C++ source code.
-std::string ValueToString(const base::Value* value) {
-  std::string json;
-  base::JSONWriter::Write(value, &json);
-  std::replace(json.begin(), json.end(), '"', '\'');
-  return json;
-}
-
-}  // namespace
+using buffet::unittests::CreateValue;
+using buffet::unittests::ValueToString;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
   EXPECT_EQ("true",

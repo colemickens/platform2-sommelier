@@ -84,6 +84,7 @@
         'buffet_testrunner.cc',
         'commands/object_schema_unittest.cc',
         'commands/schema_utils_unittest.cc',
+        'commands/unittest_utils.cc',
         'data_encoding_unittest.cc',
         'device_registration_info_unittest.cc',
         'error_unittest.cc',

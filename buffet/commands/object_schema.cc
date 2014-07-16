@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <limits>
 
-#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
 
