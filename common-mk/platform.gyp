@@ -39,11 +39,6 @@
                 '<(DEPTH)/feedback/feedback.gyp:*',
               ],
             }],
-            ['USE_gdmwimax == 1', {
-              'dependencies': [
-                '<(DEPTH)/wimax_manager/wimax_manager.gyp:*',
-              ],
-            }],
             ['USE_lorgnette == 1', {
               'dependencies': [
                 '<(DEPTH)/lorgnette/lorgnette.gyp:*',
