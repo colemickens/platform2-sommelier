@@ -13,7 +13,8 @@ cleanup_mounts()
   done
   # Leave /mnt/stateful_partition mounted for clobber-state to handle.
   chromeos-boot-alert self_repair /dev/tty1
-  clobber-log --repair "$STATE_DEV" "Self-repair incoherent stateful partition"
+  clobber-log --repair "$STATE_DEV" \
+    "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
   exec clobber-state "fast keepimg"
 }
 remember_mount()
@@ -32,7 +33,7 @@ mount_or_fail()
     remember_mount "$1"
     return
   fi
-  cleanup_mounts
+  cleanup_mounts "failed to mount $*"
 }
 
 # Mount debugfs as bootstat depends on /sys/kernel/debug
@@ -326,7 +327,7 @@ mount_or_fail --bind /mnt/stateful_partition/home /home
 
 remember_mount /var
 remember_mount /home/chronos
-mount_var_and_home_chronos ${FACTORY_MODE} || cleanup_mounts
+mount_var_and_home_chronos ${FACTORY_MODE} || cleanup_mounts "var and home"
 
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock
 # are sym links to /run and /run/lock respectively for backwards compatibility.
