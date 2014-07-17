@@ -396,6 +396,40 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleMNOOptions) {
   VerifyMNOWithUUID("uuid125002");
 }
 
+TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAggressiveMatch) {
+  // These network operators match by name but only after normalizing the names.
+  // Both the name from the database and the name provided to
+  // |UpdateOperatoName| must be normalized for this test to pass.
+  ExpectEventCount(1);
+  UpdateOperatorName("name126001 casedoesnotmatch");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid126001");
+
+  ResetOperatorInfo();
+  ExpectEventCount(1);
+  UpdateOperatorName("name126002 CaseStillDoesNotMatch");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid126002");
+
+  ResetOperatorInfo();
+  ExpectEventCount(1);
+  UpdateOperatorName("name126003GiveMeMoreSpace");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid126003");
+
+  ResetOperatorInfo();
+  ExpectEventCount(1);
+  UpdateOperatorName("name126004  Too  Much   Air Here");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid126004");
+
+  ResetOperatorInfo();
+  ExpectEventCount(1);
+  UpdateOperatorName("näméwithNon-Äσ¢ii");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid126005");
+}
+
 TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameWithLang) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName.

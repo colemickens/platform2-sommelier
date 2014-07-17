@@ -312,15 +312,17 @@ void MobileOperatorInfoImpl::UpdateOperatorName(const string &operator_name) {
   HandleOperatorNameUpdate();
 
   // We must update the candidates by name anyway.
-  StringToMNOListMap::const_iterator cit = name_to_mnos_.find(operator_name);
+  StringToMNOListMap::const_iterator cit = name_to_mnos_.find(
+      NormalizeOperatorName(operator_name));
   candidates_by_name_.clear();
   if (cit != name_to_mnos_.end()) {
     candidates_by_name_ = cit->second;
     // We should never have inserted an empty vector into the map.
     DCHECK(!candidates_by_name_.empty());
   } else {
-    LOG(INFO) << "Operator name [" << operator_name << "] does not match any "
-              << "MNO.";
+    LOG(INFO) << "Operator name [" << operator_name << "] "
+              << "(Normalized: [" << NormalizeOperatorName(operator_name)
+              << "]) does not match any MNO.";
   }
 
   operator_changed |= UpdateMNO();
@@ -408,7 +410,7 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
       // LocalizedName::name is a required field.
       DCHECK(localized_name.has_name());
       InsertIntoStringToMNOListMap(&name_to_mnos_,
-                                   localized_name.name(),
+                                   NormalizeOperatorName(localized_name.name()),
                                    &mno);
     }
   }
@@ -938,6 +940,12 @@ void MobileOperatorInfoImpl::NotifyOperatorChanged() {
 bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
   return IsMobileNetworkOperatorKnown() ||
          IsMobileVirtualNetworkOperatorKnown();
+}
+
+string MobileOperatorInfoImpl::NormalizeOperatorName(const string &name) const {
+  string result = StringToLowerASCII(name);
+  base::RemoveChars(result, base::kWhitespaceASCII, &result);
+  return result;
 }
 
 }  // namespace shill

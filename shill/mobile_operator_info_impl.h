@@ -121,6 +121,10 @@ class MobileOperatorInfoImpl {
   // function determines whether observers should be notified anyway.
   bool ShouldNotifyPropertyUpdate() const;
 
+  // OperatorName comparisons for determining the MNO are done after normalizing
+  // the names to ignore case and spaces.
+  std::string NormalizeOperatorName(const std::string &name) const;
+
   // These functions encapsulate the logic to update different properties
   // properly whenever an update is either received from the user or the
   // database.
