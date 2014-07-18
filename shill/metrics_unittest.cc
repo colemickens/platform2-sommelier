@@ -781,6 +781,14 @@ TEST_F(MetricsTest, NotifyNetworkProblemDetected) {
                                         Metrics::kNetworkProblemDNSFailure);
 }
 
+TEST_F(MetricsTest, NotifyDhcpClientStatus) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA("Network.Shill.DhcpClientStatus",
+                    Metrics::kDhcpClientStatusReboot,
+                    Metrics::kDhcpClientStatusMax));
+  metrics_.NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

@@ -20,6 +20,7 @@
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_minijail.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/property_store_unittest.h"
@@ -56,6 +57,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
         minijail_(new MockMinijail()),
+        metrics_(dispatcher()),
         config_(new DHCPConfig(&control_,
                                dispatcher(),
                                DHCPProvider::GetInstance(),
@@ -63,7 +65,8 @@ class DHCPConfigTest : public PropertyStoreTest {
                                kHostName,
                                kLeaseFileSuffix,
                                kArpGateway,
-                               glib())) {}
+                               glib(),
+                               &metrics_)) {}
 
   virtual void SetUp() {
     config_->proxy_factory_ = &proxy_factory_;
@@ -99,6 +102,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   MockProxyFactory proxy_factory_;
   MockControl control_;
   scoped_ptr<MockMinijail> minijail_;
+  MockMetrics metrics_;
   DHCPConfigRefPtr config_;
 };
 
@@ -116,7 +120,8 @@ DHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
                                          hostname,
                                          lease_suffix,
                                          arp_gateway,
-                                         glib()));
+                                         glib(),
+                                         &metrics_));
   config->minijail_ = minijail_.get();
 
   return config;
@@ -132,7 +137,8 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
                                          hostname,
                                          lease_suffix,
                                          arp_gateway,
-                                         glib()));
+                                         glib(),
+                                         &metrics_));
   config->minijail_ = minijail_.get();
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(kPID), Return(true)));
@@ -741,6 +747,12 @@ TEST_F(DHCPConfigTest, SetProperty) {
                                         &error));
   ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
   EXPECT_EQ(invalid_args(), error.name());
+}
+
+TEST_F(DHCPConfigTest, ProcessStatusChangeSingal) {
+  EXPECT_CALL(metrics_, NotifyDhcpClientStatus(
+      Metrics::kDhcpClientStatusBound));
+  config_->ProcessStatusChangeSignal(DHCPConfig::kStatusBound);
 }
 
 }  // namespace shill

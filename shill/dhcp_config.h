@@ -26,6 +26,7 @@ class DHCPProvider;
 class DHCPProxyInterface;
 class EventDispatcher;
 class GLib;
+class Metrics;
 class ProxyFactory;
 
 // This class provides a DHCP client instance for the device |device_name|.
@@ -51,7 +52,8 @@ class DHCPConfig : public IPConfig {
              const std::string &request_hostname,
              const std::string &lease_file_suffix,
              bool arp_gateway,
-             GLib *glib);
+             GLib *glib,
+             Metrics *metrics);
   virtual ~DHCPConfig();
 
   // Inherited from IPConfig.
@@ -66,6 +68,9 @@ class DHCPConfig : public IPConfig {
   // Processes an Event signal from dhcpcd.
   void ProcessEventSignal(const std::string &reason,
                           const Configuration &configuration);
+
+  // Processes an Status Change signal from dhcpcd.
+  void ProcessStatusChangeSignal(const std::string &status);
 
  protected:
   // Overrides base clase implementation.
@@ -87,6 +92,7 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, InitProxy);
   FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
+  FRIEND_TEST(DHCPConfigTest, ProcessStatusChangeSingal);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPArpGW);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithLease);
@@ -132,6 +138,23 @@ class DHCPConfig : public IPConfig {
   static const char kReasonRebind[];
   static const char kReasonReboot[];
   static const char kReasonRenew[];
+
+  static const char kStatusArpGateway[];
+  static const char kStatusArpSelf[];
+  static const char kStatusBound[];
+  static const char kStatusDiscover[];
+  static const char kStatusIgnoreDuplicateOffer[];
+  static const char kStatusIgnoreFailedOffer[];
+  static const char kStatusIgnoreInvalidOffer[];
+  static const char kStatusIgnoreNonOffer[];
+  static const char kStatusInform[];
+  static const char kStatusInit[];
+  static const char kStatusNakDefer[];
+  static const char kStatusRebind[];
+  static const char kStatusReboot[];
+  static const char kStatusRelease[];
+  static const char kStatusRenew[];
+  static const char kStatusRequest[];
 
   static const char kType[];
 
@@ -241,6 +264,7 @@ class DHCPConfig : public IPConfig {
   base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
   EventDispatcher *dispatcher_;
   GLib *glib_;
+  Metrics *metrics_;
 
   Minijail *minijail_;
 

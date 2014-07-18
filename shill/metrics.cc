@@ -312,6 +312,10 @@ const char Metrics::kMetricNetworkProblemDetectedSuffix[] =
 const char Metrics::kMetricDeviceConnectionStatus[] =
     "Network.Shill.DeviceConnectionStatus";
 
+// static
+const char Metrics::kMetricDhcpClientStatus[] =
+    "Network.Shill.DhcpClientStatus";
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1169,6 +1173,10 @@ void Metrics::NotifyNetworkProblemDetected(Technology::Identifier technology_id,
 
 void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
   SendEnumToUMA(kMetricDeviceConnectionStatus, status, kConnectionStatusMax);
+}
+
+void Metrics::NotifyDhcpClientStatus(DhcpClientStatus status) {
+  SendEnumToUMA(kMetricDhcpClientStatus, status, kDhcpClientStatusMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

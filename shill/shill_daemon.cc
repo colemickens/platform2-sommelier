@@ -112,7 +112,7 @@ void Daemon::Start() {
   metrics_->Start();
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
-  dhcp_provider_->Init(control_, &dispatcher_, &glib_);
+  dhcp_provider_->Init(control_, &dispatcher_, &glib_, metrics_.get());
 
   if (netlink_manager_) {
     netlink_manager_->Init();

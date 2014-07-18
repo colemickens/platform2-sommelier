@@ -312,6 +312,26 @@ class Metrics {
     kUserInitiatedConnectionFailureReasonMax
   };
 
+  enum DhcpClientStatus {
+    kDhcpClientStatusArpGateway = 1,
+    kDhcpClientStatusArpSelf = 2,
+    kDhcpClientStatusBound = 3,
+    kDhcpClientStatusDiscover = 4,
+    kDhcpClientStatusIgnoreDuplicateOffer = 5,
+    kDhcpClientStatusIgnoreFailedOffer = 6,
+    kDhcpClientStatusIgnoreInvalidOffer = 7,
+    kDhcpClientStatusIgnoreNonOffer = 8,
+    kDhcpClientStatusInform = 9,
+    kDhcpClientStatusInit = 10,
+    kDhcpClientStatusNakDefer = 11,
+    kDhcpClientStatusRebind = 12,
+    kDhcpClientStatusReboot = 13,
+    kDhcpClientStatusRelease = 14,
+    kDhcpClientStatusRenew = 15,
+    kDhcpClientStatusRequest = 16,
+    kDhcpClientStatusMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -519,6 +539,9 @@ class Metrics {
   // Device's connection status.
   static const char kMetricDeviceConnectionStatus[];
 
+  // DHCP client status.
+  static const char kMetricDhcpClientStatus[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -718,6 +741,9 @@ class Metrics {
 
   // Notifies this object about current connection status (online vs offline).
   virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);
+
+  // Notifies this object about the DHCP client status.
+  virtual void NotifyDhcpClientStatus(Metrics::DhcpClientStatus status);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

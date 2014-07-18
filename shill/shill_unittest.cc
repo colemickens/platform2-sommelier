@@ -253,7 +253,7 @@ TEST_F(ShillDaemonTest, StartStop) {
   EXPECT_CALL(*metrics_, Start());
   EXPECT_CALL(rtnl_handler_, Start(_, _));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
-  EXPECT_CALL(dhcp_provider_, Init(_, _, _));
+  EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
   Mock::VerifyAndClearExpectations(metrics_);
@@ -308,7 +308,7 @@ TEST_F(ShillDaemonTest, Quit) {
   EXPECT_CALL(proxy_factory_, Init());
   EXPECT_CALL(rtnl_handler_, Start(_, _));
   EXPECT_CALL(routing_table_, Start());
-  EXPECT_CALL(dhcp_provider_, Init(_, _, _));
+  EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
   EXPECT_CALL(*manager_, Start());
 
   // This expectation verifies that the termination actions are invoked.

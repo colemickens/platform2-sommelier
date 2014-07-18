@@ -22,6 +22,7 @@
 #include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/minijail.h"
+#include "shill/metrics.h"
 #include "shill/proxy_factory.h"
 
 using std::string;
@@ -60,7 +61,22 @@ const char DHCPConfig::kReasonNak[] = "NAK";
 const char DHCPConfig::kReasonRebind[] = "REBIND";
 const char DHCPConfig::kReasonReboot[] = "REBOOT";
 const char DHCPConfig::kReasonRenew[] = "RENEW";
-// static
+const char DHCPConfig::kStatusArpGateway[] = "ArpGateway";
+const char DHCPConfig::kStatusArpSelf[] = "ArpSelf";
+const char DHCPConfig::kStatusBound[] = "Bound";
+const char DHCPConfig::kStatusDiscover[] = "Discover";
+const char DHCPConfig::kStatusIgnoreDuplicateOffer[] = "IgnoreDuplicateOffer";
+const char DHCPConfig::kStatusIgnoreFailedOffer[] = "IgnoreFailedOffer";
+const char DHCPConfig::kStatusIgnoreInvalidOffer[] = "IgnoreInvalidOffer";
+const char DHCPConfig::kStatusIgnoreNonOffer[] = "IgnoreNonOffer";
+const char DHCPConfig::kStatusInform[] = "Inform";
+const char DHCPConfig::kStatusInit[] = "Init";
+const char DHCPConfig::kStatusNakDefer[] = "NakDefer";
+const char DHCPConfig::kStatusRebind[] = "Rebind";
+const char DHCPConfig::kStatusReboot[] = "Reboot";
+const char DHCPConfig::kStatusRelease[] = "Release";
+const char DHCPConfig::kStatusRenew[] = "Renew";
+const char DHCPConfig::kStatusRequest[] = "Request";
 const char DHCPConfig::kType[] = "dhcp";
 
 
@@ -71,7 +87,8 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
                        const string &request_hostname,
                        const string &lease_file_suffix,
                        bool arp_gateway,
-                       GLib *glib)
+                       GLib *glib,
+                       Metrics *metrics)
     : IPConfig(control_interface, device_name, kType),
       proxy_factory_(ProxyFactory::GetInstance()),
       provider_(provider),
@@ -87,6 +104,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
       glib_(glib),
+      metrics_(metrics),
       minijail_(Minijail::GetInstance()) {
   SLOG(DHCP, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
@@ -200,6 +218,49 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
   } else {
     UpdateProperties(properties);
     is_gateway_arp_active_ = false;
+  }
+}
+
+void DHCPConfig::ProcessStatusChangeSignal(const string &status) {
+  SLOG(DHCP, 2) << __func__ << ": " << status;
+
+  if (status == kStatusArpGateway) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusArpGateway);
+  } else if (status == kStatusArpSelf) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusArpSelf);
+  } else if (status == kStatusBound) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusBound);
+  } else if (status == kStatusDiscover) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusDiscover);
+  } else if (status == kStatusIgnoreDuplicateOffer) {
+    metrics_->NotifyDhcpClientStatus(
+        Metrics::kDhcpClientStatusIgnoreDuplicateOffer);
+  } else if (status == kStatusIgnoreFailedOffer) {
+    metrics_->NotifyDhcpClientStatus(
+        Metrics::kDhcpClientStatusIgnoreFailedOffer);
+  } else if (status == kStatusIgnoreInvalidOffer) {
+    metrics_->NotifyDhcpClientStatus(
+        Metrics::kDhcpClientStatusIgnoreInvalidOffer);
+  } else if (status == kStatusIgnoreNonOffer) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusIgnoreNonOffer);
+  } else if (status == kStatusInform) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusInform);
+  } else if (status == kStatusInit) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusInit);
+  } else if (status == kStatusNakDefer) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusNakDefer);
+  } else if (status == kStatusRebind) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRebind);
+  } else if (status == kStatusReboot) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);
+  } else if (status == kStatusRelease) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRelease);
+  } else if (status == kStatusRenew) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRenew);
+  } else if (status == kStatusRequest) {
+    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRequest);
+  } else {
+    LOG(ERROR) << "DHCP client reports unknown status " << status;
   }
 }
 

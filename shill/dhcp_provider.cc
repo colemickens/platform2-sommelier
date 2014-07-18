@@ -29,7 +29,8 @@ DHCPProvider::DHCPProvider()
       root_("/"),
       control_interface_(NULL),
       dispatcher_(NULL),
-      glib_(NULL) {
+      glib_(NULL),
+      metrics_(NULL) {
   SLOG(DHCP, 2) << __func__;
 }
 
@@ -43,12 +44,14 @@ DHCPProvider* DHCPProvider::GetInstance() {
 
 void DHCPProvider::Init(ControlInterface *control_interface,
                         EventDispatcher *dispatcher,
-                        GLib *glib) {
+                        GLib *glib,
+                        Metrics *metrics) {
   SLOG(DHCP, 2) << __func__;
   listener_.reset(new DHCPCDListener(proxy_factory_->connection(), this));
   glib_ = glib;
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;
+  metrics_ = metrics;
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
@@ -63,7 +66,8 @@ DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
                         host_name,
                         lease_file_suffix,
                         arp_gateway,
-                        glib_);
+                        glib_,
+                        metrics_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

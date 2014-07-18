@@ -21,6 +21,7 @@ class ControlInterface;
 class DHCPCDListener;
 class EventDispatcher;
 class GLib;
+class Metrics;
 class ProxyFactory;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
@@ -47,7 +48,8 @@ class DHCPProvider {
   // to the appropriate DHCP configuration instance.
   virtual void Init(ControlInterface *control_interface,
                     EventDispatcher *dispatcher,
-                    GLib *glib);
+                    GLib *glib,
+                    Metrics *metrics);
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
@@ -107,6 +109,7 @@ class DHCPProvider {
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   GLib *glib_;
+  Metrics *metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPProvider);
 };

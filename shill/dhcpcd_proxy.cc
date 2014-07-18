@@ -95,6 +95,16 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
     return;
   }
   config->InitProxy(signal.sender());
+
+  string status;
+  try {
+    ri >> status;
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << signal.interface()
+               << " member: " << signal.member() << " path: " << signal.path();
+  }
+  config->ProcessStatusChangeSignal(status);
 }
 
 DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
