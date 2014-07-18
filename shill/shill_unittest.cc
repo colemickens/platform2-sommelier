@@ -162,8 +162,8 @@ class MockEventDispatchTester {
     input_handler_.reset(NULL);
   }
 
-  MOCK_METHOD1(CallbackComplete, void(int));
-  MOCK_METHOD1(IOComplete, void(int));
+  MOCK_METHOD1(CallbackComplete, void(int callback_count));
+  MOCK_METHOD1(IOComplete, void(int data_length));
 
  private:
   EventDispatcher *dispatcher_;
