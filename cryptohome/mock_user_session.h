@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_USER_SESSION_H_
 #define CRYPTOHOME_MOCK_USER_SESSION_H_
 
-#include "user_session.h"
+#include "cryptohome/user_session.h"
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>

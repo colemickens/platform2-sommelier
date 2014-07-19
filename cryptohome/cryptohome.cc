@@ -34,21 +34,22 @@
 #include <chromeos/utility.h>
 #include <google/protobuf/message_lite.h>
 
+#include "cryptohome/attestation.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/pkcs11_init.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
+#include "cryptohome/username_passkey.h"
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 #include "bindings/client.h"
-#include "attestation.h"
-#include "attestation.pb.h"
-#include "crypto.h"
-#include "cryptolib.h"
-#include "key.pb.h"
-#include "marshal.glibmarshal.h"
-#include "mount.h"
-#include "pkcs11_init.h"
-#include "platform.h"
-#include "rpc.pb.h"
-#include "signed_secret.pb.h"
-#include "tpm.h"
-#include "username_passkey.h"
-#include "vault_keyset.pb.h"
+#include "key.pb.h"  // NOLINT(build/include)
+#include "marshal.glibmarshal.h"  // NOLINT(build/include)
+#include "rpc.pb.h"  // NOLINT(build/include)
+#include "signed_secret.pb.h"  // NOLINT(build/include)
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
 using base::StringPrintf;
@@ -1512,7 +1513,7 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedError error;
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
-    if (!org_chromium_CryptohomeInterface_update_current_user_activity_timestamp(
+    if (!org_chromium_CryptohomeInterface_update_current_user_activity_timestamp(  // NOLINT
             proxy.gproxy(),
             base::TimeDelta::FromDays(
                 kSetCurrentUserOldOffsetInDays).InSeconds(),
@@ -1530,7 +1531,7 @@ int main(int argc, char **argv) {
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_async_do_automatic_free_disk_space_control(
+    if (!org_chromium_CryptohomeInterface_async_do_automatic_free_disk_space_control(  // NOLINT
             proxy.gproxy(),
             &async_id,
             &chromeos::Resetter(&error).lvalue())) {
@@ -1543,7 +1544,7 @@ int main(int argc, char **argv) {
                "and maybe cut away something. Use `df` to check.\n");
       } else {
         printf("Cleanup reported that there was enough free space "
-               "(more than %"PRIu64" Kbytes, check with `df`) "
+               "(more than %" PRIu64" Kbytes, check with `df`) "
                "so it didn't try to cut anything.\n",
                cryptohome::kMinFreeSpaceInBytes >> 10);
       }
@@ -1809,7 +1810,7 @@ int main(int argc, char **argv) {
     string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       chromeos::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(  // NOLINT
           proxy.gproxy(),
           cryptohome::Attestation::kDefaultPCA,
           &chromeos::Resetter(&data).lvalue(),
@@ -1823,7 +1824,7 @@ int main(int argc, char **argv) {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
       gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_enroll_request(
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_enroll_request(  // NOLINT
               proxy.gproxy(),
               cryptohome::Attestation::kDefaultPCA,
               &async_id,
@@ -1901,7 +1902,7 @@ int main(int argc, char **argv) {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
       gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(  // NOLINT
               proxy.gproxy(),
               cryptohome::Attestation::kDefaultPCA,
               cryptohome::ENTERPRISE_USER_CERTIFICATE,
@@ -1962,7 +1963,7 @@ int main(int argc, char **argv) {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
       gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_finish_cert_request(
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_finish_cert_request(  // NOLINT
               proxy.gproxy(),
               data.get(),
               is_user_specific,
@@ -2096,7 +2097,7 @@ int main(int argc, char **argv) {
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(  // NOLINT
             proxy.gproxy(),
             is_user_specific,
             username.c_str(),
@@ -2339,7 +2340,6 @@ int main(int argc, char **argv) {
     printf("SetBootAttribute success.\n");
   } else if (!strcmp(switches::kActions[
       switches::ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES], action.c_str())) {
-
     cryptohome::FlushAndSignBootAttributesRequest request;
     cryptohome::BaseReply reply;
     if (!MakeProtoDBusCall("FlushAndSignBootAttributes",
@@ -2355,4 +2355,4 @@ int main(int argc, char **argv) {
       printf("  --action=%s\n", switches::kActions[i]);
   }
   return 0;
-}
+}  // NOLINT(readability/fn_size)

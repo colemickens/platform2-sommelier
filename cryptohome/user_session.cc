@@ -4,12 +4,14 @@
 
 // Contains the implementation of class Mount
 
-#include "user_session.h"
+#include "cryptohome/user_session.h"
+
+#include <string>
 
 #include <openssl/evp.h>
 
 #include <base/logging.h>
-#include "cryptolib.h"
+#include "cryptohome/cryptolib.h"
 
 using chromeos::SecureBlob;
 
@@ -104,8 +106,8 @@ void UserSession::GetObfuscatedUsername(std::string* username) const {
 
 int UserSession::key_index() const {
   // Ensures a crash when persisting or retrieving a key.
-  CHECK(key_index_ >= 0) << "Attempt to access an uninitialized key_index."
-                         << "Guest mount? Ephemeral mount?";
+  CHECK_GE(key_index_, 0) << "Attempt to access an uninitialized key_index."
+                          << "Guest mount? Ephemeral mount?";
   return key_index_;
 }
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "service.h"
+#include "cryptohome/service.h"
 
 #define __STDC_FORMAT_MACROS 1
 #include <inttypes.h>
@@ -30,23 +30,24 @@
 #include <string>
 #include <vector>
 
-#include "attestation_task.h"
-#include "boot_attributes.h"
-#include "boot_lockbox.h"
-#include "cryptohome_event_source.h"
-#include "crypto.h"
-#include "dbus_transition.h"
-#include "install_attributes.h"
-#include "interface.h"
-#include "key.pb.h"
-#include "marshal.glibmarshal.h"
-#include "mount.h"
-#include "platform.h"
-#include "rpc.pb.h"
-#include "stateful_recovery.h"
-#include "tpm.h"
-#include "username_passkey.h"
-#include "vault_keyset.pb.h"
+#include "cryptohome/attestation_task.h"
+#include "cryptohome/boot_attributes.h"
+#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/cryptohome_event_source.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/dbus_transition.h"
+#include "cryptohome/install_attributes.h"
+#include "cryptohome/interface.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/stateful_recovery.h"
+#include "cryptohome/tpm.h"
+#include "cryptohome/username_passkey.h"
+
+#include "key.pb.h"  // NOLINT(build/include)
+#include "marshal.glibmarshal.h"  // NOLINT(build/include)
+#include "rpc.pb.h"  // NOLINT(build/include)
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
 using chromeos::SecureBlob;

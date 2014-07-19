@@ -8,9 +8,11 @@
 #ifndef CRYPTOHOME_CREDENTIALS_H_
 #define CRYPTOHOME_CREDENTIALS_H_
 
+#include <string>
+
 #include <chromeos/secure_blob.h>
 
-#include "key.pb.h"
+#include "key.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

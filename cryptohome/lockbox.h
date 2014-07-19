@@ -14,8 +14,8 @@
 #include <chromeos/process.h>
 #include <chromeos/utility.h>
 
-#include "platform.h"
-#include "tpm.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
 
 
 namespace cryptohome {

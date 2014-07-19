@@ -18,8 +18,8 @@ PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 gthread-2.0 openssl \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS += -Wall -Werror -fno-exceptions
-CPPFLAGS += -I$(OUT) $(PC_CFLAGS)
+CXXFLAGS += -Wall -Werror -fno-exceptions -Wno-deprecated-register --std=gnu++11
+CPPFLAGS += -I"$(SRC)/.." -I$(OUT) $(PC_CFLAGS)
 LDLIBS += -lpolicy-$(BASE_VER) -lmetrics-$(BASE_VER) $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
 	-lpthread -lscrypt -ltspi -lvboot_host -lm

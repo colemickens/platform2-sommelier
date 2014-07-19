@@ -4,7 +4,7 @@
 //
 // Unit tests for Service
 
-#include "service.h"
+#include "cryptohome/service.h"
 
 #include <map>
 #include <string>
@@ -22,21 +22,21 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
-#include "crypto.h"
-#include "make_tests.h"
-#include "mock_attestation.h"
-#include "mock_boot_attributes.h"
-#include "mock_boot_lockbox.h"
-#include "mock_crypto.h"
-#include "mock_dbus_transition.h"
-#include "mock_homedirs.h"
-#include "mock_install_attributes.h"
-#include "mock_mount.h"
-#include "mock_mount_factory.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mock_vault_keyset.h"
-#include "username_passkey.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/make_tests.h"
+#include "cryptohome/mock_attestation.h"
+#include "cryptohome/mock_boot_attributes.h"
+#include "cryptohome/mock_boot_lockbox.h"
+#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_dbus_transition.h"
+#include "cryptohome/mock_homedirs.h"
+#include "cryptohome/mock_install_attributes.h"
+#include "cryptohome/mock_mount.h"
+#include "cryptohome/mock_mount_factory.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_vault_keyset.h"
+#include "cryptohome/username_passkey.h"
 
 using base::PlatformThread;
 using chromeos::SecureBlob;

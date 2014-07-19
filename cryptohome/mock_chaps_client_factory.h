@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_CHAPS_CLIENT_FACTORY_H_
 #define CRYPTOHOME_MOCK_CHAPS_CLIENT_FACTORY_H_
 
-#include "chaps_client_factory.h"
+#include "cryptohome/chaps_client_factory.h"
 
 namespace cryptohome {
 
@@ -15,7 +15,7 @@ class MockChapsClientFactory : public ChapsClientFactory {
   virtual ~MockChapsClientFactory();
   virtual chaps::TokenManagerClient* New();
 
- protected:
+ private:
   DISALLOW_COPY_AND_ASSIGN(MockChapsClientFactory);
 };
 

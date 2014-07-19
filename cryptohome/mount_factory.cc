@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mount_factory.h"
+#include "cryptohome/mount_factory.h"
 
-#include "mount.h"
+#include "cryptohome/mount.h"
 
 namespace cryptohome {
 

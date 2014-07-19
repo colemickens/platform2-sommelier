@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mock_tpm_init.h"
+#include "cryptohome/mock_tpm_init.h"
 
 using testing::_;
 using testing::Return;

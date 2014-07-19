@@ -21,10 +21,12 @@
 #ifndef CRYPTOHOME_DBUS_TRANSITION_H_
 #define CRYPTOHOME_DBUS_TRANSITION_H_
 
+#include <string>
+
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/dbus.h>
 
-#include "cryptohome_event_source.h"
+#include "cryptohome/cryptohome_event_source.h"
 
 namespace cryptohome {
 
@@ -46,7 +48,7 @@ class DBusErrorReply : public CryptohomeEventBase {
     return kDBusErrorReplyEventType;
   }
   virtual void Run() {
-    dbus_g_method_return_error (context_, error_.get());
+    dbus_g_method_return_error(context_, error_.get());
   }
  private:
   // If this event is not serviced, the memory will be leaked.

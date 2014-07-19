@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_MOUNT_FACTORY_H_
 #define CRYPTOHOME_MOCK_MOUNT_FACTORY_H_
 
-#include "mount_factory.h"
+#include "cryptohome/mount_factory.h"
 
 #include <gmock/gmock.h>
 

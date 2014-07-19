@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptolib.h"
+#include "cryptohome/cryptolib.h"
 
 #include <limits>
+#include <vector>
+
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -22,7 +24,7 @@ extern "C" {
 #include <scrypt/scryptenc.h>
 }
 
-#include "platform.h"
+#include "cryptohome/platform.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -516,7 +518,7 @@ string CryptoLib::Base64Encode(const string& input, bool include_newlines) {
   BIO_write(bio, input.data(), input.size());
   static_cast<void>(BIO_flush(bio));
   char *data;
-  long length = BIO_get_mem_data(bio, &data);
+  long length = BIO_get_mem_data(bio, &data);  // NOLINT(runtime/int)
   string output(data, length);
   chromeos::SecureMemset(data, 0, length);
   BIO_free_all(bio);

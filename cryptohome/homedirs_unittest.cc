@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "homedirs.h"
+#include "cryptohome/homedirs.h"
+
+#include <vector>
 
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
@@ -13,16 +15,17 @@
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
 
-#include "cryptolib.h"
-#include "make_tests.h"
-#include "mock_crypto.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mock_user_oldest_activity_timestamp_cache.h"
-#include "mock_vault_keyset.h"
-#include "mock_vault_keyset_factory.h"
-#include "signed_secret.pb.h"
-#include "username_passkey.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/make_tests.h"
+#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/mock_vault_keyset.h"
+#include "cryptohome/mock_vault_keyset_factory.h"
+#include "cryptohome/username_passkey.h"
+
+#include "signed_secret.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
 using base::StringPrintf;
@@ -483,8 +486,8 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleUsers) {
 }
 
 TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast) {
-   set_policy(true, "", false, "");
-   homedirs_.set_enterprise_owned(true);
+  set_policy(true, "", false, "");
+  homedirs_.set_enterprise_owned(true);
 
   EXPECT_CALL(timestamp_cache_, initialized())
     .WillRepeatedly(Return(true));
@@ -516,7 +519,6 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast) {
 }
 
 TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
-
   // Ensure that the two oldest user directories are deleted, but not any
   // others.  The owner is inserted in the middle.
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -708,7 +710,7 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
   for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
     EXPECT_CALL(platform_,
         IsDirectoryMountedWith(StartsWith(homedir_paths_[i]), _))
-      .Times(2) // Cache, GCache
+      .Times(2)  // Cache, GCache
       .WillRepeatedly(Return(false));
   }
 

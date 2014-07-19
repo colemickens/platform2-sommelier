@@ -23,16 +23,17 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
-#include "attestation.h"
-#include "cryptohome_event_source.h"
-#include "dbus_transition.h"
-#include "install_attributes.h"
-#include "mount.h"
-#include "mount_factory.h"
-#include "mount_task.h"
-#include "pkcs11_init.h"
-#include "rpc.pb.h"
-#include "tpm_init.h"
+#include "cryptohome/attestation.h"
+#include "cryptohome/cryptohome_event_source.h"
+#include "cryptohome/dbus_transition.h"
+#include "cryptohome/install_attributes.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/mount_factory.h"
+#include "cryptohome/mount_task.h"
+#include "cryptohome/pkcs11_init.h"
+#include "cryptohome/tpm_init.h"
+
+#include "rpc.pb.h"  // NOLINT(build/include)
 
 namespace chaps {
 class TokenManagerClient;

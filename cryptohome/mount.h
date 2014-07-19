@@ -28,15 +28,16 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include "credentials.h"
-#include "crypto.h"
-#include "homedirs.h"
-#include "mount_stack.h"
-#include "platform.h"
-#include "user_session.h"
-#include "user_oldest_activity_timestamp_cache.h"
-#include "vault_keyset.h"
-#include "vault_keyset.pb.h"
+#include "cryptohome/credentials.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/homedirs.h"
+#include "cryptohome/mount_stack.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/user_session.h"
+#include "cryptohome/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/vault_keyset.h"
+
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "username_passkey.h"
+#include "cryptohome/username_passkey.h"
 
 #include <openssl/sha.h>
 
@@ -11,7 +11,7 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
-#include "crypto.h"
+#include "cryptohome/crypto.h"
 
 namespace cryptohome {
 using chromeos::SecureBlob;

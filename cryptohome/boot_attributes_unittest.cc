@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "boot_attributes.h"
+#include "cryptohome/boot_attributes.h"
 
 #include <map>
 #include <string>
@@ -13,11 +13,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "install_attributes.pb.h"
-#include "mock_boot_lockbox.h"
-#include "mock_crypto.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
+#include "cryptohome/mock_boot_lockbox.h"
+#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+
+#include "install_attributes.pb.h"  // NOLINT(build/include)
 
 using ::testing::DoAll;
 using ::testing::Invoke;

@@ -4,9 +4,15 @@
 //
 // Asynchronous attestation tasks.
 
-#include "attestation.h"
-#include "attestation.pb.h"
-#include "mount_task.h"
+#ifndef CRYPTOHOME_ATTESTATION_TASK_H_
+#define CRYPTOHOME_ATTESTATION_TASK_H_
+
+#include <string>
+
+#include "cryptohome/attestation.h"
+#include "cryptohome/mount_task.h"
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -160,3 +166,5 @@ class RegisterKeyTask : public AttestationTask {
 };
 
 }  // namespace cryptohome
+
+#endif  // CRYPTOHOME_ATTESTATION_TASK_H_

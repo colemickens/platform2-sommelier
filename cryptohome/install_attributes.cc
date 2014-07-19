@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "install_attributes.h"
+#include "cryptohome/install_attributes.h"
 
-#include <limits.h>
+#include <limits>
+#include <string>
 
 #include <base/logging.h>
 #include <base/time/time.h>
 
-#include "lockbox.h"
-#include "install_attributes.pb.h"
-#include "tpm_init.h"
+#include "cryptohome/lockbox.h"
+#include "cryptohome/tpm_init.h"
+
+#include "install_attributes.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

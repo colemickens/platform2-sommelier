@@ -46,6 +46,7 @@ class KeyStore {
   virtual bool Register(const std::string& username,
                         const chromeos::SecureBlob& private_key_blob,
                         const chromeos::SecureBlob& public_key_der) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyStore);
 };

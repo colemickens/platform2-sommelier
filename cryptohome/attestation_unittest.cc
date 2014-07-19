@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "attestation.h"
+#include "cryptohome/attestation.h"
 
 #include <string>
 
@@ -14,14 +14,15 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "attestation.pb.h"
-#include "crypto.h"
-#include "cryptolib.h"
-#include "mock_install_attributes.h"
-#include "mock_keystore.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mock_tpm_init.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/mock_install_attributes.h"
+#include "cryptohome/mock_keystore.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_tpm_init.h"
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 using chromeos::SecureBlob;
 using std::string;
@@ -306,7 +307,8 @@ TEST(AttestationTest_, NullTpm) {
   EXPECT_FALSE(without_tpm.CreateCertRequest(Attestation::kDefaultPCA,
                                              ENTERPRISE_USER_CERTIFICATE, "",
                                              "", NULL));
-  EXPECT_FALSE(without_tpm.FinishCertRequest(SecureBlob(), false, "","", NULL));
+  EXPECT_FALSE(without_tpm.FinishCertRequest(SecureBlob(),
+                                             false, "", "", NULL));
   EXPECT_FALSE(without_tpm.SignEnterpriseChallenge(false, "", "", "",
                                                    SecureBlob(), false,
                                                    SecureBlob(), NULL));
@@ -577,7 +579,7 @@ TEST_F(AttestationTest, DeleteByPrefixDevice) {
 
   EXPECT_EQ(3, db.device_keys_size());
   for (int i = 0; i < db.device_keys_size(); ++i) {
-    EXPECT_TRUE(db.device_keys(i).key_name().find("other") == 0);
+    EXPECT_EQ(0, db.device_keys(i).key_name().find("other"));
   }
 }
 

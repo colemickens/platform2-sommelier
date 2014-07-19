@@ -1,13 +1,14 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "cryptohome/lockbox-cache.h"
+
 #include <stdio.h>
 #include <unistd.h>
 
 #include <base/logging.h>
 
-#include "lockbox.h"
-#include "lockbox-cache.h"
+#include "cryptohome/lockbox.h"
 
 namespace cryptohome {
 
@@ -30,8 +31,8 @@ bool LockboxCache::LoadAndVerify(uint32_t index,
     return false;
   }
   if (!platform_->ReadFile(lockbox_path, &contents_)) {
-   LOG(ERROR) << "Failed to read lockbox contents from " << lockbox_path;
-   return false;
+    LOG(ERROR) << "Failed to read lockbox contents from " << lockbox_path;
+    return false;
   }
   Lockbox lockbox(tpm_, index);
   Lockbox::ErrorId error;

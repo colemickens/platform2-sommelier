@@ -4,16 +4,18 @@
 
 // Contains the implementation of class TpmInit
 
-#include "tpm_init.h"
+#include "cryptohome/tpm_init.h"
+
+#include <string>
 
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <trousers/scoped_tss_type.h>
 
-#include "attestation.h"
-#include "cryptolib.h"
-#include "interface.h"
+#include "cryptohome/attestation.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/interface.h"
 
 using base::PlatformThread;
 using base::PlatformThreadHandle;

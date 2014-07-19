@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_ATTESTATION_H_
-#define MOCK_ATTESTATION_H_
+#ifndef CRYPTOHOME_MOCK_ATTESTATION_H_
+#define CRYPTOHOME_MOCK_ATTESTATION_H_
 
-#include "attestation.h"
+#include "cryptohome/attestation.h"
 
 #include <string>
 
@@ -88,11 +88,11 @@ class MockAttestation : public Attestation {
   MOCK_METHOD2(GetIdentityResetRequest, bool(const std::string&,
                                              chromeos::SecureBlob*));
   MOCK_METHOD1(set_database_path, void(const char*));
-  MOCK_METHOD1(set_enterprise_test_key, void(RSA*));
+  MOCK_METHOD1(set_enterprise_test_key, void(RSA*));  // NOLINT "unnamed" param.
   MOCK_METHOD0(ThreadMain, void());
   MOCK_METHOD0(OnFinalized, void());
 };
 
 }  // namespace cryptohome
 
-#endif  /* !MOCK_ATTESTATION_H_ */
+#endif  // CRYPTOHOME_MOCK_ATTESTATION_H_

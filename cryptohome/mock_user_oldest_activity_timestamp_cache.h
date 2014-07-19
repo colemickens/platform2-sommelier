@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
-#define MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#ifndef CRYPTOHOME_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#define CRYPTOHOME_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
 
-#include "user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/user_oldest_activity_timestamp_cache.h"
 
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -28,15 +28,14 @@ class MockUserOldestActivityTimestampCache :
   MOCK_METHOD0(RemoveOldestUser, base::FilePath(void));
 
  private:
-   base::Time StubOldestKnownTimestamp() const {
-     return base::Time();  // null
-   }
+  base::Time StubOldestKnownTimestamp() const {
+    return base::Time();  // null
+  }
 
-   base::FilePath StubRemoveOldestUser() {
-     return base::FilePath("/SATURATED/REMOVE/OLDEST/USER");
-   }
-
+  base::FilePath StubRemoveOldestUser() {
+    return base::FilePath("/SATURATED/REMOVE/OLDEST/USER");
+  }
 };
 }  // namespace cryptohome
 
-#endif  /* !MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_ */
+#endif  // CRYPTOHOME_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_

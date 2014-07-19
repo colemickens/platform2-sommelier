@@ -7,18 +7,21 @@
 #ifndef CRYPTOHOME_INSTALL_ATTRIBUTES_H_
 #define CRYPTOHOME_INSTALL_ATTRIBUTES_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 
-#include "crypto.h"
-#include "install_attributes.pb.h"
-#include "lockbox.h"
-#include "platform.h"
-#include "tpm.h"
-#include "tpm_init.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/lockbox.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
+#include "cryptohome/tpm_init.h"
+
+#include "install_attributes.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

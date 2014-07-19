@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vault_keyset_factory.h"
+#include "cryptohome/vault_keyset_factory.h"
 
-#include "vault_keyset.h"
+#include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
 

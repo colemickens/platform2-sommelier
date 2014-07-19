@@ -4,7 +4,7 @@
 
 // Unit tests for VaultKeyset.
 
-#include "vault_keyset.h"
+#include "cryptohome/vault_keyset.h"
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
@@ -12,9 +12,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "crypto.h"
-#include "cryptohome_common.h"
-#include "mock_platform.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 using chromeos::SecureBlob;

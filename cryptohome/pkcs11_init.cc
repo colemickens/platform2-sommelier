@@ -4,7 +4,7 @@
 
 // Contains the implementation of class Pkcs11Init.
 
-#include "pkcs11_init.h"
+#include "cryptohome/pkcs11_init.h"
 
 #include <string.h>
 

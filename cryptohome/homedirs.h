@@ -5,8 +5,11 @@
 // Homedirs - manages the collection of user home directories on disk. When a
 // homedir is actually mounted, it becomes a Mount.
 
-#ifndef HOMEDIRS_H_
-#define HOMEDIRS_H_
+#ifndef CRYPTOHOME_HOMEDIRS_H_
+#define CRYPTOHOME_HOMEDIRS_H_
+
+#include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/file_util.h>
@@ -17,13 +20,13 @@
 #include <chromeos/secure_blob.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
-#include <string>
 
-#include "crypto.h"
-#include "mount_factory.h"
-#include "rpc.pb.h"
-#include "vault_keyset.pb.h"
-#include "vault_keyset_factory.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/mount_factory.h"
+#include "cryptohome/vault_keyset_factory.h"
+
+#include "rpc.pb.h"  // NOLINT(build/include)
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -246,4 +249,4 @@ class HomeDirs {
 
 }  // namespace cryptohome
 
-#endif  // HOMEDIRS_H_
+#endif  // CRYPTOHOME_HOMEDIRS_H_

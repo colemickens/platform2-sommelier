@@ -13,7 +13,7 @@
 #include <dbus/dbus-glib-bindings.h>
 #include <glib-object.h>
 
-#include "service.h"
+#include "cryptohome/service.h"
 
 // Helpers for using GObjects until we can get a C++ wrapper going.
 namespace cryptohome {

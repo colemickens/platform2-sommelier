@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_VAULT_KEYSET_H_
-#define MOCK_VAULT_KEYSET_H_
+#ifndef CRYPTOHOME_MOCK_VAULT_KEYSET_H_
+#define CRYPTOHOME_MOCK_VAULT_KEYSET_H_
 
-#include "vault_keyset.h"
+#include "cryptohome/vault_keyset.h"
+
+#include <string>
 
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -23,7 +25,7 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_METHOD1(FromVaultKeyset, void(const VaultKeyset&));
   MOCK_METHOD1(FromKeys, void(const VaultKeysetKeys&));
   MOCK_METHOD1(FromKeysBlob, bool(const chromeos::SecureBlob&));
-  MOCK_CONST_METHOD1(ToKeys, bool(VaultKeysetKeys*));
+  MOCK_CONST_METHOD1(ToKeys, bool(VaultKeysetKeys*));  // NOLINT 'unnamed' param
   MOCK_CONST_METHOD1(ToKeysBlob, bool(chromeos::SecureBlob*));
 
   MOCK_METHOD0(CreateRandom, void(void));
@@ -44,9 +46,10 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_CONST_METHOD0(source_file, const std::string&(void));
   MOCK_METHOD1(set_legacy_index, void(int));
   MOCK_CONST_METHOD0(legacy_index, const int(void));
+
  private:
   SerializedVaultKeyset stub_serialized_;
 };
 }  // namespace cryptohome
 
-#endif  // !MOCK_VAULT_KEYSET_H_
+#endif  // CRYPTOHOME_MOCK_VAULT_KEYSET_H_

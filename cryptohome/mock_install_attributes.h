@@ -5,16 +5,18 @@
 #ifndef CRYPTOHOME_MOCK_INSTALL_ATTRIBUTES_H_
 #define CRYPTOHOME_MOCK_INSTALL_ATTRIBUTES_H_
 
-#include "install_attributes.h"
+#include "cryptohome/install_attributes.h"
+
+#include <string>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/utility.h>
 #include <gmock/gmock.h>
 
-#include "lockbox.h"
-#include "tpm.h"
-#include "tpm_init.h"
+#include "cryptohome/lockbox.h"
+#include "cryptohome/tpm.h"
+#include "cryptohome/tpm_init.h"
 
 namespace cryptohome {
 
@@ -25,9 +27,9 @@ class MockInstallAttributes : public InstallAttributes {
 
   MOCK_METHOD0(PrepareSystem, bool());
 
-  MOCK_METHOD1(SetTpm, void(Tpm*));
+  MOCK_METHOD1(SetTpm, void(Tpm*));  // NOLINT(readability/function)
 
-  MOCK_METHOD1(Init, bool(TpmInit*));
+  MOCK_METHOD1(Init, bool(TpmInit*));  // NOLINT(readability/function)
 
   MOCK_CONST_METHOD0(IsReady, bool());
 

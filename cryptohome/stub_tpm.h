@@ -1,10 +1,13 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#ifndef CRYPTOHOME_STUB_TPM_H_
+#define CRYPTOHOME_STUB_TPM_H_
+
 #include <stdio.h>
 #include <unistd.h>
 
-#include "tpm.h"
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -96,3 +99,5 @@ class StubTpm : public Tpm {
 };
 
 }  // namespace cryptohome
+
+#endif  // CRYPTOHOME_STUB_TPM_H_

@@ -4,7 +4,9 @@
 
 // Unit tests for MountTask.
 
-#include "mount_task.h"
+#include "cryptohome/mount_task.h"
+
+#include <string>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -16,8 +18,8 @@
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
-#include "mock_homedirs.h"
-#include "mock_mount.h"
+#include "cryptohome/mock_homedirs.h"
+#include "cryptohome/mock_mount.h"
 
 using base::PlatformThread;
 

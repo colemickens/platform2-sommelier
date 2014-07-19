@@ -1,6 +1,8 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#ifndef CRYPTOHOME_STATEFUL_RECOVERY_H_
+#define CRYPTOHOME_STATEFUL_RECOVERY_H_
 
 #include <string>
 
@@ -37,6 +39,7 @@ class StatefulRecovery {
   static const char *kRecoverBlockUsage;
   static const char *kRecoverFilesystemDetails;
   static const char *kFlagFile;
+
  private:
   // Returns true if a flag file indicating a recovery request exists and
   // contains the expected content.
@@ -64,3 +67,5 @@ class StatefulRecovery {
 };
 
 }  // namespace cryptohome
+
+#endif  // CRYPTOHOME_STATEFUL_RECOVERY_H_

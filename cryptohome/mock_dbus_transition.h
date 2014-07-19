@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_DBUS_TRANSITION_H_
-#define MOCK_DBUS_TRANSITION_H_
+#ifndef CRYPTOHOME_MOCK_DBUS_TRANSITION_H_
+#define CRYPTOHOME_MOCK_DBUS_TRANSITION_H_
 
-#include "dbus_transition.h"
+#include "cryptohome/dbus_transition.h"
 
 #include <string>
 
@@ -41,4 +41,4 @@ class MockDBusReplyFactory : public DBusReplyFactory {
 
 }  // namespace cryptohome
 
-#endif  /* !MOCK_DBUS_TRANSITION_H_ */
+#endif  // CRYPTOHOME_MOCK_DBUS_TRANSITION_H_

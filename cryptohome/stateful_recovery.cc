@@ -14,9 +14,9 @@
 #include <chromeos/utility.h>
 #include <string>
 
-#include "platform.h"
-#include "service.h"
-#include "stateful_recovery.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/service.h"
+#include "cryptohome/stateful_recovery.h"
 
 using std::string;
 
@@ -165,11 +165,11 @@ bool StatefulRecovery::Recover() {
     return false;
   }
 
-  if (version_ == "2")
+  if (version_ == "2") {
     return RecoverV2();
-  else if (version_ == "1")
+  } else if (version_ == "1") {
     return RecoverV1();
-  else {
+  } else {
     LOG(ERROR) << "Unknown recovery version: " << version_;
     return false;
   }

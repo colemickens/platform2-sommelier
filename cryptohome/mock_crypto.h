@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_CRYPTO_H_
-#define MOCK_CRYPTO_H_
+#ifndef CRYPTOHOME_MOCK_CRYPTO_H_
+#define CRYPTOHOME_MOCK_CRYPTO_H_
 
-#include "crypto.h"
+#include "cryptohome/crypto.h"
 
 #include <string>
 
-#include "attestation.pb.h"
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -30,4 +31,4 @@ class MockCrypto : public Crypto {
 
 }  // namespace cryptohome
 
-#endif  /* !MOCK_CRYPTO_H_ */
+#endif  // CRYPTOHOME_MOCK_CRYPTO_H_

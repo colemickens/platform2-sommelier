@@ -81,7 +81,7 @@ class FileEnumerator {
   virtual FileInfo GetInfo();
 
  private:
-   scoped_ptr<base::FileEnumerator> enumerator_;
+  scoped_ptr<base::FileEnumerator> enumerator_;
 };
 
 // Platform specific routines abstraction layer.
@@ -418,7 +418,7 @@ class Platform {
 
 
   // Clears the kernel-managed user keyring
-  virtual long ClearUserKeyring();
+  virtual long ClearUserKeyring();  // NOLINT(runtime/int)
 
   // Creates an ecryptfs auth token and installs it in the kernel keyring.
   //
@@ -426,7 +426,7 @@ class Platform {
   //   key - The key to add
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
-  virtual long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
+  virtual long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,  // NOLINT
                                     const std::string& key_sig,
                                     const chromeos::SecureBlob& salt);
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "pkcs11_keystore.h"
+#include "cryptohome/pkcs11_keystore.h"
 
 #include <map>
 #include <string>
@@ -15,8 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "make_tests.h"
-#include "mock_pkcs11_init.h"
+#include "cryptohome/make_tests.h"
+#include "cryptohome/mock_pkcs11_init.h"
 
 using chaps::Attributes;
 using chromeos::SecureBlob;

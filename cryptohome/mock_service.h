@@ -5,7 +5,9 @@
 #ifndef CRYPTOHOME_MOCK_SERVICE_H_
 #define CRYPTOHOME_MOCK_SERVICE_H_
 
-#include "service.h"
+#include "cryptohome/service.h"
+
+#include <string>
 
 #include <gmock/gmock.h>
 

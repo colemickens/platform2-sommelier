@@ -4,7 +4,10 @@
 //
 // Unit tests for Lockbox.
 
-#include "lockbox.h"
+#include "cryptohome/lockbox.h"
+
+#include <string>
+#include <vector>
 
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -12,11 +15,10 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
-#include <vector>
 
-#include "mock_lockbox.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
+#include "cryptohome/mock_lockbox.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
 
 namespace cryptohome {
 using chromeos::SecureBlob;
@@ -64,11 +66,13 @@ class LockboxTest : public ::testing::Test {
     if (defined_nvram_size == Lockbox::kReservedNvramBytesV1) {
       salt_size = Lockbox::kReservedSaltBytesV1;
       // sha256 of entire V1 lockbox NVRAM area.
-      salt_hash = "f5f68c0c7ea1ccddc742b4b690e7c0ded9be59d33bcd56f9c7a7f7b273044a82";
+      salt_hash =
+          "f5f68c0c7ea1ccddc742b4b690e7c0ded9be59d33bcd56f9c7a7f7b273044a82";
     } else {
       salt_size = Lockbox::kReservedSaltBytesV2;
       // sha256 of 32 'A's.
-      salt_hash = "22a48051594c1949deed7040850c1f0f8764537f5191be56732d16a54c1d8153";
+      salt_hash =
+          "22a48051594c1949deed7040850c1f0f8764537f5191be56732d16a54c1d8153";
     }
 
     lockbox->set_tpm(&tpm_);

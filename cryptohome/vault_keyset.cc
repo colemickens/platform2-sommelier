@@ -5,11 +5,11 @@
 #include <base/logging.h>
 #include <chromeos/utility.h>
 
-#include "crypto.h"
-#include "cryptohome_common.h"
-#include "cryptolib.h"
-#include "platform.h"
-#include "vault_keyset.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/vault_keyset.h"
 
 using chromeos::SecureBlob;
 

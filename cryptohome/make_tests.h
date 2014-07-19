@@ -8,17 +8,20 @@
 #ifndef CRYPTOHOME_MAKE_TESTS_H_
 #define CRYPTOHOME_MAKE_TESTS_H_
 
-#include <base/basictypes.h>
 #include <string>
+#include <vector>
 
-#include "crypto.h"
-#include "cryptolib.h"
-#include "homedirs.h"
-#include "make_tests.h"
-#include "mock_platform.h"
-#include "username_passkey.h"
-#include "vault_keyset.h"
-#include "vault_keyset.pb.h"
+#include <base/basictypes.h>
+
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/homedirs.h"
+#include "cryptohome/make_tests.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/username_passkey.h"
+#include "cryptohome/vault_keyset.h"
+
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -64,7 +67,7 @@ class TestUser {
   // Generate a valid vault keyset using scrypt.
   void GenerateCredentials();
   // Inject the keyset so it can be accessed via platform.
-  void InjectKeyset(MockPlatform* platform, bool enumerate=true);
+  void InjectKeyset(MockPlatform* platform, bool enumerate = true);
   // Inject all the paths for a vault to exist.
   void InjectUserPaths(MockPlatform* platform,
                        uid_t chronos_uid,

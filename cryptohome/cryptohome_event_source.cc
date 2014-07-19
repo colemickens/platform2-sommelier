@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome_event_source.h"
+#include "cryptohome/cryptohome_event_source.h"
 
 #include <base/logging.h>
 #include <poll.h>

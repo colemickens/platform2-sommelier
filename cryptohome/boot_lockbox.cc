@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "boot_lockbox.h"
+#include "cryptohome/boot_lockbox.h"
+
+#include <string>
 
 #include <base/stl_util.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
 
-#include "crypto.h"
-#include "cryptolib.h"
-#include "platform.h"
-#include "tpm.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
 
 namespace {
 

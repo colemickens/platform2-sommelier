@@ -5,12 +5,15 @@
 // This macro must be defined before stdint.h is included explicitly or
 // implicitly.  It ensures UINT32_MAX is available.
 #define __STDC_LIMIT_MACROS
-#include "lockbox.h"
+#include "cryptohome/lockbox.h"
 
 #include <arpa/inet.h>
 #include <openssl/sha.h>
 #include <limits.h>
 #include <stdint.h>
+
+#include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_split.h>
@@ -19,8 +22,8 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
-#include "cryptolib.h"
-#include "platform.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/platform.h"
 
 using chromeos::SecureBlob;
 

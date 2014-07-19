@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_KEYSTORE_H_
 #define CRYPTOHOME_MOCK_KEYSTORE_H_
 
-#include "keystore.h"
+#include "cryptohome/keystore.h"
 
 #include <string>
 

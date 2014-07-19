@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
-#include "attestation.pb.h"
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

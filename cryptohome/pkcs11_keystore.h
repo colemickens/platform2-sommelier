@@ -7,7 +7,7 @@
 #ifndef CRYPTOHOME_PKCS11_KEYSTORE_H_
 #define CRYPTOHOME_PKCS11_KEYSTORE_H_
 
-#include "keystore.h"
+#include "cryptohome/keystore.h"
 
 #include <string>
 
@@ -37,7 +37,7 @@ class Pkcs11Init;
 class Pkcs11KeyStore : public KeyStore {
  public:
   Pkcs11KeyStore();
-  Pkcs11KeyStore(Pkcs11Init* pkcs11_init);
+  explicit Pkcs11KeyStore(Pkcs11Init* pkcs11_init);
   virtual ~Pkcs11KeyStore();
 
   // KeyStore interface.

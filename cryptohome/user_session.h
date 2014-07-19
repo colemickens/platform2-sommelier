@@ -14,10 +14,12 @@
 #ifndef CRYPTOHOME_USER_SESSION_H_
 #define CRYPTOHOME_USER_SESSION_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>
 
-#include "credentials.h"
+#include "cryptohome/credentials.h"
 
 namespace cryptohome {
 

@@ -4,16 +4,16 @@
 
 // Unit tests for UserSession.
 
-#include "user_session.h"
+#include "cryptohome/user_session.h"
 
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <string>
 
-#include "cryptolib.h"
-#include "mock_platform.h"
-#include "username_passkey.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/username_passkey.h"
 
 using chromeos::SecureBlob;
 

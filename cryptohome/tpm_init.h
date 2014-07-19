@@ -3,17 +3,17 @@
 // found in the LICENSE file.
 
 // TpmInit - public interface class for initializing the TPM
+#ifndef CRYPTOHOME_TPM_INIT_H_
+#define CRYPTOHOME_TPM_INIT_H_
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/utility.h>
 #include <trousers/scoped_tss_type.h>
 
-#include "tpm.h"
-#include "tpm_status.pb.h"
+#include "cryptohome/tpm.h"
 
-#ifndef CRYPTOHOME_TPM_INIT_H_
-#define CRYPTOHOME_TPM_INIT_H_
+#include "tpm_status.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

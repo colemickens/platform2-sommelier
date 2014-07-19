@@ -4,7 +4,9 @@
 //
 // See dbus_transition.h for details.
 
-#include "dbus_transition.h"
+#include "cryptohome/dbus_transition.h"
+
+#include <string>
 
 namespace cryptohome {
 

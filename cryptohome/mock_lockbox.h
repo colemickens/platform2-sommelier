@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_LOCKBOX_H_
 #define CRYPTOHOME_MOCK_LOCKBOX_H_
 
-#include "lockbox.h"
+#include "cryptohome/lockbox.h"
 
 #include <base/logging.h>
 #include <chromeos/utility.h>

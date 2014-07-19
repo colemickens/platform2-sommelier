@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // Tpm - class for performing encryption/decryption in the TPM.  For cryptohome,
-// the TPM may be used as a way to strenghten the security of the wrapped vault
+// the TPM may be used as a way to strengthen the security of the wrapped vault
 // keys stored on disk.  When the TPM is enabled, there is a system-wide
 // cryptohome RSA key that is used during the encryption/decryption of these
 // keys.
@@ -19,7 +19,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
 
-#include "tpm_status.pb.h"
+#include "tpm_status.pb.h"  // NOLINT(build/include)
 
 #ifndef CRYPTOHOME_TPM_H_
 #define CRYPTOHOME_TPM_H_

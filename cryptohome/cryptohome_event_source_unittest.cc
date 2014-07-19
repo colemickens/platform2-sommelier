@@ -4,16 +4,15 @@
 
 // Unit tests for CryptohomeEventSource.
 
-#include "vault_keyset.h"
+#include "cryptohome/vault_keyset.h"
 
 #include <base/logging.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome_event_source.h"
+#include "cryptohome/cryptohome_event_source.h"
 
 namespace cryptohome {
-using std::string;
 
 class CryptohomeEventSourceTest : public ::testing::Test {
  public:

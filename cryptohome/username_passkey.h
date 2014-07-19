@@ -8,7 +8,7 @@
 #ifndef CRYPTOHOME_USERNAME_PASSKEY_H_
 #define CRYPTOHOME_USERNAME_PASSKEY_H_
 
-#include "credentials.h"
+#include "cryptohome/credentials.h"
 
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>

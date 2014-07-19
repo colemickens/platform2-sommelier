@@ -4,10 +4,13 @@
 
 // Contains the implementation of class Mount
 
-#include "mount.h"
+#include "cryptohome/mount.h"
 
 #include <errno.h>
 #include <sys/stat.h>
+
+#include <map>
+#include <set>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -21,19 +24,19 @@
 #include <chaps/token_manager_client.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
-#include <set>
 
-#include "boot_lockbox.h"
-#include "chaps_client_factory.h"
-#include "crypto.h"
-#include "cryptohome_common.h"
-#include "cryptolib.h"
-#include "homedirs.h"
-#include "pkcs11_init.h"
-#include "platform.h"
-#include "username_passkey.h"
-#include "vault_keyset.h"
-#include "vault_keyset.pb.h"
+#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/chaps_client_factory.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/homedirs.h"
+#include "cryptohome/pkcs11_init.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/username_passkey.h"
+#include "cryptohome/vault_keyset.h"
+
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
 using base::StringPrintf;

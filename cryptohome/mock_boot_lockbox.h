@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_BOOT_LOCKBOX_H_
-#define MOCK_BOOT_LOCKBOX_H_
+#ifndef CRYPTOHOME_MOCK_BOOT_LOCKBOX_H_
+#define CRYPTOHOME_MOCK_BOOT_LOCKBOX_H_
 
-#include "boot_lockbox.h"
+#include "cryptohome/boot_lockbox.h"
 
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -25,4 +25,4 @@ class MockBootLockbox : public BootLockbox {
 
 }  // namespace cryptohome
 
-#endif  // MOCK_BOOT_LOCKBOX_H_
+#endif  // CRYPTOHOME_MOCK_BOOT_LOCKBOX_H_

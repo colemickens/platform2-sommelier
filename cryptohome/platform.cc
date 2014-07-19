@@ -569,9 +569,9 @@ bool Platform::Move(const std::string& from, const std::string& to) {
 bool Platform::EnumerateDirectoryEntries(const std::string& path,
                                          bool recursive,
                                          std::vector<std::string>* ent_list) {
-  base::FileEnumerator::FileType ft = static_cast<typeof(ft)>(
-    base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-    base::FileEnumerator::SHOW_SYM_LINKS);
+  auto ft = static_cast<base::FileEnumerator::FileType>(
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
+      base::FileEnumerator::SHOW_SYM_LINKS);
   base::FileEnumerator ent_enum(FilePath(path), recursive, ft);
   for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next())
     ent_list->push_back(path.value());

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "boot_lockbox.h"
+#include "cryptohome/boot_lockbox.h"
 
 #include <map>
 #include <string>
@@ -11,9 +11,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "mock_crypto.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
+#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
 
 using testing::NiceMock;
 using testing::WithArgs;
@@ -32,7 +32,8 @@ class BootLockboxTest : public testing::Test {
   void SetUp() {
     // Configure a fake TPM.
     ON_CALL(tpm_, Sign(_, _, _))
-        .WillByDefault(WithArgs<1,2>(Invoke(this, &BootLockboxTest::FakeSign)));
+        .WillByDefault(WithArgs<1, 2>(Invoke(this,
+                                             &BootLockboxTest::FakeSign)));
     ON_CALL(tpm_, CreatePCRBoundKey(_, _, _, _))
         .WillByDefault(WithArgs<3>(Invoke(this, &BootLockboxTest::FakeCreate)));
     ON_CALL(tpm_, VerifyPCRBoundKey(_, _, _))

@@ -4,7 +4,7 @@
 
 // Unit tests for Mount.
 
-#include "mount.h"
+#include "cryptohome/mount.h"
 
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -26,22 +26,23 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
-#include "crypto.h"
-#include "cryptohome_common.h"
-#include "cryptolib.h"
-#include "homedirs.h"
-#include "make_tests.h"
-#include "mock_boot_lockbox.h"
-#include "mock_chaps_client_factory.h"
-#include "mock_crypto.h"
-#include "mock_homedirs.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mock_tpm_init.h"
-#include "mock_user_session.h"
-#include "username_passkey.h"
-#include "vault_keyset.h"
-#include "vault_keyset.pb.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/homedirs.h"
+#include "cryptohome/make_tests.h"
+#include "cryptohome/mock_boot_lockbox.h"
+#include "cryptohome/mock_chaps_client_factory.h"
+#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_homedirs.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_tpm_init.h"
+#include "cryptohome/mock_user_session.h"
+#include "cryptohome/username_passkey.h"
+#include "cryptohome/vault_keyset.h"
+
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::StringPrintf;
 using chromeos::SecureBlob;
@@ -69,7 +70,7 @@ namespace cryptohome {
 const char kImageDir[] = "test_image_dir";
 const char kImageSaltFile[] = "test_image_dir/salt";
 const char kSkelDir[] = "test_image_dir/skel";
-const gid_t kDaemonGid = 400; // TODO: expose this in mount.h
+const gid_t kDaemonGid = 400;  // TODO(wad): expose this in mount.h
 
 ACTION_P2(SetOwner, owner_known, owner) {
   if (owner_known)
@@ -158,7 +159,7 @@ class MountTest : public ::testing::Test {
 
   bool LoadSerializedKeyset(const chromeos::Blob& contents,
                             cryptohome::SerializedVaultKeyset* serialized) {
-    CHECK(contents.size() != 0);
+    CHECK_NE(contents.size(), 0);
     return serialized->ParseFromArray(
         static_cast<const unsigned char*>(&contents[0]), contents.size());
   }
@@ -685,7 +686,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_init_, SetupTpm(true))
     .WillOnce(Return(true))  // This is by crypto.Init() and
-    .WillOnce(Return(true)); // because we forced HasCryptohomeKey to false once
+    .WillOnce(Return(true));  // cause we forced HasCryptohomeKey to false once.
   crypto_.Init(&tpm_init_);
 
   EXPECT_CALL(tpm_, IsEnabled())
@@ -699,7 +700,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   // Load the pre-generated keyset
   std::string key_path = mount_->GetUserLegacyKeyFileForUser(
       up.GetObfuscatedUsername(helper_.system_salt), 0);
-  EXPECT_TRUE(key_path.size() > 0);
+  EXPECT_GT(key_path.size(), 0u);
   cryptohome::SerializedVaultKeyset serialized;
   EXPECT_TRUE(serialized.ParseFromArray(
                   static_cast<const unsigned char*>(&user->credentials[0]),
@@ -941,9 +942,9 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
   vault_keyset.clear_chaps_key();
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_,_))
+  EXPECT_CALL(platform_, DeleteFile(_, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Move(_,_))
+  EXPECT_CALL(platform_, Move(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&(user->credentials)), Return(true)));
@@ -1975,7 +1976,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   UsernamePasskey up(user->username, user->passkey);
 
   std::vector<int> expect_deletion;
-  expect_deletion.push_back(0); // the mounting user shouldn't use be persistent
+  expect_deletion.push_back(0);  // Mounting user shouldn't use be persistent.
   expect_deletion.push_back(1);
   expect_deletion.push_back(2);
   // Expect all users but the owner to be removed.
@@ -2158,10 +2159,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
                                       "/home/user/"), _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
-      Stat(AnyOf("/home/chronos",
-                 mount_->GetNewUserPath(user->username)
-                ),
-           _))
+      Stat(AnyOf("/home/chronos", mount_->GetNewUserPath(user->username)), _))
      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home",

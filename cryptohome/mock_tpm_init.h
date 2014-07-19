@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_TPM_INIT_H_
 #define CRYPTOHOME_MOCK_TPM_INIT_H_
 
-#include "tpm_init.h"
+#include "cryptohome/tpm_init.h"
 
 #include <gmock/gmock.h>
 

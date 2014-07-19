@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mock_chaps_client_factory.h"
+#include "cryptohome/mock_chaps_client_factory.h"
 
 #include <chaps/token_manager_client_mock.h>
 #include <gmock/gmock.h>

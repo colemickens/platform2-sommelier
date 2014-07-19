@@ -2,15 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOCK_HOMEDIRS_H_
-#define MOCK_HOMEDIRS_H_
+#ifndef CRYPTOHOME_MOCK_HOMEDIRS_H_
+#define CRYPTOHOME_MOCK_HOMEDIRS_H_
 
-#include "homedirs.h"
+#include "cryptohome/homedirs.h"
+
+#include <string>
+#include <vector>
 
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 
-#include "credentials.h"
+#include "cryptohome/credentials.h"
 
 namespace cryptohome {
 class VaultKeyset;
@@ -43,4 +46,4 @@ class MockHomeDirs : public HomeDirs {
 
 }  // namespace cryptohome
 
-#endif  /* !MOCK_HOMEDIRS_H_ */
+#endif  // CRYPTOHOME_MOCK_HOMEDIRS_H_

@@ -1,13 +1,18 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#ifndef CRYPTOHOME_LOCKBOX_CACHE_H_
+#define CRYPTOHOME_LOCKBOX_CACHE_H_
+
 #include <stdio.h>
 #include <unistd.h>
 
+#include <string>
+
 #include <base/logging.h>
 
-#include "platform.h"
-#include "tpm.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -34,3 +39,5 @@ class LockboxCache {
   chromeos::Blob contents_;
 };
 }  // namespace cryptohome
+
+#endif  // CRYPTOHOME_LOCKBOX_CACHE_H_

@@ -5,7 +5,7 @@
 
 // Unit tests for Crypto.
 
-#include "crypto.h"
+#include "cryptohome/crypto.h"
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -18,11 +18,12 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-#include "attestation.pb.h"
-#include "cryptolib.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mock_tpm_init.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_tpm_init.h"
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
 using chromeos::Blob;
@@ -280,8 +281,8 @@ TEST_F(CryptoTest, SaltCreateTest) {
   EXPECT_EQ(salt.size(), new_salt.size());
   EXPECT_FALSE(CryptoTest::FindBlobInBlob(salt, new_salt));
 
-  // TODO: cases not covered: file is 0 bytes, file fails to read,
-  //       existing salt is read.
+  // TODO(wad): cases not covered: file is 0 bytes, file fails to read,
+  //            existing salt is read.
 }
 
 TEST_F(CryptoTest, AsciiEncodeTest) {
@@ -537,11 +538,11 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   chromeos::Blob iv(16, 'I');
 
   // Setup the data from the above blobs.
-  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(DoAll(
+  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
         SetArgumentPointee<1>(sealed_key), Return(true)));
-  EXPECT_CALL(tpm, GetRandomData(16,_)).WillOnce(DoAll(
+  EXPECT_CALL(tpm, GetRandomData(16, _)).WillOnce(DoAll(
         SetArgumentPointee<1>(iv), Return(true)));
 
   // Matching calls of encrypt/decrypt should give me back the same data.
@@ -580,22 +581,22 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   chromeos::Blob iv(16, 'I');
 
   // Setup the data from the above blobs and fail to seal the key with the tpm.
-  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(DoAll(
+  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(Return(false));
   EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
 
   // Failed to get random data.
-  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(Return(false));
+  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(Return(false));
   EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
 
   // Now setup successful encrypt data but fail to unseal.
   // Setup the data from the above blobs.
-  EXPECT_CALL(tpm, GetRandomData(32,_)).WillOnce(DoAll(
+  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
         SetArgumentPointee<1>(sealed_key), Return(true)));
-  EXPECT_CALL(tpm, GetRandomData(16,_)).WillOnce(DoAll(
+  EXPECT_CALL(tpm, GetRandomData(16, _)).WillOnce(DoAll(
         SetArgumentPointee<1>(iv), Return(true)));
 
   // Matching calls of encrypt/decrypt should give me back the same data.

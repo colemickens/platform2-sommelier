@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/homedirs.h"
+
 #include <algorithm>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -11,16 +14,16 @@
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
 
-#include "credentials.h"
-#include "cryptolib.h"
-#include "homedirs.h"
-#include "key.pb.h"
-#include "mount.h"
-#include "platform.h"
-#include "signed_secret.pb.h"
-#include "username_passkey.h"
-#include "user_oldest_activity_timestamp_cache.h"
-#include "vault_keyset.h"
+#include "cryptohome/credentials.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/username_passkey.h"
+#include "cryptohome/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/vault_keyset.h"
+
+#include "key.pb.h"  // NOLINT(build/include)
+#include "signed_secret.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
 using chromeos::SecureBlob;
@@ -172,9 +175,8 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
   SecureBlob passkey;
   creds.GetPasskey(&passkey);
 
-  std::vector<int>::const_iterator iter = key_indices.begin();
-  for ( ;iter != key_indices.end(); ++iter) {
-    if (!vk->Load(GetVaultKeysetPath(obfuscated, *iter)))
+  for (int index : key_indices) {
+    if (!vk->Load(GetVaultKeysetPath(obfuscated, index)))
       continue;
     // Skip decrypt attempts if the label doesn't match.
     // Treat an empty creds label as a wildcard.
@@ -182,7 +184,7 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
     if (!creds.key_data().label().empty() &&
         creds.key_data().label() != vk->serialized().key_data().label() &&
         creds.key_data().label() !=
-          base::StringPrintf("%s%d", kKeyLegacyPrefix, *iter))
+          base::StringPrintf("%s%d", kKeyLegacyPrefix, index))
       continue;
     if (vk->Decrypt(passkey))
       return true;
@@ -207,18 +209,17 @@ VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
   if (!GetVaultKeysets(obfuscated, &key_indices))
     return NULL;
   scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
-  std::vector<int>::const_iterator iter = key_indices.begin();
-  for ( ;iter != key_indices.end(); ++iter) {
-    if (!LoadVaultKeysetForUser(obfuscated, *iter, vk.get())) {
+  for (int index : key_indices) {
+    if (!LoadVaultKeysetForUser(obfuscated, index, vk.get())) {
       continue;
     }
     // Test against the label if the key has a label or create a label
     // automatically from the index number.
     std::string label = (vk->serialized().has_key_data() ?
                          vk->serialized().key_data().label() :
-                         base::StringPrintf("%s%d", kKeyLegacyPrefix, *iter));
+                         base::StringPrintf("%s%d", kKeyLegacyPrefix, index));
     if (label == credentials.key_data().label()) {
-      vk->set_legacy_index(*iter);
+      vk->set_legacy_index(index);
       return vk.release();
     }
   }
@@ -243,7 +244,7 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
     char *end = NULL;
     std::string index_str = file_name.substr(strlen(kKeyFile));
     const char * index_c_str = index_str.c_str();
-    long index = strtol(index_c_str, &end, 10);
+    long index = strtol(index_c_str, &end, 10);  // NOLINT(runtime/int)
     // Ensure the entire suffix is consumed.
     if (end && *end != '\0')
       continue;
@@ -731,13 +732,12 @@ void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
   GetVaultKeysets(obfuscated_username, &key_indices);
   scoped_ptr<VaultKeyset> keyset(
       vault_keyset_factory()->New(platform_, crypto_));
-  std::vector<int>::const_iterator iter = key_indices.begin();
   // Collect the most recent time for a given user by walking all
   // vaults.  This avoids trying to keep them in sync atomically.
   // TODO(wad,?) Move non-key vault metadata to a standalone file.
   base::Time timestamp = base::Time();
-  for ( ;iter != key_indices.end(); ++iter) {
-    if (LoadVaultKeysetForUser(obfuscated_username, *iter, keyset.get()) &&
+  for (int index : key_indices) {
+    if (LoadVaultKeysetForUser(obfuscated_username, index, keyset.get()) &&
         keyset->serialized().has_last_activity_timestamp()) {
       const base::Time t = base::Time::FromInternalValue(
           keyset->serialized().last_activity_timestamp());
@@ -896,12 +896,11 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     LOG(WARNING) << "Failed to enumerate keysets after adding one. Weird.";
     // Fallthrough: The user is migrated, but something else changed keys.
   }
-  std::vector<int>::const_iterator iter = key_indices.begin();
-  for ( ;iter != key_indices.end(); ++iter) {
-    if (*iter == key_index)
+  for (int index : key_indices) {
+    if (index == key_index)
       continue;
-    LOG(INFO) << "Removing keyset " << *iter << " due to migration.";
-    ForceRemoveKeyset(obfuscated, *iter);  // Failure is ok.
+    LOG(INFO) << "Removing keyset " << index << " due to migration.";
+    ForceRemoveKeyset(obfuscated, index);  // Failure is ok.
   }
 
   return true;

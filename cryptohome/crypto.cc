@@ -4,7 +4,7 @@
 
 // Contains the implementation of class Crypto
 
-#include "crypto.h"
+#include "cryptohome/crypto.h"
 
 #include <limits>
 #include <openssl/err.h>
@@ -23,12 +23,13 @@ extern "C" {
 #include <scrypt/scryptenc.h>
 }
 
-#include "attestation.pb.h"
-#include "cryptohome_common.h"
-#include "cryptolib.h"
-#include "platform.h"
-#include "tpm_init.h"
-#include "username_passkey.h"
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/tpm_init.h"
+#include "cryptohome/username_passkey.h"
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 // Included last because they both have conflicting defines :(
 extern "C" {
@@ -213,7 +214,7 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
 
 void Crypto::ClearKeyset() const {
   errno = 0;
-  long ret = platform_->ClearUserKeyring();
+  long ret = platform_->ClearUserKeyring();  // NOLINT(runtime/int)
   if (ret == -1)
     LOG(ERROR) << "Failed to clear user keyring: " << errno;
 }

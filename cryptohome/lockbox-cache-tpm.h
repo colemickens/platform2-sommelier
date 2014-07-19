@@ -1,14 +1,18 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#ifndef CRYPTOHOME_LOCKBOX_CACHE_TPM_H_
+#define CRYPTOHOME_LOCKBOX_CACHE_TPM_H_
 
 #include <stdio.h>
 #include <unistd.h>
 
+#include <string>
+
 #include <base/logging.h>
 
-#include "platform.h"
-#include "stub_tpm.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/stub_tpm.h"
 
 namespace cryptohome {
 // Implement just enough to make Lockbox able to use a file for the nvram
@@ -78,9 +82,11 @@ class LockboxCacheTpm : public StubTpm {
   }
 
  private:
-   uint32_t index_;
-   const std::string nvram_path_;
-   chromeos::Blob nvram_data_;
+  uint32_t index_;
+  const std::string nvram_path_;
+  chromeos::Blob nvram_data_;
 };
 
 }  // namespace cryptohome
+
+#endif  // CRYPTOHOME_LOCKBOX_CACHE_TPM_H_

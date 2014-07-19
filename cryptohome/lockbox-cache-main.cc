@@ -9,10 +9,10 @@
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 
-#include "lockbox.h"
-#include "platform.h"
-#include "lockbox-cache-tpm.h"
-#include "lockbox-cache.h"
+#include "cryptohome/lockbox.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/lockbox-cache-tpm.h"
+#include "cryptohome/lockbox-cache.h"
 
 namespace switches {
 // Keeps std* open for debugging
@@ -35,7 +35,7 @@ bool CacheLockbox(cryptohome::Platform* platform,
          cache.LoadAndVerify(kBogusNvramIndex, lockbox_path) &&
          cache.Write(cache_path);
 }
-}  // namespace anonymous
+}  // anonymous namespace
 
 
 int main(int argc, char **argv) {

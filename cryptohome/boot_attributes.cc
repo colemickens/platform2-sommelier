@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "boot_attributes.h"
+#include "cryptohome/boot_attributes.h"
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
 
-#include "boot_lockbox.h"
-#include "install_attributes.pb.h"
-#include "platform.h"
+#include "cryptohome/boot_lockbox.h"
+#include "cryptohome/platform.h"
+
+#include "install_attributes.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

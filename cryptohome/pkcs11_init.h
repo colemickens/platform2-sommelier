@@ -19,7 +19,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 #include <glib.h>
 
-#include "platform.h"
+#include "cryptohome/platform.h"
 
 namespace cryptohome {
 

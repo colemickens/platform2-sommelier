@@ -4,7 +4,7 @@
 
 // Creates credential stores for testing
 
-#include "make_tests.h"
+#include "cryptohome/make_tests.h"
 
 #include <openssl/evp.h>
 
@@ -23,13 +23,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "crypto.h"
-#include "mock_crypto.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mount.h"
-#include "username_passkey.h"
-#include "vault_keyset.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/username_passkey.h"
+#include "cryptohome/vault_keyset.h"
 
 using base::StringPrintf;
 using chromeos::SecureBlob;

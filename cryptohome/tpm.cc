@@ -4,7 +4,7 @@
 
 // Contains the implementation of class Tpm
 
-#include "tpm.h"
+#include "cryptohome/tpm.h"
 
 #include <arpa/inet.h>
 #include <base/memory/scoped_ptr.h>
@@ -20,7 +20,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
 
-#include "cryptolib.h"
+#include "cryptohome/cryptolib.h"
 
 using base::PlatformThread;
 using chromeos::SecureBlob;
@@ -45,7 +45,7 @@ chromeos::SecureBlob SecureCat(const chromeos::SecureBlob& blob1,
   memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
   return chromeos::SecureBlob(result.begin(), result.end());
 }
-}
+}  // namespace
 
 namespace cryptohome {
 

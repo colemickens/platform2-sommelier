@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "service.h"
+#include "cryptohome/service.h"
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -12,7 +12,7 @@
 #include <dbus/dbus.h>
 #include <glib.h>
 
-#include "platform.h"
+#include "cryptohome/platform.h"
 
 // TODO(wad) This is a placeholder DBus service which allows
 //           chrome-login (and anything else running as chronos)

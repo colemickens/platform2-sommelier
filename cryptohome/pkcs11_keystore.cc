@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "pkcs11_keystore.h"
+#include "cryptohome/pkcs11_keystore.h"
 
 #include <string>
 
@@ -17,8 +17,8 @@
 #include <chromeos/secure_blob.h>
 #include <openssl/rsa.h>
 
-#include "cryptolib.h"
-#include "pkcs11_init.h"
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/pkcs11_init.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -31,7 +31,7 @@ const char kApplicationID[] = "CrOS_d5bbc079d2497110feadfc97c40d718ae46f4658";
 // A helper class to scope a PKCS #11 session.
 class ScopedSession {
  public:
-  ScopedSession(CK_SLOT_ID slot)
+  explicit ScopedSession(CK_SLOT_ID slot)
       : handle_(CK_INVALID_HANDLE) {
     CK_RV rv = C_Initialize(NULL);
     if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
@@ -44,22 +44,22 @@ class ScopedSession {
       LOG(ERROR) << "Failed to open PKCS #11 session.";
       return;
     }
-  };
+  }
 
   ~ScopedSession() {
     if (IsValid() && (C_CloseSession(handle_) != CKR_OK)) {
       LOG(WARNING) << "Failed to close PKCS #11 session.";
     handle_ = CK_INVALID_HANDLE;
     }
-  };
+  }
 
   CK_SESSION_HANDLE handle() {
     return handle_;
-  };
+  }
 
   bool IsValid() {
     return (handle_ != CK_INVALID_HANDLE);
-  };
+  }
 
  private:
   CK_SESSION_HANDLE handle_;

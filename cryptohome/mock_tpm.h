@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_TPM_H_
 #define CRYPTOHOME_MOCK_TPM_H_
 
-#include "tpm.h"
+#include "cryptohome/tpm.h"
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>

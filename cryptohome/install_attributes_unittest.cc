@@ -4,20 +4,22 @@
 //
 // Unit tests for InstallAttributes.
 
-#include "install_attributes.h"
+#include "cryptohome/install_attributes.h"
+
+#include <string>
+#include <vector>
 
 #include <algorithm>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
-#include <vector>
 
-#include "lockbox.h"
-#include "mock_lockbox.h"
-#include "mock_platform.h"
-#include "mock_tpm.h"
-#include "mock_tpm_init.h"
+#include "cryptohome/lockbox.h"
+#include "cryptohome/mock_lockbox.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_tpm_init.h"
 
 namespace cryptohome {
 using std::string;

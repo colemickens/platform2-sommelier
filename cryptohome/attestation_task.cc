@@ -4,13 +4,13 @@
 //
 // Asynchronous attestation tasks.
 
-#include "attestation_task.h"
+#include "cryptohome/attestation_task.h"
 
 #include <string>
 
 #include <chromeos/secure_blob.h>
 
-#include "attestation.h"
+#include "cryptohome/attestation.h"
 
 using chromeos::SecureBlob;
 using std::string;

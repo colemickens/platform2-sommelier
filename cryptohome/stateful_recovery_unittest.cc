@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "stateful_recovery.h"
+#include "cryptohome/stateful_recovery.h"
 
 #include <base/file_util.h>
 #include <gtest/gtest.h>
 
-#include "mock_platform.h"
-#include "mock_service.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_service.h"
 
 namespace cryptohome {
 using std::string;
@@ -388,9 +388,8 @@ TEST(StatefulRecovery, MountsParseOk) {
 
   fp = base::CreateAndOpenTemporaryFile(&mtab);
   ASSERT_TRUE(fp != NULL);
-  EXPECT_TRUE(fwrite(mtab_contents.c_str(), mtab_contents.length(), 1,
-                     fp) == 1);
-  EXPECT_TRUE(fclose(fp) == 0);
+  EXPECT_EQ(fwrite(mtab_contents.c_str(), mtab_contents.length(), 1, fp), 1);
+  EXPECT_EQ(fclose(fp), 0);
 
   mtab_path = mtab.value();
   platform.set_mtab_path(mtab_path);

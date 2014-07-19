@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_PKCS11_INIT_H_
 #define CRYPTOHOME_MOCK_PKCS11_INIT_H_
 
-#include "pkcs11_init.h"
+#include "cryptohome/pkcs11_init.h"
 
 #include <gmock/gmock.h>
 

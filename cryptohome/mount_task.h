@@ -19,7 +19,7 @@
 // Notifications can happen either by setting the completion event or providing
 // a MountTaskObserver.  The former is used in Service (see service.cc) when
 // faking synchronous versions of these tasks, and the latter is used in the
-// asychronous versions.
+// asynchronous versions.
 
 #ifndef CRYPTOHOME_MOUNT_TASK_H_
 #define CRYPTOHOME_MOUNT_TASK_H_
@@ -34,10 +34,10 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
-#include "cryptohome_event_source.h"
-#include "mount.h"
-#include "pkcs11_init.h"
-#include "username_passkey.h"
+#include "cryptohome/cryptohome_event_source.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/pkcs11_init.h"
+#include "cryptohome/username_passkey.h"
 
 using chromeos::SecureBlob;
 

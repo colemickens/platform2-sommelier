@@ -16,9 +16,10 @@
 #include <metrics/metrics_library.h>
 #include <openssl/evp.h>
 
-#include "attestation.pb.h"
-#include "crypto.h"
-#include "install_attributes.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/install_attributes.h"
+
+#include "attestation.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -571,4 +572,4 @@ class Attestation : public base::PlatformThread::Delegate,
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME__ATTESTATION_H_
+#endif  // CRYPTOHOME_ATTESTATION_H_

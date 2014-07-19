@@ -5,11 +5,15 @@
 #ifndef CRYPTOHOME_MOCK_PLATFORM_H_
 #define CRYPTOHOME_MOCK_PLATFORM_H_
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include <base/file_util.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
-#include "platform.h"
+#include "cryptohome/platform.h"
 
 namespace cryptohome {
 
@@ -32,6 +36,7 @@ class MockFileEnumerator : public FileEnumerator {
   MOCK_METHOD0(GetInfo, FileInfo(void));
 
   std::vector<FileInfo> entries_;
+
  protected:
   virtual std::string MockNext() {
     if (entries_.empty())
@@ -106,7 +111,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(FileExists, bool(const std::string&));
   MOCK_METHOD2(GetFileSize, bool(const std::string&, int64*));
   MOCK_METHOD2(OpenFile, FILE*(const std::string&, const char*));
-  MOCK_METHOD1(CloseFile, bool(FILE*));
+  MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
   MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(std::string*));
   MOCK_METHOD2(Stat, bool(const std::string&, struct stat*));
   MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
@@ -130,10 +135,11 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(DeleteFile, bool(const std::string&, bool));
   MOCK_METHOD1(DirectoryExists, bool(const std::string&));
   MOCK_METHOD1(CreateDirectory, bool(const std::string&));
-  MOCK_METHOD0(ClearUserKeyring, long(void));
-  MOCK_METHOD3(AddEcryptfsAuthToken, long(const chromeos::SecureBlob&,
-                                          const std::string&,
-                                          const chromeos::SecureBlob&));
+  MOCK_METHOD0(ClearUserKeyring, long(void));  // NOLINT(runtime/int)
+  MOCK_METHOD3(AddEcryptfsAuthToken,
+               long(const chromeos::SecureBlob&,  // NOLINT(runtime/int)
+                    const std::string&,
+                    const chromeos::SecureBlob&));
   MOCK_METHOD3(GetFileEnumerator, FileEnumerator*(const std::string&,
                                                   bool,
                                                   int));

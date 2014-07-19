@@ -16,10 +16,11 @@
 #include <base/files/file_path.h>
 #include <chromeos/secure_blob.h>
 
-#include "tpm.h"
-#include "tpm_init.h"
-#include "vault_keyset.h"
-#include "vault_keyset.pb.h"
+#include "cryptohome/tpm.h"
+#include "cryptohome/tpm_init.h"
+#include "cryptohome/vault_keyset.h"
+
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -39,7 +40,7 @@ class Crypto {
   };
 
   // Default constructor
-  Crypto(Platform* platform);
+  explicit Crypto(Platform* platform);
 
   virtual ~Crypto();
 

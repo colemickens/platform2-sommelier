@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "boot_attributes.h"
+#include "cryptohome/boot_attributes.h"
 
 namespace cryptohome {
 

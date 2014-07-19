@@ -19,7 +19,7 @@ class ChapsClientFactory {
   virtual ~ChapsClientFactory();
   virtual chaps::TokenManagerClient* New();
 
- protected:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ChapsClientFactory);
 };
 

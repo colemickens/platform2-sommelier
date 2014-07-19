@@ -10,8 +10,9 @@
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>
 
-#include "cryptohome_common.h"
-#include "vault_keyset.pb.h"
+#include "cryptohome/cryptohome_common.h"
+
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 

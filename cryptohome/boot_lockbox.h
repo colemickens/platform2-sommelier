@@ -8,7 +8,7 @@
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>
 
-#include "boot_lockbox_key.pb.h"
+#include "boot_lockbox_key.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -77,6 +77,7 @@ class BootLockbox {
   Crypto* crypto_;
   BootLockboxKey key_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(BootLockbox);
 };
 
