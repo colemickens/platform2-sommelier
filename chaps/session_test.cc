@@ -11,11 +11,13 @@
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
 #include "chaps/chaps_factory_mock.h"
+#include "chaps/chaps_utility.h"
 #include "chaps/handle_generator_mock.h"
 #include "chaps/object_pool_mock.h"
 #include "chaps/object_mock.h"
@@ -29,10 +31,11 @@ using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
+using ::testing::StrictMock;
 
-namespace chaps {
+namespace {
 
-static void ConfigureObjectPool(ObjectPoolMock* op) {
+void ConfigureObjectPool(chaps::ObjectPoolMock* op) {
   op->SetupFake();
   EXPECT_CALL(*op, Insert(_)).Times(AnyNumber());
   EXPECT_CALL(*op, Find(_, _)).Times(AnyNumber());
@@ -41,14 +44,14 @@ static void ConfigureObjectPool(ObjectPoolMock* op) {
   EXPECT_CALL(*op, Flush(_)).WillRepeatedly(Return(true));
 }
 
-static ObjectPool* CreateObjectPoolMock() {
-  ObjectPoolMock* op = new ObjectPoolMock();
+chaps::ObjectPool* CreateObjectPoolMock() {
+  chaps::ObjectPoolMock* op = new chaps::ObjectPoolMock();
   ConfigureObjectPool(op);
   return op;
 }
 
-static Object* CreateObjectMock() {
-  ObjectMock* o = new ObjectMock();
+chaps::Object* CreateObjectMock() {
+  chaps::ObjectMock* o = new chaps::ObjectMock();
   o->SetupFake();
   EXPECT_CALL(*o, GetObjectClass()).Times(AnyNumber());
   EXPECT_CALL(*o, SetAttributes(_, _)).Times(AnyNumber());
@@ -66,17 +69,30 @@ static Object* CreateObjectMock() {
   EXPECT_CALL(*o, set_store_id(_)).Times(AnyNumber());
   EXPECT_CALL(*o, handle()).Times(AnyNumber());
   EXPECT_CALL(*o, store_id()).Times(AnyNumber());
+  EXPECT_CALL(*o, RemoveAttribute(_)).Times(AnyNumber());
   return o;
 }
 
-static bool FakeRandom(int num_bytes, string* random) {
+bool FakeRandom(int num_bytes, string* random) {
   *random = string(num_bytes, 0);
   return true;
 }
 
-static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
+void ConfigureTPMUtility(chaps::TPMUtilityMock* tpm) {
+  EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, GenerateRandom(_, _)).WillRepeatedly(Invoke(FakeRandom));
 }
+
+string bn2bin(BIGNUM* bn) {
+  string bin;
+  bin.resize(BN_num_bytes(bn));
+  bin.resize(BN_bn2bin(bn, chaps::ConvertStringToByteBuffer(bin.data())));
+  return bin;
+}
+
+}  // namespace
+
+namespace chaps {
 
 // Test fixture for an initialized SessionImpl instance.
 class TestSession: public ::testing::Test {
@@ -101,16 +117,16 @@ class TestSession: public ::testing::Test {
     CK_BBOOL no = CK_FALSE;
     CK_BBOOL yes = CK_TRUE;
     CK_ATTRIBUTE encdec_template[] = {
-      {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
-      {CKA_ENCRYPT, &yes, sizeof(CK_BBOOL)},
-      {CKA_DECRYPT, &yes, sizeof(CK_BBOOL)},
-      {CKA_VALUE_LEN, &size, sizeof(int)}
+      {CKA_TOKEN, &no, sizeof(no)},
+      {CKA_ENCRYPT, &yes, sizeof(yes)},
+      {CKA_DECRYPT, &yes, sizeof(yes)},
+      {CKA_VALUE_LEN, &size, sizeof(size)}
     };
     CK_ATTRIBUTE signverify_template[] = {
-      {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
-      {CKA_SIGN, &yes, sizeof(CK_BBOOL)},
-      {CKA_VERIFY, &yes, sizeof(CK_BBOOL)},
-      {CKA_VALUE_LEN, &size, sizeof(int)}
+      {CKA_TOKEN, &no, sizeof(no)},
+      {CKA_SIGN, &yes, sizeof(yes)},
+      {CKA_VERIFY, &yes, sizeof(yes)},
+      {CKA_VALUE_LEN, &size, sizeof(size)}
     };
     CK_ATTRIBUTE_PTR attr = encdec_template;
     if (mechanism == CKM_GENERIC_SECRET_KEY_GEN)
@@ -125,16 +141,16 @@ class TestSession: public ::testing::Test {
     CK_BBOOL yes = CK_TRUE;
     CK_BYTE pubexp[] = {1, 0, 1};
     CK_ATTRIBUTE pub_attr[] = {
-      {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
-      {CKA_ENCRYPT, signing ? &no : &yes, sizeof(CK_BBOOL)},
-      {CKA_VERIFY, signing ? &yes : &no, sizeof(CK_BBOOL)},
+      {CKA_TOKEN, &no, sizeof(no)},
+      {CKA_ENCRYPT, signing ? &no : &yes, sizeof(no)},
+      {CKA_VERIFY, signing ? &yes : &no, sizeof(no)},
       {CKA_PUBLIC_EXPONENT, pubexp, 3},
-      {CKA_MODULUS_BITS, &size, sizeof(int)}
+      {CKA_MODULUS_BITS, &size, sizeof(size)}
     };
     CK_ATTRIBUTE priv_attr[] = {
       {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
-      {CKA_DECRYPT, signing ? &no : &yes, sizeof(CK_BBOOL)},
-      {CKA_SIGN, signing ? &yes : &no, sizeof(CK_BBOOL)}
+      {CKA_DECRYPT, signing ? &no : &yes, sizeof(no)},
+      {CKA_SIGN, signing ? &yes : &no, sizeof(no)}
     };
     int pubh = 0, privh = 0;
     ASSERT_EQ(CKR_OK, session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "",
@@ -147,8 +163,8 @@ class TestSession: public ::testing::Test {
     CK_OBJECT_CLASS c = CKO_DATA;
     CK_BBOOL no = CK_FALSE;
     CK_ATTRIBUTE attr[] = {
-      {CKA_CLASS, &c, sizeof(CK_OBJECT_CLASS)},
-      {CKA_TOKEN, &no, sizeof(CK_BBOOL)}
+      {CKA_CLASS, &c, sizeof(c)},
+      {CKA_TOKEN, &no, sizeof(no)}
     };
     int h;
     session_->CreateObject(attr, 2, &h);
@@ -158,7 +174,7 @@ class TestSession: public ::testing::Test {
  protected:
   ObjectPoolMock token_pool_;
   ChapsFactoryMock factory_;
-  TPMUtilityMock tpm_;
+  StrictMock<TPMUtilityMock> tpm_;
   HandleGeneratorMock handle_generator_;
   scoped_ptr<SessionImpl> session_;
 };
@@ -600,12 +616,12 @@ TEST_F(TestSession, BadRSAGenerate) {
   int size = 1024;
   CK_BYTE pubexp[] = {1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   CK_ATTRIBUTE pub_attr[] = {
-    {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+    {CKA_TOKEN, &no, sizeof(no)},
     {CKA_PUBLIC_EXPONENT, pubexp, 12},
-    {CKA_MODULUS_BITS, &size, sizeof(int)}
+    {CKA_MODULUS_BITS, &size, sizeof(size)}
   };
   CK_ATTRIBUTE priv_attr[] = {
-    {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+    {CKA_TOKEN, &no, sizeof(no)},
   };
   int pub, priv;
   // CKA_PUBLIC_EXPONENT too large.
@@ -636,10 +652,10 @@ TEST_F(TestSession, BadAESGenerate) {
   CK_BBOOL yes = CK_TRUE;
   int size = 33;
   CK_ATTRIBUTE attr[] = {
-    {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
-    {CKA_ENCRYPT, &yes, sizeof(CK_BBOOL)},
-    {CKA_DECRYPT, &yes, sizeof(CK_BBOOL)},
-    {CKA_VALUE_LEN, &size, sizeof(int)}
+    {CKA_TOKEN, &no, sizeof(no)},
+    {CKA_ENCRYPT, &yes, sizeof(yes)},
+    {CKA_DECRYPT, &yes, sizeof(yes)},
+    {CKA_VALUE_LEN, &size, sizeof(size)}
   };
   int handle = 0;
   // CKA_VALUE_LEN missing.
@@ -697,6 +713,185 @@ TEST_F(TestSession, Flush) {
   EXPECT_FALSE(session_->FlushModifiableObject(&token_object));
   EXPECT_TRUE(session_->FlushModifiableObject(&token_object));
   EXPECT_TRUE(session_->FlushModifiableObject(&session_object));
+}
+
+TEST_F(TestSession, GenerateRSAWithTPM) {
+  EXPECT_CALL(tpm_, GenerateKey(_, _, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, GetPublicKey(_, _, _)).WillRepeatedly(Return(true));
+
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_ENCRYPT, &no, sizeof(no)},
+    {CKA_VERIFY, &yes, sizeof(yes)},
+    {CKA_PUBLIC_EXPONENT, pubexp, 3},
+    {CKA_MODULUS_BITS, &size, sizeof(size)}
+  };
+  CK_ATTRIBUTE priv_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_DECRYPT, &no, sizeof(no)},
+    {CKA_SIGN, &yes, sizeof(yes)}
+  };
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK, session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "",
+                                              pub_attr, 5, priv_attr, 3,
+                                              &pubh, &privh));
+  // There are a few sensitive attributes that MUST not exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(privh, &object));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+}
+
+TEST_F(TestSession, GenerateRSAWithNoTPM) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int size = 1024;
+  CK_ATTRIBUTE pub_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_ENCRYPT, &no, sizeof(no)},
+    {CKA_VERIFY, &yes, sizeof(yes)},
+    {CKA_PUBLIC_EXPONENT, pubexp, 3},
+    {CKA_MODULUS_BITS, &size, sizeof(size)}
+  };
+  CK_ATTRIBUTE priv_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_DECRYPT, &no, sizeof(no)},
+    {CKA_SIGN, &yes, sizeof(yes)}
+  };
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK, session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "",
+                                              pub_attr, 5, priv_attr, 3,
+                                              &pubh, &privh));
+  // For a software key, the sensitive attributes should exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(privh, &object));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+}
+
+TEST_F(TestSession, ImportRSAWithTPM) {
+  EXPECT_CALL(tpm_, WrapKey(_, _, _, _, _, _, _)).WillOnce(Return(true));
+
+  RSA* rsa = RSA_generate_key(2048, 0x10001, NULL, NULL);
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  string id = "test_id";
+  string label = "test_label";
+  string n = bn2bin(rsa->n);
+  string e = bn2bin(rsa->e);
+  string d = bn2bin(rsa->d);
+  string p = bn2bin(rsa->p);
+  string q = bn2bin(rsa->q);
+  string dmp1 = bn2bin(rsa->dmp1);
+  string dmq1 = bn2bin(rsa->dmq1);
+  string iqmp = bn2bin(rsa->iqmp);
+
+  CK_ATTRIBUTE private_attributes[] = {
+    {CKA_CLASS, &priv_class, sizeof(priv_class) },
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type) },
+    {CKA_DECRYPT, &true_value, sizeof(true_value) },
+    {CKA_SIGN, &true_value, sizeof(true_value) },
+    {CKA_UNWRAP, &false_value, sizeof(false_value) },
+    {CKA_SENSITIVE, &true_value, sizeof(true_value) },
+    {CKA_TOKEN, &true_value, sizeof(true_value) },
+    {CKA_PRIVATE, &true_value, sizeof(true_value) },
+    {CKA_ID, string_as_array(&id), id.length() },
+    {CKA_LABEL, string_as_array(&label), label.length()},
+    {CKA_MODULUS, string_as_array(&n), n.length() },
+    {CKA_PUBLIC_EXPONENT, string_as_array(&e), e.length() },
+    {CKA_PRIVATE_EXPONENT, string_as_array(&d), d.length() },
+    {CKA_PRIME_1, string_as_array(&p), p.length() },
+    {CKA_PRIME_2, string_as_array(&q), q.length() },
+    {CKA_EXPONENT_1, string_as_array(&dmp1), dmp1.length() },
+    {CKA_EXPONENT_2, string_as_array(&dmq1), dmq1.length() },
+    {CKA_COEFFICIENT, string_as_array(&iqmp), iqmp.length() },
+  };
+
+  int handle = 0;
+  ASSERT_EQ(CKR_OK, session_->CreateObject(private_attributes,
+                                           arraysize(private_attributes),
+                                           &handle));
+  // There are a few sensitive attributes that MUST be removed.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(handle, &object));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+}
+
+TEST_F(TestSession, ImportRSAWithNoTPM) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+
+  RSA* rsa = RSA_generate_key(2048, 0x10001, NULL, NULL);
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  string id = "test_id";
+  string label = "test_label";
+  string n = bn2bin(rsa->n);
+  string e = bn2bin(rsa->e);
+  string d = bn2bin(rsa->d);
+  string p = bn2bin(rsa->p);
+  string q = bn2bin(rsa->q);
+  string dmp1 = bn2bin(rsa->dmp1);
+  string dmq1 = bn2bin(rsa->dmq1);
+  string iqmp = bn2bin(rsa->iqmp);
+
+  CK_ATTRIBUTE private_attributes[] = {
+    {CKA_CLASS, &priv_class, sizeof(priv_class) },
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type) },
+    {CKA_DECRYPT, &true_value, sizeof(true_value) },
+    {CKA_SIGN, &true_value, sizeof(true_value) },
+    {CKA_UNWRAP, &false_value, sizeof(false_value) },
+    {CKA_SENSITIVE, &true_value, sizeof(true_value) },
+    {CKA_TOKEN, &true_value, sizeof(true_value) },
+    {CKA_PRIVATE, &true_value, sizeof(true_value) },
+    {CKA_ID, string_as_array(&id), id.length() },
+    {CKA_LABEL, string_as_array(&label), label.length()},
+    {CKA_MODULUS, string_as_array(&n), n.length() },
+    {CKA_PUBLIC_EXPONENT, string_as_array(&e), e.length() },
+    {CKA_PRIVATE_EXPONENT, string_as_array(&d), d.length() },
+    {CKA_PRIME_1, string_as_array(&p), p.length() },
+    {CKA_PRIME_2, string_as_array(&q), q.length() },
+    {CKA_EXPONENT_1, string_as_array(&dmp1), dmp1.length() },
+    {CKA_EXPONENT_2, string_as_array(&dmq1), dmq1.length() },
+    {CKA_COEFFICIENT, string_as_array(&iqmp), iqmp.length() },
+  };
+
+  int handle = 0;
+  ASSERT_EQ(CKR_OK, session_->CreateObject(private_attributes,
+                                           arraysize(private_attributes),
+                                           &handle));
+  // For a software key, the sensitive attributes should still exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(handle, &object));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 }
 
 }  // namespace chaps

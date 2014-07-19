@@ -164,6 +164,14 @@ class SlotManagerImpl : public SlotManager,
                          const std::string& label,
                          int* slot_id);
 
+  // Loads the master key for a software-only token.
+  bool LoadSoftwareToken(const chromeos::SecureBlob& auth_data,
+                         ObjectPool* object_pool);
+
+  // Initializes a new software-only token.
+  bool InitializeSoftwareToken(const chromeos::SecureBlob& auth_data,
+                               ObjectPool* object_pool);
+
   ChapsFactory* factory_;
   int last_handle_;
   MechanismMap mechanism_info_;

@@ -90,6 +90,9 @@ ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
     int slot_id,
     const FilePath& path,
     TPMUtility* tpm_utility) {
+  if (!tpm_utility->IsTPMAvailable()) {
+    return NULL;
+  }
   return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
 }
 

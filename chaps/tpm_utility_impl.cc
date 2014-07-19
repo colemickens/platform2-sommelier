@@ -10,6 +10,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/utility.h>
@@ -139,7 +141,9 @@ TPMUtilityImpl::TPMUtilityImpl(const string& srk_auth_data)
       srk_auth_data_(srk_auth_data),
       srk_public_loaded_(false),
       default_exponent_("\x1\x0\x1", 3),
-      last_handle_(0) {}
+      last_handle_(0),
+      is_enabled_(false),
+      is_enabled_ready_(false) {}
 
 TPMUtilityImpl::~TPMUtilityImpl() {
   LOG(INFO) << "Unloading keys for all slots.";
@@ -182,9 +186,45 @@ bool TPMUtilityImpl::Init() {
     LOG(ERROR) << "Tspi_Context_GetDefaultPolicy - " << ResultToString(result);
     return false;
   }
+  // Make sure we can communicate with the TPM.
+  TSS_HTPM tpm;
+  result = Tspi_Context_GetTpmObject(tsp_context_, &tpm);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Tspi_Context_GetTpmObject - " << ResultToString(result);
+    return false;
+  }
+  BYTE *random_bytes = NULL;
+  result = Tspi_TPM_GetRandom(tpm, 4, &random_bytes);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Tspi_TPM_GetRandom - " << ResultToString(result);
+    return false;
+  }
+  Tspi_Context_FreeMemory(tsp_context_, random_bytes);
   VLOG(1) << "TPMUtilityImpl::Init success";
   is_initialized_ = true;
   return true;
+}
+
+bool TPMUtilityImpl::IsTPMAvailable() {
+  if (is_enabled_ready_) {
+    return is_enabled_;
+  }
+  // If the TPM works, clearly it's available.
+  if (is_initialized_) {
+    is_enabled_ready_ = true;
+    is_enabled_ = true;
+    return true;
+  }
+  // If the system says there is an enabled TPM, expect to use it.
+  const base::FilePath kTpmEnabledFile("/sys/class/misc/tpm0/device/enabled");
+  string file_content;
+  if (base::ReadFileToString(kTpmEnabledFile, &file_content) &&
+      !file_content.empty() &&
+      file_content[0] == '1') {
+    is_enabled_ = true;
+  }
+  is_enabled_ready_ = true;
+  return is_enabled_;
 }
 
 bool TPMUtilityImpl::InitSRK() {

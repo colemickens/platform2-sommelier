@@ -543,6 +543,14 @@ SecureBlob Sha1(const SecureBlob& input) {
   return hash;
 }
 
+SecureBlob Sha256(const SecureBlob& input) {
+  unsigned char digest[SHA256_DIGEST_LENGTH];
+  SHA256(const_cast<uint8_t*>(&input[0]), input.size(), digest);
+  SecureBlob hash(digest, SHA256_DIGEST_LENGTH);
+  chromeos::SecureMemset(digest, 0, SHA256_DIGEST_LENGTH);
+  return hash;
+}
+
 SecureBlob Sha512(const SecureBlob& input) {
   unsigned char digest[SHA512_DIGEST_LENGTH];
   SHA512(const_cast<uint8_t*>(&input[0]), input.size(), digest);

@@ -23,6 +23,9 @@ class TPMUtility {
   // Returns true on success.
   virtual bool Init() = 0;
 
+  // Returns true if a TPM exists and is enabled.
+  virtual bool IsTPMAvailable() = 0;
+
   // Authenticates a user by decrypting the user's master key with the user's
   // authorization key.
   //   auth_data - The user's authorization data (which is derived from the

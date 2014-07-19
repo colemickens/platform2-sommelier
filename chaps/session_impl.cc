@@ -523,7 +523,10 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBitsSW)
     return CKR_KEY_SIZE_RANGE;
   ObjectPool* pool = token_object_pool_;
-  if (private_object->IsTokenObject() && modulus_bits <= kMaxRSAKeyBitsHW) {
+  // Check if we are able to back this key with the TPM.
+  if (tpm_utility_->IsTPMAvailable() &&
+      private_object->IsTokenObject() &&
+      modulus_bits <= kMaxRSAKeyBitsHW) {
     string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
     string key_blob;
     int tpm_key_handle;
@@ -1256,7 +1259,8 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
 }
 
 CK_RV SessionImpl::WrapPrivateKey(Object* object) {
-  if (object->GetObjectClass() != CKO_PRIVATE_KEY ||
+  if (!tpm_utility_->IsTPMAvailable() ||
+      object->GetObjectClass() != CKO_PRIVATE_KEY ||
       object->IsAttributePresent(kKeyBlobAttribute)) {
     // This object does not need to be wrapped.
     return CKR_OK;

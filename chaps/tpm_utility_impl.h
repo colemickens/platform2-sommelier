@@ -23,6 +23,7 @@ class TPMUtilityImpl : public TPMUtility {
   explicit TPMUtilityImpl(const std::string& srk_auth_data);
   virtual ~TPMUtilityImpl();
   virtual bool Init();
+  virtual bool IsTPMAvailable();
   virtual bool Authenticate(int slot_id,
                             const chromeos::SecureBlob& auth_data,
                             const std::string& auth_key_blob,
@@ -128,6 +129,8 @@ class TPMUtilityImpl : public TPMUtility {
   std::map<int, KeyInfo> handle_info_;
   base::Lock lock_;
   int last_handle_;
+  bool is_enabled_;
+  bool is_enabled_ready_;
 
   DISALLOW_COPY_AND_ASSIGN(TPMUtilityImpl);
 };

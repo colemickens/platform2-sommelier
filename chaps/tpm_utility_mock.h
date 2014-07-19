@@ -20,6 +20,7 @@ class TPMUtilityMock : public TPMUtility {
   virtual ~TPMUtilityMock();
 
   MOCK_METHOD0(Init, bool());
+  MOCK_METHOD0(IsTPMAvailable, bool());
   MOCK_METHOD5(Authenticate, bool(int,
                                   const chromeos::SecureBlob&,
                                   const std::string&,

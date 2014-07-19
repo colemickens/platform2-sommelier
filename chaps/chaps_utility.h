@@ -197,6 +197,9 @@ class PreservedByteVector {
 std::string Sha1(const std::string& input);
 chromeos::SecureBlob Sha1(const chromeos::SecureBlob& input);
 
+// Computes and returns a SHA-256 hash of the given input.
+chromeos::SecureBlob Sha256(const chromeos::SecureBlob& input);
+
 // Computes and returns a SHA-512 hash of the given input.
 chromeos::SecureBlob Sha512(const chromeos::SecureBlob& input);
 
