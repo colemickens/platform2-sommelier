@@ -13,8 +13,7 @@ InputStub::InputStub()
     : lid_state_(LID_OPEN),
       usb_input_device_connected_(true),
       active_vt_(1),
-      wake_inputs_enabled_(true),
-      touch_devices_enabled_(true) {
+      wake_inputs_enabled_(true) {
 }
 
 InputStub::~InputStub() {}
@@ -49,13 +48,8 @@ int InputStub::GetActiveVT() {
   return active_vt_;
 }
 
-bool InputStub::SetWakeInputsState(bool enable) {
+void InputStub::SetInputDevicesCanWake(bool enable) {
   wake_inputs_enabled_ = enable;
-  return true;
-}
-
-void InputStub::SetTouchDevicesState(bool enable) {
-  touch_devices_enabled_ = enable;
 }
 
 }  // namespace system

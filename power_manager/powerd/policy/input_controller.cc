@@ -101,14 +101,12 @@ void InputController::OnLidEvent(LidState state) {
   InputEvent proto;
   switch (lid_state_) {
     case LID_CLOSED:
-      input_->SetTouchDevicesState(false);
-      input_->SetWakeInputsState(false);
+      input_->SetInputDevicesCanWake(false);
       delegate_->HandleLidClosed();
       proto.set_type(InputEvent_Type_LID_CLOSED);
       break;
     case LID_OPEN:
-      input_->SetTouchDevicesState(true);
-      input_->SetWakeInputsState(true);
+      input_->SetInputDevicesCanWake(true);
       delegate_->HandleLidOpened();
       proto.set_type(InputEvent_Type_LID_OPEN);
       break;

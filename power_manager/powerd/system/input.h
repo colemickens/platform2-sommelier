@@ -53,8 +53,7 @@ class Input : public InputInterface,
   virtual LidState QueryLidState() OVERRIDE;
   virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
   virtual int GetActiveVT() OVERRIDE;
-  virtual bool SetWakeInputsState(bool enable) OVERRIDE;
-  virtual void SetTouchDevicesState(bool enable) OVERRIDE;
+  virtual void SetInputDevicesCanWake(bool enable) OVERRIDE;
 
   // base::MessageLoopForIO::Watcher implementation:
   virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
@@ -76,11 +75,13 @@ class Input : public InputInterface,
   // it matches wake inputs names.
   bool RegisterInputWakeSources();
 
-  // Set power/wakeup for all tracked input devices to wakeups_enabled_
-  bool SetInputWakeupStates();
-
   // Set power/wakeup for input device number |input_num|
-  bool SetWakeupState(int input_num, bool enabled);
+  bool SetSysfsWakeup(int input_num, bool enabled);
+
+  // Update ACPI wakeup or sysfs power/wakeup to reflect the state of
+  // wakeups_enabled_.
+  bool UpdateSysfsWakeup();
+  bool UpdateAcpiWakeup();
 
   // Adds or removes events to handle lid and power button.
   bool AddEvent(const std::string& name);

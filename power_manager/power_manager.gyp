@@ -58,6 +58,7 @@
         ],
       },
       'sources': [
+        'powerd/system/acpi_wakeup_helper.cc',
         'powerd/system/ambient_light_sensor.cc',
         'powerd/system/async_file_reader.cc',
         'powerd/system/audio_client.cc',
@@ -250,6 +251,7 @@
           ],
           'sources': [
             'common/testrunner.cc',
+            'powerd/system/acpi_wakeup_helper_unittest.cc',
             'powerd/system/ambient_light_sensor_unittest.cc',
             'powerd/system/async_file_reader_unittest.cc',
             'powerd/system/dark_resume_unittest.cc',

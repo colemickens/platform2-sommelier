@@ -24,6 +24,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
 
@@ -51,10 +52,6 @@ const char kBluetoothMatchString[] = "bluetooth";
 // Path to the console device where VT_GETSTATE ioctls are made to get the
 // currently-active VT.
 const char kConsolePath[] = "/dev/tty0";
-
-// Path to an optional script used to disable touch devices when the lid is
-// closed.
-const char kTouchControlPath[] = "/opt/google/touch/touch-control.sh";
 
 // Physical location (as returned by EVIOCGPHYS()) of power button devices that
 // should be skipped.
@@ -252,19 +249,10 @@ int Input::GetActiveVT() {
   return state.v_active;
 }
 
-bool Input::SetWakeInputsState(bool enable) {
+void Input::SetInputDevicesCanWake(bool enable) {
   wakeups_enabled_ = enable;
-  return SetInputWakeupStates();
-}
-
-void Input::SetTouchDevicesState(bool enable) {
-  if (access(kTouchControlPath, R_OK | X_OK) != 0)
-    return;
-
-  if (enable)
-    util::Launch(base::StringPrintf("%s --enable", kTouchControlPath));
-  else
-    util::Run(base::StringPrintf("%s --disable", kTouchControlPath));
+  UpdateSysfsWakeup();
+  UpdateAcpiWakeup();
 }
 
 void Input::OnFileCanReadWithoutBlocking(int fd) {
@@ -362,20 +350,7 @@ bool Input::RegisterInputWakeSources() {
   return true;
 }
 
-bool Input::SetInputWakeupStates() {
-  bool result = true;
-  for (WakeupMap::iterator iter = wakeup_inputs_map_.begin();
-       iter != wakeup_inputs_map_.end(); iter++) {
-    int input_num = (*iter).second;
-    if (input_num != -1 && !SetWakeupState(input_num, wakeups_enabled_)) {
-      result = false;
-      LOG(WARNING) << "Failed to set power/wakeup for input" << input_num;
-    }
-  }
-  return result;
-}
-
-bool Input::SetWakeupState(int input_num, bool enabled) {
+bool Input::SetSysfsWakeup(int input_num, bool enabled) {
   std::string name = base::StringPrintf("%s%d", kInputBaseName, input_num);
   base::FilePath path = base::FilePath(kSysClassInputPath).
       Append(name).Append("device/power/wakeup");
@@ -385,6 +360,32 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
     return false;
   }
   LOG(INFO) << "Set " << path.value() << " to " << state;
+  return true;
+}
+
+bool Input::UpdateSysfsWakeup() {
+  bool result = true;
+  for (WakeupMap::iterator iter = wakeup_inputs_map_.begin();
+       iter != wakeup_inputs_map_.end(); iter++) {
+    int input_num = iter->second;
+    if (input_num != -1 && !SetSysfsWakeup(input_num, wakeups_enabled_)) {
+      result = false;
+      LOG(WARNING) << "Failed to set power/wakeup for input" << input_num;
+    }
+  }
+  return result;
+}
+
+bool Input::UpdateAcpiWakeup() {
+  // On x86 systems, setting power/wakeup in sysfs is not enough.
+  // We disable touchscreen wakeup permanently, and we disable touchpad wakeup
+  // whenever the lid is closed.
+
+  AcpiWakeupHelper acpi_wakeup;
+  if (!acpi_wakeup.IsSupported())
+    return true;
+  acpi_wakeup.SetWakeupEnabled("TSCR", false);
+  acpi_wakeup.SetWakeupEnabled("TPAD", wakeups_enabled_);
   return true;
 }
 
@@ -476,7 +477,7 @@ bool Input::AddWakeInput(const std::string& name) {
     return false;
   }
 
-  if (!SetWakeupState(input_num, wakeups_enabled_)) {
+  if (!SetSysfsWakeup(input_num, wakeups_enabled_)) {
     LOG(ERROR) << "Error adding wakeup source; cannot write to power/wakeup";
     return false;
   }

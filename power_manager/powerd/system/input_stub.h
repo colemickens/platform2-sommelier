@@ -19,7 +19,6 @@ class InputStub : public InputInterface {
   virtual ~InputStub();
 
   bool wake_inputs_enabled() const { return wake_inputs_enabled_; }
-  bool touch_devices_enabled() const { return touch_devices_enabled_; }
 
   void set_lid_state(LidState state) { lid_state_ = state; }
   void set_usb_input_device_connected(bool connected) {
@@ -37,8 +36,7 @@ class InputStub : public InputInterface {
   virtual LidState QueryLidState() OVERRIDE;
   virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
   virtual int GetActiveVT() OVERRIDE;
-  virtual bool SetWakeInputsState(bool enable) OVERRIDE;
-  virtual void SetTouchDevicesState(bool enable) OVERRIDE;
+  virtual void SetInputDevicesCanWake(bool enable) OVERRIDE;
 
  private:
   // Current input state.
@@ -46,7 +44,6 @@ class InputStub : public InputInterface {
   bool usb_input_device_connected_;
   int active_vt_;
   bool wake_inputs_enabled_;
-  bool touch_devices_enabled_;
 
   ObserverList<InputObserver> observers_;
 
