@@ -18,14 +18,19 @@ GLIB_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GLIB_DEPS))
 GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
 
 COMMON_OBJS = \
+  allow_hidraw_device_rule.o \
   allow_usb_device_rule.o \
+  deny_claimed_hidraw_device_rule.o \
   deny_claimed_usb_device_rule.o \
   deny_uninitialized_device_rule.o \
+  deny_unsafe_hidraw_device_rule.o \
   deny_usb_device_class_rule.o \
   deny_usb_vendor_id_rule.o \
+  hidraw_subsystem_udev_rule.o \
   permission_broker.o \
   rule.o \
   udev_rule.o \
+  udev_scopers.o \
   usb_subsystem_udev_rule.o
 
 PERMISSION_BROKER_FLAGS = $(DBUS_FLAGS) $(GLIB_FLAGS)
@@ -48,7 +53,9 @@ CXX_BINARY(permission_broker_unittest): \
 CXX_BINARY(permission_broker_unittest): \
   $(COMMON_OBJS) \
   allow_usb_device_rule_unittest.o \
+  deny_claimed_hidraw_device_rule_unittest.o \
   deny_claimed_usb_device_rule_unittest.o \
+  deny_unsafe_hidraw_device_rule_unittest.o \
   deny_usb_device_class_rule_unittest.o \
   deny_usb_vendor_id_rule_unittest.o \
   permission_broker_unittest.o \

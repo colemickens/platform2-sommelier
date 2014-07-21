@@ -9,16 +9,22 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
+#include "permission_broker/allow_hidraw_device_rule.h"
 #include "permission_broker/allow_usb_device_rule.h"
+#include "permission_broker/deny_claimed_hidraw_device_rule.h"
 #include "permission_broker/deny_claimed_usb_device_rule.h"
 #include "permission_broker/deny_uninitialized_device_rule.h"
+#include "permission_broker/deny_unsafe_hidraw_device_rule.h"
 #include "permission_broker/deny_usb_device_class_rule.h"
 #include "permission_broker/deny_usb_vendor_id_rule.h"
 #include "permission_broker/permission_broker.h"
 
+using permission_broker::AllowHidrawDeviceRule;
 using permission_broker::AllowUsbDeviceRule;
+using permission_broker::DenyClaimedHidrawDeviceRule;
 using permission_broker::DenyClaimedUsbDeviceRule;
 using permission_broker::DenyUninitializedDeviceRule;
+using permission_broker::DenyUnsafeHidrawDeviceRule;
 using permission_broker::DenyUsbDeviceClassRule;
 using permission_broker::DenyUsbVendorIdRule;
 using permission_broker::PermissionBroker;
@@ -38,6 +44,9 @@ int main(int argc, char **argv) {
   broker.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_HUB));
   broker.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_MASS_STORAGE));
   broker.AddRule(new DenyUsbVendorIdRule(kLinuxFoundationUsbVendorId));
+  broker.AddRule(new AllowHidrawDeviceRule());
+  broker.AddRule(new DenyClaimedHidrawDeviceRule());
+  broker.AddRule(new DenyUnsafeHidrawDeviceRule());
   broker.Run();
 
   return 0;
