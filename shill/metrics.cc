@@ -314,7 +314,7 @@ const char Metrics::kMetricDeviceConnectionStatus[] =
 
 // static
 const char Metrics::kMetricDhcpClientStatus[] =
-    "Network.Shill.DhcpClientStatus";
+    "Network.Shill.DHCPClientStatus";
 
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),

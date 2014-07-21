@@ -783,7 +783,7 @@ TEST_F(MetricsTest, NotifyNetworkProblemDetected) {
 
 TEST_F(MetricsTest, NotifyDhcpClientStatus) {
   EXPECT_CALL(library_,
-      SendEnumToUMA("Network.Shill.DhcpClientStatus",
+      SendEnumToUMA("Network.Shill.DHCPClientStatus",
                     Metrics::kDhcpClientStatusReboot,
                     Metrics::kDhcpClientStatusMax));
   metrics_.NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);

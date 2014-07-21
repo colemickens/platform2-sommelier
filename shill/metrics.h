@@ -313,22 +313,22 @@ class Metrics {
   };
 
   enum DhcpClientStatus {
-    kDhcpClientStatusArpGateway = 1,
-    kDhcpClientStatusArpSelf = 2,
-    kDhcpClientStatusBound = 3,
-    kDhcpClientStatusDiscover = 4,
-    kDhcpClientStatusIgnoreAdditionalOffer = 5,
-    kDhcpClientStatusIgnoreFailedOffer = 6,
-    kDhcpClientStatusIgnoreInvalidOffer = 7,
-    kDhcpClientStatusIgnoreNonOffer = 8,
-    kDhcpClientStatusInform = 9,
-    kDhcpClientStatusInit = 10,
-    kDhcpClientStatusNakDefer = 11,
-    kDhcpClientStatusRebind = 12,
-    kDhcpClientStatusReboot = 13,
-    kDhcpClientStatusRelease = 14,
-    kDhcpClientStatusRenew = 15,
-    kDhcpClientStatusRequest = 16,
+    kDhcpClientStatusArpGateway = 0,
+    kDhcpClientStatusArpSelf = 1,
+    kDhcpClientStatusBound = 2,
+    kDhcpClientStatusDiscover = 3,
+    kDhcpClientStatusIgnoreAdditionalOffer = 4,
+    kDhcpClientStatusIgnoreFailedOffer = 5,
+    kDhcpClientStatusIgnoreInvalidOffer = 6,
+    kDhcpClientStatusIgnoreNonOffer = 7,
+    kDhcpClientStatusInform = 8,
+    kDhcpClientStatusInit = 9,
+    kDhcpClientStatusNakDefer = 10,
+    kDhcpClientStatusRebind = 11,
+    kDhcpClientStatusReboot = 12,
+    kDhcpClientStatusRelease = 13,
+    kDhcpClientStatusRenew = 14,
+    kDhcpClientStatusRequest = 15,
     kDhcpClientStatusMax
   };
 
