@@ -317,7 +317,7 @@ class Metrics {
     kDhcpClientStatusArpSelf = 2,
     kDhcpClientStatusBound = 3,
     kDhcpClientStatusDiscover = 4,
-    kDhcpClientStatusIgnoreDuplicateOffer = 5,
+    kDhcpClientStatusIgnoreAdditionalOffer = 5,
     kDhcpClientStatusIgnoreFailedOffer = 6,
     kDhcpClientStatusIgnoreInvalidOffer = 7,
     kDhcpClientStatusIgnoreNonOffer = 8,

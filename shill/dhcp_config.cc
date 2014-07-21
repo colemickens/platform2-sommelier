@@ -65,7 +65,7 @@ const char DHCPConfig::kStatusArpGateway[] = "ArpGateway";
 const char DHCPConfig::kStatusArpSelf[] = "ArpSelf";
 const char DHCPConfig::kStatusBound[] = "Bound";
 const char DHCPConfig::kStatusDiscover[] = "Discover";
-const char DHCPConfig::kStatusIgnoreDuplicateOffer[] = "IgnoreDuplicateOffer";
+const char DHCPConfig::kStatusIgnoreAdditionalOffer[] = "IgnoreAdditionalOffer";
 const char DHCPConfig::kStatusIgnoreFailedOffer[] = "IgnoreFailedOffer";
 const char DHCPConfig::kStatusIgnoreInvalidOffer[] = "IgnoreInvalidOffer";
 const char DHCPConfig::kStatusIgnoreNonOffer[] = "IgnoreNonOffer";
@@ -232,9 +232,9 @@ void DHCPConfig::ProcessStatusChangeSignal(const string &status) {
     metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusBound);
   } else if (status == kStatusDiscover) {
     metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusDiscover);
-  } else if (status == kStatusIgnoreDuplicateOffer) {
+  } else if (status == kStatusIgnoreAdditionalOffer) {
     metrics_->NotifyDhcpClientStatus(
-        Metrics::kDhcpClientStatusIgnoreDuplicateOffer);
+        Metrics::kDhcpClientStatusIgnoreAdditionalOffer);
   } else if (status == kStatusIgnoreFailedOffer) {
     metrics_->NotifyDhcpClientStatus(
         Metrics::kDhcpClientStatusIgnoreFailedOffer);

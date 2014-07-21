@@ -143,7 +143,7 @@ class DHCPConfig : public IPConfig {
   static const char kStatusArpSelf[];
   static const char kStatusBound[];
   static const char kStatusDiscover[];
-  static const char kStatusIgnoreDuplicateOffer[];
+  static const char kStatusIgnoreAdditionalOffer[];
   static const char kStatusIgnoreFailedOffer[];
   static const char kStatusIgnoreInvalidOffer[];
   static const char kStatusIgnoreNonOffer[];
