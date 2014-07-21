@@ -587,8 +587,14 @@ bool SetProcessUserAndGroup(const char* user_name,
                             bool real) {
   // Get a uid_t and gid_t for the user.
   errno = 0;
-  struct passwd* user_info = getpwnam(user_name);
-  if (!user_info) {
+  long buf_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
+  if (buf_length < 0)
+    buf_length = 4096;
+  passwd passwd_buf;
+  passwd* user_info = nullptr;
+  std::vector<char> buf(buf_length);
+  if (getpwnam_r(user_name, &passwd_buf, buf.data(), buf_length, &user_info) ||
+      user_info == nullptr) {
     PLOG(ERROR) << "Failed to get user info for user '" << user_name << "'.";
     return false;
   }
@@ -596,8 +602,14 @@ bool SetProcessUserAndGroup(const char* user_name,
   gid_t uid_gid = user_info->pw_gid;
   // Get a gid_t for the group.
   errno = 0;
-  struct group* group_info = getgrnam(group_name);
-  if (!group_info) {
+  buf_length = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (buf_length < 0)
+    buf_length = 4096;
+  buf.resize(buf_length);
+  group group_buf;
+  group* group_info = nullptr;
+  if (getgrnam_r(group_name, &group_buf, buf.data(), buf_length, &group_info) ||
+      group_info == nullptr) {
     LOG(ERROR) << "Failed to get group info for group '" << group_name << "'.";
     return false;
   }

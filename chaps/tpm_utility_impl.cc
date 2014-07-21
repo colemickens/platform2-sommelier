@@ -86,6 +86,7 @@ class TSSEncryptedData {
   operator TSS_HENCDATA() {
     return handle_;
   }
+
  private:
   TSS_HCONTEXT context_;
   ScopedTssObject<TSS_HENCDATA> handle_;
@@ -122,6 +123,7 @@ class TSSHash {
   operator TSS_HHASH() {
     return handle_;
   }
+
  private:
   TSS_HCONTEXT context_;
   ScopedTssObject<TSS_HHASH> handle_;

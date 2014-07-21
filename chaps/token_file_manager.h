@@ -47,10 +47,10 @@ class TokenFileManager {
                             chromeos::SecureBlob* salted_auth_data);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(TokenFileManager);
-
   uid_t chapsd_uid_;
   gid_t chapsd_gid_;
+
+  DISALLOW_COPY_AND_ASSIGN(TokenFileManager);
 };
 
 }  // namespace chaps

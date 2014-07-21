@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_CHAPS_UTILITY_H
-#define CHAPS_CHAPS_UTILITY_H
+#ifndef CHAPS_CHAPS_UTILITY_H_
+#define CHAPS_CHAPS_UTILITY_H_
 
 #include <sstream>
 #include <string>
@@ -154,7 +154,7 @@ inline std::vector<uint8_t> ConvertByteBufferToVector(CK_BYTE_PTR buffer,
 template <class PreservedType, class TempType>
 class PreservedValue {
  public:
-  PreservedValue(PreservedType* value) {
+  explicit PreservedValue(PreservedType* value) {
     CHECK(value);
     preserved_ = value;
     temp_ = static_cast<TempType>(*value);
@@ -176,7 +176,7 @@ typedef PreservedValue<uint64_t, CK_ULONG> PreservedUint64_t;
 
 class PreservedByteVector {
  public:
-  PreservedByteVector(std::vector<uint8_t>* value) {
+  explicit PreservedByteVector(std::vector<uint8_t>* value) {
     CHECK(value);
     preserved_ = value;
     temp_ = ConvertByteVectorToString(*value);
@@ -248,4 +248,4 @@ inline void ClearVector(std::vector<uint8_t>* vector) {
 
 }  // namespace chaps
 
-#endif  // CHAPS_CHAPS_UTILITY_H
+#endif  // CHAPS_CHAPS_UTILITY_H_

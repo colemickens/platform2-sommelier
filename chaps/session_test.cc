@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "session_impl.h"
+#include "chaps/session_impl.h"
 
 #include <string>
 #include <vector>
@@ -31,9 +31,6 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 
 namespace chaps {
-
-static const string kAuthData("000000");
-static const string kNewAuthData("111111");
 
 static void ConfigureObjectPool(ObjectPoolMock* op) {
   op->SetupFake();
@@ -157,6 +154,7 @@ class TestSession: public ::testing::Test {
     session_->CreateObject(attr, 2, &h);
     return h;
   }
+
  protected:
   ObjectPoolMock token_pool_;
   ChapsFactoryMock factory_;
@@ -577,7 +575,6 @@ TEST_F(TestSession, BadIV) {
             session_->OperationInit(kEncrypt, CKM_DES_CBC, bad_iv, des));
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
             session_->OperationInit(kEncrypt, CKM_DES3_CBC, bad_iv, des3));
-
 }
 
 // Test that invalid key size ranges are handled correctly.

@@ -91,7 +91,7 @@ TEST(TestInitialize, InitializeNoLocking) {
 }
 
 TEST(TestInitialize, FinalizeWithArgs) {
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Finalize((void*)1));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Finalize(reinterpret_cast<void*>(1)));
 }
 
 TEST(TestInitialize, FinalizeNotInit) {
@@ -125,7 +125,7 @@ TEST(TestLibInfo, LibInfoNotInit) {
 
 // Slot List Tests
 class TestSlotList : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     uint64_t slot_array[3] = {1, 2, 3};
     slot_list_all_.assign(&slot_array[0], &slot_array[3]);
@@ -264,8 +264,8 @@ TEST(TestTokenInfo, TokenInfoOK) {
   EXPECT_EQ(CKR_OK, C_GetTokenInfo(1, &info));
   uint8_t spaces[64];
   memset(spaces, ' ', arraysize(spaces));
-  //EXPECT_EQ(0, memcmp(spaces, info.serialNumber, 16));
-  //EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
+  // EXPECT_EQ(0, memcmp(spaces, info.serialNumber, 16));
+  // EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
   EXPECT_EQ(1, info.flags);
 }
 
@@ -288,7 +288,7 @@ TEST(TestWaitSlotEvent, SlotEventNonBlock) {
 }
 
 // This is a helper function for the SlotEventBlock test.
-static void* CallFinalize(void*) {
+static void* CallFinalize(void* reserved) {
   // The main thread has likely already proceeded into C_WaitForSlotEvent but to
   // increase this chance we'll yield for a bit. The test will pass even in the
   // unlikely event that we hit C_Finalize before the main thread begins
@@ -319,7 +319,7 @@ TEST(TestWaitSlotEvent, SlotEventBadArgs) {
 
 // Mechanism List Tests
 class TestMechList : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     uint64_t mech_array[3] = {1, 2, 3};
     mech_list_all_.assign(&mech_array[0], &mech_array[3]);
@@ -651,7 +651,7 @@ TEST(TestGetSessionInfo, GetSessionInfoFail) {
 
 // Get Operation State Tests
 class TestGetOperationState : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     uint8_t tmp[3] = {1, 2, 3};
     buffer_ = vector<uint8_t>(&tmp[0], &tmp[3]);
@@ -809,7 +809,7 @@ TEST(TestLogout, LogoutFail) {
 
 // CreateObject Tests
 class TestAttributes : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     attribute_template_[0].type = CKA_ID;
     attribute_template_[0].ulValueLen = 4;
@@ -1250,12 +1250,12 @@ class TestEncrypt : public ::testing::Test {
     data_in_ = vector<uint8_t>(10, 1);
     data_out_ = vector<uint8_t>(10, 2);
     parameter_ = vector<uint8_t>(12, 0xAA);
-    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    CK_MECHANISM mechanism = {2, parameter_.data(), parameter_.size()};
     mechanism_ = mechanism;
-    buffer_in_ = (CK_BYTE_PTR)&data_in_.front();
+    buffer_in_ = reinterpret_cast<CK_BYTE_PTR>(data_in_.data());
     length_in_ = data_in_.size();
     length_out_max_ = 20;
-    buffer_out_expected_ = (CK_BYTE_PTR)&data_out_.front();
+    buffer_out_expected_ = reinterpret_cast<CK_BYTE_PTR>(data_out_.data());
     length_out_expected_ = data_out_.size();
   }
   vector<uint8_t> data_in_;
@@ -1584,10 +1584,10 @@ class TestDigest : public ::testing::Test {
     data_ = vector<uint8_t>(10, 1);
     digest_ = vector<uint8_t>(10, 2);
     parameter_ = vector<uint8_t>(12, 0xAA);
-    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    CK_MECHANISM mechanism = {2, parameter_.data(), parameter_.size()};
     mechanism_ = mechanism;
-    data_buffer_ = (CK_BYTE_PTR)&data_.front();
-    digest_buffer_ = (CK_BYTE_PTR)&digest_.front();
+    data_buffer_ = reinterpret_cast<CK_BYTE_PTR>(data_.data());
+    digest_buffer_ = reinterpret_cast<CK_BYTE_PTR>(digest_.data());
     data_length_ = data_.size();
     digest_length_ = digest_.size();
     length_out_max_ = 20;
@@ -1751,10 +1751,10 @@ class TestSign : public ::testing::Test {
     data_ = vector<uint8_t>(10, 1);
     signature_ = vector<uint8_t>(10, 2);
     parameter_ = vector<uint8_t>(12, 0xAA);
-    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    CK_MECHANISM mechanism = {2, parameter_.data(), parameter_.size()};
     mechanism_ = mechanism;
-    data_buffer_ = (CK_BYTE_PTR)&data_.front();
-    signature_buffer_ = (CK_BYTE_PTR)&signature_.front();
+    data_buffer_ = reinterpret_cast<CK_BYTE_PTR>(data_.data());
+    signature_buffer_ = reinterpret_cast<CK_BYTE_PTR>(signature_.data());
     data_length_ = data_.size();
     signature_length_ = signature_.size();
     length_out_max_ = 20;
@@ -2187,7 +2187,7 @@ class TestGenKey : public TestAttributes {
   void SetUp() {
     TestAttributes::SetUp();
     parameter_ = vector<uint8_t>(12, 0xAA);
-    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    CK_MECHANISM mechanism = {2, parameter_.data(), parameter_.size()};
     mechanism_ = mechanism;
   }
   void TearDown() {
@@ -2327,12 +2327,12 @@ TEST_F(TestGenKey, WrapKeyOK) {
   CK_ULONG length = 10;
   EXPECT_EQ(CKR_OK, C_WrapKey(1, &mechanism_, 3, 4, buffer, &length));
   EXPECT_EQ(length, wrapped.size());
-  EXPECT_EQ(0, memcmp(buffer, &wrapped.front(), length));
+  EXPECT_EQ(0, memcmp(buffer, wrapped.data(), length));
   CK_OBJECT_HANDLE key = 0;
   EXPECT_EQ(CKR_OK, C_UnwrapKey(1,
                                 &mechanism_,
                                 3,
-                                &wrapped.front(),
+                                wrapped.data(),
                                 wrapped.size(),
                                 attribute_template_, 2,
                                 &key));
@@ -2367,7 +2367,7 @@ TEST_F(TestGenKey, WrapKeyFail) {
   EXPECT_EQ(CKR_SESSION_CLOSED, C_UnwrapKey(1,
                                 &mechanism_,
                                 3,
-                                &wrapped.front(),
+                                wrapped.data(),
                                 wrapped.size(),
                                 attribute_template_, 2,
                                 &key));

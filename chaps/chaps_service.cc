@@ -1145,4 +1145,4 @@ uint32_t ChapsServiceImpl::GenerateRandom(const SecureBlob& isolate_credential,
   return CKR_OK;
 }
 
-}  // namespace
+}  // namespace chaps

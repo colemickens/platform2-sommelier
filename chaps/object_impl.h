@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_IMPL_H
-#define CHAPS_OBJECT_IMPL_H
+#ifndef CHAPS_OBJECT_IMPL_H_
+#define CHAPS_OBJECT_IMPL_H_
 
 #include "chaps/object.h"
 
@@ -22,7 +22,7 @@ class ObjectPolicy;
 
 class ObjectImpl : public Object {
  public:
-  ObjectImpl(ChapsFactory* factory);
+  explicit ObjectImpl(ChapsFactory* factory);
   virtual ~ObjectImpl();
   virtual ObjectStage GetStage() const;
   virtual int GetSize() const;
@@ -68,6 +68,6 @@ class ObjectImpl : public Object {
   DISALLOW_COPY_AND_ASSIGN(ObjectImpl);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_OBJECT_IMPL_H
+#endif  // CHAPS_OBJECT_IMPL_H_

@@ -510,8 +510,8 @@ void PrintTicks(base::TimeTicks* start_ticks) {
   base::TimeTicks now = base::TimeTicks::Now();
   base::TimeDelta delta = now - *start_ticks;
   *start_ticks = now;
-  long long int value = delta.InMillisecondsRoundedUp();
-  printf("Elapsed: %lldms\n", value);
+  intmax_t value = delta.InMillisecondsRoundedUp();
+  printf("Elapsed: %jdms\n", value);
 }
 
 void PrintObjects(const vector<CK_OBJECT_HANDLE>& objects) {
@@ -525,7 +525,7 @@ void PrintObjects(const vector<CK_OBJECT_HANDLE>& objects) {
 
 class DigestTestThread : public base::PlatformThread::Delegate {
  public:
-  DigestTestThread(CK_SLOT_ID slot) : slot_(slot) {}
+  explicit DigestTestThread(CK_SLOT_ID slot) : slot_(slot) {}
   void ThreadMain() {
     const int kNumIterations = 100;
     CK_BYTE data[1024] = {0};
@@ -546,6 +546,7 @@ class DigestTestThread : public base::PlatformThread::Delegate {
     }
     C_CloseSession(session);
   }
+
  private:
   CK_SLOT_ID slot_;
 };

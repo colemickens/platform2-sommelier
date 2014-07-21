@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "attributes.h"
+#include "chaps/attributes.h"
 
 #include <string>
 #include <vector>
@@ -12,7 +12,7 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "chaps/proto_bindings/attributes.pb.h"
-#include "chaps_utility.h"
+#include "chaps/chaps_utility.h"
 
 using std::string;
 using std::vector;
@@ -288,4 +288,4 @@ string Attributes::AttributeValueToString(const CK_ATTRIBUTE& attributes) {
                 attributes.ulValueLen);
 }
 
-}  // namespace
+}  // namespace chaps

@@ -34,7 +34,7 @@ PC_DEPS = dbus-c++-1 protobuf-lite openssl \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG
+CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG -std=gnu++11
 LDLIBS += $(PC_LIBS)
 
 # Test if libmemenv is available, and whether libsnappy is required to

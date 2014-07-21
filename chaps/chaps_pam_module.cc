@@ -67,8 +67,15 @@ EXPORT_SPEC void DisableMock() {
 static bool GetChapsdUser(uid_t* uid, gid_t* gid) {
   CHECK(uid);
   CHECK(gid);
-  const struct passwd* chaps_pwd = getpwnam(chaps::kChapsdProcessUser);
-  if (!chaps_pwd) {
+  long buf_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT long
+  if (buf_length < 0) {
+    buf_length = 4096;
+  }
+  passwd passwd_buf;
+  passwd* chaps_pwd = nullptr;
+  std::vector<char> buf(buf_length);
+  if (getpwnam_r(chaps::kChapsdProcessUser, &passwd_buf, buf.data(), buf_length,
+                 &chaps_pwd) || chaps_pwd == nullptr) {
     return false;
   }
   *uid = chaps_pwd->pw_uid;

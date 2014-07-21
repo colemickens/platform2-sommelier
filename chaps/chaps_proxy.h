@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 
 
-#ifndef CHAPS_CHAPS_PROXY_H
-#define CHAPS_CHAPS_PROXY_H
+#ifndef CHAPS_CHAPS_PROXY_H_
+#define CHAPS_CHAPS_PROXY_H_
+
+#include <string>
+#include <vector>
 
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
@@ -23,7 +26,7 @@ namespace chaps {
 // The Connect() method must be called successfully before calling any other
 // methods.
 class ChapsProxyImpl : public ChapsInterface {
-public:
+ public:
   ChapsProxyImpl();
   virtual ~ChapsProxyImpl();
   virtual bool Init();
@@ -373,7 +376,7 @@ public:
       std::vector<uint8_t>* random_data);
 
 
-private:
+ private:
   // Waits for the service to be available. Returns false if the service is not
   // available within 5 seconds.
   bool WaitForService();
@@ -381,13 +384,13 @@ private:
   // This class provides the link to the dbus-c++ generated proxy.
   class Proxy : public org::chromium::Chaps_proxy,
                 public DBus::ObjectProxy {
-  public:
-    Proxy(DBus::Connection &connection,
+   public:
+    Proxy(DBus::Connection &connection,  // NOLINT(runtime/references)
           const char* path,
           const char* service) : ObjectProxy(connection, path, service) {}
     virtual ~Proxy() {}
 
-  private:
+   private:
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
@@ -400,6 +403,6 @@ private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyImpl);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_CHAPS_PROXY_H
+#endif  // CHAPS_CHAPS_PROXY_H_

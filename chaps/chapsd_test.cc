@@ -58,7 +58,7 @@ static vector<uint8_t> SubVector(const vector<uint8_t>& v,
 
 // Default test fixture for PKCS #11 calls.
 class TestP11 : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     // The current user's token will be used so the token will already be
     // initialized and changes to token objects will persist.  The user pin can

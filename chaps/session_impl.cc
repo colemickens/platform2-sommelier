@@ -831,7 +831,7 @@ bool SessionImpl::GenerateKeyPairSoftware(int modulus_bits,
                                           const string& public_exponent,
                                           Object* public_object,
                                           Object* private_object) {
-  if (public_exponent.length() > sizeof(unsigned long) ||
+  if (public_exponent.length() > sizeof(uint32_t) ||
       public_exponent.empty())
     return false;
   BIGNUM* e = ConvertToBIGNUM(public_exponent);
@@ -1316,4 +1316,4 @@ void SessionImpl::OperationContext::Clear() {
   parameter_.clear();
 }
 
-}  // namespace
+}  // namespace chaps

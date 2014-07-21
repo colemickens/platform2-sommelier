@@ -2,7 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef CHAPS_OBJECT_POLICY_MOCK_H_
+#define CHAPS_OBJECT_POLICY_MOCK_H_
+
 #include "chaps/object_policy.h"
+
+#include <string>
 
 #include <gmock/gmock.h>
 
@@ -25,3 +30,5 @@ class ObjectPolicyMock : public ObjectPolicy {
 };
 
 }  // namespace chaps
+
+#endif  // CHAPS_OBJECT_POLICY_MOCK_H_

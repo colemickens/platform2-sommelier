@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_H
-#define CHAPS_OBJECT_H
+#ifndef CHAPS_OBJECT_H_
+#define CHAPS_OBJECT_H_
 
 #include <map>
 #include <string>
@@ -102,6 +102,6 @@ class Object {
   virtual void set_store_id(int store_id) = 0;
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_OBJECT_H
+#endif  // CHAPS_OBJECT_H_

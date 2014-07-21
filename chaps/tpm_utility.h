@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_TPM_UTILITY_H
-#define CHAPS_TPM_UTILITY_H
+#ifndef CHAPS_TPM_UTILITY_H_
+#define CHAPS_TPM_UTILITY_H_
 
 #include <string>
 
@@ -189,6 +189,6 @@ class TPMUtility {
   virtual bool IsSRKReady() = 0;
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_TPM_UTILITY_H
+#endif  // CHAPS_TPM_UTILITY_H_

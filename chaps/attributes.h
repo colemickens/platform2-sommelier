@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_ATTRIBUTES_H
-#define CHAPS_ATTRIBUTES_H
+#ifndef CHAPS_ATTRIBUTES_H_
+#define CHAPS_ATTRIBUTES_H_
 
 #include <string>
 #include <vector>
@@ -76,6 +76,6 @@ class EXPORT_SPEC Attributes {
   DISALLOW_COPY_AND_ASSIGN(Attributes);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_ATTRIBUTES_H
+#endif  // CHAPS_ATTRIBUTES_H_

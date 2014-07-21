@@ -19,23 +19,23 @@ namespace chaps {
 
 class PamHelperMock : public PamHelper {
  public:
-  MOCK_METHOD2(GetPamUser, bool (pam_handle_t*, std::string*));
+  MOCK_METHOD2(GetPamUser, bool(pam_handle_t*, std::string*));
 
-  MOCK_METHOD3(GetPamPassword, bool (pam_handle_t*,
-                                     bool old_password,
-                                     chromeos::SecureBlob*));
-  MOCK_METHOD3(SaveUserAndPassword, bool (pam_handle_t*,
-                                          const std::string&,
-                                          const chromeos::SecureBlob&));
-  MOCK_METHOD3(RetrieveUserAndPassword, bool (pam_handle_t*,
-                                              std::string*,
-                                              chromeos::SecureBlob*));
-  MOCK_METHOD3(PutEnvironmentVariable, bool (pam_handle_t*,
-                                             const std::string&,
-                                             const std::string&));
-  MOCK_METHOD3(GetEnvironmentVariable, bool (pam_handle_t*,
-                                             const std::string&,
-                                             std::string*));
+  MOCK_METHOD3(GetPamPassword, bool(pam_handle_t*,
+                                    bool old_password,
+                                    chromeos::SecureBlob*));
+  MOCK_METHOD3(SaveUserAndPassword, bool(pam_handle_t*,
+                                         const std::string&,
+                                         const chromeos::SecureBlob&));
+  MOCK_METHOD3(RetrieveUserAndPassword, bool(pam_handle_t*,
+                                             std::string*,
+                                             chromeos::SecureBlob*));
+  MOCK_METHOD3(PutEnvironmentVariable, bool(pam_handle_t*,
+                                            const std::string&,
+                                            const std::string&));
+  MOCK_METHOD3(GetEnvironmentVariable, bool(pam_handle_t*,
+                                            const std::string&,
+                                            std::string*));
 };
 
 }  // namespace chaps

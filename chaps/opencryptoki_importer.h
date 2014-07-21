@@ -111,7 +111,7 @@ class OpencryptokiImporter : public ObjectImporter {
   DISALLOW_COPY_AND_ASSIGN(OpencryptokiImporter);
 };
 
-}  // namespace
+}  // namespace chaps
 
 #endif  // CHAPS_OPENCRYPTOKI_IMPORTER_H_
 

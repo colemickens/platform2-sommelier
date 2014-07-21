@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_SESSION_IMPL_H
-#define CHAPS_SESSION_IMPL_H
+#ifndef CHAPS_SESSION_IMPL_H_
+#define CHAPS_SESSION_IMPL_H_
 
 #include "chaps/session.h"
 
@@ -207,6 +207,6 @@ class SessionImpl : public Session {
   DISALLOW_COPY_AND_ASSIGN(SessionImpl);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_SESSION_IMPL_H
+#endif  // CHAPS_SESSION_IMPL_H_

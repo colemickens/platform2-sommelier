@@ -24,7 +24,6 @@ namespace chaps {
 //   is changed.
 class TokenManagerInterface {
  public:
-
   // Open an isolate into which tokens can be loaded. To attempt to open an
   // existing isolate, pass its isolate credential, otherwise pass be empty
   // SecureBlob to create a new isolate.  Returns true if successful.
@@ -87,6 +86,6 @@ class TokenManagerInterface {
                             base::FilePath* path) = 0;
 };
 
-}  // namespace
+}  // namespace chaps
 
 #endif  // CHAPS_TOKEN_MANAGER_INTERFACE_H_

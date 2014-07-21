@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "object_pool_mock.h"
+#include "chaps/object_pool_mock.h"
 
-#include "object.h"
+#include "chaps/object.h"
 
 namespace chaps {
 

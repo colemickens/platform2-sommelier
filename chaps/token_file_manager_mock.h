@@ -22,12 +22,12 @@ class TokenFileManagerMock : public TokenFileManager {
  public:
   TokenFileManagerMock() : TokenFileManager(-1, -1) { }
 
-  MOCK_METHOD2(GetUserTokenPath, bool (const std::string&, base::FilePath*));
-  MOCK_METHOD1(CreateUserTokenDirectory, bool (const base::FilePath&));
-  MOCK_METHOD1(CheckUserTokenPermissions, bool (const base::FilePath&));
-  MOCK_METHOD3(SaltAuthData, bool (const base::FilePath&,
-                                   const chromeos::SecureBlob&,
-                                   chromeos::SecureBlob*));
+  MOCK_METHOD2(GetUserTokenPath, bool(const std::string&, base::FilePath*));
+  MOCK_METHOD1(CreateUserTokenDirectory, bool(const base::FilePath&));
+  MOCK_METHOD1(CheckUserTokenPermissions, bool(const base::FilePath&));
+  MOCK_METHOD3(SaltAuthData, bool(const base::FilePath&,
+                                  const chromeos::SecureBlob&,
+                                  chromeos::SecureBlob*));
 };
 
 }  // namespace chaps

@@ -42,9 +42,9 @@ ChapsAdaptor::~ChapsAdaptor() {}
 
 void ChapsAdaptor::OpenIsolate(
       const std::vector<uint8_t>& isolate_credential_in,
-      std::vector<uint8_t>& isolate_credential_out,
-      bool& new_isolate_created,
-      bool& result) {
+      std::vector<uint8_t>& isolate_credential_out,  // NOLINT - refs
+      bool& new_isolate_created,  // NOLINT(runtime/references)
+      bool& result) {  // NOLINT(runtime/references)
   VLOG(1) << "CALL: " << __func__;
   result = false;
   SecureBlob isolate_credential(&isolate_credential_in.front(),
@@ -52,15 +52,15 @@ void ChapsAdaptor::OpenIsolate(
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential_in));
   if (token_manager_)
     result = token_manager_->OpenIsolate(&isolate_credential,
-                                          &new_isolate_created);
+                                         &new_isolate_created);
   isolate_credential_out.swap(isolate_credential);
 }
 
 void ChapsAdaptor::OpenIsolate(
       const std::vector<uint8_t>& isolate_credential_in,
-      std::vector<uint8_t>& isolate_credential_out,
-      bool& new_isolate_created,
-      bool& result,
+      std::vector<uint8_t>& isolate_credential_out,  // NOLINT - refs
+      bool& new_isolate_created,  // NOLINT(runtime/references)
+      bool& result,  // NOLINT(runtime/references)
       ::DBus::Error& /*error*/) {
   OpenIsolate(isolate_credential_in, isolate_credential_out,
               new_isolate_created, result);
@@ -85,8 +85,8 @@ void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
                              const string& path,
                              const vector<uint8_t>& auth_data,
                              const string& label,
-                             uint64_t& slot_id,
-                             bool& result) {
+                             uint64_t& slot_id,  // NOLINT(runtime/references)
+                             bool& result) {  // NOLINT(runtime/references)
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(&isolate_credential.front(),
@@ -106,8 +106,8 @@ void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
                              const string& path,
                              const vector<uint8_t>& auth_data,
                              const string& label,
-                             uint64_t& slot_id,
-                             bool& result,
+                             uint64_t& slot_id,  // NOLINT(runtime/references)
+                             bool& result,  // NOLINT(runtime/references)
                              ::DBus::Error& /*error*/) {
   LoadToken(isolate_credential, path, auth_data, label, slot_id, result);
 }
@@ -152,8 +152,8 @@ void ChapsAdaptor::ChangeTokenAuthData(const string& path,
 
 void ChapsAdaptor::GetTokenPath(const std::vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
-                                std::string& path,
-                                bool& result) {
+                                std::string& path,  // NOLINT - refs
+                                bool& result) {  // NOLINT(runtime/references)
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(&isolate_credential.front(),
@@ -170,8 +170,8 @@ void ChapsAdaptor::GetTokenPath(const std::vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetTokenPath(const std::vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
-                                std::string& path,
-                                bool& result,
+                                std::string& path,  // NOLINT - refs
+                                bool& result,  // NOLINT(runtime/references)
                                 ::DBus::Error& /*error*/) {
   GetTokenPath(isolate_credential, slot_id, path, result);
 }
@@ -187,8 +187,8 @@ void ChapsAdaptor::SetLogLevel(const int32_t& level,
 
 void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
                                const bool& token_present,
-                               vector<uint64_t>& slot_list,
-                               uint32_t& result) {
+                               vector<uint64_t>& slot_list,  // NOLINT - refs
+                               uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "token_present=" << token_present;
@@ -203,22 +203,22 @@ void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
                                const bool& token_present,
-                               vector<uint64_t>& slot_list,
-                               uint32_t& result,
+                               vector<uint64_t>& slot_list,  // NOLINT - rfs
+                               uint32_t& result,  // NOLINT(runtime/references)
                                ::DBus::Error& /*error*/) {
   GetSlotList(isolate_credential, token_present, slot_list, result);
 }
 
 void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
                                const uint64_t& slot_id,
-                               vector<uint8_t>& slot_description,
-                               vector<uint8_t>& manufacturer_id,
-                               uint64_t& flags,
-                               uint8_t& hardware_version_major,
-                               uint8_t& hardware_version_minor,
-                               uint8_t& firmware_version_major,
-                               uint8_t& firmware_version_minor,
-                               uint32_t& result) {
+                               vector<uint8_t>& slot_description,  // NOLINT - refs
+                               vector<uint8_t>& manufacturer_id,  // NOLINT - refs
+                               uint64_t& flags,  // NOLINT - refs
+                               uint8_t& hardware_version_major,  // NOLINT - refs
+                               uint8_t& hardware_version_minor,  // NOLINT - refs
+                               uint8_t& firmware_version_major,  // NOLINT - refs
+                               uint8_t& firmware_version_minor,  // NOLINT - refs
+                               uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
@@ -240,14 +240,14 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
                                const uint64_t& slot_id,
-                               vector<uint8_t>& slot_description,
-                               vector<uint8_t>& manufacturer_id,
-                               uint64_t& flags,
-                               uint8_t& hardware_version_major,
-                               uint8_t& hardware_version_minor,
-                               uint8_t& firmware_version_major,
-                               uint8_t& firmware_version_minor,
-                               uint32_t& result,
+                               vector<uint8_t>& slot_description,  // NOLINT - refs
+                               vector<uint8_t>& manufacturer_id,  // NOLINT - refs
+                               uint64_t& flags,  // NOLINT - refs
+                               uint8_t& hardware_version_major,  // NOLINT - refs
+                               uint8_t& hardware_version_minor,  // NOLINT - refs
+                               uint8_t& firmware_version_major,  // NOLINT - refs
+                               uint8_t& firmware_version_minor,  // NOLINT - refs
+                               uint32_t& result,  // NOLINT - refs
                                ::DBus::Error& /*error*/) {
   GetSlotInfo(isolate_credential, slot_id, slot_description, manufacturer_id,
               flags, hardware_version_major, hardware_version_minor,
@@ -257,26 +257,26 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
-                                vector<uint8_t>& label,
-                                vector<uint8_t>& manufacturer_id,
-                                vector<uint8_t>& model,
-                                vector<uint8_t>& serial_number,
-                                uint64_t& flags,
-                                uint64_t& max_session_count,
-                                uint64_t& session_count,
-                                uint64_t& max_session_count_rw,
-                                uint64_t& session_count_rw,
-                                uint64_t& max_pin_len,
-                                uint64_t& min_pin_len,
-                                uint64_t& total_public_memory,
-                                uint64_t& free_public_memory,
-                                uint64_t& total_private_memory,
-                                uint64_t& free_private_memory,
-                                uint8_t& hardware_version_major,
-                                uint8_t& hardware_version_minor,
-                                uint8_t& firmware_version_major,
-                                uint8_t& firmware_version_minor,
-                                uint32_t& result) {
+                                vector<uint8_t>& label,  // NOLINT - refs
+                                vector<uint8_t>& manufacturer_id,  // NOLINT - refs
+                                vector<uint8_t>& model,  // NOLINT - refs
+                                vector<uint8_t>& serial_number,  // NOLINT - refs
+                                uint64_t& flags,  // NOLINT - refs
+                                uint64_t& max_session_count,  // NOLINT - refs
+                                uint64_t& session_count,  // NOLINT - refs
+                                uint64_t& max_session_count_rw,  // NOLINT - refs
+                                uint64_t& session_count_rw,  // NOLINT - refs
+                                uint64_t& max_pin_len,  // NOLINT - refs
+                                uint64_t& min_pin_len,  // NOLINT - refs
+                                uint64_t& total_public_memory,  // NOLINT - refs
+                                uint64_t& free_public_memory,  // NOLINT - refs
+                                uint64_t& total_private_memory,  // NOLINT - refs
+                                uint64_t& free_private_memory,  // NOLINT - refs
+                                uint8_t& hardware_version_major,  // NOLINT - refs
+                                uint8_t& hardware_version_minor,  // NOLINT - refs
+                                uint8_t& firmware_version_major,  // NOLINT - refs
+                                uint8_t& firmware_version_minor,  // NOLINT - refs
+                                uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
@@ -310,26 +310,26 @@ void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
-                                vector<uint8_t>& label,
-                                vector<uint8_t>& manufacturer_id,
-                                vector<uint8_t>& model,
-                                vector<uint8_t>& serial_number,
-                                uint64_t& flags,
-                                uint64_t& max_session_count,
-                                uint64_t& session_count,
-                                uint64_t& max_session_count_rw,
-                                uint64_t& session_count_rw,
-                                uint64_t& max_pin_len,
-                                uint64_t& min_pin_len,
-                                uint64_t& total_public_memory,
-                                uint64_t& free_public_memory,
-                                uint64_t& total_private_memory,
-                                uint64_t& free_private_memory,
-                                uint8_t& hardware_version_major,
-                                uint8_t& hardware_version_minor,
-                                uint8_t& firmware_version_major,
-                                uint8_t& firmware_version_minor,
-                                uint32_t& result,
+                                vector<uint8_t>& label,  // NOLINT - refs
+                                vector<uint8_t>& manufacturer_id,  // NOLINT - refs
+                                vector<uint8_t>& model,  // NOLINT - refs
+                                vector<uint8_t>& serial_number,  // NOLINT - refs
+                                uint64_t& flags,  // NOLINT - refs
+                                uint64_t& max_session_count,  // NOLINT - refs
+                                uint64_t& session_count,  // NOLINT - refs
+                                uint64_t& max_session_count_rw,  // NOLINT - refs
+                                uint64_t& session_count_rw,  // NOLINT - refs
+                                uint64_t& max_pin_len,  // NOLINT - refs
+                                uint64_t& min_pin_len,  // NOLINT - refs
+                                uint64_t& total_public_memory,  // NOLINT - refs
+                                uint64_t& free_public_memory,  // NOLINT - refs
+                                uint64_t& total_private_memory,  // NOLINT - refs
+                                uint64_t& free_private_memory,  // NOLINT - refs
+                                uint8_t& hardware_version_major,  // NOLINT - refs
+                                uint8_t& hardware_version_minor,  // NOLINT - refs
+                                uint8_t& firmware_version_major,  // NOLINT - refs
+                                uint8_t& firmware_version_minor,  // NOLINT - refs
+                                uint32_t& result,  // NOLINT - refs
                                 ::DBus::Error& /*error*/) {
   GetTokenInfo(isolate_credential, slot_id, label, manufacturer_id, model,
                serial_number, flags, max_session_count, session_count,
@@ -342,8 +342,8 @@ void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
                                     const uint64_t& slot_id,
-                                    vector<uint64_t>& mechanism_list,
-                                    uint32_t& result) {
+                                    vector<uint64_t>& mechanism_list,  // NOLINT - refs
+                                    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
@@ -359,8 +359,8 @@ void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
                                     const uint64_t& slot_id,
-                                    vector<uint64_t>& mechanism_list,
-                                    uint32_t& result,
+                                    vector<uint64_t>& mechanism_list,  // NOLINT - refs
+                                    uint32_t& result,  // NOLINT - refs
                                     ::DBus::Error& /*error*/) {
   GetMechanismList(isolate_credential, slot_id, mechanism_list, result);
 }
@@ -368,10 +368,10 @@ void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                     const uint64_t& slot_id,
                                     const uint64_t& mechanism_type,
-                                    uint64_t& min_key_size,
-                                    uint64_t& max_key_size,
-                                    uint64_t& flags,
-                                    uint32_t& result) {
+                                    uint64_t& min_key_size,  // NOLINT - refs
+                                    uint64_t& max_key_size,  // NOLINT - refs
+                                    uint64_t& flags,  // NOLINT - refs
+                                    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
@@ -393,10 +393,10 @@ void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                     const uint64_t& slot_id,
                                     const uint64_t& mechanism_type,
-                                    uint64_t& min_key_size,
-                                    uint64_t& max_key_size,
-                                    uint64_t& flags,
-                                    uint32_t& result,
+                                    uint64_t& min_key_size,  // NOLINT - refs
+                                    uint64_t& max_key_size,  // NOLINT - refs
+                                    uint64_t& flags,  // NOLINT - refs
+                                    uint32_t& result,  // NOLINT - refs
                                     ::DBus::Error& /*error*/) {
   GetMechanismInfo(isolate_credential, slot_id, mechanism_type, min_key_size,
                    max_key_size, flags, result);
@@ -494,8 +494,8 @@ uint32_t ChapsAdaptor::SetPIN(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::OpenSession(const vector<uint8_t>& isolate_credential,
                                const uint64_t& slot_id,
                                const uint64_t& flags,
-                               uint64_t& session_id,
-                               uint32_t& result) {
+                               uint64_t& session_id,  // NOLINT - refs
+                               uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
@@ -513,8 +513,8 @@ void ChapsAdaptor::OpenSession(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::OpenSession(const vector<uint8_t>& isolate_credential,
                                const uint64_t& slot_id,
                                const uint64_t& flags,
-                               uint64_t& session_id,
-                               uint32_t& result,
+                               uint64_t& session_id,  // NOLINT - refs
+                               uint32_t& result,  // NOLINT - refs
                                ::DBus::Error& /*error*/) {
   OpenSession(isolate_credential, slot_id, flags, session_id, result);
 }
@@ -560,11 +560,11 @@ uint32_t ChapsAdaptor::CloseAllSessions(
 
 void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
                                   const uint64_t& session_id,
-                                  uint64_t& slot_id,
-                                  uint64_t& state,
-                                  uint64_t& flags,
-                                  uint64_t& device_error,
-                                  uint32_t& result) {
+                                  uint64_t& slot_id,  // NOLINT - refs
+                                  uint64_t& state,  // NOLINT - refs
+                                  uint64_t& flags,  // NOLINT - refs
+                                  uint64_t& device_error,  // NOLINT - refs
+                                  uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -585,11 +585,11 @@ void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
                                   const uint64_t& session_id,
-                                  uint64_t& slot_id,
-                                  uint64_t& state,
-                                  uint64_t& flags,
-                                  uint64_t& device_error,
-                                  uint32_t& result,
+                                  uint64_t& slot_id,  // NOLINT - refs
+                                  uint64_t& state,  // NOLINT - refs
+                                  uint64_t& flags,  // NOLINT - refs
+                                  uint64_t& device_error,  // NOLINT - refs
+                                  uint32_t& result,  // NOLINT - refs
                                   ::DBus::Error& /*error*/) {
   GetSessionInfo(isolate_credential, session_id, slot_id, state, flags,
                  device_error, result);
@@ -597,8 +597,8 @@ void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetOperationState(const vector<uint8_t>& isolate_credential,
                                      const uint64_t& session_id,
-                                     vector<uint8_t>& operation_state,
-                                     uint32_t& result) {
+                                     vector<uint8_t>& operation_state,  // NOLINT - refs
+                                     uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(&isolate_credential.front(),
@@ -611,8 +611,8 @@ void ChapsAdaptor::GetOperationState(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetOperationState(const vector<uint8_t>& isolate_credential,
                                      const uint64_t& session_id,
-                                     vector<uint8_t>& operation_state,
-                                     uint32_t& result,
+                                     vector<uint8_t>& operation_state,  // NOLINT - refs
+                                     uint32_t& result,  // NOLINT - refs
                                      ::DBus::Error& /*error*/) {
   GetOperationState(isolate_credential, session_id, operation_state, result);
 }
@@ -698,8 +698,8 @@ void ChapsAdaptor::CreateObject(
       const vector<uint8_t>& isolate_credential,
       const uint64_t& session_id,
       const vector<uint8_t>& attributes,
-      uint64_t& new_object_handle,
-      uint32_t& result) {
+      uint64_t& new_object_handle,  // NOLINT(runtime/references)
+      uint32_t& result) {  // NOLINT(runtime/references)
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -719,8 +719,8 @@ void ChapsAdaptor::CreateObject(
       const vector<uint8_t>& isolate_credential,
       const uint64_t& session_id,
       const vector<uint8_t>& attributes,
-      uint64_t& new_object_handle,
-      uint32_t& result,
+      uint64_t& new_object_handle,  // NOLINT(runtime/references)
+      uint32_t& result,  // NOLINT(runtime/references)
       ::DBus::Error& /*error*/) {
   CreateObject(isolate_credential, session_id, attributes, new_object_handle,
                result);
@@ -731,8 +731,8 @@ void ChapsAdaptor::CopyObject(
       const uint64_t& session_id,
       const uint64_t& object_handle,
       const vector<uint8_t>& attributes,
-      uint64_t& new_object_handle,
-      uint32_t& result) {
+      uint64_t& new_object_handle,  // NOLINT(runtime/references)
+      uint32_t& result) {  // NOLINT(runtime/references)
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -755,8 +755,8 @@ void ChapsAdaptor::CopyObject(
       const uint64_t& session_id,
       const uint64_t& object_handle,
       const vector<uint8_t>& attributes,
-      uint64_t& new_object_handle,
-      uint32_t& result,
+      uint64_t& new_object_handle,  // NOLINT(runtime/references)
+      uint32_t& result,  // NOLINT(runtime/references)
       ::DBus::Error& /*error*/) {
   CopyObject(isolate_credential, session_id, object_handle, attributes,
              new_object_handle, result);
@@ -787,8 +787,8 @@ uint32_t ChapsAdaptor::DestroyObject(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GetObjectSize(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const uint64_t& object_handle,
-                                 uint64_t& object_size,
-                                 uint32_t& result) {
+                                 uint64_t& object_size,  // NOLINT - refs
+                                 uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -806,8 +806,8 @@ void ChapsAdaptor::GetObjectSize(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GetObjectSize(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const uint64_t& object_handle,
-                                 uint64_t& object_size,
-                                 uint32_t& result,
+                                 uint64_t& object_size,  // NOLINT - refs
+                                 uint32_t& result,  // NOLINT - refs
                                  ::DBus::Error& /*error*/) {
   GetObjectSize(isolate_credential, session_id, object_handle, object_size,
                 result);
@@ -817,8 +817,8 @@ void ChapsAdaptor::GetAttributeValue(const vector<uint8_t>& isolate_credential,
                                      const uint64_t& session_id,
                                      const uint64_t& object_handle,
                                      const vector<uint8_t>& attributes_in,
-                                     vector<uint8_t>& attributes_out,
-                                     uint32_t& result) {
+                                     vector<uint8_t>& attributes_out,  // NOLINT - refs
+                                     uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -841,8 +841,8 @@ void ChapsAdaptor::GetAttributeValue(const vector<uint8_t>& isolate_credential,
                                      const uint64_t& session_id,
                                      const uint64_t& object_handle,
                                      const vector<uint8_t>& attributes_in,
-                                     vector<uint8_t>& attributes_out,
-                                     uint32_t& result,
+                                     vector<uint8_t>& attributes_out,  // NOLINT - refs
+                                     uint32_t& result,  // NOLINT - refs
                                      ::DBus::Error& /*error*/) {
   GetAttributeValue(isolate_credential, session_id, object_handle,
                     attributes_in, attributes_out, result);
@@ -904,8 +904,8 @@ uint32_t ChapsAdaptor::FindObjectsInit(
 void ChapsAdaptor::FindObjects(const vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const uint64_t& max_object_count,
-                               vector<uint64_t>& object_list,
-                               uint32_t& result) {
+                               vector<uint64_t>& object_list,  // NOLINT - refs
+                               uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -924,8 +924,8 @@ void ChapsAdaptor::FindObjects(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::FindObjects(const vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const uint64_t& max_object_count,
-                               vector<uint64_t>& object_list,
-                               uint32_t& result,
+                               vector<uint64_t>& object_list,  // NOLINT - refs
+                               uint32_t& result,  // NOLINT - refs
                                ::DBus::Error& /*error*/) {
   FindObjects(isolate_credential, session_id, max_object_count, object_list,
               result);
@@ -988,9 +988,9 @@ void ChapsAdaptor::Encrypt(const vector<uint8_t>& isolate_credential,
                            const uint64_t& session_id,
                            const vector<uint8_t>& data_in,
                            const uint64_t& max_out_length,
-                           uint64_t& actual_out_length,
-                           vector<uint8_t>& data_out,
-                           uint32_t& result) {
+                           uint64_t& actual_out_length,  // NOLINT - refs
+                           vector<uint8_t>& data_out,  // NOLINT - refs
+                           uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1012,9 +1012,9 @@ void ChapsAdaptor::Encrypt(const vector<uint8_t>& isolate_credential,
                            const uint64_t& session_id,
                            const vector<uint8_t>& data_in,
                            const uint64_t& max_out_length,
-                           uint64_t& actual_out_length,
-                           vector<uint8_t>& data_out,
-                           uint32_t& result,
+                           uint64_t& actual_out_length,  // NOLINT - refs
+                           vector<uint8_t>& data_out,  // NOLINT - refs
+                           uint32_t& result,  // NOLINT - refs
                            ::DBus::Error& /*error*/) {
   Encrypt(isolate_credential, session_id, data_in, max_out_length,
           actual_out_length, data_out, result);
@@ -1024,9 +1024,9 @@ void ChapsAdaptor::EncryptUpdate(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const vector<uint8_t>& data_in,
                                  const uint64_t& max_out_length,
-                                 uint64_t& actual_out_length,
-                                 vector<uint8_t>& data_out,
-                                 uint32_t& result) {
+                                 uint64_t& actual_out_length,  // NOLINT - refs
+                                 vector<uint8_t>& data_out,  // NOLINT - refs
+                                 uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1048,9 +1048,10 @@ void ChapsAdaptor::EncryptUpdate(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const vector<uint8_t>& data_in,
                                  const uint64_t& max_out_length,
-                                 uint64_t& actual_out_length,
-                                 vector<uint8_t>& data_out,
-                                 uint32_t& result, ::DBus::Error& /*error*/) {
+                                 uint64_t& actual_out_length,  // NOLINT - refs
+                                 vector<uint8_t>& data_out,  // NOLINT - refs
+                                 uint32_t& result,  // NOLINT - refs
+                                 ::DBus::Error& /*error*/) {
   EncryptUpdate(isolate_credential, session_id, data_in, max_out_length,
                 actual_out_length, data_out, result);
 }
@@ -1058,9 +1059,9 @@ void ChapsAdaptor::EncryptUpdate(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& session_id,
                                 const uint64_t& max_out_length,
-                                uint64_t& actual_out_length,
-                                vector<uint8_t>& data_out,
-                                uint32_t& result) {
+                                uint64_t& actual_out_length,  // NOLINT - refs
+                                vector<uint8_t>& data_out,  // NOLINT - refs
+                                uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1080,9 +1081,9 @@ void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& session_id,
                                 const uint64_t& max_out_length,
-                                uint64_t& actual_out_length,
-                                vector<uint8_t>& data_out,
-                                uint32_t& result,
+                                uint64_t& actual_out_length,  // NOLINT - refs
+                                vector<uint8_t>& data_out,  // NOLINT - refs
+                                uint32_t& result,  // NOLINT - refs
                                 ::DBus::Error& /*error*/) {
   EncryptFinal(isolate_credential, session_id, max_out_length,
                actual_out_length, data_out, result);
@@ -1126,9 +1127,9 @@ void ChapsAdaptor::Decrypt(const vector<uint8_t>& isolate_credential,
                            const uint64_t& session_id,
                            const vector<uint8_t>& data_in,
                            const uint64_t& max_out_length,
-                           uint64_t& actual_out_length,
-                           vector<uint8_t>& data_out,
-                           uint32_t& result) {
+                           uint64_t& actual_out_length,  // NOLINT - refs
+                           vector<uint8_t>& data_out,  // NOLINT - refs
+                           uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1150,9 +1151,9 @@ void ChapsAdaptor::Decrypt(const vector<uint8_t>& isolate_credential,
                            const uint64_t& session_id,
                            const vector<uint8_t>& data_in,
                            const uint64_t& max_out_length,
-                           uint64_t& actual_out_length,
-                           vector<uint8_t>& data_out,
-                           uint32_t& result,
+                           uint64_t& actual_out_length,  // NOLINT - refs
+                           vector<uint8_t>& data_out,  // NOLINT - refs
+                           uint32_t& result,  // NOLINT - refs
                            ::DBus::Error& /*error*/) {
   Decrypt(isolate_credential, session_id, data_in, max_out_length,
           actual_out_length, data_out, result);
@@ -1162,9 +1163,9 @@ void ChapsAdaptor::DecryptUpdate(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const vector<uint8_t>& data_in,
                                  const uint64_t& max_out_length,
-                                 uint64_t& actual_out_length,
-                                 vector<uint8_t>& data_out,
-                                 uint32_t& result) {
+                                 uint64_t& actual_out_length,  // NOLINT - refs
+                                 vector<uint8_t>& data_out,  // NOLINT - refs
+                                 uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1186,9 +1187,9 @@ void ChapsAdaptor::DecryptUpdate(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const vector<uint8_t>& data_in,
                                  const uint64_t& max_out_length,
-                                 uint64_t& actual_out_length,
-                                 vector<uint8_t>& data_out,
-                                 uint32_t& result,
+                                 uint64_t& actual_out_length,  // NOLINT - refs
+                                 vector<uint8_t>& data_out,  // NOLINT - refs
+                                 uint32_t& result,  // NOLINT - refs
                                  ::DBus::Error& /*error*/) {
   DecryptUpdate(isolate_credential, session_id, data_in, max_out_length,
                 actual_out_length, data_out, result);
@@ -1197,9 +1198,9 @@ void ChapsAdaptor::DecryptUpdate(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& session_id,
                                 const uint64_t& max_out_length,
-                                uint64_t& actual_out_length,
-                                vector<uint8_t>& data_out,
-                                uint32_t& result) {
+                                uint64_t& actual_out_length,  // NOLINT - refs
+                                vector<uint8_t>& data_out,  // NOLINT - refs
+                                uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1219,9 +1220,9 @@ void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& session_id,
                                 const uint64_t& max_out_length,
-                                uint64_t& actual_out_length,
-                                vector<uint8_t>& data_out,
-                                uint32_t& result,
+                                uint64_t& actual_out_length,  // NOLINT - refs
+                                vector<uint8_t>& data_out,  // NOLINT - refs
+                                uint32_t& result,  // NOLINT - refs
                                 ::DBus::Error& /*error*/) {
   DecryptFinal(isolate_credential, session_id, max_out_length,
                actual_out_length, data_out, result);
@@ -1261,9 +1262,9 @@ void ChapsAdaptor::Digest(const vector<uint8_t>& isolate_credential,
                           const uint64_t& session_id,
                           const vector<uint8_t>& data_in,
                           const uint64_t& max_out_length,
-                          uint64_t& actual_out_length,
-                          vector<uint8_t>& digest,
-                          uint32_t& result) {
+                          uint64_t& actual_out_length,  // NOLINT - refs
+                          vector<uint8_t>& digest,  // NOLINT - refs
+                          uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1285,9 +1286,9 @@ void ChapsAdaptor::Digest(const vector<uint8_t>& isolate_credential,
                           const uint64_t& session_id,
                           const vector<uint8_t>& data_in,
                           const uint64_t& max_out_length,
-                          uint64_t& actual_out_length,
-                          vector<uint8_t>& digest,
-                          uint32_t& result,
+                          uint64_t& actual_out_length,  // NOLINT - refs
+                          vector<uint8_t>& digest,  // NOLINT - refs
+                          uint32_t& result,  // NOLINT - refs
                           ::DBus::Error& /*error*/) {
   Digest(isolate_credential, session_id, data_in, max_out_length,
          actual_out_length, digest, result);
@@ -1340,9 +1341,9 @@ uint32_t ChapsAdaptor::DigestKey(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const uint64_t& max_out_length,
-                               uint64_t& actual_out_length,
-                               vector<uint8_t>& digest,
-                               uint32_t& result) {
+                               uint64_t& actual_out_length,  // NOLINT - refs
+                               vector<uint8_t>& digest,  // NOLINT - refs
+                               uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1362,9 +1363,9 @@ void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const uint64_t& max_out_length,
-                               uint64_t& actual_out_length,
-                               vector<uint8_t>& digest,
-                               uint32_t& result,
+                               uint64_t& actual_out_length,  // NOLINT - refs
+                               vector<uint8_t>& digest,  // NOLINT - refs
+                               uint32_t& result,  // NOLINT - refs
                                ::DBus::Error& /*error*/) {
   DigestFinal(isolate_credential, session_id, max_out_length, actual_out_length,
               digest, result);
@@ -1406,9 +1407,9 @@ void ChapsAdaptor::Sign(const vector<uint8_t>& isolate_credential,
                         const uint64_t& session_id,
                         const vector<uint8_t>& data,
                         const uint64_t& max_out_length,
-                        uint64_t& actual_out_length,
-                        vector<uint8_t>& signature,
-                        uint32_t& result) {
+                        uint64_t& actual_out_length,  // NOLINT - refs
+                        vector<uint8_t>& signature,  // NOLINT - refs
+                        uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1430,9 +1431,9 @@ void ChapsAdaptor::Sign(const vector<uint8_t>& isolate_credential,
                         const uint64_t& session_id,
                         const vector<uint8_t>& data,
                         const uint64_t& max_out_length,
-                        uint64_t& actual_out_length,
-                        vector<uint8_t>& signature,
-                        uint32_t& result,
+                        uint64_t& actual_out_length,  // NOLINT - refs
+                        vector<uint8_t>& signature,  // NOLINT - refs
+                        uint32_t& result,  // NOLINT - refs
                         ::DBus::Error& /*error*/) {
   Sign(isolate_credential, session_id, data, max_out_length, actual_out_length,
        signature, result);
@@ -1462,9 +1463,9 @@ uint32_t ChapsAdaptor::SignUpdate(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::SignFinal(const vector<uint8_t>& isolate_credential,
                              const uint64_t& session_id,
                              const uint64_t& max_out_length,
-                             uint64_t& actual_out_length,
-                             vector<uint8_t>& signature,
-                             uint32_t& result) {
+                             uint64_t& actual_out_length,  // NOLINT - refs
+                             vector<uint8_t>& signature,  // NOLINT - refs
+                             uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1484,9 +1485,10 @@ void ChapsAdaptor::SignFinal(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::SignFinal(const vector<uint8_t>& isolate_credential,
                              const uint64_t& session_id,
                              const uint64_t& max_out_length,
-                             uint64_t& actual_out_length,
-                             vector<uint8_t>& signature,
-                             uint32_t& result, ::DBus::Error& /*error*/) {
+                             uint64_t& actual_out_length,  // NOLINT - refs
+                             vector<uint8_t>& signature,  // NOLINT - refs
+                             uint32_t& result,  // NOLINT - refs
+                             ::DBus::Error& /*error*/) {
   SignFinal(isolate_credential, session_id, max_out_length, actual_out_length,
             signature, result);
 }
@@ -1529,9 +1531,9 @@ void ChapsAdaptor::SignRecover(const vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const vector<uint8_t>& data,
                                const uint64_t& max_out_length,
-                               uint64_t& actual_out_length,
-                               vector<uint8_t>& signature,
-                               uint32_t& result) {
+                               uint64_t& actual_out_length,  // NOLINT - refs
+                               vector<uint8_t>& signature,  // NOLINT - refs
+                               uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1553,9 +1555,9 @@ void ChapsAdaptor::SignRecover(const vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const vector<uint8_t>& data,
                                const uint64_t& max_out_length,
-                               uint64_t& actual_out_length,
-                               vector<uint8_t>& signature,
-                               uint32_t& result,
+                               uint64_t& actual_out_length,  // NOLINT - refs
+                               vector<uint8_t>& signature,  // NOLINT - refs
+                               uint32_t& result,  // NOLINT - refs
                                ::DBus::Error& /*error*/) {
   SignRecover(isolate_credential, session_id, data, max_out_length,
               actual_out_length, signature, result);
@@ -1697,9 +1699,9 @@ void ChapsAdaptor::VerifyRecover(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const vector<uint8_t>& signature,
                                  const uint64_t& max_out_length,
-                                 uint64_t& actual_out_length,
-                                 vector<uint8_t>& data,
-                                 uint32_t& result) {
+                                 uint64_t& actual_out_length,  // NOLINT - refs
+                                 vector<uint8_t>& data,  // NOLINT - refs
+                                 uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1721,9 +1723,9 @@ void ChapsAdaptor::VerifyRecover(const vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
                                  const vector<uint8_t>& signature,
                                  const uint64_t& max_out_length,
-                                 uint64_t& actual_out_length,
-                                 vector<uint8_t>& data,
-                                 uint32_t& result,
+                                 uint64_t& actual_out_length,  // NOLINT - refs
+                                 vector<uint8_t>& data,  // NOLINT - refs
+                                 uint32_t& result,  // NOLINT - refs
                                  ::DBus::Error& /*error*/) {
   VerifyRecover(isolate_credential, session_id, signature, max_out_length,
                 actual_out_length, data, result);
@@ -1734,9 +1736,9 @@ void ChapsAdaptor::DigestEncryptUpdate(
     const uint64_t& session_id,
     const vector<uint8_t>& data_in,
     const uint64_t& max_out_length,
-    uint64_t& actual_out_length,
-    vector<uint8_t>& data_out,
-    uint32_t& result) {
+    uint64_t& actual_out_length,  // NOLINT - refs
+    vector<uint8_t>& data_out,  // NOLINT - refs
+    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1759,9 +1761,9 @@ void ChapsAdaptor::DigestEncryptUpdate(
     const uint64_t& session_id,
     const vector<uint8_t>& data_in,
     const uint64_t& max_out_length,
-    uint64_t& actual_out_length,
-    vector<uint8_t>& data_out,
-    uint32_t& result,
+    uint64_t& actual_out_length,  // NOLINT - refs
+    vector<uint8_t>& data_out,  // NOLINT - refs
+    uint32_t& result,  // NOLINT - refs
     ::DBus::Error& /*error*/) {
   DigestEncryptUpdate(isolate_credential, session_id, data_in, max_out_length,
                       actual_out_length, data_out, result);
@@ -1772,9 +1774,9 @@ void ChapsAdaptor::DecryptDigestUpdate(
     const uint64_t& session_id,
     const vector<uint8_t>& data_in,
     const uint64_t& max_out_length,
-    uint64_t& actual_out_length,
-    vector<uint8_t>& data_out,
-    uint32_t& result) {
+    uint64_t& actual_out_length,  // NOLINT - refs
+    vector<uint8_t>& data_out,  // NOLINT - refs
+    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1797,9 +1799,9 @@ void ChapsAdaptor::DecryptDigestUpdate(
     const uint64_t& session_id,
     const vector<uint8_t>& data_in,
     const uint64_t& max_out_length,
-    uint64_t& actual_out_length,
-    vector<uint8_t>& data_out,
-    uint32_t& result,
+    uint64_t& actual_out_length,  // NOLINT - refs
+    vector<uint8_t>& data_out,  // NOLINT - refs
+    uint32_t& result,  // NOLINT - refs
     ::DBus::Error& /*error*/) {
   DecryptDigestUpdate(isolate_credential, session_id, data_in, max_out_length,
                       actual_out_length, data_out, result);
@@ -1809,9 +1811,9 @@ void ChapsAdaptor::SignEncryptUpdate(const vector<uint8_t>& isolate_credential,
                                      const uint64_t& session_id,
                                      const vector<uint8_t>& data_in,
                                      const uint64_t& max_out_length,
-                                     uint64_t& actual_out_length,
-                                     vector<uint8_t>& data_out,
-                                     uint32_t& result) {
+                                     uint64_t& actual_out_length,  // NOLINT - refs
+                                     vector<uint8_t>& data_out,  // NOLINT - refs
+                                     uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1833,9 +1835,9 @@ void ChapsAdaptor::SignEncryptUpdate(const vector<uint8_t>& isolate_credential,
                                      const uint64_t& session_id,
                                      const vector<uint8_t>& data_in,
                                      const uint64_t& max_out_length,
-                                     uint64_t& actual_out_length,
-                                     vector<uint8_t>& data_out,
-                                     uint32_t& result,
+                                     uint64_t& actual_out_length,  // NOLINT - refs
+                                     vector<uint8_t>& data_out,  // NOLINT - refs
+                                     uint32_t& result,  // NOLINT - refs
                                      ::DBus::Error& /*error*/) {
   SignEncryptUpdate(isolate_credential, session_id, data_in, max_out_length,
                     actual_out_length, data_out, result);
@@ -1846,9 +1848,9 @@ void ChapsAdaptor::DecryptVerifyUpdate(
     const uint64_t& session_id,
     const vector<uint8_t>& data_in,
     const uint64_t& max_out_length,
-    uint64_t& actual_out_length,
-    vector<uint8_t>& data_out,
-    uint32_t& result) {
+    uint64_t& actual_out_length,  // NOLINT - refs
+    vector<uint8_t>& data_out,  // NOLINT - refs
+    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1871,9 +1873,9 @@ void ChapsAdaptor::DecryptVerifyUpdate(
     const uint64_t& session_id,
     const vector<uint8_t>& data_in,
     const uint64_t& max_out_length,
-    uint64_t& actual_out_length,
-    vector<uint8_t>& data_out,
-    uint32_t& result,
+    uint64_t& actual_out_length,  // NOLINT - refs
+    vector<uint8_t>& data_out,  // NOLINT - refs
+    uint32_t& result,  // NOLINT - refs
     ::DBus::Error& /*error*/) {
   DecryptVerifyUpdate(isolate_credential, session_id, data_in, max_out_length,
                       actual_out_length, data_out, result);
@@ -1885,8 +1887,8 @@ void ChapsAdaptor::GenerateKey(
     const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& attributes,
-    uint64_t& key_handle,
-    uint32_t& result) {
+    uint64_t& key_handle,  // NOLINT - refs
+    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1912,8 +1914,8 @@ void ChapsAdaptor::GenerateKey(
     const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& attributes,
-    uint64_t& key_handle,
-    uint32_t& result,
+    uint64_t& key_handle,  // NOLINT - refs
+    uint32_t& result,  // NOLINT - refs
     ::DBus::Error& /*error*/) {
   GenerateKey(isolate_credential, session_id, mechanism_type,
               mechanism_parameter, attributes, key_handle, result);
@@ -1926,9 +1928,9 @@ void ChapsAdaptor::GenerateKeyPair(
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& public_attributes,
     const vector<uint8_t>& private_attributes,
-    uint64_t& public_key_handle,
-    uint64_t& private_key_handle,
-    uint32_t& result) {
+    uint64_t& public_key_handle,  // NOLINT - refs
+    uint64_t& private_key_handle,  // NOLINT - refs
+    uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1963,9 +1965,9 @@ void ChapsAdaptor::GenerateKeyPair(
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& public_attributes,
     const vector<uint8_t>& private_attributes,
-    uint64_t& public_key_handle,
-    uint64_t& private_key_handle,
-    uint32_t& result,
+    uint64_t& public_key_handle,  // NOLINT - refs
+    uint64_t& private_key_handle,  // NOLINT - refs
+    uint32_t& result,  // NOLINT - refs
     ::DBus::Error& /*error*/) {
   GenerateKeyPair(isolate_credential, session_id, mechanism_type,
                   mechanism_parameter, public_attributes, private_attributes,
@@ -1979,9 +1981,9 @@ void ChapsAdaptor::WrapKey(const vector<uint8_t>& isolate_credential,
                            const uint64_t& wrapping_key_handle,
                            const uint64_t& key_handle,
                            const uint64_t& max_out_length,
-                           uint64_t& actual_out_length,
-                           vector<uint8_t>& wrapped_key,
-                           uint32_t& result) {
+                           uint64_t& actual_out_length,  // NOLINT - refs
+                           vector<uint8_t>& wrapped_key,  // NOLINT - refs
+                           uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -2014,9 +2016,9 @@ void ChapsAdaptor::WrapKey(const vector<uint8_t>& isolate_credential,
                            const uint64_t& wrapping_key_handle,
                            const uint64_t& key_handle,
                            const uint64_t& max_out_length,
-                           uint64_t& actual_out_length,
-                           vector<uint8_t>& wrapped_key,
-                           uint32_t& result,
+                           uint64_t& actual_out_length,  // NOLINT - refs
+                           vector<uint8_t>& wrapped_key,  // NOLINT - refs
+                           uint32_t& result,  // NOLINT - refs
                            ::DBus::Error& /*error*/) {
   WrapKey(isolate_credential, session_id, mechanism_type, mechanism_parameter,
           wrapping_key_handle, key_handle,  max_out_length, actual_out_length,
@@ -2030,8 +2032,8 @@ void ChapsAdaptor::UnwrapKey(const vector<uint8_t>& isolate_credential,
                              const uint64_t& wrapping_key_handle,
                              const vector<uint8_t>& wrapped_key,
                              const vector<uint8_t>& attributes,
-                             uint64_t& key_handle,
-                             uint32_t& result) {
+                             uint64_t& key_handle,  // NOLINT - refs
+                             uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -2061,8 +2063,8 @@ void ChapsAdaptor::UnwrapKey(const vector<uint8_t>& isolate_credential,
                              const uint64_t& wrapping_key_handle,
                              const vector<uint8_t>& wrapped_key,
                              const vector<uint8_t>& attributes,
-                             uint64_t& key_handle,
-                             uint32_t& result,
+                             uint64_t& key_handle,  // NOLINT - refs
+                             uint32_t& result,  // NOLINT - refs
                              ::DBus::Error& /*error*/) {
   UnwrapKey(isolate_credential, session_id, mechanism_type, mechanism_parameter,
             wrapping_key_handle, wrapped_key, attributes, key_handle, result);
@@ -2074,8 +2076,8 @@ void ChapsAdaptor::DeriveKey(const vector<uint8_t>& isolate_credential,
                              const vector<uint8_t>& mechanism_parameter,
                              const uint64_t& base_key_handle,
                              const vector<uint8_t>& attributes,
-                             uint64_t& key_handle,
-                             uint32_t& result) {
+                             uint64_t& key_handle,  // NOLINT - refs
+                             uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -2103,8 +2105,8 @@ void ChapsAdaptor::DeriveKey(const vector<uint8_t>& isolate_credential,
                              const vector<uint8_t>& mechanism_parameter,
                              const uint64_t& base_key_handle,
                              const vector<uint8_t>& attributes,
-                             uint64_t& key_handle,
-                             uint32_t& result,
+                             uint64_t& key_handle,  // NOLINT - refs
+                             uint32_t& result,  // NOLINT - refs
                              ::DBus::Error& /*error*/) {
   DeriveKey(isolate_credential, session_id, mechanism_type, mechanism_parameter,
             base_key_handle, attributes, key_handle, result);
@@ -2135,8 +2137,8 @@ uint32_t ChapsAdaptor::SeedRandom(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GenerateRandom(const vector<uint8_t>& isolate_credential,
                                   const uint64_t& session_id,
                                   const uint64_t& num_bytes,
-                                  vector<uint8_t>& random_data,
-                                  uint32_t& result) {
+                                  vector<uint8_t>& random_data,  // NOLINT - refs
+                                  uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -2153,11 +2155,11 @@ void ChapsAdaptor::GenerateRandom(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GenerateRandom(const vector<uint8_t>& isolate_credential,
                                   const uint64_t& session_id,
                                   const uint64_t& num_bytes,
-                                  vector<uint8_t>& random_data,
-                                  uint32_t& result,
+                                  vector<uint8_t>& random_data,  // NOLINT - refs
+                                  uint32_t& result,  // NOLINT - refs
                                   ::DBus::Error& /*error*/) {
   GenerateRandom(isolate_credential, session_id, num_bytes, random_data,
                  result);
 }
 
-}  // namespace
+}  // namespace chaps

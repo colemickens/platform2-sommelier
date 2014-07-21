@@ -50,4 +50,4 @@ bool TokenFileManager::SaltAuthData(const FilePath& token_path,
   return false;
 }
 
-}
+}  // namespace chaps

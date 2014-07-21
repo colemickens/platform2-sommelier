@@ -41,4 +41,4 @@ bool IsolateCredentialManager::SaveIsolateCredential(
   return false;
 }
 
-} // namespace chaps
+}  // namespace chaps

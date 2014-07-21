@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "slot_manager_impl.h"
+#include "chaps/slot_manager_impl.h"
 
 #include <string>
 
@@ -12,14 +12,14 @@
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
 
-#include "chaps_factory_mock.h"
-#include "chaps_utility.h"
-#include "isolate.h"
-#include "object_importer_mock.h"
-#include "object_pool_mock.h"
-#include "object_store_mock.h"
-#include "session_mock.h"
-#include "tpm_utility_mock.h"
+#include "chaps/chaps_factory_mock.h"
+#include "chaps/chaps_utility.h"
+#include "chaps/isolate.h"
+#include "chaps/object_importer_mock.h"
+#include "chaps/object_pool_mock.h"
+#include "chaps/object_store_mock.h"
+#include "chaps/session_mock.h"
+#include "chaps/tpm_utility_mock.h"
 
 using base::FilePath;
 using chromeos::SecureBlob;

@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef CHAPS_CHAPS_H_
+#define CHAPS_CHAPS_H_
+
 #include <map>
 #include <vector>
 
@@ -16,4 +19,6 @@ extern const CK_ATTRIBUTE_TYPE kKeyBlobAttribute;
 extern const CK_ATTRIBUTE_TYPE kAuthDataAttribute;
 extern const CK_ATTRIBUTE_TYPE kLegacyAttribute;
 
-}  // namespace
+}  // namespace chaps
+
+#endif  // CHAPS_CHAPS_H_

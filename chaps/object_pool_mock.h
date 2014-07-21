@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_POOL_MOCK_H
-#define CHAPS_OBJECT_POOL_MOCK_H
+#ifndef CHAPS_OBJECT_POOL_MOCK_H_
+#define CHAPS_OBJECT_POOL_MOCK_H_
 
 #include "chaps/object_pool.h"
+
+#include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
@@ -19,14 +22,14 @@ class ObjectPoolMock : public ObjectPool {
   ObjectPoolMock();
   virtual ~ObjectPoolMock();
 
-  MOCK_METHOD2(GetInternalBlob, bool (int, std::string*));
-  MOCK_METHOD2(SetInternalBlob, bool (int, const std::string&));
-  MOCK_METHOD1(SetEncryptionKey, bool (const chromeos::SecureBlob&));
-  MOCK_METHOD1(Insert, bool (Object*));
-  MOCK_METHOD1(Import, bool (Object*));
-  MOCK_METHOD1(Delete, bool (const Object*));
+  MOCK_METHOD2(GetInternalBlob, bool(int, std::string*));
+  MOCK_METHOD2(SetInternalBlob, bool(int, const std::string&));
+  MOCK_METHOD1(SetEncryptionKey, bool(const chromeos::SecureBlob&));
+  MOCK_METHOD1(Insert, bool(Object*));  // NOLINT(readability/function)
+  MOCK_METHOD1(Import, bool(Object*));  // NOLINT(readability/function)
+  MOCK_METHOD1(Delete, bool(const Object*));
   MOCK_METHOD0(DeleteAll, bool());
-  MOCK_METHOD2(Find, bool (const Object*, std::vector<const Object*>*));
+  MOCK_METHOD2(Find, bool(const Object*, std::vector<const Object*>*));
   MOCK_METHOD2(FindByHandle, bool(int, const Object**));
   MOCK_METHOD1(GetModifiableObject, Object*(const Object*));
   MOCK_METHOD1(Flush, bool(const Object*));
@@ -44,6 +47,7 @@ class ObjectPoolMock : public ObjectPool {
         .WillByDefault(testing::Invoke(this,
                                        &ObjectPoolMock::FakeFindByHandle));
   }
+
  private:
   bool FakeInsert(Object* o) {
     v_.push_back(o);
@@ -80,6 +84,6 @@ class ObjectPoolMock : public ObjectPool {
   DISALLOW_COPY_AND_ASSIGN(ObjectPoolMock);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_OBJECT_POOL_MOCK_H
+#endif  // CHAPS_OBJECT_POOL_MOCK_H_

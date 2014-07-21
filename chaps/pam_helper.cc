@@ -55,7 +55,7 @@ bool PamHelper::GetPamUser(pam_handle_t* pam_handle, string* user) {
   result = pam_get_user(pam_handle, &user_raw, NULL);
   if (result != PAM_SUCCESS) {
     LOG(ERROR) << "Could not get the pam user name: "
-               << pam_strerror (pam_handle, result);
+               << pam_strerror(pam_handle, result);
     return false;
   }
 
@@ -78,7 +78,7 @@ bool PamHelper::GetPamPassword(pam_handle_t* pam_handle,
   if (result != PAM_SUCCESS || data_raw == NULL) {
     // TODO(rmcilroy): Prompt for password if possible.
     LOG(WARNING) << "Could not get pam password: "
-                 << pam_strerror (pam_handle, result);
+                 << pam_strerror(pam_handle, result);
     return false;
   }
 
@@ -150,4 +150,4 @@ bool PamHelper::GetEnvironmentVariable(pam_handle_t* pam_handle,
   return true;
 }
 
-} // namespace chaps
+}  // namespace chaps

@@ -17,11 +17,11 @@ namespace chaps {
 
 class IsolateCredentialManagerMock : public IsolateCredentialManager {
  public:
-  MOCK_METHOD1(GetCurrentUserIsolateCredential, bool (chromeos::SecureBlob*));
-  MOCK_METHOD2(GetUserIsolateCredential, bool (const std::string&,
-                                               chromeos::SecureBlob*));
-  MOCK_METHOD2(SaveIsolateCredential, bool (const std::string&,
-                                            const chromeos::SecureBlob&));
+  MOCK_METHOD1(GetCurrentUserIsolateCredential, bool(chromeos::SecureBlob*));
+  MOCK_METHOD2(GetUserIsolateCredential, bool(const std::string&,
+                                              chromeos::SecureBlob*));
+  MOCK_METHOD2(SaveIsolateCredential, bool(const std::string&,
+                                           const chromeos::SecureBlob&));
 };
 
 }  // namespace chaps

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chaps_factory_mock.h"
+#include "chaps/chaps_factory_mock.h"
 
 namespace chaps {
 

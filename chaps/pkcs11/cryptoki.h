@@ -14,13 +14,13 @@
 #define CK_DECLARE_FUNCTION(return_type, function_name) \
     EXPORT_SPEC return_type function_name
 #define CK_DECLARE_FUNCTION_POINTER(return_type, function_name) \
-    return_type (CK_PTR function_name)
+    return_type(CK_PTR function_name)
 #define CK_CALLBACK_FUNCTION(return_type, function_name) \
-    return_type (CK_PTR function_name)
+    return_type(CK_PTR function_name)
 #ifndef NULL_PTR
 #define NULL_PTR 0
 #endif
 
-#include "pkcs11.h"
+#include "chaps/pkcs11/pkcs11.h"
 
 #endif  // CHAPS_PKCS11_CRYPTOKI_H_

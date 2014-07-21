@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_POLICY_CERT_H
-#define CHAPS_OBJECT_POLICY_CERT_H
+#ifndef CHAPS_OBJECT_POLICY_CERT_H_
+#define CHAPS_OBJECT_POLICY_CERT_H_
 
 #include "chaps/object_policy_common.h"
 
@@ -18,6 +18,6 @@ class ObjectPolicyCert : public ObjectPolicyCommon {
   virtual void SetDefaultAttributes();
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_OBJECT_POLICY_CERT_H
+#endif  // CHAPS_OBJECT_POLICY_CERT_H_

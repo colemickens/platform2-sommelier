@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_IMPORTER_MOCK_H
-#define CHAPS_OBJECT_IMPORTER_MOCK_H
+#ifndef CHAPS_OBJECT_IMPORTER_MOCK_H_
+#define CHAPS_OBJECT_IMPORTER_MOCK_H_
 
 #include "chaps/object_importer.h"
 
@@ -17,8 +17,8 @@ class ObjectImporterMock : public ObjectImporter {
   ObjectImporterMock();
   virtual ~ObjectImporterMock();
 
-  MOCK_METHOD1(ImportObjects, bool(ObjectPool*));
-  MOCK_METHOD1(FinishImportAsync, bool(ObjectPool*));
+  MOCK_METHOD1(ImportObjects, bool(ObjectPool*));  // NOLINT - 'unnamed' param
+  MOCK_METHOD1(FinishImportAsync, bool(ObjectPool*));  // NOLINT - 'unnamed'
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ObjectImporterMock);
@@ -26,4 +26,4 @@ class ObjectImporterMock : public ObjectImporter {
 
 }  // namespace chaps
 
-#endif  // CHAPS_OBJECT_IMPORTER_MOCK_H
+#endif  // CHAPS_OBJECT_IMPORTER_MOCK_H_

@@ -9,4 +9,4 @@ namespace chaps {
 ObjectImporterMock::ObjectImporterMock() {}
 ObjectImporterMock::~ObjectImporterMock() {}
 
-}  // namespace
+}  // namespace chaps

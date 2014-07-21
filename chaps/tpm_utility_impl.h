@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_TPM_UTILITY_IMPL_H
-#define CHAPS_TPM_UTILITY_IMPL_H
+#ifndef CHAPS_TPM_UTILITY_IMPL_H_
+#define CHAPS_TPM_UTILITY_IMPL_H_
 
 #include "chaps/tpm_utility.h"
 
@@ -20,7 +20,7 @@ namespace chaps {
 
 class TPMUtilityImpl : public TPMUtility {
  public:
-  TPMUtilityImpl(const std::string& srk_auth_data);
+  explicit TPMUtilityImpl(const std::string& srk_auth_data);
   virtual ~TPMUtilityImpl();
   virtual bool Init();
   virtual bool Authenticate(int slot_id,
@@ -76,6 +76,7 @@ class TPMUtilityImpl : public TPMUtility {
   virtual bool IsSRKReady();
   // Stringifies TSS error codes.
   static std::string ResultToString(TSS_RESULT result);
+
  private:
   // Holds handle information for each slot.
   struct HandleInfo {
@@ -131,6 +132,6 @@ class TPMUtilityImpl : public TPMUtility {
   DISALLOW_COPY_AND_ASSIGN(TPMUtilityImpl);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_TPM_UTILITY_IMPL_H
+#endif  // CHAPS_TPM_UTILITY_IMPL_H_

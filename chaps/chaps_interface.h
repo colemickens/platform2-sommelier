@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 
-#ifndef CHAPS_CHAPS_INTERFACE_H
-#define CHAPS_CHAPS_INTERFACE_H
+#ifndef CHAPS_CHAPS_INTERFACE_H_
+#define CHAPS_CHAPS_INTERFACE_H_
 
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@ namespace chaps {
 // - ChapsServiceRedirect: An alternative implementation on the daemon side
 //   which receives IPC calls and forwards to a PKCS #11 library.
 class ChapsInterface {
-public:
+ public:
   ChapsInterface() {}
   virtual ~ChapsInterface() {}
 
@@ -418,10 +418,10 @@ public:
       uint64_t num_bytes,
       std::vector<uint8_t>* random_data) = 0;
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_CHAPS_INTERFACE_H
+#endif  // CHAPS_CHAPS_INTERFACE_H_

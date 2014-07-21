@@ -37,8 +37,13 @@ bool IsolateCredentialManager::GetCurrentUserIsolateCredential(
   CHECK(isolate_credential);
 
   const uid_t uid = getuid();
-  const struct passwd* pwd = getpwuid(uid);
-  if (!pwd) {
+  long buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
+  if (buf_len < 0)
+    buf_len = 4096;
+  passwd pwd_buf;
+  passwd* pwd = nullptr;
+  std::vector<char> buf(buf_len);
+  if (getpwuid_r(uid, &pwd_buf, buf.data(), buf_len, &pwd) || !pwd) {
     PLOG(ERROR) << "Failed to get user information for current user.";
     return false;
   }
@@ -75,8 +80,13 @@ bool IsolateCredentialManager::SaveIsolateCredential(
   CHECK_EQ(kIsolateCredentialBytes, isolate_credential.size());
 
   // Look up user information.
-  const struct passwd* pwd = getpwnam(user.c_str());
-  if (!pwd) {
+  long buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
+  if (buf_len < 0)
+    buf_len = 4096;
+  passwd pwd_buf;
+  passwd* pwd = nullptr;
+  std::vector<char> buf(buf_len);
+  if (getpwnam_r(user.c_str(), &pwd_buf, buf.data(), buf_len, &pwd) || !pwd) {
     LOG(ERROR) << "Failed to get user information.";
     return false;
   }

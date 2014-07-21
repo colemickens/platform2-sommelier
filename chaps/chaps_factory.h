@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_CHAPS_FACTORY_H
-#define CHAPS_CHAPS_FACTORY_H
+#ifndef CHAPS_CHAPS_FACTORY_H_
+#define CHAPS_CHAPS_FACTORY_H_
 
 #include <string>
 
@@ -45,6 +45,6 @@ class ChapsFactory {
                                                TPMUtility* tpm_utility) = 0;
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_CHAPS_FACTORY_H
+#endif  // CHAPS_CHAPS_FACTORY_H_

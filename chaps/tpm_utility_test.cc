@@ -7,7 +7,7 @@
 //    where it refuses to perform authenticated operations for a period of time.
 //  - Poorly formatted key blobs is not tested because they are not handled
 //    correctly by Trousers and can crash the current process or tcsd.
-#include "tpm_utility_impl.h"
+#include "chaps/tpm_utility_impl.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -47,7 +47,7 @@ class TestTPMUtility: public ::testing::Test {
     e_ = string("\x1\x0\x1", 3);
     unsigned char random[20];
     RAND_bytes(random, 20);
-    auth_ = string((char*)random, 20);
+    auth_ = string(reinterpret_cast<char*>(random), 20);
     ASSERT_TRUE(tpm_.Init());
   }
 
@@ -76,6 +76,7 @@ class TestTPMUtility: public ::testing::Test {
     BN_free(e);
     return result;
   }
+
  protected:
   TPMUtilityImpl tpm_;
   int size_;
@@ -99,7 +100,7 @@ TEST_F(TestTPMUtility, Authenticate) {
   // Change password.
   unsigned char random[20];
   RAND_bytes(random, 20);
-  string auth2((char*)random, 20);
+  string auth2(reinterpret_cast<char*>(random), 20);
   string blob2;
   ASSERT_TRUE(tpm_.ChangeAuthData(0, auth_, auth2, blob_, &blob2));
   tpm_.UnloadKeysForSlot(0);

@@ -113,9 +113,9 @@ int main(int argc, char** argv) {
                                   true);
     // Determine SRK authorization data from the command line.
     string srk_auth_data;
-    if (cl->HasSwitch("srk_password"))
+    if (cl->HasSwitch("srk_password")) {
       srk_auth_data = cl->GetSwitchValueASCII("srk_password");
-    else if (cl->HasSwitch("srk_zeros")) {
+    } else if (cl->HasSwitch("srk_zeros")) {
       int zero_count = 0;
       if (base::StringToInt(cl->GetSwitchValueASCII("srk_zeros"),
                             &zero_count)) {

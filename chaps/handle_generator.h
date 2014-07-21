@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_HANDLE_GENERATOR_H
-#define CHAPS_HANDLE_GENERATOR_H
+#ifndef CHAPS_HANDLE_GENERATOR_H_
+#define CHAPS_HANDLE_GENERATOR_H_
 
 namespace chaps {
 
@@ -16,4 +16,4 @@ class HandleGenerator {
 
 }  // namespace chaps
 
-#endif  // CHAPS_HANDLE_GENERATOR_H
+#endif  // CHAPS_HANDLE_GENERATOR_H_

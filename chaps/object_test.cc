@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "object_impl.h"
+#include "chaps/object_impl.h"
 
 #include <string>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps_factory_mock.h"
-#include "object_policy_mock.h"
+#include "chaps/chaps_factory_mock.h"
+#include "chaps/object_policy_mock.h"
 
 using std::string;
 using ::testing::_;
@@ -150,8 +150,8 @@ TEST_F(TestObject, FinalizeNewObject) {
   CK_OBJECT_CLASS classval = CKO_PUBLIC_KEY;
   CK_ATTRIBUTE attr[] = {
     {CKA_CLASS, &classval, sizeof(classval)},
-    {1, (void*)"test", 4},
-    {2, (void*)"test2", 5}};
+    {1, const_cast<char*>("test"), 4},
+    {2, const_cast<char*>("test2"), 5}};
   object_->SetAttributes(attr, 3);
   EXPECT_EQ(CKR_ATTRIBUTE_READ_ONLY, object_->FinalizeNewObject());
   // Finalize before object is complete.
@@ -161,7 +161,7 @@ TEST_F(TestObject, FinalizeNewObject) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   CK_ATTRIBUTE attr2[] = {
-    {1, (void*)"test3", 5}};
+    {1, const_cast<char*>("test3"), 5}};
   object_->SetAttributes(attr2, 1);
   EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE, object_->FinalizeNewObject());
   EXPECT_EQ(CKR_OK, object_->FinalizeNewObject());
@@ -208,7 +208,7 @@ TEST_F(TestObject, SetAttributes) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_EQ(CKR_ATTRIBUTE_READ_ONLY, object_->SetAttributes(templ, 1));
-  // Mofify attributes successfully.
+  // Modify attributes successfully.
   EXPECT_EQ(CKR_OK, object_->SetAttributes(templ, 1));
   EXPECT_EQ(CKO_PUBLIC_KEY, object_->GetObjectClass());
 }

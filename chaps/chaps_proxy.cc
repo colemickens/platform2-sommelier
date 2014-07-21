@@ -671,7 +671,7 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->FindObjects(isolate_credential, session_id, max_object_count,
-                        *object_list,result);
+                        *object_list, result);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
@@ -1526,4 +1526,4 @@ bool ChapsProxyImpl::WaitForService() {
   return false;
 }
 
-}  // namespace
+}  // namespace chaps

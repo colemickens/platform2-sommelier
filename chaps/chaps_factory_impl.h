@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_CHAPS_FACTORY_IMPL_H
-#define CHAPS_CHAPS_FACTORY_IMPL_H
+#ifndef CHAPS_CHAPS_FACTORY_IMPL_H_
+#define CHAPS_CHAPS_FACTORY_IMPL_H_
 
 #include "chaps/chaps_factory.h"
 
@@ -13,7 +13,7 @@ namespace chaps {
 
 class ChapsFactoryImpl : public ChapsFactory {
  public:
- ChapsFactoryImpl() {}
+  ChapsFactoryImpl() {}
   virtual ~ChapsFactoryImpl() {}
   virtual Session* CreateSession(int slot_id,
                                  ObjectPool* token_object_pool,
@@ -34,6 +34,6 @@ class ChapsFactoryImpl : public ChapsFactory {
   DISALLOW_COPY_AND_ASSIGN(ChapsFactoryImpl);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_CHAPS_FACTORY_H
+#endif  // CHAPS_CHAPS_FACTORY_IMPL_H_

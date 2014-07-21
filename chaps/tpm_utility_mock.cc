@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tpm_utility_mock.h"
+#include "chaps/tpm_utility_mock.h"
 
 namespace chaps {
 

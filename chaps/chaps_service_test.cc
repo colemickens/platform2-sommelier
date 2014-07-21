@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chaps_service.h"
+#include "chaps/chaps_service.h"
 
 #include <string>
 #include <vector>
@@ -10,11 +10,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps_service.h"
-#include "isolate.h"
-#include "object_mock.h"
-#include "session_mock.h"
-#include "slot_manager_mock.h"
+#include "chaps/isolate.h"
+#include "chaps/object_mock.h"
+#include "chaps/session_mock.h"
+#include "chaps/slot_manager_mock.h"
 
 using std::string;
 using std::vector;
@@ -34,13 +33,13 @@ TEST(InitDeathTest, InvalidInit) {
 
 // Test fixture for an initialized service instance.
 class TestService : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     service_.reset(new ChapsServiceImpl(&slot_manager_));
     ASSERT_TRUE(service_->Init());
     // Setup parsable and un-parsable serialized attributes.
-    CK_ATTRIBUTE attributes[] = {{CKA_VALUE, NULL, 0}};
-    CK_ATTRIBUTE attributes2[] = {{CKA_VALUE, (void*)"test", 4}};
+    CK_ATTRIBUTE attributes[] = {{CKA_VALUE, nullptr, 0}};
+    CK_ATTRIBUTE attributes2[] = {{CKA_VALUE, const_cast<char*>("test"), 4}};
     attribute_ = attributes[0];
     attribute2_ = attributes2[0];
     Attributes tmp(attributes, 1);
@@ -84,7 +83,7 @@ TEST_F(TestService, GetSlotList) {
   EXPECT_EQ(CKR_OK, service_->GetSlotList(ic_, false, &slot_list));
   EXPECT_EQ(2, slot_list.size());
 
-  // Check that when tokens are not accessable to an isolate, the slot list is
+  // Check that when tokens are not accessible to an isolate, the slot list is
   // filtered.
   EXPECT_CALL(slot_manager_, IsTokenAccessible(ic_, _))
     .WillOnce(Return(true))

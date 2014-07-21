@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_CHAPS_SERVICE_H
-#define CHAPS_CHAPS_SERVICE_H
+#ifndef CHAPS_CHAPS_SERVICE_H_
+#define CHAPS_CHAPS_SERVICE_H_
+
+#include <string>
+#include <vector>
 
 #include <base/memory/scoped_ptr.h>
 
@@ -17,7 +20,7 @@ namespace chaps {
 // serves as the entry point to the Chaps daemon and is called directly by
 // ChapsAdaptor.
 class ChapsServiceImpl : public ChapsInterface {
-public:
+ public:
   // ChapsServiceImpl does not take ownership of slot_manager and will not
   // delete it.
   explicit ChapsServiceImpl(SlotManager* slot_manager);
@@ -347,12 +350,12 @@ public:
       uint64_t num_bytes,
       std::vector<uint8_t>* random_data);
 
-private:
+ private:
   SlotManager* slot_manager_;
   bool init_;
 
   DISALLOW_COPY_AND_ASSIGN(ChapsServiceImpl);
 };
 
-}  // namespace
-#endif  // CHAPS_CHAPS_SERVICE_H
+}  // namespace chaps
+#endif  // CHAPS_CHAPS_SERVICE_H_

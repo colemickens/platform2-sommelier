@@ -112,7 +112,7 @@ string HashAuthData(const SecureBlob& auth_data) {
 //   False if both hash values are valid and they do not match.
 bool SanityCheckAuthData(const string& auth_data_hash,
                          const string& saved_auth_data_hash) {
-  CHECK(auth_data_hash.length() == 2);
+  CHECK_EQ(auth_data_hash.length(), 2);
   if (saved_auth_data_hash.length() != 2 ||
       saved_auth_data_hash[0] != kAuthDataHashVersion)
     return true;
@@ -508,7 +508,7 @@ void SlotManagerImpl::CloseIsolate(const SecureBlob& isolate_credential) {
     return;
   }
   Isolate& isolate = isolate_map_[isolate_credential];
-  CHECK(isolate.open_count > 0);
+  CHECK_GT(isolate.open_count, 0);
   --isolate.open_count;
   if (isolate.open_count == 0) {
     DestroyIsolate(isolate);
@@ -782,7 +782,7 @@ void SlotManagerImpl::AddIsolate(const SecureBlob& isolate_credential) {
 }
 
 void SlotManagerImpl::DestroyIsolate(const Isolate& isolate) {
-  CHECK(isolate.open_count == 0);
+  CHECK_EQ(isolate.open_count, 0);
 
   // Unload any existing tokens in this isolate.
   while (!isolate.slot_ids.empty()) {
@@ -808,4 +808,4 @@ bool SlotManagerImpl::PathFromSlotId(int slot_id, FilePath* path) const {
   return false;
 }
 
-}  // namespace
+}  // namespace chaps

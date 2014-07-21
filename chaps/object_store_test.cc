@@ -21,7 +21,7 @@ namespace chaps {
 
 class TestObjectStoreEncryption : public ::testing::Test {
  public:
-  bool TestEncryption(ObjectStoreImpl& store,
+  bool TestEncryption(ObjectStoreImpl& store,  // NOLINT(runtime/references)
                       const ObjectBlob& input) {
     ObjectBlob encrypted;
     if (!store.Encrypt(input, &encrypted))
@@ -127,7 +127,7 @@ TEST(TestObjectStore, InsertLoad) {
   string tmp(32, 'A');
   SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
-  map<int,ObjectBlob> objects, objects2;
+  map<int, ObjectBlob> objects, objects2;
   EXPECT_TRUE(store.LoadPublicObjectBlobs(&objects));
   EXPECT_TRUE(store.LoadPrivateObjectBlobs(&objects2));
   EXPECT_EQ(0, objects.size());
@@ -172,7 +172,7 @@ TEST(TestObjectStore, UpdateDelete) {
   int handle1;
   ObjectBlob blob1 = {"blob1", false};
   EXPECT_TRUE(store.InsertObjectBlob(blob1, &handle1));
-  map<int,ObjectBlob> objects;
+  map<int, ObjectBlob> objects;
   EXPECT_TRUE(store.LoadPublicObjectBlobs(&objects));
   EXPECT_TRUE(blob1.blob == objects[handle1].blob);
   ObjectBlob blob2 = {"blob2", false};
@@ -196,7 +196,7 @@ TEST(TestObjectStore, InternalBlobs) {
   EXPECT_FALSE(store.GetInternalBlob(1, &blob));
   EXPECT_TRUE(store.SetInternalBlob(1, "blob"));
   EXPECT_TRUE(store.GetInternalBlob(1, &blob));
-  EXPECT_TRUE(blob == "blob");
+  EXPECT_EQ("blob", blob);
 }
 
 TEST(TestObjectStore, DeleteAll) {
@@ -215,14 +215,14 @@ TEST(TestObjectStore, DeleteAll) {
   EXPECT_TRUE(store.InsertObjectBlob(blob2, &handle2));
   EXPECT_TRUE(store.SetInternalBlob(1, "internal"));
   EXPECT_TRUE(store.DeleteAllObjectBlobs());
-  map<int,ObjectBlob> objects, objects2;
+  map<int, ObjectBlob> objects, objects2;
   EXPECT_TRUE(store.LoadPublicObjectBlobs(&objects));
   EXPECT_TRUE(store.LoadPrivateObjectBlobs(&objects2));
   EXPECT_EQ(0, objects.size());
   EXPECT_EQ(0, objects2.size());
   string internal;
   EXPECT_TRUE(store.GetInternalBlob(1, &internal));
-  EXPECT_TRUE(internal == "internal");
+  EXPECT_EQ("internal", internal);
 }
 
 }  // namespace chaps

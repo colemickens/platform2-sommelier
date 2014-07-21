@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_MOCK_H
-#define CHAPS_OBJECT_MOCK_H
+#ifndef CHAPS_OBJECT_MOCK_H_
+#define CHAPS_OBJECT_MOCK_H_
 
 #include "chaps/object.h"
 
@@ -22,25 +22,25 @@ class ObjectMock : public Object {
  public:
   ObjectMock();
   virtual ~ObjectMock();
-  MOCK_CONST_METHOD0(GetStage, ObjectStage ());
-  MOCK_CONST_METHOD0(GetObjectClass, CK_OBJECT_CLASS ());
-  MOCK_CONST_METHOD0(IsTokenObject, bool ());
-  MOCK_CONST_METHOD0(IsModifiable, bool ());
-  MOCK_CONST_METHOD0(IsPrivate, bool ());
-  MOCK_CONST_METHOD0(GetSize, int ());
-  MOCK_METHOD0(FinalizeNewObject, CK_RV ());
-  MOCK_METHOD1(Copy, CK_RV (const Object*));
-  MOCK_CONST_METHOD2(GetAttributes, CK_RV (CK_ATTRIBUTE_PTR, int));
-  MOCK_METHOD2(SetAttributes, CK_RV (const CK_ATTRIBUTE_PTR, int));
-  MOCK_CONST_METHOD1(IsAttributePresent, bool (CK_ATTRIBUTE_TYPE));
-  MOCK_CONST_METHOD2(GetAttributeBool, bool (CK_ATTRIBUTE_TYPE, bool));
-  MOCK_METHOD2(SetAttributeBool, void (CK_ATTRIBUTE_TYPE, bool));
-  MOCK_CONST_METHOD2(GetAttributeInt, int (CK_ATTRIBUTE_TYPE, int));
-  MOCK_METHOD2(SetAttributeInt, void (CK_ATTRIBUTE_TYPE, int));
-  MOCK_CONST_METHOD1(GetAttributeString, std::string (CK_ATTRIBUTE_TYPE));
-  MOCK_METHOD2(SetAttributeString, void (CK_ATTRIBUTE_TYPE,
-                                         const std::string&));
-  MOCK_METHOD1(RemoveAttribute, void (CK_ATTRIBUTE_TYPE));
+  MOCK_CONST_METHOD0(GetStage, ObjectStage());
+  MOCK_CONST_METHOD0(GetObjectClass, CK_OBJECT_CLASS());
+  MOCK_CONST_METHOD0(IsTokenObject, bool());
+  MOCK_CONST_METHOD0(IsModifiable, bool());
+  MOCK_CONST_METHOD0(IsPrivate, bool());
+  MOCK_CONST_METHOD0(GetSize, int());
+  MOCK_METHOD0(FinalizeNewObject, CK_RV());
+  MOCK_METHOD1(Copy, CK_RV(const Object*));
+  MOCK_CONST_METHOD2(GetAttributes, CK_RV(CK_ATTRIBUTE_PTR, int));
+  MOCK_METHOD2(SetAttributes, CK_RV(const CK_ATTRIBUTE_PTR, int));
+  MOCK_CONST_METHOD1(IsAttributePresent, bool(CK_ATTRIBUTE_TYPE));
+  MOCK_CONST_METHOD2(GetAttributeBool, bool(CK_ATTRIBUTE_TYPE, bool));
+  MOCK_METHOD2(SetAttributeBool, void(CK_ATTRIBUTE_TYPE, bool));
+  MOCK_CONST_METHOD2(GetAttributeInt, int(CK_ATTRIBUTE_TYPE, int));
+  MOCK_METHOD2(SetAttributeInt, void(CK_ATTRIBUTE_TYPE, int));
+  MOCK_CONST_METHOD1(GetAttributeString, std::string(CK_ATTRIBUTE_TYPE));
+  MOCK_METHOD2(SetAttributeString, void(CK_ATTRIBUTE_TYPE,
+                                        const std::string&));
+  MOCK_METHOD1(RemoveAttribute, void(CK_ATTRIBUTE_TYPE));
   MOCK_CONST_METHOD0(GetAttributeMap, const AttributeMap* ());
   MOCK_CONST_METHOD0(handle, int());
   MOCK_METHOD1(set_handle, void(int));
@@ -109,7 +109,8 @@ class ObjectMock : public Object {
   bool FakeSetAttributes(const CK_ATTRIBUTE_PTR attr, int num_attr) {
     for (int i = 0; i < num_attr; ++i) {
       attributes_[attr[i].type] =
-          std::string((char*)attr[i].pValue, attr[i].ulValueLen);
+          std::string(reinterpret_cast<const char*>(attr[i].pValue),
+                      attr[i].ulValueLen);
     }
     return CKR_OK;
   }
@@ -124,7 +125,7 @@ class ObjectMock : public Object {
     if (s.length() < sizeof(int)) {
       return default_value;
     }
-    return *(int*)s.data();
+    return *reinterpret_cast<const int*>(s.data());
   }
   std::string FakeGetAttributeString(CK_ATTRIBUTE_TYPE type) {
     std::string s;
@@ -137,7 +138,8 @@ class ObjectMock : public Object {
     attributes_[type] = std::string(1, value ? 1 : 0);
   }
   void FakeSetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) {
-    attributes_[type] = std::string((char*)&value, sizeof(int));
+    attributes_[type] = std::string(reinterpret_cast<const char*>(&value),
+                                    sizeof(int));
   }
   void FakeSetAttributeString(CK_ATTRIBUTE_TYPE type,
                               const std::string& value) {
@@ -168,4 +170,4 @@ class ObjectMock : public Object {
 
 }  // namespace chaps
 
-#endif  // CHAPS_OBJECT_MOCK_H
+#endif  // CHAPS_OBJECT_MOCK_H_

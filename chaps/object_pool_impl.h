@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_POOL_IMPL_H
-#define CHAPS_OBJECT_POOL_IMPL_H
+#ifndef CHAPS_OBJECT_POOL_IMPL_H_
+#define CHAPS_OBJECT_POOL_IMPL_H_
 
 #include "chaps/object_pool.h"
 
@@ -83,6 +83,6 @@ class ObjectPoolImpl : public ObjectPool {
   DISALLOW_COPY_AND_ASSIGN(ObjectPoolImpl);
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_OBJECT_POOL_IMPL_H
+#endif  // CHAPS_OBJECT_POOL_IMPL_H_

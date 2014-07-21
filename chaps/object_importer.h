@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_OBJECT_IMPORTER_H
-#define CHAPS_OBJECT_IMPORTER_H
+#ifndef CHAPS_OBJECT_IMPORTER_H_
+#define CHAPS_OBJECT_IMPORTER_H_
 
 namespace chaps {
 
@@ -31,6 +31,6 @@ class ObjectImporter {
   virtual bool FinishImportAsync(ObjectPool* pool) = 0;
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_OBJECT_IMPORTER_H
+#endif  // CHAPS_OBJECT_IMPORTER_H_

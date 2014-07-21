@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_TPM_UTILITY_MOCK_H
-#define CHAPS_TPM_UTILITY_MOCK_H
+#ifndef CHAPS_TPM_UTILITY_MOCK_H_
+#define CHAPS_TPM_UTILITY_MOCK_H_
+
+#include <string>
 
 #include "chaps/tpm_utility.h"
 
@@ -66,4 +68,4 @@ class TPMUtilityMock : public TPMUtility {
 
 }  // namespace chaps
 
-#endif  // CHAPS_TPM_UTILITY_MOCK_H
+#endif  // CHAPS_TPM_UTILITY_MOCK_H_

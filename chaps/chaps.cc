@@ -1015,11 +1015,11 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 153.
-CK_RV C_Sign (CK_SESSION_HANDLE hSession,
-              CK_BYTE_PTR pData,
-              CK_ULONG ulDataLen,
-              CK_BYTE_PTR pSignature,
-              CK_ULONG_PTR pulSignatureLen) {
+CK_RV C_Sign(CK_SESSION_HANDLE hSession,
+             CK_BYTE_PTR pData,
+             CK_ULONG ulDataLen,
+             CK_BYTE_PTR pSignature,
+             CK_ULONG_PTR pulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if ((!pData && ulDataLen > 0) || !pulSignatureLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);

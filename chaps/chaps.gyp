@@ -14,6 +14,9 @@
       # Chaps uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,
     },
+    'cflags_cc': [
+      '-std=gnu++11',
+    ],
   },
   'targets': [
     {

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_SLOT_MANAGER_H
-#define CHAPS_SLOT_MANAGER_H
+#ifndef CHAPS_SLOT_MANAGER_H_
+#define CHAPS_SLOT_MANAGER_H_
 
 #include <map>
 #include <string>
@@ -56,6 +56,6 @@ class SlotManager {
       int session_id, Session** session) const = 0;
 };
 
-}  // namespace
+}  // namespace chaps
 
-#endif  // CHAPS_SLOT_MANAGER_H
+#endif  // CHAPS_SLOT_MANAGER_H_

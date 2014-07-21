@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 
 
-#ifndef CHAPS_CHAPS_SERVICE_REDIRECT_H
-#define CHAPS_CHAPS_SERVICE_REDIRECT_H
+#ifndef CHAPS_CHAPS_SERVICE_REDIRECT_H_
+#define CHAPS_CHAPS_SERVICE_REDIRECT_H_
+
+#include <string>
+#include <vector>
 
 #include "chaps/chaps_interface.h"
 #include "pkcs11/cryptoki.h"
@@ -13,7 +16,7 @@ namespace chaps {
 
 // ChapsServiceRedirect simply redirects calls to a PKCS #11 library.
 class ChapsServiceRedirect : public ChapsInterface {
-public:
+ public:
   explicit ChapsServiceRedirect(const char* library_path);
   virtual ~ChapsServiceRedirect();
   // Initialization is performed in two stages. This initial stage loads the
@@ -349,7 +352,7 @@ public:
       uint64_t num_bytes,
       std::vector<uint8_t>* random_data);
 
-private:
+ private:
   // This method implements the second stage of initialization.  It is called
   // automatically by the first call to a ChapsInterface method and will call
   // C_Initialize on the target library.
@@ -363,5 +366,5 @@ private:
   DISALLOW_COPY_AND_ASSIGN(ChapsServiceRedirect);
 };
 
-}  // namespace
-#endif  // CHAPS_CHAPS_SERVICE_REDIRECT_H
+}  // namespace chaps
+#endif  // CHAPS_CHAPS_SERVICE_REDIRECT_H_

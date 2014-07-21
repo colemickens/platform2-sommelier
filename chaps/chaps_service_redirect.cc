@@ -1400,4 +1400,4 @@ uint32_t ChapsServiceRedirect::GenerateRandom(
   return CKR_OK;
 }
 
-}  // namespace
+}  // namespace chaps

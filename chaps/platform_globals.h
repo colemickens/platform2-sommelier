@@ -10,11 +10,11 @@
 
 namespace chaps {
 
-const extern char kChapsdProcessUser[];
-const extern char kChapsdProcessGroup[];
+extern const char kChapsdProcessUser[];
+extern const char kChapsdProcessGroup[];
 
-const extern char kServiceRedirectProcessUser[];
-const extern char kServiceRedirectProcessGroup[];
+extern const char kServiceRedirectProcessUser[];
+extern const char kServiceRedirectProcessGroup[];
 
 }  // namespace chaps
 

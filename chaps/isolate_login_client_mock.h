@@ -20,12 +20,12 @@ class IsolateLoginClientMock : public IsolateLoginClient {
  public:
   IsolateLoginClientMock() : IsolateLoginClient(NULL, NULL, NULL) { }
 
-  MOCK_METHOD2(LoginUser, bool (const std::string&,
-                                const chromeos::SecureBlob&));
-  MOCK_METHOD1(LogoutUser, bool (const std::string&));
-  MOCK_METHOD3(ChangeUserAuth, bool (const std::string&,
-                                     const chromeos::SecureBlob&,
-                                     const chromeos::SecureBlob&));
+  MOCK_METHOD2(LoginUser, bool(const std::string&,
+                               const chromeos::SecureBlob&));
+  MOCK_METHOD1(LogoutUser, bool(const std::string&));
+  MOCK_METHOD3(ChangeUserAuth, bool(const std::string&,
+                                    const chromeos::SecureBlob&,
+                                    const chromeos::SecureBlob&));
 };
 
 }  // namespace chaps

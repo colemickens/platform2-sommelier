@@ -40,7 +40,7 @@ const uint32_t kSaltIterations = 4096;
 const size_t kSaltBytes = 32;
 const size_t kSaltedKeyBytes = 32;
 
-} // namespace
+}  // namespace
 
 TokenFileManager::TokenFileManager(uid_t chapsd_uid, gid_t chapsd_gid)
     : chapsd_uid_(chapsd_uid),
