@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-IFCONFIG=/sbin/ifconfig
+IFCONFIG=/bin/ifconfig
 LSUSB=/usr/sbin/lsusb
 LSPCI=/usr/sbin/lspci
 IW=/usr/sbin/iw
