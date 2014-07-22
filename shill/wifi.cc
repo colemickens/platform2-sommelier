@@ -528,6 +528,8 @@ void WiFi::ConnectTo(WiFiService *service) {
 }
 
 void WiFi::DisconnectFrom(WiFiService *service) {
+  SLOG(WiFi, 2) << __func__ << " service " << service->unique_name();
+
   if (service != current_service_ &&  service != pending_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
     // generate a D-Bus error here. (crbug.com/206812)
@@ -592,6 +594,11 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     RemoveNetworkForService(service, &unused_error);
     if (service == selected_service()) {
       DropConnection();
+    } else {
+      SLOG(WiFi, 5) << __func__ << " skipping DropConnection, "
+                    << "selected_service is "
+                    << (selected_service() ?
+                        selected_service()->unique_name() : "(null)");
     }
     current_service_ = NULL;
   }
@@ -893,6 +900,8 @@ void WiFi::HandleDisconnect() {
 }
 
 void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
+  SLOG(WiFi, 2) << __func__ << " service " << affected_service->unique_name();
+
   // Check if service was explicitly disconnected due to failure or
   // is explicitly disconnected by user.
   if (!affected_service->IsInFailState() &&
@@ -1718,6 +1727,7 @@ void WiFi::RestartFastScanAttempts() {
 }
 
 void WiFi::StartScanTimer() {
+  SLOG(WiFi, 2) << __func__;
   if (scan_interval_seconds_ == 0) {
     StopScanTimer();
     return;
@@ -1726,12 +1736,15 @@ void WiFi::StartScanTimer() {
       Bind(&WiFi::ScanTimerHandler, weak_ptr_factory_.GetWeakPtr()));
   // Repeat the first few scans after disconnect relatively quickly so we
   // have reasonable trust that no APs we are looking for are present.
+  size_t wait_time_milliseconds = fast_scans_remaining_ > 0 ?
+      kFastScanIntervalSeconds * 1000 : scan_interval_seconds_ * 1000;
   dispatcher()->PostDelayedTask(scan_timer_callback_.callback(),
-      fast_scans_remaining_ > 0 ?
-          kFastScanIntervalSeconds * 1000 : scan_interval_seconds_ * 1000);
+                                wait_time_milliseconds);
+  SLOG(WiFi, 5) << "Next scan scheduled for " << wait_time_milliseconds << "ms";
 }
 
 void WiFi::StopScanTimer() {
+  SLOG(WiFi, 2) << __func__;
   scan_timer_callback_.Cancel();
 }
 
@@ -1741,6 +1754,18 @@ void WiFi::ScanTimerHandler() {
     Scan(kProgressiveScan, NULL, __func__);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
+    }
+  } else {
+    if (scan_state_ != kScanIdle) {
+      SLOG(WiFi, 5) << "Skipping scan: scan_state_ is " << scan_state_;
+    }
+    if (current_service_) {
+      SLOG(WiFi, 5) << "Skipping scan: current_service_ is service "
+                    << current_service_->unique_name();
+    }
+    if (pending_service_) {
+      SLOG(WiFi, 5) << "Skipping scan: pending_service_ is service"
+                    << pending_service_->unique_name();
     }
   }
   StartScanTimer();
