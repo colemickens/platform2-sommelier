@@ -86,7 +86,7 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   if (base_schema && base_schema->GetType() != GetType()) {
     Error::AddToPrintf(error, errors::commands::kDomain,
                        errors::commands::kPropTypeChanged,
-                       "Redefining a command of type %s as %s",
+                       "Redefining a property of type %s as %s",
                        base_schema->GetTypeAsString().c_str(),
                        GetTypeAsString().c_str());
     return false;

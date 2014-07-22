@@ -117,8 +117,13 @@ bool ObjectSchema::PropFromJsonString(const std::string& prop_name,
   if (!prop)
     return false;
   base::DictionaryValue empty;
-  if (!prop->FromJson(&empty, base_schema, error))
+  if (!prop->FromJson(&empty, base_schema, error)) {
+    Error::AddToPrintf(error, errors::commands::kDomain,
+                       errors::commands::kInvalidPropDef,
+                       "Error in definition of property '%s'",
+                       prop_name.c_str());
     return false;
+  }
   properties->insert(std::make_pair(prop_name, std::move(prop)));
   return true;
 }
@@ -172,8 +177,13 @@ bool ObjectSchema::PropFromJsonArray(const std::string& prop_name,
   base::DictionaryValue array_object;
   array_object.SetWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                        list->DeepCopy());
-  if (!prop->FromJson(&array_object, base_schema, error))
+  if (!prop->FromJson(&array_object, base_schema, error)) {
+    Error::AddToPrintf(error, errors::commands::kDomain,
+                       errors::commands::kInvalidPropDef,
+                       "Error in definition of property '%s'",
+                       prop_name.c_str());
     return false;
+  }
   properties->insert(std::make_pair(prop_name, std::move(prop)));
   return true;
 }
@@ -248,8 +258,15 @@ bool ObjectSchema::PropFromJsonObject(const std::string& prop_name,
     type_name = base_schema->GetTypeAsString();
   }
   std::unique_ptr<PropType> prop = CreatePropType(type_name, prop_name, error);
-  if (!prop || !prop->FromJson(dict, base_schema, error))
+  if (!prop)
     return false;
+  if (!prop->FromJson(dict, base_schema, error)) {
+    Error::AddToPrintf(error, errors::commands::kDomain,
+                       errors::commands::kInvalidPropDef,
+                       "Error in definition of property '%s'",
+                       prop_name.c_str());
+    return false;
+  }
   properties->insert(std::make_pair(prop_name, std::move(prop)));
   return true;
 }
