@@ -16,7 +16,7 @@ extern int verbose;
 
 /* util.c */
 extern int do_ioctl(int fd, int request, void* arg);
-extern bool is_any_video_device(bool (*func)(int fd));
+extern bool is_any_device(const char* pattern, bool (*func)(int fd));
 extern void convert_fourcc_to_str(uint32_t fourcc, char* str);
 
 /* util_v4l2 */
@@ -26,8 +26,8 @@ extern bool is_hw_video_acc_device(int fd);
 
 /* util_vaapi */
 #ifdef HAS_VAAPI
-bool is_vaapi_support_formats(VAProfile* profiles, VAEntrypoint entrypoint,
-    unsigned int format);
+bool is_vaapi_support_formats(int fd, VAProfile* profiles,
+    VAEntrypoint entrypoint, unsigned int format);
 #endif
 
 /* detectors */

@@ -1,13 +1,13 @@
 // Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include <sys/ioctl.h>
 #include <errno.h>
-#include <glob.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <glob.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "label_detect.h"
 
@@ -20,16 +20,17 @@ int do_ioctl(int fd, int request, void* arg) {
   return ret;
 }
 
-/* Loops /dev/video* to find any device satisfied predicate func(). */
-bool is_any_video_device(bool (*func)(int fd)) {
+/* Loops files matching a pattern to find any device satisfied predicate
+ * func(). */
+bool is_any_device(const char* pattern, bool (*func)(int fd)) {
   int i;
   glob_t g;
   bool found = false;
 
   memset(&g, 0, sizeof(g));
-  glob("/dev/video*", 0, NULL, &g);
+  glob(pattern, 0, NULL, &g);
   for (i = 0; i < g.gl_pathc; i++) {
-    TRACE("found video device %s\n", g.gl_pathv[i]);
+    TRACE("found device file %s\n", g.gl_pathv[i]);
     int fd = open(g.gl_pathv[i], O_RDWR);
     if (fd == -1) {
       TRACE("failed to open device\n");

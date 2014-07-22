@@ -25,5 +25,6 @@ bool is_webcam_device(int fd) {
  * capabilities like webcam.
  */
 bool detect_webcam(void) {
-  return is_any_video_device(is_webcam_device);
+  static const char kVideoDeviceName[] = "/dev/video*";
+  return is_any_device(kVideoDeviceName, is_webcam_device);
 }

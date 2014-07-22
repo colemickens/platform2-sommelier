@@ -9,7 +9,7 @@ PC_DEPS =
 USE_VAAPI ?= $(if $(filter $(ARCH),amd64 x86),yes,no)
 ifeq ($(USE_VAAPI),yes)
   CPPFLAGS += -DHAS_VAAPI
-  PC_DEPS += libva-x11 x11
+  PC_DEPS += libva-drm
   VAAPI_OBJS = $(filter util_vaapi.o,$(C_OBJECTS))
 endif
 

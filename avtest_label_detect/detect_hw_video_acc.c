@@ -11,7 +11,11 @@
 
 #include "label_detect.h"
 
-/* A V4L2 device supports H.264 decoding, if it's
+static const char* kVideoDevicePattern = "/dev/video*";
+static const char* kDRMDevicePattern = "/dev/dri/card*";
+
+/* Helper function for detect_video_acc_h264.
+ * A V4L2 device supports H.264 decoding, if it's
  * a mem-to-mem V4L2 device, i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*,
  * V4L2_CAP_VIDEO_OUTPUT_* and V4L2_CAP_STREAMING capabilities and it supports
  * V4L2_PIX_FMT_H264 as it's input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT
@@ -23,12 +27,12 @@ static bool is_v4l2_dec_h264_device(int fd) {
         V4L2_PIX_FMT_H264);
 }
 
-/* Determines "hw_video_acc_h264" label. That is, either the VAAPI device
- * supports one of H.264 profile, has decoding entry point, and output
- * YUV420 formats. Or there is a /dev/video* device supporting H.264
- * decoding.
+/* Helper function for detect_video_acc_h264.
+ * Determine given |fd| is a VAAPI device supports H.264 decoding, i.e.
+ * it supports one of H.264 profile, has decoding entry point, and output
+ * YUV420 formats.
  */
-bool detect_video_acc_h264(void) {
+static bool is_vaapi_dec_h264_device(int fd) {
 #ifdef HAS_VAAPI
   VAProfile va_profiles[] = {
     VAProfileH264Baseline,
@@ -37,17 +41,25 @@ bool detect_video_acc_h264(void) {
     VAProfileH264ConstrainedBaseline,
     VAProfileNone
   };
-  if (is_vaapi_support_formats(va_profiles, VAEntrypointVLD,
-        VA_RT_FORMAT_YUV420))
+  if (is_vaapi_support_formats(
+        fd, va_profiles, VAEntrypointVLD, VA_RT_FORMAT_YUV420))
     return true;
 #endif
-
-  if (is_any_video_device(is_v4l2_dec_h264_device))
-    return true;
   return false;
 }
 
-/* A V4L2 device supports VP8 decoding, if it's a mem-to-mem V4L2 device,
+/* Determines "hw_video_acc_h264" label. That is, either the VAAPI device
+ * supports one of H.264 profile, has decoding entry point, and output
+ * YUV420 formats. Or there is a /dev/video* device supporting H.264
+ * decoding.
+ */
+bool detect_video_acc_h264(void) {
+  return (is_any_device(kDRMDevicePattern, is_vaapi_dec_h264_device) ||
+          is_any_device(kVideoDevicePattern, is_v4l2_dec_h264_device));
+}
+
+/* Helper function for detect_video_acc_vp8.
+ * A V4L2 device supports VP8 decoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP8 as it's
  * input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT queue.
@@ -58,29 +70,41 @@ static bool is_v4l2_dec_vp8_device(int fd) {
         V4L2_PIX_FMT_VP8);
 }
 
-/* Determines "hw_video_acc_vp8" label. That is, either the VAAPI device
+/* Helper function for detect_video_acc_vp8.
+ * Dtermine given |fd| is a VAAPI device supports VP8 decoding, i.e. it
  * supports VP8 profile, has decoding entry point, and output YUV420
- * formats. Or there is a /dev/video* device supporting VP8 decoding.
+ * formats.
  */
-bool detect_video_acc_vp8(void) {
+static bool is_vaapi_dec_vp8_device(int fd) {
 #ifdef HAS_VAAPI
 #if VA_CHECK_VERSION(0, 35, 0)
   VAProfile va_profiles[] = {
     VAProfileVP8Version0_3,
     VAProfileNone
   };
-  if (is_vaapi_support_formats(va_profiles, VAEntrypointVLD,
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
         VA_RT_FORMAT_YUV420))
     return true;
 #endif
 #endif
+  return false;
+}
 
-  if (is_any_video_device(is_v4l2_dec_vp8_device))
+/* Determines "hw_video_acc_vp8" label. That is, either the VAAPI device
+ * supports VP8 profile, has decoding entry point, and output YUV420
+ * formats. Or there is a /dev/video* device supporting VP8 decoding.
+ */
+bool detect_video_acc_vp8(void) {
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_vp8_device))
+    return true;
+
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp8_device))
     return true;
   return false;
 }
 
-/* A V4L2 device supports H.264 encoding, if it's a mem-to-mem V4L2 device,
+/* Helper function for detect_video_acc_enc_h264.
+ * A V4L2 device supports H.264 encoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_H264 as it's
  * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE queue.
@@ -91,12 +115,12 @@ static bool is_v4l2_enc_h264_device(int fd) {
         V4L2_PIX_FMT_H264);
 }
 
-/* Determines "hw_video_acc_enc_h264" label. That is, either the VAAPI
- * device supports one of H.264 profile, has encoding entry point, and
- * input YUV420 formats. Or there is a /dev/video* device supporting H.264
- * encoding.
+/* Helper function for detect_video_acc_enc_h264.
+ * Determine given |fd| is a VAAPI device supports H.264 encoding, i.e. it
+ * support one of H.264 profile, has encoding entry point, and input YUV420
+ * formats.
  */
-bool detect_video_acc_enc_h264(void) {
+static bool is_vaapi_enc_h264_device(int fd) {
 #ifdef HAS_VAAPI
   VAProfile va_profiles[] = {
     VAProfileH264Baseline,
@@ -105,17 +129,29 @@ bool detect_video_acc_enc_h264(void) {
     VAProfileH264ConstrainedBaseline,
     VAProfileNone
   };
-  if (is_vaapi_support_formats(va_profiles, VAEntrypointEncSlice,
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSlice,
         VA_RT_FORMAT_YUV420))
     return true;
 #endif
+  return false;
+}
 
-  if (is_any_video_device(is_v4l2_enc_h264_device))
+/* Determines "hw_video_acc_enc_h264" label. That is, either the VAAPI
+ * device supports one of H.264 profile, has encoding entry point, and
+ * input YUV420 formats. Or there is a /dev/video* device supporting H.264
+ * encoding.
+ */
+bool detect_video_acc_enc_h264(void) {
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_h264_device))
+    return true;
+
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_h264_device))
     return true;
   return false;
 }
 
-/* A V4L2 device supports VP8 encoding, if it's a mem-to-mem V4L2 device,
+/* Helper function for detect_video_acc_enc_vp8.
+ * A V4L2 device supports VP8 encoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP8 as it's
  * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE queue.
@@ -126,24 +162,35 @@ static bool is_v4l2_enc_vp8_device(int fd) {
         V4L2_PIX_FMT_VP8);
 }
 
-/* Determines "hw_video_acc_enc_vp8" label. That is, either the VAAPI device
+/* Helper function for detect_video_acc_enc_vp8.
+ * Determine given |fd| is a VAAPI device supports VP8 encoding, i.e. it
  * supports one of VP8 profile, has encoding entry point, and input YUV420
- * formats. Or there is a /dev/video* device supporting VP8 encoding.
+ * formats.
  */
-bool detect_video_acc_enc_vp8(void) {
+static bool is_vaapi_enc_vp8_device(int fd) {
 #ifdef HAS_VAAPI
 #if VA_CHECK_VERSION(0, 35, 0)
   VAProfile va_profiles[] = {
     VAProfileVP8Version0_3,
     VAProfileNone
   };
-  if (is_vaapi_support_formats(va_profiles, VAEntrypointEncSlice,
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSlice,
         VA_RT_FORMAT_YUV420))
     return true;
 #endif
 #endif
+  return false;
+}
 
-  if (is_any_video_device(is_v4l2_enc_vp8_device))
+/* Determines "hw_video_acc_enc_vp8" label. That is, either the VAAPI device
+ * supports one of VP8 profile, has encoding entry point, and input YUV420
+ * formats. Or there is a /dev/video* device supporting VP8 encoding.
+ */
+bool detect_video_acc_enc_vp8(void) {
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp8_device))
+    return true;
+
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_vp8_device))
     return true;
   return false;
 }

@@ -1,13 +1,15 @@
 // Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include <stdlib.h>
-#include <stdio.h>
 #include <alloca.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-#include <X11/Xlib.h>
 #include <va/va.h>
-#include <va/va_x11.h>
+#include <va/va_drm.h>
 
 #include "label_detect.h"
 
@@ -74,23 +76,14 @@ static bool match_vaapi_capabilities(VADisplay va_display,
 /* Returns true if libva supports any given profiles. And that profile has said
  * entrypoint with format.
  */
-bool is_vaapi_support_formats(VAProfile* profiles, VAEntrypoint entrypoint,
-    unsigned int format) {
+bool is_vaapi_support_formats(int fd, VAProfile* profiles,
+    VAEntrypoint entrypoint, unsigned int format) {
   bool found = false;
-  Display* display;
   VAStatus va_res;
   VADisplay va_display;
   int major_version, minor_version;
 
-  setenv("XAUTHORITY", "/home/chronos/.Xauthority", 0 /* no overwrite */);
-
-  display = XOpenDisplay(":0.0");
-  if (!display) {
-    TRACE("Failed connecting to the X Server\n");
-    return false;
-  }
-
-  va_display = vaGetDisplay(display);
+  va_display = vaGetDisplayDRM(fd);
   if (!vaDisplayIsValid(va_display)) {
     TRACE("vaGetDisplay returns invalid display\n");
     return false;
@@ -106,7 +99,6 @@ bool is_vaapi_support_formats(VAProfile* profiles, VAEntrypoint entrypoint,
     found = true;
 
   vaTerminate(va_display);
-  XCloseDisplay(display);
 
   return found;
 }
