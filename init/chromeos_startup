@@ -139,44 +139,15 @@ if [ $(date +%Y) -lt 1970 ]; then
   date 010200001970.00
 fi
 
+# 'firmware-boot-update' is provided by chromeos-firmware for legacy systems.
+# On most new boards, it should be simply an empty file.
+firmware-boot-update
+
 # Now that stateful partition is mounted, we can check if we are in factory
 # mode.
 FACTORY_MODE=
 if is_factory_mode; then
   FACTORY_MODE=factory
-fi
-
-# Check if we need to perform firmware update: only if fwupdate_tries is
-# non-zero or if not using normal (ex, developer or recovery) firmware.
-FIRMWARE_UPDATE_SCRIPT=/usr/sbin/chromeos-firmwareupdate
-if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
-   [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-  # This file will be collected by chromeos-setgoodkernel
-  FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/update_firmware.log
-  tries="$(crossystem fwupdate_tries || echo 0)"
-
-  # Special updating rules for legacy systems.
-  case "$(mosys platform name 2>/dev/null)" in
-    Alex | ZGB )
-      if [ "$(crossystem mainfw_type)" = developer ]; then
-        tries=0  # Prevents updates if we're in developer mode
-        chromeos-boot-alert dev_fwcheck /dev/tty1
-      fi
-      ;;
-  esac
-
-  if [ $tries -gt 0 ]; then
-    crossystem fwupdate_tries=$((tries - 1))
-    # More messages on console for developer mode and dev builds.
-    [ $CROS_DEBUG -eq 1 ] &&
-      FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS" || true
-    chromeos-boot-alert update_firmware /dev/tty1
-    (date && "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1) |
-      tee -a $FIRMWARE_UPDATE_LOGS
-    # Sends "clear screen" terminal command to clear TTY frame buffer, to
-    # prevent user seeing the messages again on system shutdown.
-    [ $CROS_DEBUG -eq 1 ] && tput clear >/dev/tty1 || true
-  fi
 fi
 
 # File used to trigger a stateful reset.  Contains arguments for
