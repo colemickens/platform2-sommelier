@@ -302,7 +302,7 @@ string Device::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-string Device::GetStorageIdentifier() {
+string Device::GetStorageIdentifier() const {
   string id = GetRpcIdentifier();
   ControlInterface::RpcIdToStorageId(&id);
   size_t needle = id.find('_');
