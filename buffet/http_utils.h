@@ -20,8 +20,6 @@ namespace base {
 namespace buffet {
 namespace http {
 
-extern const char kErrorDomainJSON[];
-
 typedef std::vector<std::pair<std::string, std::string>> FormFieldList;
 
 ////////////////////////////////////////////////////////////////////////////////

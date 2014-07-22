@@ -39,6 +39,7 @@
         'dbus_utils.cc',
         'device_registration_info.cc',
         'error.cc',
+        'error_codes.cc',
         'exported_object_manager.cc',
         'exported_property_set.cc',
         'http_request.cc',

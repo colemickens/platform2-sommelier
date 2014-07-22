@@ -10,13 +10,12 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 
-#include "buffet/mime_utils.h"
 #include "buffet/data_encoding.h"
+#include "buffet/error_codes.h"
+#include "buffet/mime_utils.h"
 
 namespace buffet {
 namespace http {
-
-const char kErrorDomainJSON[] = "json_parser";
 
 std::unique_ptr<Response> Get(const std::string& url,
                               const HeaderList& headers,
@@ -140,7 +139,7 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   auto content_type = mime::RemoveParameters(response->GetContentType());
   if (content_type != mime::application::kJson &&
       content_type != mime::text::kPlain) {
-    Error::AddTo(error, kErrorDomainJSON, "non_json_content_type",
+    Error::AddTo(error, errors::json::kDomain, "non_json_content_type",
                  "Unexpected response content type: " + content_type);
     return std::unique_ptr<base::DictionaryValue>();
   }
@@ -150,13 +149,14 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    Error::AddTo(error, kErrorDomainJSON, "json_parse_error", error_message);
+    Error::AddTo(error, errors::json::kDomain, errors::json::kParseError,
+                 error_message);
     return std::unique_ptr<base::DictionaryValue>();
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    Error::AddTo(error, kErrorDomainJSON, "json_object_error",
+    Error::AddTo(error, errors::json::kDomain, errors::json::kObjectExpected,
                  "Response is not a valid JSON object");
     return std::unique_ptr<base::DictionaryValue>();
   }
