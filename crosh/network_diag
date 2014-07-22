@@ -681,17 +681,17 @@ diag_connectivity () {
 
 # Get information from flimflam about its state over D-Bus.
 dbus_get_object_properties () {
-  local entity="${1}"
-  local object_type="${2}"
+  local entity="$1"
+  local object_type="$2"
   local object_path="${3-/}"
   dbus-send --fixed --system --dest="${entity}" --print-reply \
     "${object_path}" "${entity}.${object_type}.GetProperties"
 }
 
 dbus_get_object_list () {
-  local entity="${1}"
-  local parent="${2}"
-  local child="${3}"
+  local entity="$1"
+  local parent="$2"
+  local child="$3"
   local parent_path="${4-/}"
   # The child (property) we are looking for is something like "Devices"
   # or "LinkMonitorResponseTime".  The sed manipulation below will return
@@ -1011,7 +1011,7 @@ usage () {
 }
 
 check_no_arg () {
-  if [ "$2" == "yes" ]; then
+  if [[ "$2" == "yes" ]]; then
     echo "Option $1 does not take any arguments"
     usage
     exit 1
@@ -1065,7 +1065,7 @@ main () {
       exit 1
       ;;
   esac
-  if [ -n "${option}" ]; then
+  if [[ -n "${option}" ]]; then
     case ${option} in
       --date)
         diag_date "${test_host}"
