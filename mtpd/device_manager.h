@@ -63,6 +63,28 @@ class DeviceManager {
                                std::string* usb_bus_str,
                                uint32_t* storage_id);
 
+  // Reads file ids for |file_id| on |storage_name|.
+  // |file_id| is the unique identifier for a directory on the given storage.
+  // For the root node, pass in |kRootFileId|.
+  // On success, returns true and writes the file entry ids of |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadDirectoryEntryIds(const std::string& storage_name,
+                             uint32_t file_id,
+                             std::vector<uint32_t>* out);
+
+  // Reads the metadata for files with |file_ids| on |storage_name|.
+  // |file_ids| is a list of identifier for files on |storage_name|.
+  // For the root node, pass in |kRootFileId|.
+  // On success, returns true and writes the metadata of |file_ids| into
+  // |out|. Otherwise returns false.
+  // Note: If the metadata for any given id in |file_ids| cannot be retrieved,
+  // then the size of |out| may be less than the size of |file_ids|. This is
+  // not an error and it is up to the caller to handle this.
+  bool GetFileInfo(const std::string& storage_name,
+                   const std::vector<uint32_t> file_ids,
+                   std::vector<FileEntry>* out);
+
+  // TODO(thestig) Deprecated, remove.
   // Reads entries from |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
   // For the root node, pass in |kRootFileId|.
@@ -72,6 +94,7 @@ class DeviceManager {
                          uint32_t file_id,
                          std::vector<FileEntry>* out);
 
+  // TODO(thestig) Rename to ReadFileChunk().
   // Reads the contents of |file_id| on |storage_name|.
   // Reads |count| bytes starting at |offset|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
@@ -84,6 +107,7 @@ class DeviceManager {
                          uint32_t count,
                          std::vector<uint8_t>* out);
 
+  // TODO(thestig) Deprecated, remove.
   // Reads the metadata for |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
   // For the root node, pass in |kRootFileId|.
@@ -151,10 +175,10 @@ class DeviceManager {
   // For the root node, pass in |kRootFileId|.
   // On success, returns true and writes the metadata of |file_id| into |out|.
   // Otherwise returns false.
-  bool GetFileInfo(LIBMTP_mtpdevice_t* device,
-                   uint32_t storage_id,
-                   uint32_t file_id,
-                   FileEntry* out);
+  bool GetFileInfoInternal(LIBMTP_mtpdevice_t* device,
+                           uint32_t storage_id,
+                           uint32_t file_id,
+                           FileEntry* out);
 
   // Helper function that returns the libmtp device handle and storage id for a
   // given |storage_name|.

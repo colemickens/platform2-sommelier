@@ -86,6 +86,48 @@ void MtpdServer::CloseStorage(const std::string& handle, DBus::Error& error) {
     SetInvalidHandleError(handle, &error);
 }
 
+std::vector<uint32_t> MtpdServer::ReadDirectoryEntryIds(
+    const std::string& handle,
+    const uint32_t& fileId,
+    DBus::Error& error) {
+  std::vector<uint32_t> directory_listing;
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty()) {
+    SetInvalidHandleError(handle, &error);
+    return directory_listing;
+  }
+
+  if (!device_manager_.ReadDirectoryEntryIds(storage_name,
+                                             fileId,
+                                             &directory_listing)) {
+    error.set(kMtpdServiceError, "ReadDirectoryEntryIds failed");
+  }
+  return directory_listing;
+}
+
+std::vector<uint8_t> MtpdServer::GetFileInfo(
+    const std::string& handle,
+    const std::vector<uint32_t>& fileIds,
+    DBus::Error& error) {
+  if (fileIds.empty()) {
+    error.set(kMtpdServiceError, "GetFileInfo called with no file ids");
+    return FileEntry::EmptyFileEntriesToDBusFormat();
+  }
+
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty()) {
+    SetInvalidHandleError(handle, &error);
+    return FileEntry::EmptyFileEntriesToDBusFormat();
+  }
+
+  std::vector<FileEntry> file_info;
+  if (!device_manager_.GetFileInfo(storage_name, fileIds, &file_info)) {
+    error.set(kMtpdServiceError, "GetFileInfo failed");
+    return FileEntry::EmptyFileEntriesToDBusFormat();
+  }
+  return FileEntry::FileEntriesToDBusFormat(file_info);
+}
+
 std::vector<uint8_t> MtpdServer::ReadDirectoryById(const std::string& handle,
                                                    const uint32_t& fileId,
                                                    DBus::Error& error) {

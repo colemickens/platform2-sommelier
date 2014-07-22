@@ -38,6 +38,13 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
                                   DBus::Error& error) OVERRIDE;
   virtual void CloseStorage(const std::string& handle,
                             DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint32_t> ReadDirectoryEntryIds(
+      const std::string& handle,
+      const uint32_t& fileId,
+      DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint8_t> GetFileInfo(const std::string& handle,
+                                           const std::vector<uint32_t>& fileIds,
+                                           DBus::Error& error) OVERRIDE;
   virtual std::vector<uint8_t> ReadDirectoryById(const std::string& handle,
                                                  const uint32_t& fileId,
                                                  DBus::Error& error) OVERRIDE;

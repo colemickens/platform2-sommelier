@@ -176,6 +176,62 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   return (storage_it != storage_map.end()) ? &(storage_it->second) : NULL;
 }
 
+bool DeviceManager::ReadDirectoryEntryIds(const std::string& storage_name,
+                                          uint32_t file_id,
+                                          std::vector<uint32_t>* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  if (file_id == kRootFileId)
+    file_id = kPtpGohRootParent;
+
+  uint32_t* children;
+  int ret = LIBMTP_Get_Children(mtp_device, storage_id, file_id, &children);
+  if (ret < 0)
+    return false;
+
+  if (ret > 0) {
+    for (int i = 0; i < ret; ++i)
+      out->push_back(children[i]);
+    free(children);
+  }
+  return true;
+}
+
+bool DeviceManager::GetFileInfo(const std::string& storage_name,
+                                const std::vector<uint32_t> file_ids,
+                                std::vector<FileEntry>* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  for (size_t i = 0; i < file_ids.size(); ++i) {
+    uint32_t file_id = file_ids[i];
+
+    LIBMTP_file_t* file = (file_id == kRootFileId) ?
+        LIBMTP_new_file_t() :
+        LIBMTP_Get_Filemetadata(mtp_device, file_id);
+    if (!file)
+      continue;
+
+    // LIBMTP_Get_Filemetadata() does not know how to handle the root node, so
+    // fill in relevant fields in the struct manually. The rest of the struct
+    // has already been initialized by LIBMTP_new_file_t().
+    if (file_id == kRootFileId) {
+      file->storage_id = storage_id;
+      file->filename = strdup("/");
+      file->filetype = LIBMTP_FILETYPE_FOLDER;
+    }
+
+    out->push_back(FileEntry(*file));
+    LIBMTP_destroy_file_t(file);
+  }
+  return true;
+}
+
 bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
                                       uint32_t file_id,
                                       std::vector<FileEntry>* out) {
@@ -207,7 +263,7 @@ bool DeviceManager::GetFileInfoById(const std::string& storage_name,
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
-  return GetFileInfo(mtp_device, storage_id, file_id, out);
+  return GetFileInfoInternal(mtp_device, storage_id, file_id, out);
 }
 
 bool DeviceManager::AddStorageForTest(const std::string& storage_name,
@@ -288,10 +344,10 @@ bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
   return true;
 }
 
-bool DeviceManager::GetFileInfo(LIBMTP_mtpdevice_t* device,
-                                uint32_t storage_id,
-                                uint32_t file_id,
-                                FileEntry* out) {
+bool DeviceManager::GetFileInfoInternal(LIBMTP_mtpdevice_t* device,
+                                        uint32_t storage_id,
+                                        uint32_t file_id,
+                                        FileEntry* out) {
   LIBMTP_file_t* file = (file_id == kRootFileId) ?
       LIBMTP_new_file_t() :
       LIBMTP_Get_Filemetadata(device, file_id);
