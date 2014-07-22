@@ -64,8 +64,8 @@ static std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
   if (PropType::GetTypeFromTypeString(type_name, &type))
     prop = PropType::Create(type);
   if (!prop) {
-    Error::AddToPrintf(error, commands::errors::kDomain,
-                       commands::errors::kUnknownType,
+    Error::AddToPrintf(error, errors::commands::kDomain,
+                       errors::commands::kUnknownType,
                        "Unknown type %s for parameter %s",
                        type_name.c_str(), prop_name.c_str());
   }
@@ -74,8 +74,8 @@ static std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
 
 static bool ErrorInvalidTypeInfo(const std::string& prop_name,
                                  ErrorPtr* error) {
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kNoTypeInfo,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kNoTypeInfo,
                      "Unable to determine parameter type for %s",
                      prop_name.c_str());
   return false;
@@ -100,8 +100,8 @@ bool ObjectSchema::PropFromJson(const std::string& prop_name,
     return PropFromJsonObject(prop_name, value, base_schema, properties,
                               error);
   }
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kInvalidPropDef,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kInvalidPropDef,
                      "Invalid parameter definition for %s", prop_name.c_str());
   return false;
 }

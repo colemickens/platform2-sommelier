@@ -14,8 +14,8 @@ Constraint::~Constraint() {}
 
 bool Constraint::ReportErrorLessThan(
     ErrorPtr* error, const std::string& val, const std::string& limit) {
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kOutOfRange,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kOutOfRange,
                      "Value %s is out of range. It must not be less than %s",
                      val.c_str(), limit.c_str());
   return false;
@@ -23,8 +23,8 @@ bool Constraint::ReportErrorLessThan(
 
 bool Constraint::ReportErrorGreaterThan(
     ErrorPtr* error, const std::string& val, const std::string& limit) {
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kOutOfRange,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kOutOfRange,
                      "Value %s is out of range. It must not be greater than %s",
                      val.c_str(), limit.c_str());
   return false;
@@ -33,8 +33,8 @@ bool Constraint::ReportErrorGreaterThan(
 bool Constraint::ReportErrorNotOneOf(
     ErrorPtr* error, const std::string& val,
     const std::vector<std::string>& values) {
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kOutOfRange,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kOutOfRange,
                      "Value %s is invalid. Expected one of [%s]",
                      val.c_str(), string_utils::Join(',', values).c_str());
   return false;
@@ -79,11 +79,11 @@ bool ConstraintStringLengthMin::Validate(const PropValue& value,
   int length = static_cast<int>(str.size());
   if (length < limit_.value) {
     if (limit_.value == 1) {
-      Error::AddTo(error, commands::errors::kDomain,
-                   commands::errors::kOutOfRange, "String must not be empty");
+      Error::AddTo(error, errors::commands::kDomain,
+                   errors::commands::kOutOfRange, "String must not be empty");
     } else {
-      Error::AddToPrintf(error, commands::errors::kDomain,
-                         commands::errors::kOutOfRange,
+      Error::AddToPrintf(error, errors::commands::kDomain,
+                         errors::commands::kOutOfRange,
                          "String must be at least %d characters long, "
                          "actual length of string '%s' is %d", limit_.value,
                          str.c_str(), length);
@@ -110,8 +110,8 @@ bool ConstraintStringLengthMax::Validate(const PropValue& value,
   const std::string& str = value.GetString()->GetValue();
   int length = static_cast<int>(str.size());
   if (length > limit_.value) {
-    Error::AddToPrintf(error, commands::errors::kDomain,
-                       commands::errors::kOutOfRange,
+    Error::AddToPrintf(error, errors::commands::kDomain,
+                       errors::commands::kOutOfRange,
                        "String must be no more than %d character(s) long, "
                        "actual length of string '%s' is %d", limit_.value,
                        str.c_str(), length);

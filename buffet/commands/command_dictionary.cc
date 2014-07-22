@@ -35,8 +35,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
     std::string package = package_iter.key();
     const base::DictionaryValue* package_value = nullptr;
     if (!package_iter.value().GetAsDictionary(&package_value)) {
-      Error::AddToPrintf(error, commands::errors::kDomain,
-                         commands::errors::kTypeMismatch,
+      Error::AddToPrintf(error, errors::commands::kDomain,
+                         errors::commands::kTypeMismatch,
                          "Expecting an object for package '%s'",
                          package.c_str());
       return false;
@@ -47,8 +47,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       std::string command = command_iter.key();
       const base::DictionaryValue* command_value = nullptr;
       if (!command_iter.value().GetAsDictionary(&command_value)) {
-        Error::AddToPrintf(error, commands::errors::kDomain,
-                           commands::errors::kTypeMismatch,
+        Error::AddToPrintf(error, errors::commands::kDomain,
+                           errors::commands::kTypeMismatch,
                            "Expecting an object for command '%s'",
                            command.c_str());
         return false;
@@ -60,8 +60,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       const base::DictionaryValue* command_schema_def = nullptr;
       if (!command_value->GetDictionaryWithoutPathExpansion(
           commands::attributes::kCommand_Parameters, &command_schema_def)) {
-        Error::AddToPrintf(error, commands::errors::kDomain,
-                           commands::errors::kPropertyMissing,
+        Error::AddToPrintf(error, errors::commands::kDomain,
+                           errors::commands::kPropertyMissing,
                            "Command definition '%s' is missing property '%s'",
                            command_name.c_str(),
                            commands::attributes::kCommand_Parameters);
@@ -69,8 +69,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       }
       auto command_schema = std::make_shared<ObjectSchema>();
       if (!command_schema->FromJson(command_schema_def, nullptr, error)) {
-        Error::AddToPrintf(error, commands::errors::kDomain,
-                           commands::errors::kInvalidObjectSchema,
+        Error::AddToPrintf(error, errors::commands::kDomain,
+                           errors::commands::kInvalidObjectSchema,
                            "Invalid definition for command '%s'",
                            command_name.c_str());
         return false;
@@ -91,8 +91,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
   for (const auto& pair : new_defs) {
     auto iter = definitions_.find(pair.first);
     if (iter != definitions_.end()) {
-        Error::AddToPrintf(error, commands::errors::kDomain,
-                           commands::errors::kDuplicateCommandDef,
+        Error::AddToPrintf(error, errors::commands::kDomain,
+                           errors::commands::kDuplicateCommandDef,
                            "Definition for command '%s' overrides an earlier "
                            "definition in category '%s'",
                            pair.first.c_str(),

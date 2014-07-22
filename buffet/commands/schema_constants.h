@@ -6,9 +6,9 @@
 #define BUFFET_COMMANDS_SCHEMA_CONSTANTS_H_
 
 namespace buffet {
-namespace commands {
 
 namespace errors {
+namespace commands {
 // Error domain for command schema description.
 extern const char kDomain[];
 
@@ -24,8 +24,10 @@ extern const char kPropertyMissing[];
 extern const char kUnknownProperty[];
 extern const char kInvalidObjectSchema[];
 extern const char kDuplicateCommandDef[];
+}  // namespace commands
 }  // namespace errors
 
+namespace commands {
 namespace attributes {
 // Command description JSON schema attributes.
 extern const char kType[];
@@ -45,8 +47,8 @@ extern const char kObject_Properties[];
 
 extern const char kCommand_Parameters[];
 }  // namespace attributes
-
 }  // namespace commands
+
 }  // namespace buffet
 
 #endif  // BUFFET_COMMANDS_SCHEMA_CONSTANTS_H_

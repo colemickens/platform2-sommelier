@@ -22,8 +22,8 @@ void ReportJsonTypeMismatch(const base::Value* value_in,
                             ErrorPtr* error) {
   std::string value_as_string;
   base::JSONWriter::Write(value_in, &value_as_string);
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kTypeMismatch,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kTypeMismatch,
                      "Unable to convert value %s into %s",
                      value_as_string.c_str(), expected_type.c_str());
 }
@@ -40,8 +40,8 @@ bool ReportUnexpectedJson(const base::Value* value_in, T*, ErrorPtr* error) {
 }
 
 bool ErrorMissingProperty(ErrorPtr* error, const char* param_name) {
-  Error::AddToPrintf(error, commands::errors::kDomain,
-                     commands::errors::kPropertyMissing,
+  Error::AddToPrintf(error, errors::commands::kDomain,
+                     errors::commands::kPropertyMissing,
                      "Required parameter missing: %s", param_name);
   return false;
 }
@@ -142,8 +142,8 @@ bool TypedValueFromJson(const base::Value* value_in,
     std::string key = iter.key();
     if (keys_processed.find(key) == keys_processed.end() &&
         !object_schema->GetExtraPropertiesAllowed()) {
-      Error::AddToPrintf(error, commands::errors::kDomain,
-                         commands::errors::kUnknownProperty,
+      Error::AddToPrintf(error, errors::commands::kDomain,
+                         errors::commands::kUnknownProperty,
                          "Unrecognized parameter '%s'", key.c_str());
       return false;
     }
@@ -155,8 +155,8 @@ bool TypedValueFromJson(const base::Value* value_in,
     const PropType* prop_type = pair.second->GetPropType();
     CHECK(prop_type) << "Value property type must be available";
     if (!prop_type->ValidateConstraints(*pair.second, error)) {
-      Error::AddToPrintf(error, commands::errors::kDomain,
-                         commands::errors::kInvalidPropValue,
+      Error::AddToPrintf(error, errors::commands::kDomain,
+                         errors::commands::kInvalidPropValue,
                          "Invalid parameter value for property '%s'",
                          pair.first.c_str());
       return false;
