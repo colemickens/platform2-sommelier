@@ -46,10 +46,14 @@ class CommandDictionary {
   // When LoadCommands is called, all previous definitions of commands from the
   // same category are removed, effectively replacing all the commands in the
   // given category.
+  // Optional |base_commands| parameter specifies the definition of standard
+  // GCD commands for parameter schema validation. Can be set to nullptr if
+  // no validation is needed.
   // Returns false on failure and |error| provides additional error information
   // when provided.
   bool LoadCommands(const base::DictionaryValue& json,
-                    const std::string& category, ErrorPtr* error);
+                    const std::string& category,
+                    const CommandDictionary* base_commands, ErrorPtr* error);
   // Returns the number of command definitions in the dictionary.
   size_t GetSize() const { return definitions_.size(); }
   // Checks if the dictionary has no command definitions.

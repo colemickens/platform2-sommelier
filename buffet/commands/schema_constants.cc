@@ -21,6 +21,7 @@ const char kPropertyMissing[] = "parameter_missing";
 const char kUnknownProperty[] = "unexpected_parameter";
 const char kInvalidObjectSchema[] = "invalid_object_schema";
 const char kDuplicateCommandDef[] = "duplicate_command_definition";
+const char kInvalidCommandName[] = "invalid_command_name";
 }  // namespace commands
 }  // namespace errors
 

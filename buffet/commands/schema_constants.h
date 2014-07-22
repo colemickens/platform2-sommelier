@@ -24,6 +24,7 @@ extern const char kPropertyMissing[];
 extern const char kUnknownProperty[];
 extern const char kInvalidObjectSchema[];
 extern const char kDuplicateCommandDef[];
+extern const char kInvalidCommandName[];
 }  // namespace commands
 }  // namespace errors
 

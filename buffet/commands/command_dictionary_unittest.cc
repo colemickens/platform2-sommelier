@@ -28,7 +28,7 @@ TEST(CommandDictionary, LoadCommands) {
     }
   })");
   buffet::CommandDictionary dict;
-  EXPECT_TRUE(dict.LoadCommands(*json, "robotd", nullptr));
+  EXPECT_TRUE(dict.LoadCommands(*json, "robotd", nullptr, nullptr));
   EXPECT_EQ(1, dict.GetSize());
   EXPECT_NE(nullptr, dict.FindCommand("robot.jump"));
   json = CreateDictionaryValue(R"({
@@ -41,7 +41,7 @@ TEST(CommandDictionary, LoadCommands) {
       }
     }
   })");
-  EXPECT_TRUE(dict.LoadCommands(*json, "powerd", nullptr));
+  EXPECT_TRUE(dict.LoadCommands(*json, "powerd", nullptr, nullptr));
   EXPECT_EQ(3, dict.GetSize());
   EXPECT_NE(nullptr, dict.FindCommand("robot.jump"));
   EXPECT_NE(nullptr, dict.FindCommand("base.reboot"));
@@ -57,7 +57,7 @@ TEST(CommandDictionary, LoadCommands_Failures) {
 
   // Command definition missing 'parameters' property.
   auto json = CreateDictionaryValue("{'robot':{'jump':{}}}");
-  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", &error));
+  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("parameter_missing", error->GetCode());
   EXPECT_EQ("Command definition 'robot.jump' is missing property 'parameters'",
             error->GetMessage());
@@ -65,33 +65,103 @@ TEST(CommandDictionary, LoadCommands_Failures) {
 
   // Command definition is not an object.
   json = CreateDictionaryValue("{'robot':{'jump':0}}");
-  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", &error));
+  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   EXPECT_EQ("Expecting an object for command 'jump'", error->GetMessage());
   error.reset();
 
   // Package definition is not an object.
   json = CreateDictionaryValue("{'robot':'blah'}");
-  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", &error));
+  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   EXPECT_EQ("Expecting an object for package 'robot'", error->GetMessage());
   error.reset();
 
   // Invalid command definition is not an object.
   json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{'flip':0}}}}");
-  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", &error));
+  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("invalid_object_schema", error->GetCode());
   EXPECT_EQ("Invalid definition for command 'robot.jump'", error->GetMessage());
   EXPECT_NE(nullptr, error->GetInnerError());  // Must have additional info.
   error.reset();
 
+  // Empty command name.
+  json = CreateDictionaryValue("{'robot':{'':{'parameters':{'flip':0}}}}");
+  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
+  EXPECT_EQ("invalid_command_name", error->GetCode());
+  EXPECT_EQ("Unnamed command encountered in package 'robot'",
+            error->GetMessage());
+  error.reset();
+}
+
+TEST(CommandDictionary, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
-  json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{}}}}");
-  dict.Clear();
-  dict.LoadCommands(*json, "category1", &error);
-  EXPECT_FALSE(dict.LoadCommands(*json, "category2", &error));
+  buffet::CommandDictionary dict;
+  buffet::ErrorPtr error;
+  auto json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{}}}}");
+  dict.LoadCommands(*json, "category1", nullptr, &error);
+  EXPECT_FALSE(dict.LoadCommands(*json, "category2", nullptr, &error));
   EXPECT_EQ("duplicate_command_definition", error->GetCode());
   EXPECT_EQ("Definition for command 'robot.jump' overrides an earlier "
             "definition in category 'category1'", error->GetMessage());
+  error.reset();
+}
+
+TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
+  // Custom command must start with '_'.
+  buffet::CommandDictionary base_dict;
+  buffet::CommandDictionary dict;
+  buffet::ErrorPtr error;
+  auto json = CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': 'integer'}
+      }
+    }
+  })");
+  base_dict.LoadCommands(*json, "", nullptr, &error);
+  EXPECT_TRUE(dict.LoadCommands(*json, "robotd", &base_dict, &error));
+  auto json2 = CreateDictionaryValue("{'base':{'jump':{'parameters':{}}}}");
+  EXPECT_FALSE(dict.LoadCommands(*json2, "robotd", &base_dict, &error));
+  EXPECT_EQ("invalid_command_name", error->GetCode());
+  EXPECT_EQ("The name of custom command 'jump' in package 'base' must start "
+            "with '_'", error->GetMessage());
+  error.reset();
+
+  // If the command starts with "_", then it's Ok.
+  json2 = CreateDictionaryValue("{'base':{'_jump':{'parameters':{}}}}");
+  EXPECT_TRUE(dict.LoadCommands(*json2, "robotd", &base_dict, nullptr));
+}
+
+TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
+  // Redefine commands parameter type.
+  buffet::CommandDictionary base_dict;
+  buffet::CommandDictionary dict;
+  buffet::ErrorPtr error;
+  auto json = CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': 'integer'}
+      }
+    }
+  })");
+  base_dict.LoadCommands(*json, "", nullptr, &error);
+  auto json2 = CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': 'string'}
+      }
+    }
+  })");
+  EXPECT_FALSE(dict.LoadCommands(*json2, "robotd", &base_dict, &error));
+  EXPECT_EQ("invalid_object_schema", error->GetCode());
+  EXPECT_EQ("Invalid definition for command 'base.reboot'",
+            error->GetMessage());
+  EXPECT_EQ("invalid_parameter_definition", error->GetInnerError()->GetCode());
+  EXPECT_EQ("Error in definition of property 'delay'",
+            error->GetInnerError()->GetMessage());
+  EXPECT_EQ("param_type_changed", error->GetFirstError()->GetCode());
+  EXPECT_EQ("Redefining a property of type integer as string",
+            error->GetFirstError()->GetMessage());
   error.reset();
 }

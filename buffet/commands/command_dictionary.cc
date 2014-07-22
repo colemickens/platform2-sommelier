@@ -24,6 +24,7 @@ std::vector<std::string> CommandDictionary::GetCommandNamesByCategory(
 
 bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
                                      const std::string& category,
+                                     const CommandDictionary* base_commands,
                                      ErrorPtr* error) {
   std::map<std::string, std::shared_ptr<const CommandDefinition>> new_defs;
 
@@ -32,29 +33,37 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
   // Iterate over packages
   base::DictionaryValue::Iterator package_iter(json);
   while (!package_iter.IsAtEnd()) {
-    std::string package = package_iter.key();
+    std::string package_name = package_iter.key();
     const base::DictionaryValue* package_value = nullptr;
     if (!package_iter.value().GetAsDictionary(&package_value)) {
       Error::AddToPrintf(error, errors::commands::kDomain,
                          errors::commands::kTypeMismatch,
                          "Expecting an object for package '%s'",
-                         package.c_str());
+                         package_name.c_str());
       return false;
     }
     // Iterate over command definitions within the current package.
     base::DictionaryValue::Iterator command_iter(*package_value);
     while (!command_iter.IsAtEnd()) {
-      std::string command = command_iter.key();
+      std::string command_name = command_iter.key();
+      if (command_name.empty()) {
+        Error::AddToPrintf(error, errors::commands::kDomain,
+                           errors::commands::kInvalidCommandName,
+                           "Unnamed command encountered in package '%s'",
+                           package_name.c_str());
+        return false;
+      }
       const base::DictionaryValue* command_value = nullptr;
       if (!command_iter.value().GetAsDictionary(&command_value)) {
         Error::AddToPrintf(error, errors::commands::kDomain,
                            errors::commands::kTypeMismatch,
                            "Expecting an object for command '%s'",
-                           command.c_str());
+                           command_name.c_str());
         return false;
       }
       // Construct the compound command name as "pkg_name.cmd_name".
-      std::string command_name = string_utils::Join('.', package, command);
+      std::string full_command_name = string_utils::Join('.', package_name,
+                                                         command_name);
       // Get the "parameters" definition of the command and read it into
       // an object schema.
       const base::DictionaryValue* command_schema_def = nullptr;
@@ -63,21 +72,45 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         Error::AddToPrintf(error, errors::commands::kDomain,
                            errors::commands::kPropertyMissing,
                            "Command definition '%s' is missing property '%s'",
-                           command_name.c_str(),
+                           full_command_name.c_str(),
                            commands::attributes::kCommand_Parameters);
         return false;
       }
+
+      const ObjectSchema* base_def = nullptr;
+      if (base_commands) {
+        const CommandDefinition* cmd =
+            base_commands->FindCommand(full_command_name);
+        if (cmd)
+          base_def = cmd->GetParameters().get();
+
+        // If the base command dictionary was provided but the command was not
+        // found in it, this must be a custom (vendor) command. GCD spec states
+        // that all custom command names must begin with "_". Let's enforce
+        // this rule here.
+        if (!base_def) {
+          if (command_name.front() != '_') {
+            Error::AddToPrintf(error, errors::commands::kDomain,
+                               errors::commands::kInvalidCommandName,
+                               "The name of custom command '%s' in package '%s'"
+                               " must start with '_'",
+                               command_name.c_str(), package_name.c_str());
+            return false;
+          }
+        }
+      }
+
       auto command_schema = std::make_shared<ObjectSchema>();
-      if (!command_schema->FromJson(command_schema_def, nullptr, error)) {
+      if (!command_schema->FromJson(command_schema_def, base_def, error)) {
         Error::AddToPrintf(error, errors::commands::kDomain,
                            errors::commands::kInvalidObjectSchema,
                            "Invalid definition for command '%s'",
-                           command_name.c_str());
+                           full_command_name.c_str());
         return false;
       }
       auto command_def = std::make_shared<CommandDefinition>(category,
                                                              command_schema);
-      new_defs.insert(std::make_pair(command_name, command_def));
+      new_defs.insert(std::make_pair(full_command_name, command_def));
 
       command_iter.Advance();
     }
