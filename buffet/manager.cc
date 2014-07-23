@@ -15,6 +15,7 @@
 #include <dbus/values_util.h>
 
 #include "buffet/async_event_sequencer.h"
+#include "buffet/commands/command_manager.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_utils.h"
 #include "buffet/error.h"
@@ -128,6 +129,8 @@ void Manager::Init(const OnInitFinish& cb) {
                  properties_->GetPropertyWriter(
                      dbus_constants::kManagerInterface)));
   sequencer->OnAllTasksCompletedCall({claim_interface_task, cb});
+  command_manager_ = std::make_shared<CommandManager>();
+  command_manager_->Startup();
   device_info_.Load();
 }
 

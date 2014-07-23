@@ -52,13 +52,11 @@ class CommandManager {
   bool LoadCommands(const base::FilePath& json_file_path,
                     ErrorPtr* error);
 
-  // Factory static method to get the global singleton instance of the object.
-  static CommandManager* GetInstance();
-  // Global startup method to be called by buffet daemon at startup.
-  // Initializes the global object singleton and loads the standard GCD command
+  // Startup method to be called by buffet daemon at startup.
+  // Initializes the object and loads the standard GCD command
   // dictionary as well as static vendor-provided command definitions for
   // the current device.
-  static void Startup();
+  void Startup();
 
  private:
   // Helper function to load a JSON file that is expected to be
@@ -66,14 +64,10 @@ class CommandManager {
   // in error details in |error|.
   std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
       const base::FilePath& json_file_path, ErrorPtr* error);
-  // Helper method to be called at buffet shutdown to clean up the global
-  // singleton instance of this class.
-  static void Shutdown();
 
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;  // Command definitions/schemas.
 
-  static CommandManager* instance_;  // Global singleton instance of the object.
   DISALLOW_COPY_AND_ASSIGN(CommandManager);
 };
 

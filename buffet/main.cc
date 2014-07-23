@@ -16,7 +16,6 @@
 #include <sysexits.h>
 
 #include "buffet/async_event_sequencer.h"
-#include "buffet/commands/command_manager.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/exported_object_manager.h"
 #include "buffet/manager.h"
@@ -102,8 +101,6 @@ void EnterMainLoop(base::MessageLoopForIO* message_loop,
   // Release our handle on the sequencer so that it gets deleted after
   // both callbacks return.
   sequencer = nullptr;
-
-  buffet::CommandManager::Startup();
 
   LOG(INFO) << "Entering mainloop.";
   message_loop->Run();

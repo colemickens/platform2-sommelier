@@ -21,6 +21,8 @@
 
 namespace buffet {
 
+class CommandManager;
+
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
@@ -73,6 +75,7 @@ class Manager {
   base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager_;
   scoped_ptr<Properties> properties_;
 
+  std::shared_ptr<CommandManager> command_manager_;
   DeviceRegistrationInfo device_info_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

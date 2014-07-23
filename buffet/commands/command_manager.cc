@@ -4,8 +4,6 @@
 
 #include "buffet/commands/command_manager.h"
 
-#include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/files/file_enumerator.h>
 #include <base/json/json_reader.h>
@@ -15,8 +13,6 @@
 #include "buffet/error_codes.h"
 
 namespace buffet {
-
-CommandManager* CommandManager::instance_ = nullptr;
 
 const CommandDictionary& CommandManager::GetCommandDictionary() const {
   return dictionary_;
@@ -52,20 +48,12 @@ bool CommandManager::LoadCommands(const base::FilePath& json_file_path,
   return LoadCommands(*json, category, error);
 }
 
-CommandManager* CommandManager::GetInstance() {
-  CHECK(instance_) << "CommandManager instance not initialized.";
-  return instance_;
-}
-
 void CommandManager::Startup() {
-  CHECK(!instance_) << "CommandManager instance already initialized.";
   LOG(INFO) << "Initializing CommandManager.";
-  std::unique_ptr<CommandManager> inst(new CommandManager);
-
   // Load global standard GCD command dictionary.
   base::FilePath base_command_file("/etc/buffet/gcd.json");
   LOG(INFO) << "Loading standard commands from " << base_command_file.value();
-  CHECK(inst->LoadBaseCommands(base_command_file, nullptr))
+  CHECK(LoadBaseCommands(base_command_file, nullptr))
       << "Failed to load the standard command definitions.";
 
   // Load static device command definitions.
@@ -76,23 +64,10 @@ void CommandManager::Startup() {
   base::FilePath json_file_path = enumerator.Next();
   while (!json_file_path.empty()) {
     LOG(INFO) << "Loading command schema from " << json_file_path.value();
-    CHECK(inst->LoadCommands(json_file_path, nullptr))
+    CHECK(LoadCommands(json_file_path, nullptr))
         << "Failed to load the command definition file.";
     json_file_path = enumerator.Next();
   }
-
-  // Register a cleanup callback to be executed at shut-down.
-  base::AtExitManager::RegisterTask(base::Bind(&CommandManager::Shutdown));
-  // Transfer the object instance pointer from the smart pointer to
-  // the global pointer.
-  instance_ = inst.release();
-}
-
-void CommandManager::Shutdown() {
-  CHECK(instance_) << "CommandManager instance not initialized.";
-  LOG(INFO) << "Shutting down CommandManager.";
-  delete instance_;
-  instance_ = nullptr;
 }
 
 std::unique_ptr<const base::DictionaryValue> CommandManager::LoadJsonDict(
