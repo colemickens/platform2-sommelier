@@ -5,7 +5,7 @@
 #ifndef P2P_CLIENT_FAKE_SERVICE_FINDER_H__
 #define P2P_CLIENT_FAKE_SERVICE_FINDER_H__
 
-#include "client/service_finder.h"
+#include "p2p/client/service_finder.h"
 
 #include <map>
 #include <string>

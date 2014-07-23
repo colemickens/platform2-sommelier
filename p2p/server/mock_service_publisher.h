@@ -5,7 +5,7 @@
 #ifndef P2P_SERVER_MOCK_SERVICE_PUBLISHER_H__
 #define P2P_SERVER_MOCK_SERVICE_PUBLISHER_H__
 
-#include "server/fake_service_publisher.h"
+#include "p2p/server/fake_service_publisher.h"
 
 #include <gmock/gmock.h>
 

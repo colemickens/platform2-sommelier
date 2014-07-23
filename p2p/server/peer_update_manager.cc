@@ -2,11 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "server/peer_update_manager.h"
+#include "p2p/server/peer_update_manager.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

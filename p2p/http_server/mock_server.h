@@ -5,7 +5,7 @@
 #ifndef P2P_HTTP_SERVER_MOCK_SERVER_H__
 #define P2P_HTTP_SERVER_MOCK_SERVER_H__
 
-#include "http_server/server_interface.h"
+#include "p2p/http_server/server_interface.h"
 
 #include <gmock/gmock.h>
 #include <base/basictypes.h>

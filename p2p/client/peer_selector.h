@@ -5,8 +5,8 @@
 #ifndef P2P_CLIENT_PEER_SELECTOR_H__
 #define P2P_CLIENT_PEER_SELECTOR_H__
 
-#include "client/service_finder.h"
-#include "common/clock.h"
+#include "p2p/client/service_finder.h"
+#include "p2p/common/clock.h"
 
 #include <string>
 

@@ -5,7 +5,7 @@
 #ifndef P2P_SERVER_FAKE_FILE_WATCHER_H__
 #define P2P_SERVER_FAKE_FILE_WATCHER_H__
 
-#include "server/file_watcher.h"
+#include "p2p/server/file_watcher.h"
 
 #include <queue>
 #include <utility>

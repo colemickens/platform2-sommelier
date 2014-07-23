@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include <glib-object.h>
 
 #include <gtest/gtest.h>

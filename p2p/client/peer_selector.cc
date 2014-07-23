@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "client/peer.h"
-#include "client/peer_selector.h"
-#include "common/clock_interface.h"
-#include "common/constants.h"
+#include "p2p/client/peer.h"
+#include "p2p/client/peer_selector.h"
+#include "p2p/common/clock_interface.h"
+#include "p2p/common/constants.h"
 
 #include <map>
 #include <vector>

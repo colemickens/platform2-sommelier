@@ -5,9 +5,9 @@
 #ifndef P2P_HTTP_SERVER_SERVER_INTERFACE_H__
 #define P2P_HTTP_SERVER_SERVER_INTERFACE_H__
 
-#include "common/clock_interface.h"
-#include "common/server_message.h"
-#include "http_server/connection_delegate_interface.h"
+#include "p2p/common/clock_interface.h"
+#include "p2p/common/server_message.h"
+#include "p2p/http_server/connection_delegate_interface.h"
 
 namespace p2p {
 

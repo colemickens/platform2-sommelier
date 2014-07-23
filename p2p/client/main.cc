@@ -2,22 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include "p2p/client/peer_selector.h"
+#include "p2p/client/service_finder.h"
+#include "p2p/common/clock.h"
+#include "p2p/common/constants.h"
+#include "p2p/common/util.h"
 
-#include "client/peer_selector.h"
-#include "client/service_finder.h"
-#include "common/clock.h"
-#include "common/constants.h"
-#include "common/util.h"
-
+#include <glib-object.h>
+#include <signal.h>
 #include <stdio.h>
+
 #include <cassert>
 #include <cerrno>
 #include <iostream>
-
-#include <gio/gio.h>
 
 #include <base/bind.h>
 #include <base/command_line.h>

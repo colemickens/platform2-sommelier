@@ -5,7 +5,7 @@
 #ifndef P2P_COMMON_CLOCK_H__
 #define P2P_COMMON_CLOCK_H__
 
-#include "common/clock_interface.h"
+#include "p2p/common/clock_interface.h"
 
 #include <base/basictypes.h>
 

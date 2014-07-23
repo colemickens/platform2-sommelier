@@ -5,7 +5,7 @@
 #ifndef P2P_CLIENT_SERVICE_FINDER_H__
 #define P2P_CLIENT_SERVICE_FINDER_H__
 
-#include "client/peer.h"
+#include "p2p/client/peer.h"
 
 #include <vector>
 #include <set>

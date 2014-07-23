@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/util.h"
-#include "server/service_publisher.h"
+#include "p2p/common/util.h"
+#include "p2p/server/service_publisher.h"
 
 #include <glib.h>
 #include <avahi-client/client.h>

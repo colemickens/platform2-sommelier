@@ -5,9 +5,9 @@
 #ifndef P2P_HTTP_SERVER_SERVER_H__
 #define P2P_HTTP_SERVER_SERVER_H__
 
-#include "common/server_message.h"
-#include "common/clock_interface.h"
-#include "http_server/server_interface.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/clock_interface.h"
+#include "p2p/http_server/server_interface.h"
 
 #include <string>
 #include <map>

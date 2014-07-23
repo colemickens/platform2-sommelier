@@ -45,10 +45,13 @@ class HttpServer {
 
   // Creates and initializes a suitable HttpServer instance for
   // serving files from |root_dir| on the TCP port given by |port|.
-  // Note that the server will not initially be running; use the
-  // Start() method to start it.
+  // The passed |bin_dir| directory should contain the http-server executable
+  // to launch.
+  // Note that the server will not initially be running; use the  Start()
+  // method to start it.
   static HttpServer* Construct(MetricsLibraryInterface* metrics_lib,
                                const base::FilePath& root_dir,
+                               const base::FilePath& bin_dir,
                                uint16 port);
 };
 

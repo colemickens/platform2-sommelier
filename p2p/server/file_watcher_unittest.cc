@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/testutil.h"
-#include "server/file_watcher.h"
+#include "p2p/common/testutil.h"
+#include "p2p/server/file_watcher.h"
 
 #include <stdarg.h>
 #include <sys/types.h>

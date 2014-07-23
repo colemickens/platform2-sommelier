@@ -5,7 +5,7 @@
 #ifndef P2P_SERVER_FAKE_HTTP_SERVER_H__
 #define P2P_SERVER_FAKE_HTTP_SERVER_H__
 
-#include "server/http_server.h"
+#include "p2p/server/http_server.h"
 
 #include <string>
 

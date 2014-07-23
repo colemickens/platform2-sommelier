@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "client/fake_service_finder.h"
+#include "p2p/client/fake_service_finder.h"
 
 #include <base/logging.h>
 

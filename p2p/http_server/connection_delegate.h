@@ -5,8 +5,8 @@
 #ifndef P2P_HTTP_SERVER_CONNECTION_DELEGATE_H__
 #define P2P_HTTP_SERVER_CONNECTION_DELEGATE_H__
 
-#include "common/server_message.h"
-#include "http_server/connection_delegate_interface.h"
+#include "p2p/common/server_message.h"
+#include "p2p/http_server/connection_delegate_interface.h"
 
 #include <string>
 #include <map>

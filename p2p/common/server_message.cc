@@ -2,15 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/server_message.h"
+#include "p2p/common/server_message.h"
 
 #include <glib.h>
 #include <inttypes.h>
 
+#include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>

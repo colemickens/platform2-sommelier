@@ -2,11 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/util.h"
+#include "p2p/common/util.h"
 
 #include <attr/xattr.h>
 #include <stdlib.h>

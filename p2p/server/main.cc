@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/util.h"
-#include "common/constants.h"
-#include "server/file_watcher.h"
-#include "server/service_publisher.h"
-#include "server/peer_update_manager.h"
+#include "p2p/common/util.h"
+#include "p2p/common/constants.h"
+#include "p2p/server/file_watcher.h"
+#include "p2p/server/service_publisher.h"
+#include "p2p/server/peer_update_manager.h"
 
 #include <stdio.h>
 
@@ -67,8 +63,7 @@ int main(int argc, char* argv[]) {
   p2p::util::SetupSyslog(p2p::constants::kServerBinaryName,
                          false /* include_pid */);
 
-  LOG(INFO) << p2p::constants::kServerBinaryName
-            << " " PACKAGE_VERSION << " starting";
+  LOG(INFO) << p2p::constants::kServerBinaryName << " starting";
 
   CommandLine* cl = CommandLine::ForCurrentProcess();
 
@@ -98,8 +93,8 @@ int main(int argc, char* argv[]) {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
 
-  p2p::server::HttpServer* http_server =
-      p2p::server::HttpServer::Construct(&metrics_lib, path, http_port);
+  p2p::server::HttpServer* http_server = p2p::server::HttpServer::Construct(
+      &metrics_lib, path, FilePath("/usr/sbin"), http_port);
 
   p2p::server::ServicePublisher* service_publisher =
       p2p::server::ServicePublisher::Construct(http_port);

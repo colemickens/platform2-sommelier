@@ -2,11 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/server_message.h"
+#include "p2p/common/server_message.h"
 
 #include <gtest/gtest.h>
 #include <gtest/gtest-spi.h>

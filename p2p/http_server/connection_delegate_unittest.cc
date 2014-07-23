@@ -2,16 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/constants.h"
-#include "common/fake_clock.h"
-#include "common/testutil.h"
-#include "common/util.h"
-#include "http_server/connection_delegate.h"
-#include "http_server/mock_server.h"
+#include "p2p/common/constants.h"
+#include "p2p/common/fake_clock.h"
+#include "p2p/common/testutil.h"
+#include "p2p/common/util.h"
+#include "p2p/http_server/connection_delegate.h"
+#include "p2p/http_server/mock_server.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>

@@ -5,7 +5,7 @@
 #ifndef P2P_SERVER_MOCK_HTTP_SERVER_H__
 #define P2P_SERVER_MOCK_HTTP_SERVER_H__
 
-#include "server/fake_http_server.h"
+#include "p2p/server/fake_http_server.h"
 
 #include <string>
 

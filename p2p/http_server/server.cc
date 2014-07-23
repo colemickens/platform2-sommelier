@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/clock.h"
-#include "common/server_message.h"
-#include "common/struct_serializer.h"
-#include "http_server/server.h"
-#include "http_server/connection_delegate_interface.h"
+#include "p2p/common/clock.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/struct_serializer.h"
+#include "p2p/http_server/server.h"
+#include "p2p/http_server/connection_delegate_interface.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>

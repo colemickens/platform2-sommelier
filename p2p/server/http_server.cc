@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/constants.h"
-#include "common/server_message.h"
-#include "common/struct_serializer.h"
-#include "server/http_server.h"
+#include "p2p/common/constants.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/struct_serializer.h"
+#include "p2p/server/http_server.h"
 
 #include <sys/types.h>
 #include <signal.h>
@@ -18,6 +14,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/files/file_path.h>
 
 using std::string;
 using std::vector;
@@ -36,6 +33,7 @@ class HttpServerExternalProcess : public HttpServer {
  public:
   HttpServerExternalProcess(MetricsLibraryInterface* metrics_lib,
                             const FilePath& root_dir,
+                            const FilePath& bin_dir,
                             uint16_t port);
   ~HttpServerExternalProcess();
 
@@ -66,6 +64,9 @@ class HttpServerExternalProcess : public HttpServer {
   // The path to serve files from.
   FilePath root_dir_;
 
+  // The path to the http-server binary.
+  FilePath http_binary_path_;
+
   // The TCP port number for the HTTP server is requested to run on. A value
   // of 0 means that the HTTP server should pick the port number.
   uint16_t requested_port_;
@@ -91,9 +92,11 @@ class HttpServerExternalProcess : public HttpServer {
 HttpServerExternalProcess::HttpServerExternalProcess(
     MetricsLibraryInterface* metrics_lib,
     const FilePath& root_dir,
+    const FilePath& bin_dir,
     uint16_t port)
     : metrics_lib_(metrics_lib),
       root_dir_(root_dir),
+      http_binary_path_(bin_dir.Append(p2p::constants::kHttpServerBinaryName)),
       requested_port_(port),
       port_(0),
       num_connections_(0),
@@ -125,15 +128,8 @@ bool HttpServerExternalProcess::Start() {
   string dir_arg = string("--directory=") + root_dir_.value();
   string requested_port_arg = string("--port=") +
       std::to_string(requested_port_);
-  string http_binary_path = string(PACKAGE_SBIN_DIR "/") +
-      p2p::constants::kHttpServerBinaryName;
 
-  if (getenv("RUN_UNINSTALLED") != NULL) {
-    http_binary_path = string(TOP_BUILDDIR "/http_server/") +
-      p2p::constants::kHttpServerBinaryName;
-  }
-
-  args.push_back(http_binary_path.c_str());
+  args.push_back(http_binary_path_.value().c_str());
   args.push_back(dir_arg.c_str());
   args.push_back(requested_port_arg.c_str());
   args.push_back(NULL);
@@ -308,8 +304,9 @@ void HttpServerExternalProcess::SetNumConnectionsCallback(
 
 HttpServer* HttpServer::Construct(MetricsLibraryInterface* metrics_lib,
                                   const FilePath& root_dir,
+                                  const FilePath& bin_dir,
                                   uint16_t port) {
-  return new HttpServerExternalProcess(metrics_lib, root_dir, port);
+  return new HttpServerExternalProcess(metrics_lib, root_dir, bin_dir, port);
 }
 
 }  // namespace server

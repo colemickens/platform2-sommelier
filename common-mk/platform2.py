@@ -102,7 +102,7 @@ class Platform2(object):
 
     try:
       output = subprocess.check_output(cmd)
-    except UnboundLocalError, OSError:
+    except (UnboundLocalError, OSError):
       raise AssertionError('Error running %r' % cmd)
 
     output_lines = [x for x in output.splitlines() if x]
@@ -194,6 +194,7 @@ class Platform2(object):
         '-Dpkg-config=%s' % self.pkgconfig,
         '-Dsysroot=%s' % self.sysroot,
         '-Dlibdir=%s' % self.libdir,
+        '-Dbuild_root=%s' % self.get_buildroot(),
         '-Dplatform2_root=%s' % self.get_platform2_root(),
         '-Dlibbase_ver=%s' % os.environ.get('BASE_VER', _BASE_VER),
         '-Dclang_syntax=%s' % os.environ.get('CROS_WORKON_CLANG', ''),

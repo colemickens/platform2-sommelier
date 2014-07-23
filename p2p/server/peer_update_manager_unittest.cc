@@ -2,16 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include "p2p/common/testutil.h"
 
-#include "common/testutil.h"
-
-#include "server/fake_file_watcher.h"
-#include "server/mock_http_server.h"
-#include "server/mock_service_publisher.h"
-#include "server/peer_update_manager.h"
+#include "p2p/server/fake_file_watcher.h"
+#include "p2p/server/mock_http_server.h"
+#include "p2p/server/mock_service_publisher.h"
+#include "p2p/server/peer_update_manager.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>

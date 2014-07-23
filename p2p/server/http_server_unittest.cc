@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/server_message.h"
-#include "common/testutil.h"
-#include "common/util.h"
-#include "server/http_server.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/testutil.h"
+#include "p2p/common/util.h"
+#include "p2p/server/http_server.h"
 
 #include <glib-object.h>
 
@@ -130,11 +126,9 @@ TEST(HttpServer, Basic) {
   FilePath testdir = SetupTestDir("http-server");
   StrictMock<MetricsLibraryMock> metrics_lib;
 
-  // Forces HttpServer to run p2p-http-server from the build
-  // directory
-  setenv("RUN_UNINSTALLED", "1", 1);
-
-  HttpServer* server = HttpServer::Construct(&metrics_lib, testdir, 0);
+  // Run p2p-http-server from the build directory.
+  HttpServer* server = HttpServer::Construct(
+      &metrics_lib, testdir, FilePath(BUILD_DIR), 0);
   server->Start();
 
   // Wait until the HTTP server is running and accepting connections.
@@ -246,10 +240,9 @@ TEST(HttpServer, PortNumberTest) {
   FilePath testdir = SetupTestDir("http-server-port");
   StrictMock<MetricsLibraryMock> metrics_lib;
 
-  // Forces HttpServer to run p2p-http-server from the build directory.
-  setenv("RUN_UNINSTALLED", "1", 1);
-
-  HttpServer* server = HttpServer::Construct(&metrics_lib, testdir, 0);
+  // Run p2p-http-server from the build directory.
+  HttpServer* server = HttpServer::Construct(
+      &metrics_lib, testdir, FilePath(BUILD_DIR), 0);
   EXPECT_EQ(server->Port(), 0);
   server->Start();
 

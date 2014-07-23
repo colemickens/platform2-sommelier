@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/constants.h"
-#include "common/server_message.h"
-#include "common/util.h"
-#include "http_server/connection_delegate.h"
-#include "http_server/server.h"
+#include "p2p/common/constants.h"
+#include "p2p/common/server_message.h"
+#include "p2p/common/util.h"
+#include "p2p/http_server/connection_delegate.h"
+#include "p2p/http_server/server.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -273,7 +269,7 @@ bool ConnectionDelegate::SendResponse(
   }
 
   if (!has_server)
-    response += string("Server: ") + PACKAGE_STRING + "\r\n";
+    response += "Server: p2p\r\n";
 
   response += "Connection: close\r\n";
   response += "\r\n";

@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "common/constants.h"
-#include "common/util.h"
-#include "http_server/server.h"
-#include "http_server/connection_delegate.h"
+#include "p2p/common/constants.h"
+#include "p2p/common/util.h"
+#include "p2p/http_server/server.h"
+#include "p2p/http_server/connection_delegate.h"
 
 #include <iostream>
 #include <string>
@@ -55,8 +51,7 @@ int main(int argc, char* argv[]) {
   p2p::util::SetupSyslog(p2p::constants::kHttpServerBinaryName,
                          false /* include_pid */);
 
-  LOG(INFO) << p2p::constants::kHttpServerBinaryName
-            << " " << PACKAGE_VERSION << " starting";
+  LOG(INFO) << p2p::constants::kHttpServerBinaryName << " starting";
 
   if (cl->HasSwitch("help")) {
     Usage(cout);
