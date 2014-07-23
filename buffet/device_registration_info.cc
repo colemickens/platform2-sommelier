@@ -137,17 +137,22 @@ std::string BuildURL(const std::string& url,
 
 namespace buffet {
 
-DeviceRegistrationInfo::DeviceRegistrationInfo()
+DeviceRegistrationInfo::DeviceRegistrationInfo(
+    const std::shared_ptr<CommandManager>& command_manager)
     : transport_(new http::curl::Transport()),
       // TODO(avakulenko): Figure out security implications of storing
       // this data unencrypted.
-      storage_(new FileStorage(base::FilePath(kDeviceInfoFilePath))) {
+      storage_(new FileStorage(base::FilePath(kDeviceInfoFilePath))),
+      command_manager_(command_manager) {
 }
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
-    std::shared_ptr<http::Transport> transport,
-    std::shared_ptr<StorageInterface> storage) : transport_(transport),
-                                                 storage_(storage) {
+    const std::shared_ptr<CommandManager>& command_manager,
+    const std::shared_ptr<http::Transport>& transport,
+    const std::shared_ptr<StorageInterface>& storage)
+    : transport_(transport),
+      storage_(storage),
+      command_manager_(command_manager) {
 }
 
 std::pair<std::string, std::string>

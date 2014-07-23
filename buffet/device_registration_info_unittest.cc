@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "buffet/bind_lambda.h"
+#include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_info.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_request.h"
@@ -161,7 +162,8 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     storage->Save(&data);
     transport = std::make_shared<fake::Transport>();
     dev_reg = std::unique_ptr<DeviceRegistrationInfo>(
-        new DeviceRegistrationInfo(transport, storage));
+        new DeviceRegistrationInfo(std::make_shared<CommandManager>(),
+                                   transport, storage));
   }
 
   base::DictionaryValue data;

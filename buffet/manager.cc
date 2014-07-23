@@ -131,7 +131,9 @@ void Manager::Init(const OnInitFinish& cb) {
   sequencer->OnAllTasksCompletedCall({claim_interface_task, cb});
   command_manager_ = std::make_shared<CommandManager>();
   command_manager_->Startup();
-  device_info_.Load();
+  device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
+      new DeviceRegistrationInfo(command_manager_));
+  device_info_->Load();
 }
 
 scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
@@ -146,7 +148,7 @@ scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
 
   buffet::ErrorPtr error;
-  bool registered = device_info_.CheckRegistration(&error);
+  bool registered = device_info_->CheckRegistration(&error);
   // If it fails due to any reason other than 'device not registered',
   // treat it as a real error and report it to the caller.
   if (!registered &&
@@ -156,7 +158,7 @@ scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
 
   std::string device_id;
   if (registered) {
-    device_id = device_info_.GetDeviceId(&error);
+    device_id = device_info_->GetDeviceId(&error);
     if (device_id.empty())
       return GetDBusError(method_call, error.get());
   }
@@ -181,7 +183,7 @@ scoped_ptr<dbus::Response> Manager::HandleGetDeviceInfo(
 
   std::string device_info_str;
   buffet::ErrorPtr error;
-  auto device_info = device_info_.GetDeviceInfo(&error);
+  auto device_info = device_info_->GetDeviceInfo(&error);
   if (!device_info)
     return GetDBusError(method_call, error.get());
 
@@ -226,7 +228,7 @@ scoped_ptr<dbus::Response> Manager::HandleStartRegisterDevice(
   LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
 
   buffet::ErrorPtr error;
-  std::string id = device_info_.StartRegistration(params, &error);
+  std::string id = device_info_->StartRegistration(params, &error);
   if (id.empty())
     return GetDBusError(method_call, error.get());
 
@@ -257,10 +259,10 @@ scoped_ptr<dbus::Response> Manager::HandleFinishRegisterDevice(
 
   LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
   buffet::ErrorPtr error;
-  if (!device_info_.FinishRegistration(user_auth_code, &error))
+  if (!device_info_->FinishRegistration(user_auth_code, &error))
     return GetDBusError(method_call, error.get());
 
-  std::string device_id = device_info_.GetDeviceId(&error);
+  std::string device_id = device_info_->GetDeviceId(&error);
   if (device_id.empty())
     return GetDBusError(method_call, error.get());
 

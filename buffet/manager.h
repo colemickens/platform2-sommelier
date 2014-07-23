@@ -76,7 +76,7 @@ class Manager {
   scoped_ptr<Properties> properties_;
 
   std::shared_ptr<CommandManager> command_manager_;
-  DeviceRegistrationInfo device_info_;
+  std::unique_ptr<DeviceRegistrationInfo> device_info_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

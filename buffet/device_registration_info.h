@@ -24,6 +24,8 @@ namespace base {
 
 namespace buffet {
 
+class CommandManager;
+
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];
 extern const char kErrorDomainGCDServer[];
@@ -34,12 +36,14 @@ class DeviceRegistrationInfo {
  public:
   // This is a helper class for unit testing.
   class TestHelper;
-  // Default-constructed uses CURL HTTP transport.
-  DeviceRegistrationInfo();
+  // This constructor uses CURL HTTP transport.
+  explicit DeviceRegistrationInfo(
+      const std::shared_ptr<CommandManager>& command_manager);
   // This constructor allows to pass in a custom HTTP transport
   // (mainly for testing).
-  DeviceRegistrationInfo(std::shared_ptr<http::Transport> transport,
-                         std::shared_ptr<StorageInterface> storage);
+  DeviceRegistrationInfo(const std::shared_ptr<CommandManager>& command_manager,
+                         const std::shared_ptr<http::Transport>& transport,
+                         const std::shared_ptr<StorageInterface>& storage);
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -136,6 +140,8 @@ class DeviceRegistrationInfo {
   std::shared_ptr<http::Transport> transport_;
   // Serialization interface to save and load device registration info.
   std::shared_ptr<StorageInterface> storage_;
+  // Global command manager.
+  std::shared_ptr<CommandManager> command_manager_;
 
   friend class TestHelper;
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);
