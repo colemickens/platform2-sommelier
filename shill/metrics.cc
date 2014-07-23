@@ -62,6 +62,12 @@ const int Metrics::kMetricNetworkSignalStrengthMax = 200;
 const int Metrics::kMetricNetworkSignalStrengthMin = 0;
 const int Metrics::kMetricNetworkSignalStrengthNumBuckets = 40;
 
+const char Metrics::kMetricRememberedWiFiNetworkCount[] =
+    "Network.Shill.WiFi.RememberedNetworkCount";
+const int Metrics::kMetricRememberedWiFiNetworkCountMax = 1024;
+const int Metrics::kMetricRememberedWiFiNetworkCountMin = 0;
+const int Metrics::kMetricRememberedWiFiNetworkCountNumBuckets = 32;
+
 const char Metrics::kMetricTimeOnlineSecondsSuffix[] = "TimeOnline";
 const int Metrics::kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeOnlineSecondsMin = 1;

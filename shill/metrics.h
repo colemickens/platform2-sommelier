@@ -357,6 +357,10 @@ class Metrics {
   static const int kMetricNetworkSignalStrengthMin;
   static const int kMetricNetworkSignalStrengthMax;
   static const int kMetricNetworkSignalStrengthNumBuckets;
+  static const char kMetricRememberedWiFiNetworkCount[];
+  static const int kMetricRememberedWiFiNetworkCountMin;
+  static const int kMetricRememberedWiFiNetworkCountMax;
+  static const int kMetricRememberedWiFiNetworkCountNumBuckets;
   static const char kMetricTimeOnlineSecondsSuffix[];
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;

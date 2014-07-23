@@ -155,6 +155,19 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
     Error unused_error;
     manager_->RequestScan(Device::kProgressiveScan, kTypeWifi, &unused_error);
   }
+
+  int remembered_network_count = 0;
+  for (const auto &service : services_) {
+    if (service->IsRemembered()) {
+      remembered_network_count++;
+    }
+  }
+  metrics_->SendToUMA(
+      Metrics::kMetricRememberedWiFiNetworkCount,
+      remembered_network_count,
+      Metrics::kMetricRememberedWiFiNetworkCountMin,
+      Metrics::kMetricRememberedWiFiNetworkCountMax,
+      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
 }
 
 ServiceRefPtr WiFiProvider::FindSimilarService(
