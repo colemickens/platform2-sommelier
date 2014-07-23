@@ -16,8 +16,8 @@
 #include <dbus/object_path.h>
 
 #include "buffet/dbus_constants.h"
-#include "buffet/exported_property_set.h"
 #include "buffet/device_registration_info.h"
+#include "buffet/exported_property_set.h"
 
 namespace buffet {
 

@@ -6,10 +6,10 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
-#include <base/files/file_enumerator.h>
 #include <base/file_util.h>
-#include <base/values.h>
+#include <base/files/file_enumerator.h>
 #include <base/json/json_reader.h>
+#include <base/values.h>
 
 #include "buffet/commands/schema_constants.h"
 #include "buffet/error_codes.h"

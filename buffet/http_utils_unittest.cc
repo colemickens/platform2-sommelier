@@ -9,8 +9,8 @@
 #include <gtest/gtest.h>
 
 #include "buffet/bind_lambda.h"
-#include "buffet/http_utils.h"
 #include "buffet/http_transport_fake.h"
+#include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
 #include "buffet/string_utils.h"
 #include "buffet/url_utils.h"

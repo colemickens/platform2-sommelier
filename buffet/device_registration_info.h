@@ -5,9 +5,9 @@
 #ifndef BUFFET_DEVICE_REGISTRATION_INFO_H_
 #define BUFFET_DEVICE_REGISTRATION_INFO_H_
 
-#include <string>
 #include <map>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/basictypes.h>

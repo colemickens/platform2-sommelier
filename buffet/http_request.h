@@ -14,9 +14,9 @@
 
 #include <base/basictypes.h>
 
+#include "buffet/error.h"
 #include "buffet/http_connection.h"
 #include "buffet/http_transport.h"
-#include "buffet/error.h"
 
 namespace buffet {
 namespace http {

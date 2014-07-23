@@ -17,8 +17,8 @@
 #include <dbus/object_manager.h>
 #include <dbus/values_util.h>
 
-#include "buffet/dbus_constants.h"
 #include "buffet/data_encoding.h"
+#include "buffet/dbus_constants.h"
 
 using namespace buffet::dbus_constants;  // NOLINT(build/namespaces)
 

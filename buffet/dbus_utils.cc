@@ -4,8 +4,8 @@
 
 #include "buffet/dbus_utils.h"
 
-#include <base/logging.h>
 #include <base/bind.h>
+#include <base/logging.h>
 
 namespace buffet {
 

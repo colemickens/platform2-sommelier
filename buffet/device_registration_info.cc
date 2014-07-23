@@ -13,10 +13,10 @@
 
 #include "buffet/data_encoding.h"
 #include "buffet/device_registration_storage_keys.h"
-#include "buffet/storage_impls.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
+#include "buffet/storage_impls.h"
 #include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
