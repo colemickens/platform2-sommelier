@@ -115,7 +115,7 @@ string HashAuthData(const SecureBlob& auth_data) {
 //   False if both hash values are valid and they do not match.
 bool SanityCheckAuthData(const string& auth_data_hash,
                          const string& saved_auth_data_hash) {
-  CHECK_EQ(auth_data_hash.length(), 2);
+  CHECK_EQ(auth_data_hash.length(), 2u);
   if (saved_auth_data_hash.length() != 2 ||
       saved_auth_data_hash[0] != kAuthDataHashVersion)
     return true;
