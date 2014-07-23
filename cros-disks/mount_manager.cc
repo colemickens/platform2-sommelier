@@ -17,8 +17,8 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 
-#include "cros-disks/platform.h"
 #include "cros-disks/mount_entry.h"
+#include "cros-disks/platform.h"
 
 using base::FilePath;
 using std::pair;

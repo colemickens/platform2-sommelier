@@ -4,8 +4,8 @@
 
 #include "cros-disks/mount_info.h"
 
-#include <base/strings/string_split.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 
 #include "cros-disks/file_reader.h"
 

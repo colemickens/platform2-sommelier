@@ -5,8 +5,8 @@
 #ifndef CROS_DISKS_USB_DEVICE_INFO_H_
 #define CROS_DISKS_USB_DEVICE_INFO_H_
 
-#include <string>
 #include <map>
+#include <string>
 
 #include <base/basictypes.h>
 #include <chromeos/dbus/service_constants.h>
