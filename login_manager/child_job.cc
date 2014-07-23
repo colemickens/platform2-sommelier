@@ -9,6 +9,7 @@
 #include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>  // For exit code defines (EX__MAX, etc).
 #include <unistd.h>
 
 #include <base/logging.h>
@@ -19,11 +20,11 @@
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
-const int ChildJobInterface::kCantSetUid = 127;
-const int ChildJobInterface::kCantSetGid = 128;
-const int ChildJobInterface::kCantSetGroups = 129;
-const int ChildJobInterface::kCantSetEnv = 130;
-const int ChildJobInterface::kCantExec = 255;
+const int ChildJobInterface::kCantSetUid = EX__MAX + 1;
+const int ChildJobInterface::kCantSetGid = EX__MAX + 2;
+const int ChildJobInterface::kCantSetGroups = EX__MAX + 3;
+const int ChildJobInterface::kCantSetEnv = EX__MAX + 4;
+const int ChildJobInterface::kCantExec = EX_OSERR;
 
 ChildJobInterface::Subprocess::Subprocess(uid_t desired_uid,
                                           SystemUtils* system)
@@ -89,7 +90,8 @@ void ChildJobInterface::Subprocess::Kill(int signal) {
 
 int ChildJobInterface::Subprocess::SetIDs() {
   int to_return = 0;
-  struct passwd* entry = getpwuid(desired_uid_);
+  // Since this program is single-threaded, it's fine to use getpwuid().
+  struct passwd* entry = getpwuid(desired_uid_);  // NOLINT
   endpwent();
   if (initgroups(entry->pw_name, entry->pw_gid) == -1)
     to_return = kCantSetGroups;
