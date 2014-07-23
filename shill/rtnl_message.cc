@@ -4,9 +4,9 @@
 
 #include "shill/rtnl_message.h"
 
-#include <sys/socket.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <sys/socket.h>
 
 #include "shill/logging.h"
 

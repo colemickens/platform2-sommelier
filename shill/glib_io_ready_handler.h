@@ -5,8 +5,8 @@
 #ifndef SHILL_GLIB_IO_READY_HANDLER_H_
 #define SHILL_GLIB_IO_READY_HANDLER_H_
 
-#include <stdio.h>
 #include <glib.h>
+#include <stdio.h>
 
 #include <base/callback.h>
 

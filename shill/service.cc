@@ -4,8 +4,8 @@
 
 #include "shill/service.h"
 
-#include <time.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <algorithm>
 #include <map>

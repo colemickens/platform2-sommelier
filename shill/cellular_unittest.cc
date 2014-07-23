@@ -5,8 +5,8 @@
 #include "shill/cellular.h"
 
 #include <sys/socket.h>
-#include <linux/if.h>
-#include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
+#include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
+#include <linux/netlink.h>
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>

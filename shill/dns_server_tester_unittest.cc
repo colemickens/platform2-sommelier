@@ -14,9 +14,9 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_dns_client_factory.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_time.h"
 
 using base::Bind;

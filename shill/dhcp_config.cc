@@ -15,14 +15,14 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
+#include "shill/dhcpcd_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/ip_address.h"
 #include "shill/logging.h"
-#include "shill/minijail.h"
 #include "shill/metrics.h"
+#include "shill/minijail.h"
 #include "shill/proxy_factory.h"
 
 using std::string;

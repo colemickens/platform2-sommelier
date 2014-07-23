@@ -5,7 +5,7 @@
 #include "shill/virtual_device.h"
 
 #include <netinet/ether.h>
-#include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 
 #include "shill/logging.h"
 #include "shill/rtnl_handler.h"

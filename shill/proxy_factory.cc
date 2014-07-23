@@ -15,7 +15,7 @@
 #include "shill/supplicant_process_proxy.h"
 
 #if !defined(DISABLE_CELLULAR)
-#include "shill/dbus_objectmanager_proxy.h"
+#include "shill/dbus_objectmanager_proxy.h"  // NOLINT(build/include_alpha)
 #include "shill/mm1_bearer_proxy.h"
 #include "shill/mm1_modem_location_proxy.h"
 #include "shill/mm1_modem_modem3gpp_proxy.h"

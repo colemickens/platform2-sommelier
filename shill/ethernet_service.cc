@@ -4,10 +4,10 @@
 
 #include "shill/ethernet_service.h"
 
-#include <time.h>
-#include <stdio.h>
 #include <netinet/ether.h>
-#include <linux/if.h>
+#include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
+#include <stdio.h>
+#include <time.h>
 
 #include <string>
 

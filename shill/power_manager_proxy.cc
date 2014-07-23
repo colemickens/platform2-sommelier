@@ -7,8 +7,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/message_lite.h>
 
-#include "shill/logging.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
+#include "shill/logging.h"
 
 using std::string;
 using std::vector;

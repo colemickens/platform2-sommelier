@@ -19,8 +19,8 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/adaptor_interfaces.h"
 #include "shill/accessor_interface.h"
+#include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"

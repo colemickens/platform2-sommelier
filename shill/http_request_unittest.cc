@@ -13,8 +13,8 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "shill/ip_address.h"
 #include "shill/http_url.h"
+#include "shill/ip_address.h"
 #include "shill/mock_async_connection.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"

@@ -10,8 +10,8 @@
 
 #include <base/basictypes.h>
 
-#include "wimax_manager/dbus_proxies/org.chromium.WiMaxManager.h"
 #include "shill/wimax_manager_proxy_interface.h"
+#include "wimax_manager/dbus_proxies/org.chromium.WiMaxManager.h"
 
 namespace shill {
 

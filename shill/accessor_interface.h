@@ -6,8 +6,8 @@
 #define SHILL_ACCESSOR_INTERFACE_H_
 
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 

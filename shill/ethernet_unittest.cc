@@ -5,7 +5,7 @@
 #include "shill/ethernet.h"
 
 #include <netinet/ether.h>
-#include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/sockios.h>
 
 #include <base/memory/ref_counted.h>
@@ -16,9 +16,9 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_eap_listener.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ethernet_eap_provider.h"
 #include "shill/mock_ethernet_service.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"

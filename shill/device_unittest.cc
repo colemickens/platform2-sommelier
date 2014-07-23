@@ -6,7 +6,7 @@
 
 #include <ctype.h>
 #include <sys/socket.h>
-#include <linux/if.h>  // Needs typedefs from sys/socket.h.
+#include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 
 #include <map>
 #include <string>

@@ -13,11 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/event_dispatcher.h"
-#include "shill/logging.h"
-#include "shill/mobile_operator_info.h"
-#include "shill/mobile_operator_info_impl.h"
-
 // These files contain binary protobuf definitions used by the following tests
 // inside the namespace ::mobile_operator_db
 #define IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
@@ -28,6 +23,11 @@
 #include "mobile_operator_db/test_protos/init_test_successful_init.h"
 #include "mobile_operator_db/test_protos/main_test.h"
 #undef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
+
+#include "shill/event_dispatcher.h"
+#include "shill/logging.h"
+#include "shill/mobile_operator_info.h"
+#include "shill/mobile_operator_info_impl.h"
 
 using base::FilePath;
 using shill::mobile_operator_db::MobileOperatorDB;

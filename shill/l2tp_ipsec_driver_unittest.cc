@@ -8,11 +8,10 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
-#include <vpn-manager/service_error.h>
 #include <gtest/gtest.h>
+#include <vpn-manager/service_error.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
@@ -23,6 +22,7 @@
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_vpn_service.h"
+#include "shill/nice_mock_control.h"
 
 using base::FilePath;
 using std::find;

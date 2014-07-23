@@ -5,6 +5,7 @@
 #include "shill/cellular_bearer.h"
 
 #include <ModemManager/ModemManager.h>
+
 #include <base/bind.h>
 
 #include "shill/dbus_properties.h"

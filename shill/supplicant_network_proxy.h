@@ -11,8 +11,8 @@
 #include <base/basictypes.h>
 
 #include "shill/dbus_proxies/supplicant-network.h"
-#include "shill/supplicant_network_proxy_interface.h"
 #include "shill/refptr_types.h"
+#include "shill/supplicant_network_proxy_interface.h"
 
 namespace shill {
 

@@ -10,9 +10,9 @@
 #include <sys/socket.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
-#include <memory>
 #include <vector>
 
 #include <base/bind.h>

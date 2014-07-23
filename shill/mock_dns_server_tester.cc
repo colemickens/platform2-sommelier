@@ -4,8 +4,9 @@
 
 #include <string>
 #include <vector>
-#include "shill/mock_dns_server_tester.h"
+
 #include "shill/connection.h"
+#include "shill/mock_dns_server_tester.h"
 
 namespace shill {
 

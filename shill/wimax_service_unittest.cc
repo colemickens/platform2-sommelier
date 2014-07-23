@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_manager.h"
@@ -20,6 +19,7 @@
 #include "shill/mock_wimax.h"
 #include "shill/mock_wimax_network_proxy.h"
 #include "shill/mock_wimax_provider.h"
+#include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
 
 using std::string;

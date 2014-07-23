@@ -5,8 +5,8 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
 #define SHILL_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
 
-#include "shill/cellular_capability_universal.h"
 #include "shill/cellular.h"
+#include "shill/cellular_capability_universal.h"
 #include "shill/mm1_modem_modemcdma_proxy_interface.h"
 
 #include <base/memory/weak_ptr.h>

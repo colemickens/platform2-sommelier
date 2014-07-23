@@ -10,8 +10,8 @@
 
 #include <base/basictypes.h>
 
-#include "shill/dbus_proxies/dbus-properties.h"
 #include "shill/dbus_properties_proxy_interface.h"
+#include "shill/dbus_proxies/dbus-properties.h"
 
 namespace shill {
 

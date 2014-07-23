@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "shill/rtnl_listener.h"
+
 #include "shill/rtnl_handler.h"
 
 using base::Callback;

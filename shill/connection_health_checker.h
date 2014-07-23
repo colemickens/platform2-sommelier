@@ -17,8 +17,8 @@
 #include <gtest/gtest_prod.h>
 
 #include "shill/refptr_types.h"
-#include "shill/sockets.h"
 #include "shill/socket_info.h"
+#include "shill/sockets.h"
 
 namespace shill {
 

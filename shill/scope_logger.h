@@ -6,8 +6,8 @@
 #define SHILL_SCOPE_LOGGER_H_
 
 #include <bitset>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/lazy_instance.h>

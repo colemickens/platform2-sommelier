@@ -5,7 +5,7 @@
 #include "shill/cellular.h"
 
 #include <netinet/in.h>
-#include <linux/if.h>  // Needs definitions from netinet/in.h
+#include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
 #include <string>
 #include <utility>

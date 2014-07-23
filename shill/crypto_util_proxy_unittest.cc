@@ -14,8 +14,8 @@
 #include "shill/minijail.h"
 #include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_file_io.h"
+#include "shill/mock_glib.h"
 #include "shill/mock_minijail.h"
 #include "shill/mock_process_killer.h"
 

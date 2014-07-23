@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -19,6 +18,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 #include "shill/mock_vpn_service.h"
+#include "shill/nice_mock_control.h"
 
 using std::string;
 using testing::_;

@@ -12,8 +12,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/certificate_file.h"
-#include "shill/logging.h"
 #include "shill/key_value_store.h"
+#include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"

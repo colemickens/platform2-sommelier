@@ -5,7 +5,7 @@
 #include "shill/virtual_device.h"
 
 #include <sys/socket.h>
-#include <linux/if.h>  // Needs typedefs from sys/socket.h.
+#include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 
 #include <gtest/gtest.h>
 

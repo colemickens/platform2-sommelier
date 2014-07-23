@@ -14,9 +14,9 @@
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
-#include "shill/supplicant_eap_state_handler.h"
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
+#include "shill/supplicant_eap_state_handler.h"
 #include "shill/supplicant_event_delegate_interface.h"
 
 namespace shill {

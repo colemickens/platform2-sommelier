@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <sys/socket.h>
-#include <linux/if.h>
+#include <linux/if.h>  // NOLINT(build/include_alpha) - needs sockaddr.
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 

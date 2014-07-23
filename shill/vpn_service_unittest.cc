@@ -11,7 +11,6 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
-#include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
@@ -22,6 +21,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 #include "shill/mock_vpn_provider.h"
+#include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
 
 using std::string;

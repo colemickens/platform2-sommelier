@@ -9,7 +9,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <netinet/ether.h>
-#include <net/if.h>
+#include <net/if.h>  // NOLINT - must be included after netinet/ether.h
 #include <net/if_arp.h>
 #include <string.h>
 #include <sys/socket.h>

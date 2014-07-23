@@ -5,9 +5,9 @@
 #include "shill/glib_io_input_handler.h"
 
 #include <errno.h>
+#include <glib.h>
 #include <stdio.h>
 #include <string.h>
-#include <glib.h>
 
 #include <string>
 #include <vector>

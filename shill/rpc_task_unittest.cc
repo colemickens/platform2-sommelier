@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/nice_mock_control.h"
 
 using std::map;
 using std::string;

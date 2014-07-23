@@ -7,7 +7,7 @@
 #include <linux/ethtool.h>
 #include <netinet/ether.h>
 #include <netinet/in.h>
-#include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/sockios.h>
 #include <stdio.h>
 #include <string.h>

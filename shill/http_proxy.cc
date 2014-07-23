@@ -6,7 +6,7 @@
 
 #include <errno.h>
 #include <netinet/in.h>
-#include <linux/if.h>  // Needs definitions from netinet/in.h
+#include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 #include <stdio.h>
 #include <time.h>
 

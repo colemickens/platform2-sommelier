@@ -18,13 +18,13 @@
 #include "shill/mock_async_connection.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_dns_client_factory.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ip_address_store.h"
-#include "shill/mock_sockets.h"
 #include "shill/mock_socket_info_reader.h"
+#include "shill/mock_sockets.h"
 
 using base::Bind;
 using base::Callback;

@@ -17,10 +17,10 @@
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_process_killer.h"
+#include "shill/nice_mock_control.h"
 
 using std::map;
 using std::set;

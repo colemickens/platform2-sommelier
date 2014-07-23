@@ -9,8 +9,8 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/refptr_types.h"
 #include "shill/ethernet.h"
+#include "shill/refptr_types.h"
 
 namespace shill {
 

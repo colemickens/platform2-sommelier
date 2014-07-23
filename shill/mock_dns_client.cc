@@ -4,8 +4,8 @@
 
 #include "shill/mock_dns_client.h"
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "shill/ip_address.h"
 

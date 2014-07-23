@@ -24,9 +24,9 @@
 #include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
-#include "shill/sockets.h"
 #include "shill/socket_info.h"
 #include "shill/socket_info_reader.h"
+#include "shill/sockets.h"
 
 using base::Bind;
 using base::Unretained;

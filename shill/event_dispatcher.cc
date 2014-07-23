@@ -4,8 +4,8 @@
 
 #include "shill/event_dispatcher.h"
 
-#include <stdio.h>
 #include <glib.h>
+#include <stdio.h>
 
 #include <base/callback.h>
 #include <base/location.h>

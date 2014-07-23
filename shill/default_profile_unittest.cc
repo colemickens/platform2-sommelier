@@ -13,8 +13,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/key_file_store.h"
 #include "shill/glib.h"
+#include "shill/key_file_store.h"
 #include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
