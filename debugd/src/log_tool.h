@@ -5,8 +5,8 @@
 #ifndef LOG_TOOL_H_
 #define LOG_TOOL_H_
 
-#include <string>
 #include <map>
+#include <string>
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
