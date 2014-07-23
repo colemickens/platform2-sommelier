@@ -5,8 +5,8 @@
 #ifndef WIMAX_MANAGER_DEVICE_DBUS_ADAPTOR_H_
 #define WIMAX_MANAGER_DEVICE_DBUS_ADAPTOR_H_
 
-#include <string>
 #include <map>
+#include <string>
 
 #include "wimax_manager/dbus_adaptor.h"
 #include "wimax_manager/dbus_adaptors/org.chromium.WiMaxManager.Device.h"

@@ -5,8 +5,8 @@
 #ifndef WIMAX_MANAGER_UTILITY_H_
 #define WIMAX_MANAGER_UTILITY_H_
 
-#include <set>
 #include <map>
+#include <set>
 
 #include <base/logging.h>
 
