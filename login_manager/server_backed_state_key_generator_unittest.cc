@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <map>
+#include <set>
 #include <string>
 
 #include <base/basictypes.h>

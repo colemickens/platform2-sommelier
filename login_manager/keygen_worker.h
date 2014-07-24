@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef LOGIN_MANAGER_KEYGEN_WORKER_H_
+#define LOGIN_MANAGER_KEYGEN_WORKER_H_
+
 #include <string>
 
 #include <base/files/file_path.h>
@@ -20,3 +23,5 @@ int GenerateKey(const base::FilePath& file_path,
 }  // namespace keygen
 
 }  // namespace login_manager
+
+#endif  // LOGIN_MANAGER_KEYGEN_WORKER_H_

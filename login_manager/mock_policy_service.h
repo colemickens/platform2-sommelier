@@ -19,7 +19,7 @@ class MockPolicyService : public PolicyService {
   MOCK_METHOD4(Store, bool(const uint8*, uint32, Completion*, int));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8>*));
   MOCK_METHOD0(PersistKey, void(void));
-  MOCK_METHOD1(PersistPolicy, void(Completion*));
+  MOCK_METHOD1(PersistPolicy, void(Completion*));  // NOLINT - 'unnamed' param.
   MOCK_METHOD0(PersistPolicySync, bool(void));
 };
 

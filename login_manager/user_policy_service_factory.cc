@@ -9,8 +9,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop_proxy.h>
 #include <base/strings/stringprintf.h>
@@ -20,8 +20,8 @@
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
-#include "login_manager/user_policy_service.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/user_policy_service.h"
 
 namespace em = enterprise_management;
 

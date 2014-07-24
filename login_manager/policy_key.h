@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_OWNER_KEY_H_
-#define LOGIN_MANAGER_OWNER_KEY_H_
+#ifndef LOGIN_MANAGER_POLICY_KEY_H_
+#define LOGIN_MANAGER_POLICY_KEY_H_
 
 #include <string>
 #include <vector>
@@ -101,4 +101,4 @@ class PolicyKey {
 };
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_OWNER_KEY_H_
+#endif  // LOGIN_MANAGER_POLICY_KEY_H_

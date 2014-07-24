@@ -4,8 +4,8 @@
 
 #include "login_manager/file_checker.h"
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 
 namespace login_manager {
 

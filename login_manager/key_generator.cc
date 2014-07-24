@@ -7,8 +7,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <base/files/file_path.h>
 #include <base/file_util.h>
+#include <base/files/file_path.h>
 #include <chromeos/cryptohome.h>
 
 #include "login_manager/fake_generator_job.h"

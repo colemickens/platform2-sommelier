@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_MOCK_LOGIN_METRICS_H_
-#define LOGIN_MANAGER_MOCK_LOGIN_METRICS_H_
+#ifndef LOGIN_MANAGER_MOCK_METRICS_H_
+#define LOGIN_MANAGER_MOCK_METRICS_H_
 
 #include "login_manager/login_metrics.h"
 
@@ -29,4 +29,4 @@ class MockMetrics : public LoginMetrics {
 
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_MOCK_LOGIN_METRICS_H_
+#endif  // LOGIN_MANAGER_MOCK_METRICS_H_

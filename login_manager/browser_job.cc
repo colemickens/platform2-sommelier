@@ -15,8 +15,8 @@
 
 #include <algorithm>
 #include <deque>
-#include <string>
 #include <queue>
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>
