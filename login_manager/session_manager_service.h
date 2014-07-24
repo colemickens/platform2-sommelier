@@ -40,9 +40,6 @@ class ObjectProxy;
 }  // namespace dbus
 
 namespace login_manager {
-namespace gobject {
-struct SessionManager;
-}  // namespace gobject
 
 class BrowserJobInterface;
 class DBusSignalEmitterInterface;

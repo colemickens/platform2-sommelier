@@ -23,7 +23,6 @@
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <chromeos/utility.h>
@@ -335,10 +334,10 @@ void SessionManagerService::SetUpHandlers() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_IGN;
-  CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
+  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0U);
 
   action.sa_handler = DoNothing;
-  CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0U);
 
   std::vector<JobManagerInterface*> job_managers;
   job_managers.push_back(this);
@@ -356,8 +355,8 @@ void SessionManagerService::RevertHandlers() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_DFL;
-  CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
-  CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0U);
+  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0U);
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {

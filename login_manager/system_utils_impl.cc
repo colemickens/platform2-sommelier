@@ -24,7 +24,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/process.h>
 
@@ -32,9 +31,6 @@ using std::string;
 using std::vector;
 
 namespace login_manager {
-namespace gobject {
-struct SessionManager;
-}
 
 SystemUtilsImpl::SystemUtilsImpl() {}
 SystemUtilsImpl::~SystemUtilsImpl() {}
