@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_H_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

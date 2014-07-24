@@ -45,7 +45,7 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetterStub);
 };
 
-}  // system
-}  // power_manager
+}  // namespace system
+}  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_STUB_H_

@@ -25,7 +25,7 @@ namespace {
 // This just needs to be lower than the screen-dimming delay.
 const int kCheckActiveVTFrequencySec = 60;
 
-} // namespace
+}  // namespace
 
 InputController::InputController()
     : input_(NULL),

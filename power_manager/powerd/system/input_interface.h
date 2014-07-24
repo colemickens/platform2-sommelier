@@ -40,6 +40,7 @@ class InputInterface {
   // Enables or disables touch devices.
   virtual void SetTouchDevicesState(bool enable) = 0;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(InputInterface);
 };
 

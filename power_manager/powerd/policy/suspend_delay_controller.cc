@@ -4,6 +4,9 @@
 
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 
+#include <algorithm>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>

@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_STUB_H_
+#define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_STUB_H_
+
 #include <base/basictypes.h>
 #include <base/observer_list.h>
 
@@ -72,3 +75,5 @@ class BacklightControllerStub : public policy::BacklightController {
 
 }  // namespace policy
 }  // namespace power_manager
+
+#endif  // POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_STUB_H_

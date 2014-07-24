@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>

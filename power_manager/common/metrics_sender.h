@@ -85,4 +85,4 @@ bool SendEnumMetric(const std::string& name, int sample, int max);
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_COMMON_DBUS_SENDER_H_
+#endif  // POWER_MANAGER_COMMON_METRICS_SENDER_H_

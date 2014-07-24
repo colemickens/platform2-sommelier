@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 
 #include <queue>
+#include <string>
 
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>

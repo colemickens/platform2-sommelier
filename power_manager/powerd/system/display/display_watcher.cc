@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/display/display_watcher.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/files/file_enumerator.h>
 #include <base/file_util.h>

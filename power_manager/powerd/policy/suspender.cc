@@ -5,6 +5,7 @@
 #include "power_manager/powerd/policy/suspender.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/file_util.h>
 #include <base/logging.h>

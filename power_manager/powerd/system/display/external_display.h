@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_EXTERNAL_DISPLAY_H_
 
 #include <queue>
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>

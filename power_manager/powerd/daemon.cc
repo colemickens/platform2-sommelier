@@ -131,11 +131,11 @@ std::string GetPowerStatusBatteryDebugString(
       break;
   }
 
-  long rounded_actual = lround(status.battery_percentage);
-  long rounded_display = lround(status.display_battery_percentage);
-  output += base::StringPrintf("%ld%%", rounded_actual);
+  int rounded_actual = lround(status.battery_percentage);
+  int rounded_display = lround(status.display_battery_percentage);
+  output += base::StringPrintf("%d%%", rounded_actual);
   if (rounded_actual != rounded_display)
-    output += base::StringPrintf(" (displayed as %ld%%)", rounded_display);
+    output += base::StringPrintf(" (displayed as %d%%)", rounded_display);
   output += base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
       status.battery_charge_full, status.battery_current);
 
@@ -224,7 +224,7 @@ int RunSetuidHelper(const std::string& action,
 }  // namespace
 
 // Performs actions requested by |state_controller_|.  The reason that
-// this is a nested class of Daemon rather than just being implented as
+// this is a nested class of Daemon rather than just being implemented as
 // part of Daemon is to avoid method naming conflicts.
 class Daemon::StateControllerDelegate
     : public policy::StateController::Delegate {

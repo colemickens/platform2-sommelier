@@ -4,8 +4,10 @@
 
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -324,7 +326,7 @@ void KeyboardBacklightController::InitUserStepIndex() {
       user_step_index_ = i;
     }
   }
-  CHECK(user_step_index_ != -1)
+  CHECK_NE(user_step_index_, -1)
       << "Failed to find brightness step for level " << current_level_;
 }
 

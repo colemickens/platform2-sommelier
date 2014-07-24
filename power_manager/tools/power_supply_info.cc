@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <iomanip>
-#include <iostream>
+#include <iostream>  // NOLINT(readability/streams)
 #include <string>
 
 #include <base/at_exit.h>

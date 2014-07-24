@@ -33,7 +33,7 @@ DEFINE_double(set_resume_brightness_percent, -1.0,
 
 namespace {
 
-int64 PercentToLevel(power_manager::system::BacklightInterface& backlight,
+int64 PercentToLevel(const power_manager::system::BacklightInterface& backlight,
                      double percent,
                      int64 max_level) {
   percent = std::min(percent, 100.0);
@@ -47,8 +47,8 @@ int main(int argc, char* argv[]) {
       "Print or set the internal panel's backlight brightness.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
-  CHECK((FLAGS_get_brightness + FLAGS_get_max_brightness +
-         FLAGS_get_brightness_percent) < 2)
+  CHECK_LT((FLAGS_get_brightness + FLAGS_get_max_brightness +
+            FLAGS_get_brightness_percent), 2)
       << "-get_brightness, -get_brightness_percent, and -get_max_brightness "
       << "are mutually exclusive";
   CHECK(FLAGS_set_brightness < 0 || FLAGS_set_brightness_percent < 0.0)

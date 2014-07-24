@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
 #define POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
 
+#include <string>
+
 #include <base/memory/scoped_vector.h>
 #include <google/protobuf/message_lite.h>
 

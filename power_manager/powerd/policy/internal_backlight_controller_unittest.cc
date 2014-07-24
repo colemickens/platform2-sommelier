@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 
+#include <string>
+
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>

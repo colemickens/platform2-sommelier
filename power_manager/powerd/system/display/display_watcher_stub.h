@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_STUB_H_
 
+#include <vector>
+
 #include "power_manager/powerd/system/display/display_watcher.h"
 
 namespace power_manager {

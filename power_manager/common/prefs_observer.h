@@ -20,4 +20,4 @@ class PrefsObserver {
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_PREFS_OBSERVER_H_
+#endif  // POWER_MANAGER_COMMON_PREFS_OBSERVER_H_

@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/state_controller.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <base/bind.h>

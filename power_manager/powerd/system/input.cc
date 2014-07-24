@@ -183,7 +183,7 @@ void Input::RemoveObserver(InputObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-#define BITS_PER_LONG (sizeof(long) * 8)
+#define BITS_PER_LONG (sizeof(long) * 8)  // NOLINT(runtime/int)
 #define NUM_BITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
 #define OFF(x)  ((x) % BITS_PER_LONG)
 #define BIT(x)  (1UL << OFF(x))
@@ -194,7 +194,7 @@ LidState Input::QueryLidState() {
   if (lid_fd_ < 0)
     return LID_NOT_PRESENT;
 
-  unsigned long switch_events[NUM_BITS(SW_LID + 1)];
+  unsigned long switch_events[NUM_BITS(SW_LID + 1)];  // NOLINT(runtime/int)
   memset(switch_events, 0, sizeof(switch_events));
   if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
     PLOG(ERROR) << "Lid state ioctl() failed";
@@ -526,7 +526,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     return false;
   }
 
-  unsigned long events[NUM_BITS(EV_MAX)];
+  unsigned long events[NUM_BITS(EV_MAX)];  // NOLINT(runtime/int)
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
     PLOG(ERROR) << "EV_MAX ioctl failed for device " << name;
@@ -537,7 +537,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
 
   // Power button.
   if (IS_BIT_SET(EV_KEY, events)) {
-    unsigned long keys[NUM_BITS(KEY_MAX)];
+    unsigned long keys[NUM_BITS(KEY_MAX)];  // NOLINT(runtime/int)
     memset(keys, 0, sizeof(keys));
     if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
       PLOG(ERROR) << "KEY_MAX ioctl failed for device " << name;
@@ -551,7 +551,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   // Lid switch. Note that it's possible for a power button and lid switch to
   // share a single event file.
   if (IS_BIT_SET(EV_SW, events)) {
-    unsigned long switch_events[NUM_BITS(SW_LID + 1)];
+    unsigned long switch_events[NUM_BITS(SW_LID + 1)];  // NOLINT(runtime/int)
     memset(switch_events, 0, sizeof(switch_events));
     if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
       PLOG(ERROR) << "SW_LID ioctl failed for device " << name;

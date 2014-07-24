@@ -4,6 +4,9 @@
 
 #include "power_manager/powerd/policy/input_controller.h"
 
+#include <string>
+#include <vector>
+
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>

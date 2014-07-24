@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/power_supply.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <base/bind.h>

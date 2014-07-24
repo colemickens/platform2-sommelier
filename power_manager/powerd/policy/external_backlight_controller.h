@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_POLICY_EXTERNAL_BACKLIGHT_CONTROLLER_H_
 
 #include <map>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>

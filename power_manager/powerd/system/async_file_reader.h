@@ -90,4 +90,4 @@ class AsyncFileReader {
 }  // namespace system
 }  // namespace power_manager
 
-#endif // POWER_MANAGER_POWERD_SYSTEM_ASYNC_FILE_READER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_ASYNC_FILE_READER_H_

@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/display/display_power_setter.h"
 
+#include <string>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
@@ -76,5 +78,5 @@ void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 }
 
-}  // system
-}  // power_manager
+}  // namespace system
+}  // namespace power_manager

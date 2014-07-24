@@ -26,5 +26,5 @@ void DisplayPowerSetterStub::SetDisplaySoftwareDimming(bool dimmed) {
   dimmed_ = dimmed;
 }
 
-}  // system
-}  // power_manager
+}  // namespace system
+}  // namespace power_manager

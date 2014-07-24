@@ -12,8 +12,8 @@ namespace power_manager {
 MetricsSenderStub::Metric::Metric()
     : type(EXPONENTIAL),
       sample(0),
-      min(0),
-      max(0),
+      min(0),  // NOLINT(build/include_what_you_use)
+      max(0),  // NOLINT(build/include_what_you_use)
       num_buckets(0) {}
 
 MetricsSenderStub::Metric::~Metric() {}

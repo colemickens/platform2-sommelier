@@ -5,9 +5,9 @@
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 
 #include <base/basictypes.h>
-#include <base/time/time.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -87,6 +87,7 @@ class SuspendDelayControllerTest : public ::testing::Test {
   TestObserver observer_;
   SuspendDelayController controller_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(SuspendDelayControllerTest);
 };
 
@@ -233,7 +234,6 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientAfterRequestingSuspend) {
   EXPECT_TRUE(controller_.ready_for_suspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ready_for_suspend());
-
 }
 
 TEST_F(SuspendDelayControllerTest, MultipleSuspendRequests) {

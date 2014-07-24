@@ -43,4 +43,4 @@ class UdevStub : public UdevInterface {
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_UDEV_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_UDEV_STUB_H_

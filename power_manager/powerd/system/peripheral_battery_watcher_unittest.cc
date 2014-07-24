@@ -99,6 +99,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 
   PeripheralBatteryWatcher battery_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(PeripheralBatteryWatcherTest);
 };
 

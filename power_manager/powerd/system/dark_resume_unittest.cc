@@ -4,8 +4,8 @@
 
 #include "power_manager/powerd/system/dark_resume.h"
 
-#include <base/files/scoped_temp_dir.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>

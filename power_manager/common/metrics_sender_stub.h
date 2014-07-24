@@ -79,4 +79,4 @@ class MetricsSenderStub : public MetricsSenderInterface {
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
+#endif  // POWER_MANAGER_COMMON_METRICS_SENDER_STUB_H_
