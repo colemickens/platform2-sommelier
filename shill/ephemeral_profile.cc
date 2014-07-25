@@ -13,6 +13,11 @@
 
 namespace shill {
 
+using std::string;
+
+// static
+const char EphemeralProfile::kFriendlyName[] = "(ephemeral)";
+
 EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
                                    Metrics *metrics,
                                    Manager *manager)
@@ -20,6 +25,10 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 }
 
 EphemeralProfile::~EphemeralProfile() {}
+
+string EphemeralProfile::GetFriendlyName() {
+  return kFriendlyName;
+}
 
 bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
   SLOG(Profile, 2) << "Adding service " << service->unique_name()

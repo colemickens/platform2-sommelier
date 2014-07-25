@@ -30,16 +30,21 @@ class EphemeralProfile : public Profile {
                    Manager *manager);
   virtual ~EphemeralProfile();
 
-  virtual bool AdoptService(const ServiceRefPtr &service);
-  virtual bool AbandonService(const ServiceRefPtr &service);
+  virtual std::string GetFriendlyName() override;
+  virtual bool AdoptService(const ServiceRefPtr &service) override;
+  virtual bool AbandonService(const ServiceRefPtr &service) override;
 
   // Should not be called.
-  virtual bool Save();
+  virtual bool Save() override;
 
   // Leaves |path| untouched and returns false.
-  virtual bool GetStoragePath(base::FilePath */*path*/) { return false; }
+  virtual bool GetStoragePath(base::FilePath */*path*/) override {
+    return false;
+  }
 
  private:
+  static const char kFriendlyName[];
+
   DISALLOW_COPY_AND_ASSIGN(EphemeralProfile);
 };
 

@@ -80,7 +80,7 @@ class Profile : public base::RefCounted<Profile> {
   // set_storage().
   bool RemoveStorage(GLib *glib, Error *error);
 
-  std::string GetFriendlyName();
+  virtual std::string GetFriendlyName();
 
   virtual std::string GetRpcIdentifier();
 
