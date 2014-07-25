@@ -24,6 +24,7 @@
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
+#include "shill/ndisc.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
@@ -82,7 +83,7 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
   memset(&addr, 0, sizeof(addr));
   addr.nl_family = AF_NETLINK;
   addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
-      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
+      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT;
 
   if (sockets->Bind(rtnl_socket_,
                     reinterpret_cast<struct sockaddr *>(&addr),
@@ -274,6 +275,12 @@ void RTNLHandler::ParseRTNL(InputData *data) {
           break;
         case RTNLMessage::kTypeRoute:
           DispatchEvent(kRequestRoute, msg);
+          break;
+        case RTNLMessage::kTypeRdnss:
+          DispatchEvent(kRequestRdnss, msg);
+          break;
+        case RTNLMessage::kTypeDnssl:
+          NOTIMPLEMENTED();
           break;
         default:
           NOTIMPLEMENTED() << "Unknown RTNL message type.";

@@ -349,6 +349,24 @@ const unsigned char kAddNeighborMessage[] = {
   0x04, 0x00, 0x00, 0x00,
 };
 
+// RDNSS notification
+// Lifetime: infinity (0xffffffff)
+// Server addresses: 2001:db8:100:f101::1, 2001:db8:100:f101::2
+const unsigned char kNdRdnssMessage[] = {
+  0x5c, 0x00, 0x00, 0x00, 0x44, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x0a, 0x00, 0x28, 0x00, 0x01, 0x00, 0x00, 0x00,
+  0x86, 0x00, 0x03, 0x00, 0x14, 0x00, 0x01, 0x00,
+  0x19, 0x05, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
+  0x20, 0x01, 0x0d, 0xb8, 0x01, 0x00, 0xf1, 0x01,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+  0x20, 0x01, 0x0d, 0xb8, 0x01, 0x00, 0xf1, 0x01,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+  0x14, 0x00, 0x01, 0x00, 0xfe, 0x80, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x50, 0xf8, 0x86, 0xff,
+};
+
 }  // namespace
 
 class RTNLMessageTest : public Test {
@@ -482,6 +500,37 @@ class RTNLMessageTest : public Test {
       EXPECT_FALSE(msg.HasAttribute(RTA_PRIORITY));
     }
   }
+
+  void TestParseRdnss(const ByteString &packet,
+                      RTNLMessage::Mode mode,
+                      int interface_index,
+                      uint32 lifetime,
+                      const std::string &dns_server_addresses) {
+    RTNLMessage msg;
+
+    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_EQ(RTNLMessage::kTypeRdnss, msg.type());
+    EXPECT_EQ(mode, msg.mode());
+    EXPECT_EQ(interface_index, msg.interface_index());
+
+    RTNLMessage::RdnssOption rdnss = msg.rdnss_option();
+
+    // Format addresses string for verification.
+    std::string addresses;
+    bool first = true;
+    for (auto &ip : rdnss.addresses) {
+      if (!first) {
+        addresses += ", ";
+      } else {
+        first = false;
+      }
+      addresses += ip.ToString();
+    }
+
+    // Verify life time and addresses.
+    EXPECT_EQ(lifetime, rdnss.lifetime);
+    EXPECT_EQ(dns_server_addresses, addresses);
+  }
 };
 
 TEST_F(RTNLMessageTest, NewLinkWlan0) {
@@ -579,6 +628,19 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
                  RT_SCOPE_UNIVERSE,
                  RTN_UNICAST,
                  kAddRouteIPV4Metric);
+}
+
+TEST_F(RTNLMessageTest, NewRdnssOption) {
+  int interface_index = 1;
+  uint32 lifetime = 0xffffffff;
+  std::string dns_server_addresses =
+      "2001:db8:100:f101::1, 2001:db8:100:f101::2";
+
+  TestParseRdnss(ByteString(kNdRdnssMessage, sizeof(kNdRdnssMessage)),
+                 RTNLMessage::kModeAdd,
+                 interface_index,
+                 lifetime,
+                 dns_server_addresses);
 }
 
 TEST_F(RTNLMessageTest, AddRouteBusted) {

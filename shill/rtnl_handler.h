@@ -40,9 +40,11 @@ class Sockets;
 // state.
 class RTNLHandler {
  public:
+  // Request mask.
   static const int kRequestLink = 1;
   static const int kRequestAddr = 2;
   static const int kRequestRoute = 4;
+  static const int kRequestRdnss = 8;
 
   virtual ~RTNLHandler();
 

@@ -6,9 +6,11 @@
 
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 
 #include "shill/logging.h"
+#include "shill/ndisc.h"
 
 namespace shill {
 
@@ -22,6 +24,7 @@ struct RTNLHeader {
     struct ifaddrmsg ifa;
     struct rtmsg rtm;
     struct rtgenmsg gen;
+    struct nduseroptmsg nd_user_opt;
   };
 };
 
@@ -70,6 +73,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   case RTM_NEWLINK:
   case RTM_NEWADDR:
   case RTM_NEWROUTE:
+  case RTM_NEWNDUSEROPT:
     mode = kModeAdd;
     break;
 
@@ -102,6 +106,11 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   case RTM_NEWROUTE:
   case RTM_DELROUTE:
     if (!DecodeRoute(hdr, mode, &attr_data, &attr_length))
+      return false;
+    break;
+
+  case RTM_NEWNDUSEROPT:
+    if (!DecodeNdUserOption(hdr, mode, &attr_data, &attr_length))
       return false;
     break;
 
@@ -191,6 +200,82 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
                                hdr->rtm.rtm_scope,
                                hdr->rtm.rtm_type,
                                hdr->rtm.rtm_flags));
+  return true;
+}
+
+bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
+                                     Mode mode,
+                                     rtattr **attr_data,
+                                     int *attr_length) {
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->nd_user_opt))) {
+    return false;
+  }
+
+  mode_ = mode;
+  interface_index_ = hdr->nd_user_opt.nduseropt_ifindex;
+  family_ = hdr->nd_user_opt.nduseropt_family;
+
+  // Verify IP family.
+  if (family_ != IPAddress::kFamilyIPv6) {
+    return false;
+  }
+  // Verify message must at-least contain the option header.
+  if (hdr->nd_user_opt.nduseropt_opts_len < sizeof(NDUserOptionHeader)) {
+    return false;
+  }
+
+  // Parse the option header.
+  const NDUserOptionHeader *nd_user_option_header =
+      reinterpret_cast<const NDUserOptionHeader *>(
+          reinterpret_cast<const uint8 *>(&hdr->nd_user_opt) +
+          sizeof(struct nduseroptmsg));
+  uint32 lifetime = ntohl(nd_user_option_header->lifetime);
+
+  // Verify option length.
+  // The length field in the header is in units of 8 octets.
+  int opt_len = static_cast<int>(nd_user_option_header->length) * 8;
+  if (opt_len != hdr->nd_user_opt.nduseropt_opts_len) {
+    return false;
+  }
+
+  // Determine option data pointer and data length.
+  const uint8 *option_data =
+      reinterpret_cast<const uint8 *>(nd_user_option_header + 1);
+  int data_len = opt_len - sizeof(NDUserOptionHeader);
+
+  if (nd_user_option_header->type == ND_OPT_DNSSL) {
+    // TODO(zqiu): Parse DNSSL (DNS Search List) option.
+    type_ = kTypeDnssl;
+    return true;
+  } else if (nd_user_option_header->type == ND_OPT_RDNSS) {
+    // Parse RNDSS (Recursive DNS Server) option.
+    type_ = kTypeRdnss;
+    return ParseRdnssOption(option_data, data_len, lifetime);
+  }
+
+  return false;
+}
+
+bool RTNLMessage::ParseRdnssOption(const uint8 *data,
+                                   int length,
+                                   uint32 lifetime) {
+  const int addr_length = IPAddress::GetAddressLength(IPAddress::kFamilyIPv6);
+
+  // Verify data size are multiple of individual address size.
+  if (length % addr_length != 0) {
+    return false;
+  }
+
+  // Parse the DNS server addresses.
+  std::vector<IPAddress> dns_server_addresses;
+  while (length > 0) {
+    dns_server_addresses.push_back(
+        IPAddress(IPAddress::kFamilyIPv6,
+                  ByteString(data, addr_length)));
+    length -= addr_length;
+    data += addr_length;
+  }
+  set_rdnss_option(RdnssOption(lifetime, dns_server_addresses));
   return true;
 }
 

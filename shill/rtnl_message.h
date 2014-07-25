@@ -6,6 +6,7 @@
 #define SHILL_RTNL_MESSAGE_H_
 
 #include <unordered_map>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/stl_util.h>
@@ -25,7 +26,9 @@ class RTNLMessage {
     kTypeUnknown,
     kTypeLink,
     kTypeAddress,
-    kTypeRoute
+    kTypeRoute,
+    kTypeRdnss,
+    kTypeDnssl
   };
 
   enum Mode {
@@ -100,6 +103,17 @@ class RTNLMessage {
     unsigned char flags;
   };
 
+  struct RdnssOption {
+    RdnssOption()
+        : lifetime(0) {}
+    RdnssOption(uint32 lifetime_in,
+                std::vector<IPAddress> addresses_in)
+        : lifetime(lifetime_in),
+          addresses(addresses_in) {}
+    uint32 lifetime;
+    std::vector<IPAddress> addresses;
+  };
+
   // Empty constructor
   RTNLMessage();
   // Build an RTNL message from arguments
@@ -140,6 +154,10 @@ class RTNLMessage {
   void set_route_status(const RouteStatus &route_status) {
     route_status_ = route_status;
   }
+  const RdnssOption &rdnss_option() const { return rdnss_option_; }
+  void set_rdnss_option(const RdnssOption &rdnss_option) {
+    rdnss_option_ = rdnss_option;
+  }
   // GLint hates "unsigned short", and I don't blame it, but that's the
   // type that's used in the system headers.  Use uint16 instead and hope
   // that the conversion never ends up truncating on some strange platform.
@@ -168,6 +186,13 @@ class RTNLMessage {
                     Mode mode,
                     rtattr **attr_data,
                     int *attr_length);
+  bool DecodeNdUserOption(const RTNLHeader *hdr,
+                       Mode mode,
+                       rtattr **attr_data,
+                       int *attr_length);
+  bool ParseRdnssOption(const uint8 *data,
+                        int length,
+                        uint32 lifetime);
   bool EncodeLink(RTNLHeader *hdr) const;
   bool EncodeAddress(RTNLHeader *hdr) const;
   bool EncodeRoute(RTNLHeader *hdr) const;
@@ -182,6 +207,7 @@ class RTNLMessage {
   LinkStatus link_status_;
   AddressStatus address_status_;
   RouteStatus route_status_;
+  RdnssOption rdnss_option_;
   std::unordered_map<uint16, ByteString> attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLMessage);
