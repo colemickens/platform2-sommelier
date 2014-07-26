@@ -99,6 +99,13 @@ class Suspender : public SuspendDelayObserver {
     // powerd runs during the current boot session.
     virtual int GetInitialSuspendId() = 0;
 
+    // Returns an initial value for the dark suspend IDs that's likely (but not
+    // guaranteed) to yield successive IDs that are unique across all of the
+    // powerd runs during the current boot session.  Additionally, successive
+    // IDs generated from this value should not collide with successive IDs
+    // generated from the value returned by GetInitialSuspendId().
+    virtual int GetInitialDarkSuspendId() = 0;
+
     // Is the lid currently closed?  Returns false if the query fails or if
     // the system doesn't have a lid.
     virtual bool IsLidClosedForSuspend() = 0;
@@ -153,6 +160,7 @@ class Suspender : public SuspendDelayObserver {
     explicit TestApi(Suspender* suspender);
 
     int suspend_id() const { return suspender_->suspend_request_id_; }
+    int dark_suspend_id() const { return suspender_->dark_suspend_id_; }
 
     // Sets the time used as "now".
     void SetCurrentWallTime(base::Time wall_time);
@@ -265,10 +273,14 @@ class Suspender : public SuspendDelayObserver {
   // Starts |resuspend_timer_| to send EVENT_READY_TO_RESUSPEND after |delay|.
   void ScheduleResuspend(const base::TimeDelta& delay);
 
-  // Emits D-Bus signals announcing the beginning or end of a suspend attempt.
+  // Emits D-Bus signals announcing the beginning or end of a suspend request.
   void EmitSuspendImminentSignal(int suspend_request_id);
   void EmitSuspendDoneSignal(int suspend_request_id,
                              const base::TimeDelta& suspend_duration);
+
+  // Emits a D-Bus signal announcing that the system will soon resuspend from
+  // dark resume.
+  void EmitDarkSuspendImminentSignal(int dark_suspend_id);
 
   Delegate* delegate_;  // weak
   DBusSenderInterface* dbus_sender_;  // weak
@@ -292,6 +304,9 @@ class Suspender : public SuspendDelayObserver {
 
   // Unique ID associated with the current suspend request.
   int suspend_request_id_;
+
+  // Unique ID associated with the current dark suspend request.
+  int dark_suspend_id_;
 
   // An optional wakeup count supplied via
   // RequestSuspendWithExternalWakeupCount().

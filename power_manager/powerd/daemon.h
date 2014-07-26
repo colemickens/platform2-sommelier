@@ -93,6 +93,7 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Overridden from policy::Suspender::Delegate:
   int GetInitialSuspendId() override;
+  int GetInitialDarkSuspendId() override;
   bool IsLidClosedForSuspend() override;
   bool ReadSuspendWakeupCount(uint64_t* wakeup_count) override;
   void SetSuspendAnnounced(bool announced) override;

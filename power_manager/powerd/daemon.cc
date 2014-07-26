@@ -611,6 +611,14 @@ int Daemon::GetInitialSuspendId() {
   return (getpid() % 32768) * 65536 + 1;
 }
 
+int Daemon::GetInitialDarkSuspendId() {
+  // We use the upper half of the suspend ID space for dark suspend attempts.
+  // Assuming that we will go through dark suspend IDs faster than the regular
+  // suspend IDs, we should never have a collision between the suspend ID and
+  // the dark suspend ID until the dark suspend IDs wrap around.
+  return GetInitialSuspendId() + 32768;
+}
+
 bool Daemon::IsLidClosedForSuspend() {
   return input_->QueryLidState() == LID_CLOSED;
 }

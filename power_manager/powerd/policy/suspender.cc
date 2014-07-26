@@ -48,6 +48,7 @@ Suspender::Suspender()
       handling_event_(false),
       processing_queued_events_(false),
       suspend_request_id_(0),
+      dark_suspend_id_(0),
       suspend_request_supplied_wakeup_count_(false),
       suspend_request_wakeup_count_(0),
       wakeup_count_(0),
@@ -72,6 +73,8 @@ void Suspender::Init(Delegate* delegate,
   suspend_request_id_ = initial_id - 1;
   suspend_delay_controller_.reset(new SuspendDelayController(initial_id));
   suspend_delay_controller_->AddObserver(this);
+
+  dark_suspend_id_ = delegate_->GetInitialDarkSuspendId() - 1;
 
   int64_t retry_delay_ms = 0;
   CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
@@ -325,23 +328,30 @@ Suspender::State Suspender::Suspend() {
 
   // At this point, we've either resumed successfully or failed to suspend in
   // the first place.
-
   const bool in_dark_resume = dark_resume_->InDarkResume();
-  if (in_dark_resume) {
-    // To increase the chances of suspending successfully, don't check the
-    // wakeup count when in dark resume.
-    wakeup_count_ = 0;
-    wakeup_count_valid_ = false;
+  if (in_dark_resume && result == Delegate::SUSPEND_SUCCESSFUL) {
+    // Save the first run's number of attempts so it can be reported later.
+    if (!initial_num_attempts_)
+      initial_num_attempts_ = current_num_attempts_;
 
-    // If the suspend attempt was successful, reschedule an immediate resuspend.
-    if (result == Delegate::SUSPEND_SUCCESSFUL) {
-      // Save the first run's number of attempts so it can be reported later.
-      if (!initial_num_attempts_)
-        initial_num_attempts_ = current_num_attempts_;
-      current_num_attempts_ = 0;
-      ScheduleResuspend(base::TimeDelta());
-      return STATE_WAITING_TO_RESUSPEND;
+    dark_suspend_id_++;
+    current_num_attempts_ = 0;
+
+    // We don't want to emit a DarkSuspendImminent on devices with older kernels
+    // because they probably don't have the hardware support to do any useful
+    // work in dark resume anyway.
+    if (delegate_->CanSafelyExitDarkResume()) {
+      if (!suspend_request_supplied_wakeup_count_)
+        wakeup_count_valid_ = delegate_->ReadSuspendWakeupCount(&wakeup_count_);
+      EmitDarkSuspendImminentSignal(dark_suspend_id_);
+    } else {
+      wakeup_count_ = 0;
+      wakeup_count_valid_ = false;
     }
+
+    ScheduleResuspend(base::TimeDelta());
+
+    return STATE_WAITING_TO_RESUSPEND;
   }
 
   // Don't retry if an external wakeup count was supplied and the suspend
@@ -356,6 +366,13 @@ Suspender::State Suspender::Suspend() {
     return STATE_IDLE;
   }
 
+  // TODO(chirantan): The suspend attempt may have been canceled during dark
+  // resume due to the arrival of more packets from the network.  In this case,
+  // we want to emit another DarkSuspendImminent signal rather than just
+  // retrying the suspend.  Once we have support to distinguish this case in the
+  // kernel, we should add a check here to potentially re-run the dark suspend
+  // delays.
+
   if (current_num_attempts_ > max_retries_) {
     LOG(ERROR) << "Unsuccessfully attempted to suspend "
                << current_num_attempts_ << " times; shutting down";
@@ -366,7 +383,7 @@ Suspender::State Suspender::Suspend() {
 
   LOG(WARNING) << "Suspend attempt #" << current_num_attempts_ << " failed; "
                << "will retry in " << retry_delay_.InMilliseconds() << " ms";
-  if (!suspend_request_supplied_wakeup_count_ && !in_dark_resume)
+  if (!suspend_request_supplied_wakeup_count_)
     wakeup_count_valid_ = delegate_->ReadSuspendWakeupCount(&wakeup_count_);
   ScheduleResuspend(retry_delay_);
   return STATE_WAITING_TO_RESUSPEND;
@@ -390,6 +407,12 @@ void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
   proto.set_suspend_id(suspend_request_id);
   proto.set_suspend_duration(suspend_duration.ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
+}
+
+void Suspender::EmitDarkSuspendImminentSignal(int dark_suspend_id) {
+  SuspendImminent proto;
+  proto.set_suspend_id(dark_suspend_id);
+  dbus_sender_->EmitSignalWithProtocolBuffer(kDarkSuspendImminentSignal, proto);
 }
 
 }  // namespace policy
