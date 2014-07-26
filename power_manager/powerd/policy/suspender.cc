@@ -226,11 +226,19 @@ void Suspender::HandleEvent(Event event) {
             state_ = Suspend();
           break;
         case EVENT_USER_ACTIVITY:
-          FinishRequest(false);
-          state_ = STATE_IDLE;
+          // We ignore any user activity in dark resume if the system doesn't
+          // have the ability to properly transition from dark resume to fully
+          // resumed.
+          if (state_ == STATE_WAITING_FOR_SUSPEND_DELAYS ||
+              delegate_->CanSafelyExitDarkResume()) {
+            FinishRequest(false);
+            state_ = STATE_IDLE;
+          }
           break;
         case EVENT_SHUTDOWN_STARTED:
-          FinishRequest(false);
+          if (state_ == STATE_WAITING_FOR_SUSPEND_DELAYS ||
+              delegate_->CanSafelyExitDarkResume())
+            FinishRequest(false);
           state_ = STATE_SHUTTING_DOWN;
           break;
         default:
@@ -286,7 +294,8 @@ void Suspender::FinishRequest(bool success) {
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
   delegate_->SetSuspendAnnounced(false);
   delegate_->UndoPrepareToSuspend(success,
-      initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_);
+      initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
+      dark_resume_->InDarkResume());
 }
 
 Suspender::State Suspender::Suspend() {

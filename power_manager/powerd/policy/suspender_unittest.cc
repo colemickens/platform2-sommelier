@@ -44,7 +44,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
         suspend_wakeup_count_(0),
         suspend_wakeup_count_valid_(false),
         suspend_was_successful_(false),
-        num_suspend_attempts_(0) {
+        num_suspend_attempts_(0),
+        suspend_canceled_while_in_dark_resume_(false),
+        can_safely_exit_dark_resume_(true) {
   }
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
@@ -66,6 +68,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     shutdown_callback_ = callback;
   }
 
+  void set_can_safely_exit_dark_resume(bool can_exit) {
+    can_safely_exit_dark_resume_ = can_exit;
+  }
+
   bool suspend_announced() const { return suspend_announced_; }
   uint64_t suspend_wakeup_count() const { return suspend_wakeup_count_; }
   bool suspend_wakeup_count_valid() const {
@@ -74,6 +80,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   const base::TimeDelta& suspend_duration() const { return suspend_duration_; }
   bool suspend_was_successful() const { return suspend_was_successful_; }
   int num_suspend_attempts() const { return num_suspend_attempts_; }
+  bool suspend_canceled_while_in_dark_resume() const {
+    return suspend_canceled_while_in_dark_resume_;
+  }
 
   // Delegate implementation:
   int GetInitialSuspendId() override { return 1; }
@@ -108,10 +117,13 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_result_;
   }
 
-  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override {
+  void UndoPrepareToSuspend(bool success,
+                            int num_suspend_attempts,
+                            bool canceled_while_in_dark_resume) override {
     AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;
+    suspend_canceled_while_in_dark_resume_ = canceled_while_in_dark_resume;
     RunAndResetCallback(&completion_callback_);
   }
 
@@ -123,6 +135,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void ShutDownForDarkResume() override {
     AppendAction(kShutDown);
     RunAndResetCallback(&shutdown_callback_);
+  }
+
+  bool CanSafelyExitDarkResume() override {
+    return can_safely_exit_dark_resume_;
   }
 
  private:
@@ -167,6 +183,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   // Arguments passed to last invocation of UndoPrepareToSuspend().
   bool suspend_was_successful_;
   int num_suspend_attempts_;
+  bool suspend_canceled_while_in_dark_resume_;
+
+  // Value returned by CanSafelyExitDarkResume().
+  bool can_safely_exit_dark_resume_;
 
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
@@ -251,6 +271,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   // A SuspendDone signal should be emitted to announce that the attempt is
   // complete.
@@ -339,6 +360,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_NE(kExternalWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(3, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_EQ(suspend_id, GetSuspendDoneId(0));
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
@@ -355,6 +377,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_EQ(new_suspend_id, GetSuspendDoneId(0));
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
@@ -405,6 +428,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -420,6 +444,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -434,6 +459,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -462,6 +488,7 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(2, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
@@ -513,6 +540,7 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   EXPECT_EQ(kWakeupCount - 1, delegate_.suspend_wakeup_count());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Send another suspend request with the current wakeup count. Report failure
@@ -691,6 +719,132 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
   EXPECT_EQ(JoinActions(kSuspend, kShutDown, NULL), delegate_.GetActions());
 }
 
+TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
+  Init();
+
+  // Suspend for 10 seconds.
+  const int64_t kSuspendSec = 10;
+  dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
+  dark_resume_.set_in_dark_resume(true);
+  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
+
+  // User activity should trigger the transition to fully resumed.
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  suspender_.HandleUserActivity();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_FALSE(delegate_.suspend_announced());
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
+  // Opening the lid should also trigger the transition.
+  dbus_sender_.ClearSentSignals();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  suspender_.HandleLidOpened();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_FALSE(delegate_.suspend_announced());
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
+  // Shutting down the system will also trigger the transition so that clients
+  // can perform cleanup.
+  dbus_sender_.ClearSentSignals();
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  suspender_.HandleShutdown();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_FALSE(delegate_.suspend_announced());
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+}
+
+// Tests that user activity is ignored and that no dbus signals are sent out
+// during dark resume on legacy systems.
+TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
+  Init();
+
+  // Systems with older kernels cannot safely transition from dark resume to
+  // fully resumed.
+  delegate_.set_can_safely_exit_dark_resume(false);
+
+  // Suspend for 10 seconds.
+  const int64_t kSuspendSec = 10;
+  dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
+  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
+
+  // User activity should be ignored.
+  dark_resume_.set_in_dark_resume(true);
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+
+  suspender_.HandleUserActivity();
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_TRUE(delegate_.suspend_announced());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  dark_resume_.set_in_dark_resume(false);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+
+  // Opening the lid should also be ignored.
+  dbus_sender_.ClearSentSignals();
+  dark_resume_.set_in_dark_resume(true);
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+
+  suspender_.HandleLidOpened();
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_TRUE(delegate_.suspend_announced());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  dark_resume_.set_in_dark_resume(false);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+
+  // Shutting down the system will not trigger a transition.
+  dbus_sender_.ClearSentSignals();
+  dark_resume_.set_in_dark_resume(true);
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+
+  suspender_.HandleShutdown();
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_TRUE(delegate_.suspend_announced());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  dark_resume_.set_in_dark_resume(false);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+}
+
 TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   Init();
   suspender_.RequestSuspend();
@@ -718,6 +872,7 @@ TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 }
 
 }  // namespace policy

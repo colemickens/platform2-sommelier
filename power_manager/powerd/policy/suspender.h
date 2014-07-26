@@ -132,7 +132,8 @@ class Suspender : public SuspendDelayObserver {
     // Undoes the preparations performed by PrepareToSuspend(). Called by
     // FinishRequest().
     virtual void UndoPrepareToSuspend(bool success,
-                                      int num_suspend_attempts) = 0;
+                                      int num_suspend_attempts,
+                                      bool canceled_while_in_dark_resume) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
     virtual void ShutDownForFailedSuspend() = 0;
@@ -140,6 +141,10 @@ class Suspender : public SuspendDelayObserver {
     // Shuts the system down in response to the DarkResumePolicy determining the
     // system should shut down.
     virtual void ShutDownForDarkResume() = 0;
+
+    // Returns true if the system can properly transition from dark resume to
+    // fully resumed.
+    virtual bool CanSafelyExitDarkResume() = 0;
   };
 
   // Helper class providing functionality needed by tests.

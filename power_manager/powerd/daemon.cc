@@ -73,6 +73,58 @@ const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 const int kSessionManagerDBusTimeoutMs = 3000;
 const int kUpdateEngineDBusTimeoutMs = 3000;
 
+// If we go from a dark resume directly to a full resume several devices will be
+// left in an awkward state.  This won't be a problem once selective resume is
+// ready but until then we need to fake it by using the pm_test mechanism to
+// make sure all the drivers go through the proper resume path.
+// TODO(chirantan): Remove these once selective resume is ready.
+const char kPMTestPath[] = "/sys/power/pm_test";
+const char kPMTestDevices[] = "devices";
+const char kPMTestNone[] = "none";
+const char kPowerStatePath[] = "/sys/power/state";
+const char kPowerStateMem[] = "mem";
+
+// TODO(chirantan): We use the existence of this file to determine if the system
+// can safely exit dark resume.  However, this file will go away once selective
+// resume lands, at which point we are probably going to have to use a pref file
+// instead.
+const char kPMTestDelayPath[] = "/sys/power/pm_test_delay";
+
+// Exits dark resume so that we can transition to fully resumed.  Returns true
+// if the transititon was successful.
+bool ExitDarkResume() {
+  LOG(INFO) << "Transitioning from dark resume to fully resumed.";
+
+  // Set up the pm_test down to devices level.
+  if (!util::WriteFileFully(base::FilePath(kPMTestPath),
+                            kPMTestDevices,
+                            strlen(kPMTestDevices))) {
+    PLOG(ERROR) << "Unable to set up the pm_test level to properly exit dark "
+                << "resume.";
+    return false;
+  }
+
+  // Do the pm_test suspend.
+  if (!util::WriteFileFully(base::FilePath(kPowerStatePath),
+                            kPowerStateMem,
+                            strlen(kPowerStateMem))) {
+    PLOG(ERROR) << "Error while performing a pm_test suspend to exit dark "
+                << "resume";
+    return false;
+  }
+
+  // Turn off pm_test so that we do a regular suspend next time.
+  if (!util::WriteFileFully(base::FilePath(kPMTestPath),
+                            kPMTestNone,
+                            strlen(kPMTestNone))) {
+    PLOG(ERROR) << "Unable to restore pm_test level after attempting to exit "
+                << "dark resume.";
+    return false;
+  }
+
+  return true;
+}
+
 // Copies fields from |status| into |proto|.
 void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
                                      PowerSupplyProperties* proto) {
@@ -357,7 +409,9 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       state_controller_initialized_(false),
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
-      log_suspend_with_mosys_eventlog_(false) {
+      log_suspend_with_mosys_eventlog_(false),
+      can_safely_exit_dark_resume_(
+          base::PathExists(base::FilePath(kPMTestDelayPath))) {
   scoped_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
   metrics_lib->Init();
   metrics_sender_.reset(
@@ -670,7 +724,12 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 }
 
-void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
+void Daemon::UndoPrepareToSuspend(bool success,
+                                  int num_suspend_attempts,
+                                  bool canceled_while_in_dark_resume) {
+  if (canceled_while_in_dark_resume && !ExitDarkResume())
+    ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED);
+
   audio_client_->RestoreMutedState();
   power_supply_->SetSuspended(false);
 
@@ -693,6 +752,10 @@ void Daemon::ShutDownForFailedSuspend() {
 
 void Daemon::ShutDownForDarkResume() {
   ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_DARK_RESUME);
+}
+
+bool Daemon::CanSafelyExitDarkResume() {
+  return can_safely_exit_dark_resume_;
 }
 
 void Daemon::OnAudioStateChange(bool active) {

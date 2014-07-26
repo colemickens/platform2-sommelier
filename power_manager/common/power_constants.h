@@ -223,17 +223,19 @@ enum ButtonState {
 // Note: These are reported in a histogram and must not be renumbered.
 enum ShutdownReason {
   // Explicit user request (e.g. holding power button).
-  SHUTDOWN_REASON_USER_REQUEST     = 0,
+  SHUTDOWN_REASON_USER_REQUEST            = 0,
   // Request from StateController (e.g. lid was closed or user was inactive).
-  SHUTDOWN_REASON_STATE_TRANSITION = 1,
+  SHUTDOWN_REASON_STATE_TRANSITION        = 1,
   // Battery level dropped below shutdown threshold.
-  SHUTDOWN_REASON_LOW_BATTERY      = 2,
+  SHUTDOWN_REASON_LOW_BATTERY             = 2,
   // Multiple suspend attempts failed.
-  SHUTDOWN_REASON_SUSPEND_FAILED   = 3,
+  SHUTDOWN_REASON_SUSPEND_FAILED          = 3,
   // Battery level was below threshold during dark resume from suspend.
-  SHUTDOWN_REASON_DARK_RESUME      = 4,
+  SHUTDOWN_REASON_DARK_RESUME             = 4,
   // System is being rebooted to apply an update.
-  SHUTDOWN_REASON_SYSTEM_UPDATE    = 5,
+  SHUTDOWN_REASON_SYSTEM_UPDATE           = 5,
+  // Failed to properly recover from dark resume.
+  SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED = 6,
 };
 
 // Returns human-readable descriptions of enum values.

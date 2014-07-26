@@ -101,9 +101,12 @@ class Daemon : public policy::BacklightControllerObserver,
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
                           base::TimeDelta duration) override;
-  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override;
+  void UndoPrepareToSuspend(bool success,
+                            int num_suspend_attempts,
+                            bool canceled_while_in_dark_resume) override;
   void ShutDownForFailedSuspend() override;
   void ShutDownForDarkResume() override;
+  bool CanSafelyExitDarkResume() override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
@@ -278,6 +281,10 @@ class Daemon : public policy::BacklightControllerObserver,
   // True if the "mosys" command should be used to record suspend and resume
   // timestamps in eventlog.
   bool log_suspend_with_mosys_eventlog_;
+
+  // True if the system can properly transition from dark resume to fully
+  // resumed.
+  bool can_safely_exit_dark_resume_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
