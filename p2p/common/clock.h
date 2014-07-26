@@ -25,8 +25,8 @@ class Clock : public ClockInterface {
   DISALLOW_COPY_AND_ASSIGN(Clock);
 };
 
-}  // namespace p2p
-
 }  // namespace common
+
+}  // namespace p2p
 
 #endif  // P2P_COMMON_CLOCK_H__

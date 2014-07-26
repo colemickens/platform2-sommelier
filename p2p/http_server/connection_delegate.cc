@@ -8,27 +8,28 @@
 #include "p2p/http_server/connection_delegate.h"
 #include "p2p/http_server/server.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <unistd.h>
 #include <attr/xattr.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <cctype>
-#include <cinttypes>
-#include <cassert>
-#include <cerrno>
-#include <string>
 #include <algorithm>
-#include <vector>
+#include <cassert>
+#include <cctype>
+#include <cerrno>
+#include <cinttypes>
 #include <iomanip>
+#include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
 using std::map;
@@ -38,9 +39,9 @@ using std::vector;
 using base::Time;
 using base::TimeDelta;
 
+using p2p::common::ClockInterface;
 using p2p::constants::kBytesPerKB;
 using p2p::constants::kBytesPerMB;
-using p2p::common::ClockInterface;
 using p2p::util::P2PServerMessageType;
 using p2p::util::P2PServerRequestResult;
 
@@ -60,7 +61,7 @@ ConnectionDelegate::ConnectionDelegate(int dirfd,
       server_(server),
       max_download_rate_(max_download_rate),
       total_bytes_sent_(0) {
-  CHECK(fd_ != -1);
+  CHECK_NE(-1, fd_);
   CHECK(server_ != NULL);
 }
 
@@ -74,7 +75,7 @@ ConnectionDelegateInterface* ConnectionDelegate::Construct(
       max_download_rate);
 }
 
-ConnectionDelegate::~ConnectionDelegate() { CHECK(fd_ == -1); }
+ConnectionDelegate::~ConnectionDelegate() { CHECK_EQ(-1, fd_); }
 
 bool ConnectionDelegate::ReadLine(string* str) {
   CHECK(str != NULL);
@@ -396,10 +397,12 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
     if (max_download_rate_ != 0) {
       int64_t bytes_allowed = max_download_rate_ *
           total_time_spent_.InSecondsF();
-      if (int64_t(total_bytes_sent_) > bytes_allowed) {
-        int64_t over_budget = total_bytes_sent_ - bytes_allowed;
-        int64_t usec_to_sleep = (over_budget / double(max_download_rate_)) *
-          Time::kMicrosecondsPerSecond;
+      if (static_cast<int64_t>(total_bytes_sent_) > bytes_allowed) {
+        int64_t over_budget = static_cast<int64_t>(total_bytes_sent_)
+            - bytes_allowed;
+        int64_t usec_to_sleep = (
+            over_budget / static_cast<double>(max_download_rate_))
+            * Time::kMicrosecondsPerSecond;
         TimeDelta sleep_duration = TimeDelta::FromMicroseconds(usec_to_sleep);
         clock->Sleep(sleep_duration);
         total_time_spent_ += sleep_duration;
@@ -528,9 +531,8 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   ea_size =
       fgetxattr(file_fd, "user.cros-p2p-filesize", &ea_value, sizeof ea_value);
   if (ea_size > 0 && ea_value[0] != 0) {
-    char* endp = NULL;
-    long long int val = strtoll(ea_value, &endp, 0);
-    if (endp != NULL && *endp == '\0') {
+    int64 val;
+    if (base::StringToInt64(ea_value, &val)) {
       VLOG(1) << "Read user.cros-p2p-filesize=" << val;
       if ((size_t) val > file_size) {
         // Simply update file_size to what the EA says - code below
@@ -595,7 +597,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   // P2P.Server.RangeBeginPercentage at the begining of the file serving period,
   // since it is being reported either the transmission is interrupted or nor.
   if (file_size > 0)
-    range_begin_percentage = 100.0 * range_first / double(file_size);
+    range_begin_percentage = 100.0 * range_first / file_size;
   server_->ReportServerMessage(p2p::util::kP2PServerRangeBeginPercentage,
                                range_begin_percentage);
 

@@ -11,12 +11,12 @@
 #include "p2p/http_server/fake_connection_delegate.h"
 #include "p2p/http_server/server.h"
 
-#include <stdarg.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <cctype>
 #include <cinttypes>
@@ -42,10 +42,10 @@ using std::vector;
 using base::FilePath;
 
 using p2p::constants::kBytesPerMB;
-using p2p::testutil::SetupTestDir;
-using p2p::testutil::TeardownTestDir;
 using p2p::testutil::RunGMainLoopMaxIterations;
 using p2p::testutil::RunGMainLoopUntil;
+using p2p::testutil::SetupTestDir;
+using p2p::testutil::TeardownTestDir;
 using p2p::util::P2PServerMessage;
 using p2p::util::StructSerializerWatcher;
 
@@ -85,7 +85,7 @@ static int ConnectToLocalPort(uint16_t port) {
 // releases them all.
 class Barrier {
  public:
-  Barrier(int n) : n_(n), cond_(&lock_) {}
+  explicit Barrier(int n) : n_(n), cond_(&lock_) {}
 
   // Wait on the barrier. This function is thread-safe.
   void Wait() {

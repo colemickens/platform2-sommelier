@@ -5,15 +5,17 @@
 #include "p2p/common/struct_serializer.h"
 #include "p2p/common/testutil.h"
 
+#include <fcntl.h>
 #include <glib.h>
 #include <unistd.h>
-#include <fcntl.h>
 
-#include <gtest/gtest.h>
+#include <string>
+
 #include <gtest/gtest-spi.h>
+#include <gtest/gtest.h>
 
-using std::string;
 using p2p::testutil::RunGMainLoopMaxIterations;
+using std::string;
 
 namespace {
 
@@ -86,7 +88,7 @@ TEST(StructSerializer, WatchSeveralMessages) {
   EXPECT_TRUE(StructSerializerWrite<TestStruct>(fds[1], sample));
 
   // Run the main loop until all the events are dispatched.
-  while (g_main_context_iteration(NULL, FALSE));
+  while (g_main_context_iteration(NULL, FALSE)) {}
 
   EXPECT_EQ(calls.num_calls, 3);
   const TestStruct result = {1, 4, 5};

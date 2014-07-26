@@ -7,9 +7,13 @@
 
 #include "p2p/server/file_watcher.h"
 
-#include <queue>
-#include <utility>
 #include <glib.h>
+
+#include <queue>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <base/file_util.h>
 
@@ -31,7 +35,7 @@ class FakeFileWatcher : public FileWatcher {
 
   virtual const std::vector<base::FilePath>& files() const {
     return exposed_files_;
-  };
+  }
 
   virtual void SetChangedCallback(
       FileWatcher::FileWatcherCallback changed_callback) {

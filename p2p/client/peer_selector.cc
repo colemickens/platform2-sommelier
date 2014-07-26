@@ -7,6 +7,7 @@
 #include "p2p/common/clock_interface.h"
 #include "p2p/common/constants.h"
 
+#include <algorithm>
 #include <map>
 #include <vector>
 

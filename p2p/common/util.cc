@@ -5,10 +5,13 @@
 #include "p2p/common/util.h"
 
 #include <attr/xattr.h>
+#include <glib.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <glib.h>
+
+#include <string>
+
 #include <base/logging.h>
 
 // NOTE: the coding style asks for syslog.h ("C system header") to be

@@ -7,6 +7,9 @@
 
 #include "p2p/server/fake_service_publisher.h"
 
+#include <map>
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace p2p {

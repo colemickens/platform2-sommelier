@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_SERVER_UTIL_H__
-#define P2P_SERVER_UTIL_H__
+#ifndef P2P_COMMON_TESTUTIL_H__
+#define P2P_COMMON_TESTUTIL_H__
 
 #include <signal.h>
 
@@ -95,4 +95,4 @@ bool SetExpectedFileSize(const base::FilePath& filename, size_t size);
 
 }  // namespace p2p
 
-#endif  // P2P_SERVER_UTIL_H__
+#endif  // P2P_COMMON_TESTUTIL_H__

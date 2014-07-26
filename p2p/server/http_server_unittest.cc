@@ -9,24 +9,26 @@
 
 #include <glib-object.h>
 
-#include <gtest/gtest.h>
+#include <vector>
+
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <base/bind.h>
-#include <base/threading/simple_thread.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/simple_thread.h>
 #include <metrics/metrics_library_mock.h>
 
-using testing::_;
 using testing::StrictMock;
+using testing::_;
 
 using p2p::testutil::ExpectFileSize;
-using p2p::testutil::kDefaultMainLoopTimeoutMs;
 using p2p::testutil::RunGMainLoopMaxIterations;
 using p2p::testutil::RunGMainLoopUntil;
 using p2p::testutil::SetExpectedFileSize;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
+using p2p::testutil::kDefaultMainLoopTimeoutMs;
 
 using std::string;
 using std::vector;

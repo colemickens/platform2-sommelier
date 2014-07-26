@@ -4,8 +4,8 @@
 
 #include "p2p/common/clock.h"
 
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
 namespace p2p {
 
@@ -35,6 +35,6 @@ base::Time Clock::GetMonotonicTime() {
   return base::Time::FromTimeVal(now_tv);
 }
 
-}  // namespace p2p
-
 }  // namespace common
+
+}  // namespace p2p

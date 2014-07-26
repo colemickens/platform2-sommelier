@@ -11,8 +11,8 @@
 #include <string>
 
 #include <base/bind.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
 using testing::_;
@@ -28,7 +28,7 @@ class PeerSelectorTest : public ::testing::Test {
  protected:
   p2p::common::FakeClock clock_;
   FakeServiceFinder sf_;
-  PeerSelector ps_; // The PeerSelector under test.
+  PeerSelector ps_;  // The PeerSelector under test.
   testing::StrictMock<MetricsLibraryMock> mock_metrics_lib_;
 };
 

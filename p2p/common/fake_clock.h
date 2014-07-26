@@ -57,8 +57,8 @@ class FakeClock : public ClockInterface {
   DISALLOW_COPY_AND_ASSIGN(FakeClock);
 };
 
-}  // namespace p2p
-
 }  // namespace common
+
+}  // namespace p2p
 
 #endif  // P2P_COMMON_FAKE_CLOCK_H__

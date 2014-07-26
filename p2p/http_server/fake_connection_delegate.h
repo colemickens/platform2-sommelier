@@ -8,6 +8,8 @@
 #include "p2p/http_server/connection_delegate_interface.h"
 #include "p2p/http_server/server_interface.h"
 
+#include <string>
+
 namespace p2p {
 
 namespace http_server {
@@ -51,7 +53,7 @@ class FakeConnectionDelegate : public ConnectionDelegateInterface {
     free(cmd);
 
     server_->ConnectionTerminated(this);
-    fclose(f); // This closes fd_
+    fclose(f);  // This closes fd_
 
     // We don't keep track of the created ConnectionDelegates, because
     // they are supposed to be deleted after Run() is called.

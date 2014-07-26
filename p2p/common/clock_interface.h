@@ -31,8 +31,8 @@ class ClockInterface {
   virtual ~ClockInterface() {}
 };
 
-}  // namespace p2p
-
 }  // namespace common
+
+}  // namespace p2p
 
 #endif  // P2P_COMMON_CLOCK_INTERFACE_H__

@@ -51,7 +51,7 @@ class StructSerializerWatcher {
 
   StructSerializerWatcher(
       int fd,
-      StructSerializerCallback& callback,
+      StructSerializerCallback* callback,
       void* user_data)
       : source_id_(0),
       fd_(fd),
@@ -103,12 +103,12 @@ class StructSerializerWatcher {
 
     if ((condition & G_IO_HUP) != 0 || bytes_read == 0) {
       watcher->source_id_ = 0;
-      return FALSE; // Stop monitoring the file.
+      return FALSE;  // Stop monitoring the file.
     }
 
     watcher->buffer_len_ += bytes_read;
     if (watcher->buffer_len_ == watcher->struct_size_) {
-      watcher->callback_(watcher->buffer_, watcher->user_data_);
+      (*watcher->callback_)(watcher->buffer_, watcher->user_data_);
       watcher->buffer_len_ = 0;
     }
 
@@ -121,7 +121,7 @@ class StructSerializerWatcher {
   // The passed file descriptor.
   int fd_;
 
-  StructSerializerCallback& callback_;
+  StructSerializerCallback* callback_;
 
   // A user provided pointer passed back to callback on every call.
   void* user_data_;

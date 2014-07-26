@@ -5,30 +5,30 @@
 #include "p2p/common/clock.h"
 #include "p2p/common/server_message.h"
 #include "p2p/common/struct_serializer.h"
-#include "p2p/http_server/server.h"
 #include "p2p/http_server/connection_delegate_interface.h"
+#include "p2p/http_server/server.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <unistd.h>
 #include <attr/xattr.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <cctype>
-#include <cinttypes>
-#include <cassert>
-#include <cerrno>
-#include <string>
 #include <algorithm>
-#include <vector>
+#include <cassert>
+#include <cctype>
+#include <cerrno>
+#include <cinttypes>
 #include <iomanip>
+#include <string>
+#include <vector>
 
-#include <base/logging.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/time/time.h>
 
 using std::string;
@@ -174,7 +174,7 @@ bool Server::Start() {
       static_cast<GIOCondition>(G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP),
       OnIOChannelActivity,
       this);
-  CHECK(listen_source_id_ != 0);
+  CHECK_NE(0U, listen_source_id_);
   g_io_channel_unref(io_channel);
 
   // Report the port number back to the p2p-server once we are accepting

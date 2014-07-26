@@ -22,12 +22,12 @@
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/threading/simple_thread.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/simple_thread.h>
 #include <gtest/gtest.h>
 
-using std::string;
 using std::map;
+using std::string;
 using std::tuple;
 using std::vector;
 
@@ -44,7 +44,7 @@ using testing::_;
 namespace {
 // DefaultDownloadRate used for the tests in bytes per seconds (5MB/s).
 static const int kDefaultDownloadRate = 5 * 1000 * 1000;
-} // namespace
+}  // namespace
 
 namespace p2p {
 
@@ -91,7 +91,7 @@ class ConnectionDelegateTest : public ::testing::Test {
     socklen_t server_len = sizeof(server_addr);
     memset(reinterpret_cast<char*>(&server_addr), 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(0); // any port
+    server_addr.sin_port = htons(0);  // any port
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     ASSERT_NE(-1, bind(servsock,
                        reinterpret_cast<struct sockaddr*>(&server_addr),
@@ -206,7 +206,7 @@ class HTTPRequest {
   }
 
   string method_;
-  string http_version_; // The HTTP protocol version.
+  string http_version_;  // The HTTP protocol version.
   string uri_;
   string host_;
   map<string, string> headers_;
@@ -215,7 +215,7 @@ class HTTPRequest {
 
 class HTTPResponse {
  public:
-  HTTPResponse(const string& response)
+  explicit HTTPResponse(const string& response)
       : response_(response), valid_(false) {
     const char* p = response_.c_str();
     int len = response_.size();
@@ -334,7 +334,7 @@ class HTTPResponse {
 //   ReadHTTPResponse(some_sock, &resp, expect_content_size);
 static bool ReadHTTPResponse(int fd, string* response,
                              int min_content_size = -1) {
-  char buf[16 * 1024]; // 16KiB is a reasonable buffer for recv().
+  char buf[16 * 1024];  // 16KiB is a reasonable buffer for recv().
   int res;
   do {
     if (min_content_size >= 0) {
@@ -409,7 +409,7 @@ TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
 
   HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
-  EXPECT_EQ(501, resp.http_code_); // Not Implemented.
+  EXPECT_EQ(501, resp.http_code_);  // Not Implemented.
 }
 
 TEST_F(ConnectionDelegateTest, GetExistentFile) {
@@ -456,7 +456,7 @@ TEST_F(ConnectionDelegateTest, PostExistentFile) {
       p2p::util::kP2PServerRequestResult,
       p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 8)); // Almost 9 MB served.
+      p2p::util::kP2PServerServedSuccessfullyMB, 8));  // Almost 9 MB served.
   EXPECT_CALL(mock_server_, ReportServerMessage(
       p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
@@ -544,7 +544,7 @@ TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
 
   HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
-  ASSERT_EQ(206, resp.http_code_); // Partial content.
+  ASSERT_EQ(206, resp.http_code_);  // Partial content.
   EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
   EXPECT_EQ("2001", resp.headers_["Content-Length"]);
   EXPECT_EQ(content.substr(15000, 2001), resp.content_);
@@ -574,7 +574,7 @@ TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
 
   HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
-  EXPECT_EQ(416, resp.http_code_); // Requested Range Not Satisfiable.
+  EXPECT_EQ(416, resp.http_code_);  // Requested Range Not Satisfiable.
   EXPECT_EQ("", resp.content_);
 }
 
@@ -613,7 +613,7 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
 
   HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
-  ASSERT_EQ(206, resp.http_code_); // Partial content.
+  ASSERT_EQ(206, resp.http_code_);  // Partial content.
   EXPECT_EQ("application/octet-stream", resp.headers_["Content-Type"]);
   EXPECT_EQ("1000", resp.headers_["Content-Length"]);
   EXPECT_EQ(content.substr(4000, 1000), resp.content_);
@@ -775,7 +775,7 @@ TEST_F(ConnectionDelegateTest, URIUsesRelativePath) {
 
   HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
-  EXPECT_EQ(400, resp.http_code_); // Bad request.
+  EXPECT_EQ(400, resp.http_code_);  // Bad request.
 }
 
 TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
@@ -801,7 +801,7 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
 
   HTTPResponse resp(text_resp);
   ASSERT_TRUE(resp.valid_);
-  EXPECT_EQ(400, resp.http_code_); // Bad request.
+  EXPECT_EQ(400, resp.http_code_);  // Bad request.
 }
 
 // Tests that the ConnectionDelegate properly blocks when the end of the file

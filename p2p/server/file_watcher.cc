@@ -4,10 +4,10 @@
 
 #include "p2p/server/file_watcher.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <gio/gio.h>
 
@@ -15,8 +15,8 @@
 
 #include <base/logging.h>
 
-using std::vector;
 using std::string;
+using std::vector;
 
 using base::FilePath;
 
@@ -150,9 +150,9 @@ static void diff_sorted_vectors(
     const vector<FilePath>::iterator& a_last,
     const vector<FilePath>::iterator& b_first,
     const vector<FilePath>::iterator& b_last,
-    vector<FilePath>& added,        // in b, not in a
-    vector<FilePath>& removed,      // in a, not in b
-    vector<FilePath>& unchanged) {  // in both a and b
+    vector<FilePath>* added,        // in b, not in a
+    vector<FilePath>* removed,      // in a, not in b
+    vector<FilePath>* unchanged) {  // in both a and b
   vector<FilePath>::const_iterator ai = a_first;
   vector<FilePath>::const_iterator bi = b_first;
 
@@ -160,27 +160,27 @@ static void diff_sorted_vectors(
     int order = ai->value().compare(bi->value());
     if (order < 0) {
       // *ai > *bi
-      removed.push_back(*ai);
+      removed->push_back(*ai);
       ++ai;
     } else if (order > 0) {
       // *ai < *bi
-      added.push_back(*bi);
+      added->push_back(*bi);
       ++bi;
     } else {
       // *ai == *bi
-      unchanged.push_back(*bi);
+      unchanged->push_back(*bi);
       ++ai;
       ++bi;
     }
   }
 
   while (ai != a_last) {
-    removed.push_back(*ai);
+    removed->push_back(*ai);
     ++ai;
   }
 
   while (bi != b_last) {
-    added.push_back(*bi);
+    added->push_back(*bi);
     ++bi;
   }
 }
@@ -221,9 +221,9 @@ void FileWatcherGLib::ReloadDir(const FilePath* changed_file) {
                       files_.end(),
                       new_files.begin(),
                       new_files.end(),
-                      added,
-                      removed,
-                      unchanged);
+                      &added,
+                      &removed,
+                      &unchanged);
   files_ = new_files;
 
   if (!changed_callback_.is_null()) {

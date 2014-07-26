@@ -4,37 +4,32 @@
 
 #include "p2p/common/constants.h"
 #include "p2p/common/util.h"
-#include "p2p/http_server/server.h"
 #include "p2p/http_server/connection_delegate.h"
+#include "p2p/http_server/server.h"
 
-#include <iostream>
-#include <string>
 #include <cctype>
 #include <cinttypes>
+#include <string>
 
 #include <base/command_line.h>
-#include <base/logging.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::ostream;
 using std::string;
 
 using base::FilePath;
 
-static void Usage(ostream& ostream) {
-  ostream
-    << "Usage:\n"
-    << "  p2p-http-server [OPTION..]\n"
-    << "\n"
-    << "Options:\n"
-    << " --help           Show help options\n"
-    << " --directory=DIR  Directory to serve from (default: .)\n"
-    << " --port=PORT      TCP port number to listen on (default: 16725)\n"
-    << " -v=NUMBER        Verbosity level (default: 0)\n"
-    << "\n";
+static void Usage(FILE* output) {
+  fprintf(output,
+    "Usage:\n"
+    "  p2p-http-server [OPTION..]\n"
+    "\n"
+    "Options:\n"
+    " --help           Show help options\n"
+    " --directory=DIR  Directory to serve from (default: .)\n"
+    " --port=PORT      TCP port number to listen on (default: 16725)\n"
+    " -v=NUMBER        Verbosity level (default: 0)\n"
+    "\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -54,7 +49,7 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << p2p::constants::kHttpServerBinaryName << " starting";
 
   if (cl->HasSwitch("help")) {
-    Usage(cout);
+    Usage(stdout);
     return 0;
   }
 
@@ -64,7 +59,7 @@ int main(int argc, char* argv[]) {
     char* endp;
     port = strtol(port_str.c_str(), &endp, 0);
     if (*endp != '\0') {
-      cerr << "Error parsing `" << port_str << "' as port number" << endl;
+      fprintf(stderr, "Error parsing `%s' as port number\n", port_str.c_str());
       return 1;
     }
   }

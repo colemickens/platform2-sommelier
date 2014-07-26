@@ -5,10 +5,10 @@
 #include "p2p/common/testutil.h"
 
 #include <attr/xattr.h>
-#include <stdarg.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <glib-object.h>
 
@@ -53,9 +53,9 @@ TimeBombAbort::~TimeBombAbort() {
 void TimeBombAbort::TimeoutHandler(int signal) {
   // Does a "best-effort" write.
   const char* msg = "\n\nTimeBombAbort::TimeoutHandler reached.\n";
-  if (write(STDERR_FILENO, msg, strlen(msg))) {} // Ignore the return value.
+  if (write(STDERR_FILENO, msg, strlen(msg))) {}  // Ignore the return value.
   if (write(STDERR_FILENO, time_bomb_abort_message_,
-            strlen(time_bomb_abort_message_))) {} // Ignore the return value.
+            strlen(time_bomb_abort_message_))) {}  // Ignore the return value.
   exit(1);
 }
 
@@ -72,7 +72,7 @@ FilePath SetupTestDir(const string& test_name) {
 
 void TeardownTestDir(const FilePath& dir_path) {
   // Sanity check
-  EXPECT_TRUE(dir_path.value().find("/tmp/p2p-testing-") == 0);
+  EXPECT_EQ(0, dir_path.value().find("/tmp/p2p-testing-"));
   EXPECT_COMMAND(0, "rm -rf %s", dir_path.value().c_str());
 }
 
@@ -103,7 +103,7 @@ int RunGMainLoopMaxIterations(int iterations) {
   GMainContext* context = g_main_context_default();
   for (result = 0;
       result < iterations && g_main_context_iteration(context, FALSE);
-      result++);
+      result++) {}
   return result;
 }
 

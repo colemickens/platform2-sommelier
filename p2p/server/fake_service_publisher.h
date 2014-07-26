@@ -7,6 +7,9 @@
 
 #include "p2p/server/service_publisher.h"
 
+#include <map>
+#include <string>
+
 namespace p2p {
 
 namespace server {

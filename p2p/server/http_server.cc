@@ -7,14 +7,16 @@
 #include "p2p/common/struct_serializer.h"
 #include "p2p/server/http_server.h"
 
-#include <sys/types.h>
-#include <signal.h>
-#include <unistd.h>
 #include <glib.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+#include <vector>
+
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/files/file_path.h>
 
 using std::string;
 using std::vector;

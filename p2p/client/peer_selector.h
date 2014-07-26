@@ -10,8 +10,8 @@
 
 #include <string>
 
-#include <metrics/metrics_library.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 namespace p2p {
 
@@ -70,16 +70,16 @@ class PeerSelector {
   // An interface to the system clock functions, used for unit testing.
   p2p::common::ClockInterface* clock_;
 
-  typedef enum {
-    kFound, // The resource was found.
-    kNotFound, // The resource was not found.
-    kVanished, // The resource was found but vanished while waiting in line.
-    kCanceled, // The request was canceled with Abort().
-    kFiltered, // It was detected that mDNS was filtered.
+  enum LookupResult {
+    kFound,  // The resource was found.
+    kNotFound,  // The resource was not found.
+    kVanished,  // The resource was found but vanished while waiting in line.
+    kCanceled,  // The request was canceled with Abort().
+    kFiltered,  // It was detected that mDNS was filtered.
 
     // Note: Add new lookup results only above this line.
     kNumLookupResults
-  } LookupResult;
+  };
   static std::string ToString(LookupResult lookup_result);
 
   // The result of the last GetUrlAndWait() call.

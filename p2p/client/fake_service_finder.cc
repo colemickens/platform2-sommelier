@@ -31,7 +31,7 @@ vector<const Peer*> FakeServiceFinder::GetPeersForFile(
   if (service_filtered_)
     return res;
 
-  for(auto const& peer : peers_) {
+  for (auto const& peer : peers_) {
     if (peer.files.find(file) != peer.files.end())
       res.push_back(&peer);
   }
@@ -43,8 +43,8 @@ vector<string> FakeServiceFinder::AvailableFiles() const {
     return vector<string>();
 
   set<string> retset;
-  for(auto const& peer : peers_) {
-    for(auto const& file : peer.files) {
+  for (auto const& peer : peers_) {
+    for (auto const& file : peer.files) {
       retset.insert(file.first);
     }
   }
@@ -56,7 +56,7 @@ int FakeServiceFinder::NumTotalConnections() const {
   if (service_filtered_)
     return res;
 
-  for(auto const& peer : peers_)
+  for (auto const& peer : peers_)
     res += peer.num_connections;
   return res;
 }
@@ -73,21 +73,21 @@ bool FakeServiceFinder::Lookup() {
   // Execute scheduled calls.
   if (set_peer_connections_calls_.find(num_lookup_calls_) !=
       set_peer_connections_calls_.end()) {
-    for(auto const& params : set_peer_connections_calls_[num_lookup_calls_])
+    for (auto const& params : set_peer_connections_calls_[num_lookup_calls_])
       SetPeerConnections(params.peer_id, params.connections);
     set_peer_connections_calls_.erase(num_lookup_calls_);
   }
 
   if (remove_available_file_calls_.find(num_lookup_calls_) !=
       remove_available_file_calls_.end()) {
-    for(auto const& params : remove_available_file_calls_[num_lookup_calls_])
+    for (auto const& params : remove_available_file_calls_[num_lookup_calls_])
       RemoveAvailableFile(params);
     remove_available_file_calls_.erase(num_lookup_calls_);
   }
 
   if (peer_share_file_calls_.find(num_lookup_calls_) !=
       peer_share_file_calls_.end()) {
-    for(auto const& params : peer_share_file_calls_[num_lookup_calls_])
+    for (auto const& params : peer_share_file_calls_[num_lookup_calls_])
       PeerShareFile(params.peer_id, params.file, params.size);
     peer_share_file_calls_.erase(num_lookup_calls_);
   }
@@ -169,7 +169,7 @@ bool FakeServiceFinder::PeerShareFileOnLookup(int at_call,
 bool FakeServiceFinder::RemoveAvailableFile(const string& file) {
   int removed = 0;
 
-  for(auto& peer : peers_) {
+  for (auto& peer : peers_) {
     map<string, size_t>::iterator file_it = peer.files.find(file);
     if (file_it != peer.files.end()) {
       peer.files.erase(file_it);

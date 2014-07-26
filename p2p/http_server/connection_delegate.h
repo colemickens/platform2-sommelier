@@ -8,8 +8,8 @@
 #include "p2p/common/server_message.h"
 #include "p2p/http_server/connection_delegate_interface.h"
 
-#include <string>
 #include <map>
+#include <string>
 
 #include <glib.h>
 
@@ -68,7 +68,8 @@ class ConnectionDelegate : public ConnectionDelegateInterface {
   // For reference, a typical HTTP 1.1 request is shown here
   //
   //  GET / HTTP/1.1\r\n
-  //  User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3\r\n
+  //  User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0
+  //   OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3\r\n
   //  Host: localhost:16725\r\n
   //  Accept: */*\r\n
   //  \r\n

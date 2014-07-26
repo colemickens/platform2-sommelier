@@ -2,26 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/common/util.h"
 #include "p2p/client/service_finder.h"
+#include "p2p/common/util.h"
 
 #include <avahi-client/client.h>
-#include <avahi-glib/glib-watch.h>
-#include <avahi-common/error.h>
 #include <avahi-client/lookup.h>
+#include <avahi-common/error.h>
+#include <avahi-glib/glib-watch.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <unistd.h>
 
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
 
 #include <base/logging.h>
 
-using std::vector;
 using std::map;
 using std::set;
 using std::string;
+using std::vector;
 
 namespace p2p {
 
@@ -160,7 +160,7 @@ ServiceFinderAvahi::~ServiceFinderAvahi() {
       avahi_service_resolver_free(resolver);
     lookup_pending_resolvers_.clear();
   }
-  CHECK(lookup_pending_resolvers_.size() == 0);
+  CHECK_EQ(0U, lookup_pending_resolvers_.size());
 
   if (client_ != NULL)
     avahi_client_free(client_);

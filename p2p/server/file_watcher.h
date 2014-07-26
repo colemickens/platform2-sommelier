@@ -5,8 +5,8 @@
 #ifndef P2P_SERVER_FILE_WATCHER_H__
 #define P2P_SERVER_FILE_WATCHER_H__
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -19,7 +19,6 @@ namespace server {
 // file extension.
 class FileWatcher {
  public:
-
   // The type of event used in FileWatchedCallback.
   //
   // kFileAdded

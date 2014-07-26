@@ -14,7 +14,6 @@
 
 #include <cassert>
 #include <cerrno>
-#include <iostream>
 
 #include <base/bind.h>
 #include <base/command_line.h>
@@ -24,11 +23,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <metrics/metrics_library.h>
 
-using std::cout;
-using std::cerr;
-using std::endl;
 using std::map;
-using std::ostream;
 using std::string;
 using std::vector;
 
@@ -43,20 +38,21 @@ static void sigterm_handler(int signum) {
     global_peer_selector->Abort();
 }
 
-static void Usage(ostream& ostream) {
-  ostream << "Usage:\n"
-          << "  p2p-client [OPTION..]\n"
-          << "\n"
-          << "Options:\n"
-          << " --help             Show help options\n"
-          << " --list-all         Scan network and list available files\n"
-          << " --list-urls=ID     Like --list-all but only show peers for ID\n"
-          << " --get-url=ID       Scan for ID and pick a suitable peer\n"
-          << " --num-connections  Show total number of connections in the LAN\n"
-          << " -v=NUMBER          Verbosity level (default: 0)\n"
-          << " --minimum-size=NUM When used with --get-url, scans for files\n"
-          << "                    with at least NUM bytes (default: 1).\n"
-          << "\n";
+static void Usage(FILE* output) {
+  fprintf(output,
+    "Usage:\n"
+    "  p2p-client [OPTION..]\n"
+    "\n"
+    "Options:\n"
+    " --help             Show help options\n"
+    " --list-all         Scan network and list available files\n"
+    " --list-urls=ID     Like --list-all but only show peers for ID\n"
+    " --get-url=ID       Scan for ID and pick a suitable peer\n"
+    " --num-connections  Show total number of connections in the LAN\n"
+    " -v=NUMBER          Verbosity level (default: 0)\n"
+    " --minimum-size=NUM When used with --get-url, scans for files\n"
+    "                    with at least NUM bytes (default: 1).\n"
+    "\n");
 }
 
 // Lists all URLs discovered via |finder|. If |id| is not the empty
@@ -67,16 +63,16 @@ static void ListUrls(p2p::client::ServiceFinder* finder,
 
   for (auto const& file_name : files) {
     if (id == "" || file_name == id) {
-      cout << file_name << endl;
+      printf("%s\n", file_name.c_str());
       vector<const p2p::client::Peer*> peers =
           finder->GetPeersForFile(file_name);
       for (auto const& peer : peers) {
         map<string, size_t>::const_iterator file_size_it =
             peer->files.find(file_name);
-        cout << " address " << peer->address << ", port " << peer->port
-             << ", size "
-             << (file_size_it == peer->files.end() ? -1 : file_size_it->second )
-             << ", num_connections " << peer->num_connections << endl;
+        printf(" address %s, port %d, size %zu, num_connections %d\n",
+               peer->address.c_str(), peer->port,
+               (file_size_it == peer->files.end() ? -1 : file_size_it->second),
+               peer->num_connections);
       }
     }
   }
@@ -98,7 +94,7 @@ int main(int argc, char* argv[]) {
 
   // If help is requested, show usage and exit immediately
   if (cl->HasSwitch("help")) {
-    Usage(cout);
+    Usage(stdout);
     return 0;
   }
 
@@ -118,7 +114,7 @@ int main(int argc, char* argv[]) {
   } else if (cl->HasSwitch("num-connections")) {
     finder->Lookup();
     int num_connections = finder->NumTotalConnections();
-    cout << num_connections << endl;
+    printf("%d\n", num_connections);
   } else if (cl->HasSwitch("get-url")) {
     string id = cl->GetSwitchValueNative("get-url");
     uint64 minimum_size = 1;
@@ -148,13 +144,13 @@ int main(int argc, char* argv[]) {
 
     if (url == "")
       return 1;
-    cout << url << endl;
+    printf("%s\n", url.c_str());
   } else if (cl->HasSwitch("list-urls")) {
     string id = cl->GetSwitchValueNative("list-urls");
     finder->Lookup();
     ListUrls(finder.get(), id);
   } else {
-    Usage(cerr);
+    Usage(stderr);
     return 1;
   }
 
