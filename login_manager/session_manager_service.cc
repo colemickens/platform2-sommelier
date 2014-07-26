@@ -334,10 +334,10 @@ void SessionManagerService::SetUpHandlers() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_IGN;
-  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0U);
+  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0);
 
   action.sa_handler = DoNothing;
-  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0U);
+  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0);
 
   std::vector<JobManagerInterface*> job_managers;
   job_managers.push_back(this);
@@ -355,8 +355,8 @@ void SessionManagerService::RevertHandlers() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_DFL;
-  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0U);
-  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0U);
+  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0);
+  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0);
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {
