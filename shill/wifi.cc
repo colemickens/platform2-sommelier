@@ -612,11 +612,18 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     return;
   }
 
+  bool disconnect_in_progress;
   try {
     supplicant_interface_proxy_->Disconnect();
+    disconnect_in_progress = true;
     // We'll call RemoveNetwork and reset |current_service_| after
     // supplicant notifies us that the CurrentBSS has changed.
   } catch (const DBus::Error &e) {  // NOLINT
+    disconnect_in_progress = false;
+  }
+
+  if (supplicant_state_ != WPASupplicant::kInterfaceStateCompleted ||
+      !disconnect_in_progress) {
     // Can't depend on getting a notification of CurrentBSS change.
     // So effect changes immediately.  For instance, this can happen when
     // a disconnect is triggered by a BSS going away.

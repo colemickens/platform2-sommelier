@@ -1817,6 +1817,28 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
 }
 
+TEST_F(WiFiMainTest, DisconnectCurrentServiceWhileRoaming) {
+  StartWiFi();
+  DBus::Path kPath("/fake/path");
+  WiFiServiceRefPtr service(SetupConnectedService(kPath, NULL, NULL));
+
+  // As it roams to another AP, supplicant signals that it is in
+  // the authenticating state.
+  ReportStateChanged(WPASupplicant::kInterfaceStateAuthenticating);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath));
+  InitiateDisconnect(service);
+
+  // Because the interface was not connected, we should have immediately
+  // forced ourselves into a disconnected state.
+  EXPECT_EQ(NULL, GetCurrentService().get());
+  EXPECT_EQ(NULL, GetSelectedService().get());
+
+  // Check calls before TearDown/dtor.
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
 TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnected) {
   StartWiFi();
   MockWiFiServiceRefPtr service0(SetupConnectedService(DBus::Path(),
