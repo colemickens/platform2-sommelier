@@ -36,6 +36,11 @@
       'dependencies': [
         'peerd_common',
       ],
+      'variables': {
+        'deps': [
+          'libchrome-test-<(libbase_ver)',
+        ],
+      },
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
         'manager_unittest.cc',

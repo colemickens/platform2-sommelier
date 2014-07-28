@@ -5,12 +5,15 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/async_event_sequencer.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus/bus.h>
 #include <sysexits.h>
 
+#include "peerd/dbus_constants.h"
 #include "peerd/manager.h"
 
+using chromeos::dbus_utils::AsyncEventSequencer;
 using peerd::Manager;
 
 namespace {
@@ -20,11 +23,24 @@ static const char kHelpMessage[] = "\n"
     "This is the peer discovery service daemon.\n"
     "Usage: peerd [--v=<logging level>] [--vmodule=<see base/logging.h>]\n";
 
+void TakeServiceOwnership(scoped_refptr<dbus::Bus> bus, bool success) {
+  // Success should always be true since we've said that failures are
+  // fatal.
+  CHECK(success) << "Init of one or more objects has failed.";
+  CHECK(bus->RequestOwnershipAndBlock(peerd::dbus_constants::kServiceName,
+                                      dbus::Bus::REQUIRE_PRIMARY))
+      << "Unable to take ownership of " << peerd::dbus_constants::kServiceName;
+}
+
 void EnterMainLoop(base::MessageLoopForIO* message_loop,
                    scoped_refptr<dbus::Bus> bus) {
-  // TODO(wiley) Initialize global objects here.
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   Manager manager(bus);
-  // TODO(wiley) Claim DBus service name here.
+  manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));
+  sequencer->OnAllTasksCompletedCall({base::Bind(&TakeServiceOwnership, bus)});
+  // Release our handle on the sequencer so that it gets deleted after
+  // both callbacks return.
+  sequencer = nullptr;
   LOG(INFO) << "peerd starting";
   message_loop->Run();
 }

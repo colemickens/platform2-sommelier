@@ -13,6 +13,8 @@ const char kServiceName[] = "org.chromium.peerd";
 const char kManagerInterface[] = "org.chromium.peerd.Manager";
 const char kManagerServicePath[] = "/org/chromium/peerd/Manager";
 
+const char kManagerPing[] = "Ping";
+
 }  // namespace dbus_constants
 
 }  // namespace peerd
