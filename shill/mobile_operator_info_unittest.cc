@@ -512,7 +512,9 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
   UpdateOperatorName("name108002");  // Does not match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid108001");
-  EXPECT_EQ("name108002", operator_info_->operator_name());
+  // OperatorName from the database is given preference over the user supplied
+  // one.
+  EXPECT_EQ("name108001", operator_info_->operator_name());
 
   ResetOperatorInfo();
   // message: Same as above.
@@ -527,8 +529,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
   UpdateMCCMNC("108002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid108002");
-  // Name should remain unchanged though.
-  EXPECT_EQ("name108001", operator_info_->operator_name());
+  EXPECT_EQ("name108002", operator_info_->operator_name());
 
   // message: Same as above.
   // match by: First a *wrong* MCCMNC update, followed by the correct Name
@@ -661,7 +662,8 @@ TEST_P(MobileOperatorInfoMainTest, MVNONameMatch) {
   UpdateOperatorName("name113999");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
-  EXPECT_EQ("name113999", operator_info_->operator_name());
+  // Name from the database is given preference.
+  EXPECT_EQ("name113001", operator_info_->operator_name());
 
   ExpectEventCount(1);
   UpdateOperatorName("name113002");
@@ -941,7 +943,8 @@ TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndMismatch) {
   UpdateOperatorName("name113999");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid113001");
-  EXPECT_EQ("name113999", operator_info_->operator_name());
+  // Name from database is given preference.
+  EXPECT_EQ("name113001", operator_info_->operator_name());
 }
 
 TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndReset) {

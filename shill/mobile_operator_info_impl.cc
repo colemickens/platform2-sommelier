@@ -862,10 +862,10 @@ void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
     }
   }
 
-  if (!user_operator_name_.empty()) {
-    operator_name_ = user_operator_name_;
-  } else if (operator_name_list_.size() > 0) {
+  if (!operator_name_list_.empty()) {
     operator_name_ = operator_name_list_[0].name;
+  } else if (!user_operator_name_.empty()) {
+    operator_name_ = user_operator_name_;
   } else {
     operator_name_.clear();
   }
