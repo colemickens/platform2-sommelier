@@ -39,11 +39,13 @@
 #include "shill/netlink_attribute.h"
 #include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
+#include "shill/ndisc.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
 #include "shill/service.h"
+#include "shill/shill_time.h"
 #include "shill/sockets.h"
 #include "shill/virtio_ethernet.h"
 #include "shill/vpn_provider.h"
@@ -96,11 +98,13 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       manager_(manager),
       link_callback_(Bind(&DeviceInfo::LinkMsgHandler, Unretained(this))),
       address_callback_(Bind(&DeviceInfo::AddressMsgHandler, Unretained(this))),
+      rdnss_callback_(Bind(&DeviceInfo::RdnssMsgHandler, Unretained(this))),
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       netlink_manager_(NetlinkManager::GetInstance()),
-      sockets_(new Sockets()) {
+      sockets_(new Sockets()),
+      time_(Time::GetInstance()) {
 }
 
 DeviceInfo::~DeviceInfo() {}
@@ -118,6 +122,8 @@ void DeviceInfo::Start() {
       new RTNLListener(RTNLHandler::kRequestLink, link_callback_));
   address_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestAddr, address_callback_));
+  rdnss_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestRdnss, rdnss_callback_));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
                              RTNLHandler::kRequestAddr);
   request_link_statistics_callback_.Reset(
@@ -776,6 +782,34 @@ bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
   return has_address;
 }
 
+bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
+                                           std::vector<IPAddress> *address_list,
+                                           uint32 *life_time) {
+  const Info *info = GetInfo(interface_index);
+  if (!info || info->ipv6_dns_server_addresses.empty()) {
+    return false;
+  }
+
+  // Determine the remaining DNS server life time.
+  if (info->ipv6_dns_server_lifetime_seconds == ND_OPT_LIFETIME_INFINITY) {
+    *life_time = ND_OPT_LIFETIME_INFINITY;
+  } else {
+    time_t cur_time;
+    if (!time_->GetSecondsBoottime(&cur_time)) {
+      NOTREACHED();
+    }
+    uint32 time_elapsed = static_cast<uint32>(
+        cur_time - info->ipv6_dns_server_received_time_seconds);
+    if (time_elapsed >= info->ipv6_dns_server_lifetime_seconds) {
+      *life_time = 0;
+    } else {
+      *life_time = info->ipv6_dns_server_lifetime_seconds - time_elapsed;
+    }
+  }
+  *address_list = info->ipv6_dns_server_addresses;
+  return true;
+}
+
 bool DeviceInfo::HasDirectConnectivityTo(
     int interface_index, const IPAddress &address) const {
   SLOG(Device, 3) << __func__ << "(" << interface_index << ")";
@@ -923,6 +957,31 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
   if (device && address.family() == IPAddress::kFamilyIPv6 &&
       status.scope == RT_SCOPE_UNIVERSE) {
     device->OnIPv6AddressChanged();
+  }
+}
+
+void DeviceInfo::RdnssMsgHandler(const RTNLMessage &msg) {
+  SLOG(Device, 2) << __func__;
+  DCHECK(msg.type() == RTNLMessage::kTypeRdnss);
+  int interface_index = msg.interface_index();
+  if (!ContainsKey(infos_, interface_index)) {
+    SLOG(Device, 2) << "Got RDNSS option for unknown index "
+                    << interface_index;
+  }
+
+  const RTNLMessage::RdnssOption &rdnss_option = msg.rdnss_option();
+  infos_[interface_index].ipv6_dns_server_lifetime_seconds =
+      rdnss_option.lifetime;
+  infos_[interface_index].ipv6_dns_server_addresses = rdnss_option.addresses;
+  if (!time_->GetSecondsBoottime(
+          &infos_[interface_index].ipv6_dns_server_received_time_seconds)) {
+    NOTREACHED();
+  }
+
+  // Notify device of the IPv6 DNS server addresses update.
+  DeviceRefPtr device = GetDevice(interface_index);
+  if (device) {
+    device->OnIPv6DnsServerAddressesChanged();
   }
 }
 

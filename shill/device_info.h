@@ -22,6 +22,7 @@
 #include "shill/device.h"
 #include "shill/ip_address.h"
 #include "shill/rtnl_listener.h"
+#include "shill/shill_time.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -111,6 +112,18 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // exists.  Otherwise it returns false and leaves |address| unmodified.
   virtual bool GetPrimaryIPv6Address(int interface_index, IPAddress *address);
 
+  // Get the IPv6 DNS server addresses for |interface_index|. This method
+  // returns true and sets |address_list| and |life_time_seconds| if the IPv6
+  // DNS server addresses exists. Otherwise, it returns false and leave
+  // |address_list| and |life_time_seconds| unmodified. |life_time_seconds|
+  // indicates the number of the seconds the DNS server is still valid for at
+  // the time of this function call. Value of 0 means the DNS server is not
+  // valid anymore, and value of 0xFFFFFFFF means the DNS server is valid
+  // forever.
+  virtual bool GetIPv6DnsServerAddresses(int interface_index,
+                                         std::vector<IPAddress> *address_list,
+                                         uint32 *life_time_seconds);
+
   // Returns true if any of the addresses on |interface_index| are on the
   // same network prefix as |address|.
   virtual bool HasDirectConnectivityTo(
@@ -133,6 +146,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   FRIEND_TEST(DeviceInfoTest, IPv6AddressChanged);  // For infos_.
   FRIEND_TEST(DeviceInfoTest, RequestLinkStatistics);
   FRIEND_TEST(DeviceInfoTest, StartStop);
+  FRIEND_TEST(DeviceInfoTest, IPv6DnsServerAddressesChanged);  // For infos_.
 
   struct Info {
     Info()
@@ -147,6 +161,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     std::string name;
     ByteString mac_address;
     std::vector<AddressData> ip_addresses;
+    std::vector<IPAddress> ipv6_dns_server_addresses;
+    uint32 ipv6_dns_server_lifetime_seconds;
+    time_t ipv6_dns_server_received_time_seconds;
     unsigned int flags;
     uint64 rx_bytes;
     uint64 tx_bytes;
@@ -233,6 +250,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void DelLinkMsgHandler(const RTNLMessage &msg);
   void LinkMsgHandler(const RTNLMessage &msg);
   void AddressMsgHandler(const RTNLMessage &msg);
+  void RdnssMsgHandler(const RTNLMessage &msg);
 
   const Info *GetInfo(int interface_index) const;
   void RemoveInfo(int interface_index);
@@ -257,8 +275,10 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   base::Callback<void(const RTNLMessage &)> link_callback_;
   base::Callback<void(const RTNLMessage &)> address_callback_;
+  base::Callback<void(const RTNLMessage &)> rdnss_callback_;
   scoped_ptr<RTNLListener> link_listener_;
   scoped_ptr<RTNLListener> address_listener_;
+  scoped_ptr<RTNLListener> rdnss_listener_;
   std::set<std::string> black_list_;
   base::FilePath device_info_root_;
 
@@ -276,6 +296,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   // A member of the class so that a mock can be injected for testing.
   scoped_ptr<Sockets> sockets_;
+
+  Time *time_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };

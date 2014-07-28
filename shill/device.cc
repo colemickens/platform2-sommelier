@@ -428,6 +428,10 @@ void Device::OnIPv6AddressChanged() {
   UpdateIPConfigsProperty();
 }
 
+void Device::OnIPv6DnsServerAddressesChanged() {
+  // TODO(zqiu): To be implemented.
+}
+
 bool Device::ShouldUseArpGateway() const {
   return false;
 }

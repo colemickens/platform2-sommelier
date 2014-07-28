@@ -263,6 +263,10 @@ class Device : public base::RefCounted<Device> {
   // IPv6 address from this interface.
   virtual void OnIPv6AddressChanged();
 
+  // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
+  // addresses from this interface.
+  virtual void OnIPv6DnsServerAddressesChanged();
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;

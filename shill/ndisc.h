@@ -26,4 +26,7 @@ struct NDUserOptionHeader {
 #define ND_OPT_RDNSS 25       /* RFC 5006 */
 #define ND_OPT_DNSSL 31       /* RFC 6106 */
 
+// Infinity lifetime.
+#define ND_OPT_LIFETIME_INFINITY 0xFFFFFFFF
+
 #endif  // SHILL_NDISC_H_
