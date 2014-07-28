@@ -15,6 +15,8 @@ import shutil
 import subprocess
 import sys
 
+from chromite.lib.cros_build_lib import ShellUnquote
+
 
 # Define default the version of libchrome{,os} to build against.
 # Used only if the BASE_VER environment variable is not set.
@@ -109,7 +111,7 @@ class Platform2(object):
 
     output_lines = [x for x in output.splitlines() if x]
     output_items = [x.split('=', 1) for x in output_lines]
-    board_vars = dict(dict([(k, v[1:-1]) for k, v in output_items]))
+    board_vars = dict(dict([(k, ShellUnquote(v)) for k, v in output_items]))
 
     return board_vars if len(board_vars) > 1 else board_vars.values()[0]
 
