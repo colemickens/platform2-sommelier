@@ -5,6 +5,7 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/syslog_logging.h>
 #include <dbus/bus.h>
 #include <sysexits.h>
 
@@ -17,7 +18,7 @@ namespace {
 static const char kHelpFlag[] = "help";
 static const char kHelpMessage[] = "\n"
     "This is the peer discovery service daemon.\n"
-    "Usage: peerd\n";
+    "Usage: peerd [--v=<logging level>] [--vmodule=<see base/logging.h>]\n";
 
 void EnterMainLoop(base::MessageLoopForIO* message_loop,
                    scoped_refptr<dbus::Bus> bus) {
@@ -31,13 +32,13 @@ void EnterMainLoop(base::MessageLoopForIO* message_loop,
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // Parse the args and check for extra args.
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
   if (cl->HasSwitch(kHelpFlag)) {
     LOG(INFO) << kHelpMessage;
     return EX_USAGE;
   }
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
   dbus::Bus::Options options;

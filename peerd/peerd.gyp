@@ -3,6 +3,7 @@
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
       ],
     },
     'link_settings': {
