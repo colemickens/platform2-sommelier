@@ -734,6 +734,9 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
     cellular()->set_imsi(imsi);
     cellular()->set_sim_present(true);
     cellular()->home_provider_info()->UpdateIMSI(imsi);
+    // We do not currently obtain the IMSI OTA at all. Provide the IMSI from the
+    // SIM to the serving operator as well to aid in MVNO identification.
+    cellular()->serving_operator_info()->UpdateIMSI(imsi);
     callback.Run(error);
   } else if (!sim_lock_status_.lock_type.empty()) {
     SLOG(Cellular, 2) << "GetIMSI failed - SIM lock in place.";

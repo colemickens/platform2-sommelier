@@ -1729,6 +1729,9 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value)) {
     cellular()->set_imsi(value);
     cellular()->home_provider_info()->UpdateIMSI(value);
+    // We do not obtain IMSI OTA right now. Provide the value from the SIM to
+    // serving operator as well, to aid in MVNO identification.
+    cellular()->serving_operator_info()->UpdateIMSI(value);
   }
 }
 
@@ -1740,6 +1743,8 @@ void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
   cellular()->set_sim_identifier(id);
   cellular()->home_provider_info()->UpdateICCID(id);
+  // Provide ICCID to serving operator as well to aid in MVNO identification.
+  cellular()->serving_operator_info()->UpdateICCID(id);
   UpdatePendingActivationState();
 }
 

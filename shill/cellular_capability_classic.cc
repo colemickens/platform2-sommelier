@@ -292,6 +292,9 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
     if (DBusProperties::GetString(props, kModemPropertyIMSI, &prop_value)) {
       cellular()->set_imsi(prop_value);
       cellular()->home_provider_info()->UpdateIMSI(prop_value);
+      // We do not currently obtain the IMSI OTA at all. Provide the IMSI from
+      // the SIM to the serving operator as well to aid in MVNO identification.
+      cellular()->serving_operator_info()->UpdateIMSI(prop_value);
     }
     if (DBusProperties::GetString(props, "esn", &prop_value)) {
       cellular()->set_esn(prop_value);
