@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/message_loop/message_loop.h>
 #include <dbus/bus.h>
@@ -23,6 +24,7 @@ void EnterMainLoop(base::MessageLoopForIO* message_loop,
   // TODO(wiley) Initialize global objects here.
   Manager manager(bus);
   // TODO(wiley) Claim DBus service name here.
+  LOG(INFO) << "peerd starting";
   message_loop->Run();
 }
 
@@ -36,6 +38,7 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << kHelpMessage;
     return EX_USAGE;
   }
+  base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
