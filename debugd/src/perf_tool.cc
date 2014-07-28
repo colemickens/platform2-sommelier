@@ -5,6 +5,9 @@
 #include "perf_tool.h"
 
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+
+#include <algorithm>
 
 #include "cpu_info_parser.h"
 #include "process_with_output.h"
@@ -19,10 +22,14 @@ const char kQuipperLocation[] = "/usr/bin/quipper";
 // This is the key in /proc/cpuinfo whose value is the model name of the CPU.
 const char kCPUModelNameKey[] = "model name";
 
+// This is registered trademark symbol that appears in model name strings.
+const char kRegisteredTrademarkSymbol[] = "(R)";
+
 // Processor model name substrings for which we have perf commands.
 const char* kCPUOddsFiles[] = {
   "unknown",
   "core",
+  "celeron-2955u",
   "arm",
 };
 
@@ -32,14 +39,26 @@ const char kCPUOddsFilePrefix[] = "/etc/perf_commands/";
 // Suffix to attach to the CPU odds file.
 const char kCPUOddsFileSuffix[] = ".txt";
 
+// Converts an CPU model name string into a format that can be used as a file
+// name. The rules are:
+// - Replace spaces with hyphens.
+// - Strip all "(R)" symbols.
+// - Convert to lower case.
+std::string ModelNameToFileName(const std::string& model_name) {
+  std::string result = model_name;
+  std::replace(result.begin(), result.end(), ' ', '-');
+  ReplaceSubstringsAfterOffset(&result, 0, kRegisteredTrademarkSymbol, "");
+  return StringToLowerASCII(result);
+}
+
 // Goes through the list of kCPUOddsFiles, and if the any of those strings is a
 // substring of the |cpu_model_name|, returns that string. If no matches are
 // found, returns the first string of |kCPUOddsFiles| ("unknown").
 void GetOddsFilenameForCPU(const std::string& cpu_model_name,
                            std::string* odds_filename) {
-  std::string lowered_cpu_model_name = StringToLowerASCII(cpu_model_name);
+  std::string adjusted_model_name = ModelNameToFileName(cpu_model_name);
   for (size_t i = 0; i < arraysize(kCPUOddsFiles); ++i) {
-    if (lowered_cpu_model_name.find(kCPUOddsFiles[i]) != std::string::npos) {
+    if (adjusted_model_name.find(kCPUOddsFiles[i]) != std::string::npos) {
       *odds_filename = kCPUOddsFiles[i];
       return;
     }
