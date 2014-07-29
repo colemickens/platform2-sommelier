@@ -41,6 +41,7 @@
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_link_monitor.h"
 #include "shill/mock_log.h"
+#include "shill/mock_mac80211_monitor.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_netlink_manager.h"
@@ -59,6 +60,7 @@
 #include "shill/mock_wifi_service.h"
 #include "shill/netlink_message_matchers.h"
 #include "shill/nice_mock_control.h"
+#include "shill/nl80211_attribute.h"
 #include "shill/nl80211_message.h"
 #include "shill/property_store_unittest.h"
 #include "shill/scan_session.h"
@@ -117,12 +119,15 @@ const int kInterfaceIndex = 1234;
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
-      : device_(new WiFi(control_interface(),
-                         NULL, NULL, manager(), "wifi", "", kInterfaceIndex)) {
+      : metrics_(NULL),
+        device_(
+            new WiFi(control_interface(), dispatcher(), &metrics_,
+                     manager(), "wifi", "", kInterfaceIndex)) {
   }
   virtual ~WiFiPropertyTest() {}
 
  protected:
+  MockMetrics metrics_;
   WiFiRefPtr device_;
 };
 
@@ -232,6 +237,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                        kDeviceAddress,
                        kInterfaceIndex)),
         bss_counter_(0),
+        mac80211_monitor_(
+            new StrictMock<MockMac80211Monitor>(
+                dispatcher, kDeviceName, WiFi::kStuckQueueLengthThreshold,
+                base::Closure(), &metrics_)),
         dbus_service_proxy_(new MockDBusServiceProxy()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
@@ -241,8 +250,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()) {
+    wifi_->mac80211_monitor_.reset(mac80211_monitor_);
     InstallMockScanSession();
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
+
+    EXPECT_CALL(*mac80211_monitor_, UpdateConnectedState(_))
+        .Times(AnyNumber());
 
     ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _))
         .WillByDefault(Return(dhcp_config_));
@@ -297,6 +310,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     if (supplicant_bss_proxy_.get()) {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
+    EXPECT_CALL(*mac80211_monitor_, Stop());
     wifi_->proxy_factory_ = NULL;
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
@@ -312,6 +326,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   // Needs to be public since it is called via Invoke().
   void StopWiFi() {
+    EXPECT_CALL(*mac80211_monitor_, Stop());
     wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
   }
 
@@ -828,6 +843,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->PendingTimeoutHandler();
   }
 
+  void OnNewWiphy(const Nl80211Message &new_wiphy_message) {
+    wifi_->OnNewWiphy(new_wiphy_message);
+  }
+
   NiceMockControl *control_interface() {
     return &control_interface_;
   }
@@ -860,6 +879,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return &wifi_provider_;
   }
 
+  MockMac80211Monitor *mac80211_monitor() {
+    return mac80211_monitor_;
+  }
+
   EventDispatcher *event_dispatcher_;
   MockScanSession *scan_session_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -874,6 +897,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   WiFiRefPtr wifi_;
   NiceMock<MockWiFiProvider> wifi_provider_;
   int bss_counter_;
+  MockMac80211Monitor *mac80211_monitor_;  // Owned by |wifi_|.
 
   // protected fields interspersed between private fields, due to
   // initialization order
@@ -3735,6 +3759,30 @@ TEST_F(WiFiMainTest, PerformTDLSOperation) {
     EXPECT_EQ("", PerformTDLSOperation(kTDLSTeardownOperation, kPeer, &error));
     EXPECT_EQ(Error::kOperationFailed, error.type());
   }
+}
+
+TEST_F(WiFiMainTest, OnNewWiphy) {
+  Nl80211Message new_wiphy_message(
+      NewWiphyMessage::kCommand, NewWiphyMessage::kCommandString);
+  new_wiphy_message.attributes()->
+      CreateStringAttribute(Nl80211AttributeWiphyName::kName,
+                            Nl80211AttributeWiphyName::kNameString);
+  new_wiphy_message.attributes()->
+      SetStringAttributeValue(Nl80211AttributeWiphyName::kName,
+                              "test-phy");
+  EXPECT_CALL(*mac80211_monitor(), Start(_));
+  OnNewWiphy(new_wiphy_message);
+  // TODO(quiche): We should test the rest of OnNewWiphy, which parses
+  // out frequency information.
+}
+
+TEST_F(WiFiMainTest, StateChangedUpdatesMac80211Monitor) {
+  EXPECT_CALL(*mac80211_monitor(), UpdateConnectedState(true)).Times(2);
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+  ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
+
+  EXPECT_CALL(*mac80211_monitor(), UpdateConnectedState(false));
+  ReportStateChanged(WPASupplicant::kInterfaceStateAssociating);
 }
 
 }  // namespace shill

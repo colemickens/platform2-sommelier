@@ -103,6 +103,7 @@ namespace shill {
 
 class Error;
 class GeolocationInfo;
+class Mac80211Monitor;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;
@@ -298,11 +299,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const float kDefaultFractionPerScan;
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
+  static const size_t kStuckQueueLengthThreshold;
 
-  // Gets the list of frequencies supported by this device.
   // TODO(wdg): Remove after progressive scan field trial is over.
   void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
-  void ConfigureScanFrequencies();
+  void GetPhyInfo();
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;
   std::string GetBgscanMethod(const int &argument, Error *error);
@@ -518,6 +519,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
+  std::string phy_name_;
   // Indicates that we should flush supplicant's BSS cache after the
   // next scan completes.
   bool need_bss_flush_;
@@ -546,6 +548,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool is_debugging_connection_;
   // Tracks the process of an EAP negotiation.
   scoped_ptr<SupplicantEAPStateHandler> eap_state_handler_;
+  // Tracks mac80211 state, to diagnose problems such as queue stalls.
+  scoped_ptr<Mac80211Monitor> mac80211_monitor_;
 
   // Properties
   std::string bgscan_method_;

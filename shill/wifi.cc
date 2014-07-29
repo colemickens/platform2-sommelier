@@ -36,6 +36,7 @@
 #include "shill/ip_address.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
+#include "shill/mac80211_monitor.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/netlink_manager.h"
@@ -90,6 +91,7 @@ const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
 const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
+const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -120,6 +122,13 @@ WiFi::WiFi(ControlInterface *control_interface,
       is_roaming_in_progress_(false),
       is_debugging_connection_(false),
       eap_state_handler_(new SupplicantEAPStateHandler()),
+      mac80211_monitor_(new Mac80211Monitor(
+          dispatcher,
+          link,
+          kStuckQueueLengthThreshold,
+          base::Bind(&WiFi::RestartFastScanAttempts,
+                     weak_ptr_factory_.GetWeakPtr()),
+          metrics)),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       roam_threshold_db_(kDefaultRoamThresholdDb),
@@ -317,7 +326,7 @@ void WiFi::Start(Error *error,
                                       NetlinkManager::kEventTypeRegulatory);
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                       NetlinkManager::kEventTypeMlme);
-  ConfigureScanFrequencies();
+  GetPhyInfo();
   // Connect to WPA supplicant if it's already present. If not, we'll connect to
   // it when it appears.
   ConnectToSupplicant();
@@ -347,6 +356,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   StopPendingTimer();
   StopReconnectTimer();
   StopRequestingStationInfo();
+  mac80211_monitor_->Stop();
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -1416,7 +1426,13 @@ void WiFi::StateChanged(const string &new_state) {
   LOG(INFO) << "WiFi " << link_name() << " " << __func__ << " "
             << old_state << " -> " << new_state;
 
-  WiFiService *affected_service;
+  if (new_state == WPASupplicant::kInterfaceStateCompleted ||
+      new_state == WPASupplicant::kInterfaceState4WayHandshake) {
+    mac80211_monitor_->UpdateConnectedState(true);
+  } else {
+    mac80211_monitor_->UpdateConnectedState(false);
+  }
+
   // Identify the service to which the state change applies. If
   // |pending_service_| is non-NULL, then the state change applies to
   // |pending_service_|. Otherwise, it applies to |current_service_|.
@@ -1426,7 +1442,7 @@ void WiFi::StateChanged(const string &new_state) {
   // reports a CurrentBSS change to the |pending_service_|. And the
   // CurrentBSS change won't be reported until the |pending_service_|
   // reaches the WPASupplicant::kInterfaceStateCompleted state.
-  affected_service =
+  WiFiService *affected_service =
       pending_service_.get() ? pending_service_.get() : current_service_.get();
   if (!affected_service) {
     SLOG(WiFi, 2) << "WiFi " << link_name() << " " << __func__
@@ -2048,7 +2064,7 @@ void WiFi::Restart() {
   manager()->RegisterDevice(me);
 }
 
-void WiFi::ConfigureScanFrequencies() {
+void WiFi::GetPhyInfo() {
   GetWiphyMessage get_wiphy;
   get_wiphy.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                interface_index());
@@ -2065,6 +2081,13 @@ void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
                << nl80211_message.command();
     return;
   }
+
+  if (!nl80211_message.const_attributes()->GetStringAttributeValue(
+          NL80211_ATTR_WIPHY_NAME, &phy_name_)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_NAME";
+    return;
+  }
+  mac80211_monitor_->Start(phy_name_);
 
   // The attributes, for this message, are complicated.
   // NL80211_ATTR_BANDS contains an array of bands...
