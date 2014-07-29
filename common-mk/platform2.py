@@ -72,11 +72,6 @@ class Platform2(object):
     """Return the path to src/platform2"""
     return os.path.dirname(self.get_src_dir())
 
-  def get_platform_root(self):
-    """Return the path to src/platform"""
-    return os.path.normpath(os.path.join(
-        self.get_src_dir(), '..', '..', 'platform'))
-
   def get_buildroot(self):
     """Return the path to the folder where build artifacts are located."""
     if not self.incremental:
@@ -183,9 +178,9 @@ class Platform2(object):
 
     common_gyp = os.path.join(self.get_src_dir(), 'common.gypi')
 
-    # The common root folder of platform/ and platform2/.
+    # The common root folder of platform2/.
     # Used as (DEPTH) variable in specific project .gyp files.
-    src_root = os.path.normpath(os.path.join(self.get_src_dir(), '..', '..'))
+    src_root = os.path.normpath(os.path.join(self.get_src_dir(), '..'))
 
     # Do NOT pass the board name into GYP. If you think you need to so, you're
     # probably doing it wrong.
@@ -199,7 +194,6 @@ class Platform2(object):
         '-Dpkg-config=%s' % self.pkgconfig,
         '-Dsysroot=%s' % self.sysroot,
         '-Dlibdir=%s' % self.libdir,
-        '-Dplatform_root=%s' % self.get_platform_root(),
         '-Dplatform2_root=%s' % self.get_platform2_root(),
         '-Dlibbase_ver=%s' % os.environ.get('BASE_VER', _BASE_VER),
         '-Dclang_syntax=%s' % os.environ.get('CROS_WORKON_CLANG', ''),

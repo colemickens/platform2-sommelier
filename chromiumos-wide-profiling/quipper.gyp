@@ -63,7 +63,7 @@
       'sources': [
         '<(proto_in_dir)/perf_data.proto',
       ],
-      'includes': ['../../platform2/common-mk/protoc.gypi'],
+      'includes': ['../common-mk/protoc.gypi'],
     },
     {
       'target_name': 'quipper',
@@ -86,7 +86,7 @@
             'common',
             'common_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'address_mapper_test.cc',
           ]
@@ -99,7 +99,7 @@
             'common_test',
             'conversion_utils',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'conversion_utils_test.cc',
           ]
@@ -111,7 +111,7 @@
             'common',
             'common_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_parser_test.cc',
           ]
@@ -123,7 +123,7 @@
             'common',
             'common_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_reader_test.cc',
           ]
@@ -135,7 +135,7 @@
             'common',
             'common_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_recorder_test.cc',
           ]
@@ -147,7 +147,7 @@
             'common',
             'common_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_serializer_test.cc',
           ]
@@ -159,7 +159,7 @@
             'common',
             'common_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'utils_test.cc',
           ]
