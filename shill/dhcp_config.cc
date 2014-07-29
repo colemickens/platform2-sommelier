@@ -14,6 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/minijail/minijail.h>
 
 #include "shill/dhcp_provider.h"
 #include "shill/dhcpcd_proxy.h"
@@ -22,7 +23,6 @@
 #include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/minijail.h"
 #include "shill/proxy_factory.h"
 
 using std::string;
@@ -105,7 +105,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       glib_(glib),
       metrics_(metrics),
-      minijail_(Minijail::GetInstance()) {
+      minijail_(chromeos::Minijail::GetInstance()) {
   SLOG(DHCP, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
     lease_file_suffix_ = device_name;

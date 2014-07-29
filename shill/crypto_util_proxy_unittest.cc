@@ -7,19 +7,20 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <chromeos/minijail/minijail.h>
+#include <chromeos/minijail/mock_minijail.h>
 #include <gtest/gtest.h>
 
 #include "shill/callbacks.h"
 #include "shill/crypto_util_proxy.h"
-#include "shill/minijail.h"
 #include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
 #include "shill/mock_glib.h"
-#include "shill/mock_minijail.h"
 #include "shill/mock_process_killer.h"
 
 using base::Bind;
+using chromeos::MockMinijail;
 using std::min;
 using std::string;
 using std::vector;

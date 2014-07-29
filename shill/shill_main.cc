@@ -16,11 +16,11 @@
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
 #include "shill/logging.h"
-#include "shill/minijail.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
@@ -90,7 +90,7 @@ void SetupLogging(bool foreground, char *daemon_name) {
     logger_command_line.push_back(daemon_name);
     logger_command_line.push_back(NULL);
 
-    shill::Minijail *minijail = shill::Minijail::GetInstance();
+    chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
     struct minijail *jail = minijail->New();
     minijail->DropRoot(jail, kLoggerUser);
 

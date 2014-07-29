@@ -40,7 +40,7 @@ const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
 CryptoUtilProxy::CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib)
     : dispatcher_(dispatcher),
       glib_(glib),
-      minijail_(Minijail::GetInstance()),
+      minijail_(chromeos::Minijail::GetInstance()),
       process_killer_(ProcessKiller::GetInstance()),
       file_io_(FileIO::GetInstance()),
       input_buffer_(),

@@ -12,12 +12,12 @@
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/minijail/minijail.h>
 #include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
-#include "shill/minijail.h"
 
 namespace shill {
 
@@ -266,7 +266,7 @@ class DHCPConfig : public IPConfig {
   GLib *glib_;
   Metrics *metrics_;
 
-  Minijail *minijail_;
+  chromeos::Minijail *minijail_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);
 };

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MINIJAIL_H_
-#define SHILL_MINIJAIL_H_
+#ifndef LIBCHROMEOS_CHROMEOS_MINIJAIL_MINIJAIL_H_
+#define LIBCHROMEOS_CHROMEOS_MINIJAIL_MINIJAIL_H_
 
 #include <vector>
 
@@ -14,7 +14,7 @@ extern "C" {
 #include <base/lazy_instance.h>
 #include <chromeos/libminijail.h>
 
-namespace shill {
+namespace chromeos {
 
 // A Minijail abstraction allowing Minijail mocking in tests.
 class Minijail {
@@ -79,6 +79,6 @@ class Minijail {
   DISALLOW_COPY_AND_ASSIGN(Minijail);
 };
 
-}  // namespace shill
+}  // namespace chromeos
 
-#endif  // SHILL_MINIJAIL_H_
+#endif  // LIBCHROMEOS_CHROMEOS_MINIJAIL_MINIJAIL_H_

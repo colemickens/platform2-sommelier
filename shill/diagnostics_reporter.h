@@ -8,9 +8,14 @@
 #include <base/files/file_path.h>
 #include <base/lazy_instance.h>
 
-namespace shill {
+namespace chromeos {
 
 class Minijail;
+
+}  // namespace chromeos
+
+namespace shill {
+
 class ProcessKiller;
 class Time;
 
@@ -36,7 +41,7 @@ class DiagnosticsReporter {
 
   static const int kLogStashThrottleSeconds;
 
-  Minijail *minijail_;
+  chromeos::Minijail *minijail_;
   ProcessKiller *process_killer_;
   Time *time_;
   uint64 last_log_stash_;  // Monotonic time seconds.

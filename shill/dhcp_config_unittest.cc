@@ -12,6 +12,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/minijail/mock_minijail.h>
 
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_provider.h"
@@ -21,7 +22,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_minijail.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/property_store_unittest.h"
 #include "shill/testing.h"
@@ -30,6 +30,7 @@ using base::Bind;
 using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
+using chromeos::MockMinijail;
 using std::string;
 using std::vector;
 using testing::_;

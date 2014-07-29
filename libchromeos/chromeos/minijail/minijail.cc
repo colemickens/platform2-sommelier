@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/minijail.h"
+#include "libchromeos/chromeos/minijail/minijail.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
 
 using std::vector;
 
-namespace shill {
+namespace chromeos {
 
 static base::LazyInstance<Minijail> g_minijail = LAZY_INSTANCE_INITIALIZER;
 
@@ -96,4 +96,4 @@ bool Minijail::RunPipesAndDestroy(struct minijail *jail,
   return res;
 }
 
-}  // namespace shill
+}  // namespace chromeos

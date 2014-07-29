@@ -7,8 +7,8 @@
 #include <vector>
 
 #include <base/file_util.h>
+#include <chromeos/minijail/minijail.h>
 
-#include "shill/minijail.h"
 #include "shill/process_killer.h"
 #include "shill/shill_time.h"
 #include "shill/shims/net_diags_upload.h"
@@ -30,7 +30,7 @@ const char kNetDiagsUploadUser[] = "syslog";
 const int DiagnosticsReporter::kLogStashThrottleSeconds = 30 * 60;
 
 DiagnosticsReporter::DiagnosticsReporter()
-    : minijail_(Minijail::GetInstance()),
+    : minijail_(chromeos::Minijail::GetInstance()),
       process_killer_(ProcessKiller::GetInstance()),
       time_(Time::GetInstance()),
       last_log_stash_(0),

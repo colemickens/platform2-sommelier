@@ -205,7 +205,6 @@
           ],
         },
         'libraries': [
-          '-lminijail',
           '-lrootdev',
           '-lrt'
         ],
@@ -351,7 +350,6 @@
         'manager.cc',
         'manager_dbus_adaptor.cc',
         'metrics.cc',
-        'minijail.cc',
         'netlink_attribute.cc',
         'netlink_manager.cc',
         'netlink_message.cc',
@@ -609,7 +607,6 @@
             'mock_log_unittest.cc',
             'mock_manager.cc',
             'mock_metrics.cc',
-            'mock_minijail.cc',
             'mock_netlink_manager.cc',
             'mock_pending_activation_store.cc',
             'mock_portal_detector.cc',

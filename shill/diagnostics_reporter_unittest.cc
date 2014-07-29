@@ -6,14 +6,15 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <chromeos/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_minijail.h"
 #include "shill/mock_process_killer.h"
 #include "shill/mock_time.h"
 
 using base::FilePath;
+using chromeos::MockMinijail;
 using testing::_;
 using testing::ElementsAre;
 using testing::InSequence;

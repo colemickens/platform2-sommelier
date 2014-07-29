@@ -2,22 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_MINIJAIL_H_
-#define SHILL_MOCK_MINIJAIL_H_
+#ifndef LIBCHROMEOS_CHROMEOS_MINIJAIL_MOCK_MINIJAIL_H_
+#define LIBCHROMEOS_CHROMEOS_MINIJAIL_MOCK_MINIJAIL_H_
 
 #include <vector>
 
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
-#include "shill/minijail.h"
+#include "libchromeos/chromeos/minijail/minijail.h"
 
-namespace shill {
+namespace chromeos {
 
-class MockMinijail : public Minijail {
+class MockMinijail : public chromeos::Minijail {
  public:
-  MockMinijail();
-  virtual ~MockMinijail();
+  MockMinijail() {}
+  virtual ~MockMinijail() {}
 
   MOCK_METHOD0(New, struct minijail *());
   MOCK_METHOD1(Destroy, void(struct minijail *));
@@ -44,6 +44,6 @@ class MockMinijail : public Minijail {
   DISALLOW_COPY_AND_ASSIGN(MockMinijail);
 };
 
-}  // namespace shill
+}  // namespace chromeos
 
-#endif  // SHILL_MOCK_MINIJAIL_H_
+#endif  // LIBCHROMEOS_CHROMEOS_MINIJAIL_MOCK_MINIJAIL_H_

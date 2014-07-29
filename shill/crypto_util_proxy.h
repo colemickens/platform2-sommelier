@@ -12,12 +12,12 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/minijail/minijail.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
 #include "shill/error.h"
 #include "shill/io_handler.h"
-#include "shill/minijail.h"
 #include "shill/proto_bindings/shims/protos/crypto_util.pb.h"
 
 namespace shill {
@@ -121,7 +121,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
 
   EventDispatcher *dispatcher_;
   GLib *glib_;
-  Minijail *minijail_;
+  chromeos::Minijail *minijail_;
   ProcessKiller *process_killer_;
   FileIO *file_io_;
   std::string input_buffer_;
