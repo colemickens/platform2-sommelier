@@ -145,6 +145,34 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
   return true;
 }
 
+std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
+    bool full_schema, ErrorPtr* error) const {
+  std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
+  for (const auto& pair : definitions_) {
+    std::unique_ptr<base::DictionaryValue> definition =
+        pair.second->GetParameters()->ToJson(full_schema, error);
+    if (!definition) {
+      dict.reset();
+      return dict;
+    }
+    auto cmd_name_parts = string_utils::SplitAtFirst(pair.first, '.');
+    std::string package_name = cmd_name_parts.first;
+    std::string command_name = cmd_name_parts.second;
+    base::DictionaryValue* package = nullptr;
+    if (!dict->GetDictionaryWithoutPathExpansion(package_name, &package)) {
+      // If this is the first time we encounter this package, create a JSON
+      // object for it.
+      package = new base::DictionaryValue;
+      dict->SetWithoutPathExpansion(package_name, package);
+    }
+    base::DictionaryValue* command_def = new base::DictionaryValue;
+    command_def->SetWithoutPathExpansion(
+        commands::attributes::kCommand_Parameters, definition.release());
+    package->SetWithoutPathExpansion(command_name, command_def);
+  }
+  return dict;
+}
+
 const CommandDefinition* CommandDictionary::FindCommand(
     const std::string& command_name) const {
   auto pair = definitions_.find(command_name);

@@ -165,3 +165,46 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
             error->GetFirstError()->GetMessage());
   error.reset();
 }
+
+TEST(CommandDictionary, GetCommandsAsJson) {
+  auto json_base = CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': {'maximum': 100}}
+      },
+      'shutdown': {
+        'parameters': {}
+      }
+    }
+  })");
+  buffet::CommandDictionary base_dict;
+  base_dict.LoadCommands(*json_base, "base", nullptr, nullptr);
+
+  auto json = buffet::unittests::CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': {'minimum': 10}}
+      }
+    },
+    'robot': {
+      '_jump': {
+        'parameters': {'_height': 'integer'}
+      }
+    }
+  })");
+  buffet::CommandDictionary dict;
+  dict.LoadCommands(*json, "device", &base_dict, nullptr);
+
+  json = dict.GetCommandsAsJson(false, nullptr);
+  EXPECT_NE(nullptr, json.get());
+  EXPECT_EQ("{'base':{'reboot':{'parameters':{'delay':{'minimum':10}}}},"
+            "'robot':{'_jump':{'parameters':{'_height':'integer'}}}}",
+            buffet::unittests::ValueToString(json.get()));
+
+  json = dict.GetCommandsAsJson(true, nullptr);
+  EXPECT_NE(nullptr, json.get());
+  EXPECT_EQ("{'base':{'reboot':{'parameters':{'delay':{"
+            "'maximum':100,'minimum':10,'type':'integer'}}}},"
+            "'robot':{'_jump':{'parameters':{'_height':{'type':'integer'}}}}}",
+            buffet::unittests::ValueToString(json.get()));
+}

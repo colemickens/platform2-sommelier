@@ -11,6 +11,8 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 
+#include "buffet/commands/command_definition.h"
+#include "buffet/commands/command_manager.h"
 #include "buffet/data_encoding.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_transport_curl.h"
@@ -356,36 +358,18 @@ std::string DeviceRegistrationInfo::StartRegistration(
   if (!CheckParam(storage_keys::kServiceURL, service_url_, error))
     return std::string();
 
-  std::vector<std::pair<std::string, std::vector<std::string>>> commands = {
-    {"SetDeviceConfiguration", {"data"}}
-  };
+  std::unique_ptr<base::DictionaryValue> commands =
+      command_manager_->GetCommandDictionary().GetCommandsAsJson(true, error);
+  if (!commands)
+    return std::string();
 
   base::DictionaryValue req_json;
-  base::ListValue* set_device_configuration_params = new base::ListValue;
-  base::DictionaryValue* param1 = new base::DictionaryValue;
-  param1->SetString("name", "data");
-  set_device_configuration_params->Append(param1);
-
-  base::ListValue* vendor_commands = new base::ListValue;
-  for (const auto& pair : commands) {
-    base::ListValue* params = new base::ListValue;
-    for (const auto& param_name : pair.second) {
-      base::DictionaryValue* param = new base::DictionaryValue;
-      param->SetString("name", param_name);
-      params->Append(param);
-    }
-    base::DictionaryValue* command = new base::DictionaryValue;
-    command->SetString("name", pair.first);
-    command->Set("parameter", params);
-    vendor_commands->Append(command);
-  }
-
   req_json.SetString("oauthClientId", client_id_);
   req_json.SetString("deviceDraft.deviceKind", device_kind_);
   req_json.SetString("deviceDraft.systemName", system_name_);
   req_json.SetString("deviceDraft.displayName", display_name_);
   req_json.SetString("deviceDraft.channel.supportedType", "xmpp");
-  req_json.Set("deviceDraft.commands.base.vendorCommands", vendor_commands);
+  req_json.Set("deviceDraft.commandDefs", commands.release());
 
   std::string url = GetServiceURL("registrationTickets", {{"key", api_key_}});
   auto resp_json = http::ParseJsonResponse(

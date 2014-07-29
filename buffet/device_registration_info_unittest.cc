@@ -8,6 +8,7 @@
 
 #include "buffet/bind_lambda.h"
 #include "buffet/commands/command_manager.h"
+#include "buffet/commands/unittest_utils.h"
 #include "buffet/device_registration_info.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_request.h"
@@ -157,50 +158,51 @@ class DeviceRegistrationInfo::TestHelper {
 class DeviceRegistrationInfoTest : public ::testing::Test {
  protected:
   virtual void SetUp() override {
-    InitDefaultStorage(&data);
-    storage = std::make_shared<MemStorage>();
-    storage->Save(&data);
-    transport = std::make_shared<fake::Transport>();
-    dev_reg = std::unique_ptr<DeviceRegistrationInfo>(
-        new DeviceRegistrationInfo(std::make_shared<CommandManager>(),
-                                   transport, storage));
+    InitDefaultStorage(&data_);
+    storage_ = std::make_shared<MemStorage>();
+    storage_->Save(&data_);
+    transport_ = std::make_shared<fake::Transport>();
+    command_manager_ = std::make_shared<CommandManager>();
+    dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
+        new DeviceRegistrationInfo(command_manager_, transport_, storage_));
   }
 
-  base::DictionaryValue data;
-  std::shared_ptr<MemStorage> storage;
-  std::shared_ptr<fake::Transport> transport;
-  std::unique_ptr<DeviceRegistrationInfo> dev_reg;
+  base::DictionaryValue data_;
+  std::shared_ptr<MemStorage> storage_;
+  std::shared_ptr<fake::Transport> transport_;
+  std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
+  std::shared_ptr<CommandManager> command_manager_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
-  EXPECT_TRUE(dev_reg->Load());
-  EXPECT_EQ(test_data::kServiceURL, dev_reg->GetServiceURL());
+  EXPECT_TRUE(dev_reg_->Load());
+  EXPECT_EQ(test_data::kServiceURL, dev_reg_->GetServiceURL());
   std::string url = test_data::kServiceURL;
   url += "registrationTickets";
-  EXPECT_EQ(url, dev_reg->GetServiceURL("registrationTickets"));
+  EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets"));
   url += "?key=";
   url += test_data::kApiKey;
-  EXPECT_EQ(url, dev_reg->GetServiceURL("registrationTickets", {
+  EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets", {
     {"key", test_data::kApiKey}
   }));
   url += "&restart=true";
-  EXPECT_EQ(url, dev_reg->GetServiceURL("registrationTickets", {
+  EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets", {
     {"key", test_data::kApiKey},
     {"restart", "true"},
   }));
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
-  EXPECT_TRUE(dev_reg->Load());
-  EXPECT_EQ(test_data::kOAuthURL, dev_reg->GetOAuthURL());
+  EXPECT_TRUE(dev_reg_->Load());
+  EXPECT_EQ(test_data::kOAuthURL, dev_reg_->GetOAuthURL());
   std::string url = test_data::kOAuthURL;
   url += "auth?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fclouddevices&";
   url += "redirect_uri=urn%3Aietf%3Awg%3Aoauth%3A2.0%3Aoob&";
   url += "response_type=code&";
   url += "client_id=";
   url += test_data::kClientId;
-  EXPECT_EQ(url, dev_reg->GetOAuthURL("auth", {
+  EXPECT_EQ(url, dev_reg_->GetOAuthURL("auth", {
     {"scope", "https://www.googleapis.com/auth/clouddevices"},
     {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
     {"response_type", "code"},
@@ -209,33 +211,33 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
-  EXPECT_TRUE(dev_reg->Load());
-  EXPECT_FALSE(dev_reg->CheckRegistration(nullptr));
-  EXPECT_EQ(0, transport->GetRequestCount());
+  EXPECT_TRUE(dev_reg_->Load());
+  EXPECT_FALSE(dev_reg_->CheckRegistration(nullptr));
+  EXPECT_EQ(0, transport_->GetRequestCount());
 
-  SetDefaultDeviceRegistration(&data);
-  storage->Save(&data);
-  EXPECT_TRUE(dev_reg->Load());
+  SetDefaultDeviceRegistration(&data_);
+  storage_->Save(&data_);
+  EXPECT_TRUE(dev_reg_->Load());
 
-  transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
-                        base::Bind(OAuth2Handler));
-  transport->ResetRequestCount();
-  EXPECT_TRUE(dev_reg->CheckRegistration(nullptr));
-  EXPECT_EQ(1, transport->GetRequestCount());
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+                         base::Bind(OAuth2Handler));
+  transport_->ResetRequestCount();
+  EXPECT_TRUE(dev_reg_->CheckRegistration(nullptr));
+  EXPECT_EQ(1, transport_->GetRequestCount());
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
-  SetDefaultDeviceRegistration(&data);
-  storage->Save(&data);
-  EXPECT_TRUE(dev_reg->Load());
+  SetDefaultDeviceRegistration(&data_);
+  storage_->Save(&data_);
+  EXPECT_TRUE(dev_reg_->Load());
 
-  transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
-                        base::Bind(OAuth2Handler));
-  transport->AddHandler(dev_reg->GetDeviceURL(), request_type::kGet,
-                        base::Bind(DeviceInfoHandler));
-  transport->ResetRequestCount();
-  auto device_info = dev_reg->GetDeviceInfo(nullptr);
-  EXPECT_EQ(2, transport->GetRequestCount());
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+                         base::Bind(OAuth2Handler));
+  transport_->AddHandler(dev_reg_->GetDeviceURL(), request_type::kGet,
+                         base::Bind(DeviceInfoHandler));
+  transport_->ResetRequestCount();
+  auto device_info = dev_reg_->GetDeviceInfo(nullptr);
+  EXPECT_EQ(2, transport_->GetRequestCount());
   EXPECT_NE(nullptr, device_info.get());
   base::DictionaryValue* dict = nullptr;
   EXPECT_TRUE(device_info->GetAsDictionary(&dict));
@@ -245,20 +247,20 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
-  SetDefaultDeviceRegistration(&data);
-  storage->Save(&data);
-  EXPECT_TRUE(dev_reg->Load());
+  SetDefaultDeviceRegistration(&data_);
+  storage_->Save(&data_);
+  EXPECT_TRUE(dev_reg_->Load());
 
-  transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
-                        base::Bind(OAuth2Handler));
-  transport->AddHandler(dev_reg->GetDeviceURL(), request_type::kGet,
-                        base::Bind(DeviceInfoHandler));
-  std::string id = dev_reg->GetDeviceId(nullptr);
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+                         base::Bind(OAuth2Handler));
+  transport_->AddHandler(dev_reg_->GetDeviceURL(), request_type::kGet,
+                         base::Bind(DeviceInfoHandler));
+  std::string id = dev_reg_->GetDeviceId(nullptr);
   EXPECT_EQ(test_data::kDeviceId, id);
 }
 
 TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
-  EXPECT_TRUE(dev_reg->Load());
+  EXPECT_TRUE(dev_reg_->Load());
 
   auto create_ticket = [](const fake::ServerRequest& request,
                           fake::ServerResponse* response) {
@@ -272,6 +274,14 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
     EXPECT_EQ(test_data::kClientId, value);
     EXPECT_TRUE(json->GetString("deviceDraft.deviceKind", &value));
     EXPECT_EQ("vendor", value);
+    base::DictionaryValue* commandDefs = nullptr;
+    EXPECT_TRUE(json->GetDictionary("deviceDraft.commandDefs", &commandDefs));
+    EXPECT_FALSE(commandDefs->empty());
+    EXPECT_EQ("{'base':{'reboot':{'parameters':{"
+              "'delay':{'minimum':10,'type':'integer'}}}},"
+              "'robot':{'_jump':{'parameters':{"
+              "'_height':{'type':'integer'}}}}}",
+              buffet::unittests::ValueToString(commandDefs));
 
     base::DictionaryValue json_resp;
     json_resp.SetString("id", test_data::kClaimTicketId);
@@ -287,11 +297,36 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
     response->ReplyJson(status_code::Ok, &json_resp);
   };
 
-  transport->AddHandler(dev_reg->GetServiceURL("registrationTickets"),
-                        request_type::kPost,
-                        base::Bind(create_ticket));
+  auto json_base = buffet::unittests::CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': 'integer'}
+      },
+      'shutdown': {
+        'parameters': {}
+      }
+    }
+  })");
+  EXPECT_TRUE(command_manager_->LoadBaseCommands(*json_base, nullptr));
+  auto json_cmds = buffet::unittests::CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': {'minimum': 10}}
+      }
+    },
+    'robot': {
+      '_jump': {
+        'parameters': {'_height': 'integer'}
+      }
+    }
+  })");
+  EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
+
+  transport_->AddHandler(dev_reg_->GetServiceURL("registrationTickets"),
+                         request_type::kPost,
+                         base::Bind(create_ticket));
   std::map<std::string, std::shared_ptr<base::Value>> params;
-  std::string json_resp = dev_reg->StartRegistration(params, nullptr);
+  std::string json_resp = dev_reg_->StartRegistration(params, nullptr);
   auto json = std::unique_ptr<base::Value>(base::JSONReader::Read(json_resp));
   EXPECT_NE(nullptr, json.get());
   base::DictionaryValue* dict = nullptr;
@@ -304,26 +339,27 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
 TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
   // Test finalizing ticket with no user authorization token.
   // This assumes that a client would patch in their email separately.
-  EXPECT_TRUE(dev_reg->Load());
+  EXPECT_TRUE(dev_reg_->Load());
 
   // General ticket finalization handler.
   std::string ticket_url =
-      dev_reg->GetServiceURL("registrationTickets/" +
+      dev_reg_->GetServiceURL("registrationTickets/" +
                              std::string(test_data::kClaimTicketId));
-  transport->AddHandler(ticket_url + "/finalize", request_type::kPost,
-                        base::Bind(FinalizeTicketHandler));
+  transport_->AddHandler(ticket_url + "/finalize", request_type::kPost,
+                         base::Bind(FinalizeTicketHandler));
 
-  transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
-                        base::Bind(OAuth2Handler));
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+                         base::Bind(OAuth2Handler));
 
-  storage->reset_save_count();
-  DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg.get());
-  EXPECT_TRUE(dev_reg->FinishRegistration("", nullptr));
-  EXPECT_EQ(1, storage->save_count());  // The device info must have been saved.
-  EXPECT_EQ(2, transport->GetRequestCount());
+  storage_->reset_save_count();
+  DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg_.get());
+  EXPECT_TRUE(dev_reg_->FinishRegistration("", nullptr));
+  EXPECT_EQ(1,
+            storage_->save_count());  // The device info must have been saved.
+  EXPECT_EQ(2, transport_->GetRequestCount());
 
   // Validate the device info saved to storage...
-  auto storage_data = storage->Load();
+  auto storage_data = storage_->Load();
   base::DictionaryValue* dict = nullptr;
   EXPECT_TRUE(storage_data->GetAsDictionary(&dict));
   std::string value;
@@ -347,17 +383,17 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
 
 TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
   // Test finalizing ticket with user authorization token.
-  EXPECT_TRUE(dev_reg->Load());
+  EXPECT_TRUE(dev_reg_->Load());
 
   // General ticket finalization handler.
   std::string ticket_url =
-      dev_reg->GetServiceURL("registrationTickets/" +
+      dev_reg_->GetServiceURL("registrationTickets/" +
                              std::string(test_data::kClaimTicketId));
-  transport->AddHandler(ticket_url + "/finalize", request_type::kPost,
-                        base::Bind(FinalizeTicketHandler));
+  transport_->AddHandler(ticket_url + "/finalize", request_type::kPost,
+                         base::Bind(FinalizeTicketHandler));
 
-  transport->AddHandler(dev_reg->GetOAuthURL("token"), request_type::kPost,
-                        base::Bind(OAuth2Handler));
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+                         base::Bind(OAuth2Handler));
 
   // Handle patching in the user email onto the device record.
   auto email_patch_handler = [](const fake::ServerRequest& request,
@@ -382,13 +418,14 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
       {"deviceDraft.channel.supportedType", "xmpp"},
     });
   };
-  transport->AddHandler(ticket_url, request_type::kPatch,
-                        base::Bind(email_patch_handler));
+  transport_->AddHandler(ticket_url, request_type::kPatch,
+                         base::Bind(email_patch_handler));
 
-  storage->reset_save_count();
-  DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg.get());
-  EXPECT_TRUE(dev_reg->FinishRegistration(test_data::kUserAccountAuthCode,
+  storage_->reset_save_count();
+  DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg_.get());
+  EXPECT_TRUE(dev_reg_->FinishRegistration(test_data::kUserAccountAuthCode,
                                           nullptr));
-  EXPECT_EQ(1, storage->save_count());  // The device info must have been saved.
-  EXPECT_EQ(4, transport->GetRequestCount());
+  EXPECT_EQ(1,
+            storage_->save_count());  // The device info must have been saved.
+  EXPECT_EQ(4, transport_->GetRequestCount());
 }
