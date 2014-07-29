@@ -42,6 +42,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
       const std::vector<std::string> &invalidated_properties) override;
   virtual void StartModem(Error *error,
                           const ResultCallback &callback) override;
+  virtual bool AreProxiesInitialized() const override;
   virtual void Scan(Error *error,
                     const ResultStringmapsCallback &callback) override;
   virtual void RegisterOnNetwork(const std::string &network_id,

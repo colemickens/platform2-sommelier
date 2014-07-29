@@ -88,6 +88,10 @@ void CellularCapabilityCDMA::ReleaseProxies() {
   proxy_.reset();
 }
 
+bool CellularCapabilityCDMA::AreProxiesInitialized() const {
+  return (CellularCapabilityClassic::AreProxiesInitialized() && proxy_.get());
+}
+
 bool CellularCapabilityCDMA::AllowRoaming() {
   return allow_roaming_property();
 }

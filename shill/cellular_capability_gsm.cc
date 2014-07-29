@@ -210,6 +210,11 @@ void CellularCapabilityGSM::ReleaseProxies() {
   network_proxy_.reset();
 }
 
+bool CellularCapabilityGSM::AreProxiesInitialized() const {
+  return (CellularCapabilityClassic::AreProxiesInitialized() &&
+          card_proxy_.get() && network_proxy_.get());
+}
+
 void CellularCapabilityGSM::OnServiceCreated() {
   cellular()->service()->SetActivationState(kActivationStateActivated);
 }

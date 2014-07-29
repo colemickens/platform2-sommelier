@@ -73,6 +73,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                           const ResultCallback &callback) override;
   virtual void StopModem(Error *error, const ResultCallback &callback) override;
   virtual void Reset(Error *error, const ResultCallback &callback) override;
+  virtual bool AreProxiesInitialized() const override;
   virtual bool IsServiceActivationRequired() const override;
   virtual void CompleteActivation(Error *error) override;
   virtual void Scan(Error *error,

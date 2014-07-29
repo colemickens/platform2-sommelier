@@ -33,6 +33,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual std::string GetTypeString() const override;
   virtual void StartModem(Error *error,
                           const ResultCallback &callback) override;
+  virtual bool AreProxiesInitialized() const override;
   virtual void Activate(const std::string &carrier,
                         Error *error,
                         const ResultCallback &callback) override;

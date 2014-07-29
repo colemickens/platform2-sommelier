@@ -66,6 +66,7 @@ class CellularCapabilityClassic : public CellularCapability {
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties) override;
   virtual void StopModem(Error *error, const ResultCallback &callback) override;
+  virtual bool AreProxiesInitialized() const override;
   virtual void SetCarrier(const std::string &carrier,
                           Error *error,
                           const ResultCallback &callback) override;

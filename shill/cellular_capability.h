@@ -108,6 +108,9 @@ class CellularCapability {
   // The default implementation fails by returning kNotSupported via |error|.
   virtual void Reset(Error *error, const ResultCallback &callback);
 
+  // Checks to see if all proxies have been initialized.
+  virtual bool AreProxiesInitialized() const = 0;
+
   // -------------------------------------------------------------------------
   // Activation
   // -------------------------------------------------------------------------

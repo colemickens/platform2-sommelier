@@ -278,9 +278,13 @@ void Cellular::Start(Error *error,
                      const EnabledStateChangedCallback &callback) {
   DCHECK(error);
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
-  if (state_ != kStateDisabled) {
+  // We can only short circuit the start operation if both the cellular state
+  // is not disabled AND the proxies have been initialized.  We have seen
+  // crashes due to NULL proxies and the state being not disabled.
+  if (state_ != kStateDisabled && capability_->AreProxiesInitialized()) {
     return;
   }
+
   ResultCallback cb = Bind(&Cellular::StartModemCallback,
                            weak_ptr_factory_.GetWeakPtr(),
                            callback);

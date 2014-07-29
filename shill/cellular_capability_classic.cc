@@ -92,6 +92,10 @@ void CellularCapabilityClassic::ReleaseProxies() {
   gobi_proxy_.reset();
 }
 
+bool CellularCapabilityClassic::AreProxiesInitialized() const {
+  return (proxy_.get() && simple_proxy_.get() && gobi_proxy_.get());
+}
+
 void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
   // Normally, running the callback is the last thing done in a method.
   // In this case, we do it first, because we want to make sure that

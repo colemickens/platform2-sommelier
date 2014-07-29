@@ -653,6 +653,11 @@ void CellularCapabilityUniversal::ReleaseProxies() {
   sim_proxy_.reset();
 }
 
+bool CellularCapabilityUniversal::AreProxiesInitialized() const {
+  return (modem_3gpp_proxy_.get() && modem_proxy_.get() &&
+          modem_simple_proxy_.get() && sim_proxy_.get());
+}
+
 void CellularCapabilityUniversal::UpdateServiceActivationState() {
   if (!cellular()->service().get())
     return;
