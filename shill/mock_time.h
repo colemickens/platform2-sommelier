@@ -18,7 +18,9 @@ class MockTime : public Time {
   virtual ~MockTime();
 
   MOCK_METHOD1(GetSecondsMonotonic, bool(time_t *seconds));
+  MOCK_METHOD1(GetSecondsBoottime, bool(time_t *seconds));
   MOCK_METHOD1(GetTimeMonotonic, int(struct timeval *tv));
+  MOCK_METHOD1(GetTimeBoottime, int(struct timeval *tv));
   MOCK_METHOD2(GetTimeOfDay, int(struct timeval *tv, struct timezone *tz));
   MOCK_METHOD0(GetNow, Timestamp());
   MOCK_CONST_METHOD0(GetSecondsSinceEpoch, time_t());

@@ -43,9 +43,30 @@ bool Time::GetSecondsMonotonic(time_t *seconds) {
   }
 }
 
+bool Time::GetSecondsBoottime(time_t *seconds) {
+  struct timeval now;
+  if (GetTimeBoottime(&now) < 0) {
+    return false;
+  } else {
+    *seconds = now.tv_sec;
+    return true;
+  }
+}
+
 int Time::GetTimeMonotonic(struct timeval *tv) {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return -1;
+  }
+
+  tv->tv_sec = ts.tv_sec;
+  tv->tv_usec = ts.tv_nsec / 1000;
+  return 0;
+}
+
+int Time::GetTimeBoottime(struct timeval *tv) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
     return -1;
   }
 
@@ -59,17 +80,19 @@ int Time::GetTimeOfDay(struct timeval *tv, struct timezone *tz) {
 }
 
 Timestamp Time::GetNow() {
-  struct timeval now_monotonic = (const struct timeval) { 0 };
-  struct timeval now_wall_clock = (const struct timeval) { 0 };
-  struct tm local_time = (const struct tm) { 0 };
+  struct timeval now_monotonic = {};
+  struct timeval now_boottime = {};
+  struct timeval now_wall_clock = {};
+  struct tm local_time = {};
   string wall_clock_string;
 
   GetTimeMonotonic(&now_monotonic);
+  GetTimeBoottime(&now_boottime);
   GetTimeOfDay(&now_wall_clock, NULL);
   localtime_r(&now_wall_clock.tv_sec, &local_time);
   wall_clock_string = FormatTime(local_time, now_wall_clock.tv_usec);
 
-  return Timestamp(now_monotonic, wall_clock_string);
+  return Timestamp(now_monotonic, now_boottime, wall_clock_string);
 }
 
 // static
