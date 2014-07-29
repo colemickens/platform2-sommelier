@@ -8,3 +8,4 @@ core
 *.swp
 *.pb.h
 *.pb.cc
+testdata
