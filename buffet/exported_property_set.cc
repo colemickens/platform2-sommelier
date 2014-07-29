@@ -5,11 +5,13 @@
 #include "buffet/exported_property_set.h"
 
 #include <base/bind.h>
+#include <chromeos/async_event_sequencer.h>
 #include <dbus/bus.h>  // For kPropertyInterface
 #include <dbus/property.h>  // For kPropertyInterface
 
-#include "buffet/async_event_sequencer.h"
 #include "buffet/dbus_utils.h"
+
+using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace buffet {
 

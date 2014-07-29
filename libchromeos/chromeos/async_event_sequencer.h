@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_ASYNC_EVENT_SEQUENCER_H_
-#define BUFFET_ASYNC_EVENT_SEQUENCER_H_
+#ifndef LIBCHROMEOS_CHROMEOS_ASYNC_EVENT_SEQUENCER_H_
+#define LIBCHROMEOS_CHROMEOS_ASYNC_EVENT_SEQUENCER_H_
 
 #include <set>
 #include <string>
@@ -13,7 +13,7 @@
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -100,6 +100,6 @@ class AsyncEventSequencer : public base::RefCounted<AsyncEventSequencer> {
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_ASYNC_EVENT_SEQUENCER_H_
+#endif  // LIBCHROMEOS_CHROMEOS_ASYNC_EVENT_SEQUENCER_H_

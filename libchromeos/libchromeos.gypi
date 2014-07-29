@@ -45,6 +45,7 @@
       'cflags': [
         # TODO: crosbug.com/315233
         '-fvisibility=default',
+        '-std=gnu++11',
       ],
       'all_dependent_settings': {
         'variables': {
@@ -54,6 +55,7 @@
         },
       },
       'sources': [
+        'chromeos/async_event_sequencer.cc',
         'chromeos/asynchronous_signal_handler.cc',
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
@@ -160,6 +162,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'cflags': [
+            '-std=gnu++11',
             '-Wno-format-zero-length',
           ],
           'conditions': [
@@ -175,6 +178,7 @@
             }],
           ],
           'sources': [
+            'chromeos/async_event_sequencer_unittest.cc',
             'chromeos/asynchronous_signal_handler_unittest.cc',
             'chromeos/glib/object_unittest.cc',
             'chromeos/process_test.cc',

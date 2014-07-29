@@ -4,9 +4,11 @@
 
 #include "buffet/exported_object_manager.h"
 
+#include <chromeos/async_event_sequencer.h>
 #include <dbus/object_manager.h>
 
-#include "buffet/async_event_sequencer.h"
+
+using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace buffet {
 
@@ -18,8 +20,7 @@ ExportedObjectManager::ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
 
 void ExportedObjectManager::Init(const OnInitFinish& cb) {
   bus_->AssertOnOriginThread();
-  scoped_refptr<dbus_utils::AsyncEventSequencer> sequencer(
-      new dbus_utils::AsyncEventSequencer());
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   exported_object_->ExportMethod(
       dbus::kObjectManagerInterface,
       dbus::kObjectManagerGetManagedObjects,

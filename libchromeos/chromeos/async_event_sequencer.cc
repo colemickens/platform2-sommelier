@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/async_event_sequencer.h"
+#include "chromeos/async_event_sequencer.h"
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -109,4 +109,4 @@ void AsyncEventSequencer::PossiblyRunCompletionActions() {
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos

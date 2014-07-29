@@ -10,18 +10,18 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/json/json_writer.h>
+#include <chromeos/async_event_sequencer.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
-#include "buffet/async_event_sequencer.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_utils.h"
 #include "buffet/error.h"
 #include "buffet/exported_object_manager.h"
 
-using buffet::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::AsyncEventSequencer;
 using buffet::dbus_utils::GetBadArgsError;
 using buffet::dbus_utils::GetDBusError;
 

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/async_event_sequencer.h"
+#include "chromeos/async_event_sequencer.h"
 
 #include <base/bind_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -93,4 +93,4 @@ TEST_F(AsyncEventSequencerTest, MixedActions) {
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos

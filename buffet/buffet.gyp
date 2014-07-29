@@ -5,6 +5,7 @@
         'dbus-1',
         'libchrome-<(libbase_ver)',
         'libchrome-test-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
         'libcurl',
         'libmetrics-<(libbase_ver)',
       ],
@@ -24,7 +25,6 @@
       'type': 'static_library',
       'sources': [
         'any.cc',
-        'async_event_sequencer.cc',
         'commands/command_definition.cc',
         'commands/command_dictionary.cc',
         'commands/command_manager.cc',
@@ -84,7 +84,6 @@
       'sources': [
         'any_unittest.cc',
         'any_internal_impl_unittest.cc',
-        'async_event_sequencer_unittest.cc',
         'buffet_testrunner.cc',
         'commands/command_definition_unittest.cc',
         'commands/command_dictionary_unittest.cc',
