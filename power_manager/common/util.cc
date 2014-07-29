@@ -84,5 +84,11 @@ std::vector<base::FilePath> GetPrefPaths(const base::FilePath& read_write_path,
   return paths;
 }
 
+bool WriteFileFully(const base::FilePath& filename,
+                    const char* data,
+                    int size) {
+  return base::WriteFile(filename, data, size) == size;
+}
+
 }  // namespace util
 }  // namespace power_manager

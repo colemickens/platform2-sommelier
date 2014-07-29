@@ -32,6 +32,10 @@ std::string TimeDeltaToString(base::TimeDelta delta);
 std::vector<base::FilePath> GetPrefPaths(const base::FilePath& read_write_path,
                                          const base::FilePath& read_only_path);
 
+// Writes the given buffer into the file, overwriting any data that was
+// previously there.  Returns true if all bytes are written or false otherwise.
+bool WriteFileFully(const base::FilePath& filename, const char* data, int size);
+
 }  // namespace util
 }  // namespace power_manager
 

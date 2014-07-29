@@ -355,8 +355,8 @@ bool Input::SetSysfsWakeup(int input_num, bool enabled) {
   base::FilePath path = base::FilePath(kSysClassInputPath).
       Append(name).Append("device/power/wakeup");
   const char* state = enabled ? kWakeupEnabled : kWakeupDisabled;
-  if (!base::WriteFile(path, state, strlen(state))) {
-    LOG(ERROR) << "Failed to write to " << path.value();
+  if (!util::WriteFileFully(path, state, strlen(state))) {
+    PLOG(ERROR) << "Failed to write to " << path.value();
     return false;
   }
   LOG(INFO) << "Set " << path.value() << " to " << state;
