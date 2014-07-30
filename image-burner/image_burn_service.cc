@@ -16,7 +16,7 @@
 #include "image-burner/marshal.h"
 
 namespace imageburn {
-#include "image-burner/bindings/server.h"
+#include "image-burner/bindings/server.h"  // NOLINT(build/include_alpha)
 
 namespace {
 // Update signal is emitted only when there is at least

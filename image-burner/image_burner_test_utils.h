@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef IMAGE_BURNER_IMAGE_BURNER_TEST_UTILS_H_
+#define IMAGE_BURNER_IMAGE_BURNER_TEST_UTILS_H_
+
 #include <string>
 
 #include <gmock/gmock.h>
@@ -39,3 +42,4 @@ class MockRootPathGetter : public RootPathGetter {
 
 }  // namespace imageburn
 
+#endif  // IMAGE_BURNER_IMAGE_BURNER_TEST_UTILS_H_

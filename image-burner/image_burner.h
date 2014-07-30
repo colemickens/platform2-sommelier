@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGE_BURNER_INTERFACE_H_
-#define IMAGE_BURNER_INTERFACE_H_
+#ifndef IMAGE_BURNER_IMAGE_BURNER_H_
+#define IMAGE_BURNER_IMAGE_BURNER_H_
 
 #include "image-burner/image_burn_service.h"
 
@@ -30,5 +30,5 @@ gboolean image_burner_burn_image(ImageBurner *self,
                                  DBusGMethodInvocation* context);
 }  // namespace imageburn
 
-#endif  // IMAGE_BURNER_INTERFACE_H_
+#endif  // IMAGE_BURNER_IMAGE_BURNER_H_
 

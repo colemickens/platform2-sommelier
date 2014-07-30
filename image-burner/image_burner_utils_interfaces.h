@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGE_BURNER_UTILS_INTERFACES_H_
-#define IMAGE_BURNER_UTILS_INTERFACES_H_
+#ifndef IMAGE_BURNER_IMAGE_BURNER_UTILS_INTERFACES_H_
+#define IMAGE_BURNER_IMAGE_BURNER_UTILS_INTERFACES_H_
 
 #include <string>
 
@@ -45,4 +45,4 @@ class SignalSender {
 
 }  // namespace imageburn
 
-#endif  // IMAGE_BURNER_UTILS_INTERFACES_H_
+#endif  // IMAGE_BURNER_IMAGE_BURNER_UTILS_INTERFACES_H_

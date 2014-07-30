@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGE_BURN_SERVICE_H_
-#define IMAGE_BURN_SERVICE_H_
+#ifndef IMAGE_BURNER_IMAGE_BURN_SERVICE_H_
+#define IMAGE_BURNER_IMAGE_BURN_SERVICE_H_
 
 #include <string>
 
@@ -73,4 +73,4 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
 
 }  // namespace imageburn
 
-#endif  // IMAGE_BURN_SERVICE_H_
+#endif  // IMAGE_BURNER_IMAGE_BURN_SERVICE_H_

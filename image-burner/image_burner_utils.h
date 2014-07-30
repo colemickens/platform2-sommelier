@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IMAGE_BURNER_UTILS_H_
-#define IMAGE_BURNER_UTILS_H_
+#ifndef IMAGE_BURNER_IMAGE_BURNER_UTILS_H_
+#define IMAGE_BURNER_IMAGE_BURNER_UTILS_H_
 
 #include <unistd.h>
 
@@ -48,4 +48,4 @@ class BurnRootPathGetter : public RootPathGetter {
 
 }  // namespace imageburn
 
-#endif  // IMAGE_BURNER_UTLS_H_
+#endif  // IMAGE_BURNER_IMAGE_BURNER_UTILS_H_
