@@ -54,12 +54,13 @@ class Manager {
     virtual ~DBusAdaptor();
 
     // Implementation of org::chromium::lorgnette::Manager_adaptor.
-    virtual ScannerInfo ListScanners(::DBus::Error &error);
+    virtual ScannerInfo ListScanners(
+        ::DBus::Error &error);  // NOLINT(runtime/references)
     virtual void ScanImage(
         const std::string &device_name,
         const ::DBus::FileDescriptor &outfd,
         const std::map<std::string, ::DBus::Variant> &scan_properties,
-        ::DBus::Error &error);
+        ::DBus::Error &error);  // NOLINT(runtime/references)
 
    private:
     // Bare pointer is okay since this object is owned by this Manager instance.

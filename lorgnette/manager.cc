@@ -41,7 +41,8 @@ Manager::DBusAdaptor::DBusAdaptor(Manager *manager, DBus::Connection *conn)
 
 Manager::DBusAdaptor::~DBusAdaptor() {}
 
-Manager::ScannerInfo Manager::DBusAdaptor::ListScanners(::DBus::Error &error) {
+Manager::ScannerInfo Manager::DBusAdaptor::ListScanners(
+    ::DBus::Error &error) {  // NOLINT(runtime/references)
   return manager_->ListScanners(&error);
 }
 
@@ -49,7 +50,7 @@ void Manager::DBusAdaptor::ScanImage(
     const string &device_name,
     const ::DBus::FileDescriptor &outfd,
     const map<string, ::DBus::Variant> &scan_properties,
-    ::DBus::Error &error) {
+    ::DBus::Error &error) {  // NOLINT(runtime/references)
   manager_->ScanImage(device_name, outfd, scan_properties, &error);
 }
 

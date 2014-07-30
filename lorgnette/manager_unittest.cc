@@ -39,6 +39,7 @@ class ManagerTest : public testing::Test {
     fd = output_scoped_fd_.release();
     CHECK(fd == kInvalidFd || fd == kOutputPipeFd);
   }
+
  protected:
   static const char kDeviceName[];
   static const char kMode[];
