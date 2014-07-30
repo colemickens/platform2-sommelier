@@ -82,14 +82,10 @@ bool ArchiveManager::StopSession() {
 
 bool ArchiveManager::CanMount(const string& source_path) const {
   // The following paths can be mounted:
-  //     /home/chronos/user/Downloads/...<file>
-  //     /home/chronos/user/GCache/...<file>
   //     /home/chronos/u-<user-id>/Downloads/...<file>
   //     /home/chronos/u-<user-id>/GCache/...<file>
   //     /media/<dir>/<dir>/...<file>
   //
-  // TODO(benchan): Deprecate the support of /home/chronos/user once
-  // multi-profile is fully enabled (crbug.com/244909)
   FilePath file_path(source_path);
   if (FilePath(kUserRootDirectory).IsParent(file_path)) {
     vector<FilePath::StringType> components;
@@ -99,10 +95,9 @@ bool ArchiveManager::CanMount(const string& source_path) const {
     //   '/', 'home', 'chronos', 'u-<userid>', 'Downloads', ..., 'doc.zip'
     //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., 'doc.zip'
     if (components.size() > 5 &&
-        (components[3] == "user" ||
-         (StartsWithASCII(components[3], "u-", false) &&
-          chromeos::cryptohome::home::IsSanitizedUserName(
-              components[3].substr(2)))) &&
+        (StartsWithASCII(components[3], "u-", false) &&
+         chromeos::cryptohome::home::IsSanitizedUserName(
+             components[3].substr(2))) &&
         (components[4] == "Downloads" || components[4] == "GCache")) {
       return true;
     }
