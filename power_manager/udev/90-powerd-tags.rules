@@ -1,0 +1,13 @@
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="atkbd",  ENV{POWERD_ROLE}="internal_keyboard"
+SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="i2c", ENV{POWERD_ROLE}="internal_touchpad"
+SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHSCREEN}=="1", SUBSYSTEMS=="i2c", ENV{POWERD_ROLE}="internal_touchscreen"
+
+SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="usbhid", ENV{POWERD_ROLE}="external_input"
+SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="btusb",  ENV{POWERD_ROLE}="external_input"
+
+ENV{POWERD_ROLE}=="internal_keyboard",    ENV{POWERD_TAGS}+="usable_when_laptop wakeup wakeup_only_when_usable"
+ENV{POWERD_ROLE}=="internal_touchpad",    ENV{POWERD_TAGS}+="usable_when_laptop wakeup wakeup_only_when_usable"
+ENV{POWERD_ROLE}=="internal_touchscreen", ENV{POWERD_TAGS}+="usable_when_laptop usable_when_tablet"
+ENV{POWERD_ROLE}=="external_input",       ENV{POWERD_TAGS}+="usable_when_docked usable_when_laptop usable_when_tablet wakeup wakeup_only_when_usable"
+
+ENV{POWERD_TAGS}!="", TAG+="powerd"
