@@ -5,6 +5,8 @@
 #ifndef TRUNKS_MOCK_AUTHORIZATION_DELEGATE_H_
 #define TRUNKS_MOCK_AUTHORIZATION_DELEGATE_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

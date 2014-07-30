@@ -5,6 +5,8 @@
 #ifndef TRUNKS_MOCK_COMMAND_TRANSCEIVER_H_
 #define TRUNKS_MOCK_COMMAND_TRANSCEIVER_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <gmock/gmock.h>
