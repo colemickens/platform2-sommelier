@@ -21,14 +21,16 @@ class SmsModemOperations {
   // Given an integer storage index, returns a new SmsMessageFragment object
   // representing that fragment on the device. On error, returns NULL and sets
   // the error parameter.
-  virtual SmsMessageFragment* GetSms(int index, DBus::Error& error) = 0;
+  virtual SmsMessageFragment* GetSms(int index,
+                                     DBus::Error& error) = 0;  // NOLINT - refs.
 
   // Deletes the message fragment at the given index from the device.
-  virtual void DeleteSms(int index, DBus::Error& error) = 0;
+  virtual void DeleteSms(int index,
+                         DBus::Error& error) = 0;  // NOLINT - refs.
 
   // Return a list of the storage indexes of all of the message
   // fragments currently on the device.
-  virtual std::vector<int>* ListSms(DBus::Error& error) = 0;
+  virtual std::vector<int>* ListSms(DBus::Error& error) = 0;  // NOLINT - refs.
 };
 
 // Cache of SMS messages and their index numbers in storage which
@@ -53,28 +55,28 @@ class SmsCache {
   // the fragment completes an existing multipart message, a
   // SmsMessage object is returned; otherwise this returns NULL.
   SmsMessage* SmsReceived(int index,
-                          DBus::Error& error,
+                          DBus::Error& error,  // NOLINT - refs.
                           SmsModemOperations* impl);
 
   // Retrieve a complete SMS message with the given canonical index.
   // Suitable for implementing org.freedesktop.ModemManager.Modem.Gsm.SMS.Get
   // Returns the SMS message as a DBusPropertyMap of key/value pairs.
   utilities::DBusPropertyMap* Get(int index,
-                                  DBus::Error& error,
+                                  DBus::Error& error,  // NOLINT - refs.
                                   SmsModemOperations* impl);
 
   // Delete all fragments of a SMS message with a given canonical index
   // from the cache and from the underlying device.
   // Suitable for implementing org.freedesktop.ModemManager.Modem.Gsm.SMS.Delete
   void Delete(int index,
-              DBus::Error& error,
+              DBus::Error& error,  // NOLINT - refs.
               SmsModemOperations* impl);
 
   // Return all of the complete SMS messages in the cache.
   // Suitable for implementing org.freedesktop.ModemManager.Modem.Gsm.SMS.List
   // Returns each SMS message as a DBusPropertyMap of key/value pairs.
-  std::vector<utilities::DBusPropertyMap>* List(DBus::Error& error,
-                                                SmsModemOperations* impl);
+  std::vector<utilities::DBusPropertyMap>* List(
+      DBus::Error& error, SmsModemOperations* impl);  // NOLINT - refs.
 
  private:
   // Adds the message fragment to the cache, taking ownership of the

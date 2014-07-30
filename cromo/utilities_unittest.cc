@@ -111,19 +111,19 @@ static const struct {
   const uint8_t* packed_gsm7;
   size_t packed_gsm7_size;
 } gsm7_test_data[] = {
-  {"hellohello", gsm1, sizeof(gsm1)},
-  {"Test SMS.", gsm2, sizeof(gsm2)},
-  {"I'm $höme.", gsm3, sizeof(gsm3)},
-  {"[", gsm4, sizeof(gsm4)},
-  {"Here's a longer message [{with some extended characters}] thrown "
-    "in, such as £ and ΩΠΨ and §¿ as well.", gsm5, sizeof(gsm5)},
-  {"@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./"
-   "0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-   "ÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà",
-   gsm7_alphabet,
-   sizeof(gsm7_alphabet)},
-  {"\xC^{}\\[~]|€", gsm7_extended_chars, sizeof(gsm7_extended_chars)},
-  {"", NULL}
+  { "hellohello", gsm1, sizeof(gsm1) },
+  { "Test SMS.", gsm2, sizeof(gsm2) },
+  { "I'm $höme.", gsm3, sizeof(gsm3) },
+  { "[", gsm4, sizeof(gsm4) },
+  { "Here's a longer message [{with some extended characters}] thrown "
+    "in, such as £ and ΩΠΨ and §¿ as well.", gsm5, sizeof(gsm5) },
+  { "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./"
+    "0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "ÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà",
+    gsm7_alphabet,
+    sizeof(gsm7_alphabet) },
+  { "\xC^{}\\[~]|€", gsm7_extended_chars, sizeof(gsm7_extended_chars) },
+  { "", NULL }
 };
 
 TEST(Utilities, Gsm7ToUtf8) {

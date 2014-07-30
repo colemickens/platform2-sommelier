@@ -73,7 +73,7 @@ static void exit_main_loop(void) {
 }
 
 static gboolean do_signal(void* arg) {
-  long sig = reinterpret_cast<long>(arg);
+  intptr_t sig = reinterpret_cast<intptr_t>(arg);
   LOG(INFO) << "Signal: " << sig;
 
   if (sig == SIGTERM || sig == SIGINT) {

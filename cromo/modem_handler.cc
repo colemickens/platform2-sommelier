@@ -8,7 +8,8 @@
 
 #include "cromo/cromo_server.h"
 
-ModemHandler::ModemHandler(CromoServer& server, const std::string& tag)
+ModemHandler::ModemHandler(CromoServer& server,  // NOLINT - refs.
+                           const std::string& tag)
     : server_(server),
       vendor_tag_(tag),
       instance_number_(0) {

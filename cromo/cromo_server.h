@@ -15,11 +15,11 @@
 #include <dbus-c++/glib-integration.h>
 #include <metrics/metrics_library.h>
 
+#include "cromo/carrier.h"
 #include "cromo/hooktable.h"
 #include "dbus_adaptors/org.freedesktop.ModemManager.h"
 
 class ModemHandler;
-class Carrier;
 
 // Implements the ModemManager DBus API, and manages the
 // modem manager instances that handle specific types of
@@ -28,7 +28,7 @@ class CromoServer : public org::freedesktop::ModemManager_adaptor,
                     public DBus::IntrospectableAdaptor,
                     public DBus::ObjectAdaptor {
  public:
-  explicit CromoServer(DBus::Connection& connection);
+  explicit CromoServer(DBus::Connection& connection);  // NOLINT - refs.
   ~CromoServer();
 
   void AddModemHandler(ModemHandler* handler);
@@ -36,16 +36,18 @@ class CromoServer : public org::freedesktop::ModemManager_adaptor,
 
   // .*Carrier.* are exported to plugins.  See Makefile for details
   void AddCarrier(Carrier* carrier);
-  Carrier* FindCarrierByCarrierId(unsigned long carrier_id);
+  Carrier* FindCarrierByCarrierId(carrier_id_t carrier_id_t);
   Carrier* FindCarrierByName(const std::string& carrier_name);
   // Returns a carrier for a modem class to use before it's figured
   // out a real carrier
   Carrier* FindCarrierNoOp();
 
   // ModemManager DBUS API methods.
-  std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
-  void ScanDevices(DBus::Error& error) {}
-  void SetLogging(const std::string& level, DBus::Error& error);
+  std::vector<DBus::Path> EnumerateDevices(
+      DBus::Error& error);  // NOLINT - refs.
+  void ScanDevices(DBus::Error& error) {}  // NOLINT - refs.
+  void SetLogging(const std::string& level,
+                  DBus::Error& error);  // NOLINT - refs.
 
   static const char* kServiceName;
   static const char* kServicePath;

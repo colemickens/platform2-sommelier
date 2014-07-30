@@ -22,7 +22,7 @@ namespace utilities {
 const char* ExtractString(const DBusPropertyMap properties,
                           const char* key,
                           const char* not_found_response,
-                          DBus::Error& error) {
+                          DBus::Error& error) {  // NOLINT - refs.
   DBusPropertyMap::const_iterator p;
   const char* to_return = not_found_response;
   try {
@@ -45,7 +45,7 @@ const char* ExtractString(const DBusPropertyMap properties,
 uint32_t ExtractUint32(const DBusPropertyMap properties,
                        const char* key,
                        uint32_t not_found_response,
-                       DBus::Error& error) {
+                       DBus::Error& error) {  // NOLINT - refs.
   DBusPropertyMap::const_iterator p;
   unsigned int to_return = not_found_response;
   try {
@@ -96,28 +96,28 @@ bool HexEsnToDecimal(const std::string& esn_hex, std::string* out) {
   return true;
 }
 
-#define C(c)  {c}
+#define C_(c) {c}
 #define C2(c) {0xc2, c}
 #define C3(c) {0xc3, c}
 #define CE(c) {0xce, c}
 
 static uint8_t Gsm7ToUtf8Map[][3] = {
-   C('@'), C2(0xa3),  C('$'),  C2(0xa5), C3(0xa8), C3(0xa9), C3(0xb9), C3(0xac),
- C3(0xb2), C3(0x87),  C('\n'), C3(0x98), C3(0xb8),  C('\r'), C3(0x85), C3(0xa5),
- CE(0x94), C('_'),   CE(0xa6), CE(0x93), CE(0x9b), CE(0xa9), CE(0xa0), CE(0xa8),
- CE(0xa3), CE(0x98), CE(0x9e),   C(' '), C3(0x86), C3(0xa6), C3(0x9f), C3(0x89),
-   C(' '),   C('!'),   C('"'),   C('#'), C2(0xa4),   C('%'),   C('&'),  C('\''),
-   C('('),   C(')'),   C('*'),   C('+'),   C(','),   C('-'),   C('.'),   C('/'),
-   C('0'),   C('1'),   C('2'),   C('3'),   C('4'),   C('5'),   C('6'),   C('7'),
-   C('8'),   C('9'),   C(':'),   C(';'),   C('<'),   C('='),   C('>'),   C('?'),
- C2(0xa1),   C('A'),   C('B'),   C('C'),   C('D'),   C('E'),   C('F'),   C('G'),
-   C('H'),   C('I'),   C('J'),   C('K'),   C('L'),   C('M'),   C('N'),   C('O'),
-   C('P'),   C('Q'),   C('R'),   C('S'),   C('T'),   C('U'),   C('V'),   C('W'),
-   C('X'),   C('Y'),   C('Z'), C3(0x84), C3(0x96), C3(0x91), C3(0x9c), C2(0xa7),
- C2(0xbf),   C('a'),   C('b'),   C('c'),   C('d'),   C('e'),   C('f'),   C('g'),
-   C('h'),   C('i'),   C('j'),   C('k'),   C('l'),   C('m'),   C('n'),   C('o'),
-   C('p'),   C('q'),   C('r'),   C('s'),   C('t'),   C('u'),   C('v'),   C('w'),
-   C('x'),   C('y'),   C('z'), C3(0xa4), C3(0xb6), C3(0xb1), C3(0xbc), C3(0xa0)
+C_('@'),  C2(0xa3), C_('$'),  C2(0xa5), C3(0xa8), C3(0xa9), C3(0xb9), C3(0xac),
+C3(0xb2), C3(0x87), C_('\n'), C3(0x98), C3(0xb8), C_('\r'), C3(0x85), C3(0xa5),
+CE(0x94), C_('_'),  CE(0xa6), CE(0x93), CE(0x9b), CE(0xa9), CE(0xa0), CE(0xa8),
+CE(0xa3), CE(0x98), CE(0x9e), C_(' '),  C3(0x86), C3(0xa6), C3(0x9f), C3(0x89),
+C_(' '),  C_('!'),  C_('"'),  C_('#'),  C2(0xa4), C_('%'),  C_('&'),  C_('\''),
+C_('('),  C_(')'),  C_('*'),  C_('+'),  C_(','),  C_('-'),  C_('.'),  C_('/'),
+C_('0'),  C_('1'),  C_('2'),  C_('3'),  C_('4'),  C_('5'),  C_('6'),  C_('7'),
+C_('8'),  C_('9'),  C_(':'),  C_(';'),  C_('<'),  C_('='),  C_('>'),  C_('?'),
+C2(0xa1), C_('A'),  C_('B'),  C_('C'),  C_('D'),  C_('E'),  C_('F'),  C_('G'),
+C_('H'),  C_('I'),  C_('J'),  C_('K'),  C_('L'),  C_('M'),  C_('N'),  C_('O'),
+C_('P'),  C_('Q'),  C_('R'),  C_('S'),  C_('T'),  C_('U'),  C_('V'),  C_('W'),
+C_('X'),  C_('Y'),  C_('Z'),  C3(0x84), C3(0x96), C3(0x91), C3(0x9c), C2(0xa7),
+C2(0xbf), C_('a'),  C_('b'),  C_('c'),  C_('d'),  C_('e'),  C_('f'),  C_('g'),
+C_('h'),  C_('i'),  C_('j'),  C_('k'),  C_('l'),  C_('m'),  C_('n'),  C_('o'),
+C_('p'),  C_('q'),  C_('r'),  C_('s'),  C_('t'),  C_('u'),  C_('v'),  C_('w'),
+C_('x'),  C_('y'),  C_('z'),  C3(0xa4), C3(0xb6), C3(0xb1), C3(0xbc), C3(0xa0)
 };
 
 // 2nd dimension == 5 ensures that all the sub-arrays end with a 0 byte

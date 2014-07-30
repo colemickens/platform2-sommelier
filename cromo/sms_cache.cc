@@ -95,7 +95,7 @@ SmsCache::~SmsCache() {
 }
 
 SmsMessage* SmsCache::SmsReceived(int index,
-                                  DBus::Error& error,
+                                  DBus::Error& error,  // NOLINT - refs.
                                   SmsModemOperations* impl) {
   SmsMessageFragment* frag = impl->GetSms(index, error);
   if (error.is_set())
@@ -116,7 +116,7 @@ static void SmsToPropertyMap(SmsMessage* sms,
 }
 
 utilities::DBusPropertyMap* SmsCache::Get(int index,
-                                          DBus::Error& error,
+                                          DBus::Error& error,  // NOLINT - refs.
                                           SmsModemOperations* impl) {
   int cindex = GetCanonicalIndex(index);
 
@@ -144,7 +144,8 @@ static const char kErrorInvalidIndex[] =
     "org.freedesktop.ModemManager.Modem.Gsm."
     MM_ERROR_MODEM_GSM_INVALIDINDEX;
 
-void SmsCache::Delete(int index, DBus::Error& error, SmsModemOperations* impl) {
+void SmsCache::Delete(int index, DBus::Error& error,  // NOLINT - refs.
+                      SmsModemOperations* impl) {
   const SmsMessage* sms = GetFromCache(index);
   if (sms == NULL) {
     if (GetCanonicalIndex(index) == -1) {
@@ -178,7 +179,7 @@ void SmsCache::Delete(int index, DBus::Error& error, SmsModemOperations* impl) {
 }
 
 std::vector<utilities::DBusPropertyMap>* SmsCache::List(
-    DBus::Error& error,
+    DBus::Error& error,  // NOLINT - refs.
     SmsModemOperations* impl) {
   // Reset the cache
   ClearCache();

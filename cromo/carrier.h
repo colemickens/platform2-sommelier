@@ -13,6 +13,8 @@
 #include "cromo/modem.h"
 #include "cromo/utilities.h"
 
+typedef unsigned long carrier_id_t;  // NOLINT(runtime/int)
+
 class Carrier {
  public:
   enum ActivationMethod {
@@ -23,7 +25,7 @@ class Carrier {
 
   Carrier(const char* name,
           const char* firmware_directory,
-          unsigned long carrier_id,
+          carrier_id_t carrier_id,
           int carrier_type,
           ActivationMethod activation_method,
           const char* activation_code)
@@ -56,7 +58,9 @@ class Carrier {
 
   const char* name() const { return name_; }
   const char* firmware_directory() const { return firmware_directory_; }
-  unsigned long carrier_id() const { return carrier_id_; }
+  carrier_id_t carrier_id() const {
+    return carrier_id_;
+  }
   int carrier_type() const { return carrier_type_; }
   ActivationMethod activation_method() const { return activation_method_; }
   const char* activation_code() const { return activation_code_; }
@@ -64,7 +68,7 @@ class Carrier {
  protected:
   const char* name_;
   const char* firmware_directory_;
-  unsigned long carrier_id_;
+  carrier_id_t carrier_id_;
   int carrier_type_;
   ActivationMethod activation_method_;
   const char* activation_code_;

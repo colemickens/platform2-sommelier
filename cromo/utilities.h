@@ -27,7 +27,7 @@ typedef std::map<std::string, DBus::Variant> DBusPropertyMap;
 const char* ExtractString(const DBusPropertyMap properties,
                           const char* key,
                           const char* not_found_response,
-                          DBus::Error& error);
+                          DBus::Error& error);  // NOLINT - refs.
 
 // Extracts the key from properties, returning not_found_response if
 // the key is not found.  If key is found, but is not a Uint32, sets
@@ -37,7 +37,7 @@ const char* ExtractString(const DBusPropertyMap properties,
 uint32_t ExtractUint32(const DBusPropertyMap properties,
                        const char* key,
                        uint32_t not_found_response,
-                       DBus::Error& error);
+                       DBus::Error& error);  // NOLINT - refs.
 
 
 // Convert a string representing a hex ESN to one representing a

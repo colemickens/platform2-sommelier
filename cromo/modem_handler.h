@@ -22,14 +22,15 @@ class ModemHandler {
   // by each sub-class to identify each class of modem
   // uniquely. The tag becomes part of the dbus path
   // used externally to name each modem object.
-  ModemHandler(CromoServer& server, const std::string& tag);
+  ModemHandler(CromoServer& server, const std::string& tag);  // NOLINT - refs.
   virtual ~ModemHandler() {}
   virtual bool Initialize() = 0;
 
-  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error) = 0;
+  virtual std::vector<DBus::Path> EnumerateDevices(
+      DBus::Error& error) = 0;  // NOLINT - refs.
 
   const std::string& vendor_tag() const { return vendor_tag_; }
-  CromoServer& server() const { return server_; }
+  CromoServer& server() const { return server_; }  // NOLINT - refs.
 
  protected:
   // RegisterSelf() must be called by all subclasses to complete

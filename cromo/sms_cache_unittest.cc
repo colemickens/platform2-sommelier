@@ -16,7 +16,8 @@ namespace {
 
 class FakeModem : public SmsModemOperations {
  public:
-  virtual SmsMessageFragment* GetSms(int index, DBus::Error& error) {
+  virtual SmsMessageFragment* GetSms(int index,
+                                     DBus::Error& error) {  // NOLINT - refs.
     std::map<int, PduData>::const_iterator it;
     it = pdus_.find(index);
     if (it == pdus_.end()) {
@@ -28,7 +29,7 @@ class FakeModem : public SmsModemOperations {
                                               it->first);
   }
 
-  virtual void DeleteSms(int index, DBus::Error& error) {
+  virtual void DeleteSms(int index, DBus::Error& error) {  // NOLINT - refs.
     std::map<int, PduData>::const_iterator it;
     it = pdus_.find(index);
     if (it == pdus_.end()) {
@@ -39,7 +40,7 @@ class FakeModem : public SmsModemOperations {
     pdus_.erase(index);
   }
 
-  virtual std::vector<int>* ListSms(DBus::Error& error) {
+  virtual std::vector<int>* ListSms(DBus::Error& error) {  // NOLINT - refs.
     std::vector<int>* ret = new std::vector<int>();
     std::map<int, PduData>::const_iterator it;
     for (it = pdus_.begin(); it != pdus_.end(); ++it)

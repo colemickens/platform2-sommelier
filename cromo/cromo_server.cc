@@ -23,7 +23,8 @@ const char* CromoServer::kServicePath = "/org/chromium/ModemManager";
 
 static const char* kDBusInvalidArgs = "org.freedesktop.DBus.Error.InvalidArgs";
 
-CromoServer::CromoServer(DBus::Connection& connection)
+CromoServer::CromoServer(
+    DBus::Connection& connection)  // NOLINT(runtime/references)
     : DBus::ObjectAdaptor(connection, kServicePath),
       metrics_lib_(new MetricsLibrary()) {
   metrics_lib_->Init();
@@ -43,7 +44,8 @@ CromoServer::~CromoServer() {
   carriers_.clear();
 }
 
-vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
+vector<DBus::Path> CromoServer::EnumerateDevices(
+    DBus::Error& error) {  // NOLINT(runtime/references)
   vector<DBus::Path> allpaths;
 
   for (vector<ModemHandler*>::iterator it = modem_handlers_.begin();
@@ -54,7 +56,9 @@ vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
   return allpaths;
 }
 
-void CromoServer::SetLogging(const std::string& level, DBus::Error& error) {
+void CromoServer::SetLogging(
+    const std::string& level,
+    DBus::Error& error) {  // NOLINT(runtime/references)
   if (SysLogHelperSetLevel(level)) {
     std::string msg(std::string("Invalid Logging Level: ") + level);
     LOG(ERROR) << msg;
@@ -76,7 +80,7 @@ Carrier* CromoServer::FindCarrierByName(const std::string& name) {
   return carriers_[name];
 }
 
-Carrier* CromoServer::FindCarrierByCarrierId(unsigned long id) {
+Carrier* CromoServer::FindCarrierByCarrierId(carrier_id_t id) {
   for (CarrierMap::iterator i = carriers_.begin(); i != carriers_.end(); ++i) {
     if (i->second && i->second->carrier_id() == id) {
       return i->second;

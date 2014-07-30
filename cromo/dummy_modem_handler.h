@@ -16,9 +16,10 @@ class CromoServer;
 
 class DummyModemHandler : public ModemHandler {
  public:
-  explicit DummyModemHandler(CromoServer& server);
+  explicit DummyModemHandler(CromoServer& server);  // NOLINT - refs.
 
-  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
+  virtual std::vector<DBus::Path> EnumerateDevices(
+      DBus::Error& error);  // NOLINT - refs.
 
  protected:
   virtual bool Initialize();

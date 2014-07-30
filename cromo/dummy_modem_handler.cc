@@ -12,7 +12,7 @@
 
 using std::vector;
 
-DummyModemHandler::DummyModemHandler(CromoServer& server)
+DummyModemHandler::DummyModemHandler(CromoServer& server)  // NOLINT - refs.
     : ModemHandler(server, "dummy") {
 }
 
@@ -25,7 +25,8 @@ bool DummyModemHandler::Initialize() {
 // Enumerate the existing devices, and add them to the list of devices
 // that are managed by the ChromeOS modem manager
 
-vector<DBus::Path> DummyModemHandler::EnumerateDevices(DBus::Error& error) {
+vector<DBus::Path> DummyModemHandler::EnumerateDevices(
+    DBus::Error& error) {  // NOLINT(runtime/references)
   vector<DBus::Path> paths;
 
   DummyModem* dummy = new DummyModem(server().conn(), MakePath());
