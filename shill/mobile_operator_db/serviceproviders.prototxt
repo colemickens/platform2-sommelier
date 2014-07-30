@@ -5181,6 +5181,29 @@ mno {
       dns : "158.43.128.1"
     }
   }
+
+  mvno {
+    mvno_filter {
+      type : MCCMNC
+      regex : "23433"
+    }
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "HP MobileConnect"
+    }
+    data {
+      uuid : "d80426a8-736c-40fc-973e-ba6f0b9f8826"
+      localized_name {
+        name : "HP MobileConnect"
+      }
+      mobile_apn {
+        apn : "internet"
+        gateway : "hpdatasim.com"
+        username : "hpdatasim"
+        password : "hpdatasim"
+      }
+    }
+  }
 }
 
 mno {
@@ -10412,6 +10435,29 @@ mno {
       }
       username : "web"
       password : "web"
+    }
+  }
+
+  mvno {
+    mvno_filter {
+      type : MCCMNC
+      regex : "20404"
+    }
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "HP MobileConnect"
+    }
+    data {
+      uuid : "d80426a8-736c-40fc-973e-ba6f0b9f8826"
+      localized_name {
+        name : "HP MobileConnect"
+      }
+      mobile_apn {
+        apn : "internet"
+        gateway : "hpdatasim.com"
+        username : "hpdatasim"
+        password : "hpdatasim"
+      }
     }
   }
 }
@@ -15883,6 +15929,39 @@ mno {
     }
     data {
       uuid : "aeff3fc4-3e8e-4f76-a4be-f565919cf3ac"
+    }
+  }
+}
+
+# - We add a fake MNO since we don't support international MVNOs yet.
+# - There is fallback filter based on ICCID ranges that is not yet included
+#   (crosbug.com/p/30803).
+# - The same MVNO also exists under the MNOs with MCCMNC 23433 and 20404.
+mno {
+  data {
+    uuid : "9dc58081-6edd-42b9-9d3b-3e2846949f7b"
+    localized_name {
+      name : "AT&T"
+    }
+    mccmnc : "29506"
+  }
+  # If the MVNO filter(s) match, we still want to treat this as an MVNO.
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "HP MobileConnect"
+    }
+    data {
+      uuid : "d80426a8-736c-40fc-973e-ba6f0b9f8826"
+      localized_name {
+        name : "HP MobileConnect"
+      }
+      mobile_apn {
+        apn : "internet"
+        gateway : "hpdatasim.com"
+        username : "hpdatasim"
+        password : "hpdatasim"
+      }
     }
   }
 }
