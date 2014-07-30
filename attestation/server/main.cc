@@ -11,7 +11,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/syslog_logging.h>
 
-#include "attestation_service.h"
+#include "attestation/server/attestation_service.h"
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ATTESTATION_COMMON_DBUS_INTERFACE_H
-#define ATTESTATION_COMMON_DBUS_INTERFACE_H
+#ifndef ATTESTATION_COMMON_DBUS_INTERFACE_H_
+#define ATTESTATION_COMMON_DBUS_INTERFACE_H_
 
 namespace attestation {
 
@@ -15,6 +15,6 @@ constexpr char kAttestationServiceName[] = "org.chromium.Attestation";
 // Methods exported by attestation.
 constexpr char kStatsMethod[] = "GetStats";
 
-}; // namespace attestation
+}  // namespace attestation
 
-#endif // ATTESTATION_COMMON_DBUS_INTERFACE_H
+#endif  // ATTESTATION_COMMON_DBUS_INTERFACE_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "attestation_service.h"
+#include "attestation/server/attestation_service.h"
 
 #include <string>
 
@@ -30,7 +30,7 @@ static void HandleSynchronousDBusMethodCall(
   response_sender.Run(response.Pass());
 }
 
-} // namespace
+}  // namespace
 
 AttestationService::AttestationService()
     : start_time_(base::Time()),
@@ -79,4 +79,4 @@ ResponsePtr AttestationService::HandleStatsMethod(
   return response.Pass();
 }
 
-} // namespace attestation
+}  // namespace attestation

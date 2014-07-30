@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ATTESTATION_SERVER_SERVICE_H
-#define ATTESTATION_SERVER_SERVICE_H
+#ifndef ATTESTATION_SERVER_ATTESTATION_SERVICE_H_
+#define ATTESTATION_SERVER_ATTESTATION_SERVICE_H_
 
 #include <string>
 
@@ -49,6 +49,6 @@ class AttestationService {
   DISALLOW_COPY_AND_ASSIGN(AttestationService);
 };
 
-} // namespace attestation
+}  // namespace attestation
 
-#endif // ATTESTATION_SERVER_SERVICE_H
+#endif  // ATTESTATION_SERVER_ATTESTATION_SERVICE_H_
