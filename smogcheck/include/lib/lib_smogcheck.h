@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef __LIB_SMOGCHECK_H__
-#define __LIB_SMOGCHECK_H__
+#ifndef SMOGCHECK_INCLUDE_LIB_LIB_SMOGCHECK_H_
+#define SMOGCHECK_INCLUDE_LIB_LIB_SMOGCHECK_H_
 
 #include <linux/types.h>
 
@@ -14,4 +14,4 @@ int ReadByte(int fd, __u8 reg);
 int WriteWord(int fd, __u8 reg, __u16 word_val);
 int ReadWord(int fd, __u8 reg);
 
-#endif  // __LIB_SMOGCHECK_H__
+#endif  // SMOGCHECK_INCLUDE_LIB_LIB_SMOGCHECK_H_
