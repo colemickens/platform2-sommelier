@@ -30,7 +30,8 @@ class Minijail {
   virtual void Destroy(struct minijail *jail);
 
   // minijail_change_user/minijail_change_group
-  virtual bool DropRoot(struct minijail *jail, const char *user);
+  virtual bool DropRoot(struct minijail *jail, const char *user,
+                        const char *group);
   // minijail_use_caps
   virtual void UseCapabilities(struct minijail *jail, uint64_t capmask);
 

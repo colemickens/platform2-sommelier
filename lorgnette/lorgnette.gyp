@@ -84,7 +84,6 @@
       'sources': [
         'daemon.cc',
         'manager.cc',
-        'minijail.cc',
       ],
     },
     {

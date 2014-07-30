@@ -68,7 +68,7 @@ void DiagnosticsReporter::OnConnectivityEvent() {
   args.push_back(NULL);
   pid_t pid = 0;
   struct minijail *jail = minijail_->New();
-  minijail_->DropRoot(jail, kNetDiagsUploadUser);
+  minijail_->DropRoot(jail, kNetDiagsUploadUser, kNetDiagsUploadUser);
   if (minijail_->RunAndDestroy(jail, args, &pid)) {
     process_killer_->Wait(pid, Closure());
   } else {

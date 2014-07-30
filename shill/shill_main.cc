@@ -92,7 +92,7 @@ void SetupLogging(bool foreground, char *daemon_name) {
 
     chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
     struct minijail *jail = minijail->New();
-    minijail->DropRoot(jail, kLoggerUser);
+    minijail->DropRoot(jail, kLoggerUser, kLoggerUser);
 
     if (!minijail->RunPipeAndDestroy(jail, logger_command_line,
                                      NULL, &logger_stdin_fd)) {

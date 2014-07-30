@@ -129,7 +129,8 @@ class CryptoUtilProxyTest : public testing::Test {
                          &MockCryptoUtilProxy::RealStartShimForCommand));
     // All shims should be spawned in a Minijail.
     EXPECT_CALL(minijail_, New());
-    EXPECT_CALL(minijail_, DropRoot(_, StrEq("shill-crypto")))
+    EXPECT_CALL(minijail_, DropRoot(_, StrEq("shill-crypto"),
+                                    StrEq("shill-crypto")))
         .WillOnce(Return(true));
     EXPECT_CALL(minijail_, RunPipesAndDestroy(_,
                                               IsCryptoUtilCommandLine(command),

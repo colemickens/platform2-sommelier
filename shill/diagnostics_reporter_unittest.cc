@@ -108,7 +108,8 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
       .WillOnce(Return(false))
       .WillOnce(Return(true));
   EXPECT_CALL(minijail_, New()).Times(2);
-  EXPECT_CALL(minijail_, DropRoot(_, StrEq("syslog"))).Times(2);
+  EXPECT_CALL(minijail_, DropRoot(_, StrEq("syslog"),
+              StrEq("syslog"))).Times(2);
   const pid_t kPID = 123;
   {
     InSequence s;

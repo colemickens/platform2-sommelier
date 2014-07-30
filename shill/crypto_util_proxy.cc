@@ -153,8 +153,9 @@ bool CryptoUtilProxy::StartShimForCommand(
     return false;
   }
   struct minijail * jail = minijail_->New();
-  if (!minijail_->DropRoot(jail, kDestinationVerificationUser)) {
-    LOG(ERROR) << "Minijail failed to drop root priviledges?";
+  if (!minijail_->DropRoot(jail, kDestinationVerificationUser,
+                           kDestinationVerificationUser)) {
+    LOG(ERROR) << "Minijail failed to drop root privileges?";
     return false;
   }
   vector<char *> args;

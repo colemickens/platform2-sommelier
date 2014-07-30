@@ -30,11 +30,12 @@ void Minijail::Destroy(struct minijail *jail) {
   minijail_destroy(jail);
 }
 
-bool Minijail::DropRoot(struct minijail *jail, const char *user) {
-  // |user| is copied so the only reason either of these calls can fail
-  // is ENOMEM.
+bool Minijail::DropRoot(struct minijail *jail, const char *user,
+                        const char *group) {
+  // |user| and |group| are copied so the only reason either of these
+  // calls can fail is ENOMEM.
   return !minijail_change_user(jail, user) &&
-         !minijail_change_group(jail, user);
+         !minijail_change_group(jail, group);
 }
 
 void Minijail::UseCapabilities(struct minijail *jail, uint64_t capmask) {

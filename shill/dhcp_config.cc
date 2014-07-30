@@ -307,7 +307,7 @@ bool DHCPConfig::Start() {
   args.push_back(NULL);
 
   struct minijail *jail = minijail_->New();
-  minijail_->DropRoot(jail, kDHCPCDUser);
+  minijail_->DropRoot(jail, kDHCPCDUser, kDHCPCDUser);
   minijail_->UseCapabilities(jail,
                              CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                              CAP_TO_MASK(CAP_NET_BROADCAST) |

@@ -17,10 +17,10 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
 
 #include "lorgnette/daemon.h"
-#include "lorgnette/minijail.h"
 
 using base::FilePath;
 using std::string;
@@ -49,7 +49,7 @@ const char *kLoggerUser = "syslog";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(lorgnette::Minijail *minijail,
+void SetupLogging(chromeos::Minijail *minijail,
                   bool foreground,
                   char *daemon_name) {
   int log_flags = 0;
@@ -98,14 +98,14 @@ gboolean ExitSigHandler(gpointer data) {
 }
 
 // Enter a sanboxed vfs namespace.
-void EnterVFSNamespace(lorgnette::Minijail *minijail) {
+void EnterVFSNamespace(chromeos::Minijail *minijail) {
   struct minijail *jail = minijail->New();
   minijail_namespace_vfs(jail);
   minijail_enter(jail);
   minijail->Destroy(jail);
 }
 
-void DropPrivileges(lorgnette::Minijail *minijail) {
+void DropPrivileges(chromeos::Minijail *minijail) {
   struct minijail *jail = minijail->New();
   minijail->DropRoot(jail, lorgnette::Daemon::kScanUserName,
                      lorgnette::Daemon::kScanGroupName);
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine *cl = CommandLine::ForCurrentProcess();
-  lorgnette::Minijail *minijail = lorgnette::Minijail::GetInstance();
+  chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 
   const int nochdir = 0, noclose = 0;
   if (!cl->HasSwitch(switches::kForeground))
-    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
+    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1) << "Failed to daemonize";
 
   SetupLogging(minijail, cl->HasSwitch(switches::kForeground), argv[0]);
 
