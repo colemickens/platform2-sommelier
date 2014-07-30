@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_TEST_EMPTY_DB_INIT_H_
-#define INIT_TEST_EMPTY_DB_INIT_H_
+#ifndef SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_INIT_TEST_EMPTY_DB_INIT_H_
+#define SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_INIT_TEST_EMPTY_DB_INIT_H_
 
 #ifndef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
   #error "Must be included only from mobile_operator_info_unittest.cc."
@@ -26,4 +26,4 @@ static const unsigned char init_test_empty_db_init[] {
 }  // namespace mobile_operator_db
 }  // namespace shill
 
-#endif  // INIT_TEST_EMPTY_DB_INIT_H_
+#endif  // SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_INIT_TEST_EMPTY_DB_INIT_H_

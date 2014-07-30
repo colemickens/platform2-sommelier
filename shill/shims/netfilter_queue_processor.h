@@ -10,6 +10,7 @@
 
 #include <deque>
 #include <memory>
+#include <string>
 
 #include <base/basictypes.h>
 
@@ -157,20 +158,20 @@ class NetfilterQueueProcessor {
   static std::string AddressAndPortToString(uint32_t ip, uint16_t port);
 
   // Size of the packet buffer passed to the netlink queue library.
-  static int kBufferSize;
+  static const int kBufferSize;
   // The number of seconds after which we should forget about a listener.
-  static int kExpirationIntervalSeconds;
+  static const int kExpirationIntervalSeconds;
   // Number of bytes in a single unit of IP header length.
-  static int kIPHeaderLengthUnitBytes;
+  static const int kIPHeaderLengthUnitBytes;
   // The maximum expected value for the "header length" element of the IP
   // header, in units of kIPHeaderLengthUnitBytes bytes.
-  static int kMaxIPHeaderLength;
+  static const int kMaxIPHeaderLength;
   // The maximum number of listeners that we keep track of.
-  static size_t kMaxListenerEntries;
+  static const size_t kMaxListenerEntries;
   // Number of bytes of the network payload we are interested in seeing.
-  static int kPayloadCopySize;
+  static const int kPayloadCopySize;
 
-  // Input and output queue nubmers.
+  // Input and output queue numbers.
   int input_queue_;
   int output_queue_;
 

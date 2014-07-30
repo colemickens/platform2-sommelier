@@ -5,6 +5,9 @@
 #ifndef SHILL_SHIMS_TASK_PROXY_H_
 #define SHILL_SHIMS_TASK_PROXY_H_
 
+#include <map>
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Task.h"
@@ -21,7 +24,7 @@ class TaskProxy {
   ~TaskProxy();
 
   void Notify(const std::string &reason,
-              std::map<std::string, std::string> &dict);
+              const std::map<std::string, std::string> &dict);
 
   bool GetSecret(std::string *username, std::string *password);
 

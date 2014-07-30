@@ -20,7 +20,7 @@ TaskProxy::TaskProxy(DBus::Connection *connection,
 
 TaskProxy::~TaskProxy() {}
 
-void TaskProxy::Notify(const string &reason, map<string, string> &dict) {
+void TaskProxy::Notify(const string &reason, const map<string, string> &dict) {
   LOG(INFO) << __func__ << "(" << reason
             << ", argcount: " << dict.size() << ")";
   try {

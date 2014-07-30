@@ -4,6 +4,8 @@
 
 #include "shill/shims/c_ppp.h"
 
+#include <string>
+
 #include <base/at_exit.h>
 
 #include "shill/shims/ppp.h"
@@ -30,10 +32,10 @@ int PPPGetSecret(char *username, char *password) {
     return -1;
   }
   if (username) {
-    strcpy(username, user.c_str());
+    strcpy(username, user.c_str());  // NOLINT(runtime/printf)
   }
   if (password) {
-    strcpy(password, pass.c_str());
+    strcpy(password, pass.c_str());  // NOLINT(runtime/printf)
   }
   return 1;
 }

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DATA_TEST_H_
-#define DATA_TEST_H_
+#ifndef SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_DATA_TEST_H_
+#define SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_DATA_TEST_H_
 
 #ifndef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
   #error "Must be included only from mobile_operator_info_unittest.cc."
@@ -168,4 +168,4 @@ static const unsigned char data_test[] {
 }  // namespace mobile_operator_db
 }  // namespace shill
 
-#endif  // DATA_TEST_H_
+#endif  // SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_DATA_TEST_H_

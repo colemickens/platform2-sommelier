@@ -183,7 +183,7 @@ bool VerifyCredentialsImpl(const string &certificate,
     return false;
   }
 
-  *rsa_ptr = NULL; // pkey took ownership
+  *rsa_ptr = NULL;  // pkey took ownership
   // Another helpfully unmarked const interface.
   *raw_certificate_bio_ptr = BIO_new_mem_buf(
       const_cast<char *>(certificate.data()), certificate.length());
@@ -258,8 +258,7 @@ bool VerifyCredentialsImpl(const string &certificate,
           unsigned_data.data()));
   const size_t unsigned_data_len = unsigned_data.length();
   unsigned char digest[SHA_DIGEST_LENGTH];
-  if (signature_len > numeric_limits<unsigned int>::max() ||
-      unsigned_data_len > numeric_limits<unsigned long>::max()) {
+  if (signature_len > numeric_limits<unsigned int>::max()) {
     LOG(ERROR) << "Arguments to signature match were too large.";
     return false;
   }

@@ -19,4 +19,4 @@ static const char kStashedNetLog[] = "/var/log/net-diags.net.log";
 
 }  // namespace shill
 
-#endif  // SHILL_NET_DIAGS_UPLOAD_H_
+#endif  // SHILL_SHIMS_NET_DIAGS_UPLOAD_H_

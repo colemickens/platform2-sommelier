@@ -6,13 +6,13 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <linux/ip.h>
 #include <linux/netfilter.h>    /* for NF_ACCEPT */
 #include <linux/types.h>
 #include <linux/udp.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -30,12 +30,13 @@ namespace shill {
 namespace shims {
 
 // static
-int NetfilterQueueProcessor::kBufferSize = 4096;
-int NetfilterQueueProcessor::kExpirationIntervalSeconds = 5;
-int NetfilterQueueProcessor::kIPHeaderLengthUnitBytes = 4;
-int NetfilterQueueProcessor::kMaxIPHeaderLength = 16;  // ihl is a 4-bit field.
-size_t NetfilterQueueProcessor::kMaxListenerEntries = 32;
-int NetfilterQueueProcessor::kPayloadCopySize = 0xffff;
+const int NetfilterQueueProcessor::kBufferSize = 4096;
+const int NetfilterQueueProcessor::kExpirationIntervalSeconds = 5;
+const int NetfilterQueueProcessor::kIPHeaderLengthUnitBytes = 4;
+const int NetfilterQueueProcessor::kMaxIPHeaderLength =
+    16;  // ihl is a 4-bit field.
+const size_t NetfilterQueueProcessor::kMaxListenerEntries = 32;
+const int NetfilterQueueProcessor::kPayloadCopySize = 0xffff;
 
 NetfilterQueueProcessor::Packet::Packet()
     : packet_id_(0),
@@ -145,7 +146,7 @@ void NetfilterQueueProcessor::Run() {
   CHECK(nfq_handle_);
 
   int file_handle = nfq_fd(nfq_handle_);
-  char buffer[kBufferSize] __attribute__ ((aligned));
+  char buffer[kBufferSize] __attribute__((aligned));
 
   for (;;) {
     int receive_count = recv(file_handle, buffer, sizeof(buffer), 0);
@@ -274,8 +275,9 @@ int NetfilterQueueProcessor::OutputQueueCallback(
 
 // static
 uint32_t NetfilterQueueProcessor::GetNetmaskForDevice(int device_index) {
-  char ifname[IFNAMSIZ];
-  if (if_indextoname(device_index, ifname) != ifname) {
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  if (if_indextoname(device_index, ifr.ifr_name) != ifr.ifr_name) {
     return INADDR_NONE;
   }
 
@@ -286,9 +288,6 @@ uint32_t NetfilterQueueProcessor::GetNetmaskForDevice(int device_index) {
 
   base::ScopedFD scoped_fd(socket_fd);
 
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strcpy(ifr.ifr_name, ifname);
   if (ioctl(socket_fd, SIOCGIFNETMASK, &ifr) != 0) {
     return INADDR_NONE;
   }

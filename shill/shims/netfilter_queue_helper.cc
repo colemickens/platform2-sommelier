@@ -77,8 +77,7 @@ bool GetIntegerOption(CommandLine *cl, const string &option, int *value) {
   return true;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
   CommandLine *cl = CommandLine::ForCurrentProcess();
 

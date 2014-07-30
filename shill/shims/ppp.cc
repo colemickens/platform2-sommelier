@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <map>
+
 extern "C" {
 #include <pppd/fsm.h>
 #include <pppd/ipcp.h>
