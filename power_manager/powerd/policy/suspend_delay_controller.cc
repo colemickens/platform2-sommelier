@@ -200,7 +200,7 @@ void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
 void SuspendDelayController::NotifyObservers(int suspend_id) {
   LOG(INFO) << "Notifying observers that suspend is ready";
   FOR_EACH_OBSERVER(SuspendDelayObserver, observers_,
-                    OnReadyForSuspend(suspend_id));
+                    OnReadyForSuspend(this, suspend_id));
 }
 
 }  // namespace policy

@@ -162,6 +162,13 @@ class Suspender : public SuspendDelayObserver {
     int suspend_id() const { return suspender_->suspend_request_id_; }
     int dark_suspend_id() const { return suspender_->dark_suspend_id_; }
 
+    SuspendDelayController* suspend_delay_controller() const {
+      return suspender_->suspend_delay_controller_.get();
+    }
+    SuspendDelayController* dark_suspend_delay_controller() const {
+      return suspender_->dark_suspend_delay_controller_.get();
+    }
+
     // Sets the time used as "now".
     void SetCurrentWallTime(base::Time wall_time);
 
@@ -194,18 +201,23 @@ class Suspender : public SuspendDelayObserver {
   // http://crbug.com/218175).
   void RequestSuspendWithExternalWakeupCount(uint64_t wakeup_count);
 
-  // Handles a RegisterSuspendDelay call.
+  // Handlers for D-Bus messages.
   void RegisterSuspendDelay(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
-
-  // Handles an UnregisterSuspendDelay call.
   void UnregisterSuspendDelay(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
-
-  // Handles a HandleSuspendReadiness call.
   void HandleSuspendReadiness(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void RegisterDarkSuspendDelay(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void UnregisterDarkSuspendDelay(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void HandleDarkSuspendReadiness(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
@@ -222,7 +234,8 @@ class Suspender : public SuspendDelayObserver {
                                   const std::string& new_owner);
 
   // SuspendDelayObserver override:
-  void OnReadyForSuspend(int suspend_id) override;
+  void OnReadyForSuspend(SuspendDelayController *controller,
+                         int suspend_id) override;
 
  private:
   // States that Suspender can be in while the event loop is running.
@@ -254,6 +267,20 @@ class Suspender : public SuspendDelayObserver {
     // The system is shutting down.
     EVENT_SHUTDOWN_STARTED,
   };
+
+  // Internal functions that actually process the received D-Bus messages.
+  void RegisterSuspendDelayInternal(
+      SuspendDelayController *controller,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void UnregisterSuspendDelayInternal(
+      SuspendDelayController *controller,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void HandleSuspendReadinessInternal(
+      SuspendDelayController *controller,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
 
   // Performs actions and updates |state_| in response to |event|.
   void HandleEvent(Event event);
@@ -288,6 +315,7 @@ class Suspender : public SuspendDelayObserver {
 
   scoped_ptr<Clock> clock_;
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
+  scoped_ptr<SuspendDelayController> dark_suspend_delay_controller_;
 
   // Current state of the object, updated just before returning control to the
   // event loop.

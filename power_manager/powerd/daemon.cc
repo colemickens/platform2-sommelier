@@ -912,6 +912,18 @@ void Daemon::InitDBus() {
       kPowerManagerInterface, kHandleSuspendReadinessMethod,
       base::Bind(&policy::Suspender::HandleSuspendReadiness,
                  base::Unretained(suspender_.get()))));
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, kRegisterDarkSuspendDelayMethod,
+      base::Bind(&policy::Suspender::RegisterDarkSuspendDelay,
+                 base::Unretained(suspender_.get()))));
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, kUnregisterDarkSuspendDelayMethod,
+      base::Bind(&policy::Suspender::UnregisterDarkSuspendDelay,
+                 base::Unretained(suspender_.get()))));
+  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, kHandleDarkSuspendReadinessMethod,
+      base::Bind(&policy::Suspender::HandleDarkSuspendReadiness,
+                 base::Unretained(suspender_.get()))));
 
   // Note that this needs to happen *after* the above methods are exported
   // (http://crbug.com/331431).

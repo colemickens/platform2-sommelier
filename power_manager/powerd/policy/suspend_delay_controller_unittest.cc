@@ -35,7 +35,8 @@ class TestObserver : public SuspendDelayObserver {
   }
 
   // SuspendDelayObserver implementation:
-  void OnReadyForSuspend(int suspend_id) override {
+  void OnReadyForSuspend(SuspendDelayController* controller,
+                         int suspend_id) override {
     loop_runner_.StopLoop();
   }
 
