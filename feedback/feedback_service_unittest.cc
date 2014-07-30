@@ -19,8 +19,8 @@
 #include "components/feedback/feedback_uploader.h"
 #include "feedback/feedback_service.h"
 #include "feedback/feedback_uploader_curl.h"
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 namespace feedback {
 namespace {
