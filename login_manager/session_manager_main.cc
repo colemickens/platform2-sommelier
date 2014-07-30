@@ -69,10 +69,6 @@ static const int kKillTimeoutDefault = 3;
 static const char kEnableHangDetection[] = "enable-hang-detection";
 static const uint kHangDetectionIntervalDefaultSeconds = 60;
 
-// Name of the flag indicating the session_manager should
-// always pass legacy value for --login-profile switch.
-static const char kLegacyLoginProfile[] = "use-legacy-login-profile";
-
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -152,10 +148,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // Simultaneous active session support is now enabled by default on
-  // session_manager side, Chrome will use --multi-profiles flag to enable it.
-  bool support_multi_profile = !cl->HasSwitch(switches::kLegacyLoginProfile);
-
   // Start the X server and set things up for running Chrome.
   map<string, string> env_vars;
   vector<string> args;
@@ -187,7 +179,6 @@ int main(int argc, char* argv[]) {
   scoped_ptr<BrowserJobInterface> browser_job(
       new BrowserJob(command,
                      env_vars,
-                     support_multi_profile,
                      uid,
                      &checker,
                      &metrics,

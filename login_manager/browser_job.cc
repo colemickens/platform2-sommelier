@@ -47,7 +47,6 @@ const time_t BrowserJob::kRestartWindowSeconds = 60;
 BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        const std::map<std::string, std::string>&
                            environment_variables,
-                       bool support_multi_profile,
                        uid_t desired_uid,
                        FileChecker* checker,
                        LoginMetrics* metrics,
@@ -61,7 +60,6 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
         start_times_(std::deque<time_t>(kRestartTries, 0)),
         removed_login_manager_flag_(false),
         session_already_started_(false),
-        support_multi_profile_(support_multi_profile),
         subprocess_(desired_uid, system_) {
   // Take over managing the kLoginManagerFlag.
   std::vector<std::string>::iterator to_erase = std::remove(arguments_.begin(),
@@ -148,23 +146,13 @@ void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
 
 // When user logs in we want to restart chrome in browsing mode with
 // user signed in. Hence we remove --login-manager flag and add
-// --login-user and --login-profile flags.
-// When supporting multiple simultaneous accounts, |userhash| is passed
-// as the value for the latter.  When not, then the magic string "user"
-// is passed.
-// Chrome requires that we always pass the email (and maybe hash) of the
-// first user who started a session, so this method handles that as well.
+// --login-user=|email| and --login-profile=|userhash| flags.
 void BrowserJob::StartSession(const std::string& email,
                               const std::string& userhash) {
   if (!session_already_started_) {
     login_arguments_.clear();
-    login_arguments_.push_back(kLoginUserFlag);
-    login_arguments_.back().append(email);
-    login_arguments_.push_back(kLoginProfileFlag);
-    if (support_multi_profile_)
-      login_arguments_.back().append(userhash);
-    else
-      login_arguments_.back().append("user");
+    login_arguments_.push_back(kLoginUserFlag + email);
+    login_arguments_.push_back(kLoginProfileFlag + userhash);
   }
   session_already_started_ = true;
 }

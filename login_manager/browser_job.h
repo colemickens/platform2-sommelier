@@ -77,7 +77,6 @@ class BrowserJob : public BrowserJobInterface {
  public:
   BrowserJob(const std::vector<std::string>& arguments,
              const std::map<std::string, std::string>& environment_varables,
-             bool support_multi_profile,
              uid_t desired_uid,
              FileChecker* checker,
              LoginMetrics* metrics,
@@ -154,11 +153,6 @@ class BrowserJob : public BrowserJobInterface {
   // browser requires us to track the _first_ user to start a session.
   // There is no issue filed to address this.
   bool session_already_started_;
-
-  // Support multi-profile behavior in the browser.  Currently, this means
-  // passing a user-hash instead of "user" for --login-profile when restarting
-  // the browser.
-  bool support_multi_profile_;
 
   // The subprocess tracked by this job.
   ChildJobInterface::Subprocess subprocess_;
