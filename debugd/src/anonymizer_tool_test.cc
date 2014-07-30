@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "anonymizer_tool.h"
+#include "debugd/src/anonymizer_tool.h"
 
 using std::map;
 using std::string;

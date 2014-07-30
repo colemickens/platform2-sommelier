@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "network_status_tool.h"
+#include "debugd/src/network_status_tool.h"
 
 #include <base/logging.h>
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 using base::StringPrintf;
 

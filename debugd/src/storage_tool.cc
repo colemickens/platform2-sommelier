@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "storage_tool.h"
+#include "debugd/src/storage_tool.h"
 
-#include "process_with_id.h"
-#include "process_with_output.h"
+#include "debugd/src/process_with_id.h"
+#include "debugd/src/process_with_output.h"
 
 using base::StringPrintf;
 

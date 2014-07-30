@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SUBPROCESS_TOOL_H_
-#define SUBPROCESS_TOOL_H_
+#ifndef DEBUGD_SRC_SUBPROCESS_TOOL_H_
+#define DEBUGD_SRC_SUBPROCESS_TOOL_H_
 
 #include <map>
 #include <string>
@@ -31,4 +31,4 @@ class SubprocessTool {
 
 }  // namespace debugd
 
-#endif  // SUBPROCESS_TOOL_H_
+#endif  // DEBUGD_SRC_SUBPROCESS_TOOL_H_

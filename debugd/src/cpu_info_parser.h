@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CPU_INFO_PARSER_H_
-#define CPU_INFO_PARSER_H_
+#ifndef DEBUGD_SRC_CPU_INFO_PARSER_H_
+#define DEBUGD_SRC_CPU_INFO_PARSER_H_
 
 #include <string>
 
@@ -48,5 +48,5 @@ class CPUInfoParser {
 
 }  // namespace debugd
 
-#endif  // CPU_INFO_PARSER_H_
+#endif  // DEBUGD_SRC_CPU_INFO_PARSER_H_
 

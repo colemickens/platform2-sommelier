@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef NETWORK_STATUS_TOOL_H_
-#define NETWORK_STATUS_TOOL_H_
+#ifndef DEBUGD_SRC_NETWORK_STATUS_TOOL_H_
+#define DEBUGD_SRC_NETWORK_STATUS_TOOL_H_
 
 #include <string>
 
@@ -25,4 +25,4 @@ class NetworkStatusTool {
 
 }  // namespace debugd
 
-#endif  // NETWORK_STATUS_TOOL_H_
+#endif  // DEBUGD_SRC_NETWORK_STATUS_TOOL_H_

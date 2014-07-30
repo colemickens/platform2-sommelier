@@ -12,7 +12,7 @@
 #include <chromeos/process.h>
 #include <chromeos/syslog_logging.h>
 
-#include "debug_daemon.h"
+#include "debugd/src/debug_daemon.h"
 
 namespace {
 const char* kHelpers[] = {

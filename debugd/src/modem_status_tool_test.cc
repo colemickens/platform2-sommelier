@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "modem_status_tool.h"
+#include "debugd/src/modem_status_tool.h"
 
 using std::string;
 

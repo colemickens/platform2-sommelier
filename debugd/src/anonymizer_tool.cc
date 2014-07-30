@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "anonymizer_tool.h"
+#include "debugd/src/anonymizer_tool.h"
 
 #include <pcrecpp.h>
 

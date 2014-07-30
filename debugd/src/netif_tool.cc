@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "netif_tool.h"
+#include "debugd/src/netif_tool.h"
 
 #include <string>
 
 #include <dbus-c++/dbus.h>
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 using base::StringPrintf;
 

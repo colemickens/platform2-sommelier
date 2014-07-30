@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "packet_capture_tool.h"
+#include "debugd/src/packet_capture_tool.h"
 
 #include <base/strings/string_util.h>
 
-#include "process_with_id.h"
+#include "debugd/src/process_with_id.h"
 
 using base::StringPrintf;
 

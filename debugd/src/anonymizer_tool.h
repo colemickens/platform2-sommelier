@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ANONYMIZER_TOOL_H_
-#define ANONYMIZER_TOOL_H_
+#ifndef DEBUGD_SRC_ANONYMIZER_TOOL_H_
+#define DEBUGD_SRC_ANONYMIZER_TOOL_H_
 
 #include <map>
 #include <string>
@@ -40,4 +40,4 @@ class AnonymizerTool {
 
 }  // namespace debugd
 
-#endif  // ANONYMIZER_TOOL_H_
+#endif  // DEBUGD_SRC_ANONYMIZER_TOOL_H_

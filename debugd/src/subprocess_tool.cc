@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "subprocess_tool.h"
+#include "debugd/src/subprocess_tool.h"
 
 #include <signal.h>
 
 #include <dbus-c++/dbus.h>
 
-#include "process_with_id.h"
+#include "debugd/src/process_with_id.h"
 
 namespace debugd {
 

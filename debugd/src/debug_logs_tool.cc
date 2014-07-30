@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "debug_logs_tool.h"
+#include "debugd/src/debug_logs_tool.h"
 
 #include <base/file_util.h>
 #include <chromeos/process.h>

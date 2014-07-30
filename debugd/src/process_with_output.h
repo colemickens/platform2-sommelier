@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PROCESS_WITH_OUTPUT_H_
-#define PROCESS_WITH_OUTPUT_H_
+#ifndef DEBUGD_SRC_PROCESS_WITH_OUTPUT_H_
+#define DEBUGD_SRC_PROCESS_WITH_OUTPUT_H_
 
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 
-#include "sandboxed_process.h"
+#include "debugd/src/sandboxed_process.h"
 
 namespace debugd {
 
@@ -32,4 +32,4 @@ class ProcessWithOutput : public SandboxedProcess {
 
 }  // namespace debugd
 
-#endif  // PROCESS_WITH_OUTPUT_H_
+#endif  // DEBUGD_SRC_PROCESS_WITH_OUTPUT_H_

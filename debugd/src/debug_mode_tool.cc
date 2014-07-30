@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "debug_mode_tool.h"
+#include "debugd/src/debug_mode_tool.h"
 
 #include <base/file_util.h>
 #include <chromeos/dbus/service_constants.h>

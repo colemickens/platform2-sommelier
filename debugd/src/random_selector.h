@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RANDOM_SELECTOR_H_
-#define RANDOM_SELECTOR_H_
+#ifndef DEBUGD_SRC_RANDOM_SELECTOR_H_
+#define DEBUGD_SRC_RANDOM_SELECTOR_H_
 
 #include <map>
 #include <string>
@@ -67,4 +67,4 @@ class RandomSelector {
 }  // namespace debugd
 
 
-#endif  // RANDOM_SELECTOR_H_
+#endif  // DEBUGD_SRC_RANDOM_SELECTOR_H_

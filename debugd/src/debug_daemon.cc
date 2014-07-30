@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "debug_daemon.h"
+#include "debugd/src/debug_daemon.h"
 
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>

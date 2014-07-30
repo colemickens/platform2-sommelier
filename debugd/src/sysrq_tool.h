@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SYSRQ_TOOL_H_
-#define SYSRQ_TOOL_H_
+#ifndef DEBUGD_SRC_SYSRQ_TOOL_H_
+#define DEBUGD_SRC_SYSRQ_TOOL_H_
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
@@ -23,4 +23,4 @@ class SysrqTool {
 
 }  // namespace debugd
 
-#endif  // SYSRQ_TOOL_H_
+#endif  // DEBUGD_SRC_SYSRQ_TOOL_H_

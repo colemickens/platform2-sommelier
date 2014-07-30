@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef WIMAX_STATUS_TOOL_H_
-#define WIMAX_STATUS_TOOL_H_
+#ifndef DEBUGD_SRC_WIMAX_STATUS_TOOL_H_
+#define DEBUGD_SRC_WIMAX_STATUS_TOOL_H_
 
 #include <string>
 
@@ -25,4 +25,4 @@ class WiMaxStatusTool {
 
 }  // namespace debugd
 
-#endif  // WIMAX_STATUS_TOOL_H_
+#endif  // DEBUGD_SRC_WIMAX_STATUS_TOOL_H_

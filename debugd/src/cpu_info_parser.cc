@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cpu_info_parser.h"
+#include "debugd/src/cpu_info_parser.h"
 
 #include <fstream>  // NOLINT
 #include <string>

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 #include <base/basictypes.h>
 #include <base/file_util.h>

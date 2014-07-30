@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "icmp_tool.h"
+#include "debugd/src/icmp_tool.h"
 
 #include <stdlib.h>
 
 #include <base/strings/stringprintf.h>
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 using base::StringPrintf;
 using std::map;

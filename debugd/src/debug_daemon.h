@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DEBUG_DAEMON_H_
-#define DEBUG_DAEMON_H_
+#ifndef DEBUGD_SRC_DEBUG_DAEMON_H_
+#define DEBUGD_SRC_DEBUG_DAEMON_H_
 
 #include <map>
 #include <string>
@@ -11,26 +11,26 @@
 
 #include <dbus-c++/dbus.h>
 
-#include "crash_sender_tool.h"
-#include "debug_logs_tool.h"
-#include "debug_mode_tool.h"
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
-#include "example_tool.h"
-#include "icmp_tool.h"
-#include "log_tool.h"
-#include "memory_tool.h"
-#include "modem_status_tool.h"
-#include "netif_tool.h"
-#include "network_status_tool.h"
-#include "packet_capture_tool.h"
-#include "perf_tool.h"
-#include "ping_tool.h"
-#include "route_tool.h"
-#include "storage_tool.h"
-#include "sysrq_tool.h"
-#include "systrace_tool.h"
-#include "tracepath_tool.h"
-#include "wimax_status_tool.h"
+#include "debugd/src/crash_sender_tool.h"
+#include "debugd/src/debug_logs_tool.h"
+#include "debugd/src/debug_mode_tool.h"
+#include "debugd/src/example_tool.h"
+#include "debugd/src/icmp_tool.h"
+#include "debugd/src/log_tool.h"
+#include "debugd/src/memory_tool.h"
+#include "debugd/src/modem_status_tool.h"
+#include "debugd/src/netif_tool.h"
+#include "debugd/src/network_status_tool.h"
+#include "debugd/src/packet_capture_tool.h"
+#include "debugd/src/perf_tool.h"
+#include "debugd/src/ping_tool.h"
+#include "debugd/src/route_tool.h"
+#include "debugd/src/storage_tool.h"
+#include "debugd/src/sysrq_tool.h"
+#include "debugd/src/systrace_tool.h"
+#include "debugd/src/tracepath_tool.h"
+#include "debugd/src/wimax_status_tool.h"
 
 namespace debugd {
 
@@ -177,4 +177,4 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
 }  // namespace debugd
 
-#endif  // DEBUG_DAEMON_H_
+#endif  // DEBUGD_SRC_DEBUG_DAEMON_H_

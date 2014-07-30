@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "log_tool.h"
+#include "debugd/src/log_tool.h"
 
 #include <vector>
 
@@ -14,8 +14,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "anonymizer_tool.h"
-#include "process_with_output.h"
+#include "debugd/src/anonymizer_tool.h"
+#include "debugd/src/process_with_output.h"
 
 namespace debugd {
 

@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef STORAGE_TOOL_H_
-#define STORAGE_TOOL_H_
+#ifndef DEBUGD_SRC_STORAGE_TOOL_H_
+#define DEBUGD_SRC_STORAGE_TOOL_H_
 
 #include <string>
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
-#include "subprocess_tool.h"
+#include "debugd/src/subprocess_tool.h"
 
 namespace debugd {
 
@@ -28,4 +28,4 @@ class StorageTool : public SubprocessTool {
 
 }  // namespace debugd
 
-#endif  // STORAGE_TOOL_H_
+#endif  // DEBUGD_SRC_STORAGE_TOOL_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PERF_TOOL_H_
-#define PERF_TOOL_H_
+#ifndef DEBUGD_SRC_PERF_TOOL_H_
+#define DEBUGD_SRC_PERF_TOOL_H_
 
 #include <string>
 #include <vector>
@@ -11,7 +11,7 @@
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
-#include "random_selector.h"
+#include "debugd/src/random_selector.h"
 
 namespace debugd {
 
@@ -40,4 +40,4 @@ class PerfTool {
 
 }  // namespace debugd
 
-#endif  // PERF_TOOL_H_
+#endif  // DEBUGD_SRC_PERF_TOOL_H_

@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "perf_tool.h"
+#include "debugd/src/perf_tool.h"
 
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
 #include <algorithm>
 
-#include "cpu_info_parser.h"
-#include "process_with_output.h"
+#include "debugd/src/cpu_info_parser.h"
+#include "debugd/src/process_with_output.h"
 
 using base::StringPrintf;
 

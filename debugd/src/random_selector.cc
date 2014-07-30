@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "random_selector.h"
+#include "debugd/src/random_selector.h"
 
 #include <cstdlib>
 #include <fstream>  // NOLINT
@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -76,7 +77,7 @@ void RandomSelector::Remove(const std::string& key) {
 
 float RandomSelector::GetFloatBetween(float min, float max) {
   CHECK_GT(max, min);
-  float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  float random = static_cast<float>(base::RandDouble());
   return random * (max - min) + min;
 }
 

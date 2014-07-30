@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ROUTE_TOOL_H_
-#define ROUTE_TOOL_H_
+#ifndef DEBUGD_SRC_ROUTE_TOOL_H_
+#define DEBUGD_SRC_ROUTE_TOOL_H_
 
 #include <map>
 #include <string>
@@ -28,4 +28,4 @@ class RouteTool {
 
 }  // namespace debugd
 
-#endif  // ROUTE_TOOL_H_
+#endif  // DEBUGD_SRC_ROUTE_TOOL_H_

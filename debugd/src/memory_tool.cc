@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "memory_tool.h"
+#include "debugd/src/memory_tool.h"
 
-#include "process_with_id.h"
+#include "debugd/src/process_with_id.h"
 
 using base::StringPrintf;
 

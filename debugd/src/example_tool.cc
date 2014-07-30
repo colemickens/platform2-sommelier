@@ -6,9 +6,9 @@
 // debugd's dbus methods. The main DebugDaemon class creates a single instance
 // of each tool and calls it to answer methods.
 
-#include "example_tool.h"
+#include "debugd/src/example_tool.h"
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 namespace debugd {
 

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "route_tool.h"
+#include "debugd/src/route_tool.h"
 
 #include <base/file_util.h>
 #include <chromeos/process.h>
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 namespace debugd {
 

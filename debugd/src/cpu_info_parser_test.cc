@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 
-#include "cpu_info_parser.h"
+#include "debugd/src/cpu_info_parser.h"
 
 using debugd::CPUInfoParser;
 

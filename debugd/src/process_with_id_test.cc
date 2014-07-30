@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "process_with_id.h"
+#include "debugd/src/process_with_id.h"
 
 using debugd::ProcessWithId;
 

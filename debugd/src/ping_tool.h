@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PING_TOOL_H_
-#define PING_TOOL_H_
+#ifndef DEBUGD_SRC_PING_TOOL_H_
+#define DEBUGD_SRC_PING_TOOL_H_
 
 #include <map>
 #include <string>
@@ -11,7 +11,7 @@
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
-#include "subprocess_tool.h"
+#include "debugd/src/subprocess_tool.h"
 
 namespace debugd {
 
@@ -28,4 +28,4 @@ class PingTool : public SubprocessTool {
 
 }  // namespace debugd
 
-#endif  // PING_TOOL_H_
+#endif  // DEBUGD_SRC_PING_TOOL_H_

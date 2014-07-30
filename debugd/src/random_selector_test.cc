@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 
-#include "random_selector.h"
+#include "debugd/src/random_selector.h"
 
 using debugd::RandomSelector;
 

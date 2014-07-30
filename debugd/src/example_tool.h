@@ -4,8 +4,8 @@
 //
 // This is an example of a tool. See </src/example_tool.cc>.
 
-#ifndef EXAMPLE_TOOL_H_
-#define EXAMPLE_TOOL_H_
+#ifndef DEBUGD_SRC_EXAMPLE_TOOL_H_
+#define DEBUGD_SRC_EXAMPLE_TOOL_H_
 
 #include <string>
 
@@ -27,4 +27,4 @@ class ExampleTool {
 
 }  // namespace debugd
 
-#endif  // EXAMPLE_TOOL_H_
+#endif  // DEBUGD_SRC_EXAMPLE_TOOL_H_

@@ -28,19 +28,19 @@
       'sources': [
         'share/org.chromium.debugd.xml',
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'debugd-proxies',
       'type': 'none',
       'dependencies': [
-        '../../platform2/common-mk/external_dependencies.gyp:dbus-proxies',
-        '../../platform2/shill/shill.gyp:shill-proxies',
+        '../common-mk/external_dependencies.gyp:dbus-proxies',
+        '../shill/shill.gyp:shill-proxies',
       ],
       'conditions': [
         ['USE_cellular == 1', {
           'dependencies': [
-            '../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
+            '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
           ],
         }],
       ],
@@ -151,7 +151,7 @@
           'target_name': 'debugd_testrunner',
           'type': 'executable',
           'dependencies': ['libdebugd'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'libraries': ['-lm',],
           'sources': [
             'src/anonymizer_tool_test.cc',

@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "log_tool.h"
+#include "debugd/src/log_tool.h"
 
 namespace debugd {
 

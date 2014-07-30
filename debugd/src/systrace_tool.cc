@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "systrace_tool.h"
+#include "debugd/src/systrace_tool.h"
 
 #include <string>
 #include <vector>
@@ -10,7 +10,7 @@
 #include <base/strings/string_split.h>
 #include <chromeos/process.h>
 
-#include "process_with_output.h"
+#include "debugd/src/process_with_output.h"
 
 namespace debugd {
 

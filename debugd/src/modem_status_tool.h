@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MODEM_STATUS_TOOL_H_
-#define MODEM_STATUS_TOOL_H_
+#ifndef DEBUGD_SRC_MODEM_STATUS_TOOL_H_
+#define DEBUGD_SRC_MODEM_STATUS_TOOL_H_
 
 #include <string>
 
@@ -30,4 +30,4 @@ class ModemStatusTool {
 
 }  // namespace debugd
 
-#endif  // MODEM_STATUS_TOOL_H_
+#endif  // DEBUGD_SRC_MODEM_STATUS_TOOL_H_
