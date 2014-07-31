@@ -16,7 +16,7 @@ using base::DictionaryValue;
 using base::ListValue;
 using base::Value;
 
-static void MessageToValues(DBus::Message& m, std::vector<Value*>* result,
+static void MessageToValues(const DBus::Message& m, std::vector<Value*>* result,
                             bool* success) {
   Value* v = NULL;
   *success = false;
@@ -35,8 +35,8 @@ static void MessageToValues(DBus::Message& m, std::vector<Value*>* result,
   *success = true;
 }
 
-static void MessageToOneValue(DBus::Message& m, Value** result,
-                               bool* success) {
+static void MessageToOneValue(const DBus::Message& m, Value** result,
+                              bool* success) {
   std::vector<Value*> values;
   MessageToValues(m, &values, success);
   ASSERT_EQ(1, values.size());

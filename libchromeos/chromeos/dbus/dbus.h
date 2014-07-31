@@ -200,7 +200,7 @@ template <typename F>  // F is a function signature
 class MonitorConnection;
 
 template <typename A1>
-class MonitorConnection<void (A1)> {
+class MonitorConnection<void(A1)> {
  public:
   MonitorConnection(const Proxy& proxy, const char* name,
                     void (*monitor)(void*, A1), void* object)
@@ -225,7 +225,7 @@ class MonitorConnection<void (A1)> {
 };
 
 template <typename A1, typename A2>
-class MonitorConnection<void (A1, A2)> {
+class MonitorConnection<void(A1, A2)> {
  public:
   MonitorConnection(const Proxy& proxy, const char* name,
                     void (*monitor)(void*, A1, A2), void* object)
@@ -250,7 +250,7 @@ class MonitorConnection<void (A1, A2)> {
 };
 
 template <typename A1, typename A2, typename A3>
-class MonitorConnection<void (A1, A2, A3)> {
+class MonitorConnection<void(A1, A2, A3)> {
  public:
   MonitorConnection(const Proxy& proxy, const char* name,
                     void (*monitor)(void*, A1, A2, A3), void* object)
@@ -275,7 +275,7 @@ class MonitorConnection<void (A1, A2, A3)> {
 };
 
 template <typename A1, typename A2, typename A3, typename A4>
-class MonitorConnection<void (A1, A2, A3, A4)> {
+class MonitorConnection<void(A1, A2, A3, A4)> {
  public:
   MonitorConnection(const Proxy& proxy, const char* name,
                     void (*monitor)(void*, A1, A2, A3, A4), void* object)
@@ -301,9 +301,9 @@ class MonitorConnection<void (A1, A2, A3, A4)> {
 };
 
 template <typename A1>
-MonitorConnection<void (A1)>* Monitor(const Proxy& proxy, const char* name,
-                                      void (*monitor)(void*, A1),
-                                      void* object) {
+MonitorConnection<void(A1)>* Monitor(const Proxy& proxy, const char* name,
+                                     void (*monitor)(void*, A1),
+                                     void* object) {
   typedef MonitorConnection<void (A1)> ConnectionType;
 
   ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
@@ -317,9 +317,9 @@ MonitorConnection<void (A1)>* Monitor(const Proxy& proxy, const char* name,
 }
 
 template <typename A1, typename A2>
-MonitorConnection<void (A1, A2)>* Monitor(const Proxy& proxy, const char* name,
-                                      void (*monitor)(void*, A1, A2),
-                                      void* object) {
+MonitorConnection<void(A1, A2)>* Monitor(const Proxy& proxy, const char* name,
+                                         void (*monitor)(void*, A1, A2),
+                                         void* object) {
   typedef MonitorConnection<void (A1, A2)> ConnectionType;
 
   ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
@@ -335,7 +335,7 @@ MonitorConnection<void (A1, A2)>* Monitor(const Proxy& proxy, const char* name,
 }
 
 template <typename A1, typename A2, typename A3>
-MonitorConnection<void (A1, A2, A3)>* Monitor(const Proxy& proxy,
+MonitorConnection<void(A1, A2, A3)>* Monitor(const Proxy& proxy,
                                           const char* name,
                                           void (*monitor)(void*, A1, A2, A3),
                                           void* object) {
@@ -355,7 +355,7 @@ MonitorConnection<void (A1, A2, A3)>* Monitor(const Proxy& proxy,
 }
 
 template <typename A1, typename A2, typename A3, typename A4>
-MonitorConnection<void (A1, A2, A3, A4)>* Monitor(const Proxy& proxy,
+MonitorConnection<void(A1, A2, A3, A4)>* Monitor(const Proxy& proxy,
     const char* name,
     void (*monitor)(void*, A1, A2, A3, A4),
     void* object) {

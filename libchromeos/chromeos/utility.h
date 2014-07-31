@@ -87,7 +87,7 @@ int SafeMemcmp(const void* s1, const void* s2, size_t n);
 //  value - Result pointer.
 // Returns
 //  True if conversion succeeded, false if it didn't.
-bool DBusMessageToValue(DBus::Message& message, base::Value** v);
+bool DBusMessageToValue(const DBus::Message& message, base::Value** v);
 
 // Convert a DBus message iterator a Value.
 //
@@ -96,7 +96,7 @@ bool DBusMessageToValue(DBus::Message& message, base::Value** v);
 //  value - Result pointer.
 // Returns
 //  True if conversion succeeded, false if it didn't.
-bool DBusMessageIterToValue(DBus::MessageIter& message, base::Value** v);
+bool DBusMessageIterToValue(DBus::MessageIter* message, base::Value** v);
 
 // Convert a DBus property map to a Value.
 //
@@ -105,8 +105,8 @@ bool DBusMessageIterToValue(DBus::MessageIter& message, base::Value** v);
 //  value - Result pointer.
 // Returns
 //  True if conversion succeeded, false if it didn't.
-bool DBusPropertyMapToValue(std::map<std::string, DBus::Variant>&
-                            properties, base::Value** v);
+bool DBusPropertyMapToValue(
+    const std::map<std::string, DBus::Variant>& properties, base::Value** v);
 
 // Return a random printable string representing |len| bytes of randomness.
 bool SecureRandomString(size_t len, std::string* result);

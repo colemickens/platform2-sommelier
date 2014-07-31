@@ -7,6 +7,8 @@
 #include <pwd.h>
 #include <unistd.h>
 
+#include <vector>
+
 #include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>
@@ -59,16 +61,21 @@ bool EnsureDirectoryExists(const base::FilePath& path,
 }
 
 bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
-  const struct passwd* user_info = getpwnam(user.c_str());
-  endpwent();
-  if (!user_info) {
+  ssize_t buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (buf_len < 0)
+    buf_len = 16384;  // 16K should be enough?...
+  passwd pwd_buf;
+  passwd* pwd = NULL;
+  std::vector<char> buf(buf_len);
+  if (getpwnam_r(user.c_str(), &pwd_buf, buf.data(), buf_len, &pwd) || !pwd) {
     PLOG(ERROR) << "Unable to find user " << user;
     return false;
   }
+
   if (uid)
-    *uid = user_info->pw_uid;
+    *uid = pwd->pw_uid;
   if (gid)
-    *gid = user_info->pw_gid;
+    *gid = pwd->pw_gid;
   return true;
 }
 

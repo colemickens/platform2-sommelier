@@ -13,7 +13,6 @@
 #include <unistd.h>
 
 #include <string>
-#include <iostream>
 
 #include <gtest/gtest.h>
 
@@ -202,7 +201,7 @@ class BootstatTest : public ::testing::Test {
     void SetMockStats(const char* uptime_content,
                          const char* disk_content);
     void ClearMockStats();
-    void TestLogEvent(EventTracker& event);
+    void TestLogEvent(EventTracker* event);
 
     string stats_output_dir_;
 
@@ -273,8 +272,8 @@ void BootstatTest::ClearMockStats() {
 }
 
 
-void BootstatTest::TestLogEvent(EventTracker& event) {
-  event.TestLogEvent(mock_uptime_content_, mock_disk_content_);
+void BootstatTest::TestLogEvent(EventTracker* event) {
+  event->TestLogEvent(mock_uptime_content_, mock_disk_content_);
 }
 
 
@@ -307,7 +306,7 @@ TEST_F(BootstatTest, ContentGeneration) {
   int i = 0;
   while (bootstat_data[i] != NULL) {
     SetMockStats(bootstat_data[i], bootstat_data[i+1]);
-    TestLogEvent(ev);
+    TestLogEvent(&ev);
     i += 2;
   }
   ClearMockStats();
@@ -328,16 +327,16 @@ TEST_F(BootstatTest, EventNameTruncation) {
   SetMockStats(bootstat_data[0], bootstat_data[1]);
 
   EventTracker ev = MakeEvent(very_long);
-  TestLogEvent(ev);
+  TestLogEvent(&ev);
   ev.Reset();
   ev = MakeEvent(very_long.substr(0, 1));
-  TestLogEvent(ev);
+  TestLogEvent(&ev);
   ev.Reset();
   ev = MakeEvent(very_long.substr(0, BOOTSTAT_MAX_EVENT_LEN - 1));
-  TestLogEvent(ev);
+  TestLogEvent(&ev);
   ev.Reset();
   ev = MakeEvent(very_long.substr(0, BOOTSTAT_MAX_EVENT_LEN));
-  TestLogEvent(ev);
+  TestLogEvent(&ev);
   ev.Reset();
 
   ClearMockStats();

@@ -37,9 +37,9 @@ bool ReadPublicKeyFromFile(const base::FilePath& key_file,
 }
 
 // Verifies that the |signed_data| has correct |signature| with |public_key|.
-bool VerifySignature(std::string& signed_data,
-                     std::string& signature,
-                     std::string& public_key) {
+bool VerifySignature(const std::string& signed_data,
+                     const std::string& signature,
+                     const std::string& public_key) {
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
 

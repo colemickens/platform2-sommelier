@@ -4,9 +4,9 @@
 
 #include "chromeos/dbus/dbus.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
-#include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus.h>
+#include <dbus/dbus-glib-bindings.h>
+#include <dbus/dbus-glib-lowlevel.h>
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>

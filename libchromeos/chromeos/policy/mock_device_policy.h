@@ -48,33 +48,49 @@ class MockDevicePolicy : public DevicePolicy {
  public:
   MOCK_METHOD0(LoadPolicy, bool(void));
 
-  MOCK_CONST_METHOD1(GetPolicyRefreshRate, bool(int*));
+  MOCK_CONST_METHOD1(GetPolicyRefreshRate,
+                     bool(int*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetUserWhitelist, bool(std::vector<std::string>*));
-  MOCK_CONST_METHOD1(GetGuestModeEnabled, bool(bool*));
-  MOCK_CONST_METHOD1(GetCameraEnabled, bool(bool*));
-  MOCK_CONST_METHOD1(GetShowUserNames, bool(bool*));
-  MOCK_CONST_METHOD1(GetDataRoamingEnabled, bool(bool*));
-  MOCK_CONST_METHOD1(GetAllowNewUsers, bool(bool*));
-  MOCK_CONST_METHOD1(GetMetricsEnabled, bool(bool*));
-  MOCK_CONST_METHOD1(GetReportVersionInfo, bool(bool*));
-  MOCK_CONST_METHOD1(GetReportActivityTimes, bool(bool*));
-  MOCK_CONST_METHOD1(GetReportBootMode, bool(bool*));
-  MOCK_CONST_METHOD1(GetEphemeralUsersEnabled, bool(bool*));
+  MOCK_CONST_METHOD1(GetGuestModeEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetCameraEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetShowUserNames,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetDataRoamingEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetAllowNewUsers,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetMetricsEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetReportVersionInfo,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetReportActivityTimes,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetReportBootMode,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetEphemeralUsersEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetProxyMode, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyServer, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyBypassList, bool(std::string*));
   MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
-  MOCK_CONST_METHOD1(GetReleaseChannelDelegated, bool(bool*));
-  MOCK_CONST_METHOD1(GetUpdateDisabled, bool(bool*));
+  MOCK_CONST_METHOD1(GetReleaseChannelDelegated,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetUpdateDisabled,
+                     bool(bool*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetTargetVersionPrefix, bool(std::string*));
-  MOCK_CONST_METHOD1(GetScatterFactorInSeconds, bool(int64*));
+  MOCK_CONST_METHOD1(GetScatterFactorInSeconds,
+                     bool(int64*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetAllowedConnectionTypesForUpdate,
                      bool(std::set<std::string>*));
   MOCK_CONST_METHOD1(GetOpenNetworkConfiguration, bool(std::string*));
   MOCK_CONST_METHOD1(GetOwner, bool(std::string*));
-  MOCK_CONST_METHOD1(GetHttpDownloadsEnabled, bool(bool*));
-  MOCK_CONST_METHOD1(GetAuP2PEnabled, bool(bool*));
+  MOCK_CONST_METHOD1(GetHttpDownloadsEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetAuP2PEnabled,
+                     bool(bool*));  // NOLINT(readability/function)
 
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));

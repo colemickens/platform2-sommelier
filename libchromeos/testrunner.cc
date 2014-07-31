@@ -4,8 +4,8 @@
 
 // based on pam_google_testrunner.cc
 
-#include <gtest/gtest.h>
 #include <glib-object.h>
+#include <gtest/gtest.h>
 
 #include "chromeos/test_helpers.h"
 

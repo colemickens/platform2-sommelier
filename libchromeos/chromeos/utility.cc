@@ -22,63 +22,64 @@ using base::Value;
 
 namespace {
 
-bool DBusMessageIterToPrimitiveValue(DBus::MessageIter& iter, Value** result) {
+bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter, Value** result) {
   DBus::MessageIter subiter;
-  switch (iter.type()) {
+  switch (iter->type()) {
     case DBUS_TYPE_BYTE:
-      *result = Value::CreateIntegerValue(iter.get_byte());
+      *result = Value::CreateIntegerValue(iter->get_byte());
       return true;
     case DBUS_TYPE_BOOLEAN:
-      *result = Value::CreateBooleanValue(iter.get_bool());
+      *result = Value::CreateBooleanValue(iter->get_bool());
       return true;
     case DBUS_TYPE_INT16:
-      *result = Value::CreateIntegerValue(iter.get_int16());
+      *result = Value::CreateIntegerValue(iter->get_int16());
       return true;
     case DBUS_TYPE_UINT16:
-      *result = Value::CreateIntegerValue(iter.get_uint16());
+      *result = Value::CreateIntegerValue(iter->get_uint16());
       return true;
     case DBUS_TYPE_INT32:
-      *result = Value::CreateIntegerValue(iter.get_int32());
+      *result = Value::CreateIntegerValue(iter->get_int32());
       return true;
     case DBUS_TYPE_UINT32:
-      *result = Value::CreateStringValue(base::UintToString(iter.get_uint32()));
+      *result = Value::CreateStringValue(
+          base::UintToString(iter->get_uint32()));
       return true;
     case DBUS_TYPE_INT64:
       *result = Value::CreateStringValue(
-          base::Int64ToString(iter.get_int64()));
+          base::Int64ToString(iter->get_int64()));
       return true;
     case DBUS_TYPE_UINT64:
       *result = Value::CreateStringValue(
-          base::Uint64ToString(iter.get_uint64()));
+          base::Uint64ToString(iter->get_uint64()));
       return true;
     case DBUS_TYPE_DOUBLE:
-      *result = Value::CreateDoubleValue(iter.get_double());
+      *result = Value::CreateDoubleValue(iter->get_double());
       return true;
     case DBUS_TYPE_STRING:
-      *result = Value::CreateStringValue(iter.get_string());
+      *result = Value::CreateStringValue(iter->get_string());
       return true;
     case DBUS_TYPE_OBJECT_PATH:
-      *result = Value::CreateStringValue(iter.get_path());
+      *result = Value::CreateStringValue(iter->get_path());
       return true;
     case DBUS_TYPE_SIGNATURE:
-      *result = Value::CreateStringValue(iter.get_signature());
+      *result = Value::CreateStringValue(iter->get_signature());
       return true;
     case DBUS_TYPE_UNIX_FD:
-      *result = Value::CreateIntegerValue(iter.get_int32());
+      *result = Value::CreateIntegerValue(iter->get_int32());
       return true;
     case DBUS_TYPE_VARIANT:
-      subiter = iter.recurse();
-      return chromeos::DBusMessageIterToValue(subiter, result);
+      subiter = iter->recurse();
+      return chromeos::DBusMessageIterToValue(&subiter, result);
     default:
-      LOG(ERROR) << "Unhandled primitive type: " << iter.type();
+      LOG(ERROR) << "Unhandled primitive type: " << iter->type();
       return false;
   }
 }
 
-bool DBusMessageIterToArrayValue(DBus::MessageIter& iter, Value** result) {
+bool DBusMessageIterToArrayValue(DBus::MessageIter* iter, Value** result) {
   // For an array, create an empty ListValue, then recurse into it.
   ListValue* lv = new ListValue();
-  while (!iter.at_end()) {
+  while (!iter->at_end()) {
     Value* subvalue = NULL;
     bool r = chromeos::DBusMessageIterToValue(iter, &subvalue);
     if (!r) {
@@ -86,27 +87,27 @@ bool DBusMessageIterToArrayValue(DBus::MessageIter& iter, Value** result) {
       return false;
     }
     lv->Append(subvalue);
-    iter++;
+    (*iter)++;
   }
   *result = lv;
   return true;
 }
 
-bool DBusMessageIterToDictValue(DBus::MessageIter& iter, Value** result) {
+bool DBusMessageIterToDictValue(DBus::MessageIter* iter, Value** result) {
   // For a dict, create an empty DictionaryValue, then walk the subcontainers
   // with the key-value pairs, adding them to the dict.
   DictionaryValue* dv = new DictionaryValue();
-  while (!iter.at_end()) {
-    DBus::MessageIter subiter = iter.recurse();
+  while (!iter->at_end()) {
+    DBus::MessageIter subiter = iter->recurse();
     Value* key = NULL;
     Value* value = NULL;
-    bool r = chromeos::DBusMessageIterToValue(subiter, &key);
+    bool r = chromeos::DBusMessageIterToValue(&subiter, &key);
     if (!r || key->GetType() != Value::TYPE_STRING) {
       delete dv;
       return false;
     }
     subiter++;
-    r = chromeos::DBusMessageIterToValue(subiter, &value);
+    r = chromeos::DBusMessageIterToValue(&subiter, &value);
     if (!r) {
       delete key;
       delete dv;
@@ -116,7 +117,7 @@ bool DBusMessageIterToDictValue(DBus::MessageIter& iter, Value** result) {
     key->GetAsString(&keystr);
     dv->Set(keystr, value);
     delete key;
-    iter++;
+    (*iter)++;
   }
   *result = dv;
   return true;
@@ -190,48 +191,47 @@ int SafeMemcmp(const void* s1, const void* s2, size_t n) {
   return result != 0;
 }
 
-bool DBusMessageToValue(DBus::Message& message, Value** v) {
+bool DBusMessageToValue(const DBus::Message& message, Value** v) {
   DBus::MessageIter r = message.reader();
-  return DBusMessageIterToArrayValue(r, v);
+  return DBusMessageIterToArrayValue(&r, v);
 }
 
-bool DBusMessageIterToValue(DBus::MessageIter& iter, Value** result) {
-  if (iter.at_end()) {
+bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result) {
+  if (iter->at_end()) {
     *result = NULL;
     return true;
   }
-  if (!iter.is_array() && !iter.is_dict()) {
+  if (!iter->is_array() && !iter->is_dict()) {
     // Primitive type. Stash it in result directly and return.
     return DBusMessageIterToPrimitiveValue(iter, result);
   }
-  if (iter.is_dict()) {
-    DBus::MessageIter subiter = iter.recurse();
-    return DBusMessageIterToDictValue(subiter, result);
+  if (iter->is_dict()) {
+    DBus::MessageIter subiter = iter->recurse();
+    return DBusMessageIterToDictValue(&subiter, result);
   }
-  if (iter.is_array()) {
-    DBus::MessageIter subiter = iter.recurse();
-    return DBusMessageIterToArrayValue(subiter, result);
+  if (iter->is_array()) {
+    DBus::MessageIter subiter = iter->recurse();
+    return DBusMessageIterToArrayValue(&subiter, result);
   }
   return false;
 }
 
-bool DBusPropertyMapToValue(std::map<std::string, DBus::Variant>& properties,
-                            Value** v) {
+bool DBusPropertyMapToValue(
+    const std::map<std::string, DBus::Variant>& properties, Value** v) {
   DictionaryValue* dv = new DictionaryValue();
-  for (std::map<std::string, DBus::Variant>::iterator it = properties.begin();
-       it != properties.end();
-       ++it) {
+  std::map<std::string, DBus::Variant>::const_iterator it;
+  for (it = properties.begin(); it != properties.end(); ++it) {
     Value* v = NULL;
     // make a copy so we can take a reference to the MessageIter
     DBus::MessageIter reader = it->second.reader();
-    bool r = DBusMessageIterToValue(reader, &v);
+    bool r = DBusMessageIterToValue(&reader, &v);
     if (!r) {
       delete dv;
       return false;
     }
     dv->Set(it->first, v);
   }
-  *v = static_cast<Value*>(dv);
+  *v = dv;
   return true;
 }
 
@@ -248,10 +248,10 @@ bool SecureRandom(uint8_t *buf, size_t len) {
 }
 
 bool SecureRandomString(size_t len, std::string* result) {
-  char rbuf[len];
-  if (!SecureRandom(reinterpret_cast<uint8_t*>(rbuf), len))
+  std::vector<uint8_t> rbuf(len);
+  if (!SecureRandom(rbuf.data(), rbuf.size()))
     return false;
-  *result = base::HexEncode(rbuf, len);
+  *result = base::HexEncode(rbuf.data(), rbuf.size());
   return true;
 }
 
