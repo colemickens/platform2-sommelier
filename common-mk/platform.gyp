@@ -59,11 +59,6 @@
                 '<(DEPTH)/shill/shill.gyp:*',
               ],
             }],
-            ['USE_tpm == 1', {
-              'dependencies': [
-                '<(DEPTH)/chaps/chaps.gyp:*',
-              ],
-            }],
             ['USE_vpn == 1', {
               'dependencies': [
                 '<(DEPTH)/vpn-manager/vpn-manager.gyp:*',

@@ -29,7 +29,7 @@
       'sources': [
         '<(proto_in_dir)/attributes.proto',
       ],
-      'includes': ['../../platform2/common-mk/protoc.gypi'],
+      'includes': ['../common-mk/protoc.gypi'],
     },
     {
       'target_name': 'chaps-proxies',
@@ -42,7 +42,7 @@
       'sources': [
         '<(xml2cpp_in_dir)/chaps_interface.xml',
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'chaps-adaptors',
@@ -55,7 +55,7 @@
       'sources': [
         '<(xml2cpp_in_dir)/chaps_interface.xml',
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       # This is meant only for internal binaries like unittests.  All
@@ -177,7 +177,7 @@
           'target_name': 'chaps_test',
           'type': 'executable',
           'dependencies': ['libchaps_static'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chaps_test.cc',
           ]
@@ -189,7 +189,7 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chaps_service.cc',
             'chaps_service_test.cc',
@@ -202,7 +202,7 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'slot_manager_impl.cc',
             'slot_manager_test.cc',
@@ -215,7 +215,7 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'session_impl.cc',
             'session_test.cc',
@@ -228,7 +228,7 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'object_impl.cc',
             'object_test.cc',
@@ -241,7 +241,7 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'object_policy_common.cc',
             'object_policy_data.cc',
@@ -260,7 +260,7 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'object_pool_impl.cc',
             'object_pool_test.cc',
@@ -281,7 +281,7 @@
             '-lleveldb',
             '-lmemenv',
           ],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'object_store_impl.cc',
             'object_store_test.cc',
@@ -299,7 +299,7 @@
               'libmetrics-<(libbase_ver)',
             ],
           },
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'opencryptoki_importer.cc',
             'opencryptoki_importer_test.cc',
@@ -317,7 +317,7 @@
               'libmetrics-<(libbase_ver)',
             ],
           },
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'token_file_manager_chromeos.cc',
             'isolate_login_client.cc',
@@ -344,7 +344,7 @@
               'dependencies': [
                 'libchaps_static',
               ],
-              'includes': ['../../platform2/common-mk/common_test.gypi'],
+              'includes': ['../common-mk/common_test.gypi'],
               'sources': [
                 'chapsd_test.cc',
                 'chaps_service_redirect.cc',
@@ -357,7 +357,7 @@
                 'libchaps_static',
                 'libchaps_test',
               ],
-              'includes': ['../../platform2/common-mk/common_test.gypi'],
+              'includes': ['../common-mk/common_test.gypi'],
               'sources': [
                 'tpm_utility_impl.cc',
                 'tpm_utility_test.cc',
