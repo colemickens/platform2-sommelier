@@ -33,8 +33,8 @@
 #include "cryptohome/attestation_task.h"
 #include "cryptohome/boot_attributes.h"
 #include "cryptohome/boot_lockbox.h"
-#include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
@@ -56,7 +56,7 @@ using chromeos::SecureBlob;
 // modifying the files afterward.
 namespace cryptohome {
 namespace gobject {
-#include "bindings/server.h"
+#include "bindings/server.h"  // NOLINT(build/include_alpha)
 }  // namespace gobject
 }  // namespace cryptohome
 

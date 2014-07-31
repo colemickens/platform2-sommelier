@@ -10,9 +10,9 @@
 #include <chromeos/syslog_logging.h>
 
 #include "cryptohome/lockbox.h"
-#include "cryptohome/platform.h"
-#include "cryptohome/lockbox-cache-tpm.h"
 #include "cryptohome/lockbox-cache.h"
+#include "cryptohome/lockbox-cache-tpm.h"
+#include "cryptohome/platform.h"
 
 namespace switches {
 // Keeps std* open for debugging

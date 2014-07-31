@@ -4,10 +4,10 @@
 
 // Contains the implementation of class Platform
 
-#include "platform.h"
+#include "cryptohome/platform.h"
 
-#include <errno.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
@@ -22,6 +22,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <utility>
 
 #include <base/basictypes.h>
 #include <base/bind.h>
@@ -70,7 +72,7 @@ class ScopedPath {
 };
 
 bool IsDirectory(const struct stat& file_info) {
- return !!S_ISDIR(file_info.st_mode);
+  return !!S_ISDIR(file_info.st_mode);
 }
 
 void TimedSync() {
@@ -717,8 +719,7 @@ bool Platform::StatVFS(const std::string& path, struct statvfs* vfs) {
 }
 
 bool Platform::FindFilesystemDevice(const std::string &filesystem_in,
-                                    std::string *device)
-{
+                                    std::string *device) {
   /* Clear device to indicate failure case. */
   device->clear();
 
@@ -815,17 +816,17 @@ void Platform::Sync() {
 // Encapsulate these helpers to avoid include conflicts.
 namespace ecryptfs {
 extern "C" {
-#include <ecryptfs.h>
+#include <ecryptfs.h>  // NOLINT(build/include_alpha)
 #include <keyutils.h>
 }
 
-long ClearUserKeyring() {
+long ClearUserKeyring() {  // NOLINT(runtime/int)
   return keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
 }
 
-long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
-                          const std::string& key_sig,
-                          const chromeos::SecureBlob& salt) {
+long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
+    const chromeos::SecureBlob& key, const std::string& key_sig,
+    const chromeos::SecureBlob& salt) {
   DCHECK_EQ(static_cast<size_t>(ECRYPTFS_MAX_KEY_BYTES),
             key.size());
   DCHECK_EQ(static_cast<size_t>(ECRYPTFS_SIG_SIZE) * 2, key_sig.length());
@@ -837,19 +838,18 @@ long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
                    const_cast<char*>(reinterpret_cast<const char*>(&salt[0])),
                    const_cast<char*>(reinterpret_cast<const char*>(&key[0])));
 
-  long ret = ecryptfs_add_auth_tok_to_keyring(&auth_token,
-               const_cast<char*>(key_sig.c_str()));
-  return ret;
+  return ecryptfs_add_auth_tok_to_keyring(&auth_token,
+                                          const_cast<char*>(key_sig.c_str()));
 }
 }  // namespace ecryptfs
 
-long Platform::ClearUserKeyring() {
+long Platform::ClearUserKeyring() {  // NOLINT(runtime/int)
   return ecryptfs::ClearUserKeyring();
 }
 
-long Platform::AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
-                                    const std::string& key_sig,
-                                    const chromeos::SecureBlob& salt) {
+long Platform::AddEcryptfsAuthToken(  // NOLINT(runtime/int)
+    const chromeos::SecureBlob& key, const std::string& key_sig,
+    const chromeos::SecureBlob& salt) {
   return ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt);
 }
 

@@ -4,15 +4,16 @@
 //
 // Provides the implementation of StatefulRecovery.
 
-#include <unistd.h>
 #include <linux/reboot.h>
 #include <sys/reboot.h>
+#include <unistd.h>
+
+#include <string>
 
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
-#include <string>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/service.h"

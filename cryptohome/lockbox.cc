@@ -8,8 +8,8 @@
 #include "cryptohome/lockbox.h"
 
 #include <arpa/inet.h>
-#include <openssl/sha.h>
 #include <limits.h>
+#include <openssl/sha.h>
 #include <stdint.h>
 
 #include <string>

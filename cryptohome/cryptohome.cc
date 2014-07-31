@@ -10,8 +10,8 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <termios.h>
 #include <string.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <string>

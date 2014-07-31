@@ -18,8 +18,8 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "key.pb.h"  // NOLINT(build/include)

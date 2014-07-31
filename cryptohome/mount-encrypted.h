@@ -75,14 +75,15 @@ static inline int timeval_subtract(struct timeval *result,
   struct timeval now, diff; \
   gettimeofday(&now, NULL); \
   timeval_subtract(&diff, &now, &tick); \
-  printf("\tTook: [pid:%d, %2lu.%06lus]\n", getpid(), \
-    (unsigned long)diff.tv_sec, (unsigned long)diff.tv_usec); \
+  printf("\tTook: [pid:%d, %2d.%06ds]\n", getpid(), \
+    static_cast<int>(diff.tv_sec), static_cast<int>(diff.tv_usec)); \
   tick = now; \
 } while (0)
 # else
 #  define TICK_REPORT() do { \
   gettimeofday(&tick, NULL); \
-  printf("[%2d.%06d] ", (int)tick.tv_sec, (int)tick.tv_usec); \
+  printf("[%2d.%06d] ", static_cast<int>(tick.tv_sec), \
+         static_cast<int>(tick.tv_usec)); \
 } while (0)
 # endif
 # define TICK_DONE() do { \
@@ -90,7 +91,8 @@ static inline int timeval_subtract(struct timeval *result,
   TICK_REPORT(); \
   timeval_subtract(&tick_done, &tick, &tick_start); \
   printf("Process Lifetime: [pid:%d, %2d.%06ds]\n", getpid(), \
-    (int)tick_done.tv_sec, (int)tick_done.tv_usec); \
+         static_cast<int>(tick_done.tv_sec), \
+         static_cast<int>(tick_done.tv_usec)); \
 } while (0)
 #else
 # define TICK_INIT() do { } while (0)

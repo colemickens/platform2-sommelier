@@ -17,7 +17,7 @@
 #include <metrics/metrics_library.h>
 #include <openssl/rsa.h>
 #include <trousers/tss.h>
-#include <trousers/trousers.h>
+#include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
 #include "tpm_status.pb.h"  // NOLINT(build/include)
 

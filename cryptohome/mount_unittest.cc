@@ -9,8 +9,8 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <pwd.h>
-#include <string.h>  // For memset(), memcpy()
 #include <stdlib.h>
+#include <string.h>  // For memset(), memcpy()
 #include <sys/types.h>
 #include <vector>
 

@@ -33,8 +33,8 @@
 #include "cryptohome/homedirs.h"
 #include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_session.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/user_session.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)

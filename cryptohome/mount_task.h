@@ -24,12 +24,12 @@
 #ifndef CRYPTOHOME_MOUNT_TASK_H_
 #define CRYPTOHOME_MOUNT_TASK_H_
 
-#include <base/atomicops.h>
 #include <base/atomic_sequence_num.h>
+#include <base/atomicops.h>
 #include <base/memory/ref_counted.h>
-#include <base/threading/thread.h>
 #include <base/synchronization/cancellation_flag.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/threading/thread.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
