@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
@@ -31,11 +32,25 @@ class UdevStub : public UdevInterface {
                    UdevObserver* observer) override;
   void RemoveObserver(const std::string& subsystem,
                       UdevObserver* observer) override;
+  bool GetSysattr(const std::string& syspath,
+                  const std::string& sysattr,
+                  std::string* value) override;
+  bool SetSysattr(const std::string& syspath,
+                  const std::string& sysattr,
+                  const std::string& value) override;
+  bool FindParentWithSysattr(const std::string& syspath,
+                             const std::string& sysattr,
+                             std::string* parent_syspath) override;
 
  private:
   // Registered observers keyed by subsystem.
   typedef std::map<std::string, std::set<UdevObserver*> > ObserverMap;
   ObserverMap observers_;
+
+  // Maps a pair (device syspath, sysattr name) to the corresponding sysattr
+  // value.
+  typedef std::map<std::pair<std::string, std::string>, std::string> SysattrMap;
+  SysattrMap map_;
 
   DISALLOW_COPY_AND_ASSIGN(UdevStub);
 };

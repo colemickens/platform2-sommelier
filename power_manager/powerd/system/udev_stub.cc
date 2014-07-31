@@ -27,5 +27,32 @@ void UdevStub::RemoveObserver(const std::string& subsystem,
   observers_[subsystem].erase(observer);
 }
 
+bool UdevStub::GetSysattr(const std::string& syspath,
+                          const std::string& sysattr,
+                          std::string* value) {
+  SysattrMap::iterator it = map_.find(std::make_pair(syspath, sysattr));
+  if (it == map_.end())
+    return false;
+  *value = it->second;
+  return true;
+}
+
+bool UdevStub::SetSysattr(const std::string& syspath,
+                          const std::string& sysattr,
+                          const std::string& value) {
+  // Allows arbitrary attributes to be created using SetSysattr, which differs
+  // from UdevSysattr. For all reasonable testing scenarios, this should be
+  // fine.
+  map_[std::make_pair(syspath, sysattr)] = value;
+  return true;
+}
+
+bool UdevStub::FindParentWithSysattr(const std::string& syspath,
+                                     const std::string& sysattr,
+                                     std::string* parent_syspath) {
+  *parent_syspath = syspath;
+  return true;
+}
+
 }  // namespace system
 }  // namespace power_manager

@@ -32,6 +32,27 @@ class UdevInterface {
                            UdevObserver* observer) = 0;
   virtual void RemoveObserver(const std::string& subsystem,
                               UdevObserver* observer) = 0;
+
+  // Reads the sysfs attribute |sysattr| from the device specified by |syspath|.
+  // Returns true on success. |syspath| is the syspath of a device as returned
+  // by libudev, e.g.
+  // "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/input/input22".
+  virtual bool GetSysattr(const std::string& syspath,
+                          const std::string& sysattr,
+                          std::string* value) = 0;
+
+  // Sets the value of a sysfs attribute. Returns true on success.
+  virtual bool SetSysattr(const std::string& syspath,
+                          const std::string& sysattr,
+                          const std::string& value) = 0;
+
+  // For the device specified by |syspath|, finds the first parent device which
+  // has a sysattr named |sysattr|, and stores the parent's syspath in
+  // |parent_syspath|. Returs true on success, or false on failure or when no
+  // matching parent device was found.
+  virtual bool FindParentWithSysattr(const std::string& syspath,
+                                     const std::string& sysattr,
+                                     std::string* parent_syspath) = 0;
 };
 
 // Actual implementation of UdevInterface.
@@ -48,6 +69,15 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
                    UdevObserver* observer) override;
   void RemoveObserver(const std::string& subsystem,
                       UdevObserver* observer) override;
+  bool GetSysattr(const std::string& syspath,
+                  const std::string& sysattr,
+                  std::string* value) override;
+  bool SetSysattr(const std::string& syspath,
+                  const std::string& sysattr,
+                  const std::string& value) override;
+  bool FindParentWithSysattr(const std::string& syspath,
+                             const std::string& sysattr,
+                             std::string* parent_syspath) override;
 
   // base::MessageLoopForIO::Watcher implementation:
   void OnFileCanReadWithoutBlocking(int fd) override;

@@ -77,6 +77,76 @@ void Udev::RemoveObserver(const std::string& subsystem,
   // No way to remove individual matches from udev_monitor. :-/
 }
 
+bool Udev::GetSysattr(const std::string& syspath,
+                      const std::string& sysattr,
+                      std::string* value) {
+  DCHECK(udev_);
+  DCHECK(value);
+  value->clear();
+
+  struct udev_device* device =
+      udev_device_new_from_syspath(udev_, syspath.c_str());
+  if (!device) {
+    LOG(WARNING) << "Failed to open udev device: " << syspath;
+    return false;
+  }
+  const char* value_cstr =
+      udev_device_get_sysattr_value(device, sysattr.c_str());
+  if (value_cstr)
+    *value = value_cstr;
+  udev_device_unref(device);
+  return value_cstr != NULL;
+}
+
+bool Udev::SetSysattr(const std::string& syspath,
+                      const std::string& sysattr,
+                      const std::string& value) {
+  DCHECK(udev_);
+
+  struct udev_device* device =
+      udev_device_new_from_syspath(udev_, syspath.c_str());
+  if (!device) {
+    LOG(WARNING) << "Failed to open udev device: " << syspath;
+    return false;
+  }
+  // udev can modify this value, hence we copy it first.
+  scoped_ptr<char, base::FreeDeleter> value_mutable(strdup(value.c_str()));
+  int rv = udev_device_set_sysattr_value(device, sysattr.c_str(),
+                                         value_mutable.get());
+  udev_device_unref(device);
+  if (rv != 0) {
+    LOG(WARNING) << "Failed to set sysattr '" << sysattr << "' on device "
+                 << syspath << ": " << strerror(-rv);
+    return false;
+  }
+  return true;
+}
+
+bool Udev::FindParentWithSysattr(const std::string& syspath,
+                                 const std::string& sysattr,
+                                 std::string* parent_syspath) {
+  DCHECK(udev_);
+
+  struct udev_device* device =
+      udev_device_new_from_syspath(udev_, syspath.c_str());
+  if (!device) {
+    LOG(WARNING) << "Failed to open udev device: " << syspath;
+    return false;
+  }
+  struct udev_device* parent = device;
+  while (parent) {
+    const char* value = udev_device_get_sysattr_value(parent, sysattr.c_str());
+    if (value)
+      break;
+    // Go up one level.
+    parent = udev_device_get_parent(parent);
+  }
+  if (parent)
+    *parent_syspath = udev_device_get_syspath(parent);
+  udev_device_unref(device);
+  return parent != NULL;
+}
+
 void Udev::OnFileCanReadWithoutBlocking(int fd) {
   struct udev_device* dev = udev_monitor_receive_device(udev_monitor_);
   if (!dev)
