@@ -4,11 +4,12 @@
 //
 // Returns the best guess of system modality.
 //
+
+#include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
-#include <err.h>
 
 #include "cros_boot_mode/active_main_firmware.h"
 #include "cros_boot_mode/boot_mode.h"
