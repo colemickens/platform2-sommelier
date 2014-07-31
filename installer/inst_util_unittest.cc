@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "installer/chromeos_install_config.h"
 #include "installer/chromeos_postinst.h"

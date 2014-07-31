@@ -4,8 +4,8 @@
 
 #include "installer/chromeos_legacy.h"
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "installer/chromeos_install_config.h"
 
