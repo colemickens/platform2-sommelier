@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "peerd/manager.h"
+
 #include <dbus/exported_object.h>
 #include <dbus/object_path.h>
 
-#include "peerd/manager.h"
 #include "peerd/dbus_constants.h"
 
 using peerd::dbus_constants::kManagerServicePath;
