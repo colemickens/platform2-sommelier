@@ -11,10 +11,10 @@
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 
-#include "pkcs11/cryptoki.h"
-#include "chromeos/secure_blob.h"
 #include "chaps/chaps.h"
 #include "chaps/token_manager_interface.h"
+#include "chromeos/secure_blob.h"
+#include "pkcs11/cryptoki.h"
 
 namespace chaps {
 

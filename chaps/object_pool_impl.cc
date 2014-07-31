@@ -5,15 +5,14 @@
 #include "chaps/object_pool_impl.h"
 
 #include <map>
+#include <memory>
 #include <string>
-#include <tr1/memory>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 
-#include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"
@@ -21,13 +20,14 @@
 #include "chaps/object.h"
 #include "chaps/object_importer.h"
 #include "chaps/object_store.h"
+#include "chaps/proto_bindings/attributes.pb.h"
 
 using base::AutoLock;
 using base::AutoUnlock;
 using chromeos::SecureBlob;
 using std::map;
 using std::string;
-using std::tr1::shared_ptr;
+using std::shared_ptr;
 using std::vector;
 
 namespace chaps {

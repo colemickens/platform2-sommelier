@@ -19,8 +19,8 @@
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/handle_generator_mock.h"
-#include "chaps/object_pool_mock.h"
 #include "chaps/object_mock.h"
+#include "chaps/object_pool_mock.h"
 #include "chaps/tpm_utility_mock.h"
 
 using std::string;

@@ -16,8 +16,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps/isolate_login_client_mock.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/isolate_login_client_mock.h"
 #include "chaps/pam_helper_mock.h"
 
 using std::string;

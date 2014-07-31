@@ -8,8 +8,8 @@
 #include <string.h>
 
 #include <map>
+#include <memory>
 #include <string>
-#include <tr1/memory>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -34,7 +34,7 @@ using base::FilePath;
 using chromeos::SecureBlob;
 using std::map;
 using std::string;
-using std::tr1::shared_ptr;
+using std::shared_ptr;
 using std::vector;
 
 namespace chaps {

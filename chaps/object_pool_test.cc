@@ -12,12 +12,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/handle_generator_mock.h"
 #include "chaps/object_importer_mock.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_store_mock.h"
+#include "chaps/proto_bindings/attributes.pb.h"
 
 using chromeos::SecureBlob;
 using std::map;

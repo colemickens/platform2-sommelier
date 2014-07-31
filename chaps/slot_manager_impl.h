@@ -10,9 +10,9 @@
 #include "chaps/token_manager_interface.h"
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
-#include <tr1/memory>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -105,11 +105,11 @@ class SlotManagerImpl : public SlotManager,
   struct Slot {
     CK_SLOT_INFO slot_info;
     CK_TOKEN_INFO token_info;
-    std::tr1::shared_ptr<ObjectPool> token_object_pool;
+    std::shared_ptr<ObjectPool> token_object_pool;
     // Key: A session identifier.
     // Value: The associated session object.
-    std::map<int, std::tr1::shared_ptr<Session> > sessions;
-    std::tr1::shared_ptr<base::PlatformThread::Delegate> worker_thread;
+    std::map<int, std::shared_ptr<Session> > sessions;
+    std::shared_ptr<base::PlatformThread::Delegate> worker_thread;
     base::PlatformThreadHandle worker_thread_handle;
   };
 
