@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
-#include "salsa_experiment_runner.h"
+#include <iostream>  // NOLINT(readability/streams)
+#include "salsa/try_touch_experiment/salsa_experiment_runner.h"
 
 using std::cout;
 using std::endl;

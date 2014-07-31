@@ -2,30 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef GESTURES_SALSA_TRY_TOUCH_EXPERIMENT_TREATMENT_H_
-#define GESTURES_SALSA_TRY_TOUCH_EXPERIMENT_TREATMENT_H_
+#ifndef SALSA_TRY_TOUCH_EXPERIMENT_TREATMENT_H_
+#define SALSA_TRY_TOUCH_EXPERIMENT_TREATMENT_H_
 
 #include <string>
 #include <vector>
+
 #include <base/strings/string_split.h>
-#include "property.h"
+
+#include "salsa/try_touch_experiment/property.h"
 
 class Treatment {
-  public:
-    Treatment();
-    explicit Treatment(const std::string &treatment_string);
+ public:
+  Treatment();
+  explicit Treatment(const std::string &treatment_string);
 
-    bool Apply() const;
-    bool Reset() const;
+  bool Apply() const;
+  bool Reset() const;
 
-    bool valid() const;
+  bool valid() const;
 
-  private:
-    std::vector<Property> properties_;
-    bool is_valid_;
+ private:
+  std::vector<Property> properties_;
+  bool is_valid_;
 };
 
-
-
-
-#endif  // GESTURES_SALSA_TRY_TOUCH_EXPERIMENT_TREATMENT_H_
+#endif  // SALSA_TRY_TOUCH_EXPERIMENT_TREATMENT_H_

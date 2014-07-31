@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "property.h"
+#include "salsa/try_touch_experiment/property.h"
 
 using base::SplitString;
 using base::StringPrintf;
@@ -57,7 +57,7 @@ bool Property::SetValue(double new_value) const {
   // Select the property and see what format it is in
   Atom type;
   int format;
-  unsigned long nitems, bytes_after;
+  unsigned long nitems, bytes_after;  // NOLINT(runtime/int)
   unsigned char *data;
   unsigned char *new_data = NULL;
   if (XGetDeviceProperty(display, device, this_prop, 0, 1000, False,
@@ -68,10 +68,10 @@ bool Property::SetValue(double new_value) const {
       int8_t int8_t_val = (int8_t)new_value;
       int16_t int16_t_val = (int16_t)new_value;
       int32_t int32_t_val = (int32_t)new_value;
-      float float_val = (float)new_value;
+      float float_val = static_cast<float>(new_value);
       Atom float_atom = XInternAtom(display, "FLOAT", True);
       if (type == XA_INTEGER) {
-        switch(format) {
+        switch (format) {
           case 8: new_data = (unsigned char*)&int8_t_val; break;
           case 16: new_data = (unsigned char*)&int16_t_val; break;
           case 32: new_data = (unsigned char*)&int32_t_val; break;
@@ -103,13 +103,13 @@ XDevice* Property::GetX11TouchpadDevice(Display *display) const {
   if (!display)
     return NULL;
 
-  // Get a list of the details of all the X devices availible
+  // Get a list of the details of all the X devices available
   int num_device_infos;
   XDeviceInfo *device_infos = XListInputDevices(display, &num_device_infos);
 
   // Go through the list and find our touchpad
   XDevice *touchpad_device = NULL;
-  for(int i = 0; i < num_device_infos; i++) {
+  for (int i = 0; i < num_device_infos; i++) {
     if (device_infos[i].use != IsXExtensionPointer)
       continue;
 
@@ -138,7 +138,7 @@ double Property::GetPropertyValue(Display *display, XDevice *device,
   // Parse the value of this property
   Atom type;
   int format;
-  unsigned long nitems, bytes_after;
+  unsigned long nitems, bytes_after;  // NOLINT(runtime/int)
   unsigned char *data;
   double val = -1;
   if (XGetDeviceProperty(display, device, this_prop, 0, 1000, False,
@@ -147,13 +147,13 @@ double Property::GetPropertyValue(Display *display, XDevice *device,
     if (nitems == 1) {
       Atom float_atom = XInternAtom(display, "FLOAT", True);
       if (type == XA_INTEGER) {
-        switch(format) {
-          case 8: val = *((int8_t*)data); break;
-          case 16: val = *((int16_t*)data); break;
-          case 32: val = *((int32_t*)data); break;
+        switch (format) {
+          case 8: val = *(reinterpret_cast<const int8_t*>(data)); break;
+          case 16: val = *(reinterpret_cast<const int16_t*>(data)); break;
+          case 32: val = *(reinterpret_cast<const int32_t*>(data)); break;
         }
       } else if (float_atom != None && type == float_atom) {
-        val = *((float*)data);
+        val = *(reinterpret_cast<const float*>(data));
       }
     }
   }
