@@ -18,7 +18,7 @@ namespace permission_broker {
 // ignored by this rule.
 class HidrawSubsystemUdevRule : public UdevRule {
  public:
-  HidrawSubsystemUdevRule(const std::string &name);
+  explicit HidrawSubsystemUdevRule(const std::string &name);
   virtual ~HidrawSubsystemUdevRule();
 
   // Called with every device belonging to the hidraw subsystem.

@@ -4,9 +4,9 @@
 
 #include <libudev.h>
 
-#include "permission_broker/deny_unsafe_hidraw_device_rule.h"
+#include <vector>
 
-using std::string;
+#include "permission_broker/deny_unsafe_hidraw_device_rule.h"
 
 namespace permission_broker {
 
@@ -46,7 +46,7 @@ bool IsSystemControlUsage(const HidUsage& usage) {
   return false;
 }
 
-}
+}  // namespace
 
 DenyUnsafeHidrawDeviceRule::DenyUnsafeHidrawDeviceRule()
     : HidrawSubsystemUdevRule("DenyUnsafeHidrawDeviceRule") {}
