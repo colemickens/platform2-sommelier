@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PERF_SERIALIZER_H_
-#define PERF_SERIALIZER_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_
+#define CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_
 
 #include <string>
 #include <vector>
 
 #include "base/basictypes.h"
 
-#include "perf_parser.h"
-#include "quipper_proto.h"
+#include "chromiumos-wide-profiling/perf_parser.h"
+#include "chromiumos-wide-profiling/quipper_proto.h"
 
 namespace quipper {
 
@@ -132,8 +132,7 @@ class PerfSerializer : public PerfParser {
       RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
       const;
   bool DeserializeBuildIDs(
-      const
-      RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
+      const RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
       std::vector<build_id_event*>* to) const;
 
   bool SerializeMetadata(PerfDataProto* to) const;
@@ -264,4 +263,4 @@ bool name(const RepeatedPtrField<proto_type>& from, \
 
 }  // namespace quipper
 
-#endif  // PERF_SERIALIZER_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_

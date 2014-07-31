@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONVERSION_UTILS_H_
-#define CONVERSION_UTILS_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_CONVERSION_UTILS_H_
+#define CHROMIUMOS_WIDE_PROFILING_CONVERSION_UTILS_H_
 
 #include <string>
 
-#include "quipper_string.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace quipper {
 
@@ -32,4 +32,4 @@ bool ConvertFile(const FormatAndFile& input, const FormatAndFile& output);
 
 }  // namespace quipper
 
-#endif  // CONVERSION_UTILS_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_CONVERSION_UTILS_H_

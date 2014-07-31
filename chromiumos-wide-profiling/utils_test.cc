@@ -4,12 +4,12 @@
 
 #include <string>
 
-#include "perf_reader.h"
-#include "perf_serializer.h"
-#include "perf_protobuf_io.h"
-#include "quipper_test.h"
-#include "test_utils.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/perf_protobuf_io.h"
+#include "chromiumos-wide-profiling/perf_reader.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/quipper_test.h"
+#include "chromiumos-wide-profiling/test_utils.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 
@@ -76,8 +76,7 @@ TEST(UtilsTest, TestStringToHex) {
 
 }  // namespace quipper
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

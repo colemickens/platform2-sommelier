@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
 #include <sstream>
+#include <string>
 
 #include "base/logging.h"
 
-#include "perf_protobuf_io.h"
-#include "perf_reader.h"
-#include "perf_recorder.h"
-#include "quipper_string.h"
+#include "chromiumos-wide-profiling/perf_protobuf_io.h"
+#include "chromiumos-wide-profiling/perf_reader.h"
+#include "chromiumos-wide-profiling/perf_recorder.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace {
 const char kDefaultOutputFile[] = "/dev/stdout";

@@ -8,7 +8,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
+#include <fstream>  // NOLINT(readability/streams)
 #include <iomanip>
 #include <sstream>
 #include <zlib.h>
@@ -16,7 +16,7 @@
 #include "base/basictypes.h"
 #include "base/logging.h"
 
-#include "utils.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace {
 
@@ -27,17 +27,17 @@ const int kFileReadSize = 1024;
 // Number of hex digits in a byte.
 const int kNumHexDigitsInByte = 2;
 
-// Initial buffer size when reading compresed files.
+// Initial buffer size when reading compressed files.
 const int kInitialBufferSizeForCompressedFiles = 4096;
 
 }  // namespace
 
 namespace quipper {
 
-long int GetFileSizeFromHandle(FILE* fp) {
-  long int position = ftell(fp);
+int64_t GetFileSizeFromHandle(FILE* fp) {
+  int64_t position = ftell(fp);
   fseek(fp, 0, SEEK_END);
-  long int file_size = ftell(fp);
+  int64_t file_size = ftell(fp);
   // Restore the original file handle position.
   fseek(fp, position, SEEK_SET);
   return file_size;
@@ -63,7 +63,7 @@ uint64 Md5Prefix(const string& input) {
       digest);
   // We need 64-bits / # of bits in a byte.
   stringstream ss;
-  for( size_t i = 0 ; i < sizeof(uint64) ; i++ )
+  for (size_t i = 0; i < sizeof(uint64); i++)
     // The setw(2) and setfill('0') calls are needed to make sure we output 2
     // hex characters for every 8-bits of the hash.
     ss << std::hex << std::setw(2) << std::setfill('0')
@@ -130,11 +130,11 @@ bool FileToBuffer(const string& filename, std::vector<char>* contents) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (!fp)
     return false;
-  long int file_size = quipper::GetFileSizeFromHandle(fp);
+  int64_t file_size = quipper::GetFileSizeFromHandle(fp);
   contents->resize(file_size);
   // Do not read anything if the file exists but is empty.
   if (file_size > 0)
-    CHECK_GT(fread(&(*contents)[0], file_size, 1, fp), 0U);
+    CHECK_GT(fread(contents->data(), file_size, 1, fp), 0U);
   fclose(fp);
   return true;
 }

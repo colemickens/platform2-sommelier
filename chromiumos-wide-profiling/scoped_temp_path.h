@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SCOPED_TEMP_PATH_H_
-#define SCOPED_TEMP_PATH_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_SCOPED_TEMP_PATH_H_
+#define CHROMIUMOS_WIDE_PROFILING_SCOPED_TEMP_PATH_H_
 
 #include <string>
 
 #include "base/basictypes.h"
 
-#include "quipper_string.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace quipper {
 
@@ -45,4 +45,4 @@ class ScopedTempDir : public ScopedTempPath {
 
 }  // namespace quipper
 
-#endif  // SCOPED_TEMP_PATH_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_SCOPED_TEMP_PATH_H_

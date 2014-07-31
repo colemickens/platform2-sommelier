@@ -4,15 +4,15 @@
 
 #include <string>
 
-#include "perf_reader.h"
-#include "perf_serializer.h"
-#include "perf_protobuf_io.h"
-#include "perf_recorder.h"
-#include "quipper_string.h"
-#include "quipper_test.h"
-#include "test_utils.h"
+#include "chromiumos-wide-profiling/perf_protobuf_io.h"
+#include "chromiumos-wide-profiling/perf_reader.h"
+#include "chromiumos-wide-profiling/perf_recorder.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/quipper_test.h"
+#include "chromiumos-wide-profiling/test_utils.h"
 
-namespace quipper{
+namespace quipper {
 
 TEST(PerfRecorderTest, TestRecord) {
   // Read perf data using the PerfReader class.

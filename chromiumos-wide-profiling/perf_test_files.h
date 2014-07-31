@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PERF_TEST_FILES_
-#define PERF_TEST_FILES_
+#ifndef CHROMIUMOS_WIDE_PROFILING_PERF_TEST_FILES_H_
+#define CHROMIUMOS_WIDE_PROFILING_PERF_TEST_FILES_H_
 
 // TODO(sque): Re-enable callgraph testing when longer-term
 // changes to quipper are done.
-//#define TEST_CALLGRAPH
+// #define TEST_CALLGRAPH
 
 namespace perf_test_files {
 
@@ -133,4 +133,4 @@ const char* kPerfDataProtoFiles[] = {
 
 }  // namespace perf_test_files
 
-#endif  // PERF_TEST_FILES_
+#endif  // CHROMIUMOS_WIDE_PROFILING_PERF_TEST_FILES_H_

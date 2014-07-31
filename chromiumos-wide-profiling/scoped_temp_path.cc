@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "scoped_temp_path.h"
+#include "chromiumos-wide-profiling/scoped_temp_path.h"
 
 #include <errno.h>
 #include <unistd.h>

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // TODO(asharif): Move this and other utilities to contrib/ dir.
-#include "conversion_utils.h"
+#include "chromiumos-wide-profiling/conversion_utils.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,10 +15,10 @@
 
 #include "base/logging.h"
 
-#include "perf_protobuf_io.h"
-#include "perf_serializer.h"
-#include "quipper_string.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/perf_protobuf_io.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 using quipper::kPerfFormat;
 using quipper::kProtoTextFormat;

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "address_mapper.h"
+#include "chromiumos-wide-profiling/address_mapper.h"
 
 #include <algorithm>
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 
-#include "quipper_test.h"
+#include "chromiumos-wide-profiling/quipper_test.h"
 
 namespace {
 
@@ -46,19 +46,19 @@ const Range kMapRanges[] = {
 
 // List of real addresses that are not in the above ranges.
 const uint64 kAddressesNotInRanges[] = {
-         0x0,
-       0x100,
-     0x38000,
-     0x88888,
-    0x100000,
-    0x4fffff,
-    0xa20000,
-    0xcc0000,
-    0xffffff,
-   0x3e00000,
-   0xb000000,
-   0xd100000,
-   0xfffffff,
+  0x00000000,
+  0x00000100,
+  0x00038000,
+  0x00088888,
+  0x00100000,
+  0x004fffff,
+  0x00a20000,
+  0x00cc0000,
+  0x00ffffff,
+  0x03e00000,
+  0x0b000000,
+  0x0d100000,
+  0x0fffffff,
   0x1fffffff,
   0x7ffffff0,
   0xdffffff0,
@@ -157,23 +157,20 @@ class AddressMapperTest : public ::testing::Test {
       const uint64 offset = i * (range.size / kNumRangeTestIntervals);
       uint64 addr = range.addr + offset;
       EXPECT_TRUE(mapper_->GetMappedAddress(addr, &mapped_addr));
-      EXPECT_EQ((void*)(expected_mapped_addr + offset), (void*)mapped_addr);
+      EXPECT_EQ(expected_mapped_addr + offset, mapped_addr);
 
       uint64 mapped_offset;
       uint64 mapped_id;
       EXPECT_TRUE(
           mapper_->GetMappedIDAndOffset(addr, &mapped_id, &mapped_offset));
-      EXPECT_EQ(reinterpret_cast<void*>(expected_base_offset + offset),
-                reinterpret_cast<void*>(mapped_offset));
-      EXPECT_EQ(reinterpret_cast<void*>(expected_id),
-                reinterpret_cast<void*>(mapped_id));
+      EXPECT_EQ(expected_base_offset + offset, mapped_offset);
+      EXPECT_EQ(expected_id, mapped_id);
     }
 
     // Check address at end of the range.
     EXPECT_TRUE(mapper_->GetMappedAddress(range.addr + range.size - 1,
                                           &mapped_addr));
-    EXPECT_EQ((void*)(expected_mapped_addr + range.size - 1),
-              (void*)mapped_addr);
+    EXPECT_EQ(expected_mapped_addr + range.size - 1, mapped_addr);
   }
 
   scoped_ptr<AddressMapper> mapper_;
@@ -326,7 +323,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
     bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
     if (kBigRegion.contains(addr)) {
       EXPECT_TRUE(map_success);
-      EXPECT_EQ((void*)(addr - kBigRegion.addr), (void*)mapped_addr);
+      EXPECT_EQ(addr - kBigRegion.addr, mapped_addr);
     } else {
       EXPECT_FALSE(map_success);
     }
@@ -344,7 +341,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
       bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
       if (kBigRegion.contains(addr)) {
         EXPECT_TRUE(map_success);
-        EXPECT_EQ((void*)(addr - kBigRegion.addr), (void*)mapped_addr);
+        EXPECT_EQ(addr - kBigRegion.addr, mapped_addr);
       } else {
         EXPECT_FALSE(map_success);
       }

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "perf_serializer.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
 
 #include <bitset>
 #include <utility>
@@ -12,8 +12,8 @@
 
 #include "base/logging.h"
 
-#include "quipper_string.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

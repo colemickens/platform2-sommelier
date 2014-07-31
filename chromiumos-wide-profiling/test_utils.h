@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TEST_UTILS_H_
-#define TEST_UTILS_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_TEST_UTILS_H_
+#define CHROMIUMOS_WIDE_PROFILING_TEST_UTILS_H_
 
 #include <map>
 #include <string>
@@ -11,8 +11,8 @@
 
 #include "base/basictypes.h"
 
-#include "perf_parser.h"
-#include "quipper_string.h"
+#include "chromiumos-wide-profiling/perf_parser.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace quipper {
 
@@ -30,7 +30,7 @@ string GetPerfPath();
 string GetTestInputFilePath(const string& filename);
 
 // Returns the size of a file in bytes.
-long int GetFileSize(const string& filename);
+int64_t GetFileSize(const string& filename);
 
 // Returns true if the contents of the two files are the same, false otherwise.
 bool CompareFileContents(const string& filename1, const string& filename2);
@@ -50,4 +50,4 @@ PerfParser::Options GetTestOptions();
 
 }  // namespace quipper
 
-#endif  // TEST_UTILS_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_TEST_UTILS_H_

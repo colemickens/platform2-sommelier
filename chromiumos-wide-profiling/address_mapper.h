@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ADDRESS_MAPPER_
-#define ADDRESS_MAPPER_
+#ifndef CHROMIUMOS_WIDE_PROFILING_ADDRESS_MAPPER_H_
+#define CHROMIUMOS_WIDE_PROFILING_ADDRESS_MAPPER_H_
 
 #include <list>
 
@@ -125,4 +125,4 @@ class AddressMapper {
 
 }  // namespace quipper
 
-#endif  // ADDRESS_MAPPER_
+#endif  // CHROMIUMOS_WIDE_PROFILING_ADDRESS_MAPPER_H_

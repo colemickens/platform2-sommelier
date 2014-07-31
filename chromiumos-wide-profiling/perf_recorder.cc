@@ -7,11 +7,11 @@
 #include <sstream>
 #include <vector>
 
-#include "perf_recorder.h"
-#include "perf_serializer.h"
-#include "quipper_string.h"
-#include "scoped_temp_path.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/perf_recorder.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/scoped_temp_path.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

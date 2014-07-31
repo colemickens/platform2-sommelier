@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "test_utils.h"
+#include "chromiumos-wide-profiling/test_utils.h"
 
 #include <string.h>
 
@@ -13,9 +13,9 @@
 
 #include "base/logging.h"
 
-#include "perf_serializer.h"
-#include "quipper_proto.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/quipper_proto.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 using quipper::PerfDataProto;
 using quipper::PerfSerializer;
@@ -141,11 +141,11 @@ const char* kSupportedMetadata[] = {
   NULL,
 };
 
-long int GetFileSize(const string& filename) {
+int64_t GetFileSize(const string& filename) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (!fp)
     return -1;
-  long int file_size = GetFileSizeFromHandle(fp);
+  int64_t file_size = GetFileSizeFromHandle(fp);
   fclose(fp);
   return file_size;
 }

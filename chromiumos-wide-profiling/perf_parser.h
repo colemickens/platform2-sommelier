@@ -2,26 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PERF_PARSER_H_
-#define PERF_PARSER_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_PERF_PARSER_H_
+#define CHROMIUMOS_WIDE_PROFILING_PERF_PARSER_H_
 
 #include <map>
+#include <set>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "base/basictypes.h"
 #include "base/logging.h"
 
-#include "perf_reader.h"
+#include "chromiumos-wide-profiling/perf_reader.h"
 
 namespace quipper {
-
-namespace {
-
-// By default, most samples must be properly mapped in order for sample mapping
-// to be considered successful.
-const float kDefaultSampleThreshold = 95.0f;
-
-}  // namespace
 
 class AddressMapper;
 
@@ -127,21 +122,19 @@ class PerfParser : public PerfReader {
 
   struct Options {
     // For synthetic address mapping.
-    bool do_remap;
+    bool do_remap = false;
     // Set this flag to discard non-sample events that don't have any associated
     // sample events. e.g. MMAP regions with no samples in them.
-    bool discard_unused_events;
+    bool discard_unused_events = false;
     // When mapping perf sample events, at least this percentage of them must be
     // successfully mapped in order for ProcessEvents() to return true.
-    float sample_mapping_percentage_threshold;
-
-    Options() : do_remap(false),
-                discard_unused_events(false),
-                sample_mapping_percentage_threshold(kDefaultSampleThreshold) {}
+    // By default, most samples must be properly mapped in order for sample
+    // mapping to be considered successful.
+    float sample_mapping_percentage_threshold = 95.0f;
   };
 
   // Constructor that takes in options at PerfParser creation time.
-  PerfParser(const Options& options);
+  explicit PerfParser(const Options& options);
 
   // Pass in a struct containing various options.
   void set_options(const Options& options);
@@ -233,4 +226,4 @@ class PerfParser : public PerfReader {
 
 }  // namespace quipper
 
-#endif  // PERF_PARSER_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_PERF_PARSER_H_

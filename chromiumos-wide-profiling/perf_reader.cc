@@ -13,9 +13,9 @@
 
 #include "base/logging.h"
 
-#include "perf_reader.h"
-#include "quipper_string.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/perf_reader.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PERF_READER_H_
-#define PERF_READER_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_PERF_READER_H_
+#define CHROMIUMOS_WIDE_PROFILING_PERF_READER_H_
 
 #include <map>
 #include <set>
@@ -12,8 +12,8 @@
 
 #include "base/basictypes.h"
 
-#include "quipper_string.h"
-#include "kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace quipper {
 
@@ -278,4 +278,4 @@ class PerfReader {
 
 }  // namespace quipper
 
-#endif  // PERF_READER_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_PERF_READER_H_

@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef UTILS_H_
-#define UTILS_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_UTILS_H_
+#define CHROMIUMOS_WIDE_PROFILING_UTILS_H_
 
 #include <string>
 #include <vector>
 
 #include "base/basictypes.h"
 
-#include "kernel/perf_internals.h"
-#include "quipper_string.h"
+#include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace quipper {
 
 // Given a valid open file handle |fp|, returns the size of the file.
-long int GetFileSizeFromHandle(FILE* fp);
+int64_t GetFileSizeFromHandle(FILE* fp);
 
 event_t* CallocMemoryForEvent(size_t size);
 
@@ -84,4 +84,4 @@ void TrimWhitespace(string* str);
 
 }  // namespace quipper
 
-#endif  // UTILS_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_UTILS_H_

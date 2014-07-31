@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef QUIPPER_STRING_
-#define QUIPPER_STRING_
+#ifndef CHROMIUMOS_WIDE_PROFILING_QUIPPER_STRING_H_
+#define CHROMIUMOS_WIDE_PROFILING_QUIPPER_STRING_H_
+
+#include <string>
 
 #ifndef HAS_GLOBAL_STRING
 using std::string;
 using std::stringstream;
 #endif
 
-#endif  // QUIPPER_STRING_
+#endif  // CHROMIUMOS_WIDE_PROFILING_QUIPPER_STRING_H_

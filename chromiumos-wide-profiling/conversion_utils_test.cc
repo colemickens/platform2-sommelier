@@ -4,12 +4,12 @@
 
 #include "base/logging.h"
 
-#include "conversion_utils.h"
-#include "perf_test_files.h"
-#include "quipper_test.h"
-#include "scoped_temp_path.h"
-#include "test_utils.h"
-#include "utils.h"
+#include "chromiumos-wide-profiling/conversion_utils.h"
+#include "chromiumos-wide-profiling/perf_test_files.h"
+#include "chromiumos-wide-profiling/quipper_test.h"
+#include "chromiumos-wide-profiling/scoped_temp_path.h"
+#include "chromiumos-wide-profiling/test_utils.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace {
 
