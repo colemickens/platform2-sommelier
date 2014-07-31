@@ -67,4 +67,4 @@ class AcpiWakeupHelper {
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_ACPI_WAKEUP_HELPER_H
+#endif  // POWER_MANAGER_POWERD_SYSTEM_ACPI_WAKEUP_HELPER_H_
