@@ -100,6 +100,7 @@ TEST(RandomSelector, GenerateTest) {
 }
 
 // Ensure RandomSelector is able to read odds from a file.
+#if 0  // Appears to be flaky: http://crbug.com/399579
 TEST(RandomSelector, SetOddsFromFileTest) {
   RandomSelector random_selector;
   random_selector.SetOddsFromFile(std::string(kOddsFilename));
@@ -111,6 +112,7 @@ TEST(RandomSelector, SetOddsFromFileTest) {
   GenerateResults(odds.size(), &random_selector, &results);
   CheckResultsAgainstOdds(odds, results);
 }
+#endif
 
 // Ensure RandomSelector is able to delete odds that it has previously stored.
 TEST(RandomSelector, RemoveEntriesTest) {
