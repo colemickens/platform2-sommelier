@@ -84,38 +84,17 @@ class DeviceManager {
                    const std::vector<uint32_t> file_ids,
                    std::vector<FileEntry>* out);
 
-  // TODO(thestig) Deprecated, remove.
-  // Reads entries from |file_id| on |storage_name|.
-  // |file_id| is the unique identifier for a directory on |storage_name|.
-  // For the root node, pass in |kRootFileId|.
-  // On success, returns true and writes the file entries of |file_id| into
-  // |out|. Otherwise returns false.
-  bool ReadDirectoryById(const std::string& storage_name,
-                         uint32_t file_id,
-                         std::vector<FileEntry>* out);
-
-  // TODO(thestig) Rename to ReadFileChunk().
   // Reads the contents of |file_id| on |storage_name|.
   // Reads |count| bytes starting at |offset|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
   // |file_id| should never refer to the root node.
   // On success, returns true and writes the file contents of |file_id| into
   // |out|. Otherwise returns false.
-  bool ReadFileChunkById(const std::string& storage_name,
-                         uint32_t file_id,
-                         uint32_t offset,
-                         uint32_t count,
-                         std::vector<uint8_t>* out);
-
-  // TODO(thestig) Deprecated, remove.
-  // Reads the metadata for |file_id| on |storage_name|.
-  // |file_id| is the unique identifier for a directory on |storage_name|.
-  // For the root node, pass in |kRootFileId|.
-  // On success, returns true and writes the metadata of |file_id| into
-  // |out|. Otherwise returns false.
-  bool GetFileInfoById(const std::string& storage_name,
-                       uint32_t file_id,
-                       FileEntry* out);
+  bool ReadFileChunk(const std::string& storage_name,
+                     uint32_t file_id,
+                     uint32_t offset,
+                     uint32_t count,
+                     std::vector<uint8_t>* out);
 
  protected:
   // Used in testing to add dummy storages.

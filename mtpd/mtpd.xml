@@ -86,21 +86,7 @@
       </arg>
     </method>
 
-    <!-- TODO(thestig): Remove this deprecated method -->
-    <method name="ReadDirectoryById">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="fileId" type="u" direction="in">
-      </arg>
-      <arg name="results" type="ay" direction="out">
-      </arg>
-    </method>
-
-    <!-- TODO(thestig): Rename to ReadFileChunk -->
-    <method name="ReadFileChunkById">
+    <method name="ReadFileChunk">
       <arg name="handle" type="s" direction="in">
       <tp:docstring>
         Handle to the storage from OpenStorage.
@@ -119,19 +105,6 @@
       </tp:docstring>
       </arg>
       <arg name="data" type="ay" direction="out">
-      </arg>
-    </method>
-
-    <!-- TODO(thestig): Remove this deprecated method -->
-    <method name="GetFileInfoById">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="fileId" type="u" direction="in">
-      </arg>
-      <arg name="info" type="ay" direction="out">
       </arg>
     </method>
 

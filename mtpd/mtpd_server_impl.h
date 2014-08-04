@@ -45,17 +45,11 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   virtual std::vector<uint8_t> GetFileInfo(const std::string& handle,
                                            const std::vector<uint32_t>& fileIds,
                                            DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint8_t> ReadDirectoryById(const std::string& handle,
-                                                 const uint32_t& fileId,
-                                                 DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint8_t> ReadFileChunkById(const std::string& handle,
-                                                 const uint32_t& fileId,
-                                                 const uint32_t& offset,
-                                                 const uint32_t& count,
-                                                 DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint8_t> GetFileInfoById(const std::string& handle,
-                                               const uint32_t& fileId,
-                                               DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint8_t> ReadFileChunk(const std::string& handle,
+                                             const uint32_t& fileId,
+                                             const uint32_t& offset,
+                                             const uint32_t& count,
+                                             DBus::Error& error) OVERRIDE;
   virtual bool IsAlive(DBus::Error& error) OVERRIDE;
 
   // DeviceEventDelegate implementation.

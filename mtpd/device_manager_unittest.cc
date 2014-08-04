@@ -81,9 +81,13 @@ TEST(DeviceManager, GetFileInfoForSynthesizedRootNode) {
   bool ret = device_manager.AddStorage(kDummyStorageName, dummy_storage_info);
   EXPECT_TRUE(ret);
 
-  FileEntry file_entry;
-  ret = device_manager.GetFileInfoById(kDummyStorageName, 0, &file_entry);
+  std::vector<FileEntry> file_entries;
+  std::vector<uint32_t> file_ids;
+  file_ids.push_back(0);
+  ret = device_manager.GetFileInfo(kDummyStorageName, file_ids, &file_entries);
   EXPECT_TRUE(ret);
+  ASSERT_EQ(1U, file_entries.size());
+  const FileEntry& file_entry = file_entries[0];
 
   EXPECT_EQ(0, file_entry.item_id());
   EXPECT_EQ(0, file_entry.parent_id());
@@ -104,8 +108,8 @@ TEST(DeviceManager, ReadFileFromSynthesizedRootNodeFails) {
   EXPECT_TRUE(ret);
 
   std::vector<uint8_t> data;
-  ret = device_manager.ReadFileChunkById(kDummyStorageName, 0 /* node id */,
-                                         0 /* offset */, 1 /* byte */, &data);
+  ret = device_manager.ReadFileChunk(kDummyStorageName, 0 /* node id */,
+                                     0 /* offset */, 1 /* byte */, &data);
   EXPECT_FALSE(ret);
   EXPECT_TRUE(data.empty());
 }

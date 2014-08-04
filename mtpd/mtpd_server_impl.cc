@@ -128,32 +128,13 @@ std::vector<uint8_t> MtpdServer::GetFileInfo(
   return FileEntry::FileEntriesToDBusFormat(file_info);
 }
 
-std::vector<uint8_t> MtpdServer::ReadDirectoryById(const std::string& handle,
-                                                   const uint32_t& fileId,
-                                                   DBus::Error& error) {
-  std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty()) {
-    SetInvalidHandleError(handle, &error);
-    return FileEntry::EmptyFileEntriesToDBusFormat();
-  }
-
-  std::vector<FileEntry> directory_listing;
-  if (!device_manager_.ReadDirectoryById(storage_name,
-                                         fileId,
-                                         &directory_listing)) {
-    error.set(kMtpdServiceError, "ReadDirectoryById failed");
-    return FileEntry::EmptyFileEntriesToDBusFormat();
-  }
-  return FileEntry::FileEntriesToDBusFormat(directory_listing);
-}
-
-std::vector<uint8_t> MtpdServer::ReadFileChunkById(const std::string& handle,
-                                                   const uint32_t& fileId,
-                                                   const uint32_t& offset,
-                                                   const uint32_t& count,
-                                                   DBus::Error& error) {
+std::vector<uint8_t> MtpdServer::ReadFileChunk(const std::string& handle,
+                                               const uint32_t& fileId,
+                                               const uint32_t& offset,
+                                               const uint32_t& count,
+                                               DBus::Error& error) {
   if (count > kMaxReadCount || count == 0) {
-    error.set(kMtpdServiceError, "Invalid count for ReadFileChunkById");
+    error.set(kMtpdServiceError, "Invalid count for ReadFileChunk");
     return std::vector<uint8_t>();
   }
   std::string storage_name = LookupHandle(handle);
@@ -161,29 +142,12 @@ std::vector<uint8_t> MtpdServer::ReadFileChunkById(const std::string& handle,
     return InvalidHandle<std::vector<uint8_t> >(handle, &error);
 
   std::vector<uint8_t> file_contents;
-  if (!device_manager_.ReadFileChunkById(storage_name, fileId, offset, count,
-                                         &file_contents)) {
-    error.set(kMtpdServiceError, "ReadFileChunkById failed");
+  if (!device_manager_.ReadFileChunk(storage_name, fileId, offset, count,
+                                     &file_contents)) {
+    error.set(kMtpdServiceError, "ReadFileChunk failed");
     return std::vector<uint8_t>();
   }
   return file_contents;
-}
-
-std::vector<uint8_t> MtpdServer::GetFileInfoById(const std::string& handle,
-                                                 const uint32_t& fileId,
-                                                 DBus::Error& error) {
-  std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty()) {
-    SetInvalidHandleError(handle, &error);
-    return FileEntry().ToDBusFormat();
-  }
-
-  FileEntry entry;
-  if (!device_manager_.GetFileInfoById(storage_name, fileId, &entry)) {
-    error.set(kMtpdServiceError, "GetFileInfoById failed");
-    return FileEntry().ToDBusFormat();
-  }
-  return entry.ToDBusFormat();
 }
 
 bool MtpdServer::IsAlive(DBus::Error& error) {

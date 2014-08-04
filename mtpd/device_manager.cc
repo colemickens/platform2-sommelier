@@ -232,38 +232,16 @@ bool DeviceManager::GetFileInfo(const std::string& storage_name,
   return true;
 }
 
-bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
-                                      uint32_t file_id,
-                                      std::vector<FileEntry>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-  if (file_id == kRootFileId)
-    file_id = kPtpGohRootParent;
-  return ReadDirectory(mtp_device, storage_id, file_id, out);
-}
-
-bool DeviceManager::ReadFileChunkById(const std::string& storage_name,
-                                      uint32_t file_id,
-                                      uint32_t offset,
-                                      uint32_t count,
-                                      std::vector<uint8_t>* out) {
+bool DeviceManager::ReadFileChunk(const std::string& storage_name,
+                                  uint32_t file_id,
+                                  uint32_t offset,
+                                  uint32_t count,
+                                  std::vector<uint8_t>* out) {
   LIBMTP_mtpdevice_t* mtp_device = NULL;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
   return ReadFileChunk(mtp_device, file_id, offset, count, out);
-}
-
-bool DeviceManager::GetFileInfoById(const std::string& storage_name,
-                                    uint32_t file_id,
-                                    FileEntry* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-  return GetFileInfoInternal(mtp_device, storage_id, file_id, out);
 }
 
 bool DeviceManager::AddStorageForTest(const std::string& storage_name,
