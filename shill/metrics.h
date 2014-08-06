@@ -266,6 +266,7 @@ class Metrics {
 
   enum UserInitiatedEvent {
     kUserInitiatedEventWifiScan = 0,
+    kUserInitiatedEventReserved,
     kUserInitiatedEventMax
   };
 
