@@ -20,7 +20,7 @@
         'libchromeos-bootstat-<(libbase_ver)',
         'libchromeos-core-<(libbase_ver)',
         'libchromeos-cryptohome-<(libbase_ver)',
-        'libchromeos-minijail',
+        'libchromeos-minijail-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
         'libpolicy-<(libbase_ver)',
       ],
@@ -92,7 +92,7 @@
       ],
     },
     {
-      'target_name': 'libchromeos-minijail',
+      'target_name': 'libchromeos-minijail-<(libbase_ver)',
       'type': 'shared_library',
       'libraries': [
         '-lminijail',

@@ -9,10 +9,10 @@ set -e
 OUT=$1
 shift
 for v; do
-  sublibs=( 'bootstat' 'core' 'cryptohome' 'ui' )
+  sublibs=( 'bootstat' 'core' 'cryptohome' 'minijail' 'ui' )
   sublibs=("${sublibs[@]/#/-lchromeos-}")
   sublibs="${sublibs[@]/%/-${v}}"
-  echo "GROUP ( AS_NEEDED ( ${sublibs} -lchromeos-minijail ) )" > "${OUT}"/lib/libchromeos-${v}.so
+  echo "GROUP ( AS_NEEDED ( ${sublibs} ) )" > "${OUT}"/lib/libchromeos-${v}.so
 
   deps=$(<"${OUT}"/gen/libchromeos-${v}-deps.txt)
   pc="${OUT}"/lib/libchromeos-${v}.pc
