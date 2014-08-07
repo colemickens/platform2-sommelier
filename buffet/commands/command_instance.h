@@ -13,15 +13,23 @@
 
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_utils.h"
+#include "buffet/error.h"
+
+namespace base {
+class Value;
+}  // namespace base
 
 namespace buffet {
+
+class CommandDictionary;
 
 class CommandInstance final {
  public:
   // Construct a command instance given the full command |name| which must
   // be in format "<package_name>.<command_name>", a command |category| and
   // a list of parameters and their values specified in |parameters|.
-  CommandInstance(const std::string& name, const std::string& category,
+  CommandInstance(const std::string& name,
+                  const std::string& category,
                   const native_types::Object& parameters);
 
   // Returns the full name of the command.
@@ -33,6 +41,15 @@ class CommandInstance final {
   // Finds a command parameter value by parameter |name|. If the parameter
   // with given name does not exist, returns null shared_ptr.
   std::shared_ptr<const PropValue> FindParameter(const std::string& name) const;
+
+  // Parses a command instance JSON definition and constructs a CommandInstance
+  // object, checking the JSON |value| against the command definition schema
+  // found in command |dictionary|. On error, returns null unique_ptr and
+  // fills in error details in |error|.
+  static std::unique_ptr<const CommandInstance> FromJson(
+      const base::Value* value,
+      const CommandDictionary& dictionary,
+      ErrorPtr* error);
 
  private:
   // Full command name as "<package_name>.<command_name>".

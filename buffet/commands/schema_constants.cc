@@ -22,6 +22,7 @@ const char kUnknownProperty[] = "unexpected_parameter";
 const char kInvalidObjectSchema[] = "invalid_object_schema";
 const char kDuplicateCommandDef[] = "duplicate_command_definition";
 const char kInvalidCommandName[] = "invalid_command_name";
+const char kCommandFailed[] = "command_failed";
 }  // namespace commands
 }  // namespace errors
 
@@ -42,6 +43,7 @@ const char kOneOf_MetaSchema[] = "schema";
 
 const char kObject_Properties[] = "properties";
 
+const char kCommand_Name[] = "name";
 const char kCommand_Parameters[] = "parameters";
 }  // namespace attributes
 }  // namespace commands

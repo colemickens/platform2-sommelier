@@ -26,8 +26,10 @@ class CommandQueue final {
   size_t GetCount() const { return map_.size(); }
 
   // Adds a new command to the queue. Each command in the queue has a unique
-  // ID that identifies that command instance. The ID string of the added
-  // command is returned by this method.
+  // ID that identifies that command instance in this queue. This identifier
+  // has no relation to any GCD command identifiers or anything else. Just a
+  // unique key in this queue class.
+  // The ID string of the added command is returned by this method.
   std::string Add(std::unique_ptr<const CommandInstance> instance);
 
   // Removes a command identified by |id| from the queue. Returns a unique
