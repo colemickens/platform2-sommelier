@@ -7,6 +7,7 @@
 
 #include <glib.h>
 #include <pthread.h>
+#include <stdint.h>
 
 #include <map>
 #include <set>
@@ -114,7 +115,7 @@ class ScopedGSource {
   }
 
  private:
-  uint32 id_;
+  uint32_t id_;
 
   DISALLOW_COPY_AND_ASSIGN(ScopedGSource);
 };
