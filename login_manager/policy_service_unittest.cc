@@ -4,6 +4,8 @@
 
 #include "login_manager/policy_service.h"
 
+#include <stdint.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -43,16 +45,14 @@ class PolicyServiceTest : public testing::Test {
       : fake_data_("fake_data"),
         fake_sig_("fake_signature"),
         fake_key_("fake_key"),
-        fake_key_sig_("fake_key_signature") {
-  }
+        fake_key_sig_("fake_key_signature") {}
 
   virtual void SetUp() {
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_.reset(new PolicyService(scoped_ptr<PolicyStore>(store_),
-                                     &key_,
-                                     message_loop));
+    service_.reset(new PolicyService(
+        scoped_ptr<PolicyStore>(store_), &key_, message_loop));
     service_->set_delegate(&delegate_);
   }
 
@@ -71,44 +71,42 @@ class PolicyServiceTest : public testing::Test {
       policy_proto_.set_new_public_key_signature(key_signature);
 
     ASSERT_TRUE(policy_proto_.SerializeToString(&policy_str_));
-    policy_data_ = reinterpret_cast<const uint8*>(policy_str_.c_str());
+    policy_data_ = reinterpret_cast<const uint8_t*>(policy_str_.c_str());
     policy_len_ = policy_str_.size();
   }
 
   void ExpectVerifyAndSetPolicy(Sequence* sequence) {
-    EXPECT_CALL(key_, Verify(CastEq(fake_data_), fake_data_.size(),
-                             CastEq(fake_sig_), fake_sig_.size()))
+    EXPECT_CALL(key_,
+                Verify(CastEq(fake_data_),
+                       fake_data_.size(),
+                       CastEq(fake_sig_),
+                       fake_sig_.size()))
         .InSequence(*sequence)
         .WillOnce(Return(true));
-    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_))).Times(1)
-        .InSequence(*sequence);
+    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_))).Times(1).InSequence(
+        *sequence);
   }
 
   void ExpectPersistKey(Sequence* sequence) {
-    EXPECT_CALL(key_, Persist())
-        .InSequence(*sequence)
-        .WillOnce(Return(true));
+    EXPECT_CALL(key_, Persist()).InSequence(*sequence).WillOnce(Return(true));
     EXPECT_CALL(delegate_, OnKeyPersisted(true));
   }
 
   void ExpectPersistPolicy(Sequence* sequence) {
-    EXPECT_CALL(*store_, Persist())
-        .InSequence(*sequence)
-        .WillOnce(Return(true));
+    EXPECT_CALL(*store_, Persist()).InSequence(*sequence).WillOnce(
+        Return(true));
     EXPECT_CALL(completion_, ReportSuccess()).Times(1);
     EXPECT_CALL(delegate_, OnPolicyPersisted(true));
   }
 
   void ExpectKeyEqualsFalse(Sequence* sequence) {
-    EXPECT_CALL(key_, Equals(_))
-        .InSequence(*sequence)
-        .WillRepeatedly(Return(false));
+    EXPECT_CALL(key_, Equals(_)).InSequence(*sequence).WillRepeatedly(
+        Return(false));
   }
 
   void ExpectKeyPopulated(Sequence* sequence, bool return_value) {
-    EXPECT_CALL(key_, IsPopulated())
-        .InSequence(*sequence)
-        .WillRepeatedly(Return(return_value));
+    EXPECT_CALL(key_, IsPopulated()).InSequence(*sequence).WillRepeatedly(
+        Return(return_value));
   }
 
   void ExpectStoreFail(int flags, const std::string& code) {
@@ -118,8 +116,8 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(completion_, ReportSuccess()).Times(0);
     EXPECT_CALL(completion_, ReportFailure(_)).Times(1);
 
-    EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_,
-                                 flags));
+    EXPECT_FALSE(
+        service_->Store(policy_data_, policy_len_, &completion_, flags));
     base::RunLoop().RunUntilIdle();
   }
 
@@ -138,8 +136,8 @@ class PolicyServiceTest : public testing::Test {
   // Various representations of the policy protobuf.
   em::PolicyFetchResponse policy_proto_;
   std::string policy_str_;
-  const uint8* policy_data_;
-  uint32 policy_len_;
+  const uint8_t* policy_data_;
+  uint32_t policy_len_;
 
   base::MessageLoop loop_;
 
@@ -165,15 +163,18 @@ TEST_F(PolicyServiceTest, Store) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(CastEq(fake_data_), fake_data_.size(),
-                            CastEq(fake_sig_), fake_sig_.size()))
+  EXPECT_CALL(key_,
+              Verify(CastEq(fake_data_),
+                     fake_data_.size(),
+                     CastEq(fake_sig_),
+                     fake_sig_.size()))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
-                              kAllKeyFlags));
+  EXPECT_TRUE(
+      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(&key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -188,8 +189,11 @@ TEST_F(PolicyServiceTest, StoreWrongSignature) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(CastEq(fake_data_), fake_data_.size(),
-                            CastEq(fake_sig_), fake_sig_.size()))
+  EXPECT_CALL(key_,
+              Verify(CastEq(fake_data_),
+                     fake_data_.size(),
+                     CastEq(fake_sig_),
+                     fake_sig_.size()))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
@@ -214,8 +218,11 @@ TEST_F(PolicyServiceTest, StoreNoKey) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_, Verify(CastEq(fake_data_), fake_data_.size(),
-                            CastEq(fake_sig_), fake_sig_.size()))
+  EXPECT_CALL(key_,
+              Verify(CastEq(fake_data_),
+                     fake_data_.size(),
+                     CastEq(fake_sig_),
+                     fake_sig_.size()))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
@@ -234,8 +241,8 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
-                              kAllKeyFlags));
+  EXPECT_TRUE(
+      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(&key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -257,8 +264,8 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
-                              PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, &completion_, PolicyService::KEY_CLOBBER));
 
   Mock::VerifyAndClearExpectations(&key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -272,14 +279,13 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, "");
 
   Sequence s1, s2, s3;
-  EXPECT_CALL(key_, Equals(fake_key_))
-      .InSequence(s1)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Equals(fake_key_)).InSequence(s1).WillRepeatedly(
+      Return(true));
   ExpectKeyPopulated(&s2, true);
   ExpectVerifyAndSetPolicy(&s3);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
-                              kAllKeyFlags));
+  EXPECT_TRUE(
+      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(&key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -310,8 +316,8 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
-                              kAllKeyFlags));
+  EXPECT_TRUE(
+      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(&key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -333,8 +339,8 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
-                              PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, &completion_, PolicyService::KEY_CLOBBER));
 
   Mock::VerifyAndClearExpectations(&key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -380,14 +386,13 @@ TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
 TEST_F(PolicyServiceTest, Retrieve) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
-  EXPECT_CALL(*store_, Get())
-      .WillOnce(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, Get()).WillOnce(ReturnRef(policy_proto_));
 
-  std::vector<uint8> policy_data;
+  std::vector<uint8_t> policy_data;
   EXPECT_TRUE(service_->Retrieve(&policy_data));
   ASSERT_EQ(policy_str_.size(), policy_data.size());
-  EXPECT_TRUE(std::equal(policy_str_.begin(), policy_str_.end(),
-                         policy_data.begin()));
+  EXPECT_TRUE(
+      std::equal(policy_str_.begin(), policy_str_.end(), policy_data.begin()));
 }
 
 TEST_F(PolicyServiceTest, PersistPolicySyncSuccess) {

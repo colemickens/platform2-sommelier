@@ -4,6 +4,8 @@
 
 #include "login_manager/device_local_account_policy_service.h"
 
+#include <stdint.h>
+
 #include <base/file_util.h>
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
@@ -24,12 +26,12 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-const base::FilePath::CharType
-DeviceLocalAccountPolicyService::kPolicyDir[] = FILE_PATH_LITERAL("policy");
+const base::FilePath::CharType DeviceLocalAccountPolicyService::kPolicyDir[] =
+    FILE_PATH_LITERAL("policy");
 
 const base::FilePath::CharType
-DeviceLocalAccountPolicyService::kPolicyFileName[] =
-    FILE_PATH_LITERAL("policy");
+    DeviceLocalAccountPolicyService::kPolicyFileName[] =
+        FILE_PATH_LITERAL("policy");
 
 DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
     const base::FilePath& device_local_account_dir,
@@ -44,10 +46,11 @@ DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {
   STLDeleteValues(&policy_map_);
 }
 
-bool DeviceLocalAccountPolicyService::Store(const std::string& account_id,
-                                      const uint8* policy_data,
-                                      uint32 policy_data_size,
-                                      PolicyService::Completion* completion) {
+bool DeviceLocalAccountPolicyService::Store(
+    const std::string& account_id,
+    const uint8_t* policy_data,
+    uint32_t policy_data_size,
+    PolicyService::Completion* completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
     PolicyService::Error error(dbus_error::kInvalidAccount,
@@ -62,7 +65,7 @@ bool DeviceLocalAccountPolicyService::Store(const std::string& account_id,
 
 bool DeviceLocalAccountPolicyService::Retrieve(
     const std::string& account_id,
-    std::vector<uint8>* policy_data) {
+    std::vector<uint8_t>* policy_data) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service)
     return false;
@@ -79,7 +82,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   const DeviceLocalAccountList& list(
       device_settings.device_local_accounts().account());
   for (DeviceLocalAccountList::const_iterator account(list.begin());
-       account != list.end(); ++account) {
+       account != list.end();
+       ++account) {
     std::string account_key;
     if (account->has_account_id()) {
       account_key = GetAccountKey(account->account_id());
@@ -98,8 +102,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   MigrateUppercaseDirs();
 
   // Purge all existing on-disk accounts that are no longer defined.
-  base::FileEnumerator enumerator(device_local_account_dir_, false,
-                                  base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator enumerator(
+      device_local_account_dir_, false, base::FileEnumerator::DIRECTORIES);
   base::FilePath subdir;
   while (!(subdir = enumerator.Next()).empty()) {
     if (IsValidAccountKey(subdir.BaseName().value()) &&
@@ -112,8 +116,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
 }
 
 bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
-  base::FileEnumerator enumerator(device_local_account_dir_, false,
-                                  base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator enumerator(
+      device_local_account_dir_, false, base::FileEnumerator::DIRECTORIES);
   base::FilePath subdir;
 
   while (!(subdir = enumerator.Next()).empty()) {
@@ -141,9 +145,9 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
   if (!entry->second) {
     const base::FilePath policy_path =
         device_local_account_dir_
-            .AppendASCII(key)
-            .Append(kPolicyDir)
-            .Append(kPolicyFileName);
+        .AppendASCII(key)
+        .Append(kPolicyDir)
+        .Append(kPolicyFileName);
     if (!base::CreateDirectory(policy_path.DirName())) {
       LOG(ERROR) << "Failed to create directory for " << policy_path.value();
       return NULL;
@@ -155,8 +159,7 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
       LOG(WARNING) << "Failed to load policy for device-local account "
                    << account_id;
     }
-    entry->second =
-        new PolicyService(store.Pass(), owner_key_, main_loop_);
+    entry->second = new PolicyService(store.Pass(), owner_key_, main_loop_);
   }
 
   return entry->second;

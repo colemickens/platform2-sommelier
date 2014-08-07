@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
@@ -17,7 +18,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/files/important_file_writer.h>
@@ -32,8 +32,10 @@ using std::vector;
 
 namespace login_manager {
 
-SystemUtilsImpl::SystemUtilsImpl() {}
-SystemUtilsImpl::~SystemUtilsImpl() {}
+SystemUtilsImpl::SystemUtilsImpl() {
+}
+SystemUtilsImpl::~SystemUtilsImpl() {
+}
 
 int SystemUtilsImpl::IsDevMode() {
   int dev_mode_code = system("crossystem 'cros_debug?0'");
@@ -74,8 +76,8 @@ bool SystemUtilsImpl::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
 
   DCHECK_GE(timeout.InSeconds(), 0);
   DCHECK_LE(timeout.InSeconds(),
-            static_cast<int64>(std::numeric_limits<int>::max()));
-  alarm(static_cast<int32>(timeout.InSeconds()));
+            static_cast<int64_t>(std::numeric_limits<int>::max()));
+  alarm(static_cast<int32_t>(timeout.InSeconds()));
   do {
     errno = 0;
     ret = ::waitpid(child_spec, NULL, 0);
@@ -88,19 +90,18 @@ bool SystemUtilsImpl::ChildIsGone(pid_t child_spec, base::TimeDelta timeout) {
 }
 
 bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                                  int32* file_size_32) {
+                                                  int32_t* file_size_32) {
   // Get the file size (must fit in a 32 bit int for NSS).
-  int64 file_size;
+  int64_t file_size;
   if (!base::GetFileSize(file, &file_size)) {
     LOG(ERROR) << "Could not get size of " << file.value();
     return false;
   }
-  if (file_size > static_cast<int64>(std::numeric_limits<int>::max())) {
-    LOG(ERROR) << file.value() << "is "
-               << file_size << "bytes!!!  Too big!";
+  if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
+    LOG(ERROR) << file.value() << "is " << file_size << "bytes!!!  Too big!";
     return false;
   }
-  *file_size_32 = static_cast<int32>(file_size);
+  *file_size_32 = static_cast<int32_t>(file_size);
   return true;
 }
 
@@ -130,8 +131,7 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
   // It will be made write-only below; we need to be able to read it
   // when trying to create a unique name inside it.
   base::FilePath temp_dir_path;
-  if (!base::CreateNewTempDirectory(
-          FILE_PATH_LITERAL(""), &temp_dir_path)) {
+  if (!base::CreateNewTempDirectory(FILE_PATH_LITERAL(""), &temp_dir_path)) {
     PLOG(ERROR) << "Can't create temp dir";
     return false;
   }
@@ -161,9 +161,9 @@ bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
 
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
                                       const std::string& data) {
-  return (base::ImportantFileWriter::WriteFileAtomically(filename, data) &&
-          base::SetPosixFilePermissions(filename,
-                                        (S_IRUSR | S_IWUSR | S_IROTH)));
+  return (
+      base::ImportantFileWriter::WriteFileAtomically(filename, data) &&
+      base::SetPosixFilePermissions(filename, (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
 void SystemUtilsImpl::AppendToClobberLog(const char* msg) const {

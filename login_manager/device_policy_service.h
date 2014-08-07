@@ -5,12 +5,13 @@
 #ifndef LOGIN_MANAGER_DEVICE_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_DEVICE_POLICY_SERVICE_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/scoped_nss_types.h>
@@ -57,20 +58,18 @@ class DevicePolicyService : public PolicyService {
   // - If policy claims |current_user| is the device owner but she doesn't
   //   appear to have the owner key, run key mitigation.
   // Returns true on success. Fills in |error| upon encountering an error.
-  virtual bool CheckAndHandleOwnerLogin(
-      const std::string& current_user,
-      PK11SlotInfo* module,
-      bool* is_owner,
-      Error* error);
+  virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
+                                        PK11SlotInfo* module,
+                                        bool* is_owner,
+                                        Error* error);
 
   // Ensures that the public key in |buf| is legitimately paired with a private
   // key held by the current user, signs and stores some ownership-related
   // metadata, and then stores this key off as the new device owner key. Returns
   // true if successful, false otherwise
-  virtual bool ValidateAndStoreOwnerKey(
-      const std::string& current_user,
-      const std::string& buf,
-      PK11SlotInfo* module);
+  virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
+                                        const std::string& buf,
+                                        PK11SlotInfo* module);
 
   // Checks whether the key is missing.
   virtual bool KeyMissing();
@@ -91,12 +90,11 @@ class DevicePolicyService : public PolicyService {
   virtual std::vector<std::string> GetStartUpFlags();
 
   // Returns the currently active device settings.
-  virtual const enterprise_management::ChromeDeviceSettingsProto&
-      GetSettings();
+  virtual const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
 
   // PolicyService:
-  virtual bool Store(const uint8* policy_blob,
-                     uint32 len,
+  virtual bool Store(const uint8_t* policy_blob,
+                     uint32_t len,
                      Completion* completion,
                      int flags) OVERRIDE;
 
@@ -145,7 +143,7 @@ class DevicePolicyService : public PolicyService {
   // Checks the user's NSS database to see if she has the private key.
   // Returns a pointer to it if so.
   crypto::RSAPrivateKey* GetOwnerKeyForGivenUser(
-      const std::vector<uint8>& key,
+      const std::vector<uint8_t>& key,
       PK11SlotInfo* module,
       Error* error);
 

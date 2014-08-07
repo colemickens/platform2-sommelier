@@ -4,10 +4,11 @@
 
 #include "login_manager/user_policy_service.h"
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/message_loop/message_loop.h>
@@ -38,10 +39,7 @@ namespace login_manager {
 class UserPolicyServiceTest : public ::testing::Test {
  public:
   UserPolicyServiceTest()
-      : fake_signature_("fake_signature"),
-        policy_data_(NULL),
-        policy_len_(0) {
-  }
+      : fake_signature_("fake_signature"), policy_data_(NULL), policy_len_(0) {}
 
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
@@ -64,24 +62,20 @@ class UserPolicyServiceTest : public ::testing::Test {
     policy_data.set_state(state);
 
     policy_proto_.Clear();
-    ASSERT_TRUE(policy_data.SerializeToString(
-        policy_proto_.mutable_policy_data()));
+    ASSERT_TRUE(
+        policy_data.SerializeToString(policy_proto_.mutable_policy_data()));
     if (!signature.empty())
       policy_proto_.set_policy_data_signature(signature);
 
     ASSERT_TRUE(policy_proto_.SerializeToString(&policy_str_));
-    policy_data_ = reinterpret_cast<const uint8*>(policy_str_.c_str());
+    policy_data_ = reinterpret_cast<const uint8_t*>(policy_str_.c_str());
     policy_len_ = policy_str_.size();
   }
 
   void ExpectStorePolicy(const Sequence& sequence) {
-    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_)))
-        .InSequence(sequence);
-    EXPECT_CALL(*store_, Persist())
-        .InSequence(sequence)
-        .WillOnce(Return(true));
-    EXPECT_CALL(completion_, ReportSuccess())
-        .InSequence(sequence);
+    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_))).InSequence(sequence);
+    EXPECT_CALL(*store_, Persist()).InSequence(sequence).WillOnce(Return(true));
+    EXPECT_CALL(completion_, ReportSuccess()).InSequence(sequence);
   }
 
  protected:
@@ -94,8 +88,8 @@ class UserPolicyServiceTest : public ::testing::Test {
   // Various representations of the policy protobuf.
   em::PolicyFetchResponse policy_proto_;
   std::string policy_str_;
-  const uint8* policy_data_;
-  uint32 policy_len_;
+  const uint8_t* policy_data_;
+  uint32_t policy_len_;
 
   base::MessageLoop loop_;
 
@@ -115,9 +109,7 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   InitPolicy(em::PolicyData::ACTIVE, fake_signature_);
 
   Sequence s1;
-  EXPECT_CALL(*key_, Verify(_, _, _, _))
-      .InSequence(s1)
-      .WillOnce(Return(true));
+  EXPECT_CALL(*key_, Verify(_, _, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
@@ -128,9 +120,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   InitPolicy(em::PolicyData::UNMANAGED, fake_signature_);
 
   Sequence s1;
-  EXPECT_CALL(*key_, Verify(_, _, _, _))
-      .InSequence(s1)
-      .WillOnce(Return(true));
+  EXPECT_CALL(*key_, Verify(_, _, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
@@ -142,20 +132,15 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
 
   Sequence s1;
   ExpectStorePolicy(s1);
-  std::vector<uint8> key_value;
+  std::vector<uint8_t> key_value;
   key_value.push_back(0x12);
 
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*key_, public_key_der())
-      .WillRepeatedly(ReturnRef(key_value));
+  EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*key_, public_key_der()).WillRepeatedly(ReturnRef(key_value));
 
   Sequence s2;
-  EXPECT_CALL(*key_, ClobberCompromisedKey(ElementsAre()))
-      .InSequence(s2);
-  EXPECT_CALL(*key_, Persist())
-      .InSequence(s2)
-      .WillOnce(Return(true));
+  EXPECT_CALL(*key_, ClobberCompromisedKey(ElementsAre())).InSequence(s2);
+  EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
 
   EXPECT_FALSE(base::PathExists(key_copy_file_));
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
@@ -174,8 +159,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
   Sequence s1;
   ExpectStorePolicy(s1);
 
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
   base::RunLoop().RunUntilIdle();
@@ -186,8 +170,7 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InitPolicy(em::PolicyData::ACTIVE, fake_signature_);
 
   InSequence s;
-  EXPECT_CALL(*key_, Verify(_, _, _, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*key_, Verify(_, _, _, _)).WillOnce(Return(false));
   EXPECT_CALL(completion_, ReportFailure(_));
 
   EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_, 0));
@@ -196,12 +179,10 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
 }
 
 TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
-  std::vector<uint8> key_value;
+  std::vector<uint8_t> key_value;
   key_value.push_back(0x12);
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*key_, public_key_der())
-      .WillOnce(ReturnRef(key_value));
+  EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*key_, public_key_der()).WillOnce(ReturnRef(key_value));
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 
   service_->PersistKeyCopy();
@@ -212,8 +193,7 @@ TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
   EXPECT_EQ(key_value[0], content[0]);
 
   // Now persist an empty key, and verify that the copy is removed.
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
   service_->PersistKeyCopy();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 }

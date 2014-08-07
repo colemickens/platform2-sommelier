@@ -7,13 +7,13 @@
 
 #include "login_manager/session_manager_interface.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #include <map>
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 
 #include "login_manager/device_policy_service.h"
@@ -69,6 +69,7 @@ class SessionManagerImpl : public SessionManagerInterface,
     bool is_set() const { return set_; }
     const std::string& name() const { return name_; }
     const std::string& message() const { return message_; }
+
    private:
     std::string name_;
     std::string message_;
@@ -122,24 +123,25 @@ class SessionManagerImpl : public SessionManagerInterface,
                     Error* error);
   bool StopSession();
 
-  void StorePolicy(const uint8* policy_blob, size_t policy_blob_len,
+  void StorePolicy(const uint8_t* policy_blob,
+                   size_t policy_blob_len,
                    PolicyService::Completion* completion);
-  void RetrievePolicy(std::vector<uint8>* policy_data, Error* error);
+  void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
 
   void StorePolicyForUser(const std::string& user_email,
-                          const uint8* policy_blob,
+                          const uint8_t* policy_blob,
                           size_t policy_blob_len,
                           PolicyService::Completion* completion);
   void RetrievePolicyForUser(const std::string& user_email,
-                             std::vector<uint8>* policy_data,
+                             std::vector<uint8_t>* policy_data,
                              Error* error);
 
   void StoreDeviceLocalAccountPolicy(const std::string& account_id,
-                                     const uint8* policy_blob,
+                                     const uint8_t* policy_blob,
                                      size_t policy_blob_len,
                                      PolicyService::Completion* completion);
   void RetrieveDeviceLocalAccountPolicy(const std::string& account_id,
-                                        std::vector<uint8>* policy_data,
+                                        std::vector<uint8_t>* policy_data,
                                         Error* error);
 
   const char* RetrieveSessionState();
@@ -151,7 +153,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   bool RestartJob(pid_t pid, const std::string& arguments, Error* error);
   void StartDeviceWipe(Error* error);
-  void SetFlagsForUser(const std::string&user_email,
+  void SetFlagsForUser(const std::string& user_email,
                        const std::vector<std::string>& session_user_flags);
 
   void RequestServerBackedStateKeys(
@@ -206,13 +208,13 @@ class SessionManagerImpl : public SessionManagerInterface,
   base::Closure lock_screen_closure_;
   base::Closure restart_device_closure_;
 
-  DBusSignalEmitterInterface* dbus_emitter_;  // Owned by the caller.
-  KeyGenerator* key_gen_;  // Owned by the caller.
+  DBusSignalEmitterInterface* dbus_emitter_;            // Owned by the caller.
+  KeyGenerator* key_gen_;                               // Owned by the caller.
   ServerBackedStateKeyGenerator* state_key_generator_;  // Owned by the caller.
-  ProcessManagerServiceInterface* manager_;  // Owned by the caller.
-  LoginMetrics* login_metrics_;  // Owned by the caller.
-  NssUtil* nss_;  // Owned by the caller.
-  SystemUtils* system_;  // Owned by the caller.
+  ProcessManagerServiceInterface* manager_;             // Owned by the caller.
+  LoginMetrics* login_metrics_;                         // Owned by the caller.
+  NssUtil* nss_;                                        // Owned by the caller.
+  SystemUtils* system_;                                 // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;

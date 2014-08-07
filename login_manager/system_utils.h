@@ -5,13 +5,13 @@
 #ifndef LOGIN_MANAGER_SYSTEM_UTILS_H_
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
+#include <stdint.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
@@ -54,7 +54,7 @@ class SystemUtils {
   virtual bool ChildIsGone(pid_t child_spec, base::TimeDelta timeout) = 0;
 
   virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                           int32* file_size_32) = 0;
+                                           int32_t* file_size_32) = 0;
 
   // Returns whether a file exists.
   virtual bool Exists(const base::FilePath& file) = 0;

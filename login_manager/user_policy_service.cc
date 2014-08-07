@@ -4,6 +4,7 @@
 
 #include "login_manager/user_policy_service.h"
 
+#include <stdint.h>
 #include <sys/stat.h>
 
 #include <string>
@@ -48,7 +49,7 @@ void UserPolicyService::PersistKeyCopy() {
     mode_t mode = S_IRWXU | S_IXGRP | S_IXOTH;
     chmod(dir.value().c_str(), mode);
 
-    const std::vector<uint8>& key = scoped_policy_key_->public_key_der();
+    const std::vector<uint8_t>& key = scoped_policy_key_->public_key_der();
     system_utils_->AtomicFileWrite(key_copy_path_,
                                    std::string(key.begin(), key.end()));
     mode = S_IRUSR | S_IRGRP | S_IROTH;
@@ -59,14 +60,13 @@ void UserPolicyService::PersistKeyCopy() {
   }
 }
 
-bool UserPolicyService::Store(const uint8* policy_blob,
-                              uint32 len,
+bool UserPolicyService::Store(const uint8_t* policy_blob,
+                              uint32_t len,
                               Completion* completion,
                               int flags) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
-  if (!policy.ParseFromArray(policy_blob, len) ||
-      !policy.has_policy_data() ||
+  if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
       !policy_data.ParseFromString(policy.policy_data())) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
@@ -80,7 +80,7 @@ bool UserPolicyService::Store(const uint8* policy_blob,
       !policy.has_policy_data_signature()) {
     // Also clear the key.
     if (key()->IsPopulated()) {
-      key()->ClobberCompromisedKey(std::vector<uint8>());
+      key()->ClobberCompromisedKey(std::vector<uint8_t>());
       PersistKey();
     }
 

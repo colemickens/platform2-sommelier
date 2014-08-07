@@ -7,6 +7,8 @@
 
 #include "login_manager/device_policy_service.h"
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -22,18 +24,16 @@ class MockDevicePolicyService : public DevicePolicyService {
  public:
   MockDevicePolicyService();
   virtual ~MockDevicePolicyService();
-  MOCK_METHOD4(Store, bool(const uint8*, uint32, Completion*, int));
-  MOCK_METHOD1(Retrieve, bool(std::vector<uint8>*));
+  MOCK_METHOD4(Store, bool(const uint8_t*, uint32_t, Completion*, int));
+  MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
   MOCK_METHOD0(PersistKey, void(void));
   MOCK_METHOD1(PersistPolicy, void(Completion*));  // NOLINT - 'unnamed' param.
   MOCK_METHOD0(PersistPolicySync, bool(void));
-  MOCK_METHOD4(CheckAndHandleOwnerLogin, bool(const std::string&,
-                                              PK11SlotInfo*,
-                                              bool*,
-                                              PolicyService::Error*));
-  MOCK_METHOD3(ValidateAndStoreOwnerKey, bool(const std::string&,
-                                              const std::string&,
-                                              PK11SlotInfo*));
+  MOCK_METHOD4(
+      CheckAndHandleOwnerLogin,
+      bool(const std::string&, PK11SlotInfo*, bool*, PolicyService::Error*));
+  MOCK_METHOD3(ValidateAndStoreOwnerKey,
+               bool(const std::string&, const std::string&, PK11SlotInfo*));
   MOCK_METHOD0(KeyMissing, bool(void));
   MOCK_METHOD0(Mitigating, bool(void));
   MOCK_METHOD0(Initialize, bool(void));

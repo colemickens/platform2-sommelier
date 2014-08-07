@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -19,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -40,31 +40,29 @@ const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 // static
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 // static
-const uint BrowserJob::kRestartTries = 4;
+const uint32_t BrowserJob::kRestartTries = 4;
 // static
 const time_t BrowserJob::kRestartWindowSeconds = 60;
 
-BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
-                       const std::map<std::string, std::string>&
-                           environment_variables,
-                       uid_t desired_uid,
-                       FileChecker* checker,
-                       LoginMetrics* metrics,
-                       SystemUtils* utils)
-      : environment_variables_(environment_variables),
-        arguments_(arguments),
-        file_checker_(checker),
-        login_metrics_(metrics),
-
-        system_(utils),
-        start_times_(std::deque<time_t>(kRestartTries, 0)),
-        removed_login_manager_flag_(false),
-        session_already_started_(false),
-        subprocess_(desired_uid, system_) {
+BrowserJob::BrowserJob(
+    const std::vector<std::string>& arguments,
+    const std::map<std::string, std::string>& environment_variables,
+    uid_t desired_uid,
+    FileChecker* checker,
+    LoginMetrics* metrics,
+    SystemUtils* utils)
+    : environment_variables_(environment_variables),
+      arguments_(arguments),
+      file_checker_(checker),
+      login_metrics_(metrics),
+      system_(utils),
+      start_times_(std::deque<time_t>(kRestartTries, 0)),
+      removed_login_manager_flag_(false),
+      session_already_started_(false),
+      subprocess_(desired_uid, system_) {
   // Take over managing the kLoginManagerFlag.
-  std::vector<std::string>::iterator to_erase = std::remove(arguments_.begin(),
-                                                            arguments_.end(),
-                                                            kLoginManagerFlag);
+  std::vector<std::string>::iterator to_erase =
+      std::remove(arguments_.begin(), arguments_.end(), kLoginManagerFlag);
   if (to_erase != arguments_.end()) {
     arguments_.erase(to_erase, arguments_.end());
     removed_login_manager_flag_ = true;
@@ -72,7 +70,8 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
   }
 }
 
-BrowserJob::~BrowserJob() {}
+BrowserJob::~BrowserJob() {
+}
 
 bool BrowserJob::ShouldRunBrowser() {
   return !file_checker_ || !file_checker_->exists();
@@ -135,9 +134,9 @@ void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
     LOG(WARNING) << "Aborting child process " << subprocess_.pid()
                  << "'s process group " << timeout.InSeconds()
                  << " seconds after sending TERM signal";
-    std::string message = base::StringPrintf(
-        "Browser took more than %" PRId64 " seconds to exit after TERM.",
-        timeout.InSeconds());
+    std::string message = base::StringPrintf("Browser took more than %" PRId64
+                                             " seconds to exit after TERM.",
+                                             timeout.InSeconds());
     KillEverything(SIGABRT, message);
   } else {
     DLOG(INFO) << "Cleaned up child " << subprocess_.pid();
@@ -196,10 +195,10 @@ void BrowserJob::ClearPid() {
 
 std::vector<std::string> BrowserJob::ExportArgv() const {
   std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
-  to_return.insert(to_return.end(),
-                   login_arguments_.begin(), login_arguments_.end());
-  to_return.insert(to_return.end(),
-                   extra_arguments_.begin(), extra_arguments_.end());
+  to_return.insert(
+      to_return.end(), login_arguments_.begin(), login_arguments_.end());
+  to_return.insert(
+      to_return.end(), extra_arguments_.begin(), extra_arguments_.end());
 
   if (!extra_one_time_arguments_.empty()) {
     to_return.insert(to_return.end(),

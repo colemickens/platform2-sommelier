@@ -7,6 +7,7 @@
 
 #include "login_manager/nss_util.h"
 
+#include <stdint.h>
 #include <unistd.h>
 
 #include <vector>
@@ -36,19 +37,26 @@ class MockNssUtil : public NssUtil {
   virtual crypto::ScopedPK11Slot OpenUserDB(
       const base::FilePath& user_homedir) OVERRIDE;
   MOCK_METHOD2(GetPrivateKeyForUser,
-               crypto::RSAPrivateKey*(const std::vector<uint8>&,
+               crypto::RSAPrivateKey*(const std::vector<uint8_t>&,
                                       PK11SlotInfo*));
   MOCK_METHOD1(GenerateKeyPairForUser,
                crypto::RSAPrivateKey*(PK11SlotInfo*));  // NOLINT - 'unnamed'.
   MOCK_METHOD0(GetNssdbSubpath, base::FilePath());
-  MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8>&));
-  MOCK_METHOD8(Verify, bool(const uint8* algorithm, int algorithm_len,
-                            const uint8* signature, int signature_len,
-                            const uint8* data, int data_len,
-                            const uint8* public_key, int public_key_len));
-  MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
-                          std::vector<uint8>* OUT_signature,
-                          crypto::RSAPrivateKey* key));
+  MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8_t>&));
+  MOCK_METHOD8(Verify,
+               bool(const uint8_t* algorithm,
+                    int algorithm_len,
+                    const uint8_t* signature,
+                    int signature_len,
+                    const uint8_t* data,
+                    int data_len,
+                    const uint8_t* public_key,
+                    int public_key_len));
+  MOCK_METHOD4(Sign,
+               bool(const uint8_t* data,
+                    int data_len,
+                    std::vector<uint8_t>* OUT_signature,
+                    crypto::RSAPrivateKey* key));
   virtual base::FilePath GetOwnerKeyFilePath() OVERRIDE;
 
   PK11SlotInfo* GetSlot();
@@ -73,6 +81,7 @@ class CheckPublicKeyUtil : public MockNssUtil {
  public:
   explicit CheckPublicKeyUtil(bool expected);
   virtual ~CheckPublicKeyUtil();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CheckPublicKeyUtil);
 };
@@ -81,6 +90,7 @@ class KeyCheckUtil : public MockNssUtil {
  public:
   KeyCheckUtil();
   virtual ~KeyCheckUtil();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyCheckUtil);
 };
@@ -89,6 +99,7 @@ class KeyFailUtil : public MockNssUtil {
  public:
   KeyFailUtil();
   virtual ~KeyFailUtil();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyFailUtil);
 };

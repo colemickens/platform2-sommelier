@@ -4,6 +4,8 @@
 
 #include "login_manager/policy_key.h"
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/files/file_path.h>
@@ -34,21 +36,26 @@ PolicyKey::PolicyKey(const base::FilePath& key_file, NssUtil* nss)
       utils_(new SystemUtilsImpl) {
 }
 
-PolicyKey::~PolicyKey() {}
-
-bool PolicyKey::Equals(const std::string& key_der) const {
-  return VEquals(std::vector<uint8>(key_der.c_str(),
-                                    key_der.c_str() + key_der.length()));
+PolicyKey::~PolicyKey() {
 }
 
-bool PolicyKey::VEquals(const std::vector<uint8>& key_der) const {
+bool PolicyKey::Equals(const std::string& key_der) const {
+  return VEquals(std::vector<uint8_t>(key_der.c_str(),
+                                      key_der.c_str() + key_der.length()));
+}
+
+bool PolicyKey::VEquals(const std::vector<uint8_t>& key_der) const {
   return ((key_.empty() == key_der.empty()) &&
           memcmp(&key_der[0], &key_[0], key_.size()) == 0);
 }
 
-bool PolicyKey::HaveCheckedDisk() const { return have_checked_disk_; }
+bool PolicyKey::HaveCheckedDisk() const {
+  return have_checked_disk_;
+}
 
-bool PolicyKey::IsPopulated() const { return !key_.empty(); }
+bool PolicyKey::IsPopulated() const {
+  return !key_.empty();
+}
 
 bool PolicyKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;
@@ -57,16 +64,15 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
     return true;
   }
 
-  int32 safe_file_size = 0;
+  int32_t safe_file_size = 0;
   if (!utils_->EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
     LOG(ERROR) << key_file_.value() << " is too large!";
     return false;
   }
 
-  std::vector<uint8> buffer(safe_file_size, 0);
-  int data_read = base::ReadFile(key_file_,
-                                 reinterpret_cast<char*>(&buffer[0]),
-                                 safe_file_size);
+  std::vector<uint8_t> buffer(safe_file_size, 0);
+  int data_read = base::ReadFile(
+      key_file_, reinterpret_cast<char*>(&buffer[0]), safe_file_size);
   if (data_read != safe_file_size) {
     PLOG(ERROR) << key_file_.value() << " could not be read in its entirety!";
     return false;
@@ -80,7 +86,7 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
   return true;
 }
 
-bool PolicyKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
+bool PolicyKey::PopulateFromBuffer(const std::vector<uint8_t>& public_key_der) {
   if (!HaveCheckedDisk()) {
     LOG(WARNING) << "Haven't checked disk for owner key yet!";
     return false;
@@ -96,7 +102,7 @@ bool PolicyKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
 }
 
 bool PolicyKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
-  std::vector<uint8> public_key_der;
+  std::vector<uint8_t> public_key_der;
   if (pair && pair->ExportPublicKey(&public_key_der))
     return PopulateFromBuffer(public_key_der);
   LOG(ERROR) << "Failed to export public key from key pair";
@@ -127,8 +133,8 @@ bool PolicyKey::Persist() {
   return true;
 }
 
-bool PolicyKey::Rotate(const std::vector<uint8>& public_key_der,
-                       const std::vector<uint8>& signature) {
+bool PolicyKey::Rotate(const std::vector<uint8_t>& public_key_der,
+                       const std::vector<uint8_t>& signature) {
   if (!IsPopulated()) {
     LOG(ERROR) << "Don't yet have an owner key!";
     return false;
@@ -146,7 +152,7 @@ bool PolicyKey::Rotate(const std::vector<uint8>& public_key_der,
 }
 
 bool PolicyKey::ClobberCompromisedKey(
-    const std::vector<uint8>& public_key_der) {
+    const std::vector<uint8_t>& public_key_der) {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(HaveCheckedDisk()) << "Haven't checked disk for owner key yet!";
   // It is a programming error to call this without a key already loaded.
@@ -156,10 +162,10 @@ bool PolicyKey::ClobberCompromisedKey(
   return have_replaced_ = true;
 }
 
-bool PolicyKey::Verify(const uint8* data,
-                       uint32 data_len,
-                       const uint8* signature,
-                       uint32 sig_len) {
+bool PolicyKey::Verify(const uint8_t* data,
+                       uint32_t data_len,
+                       const uint8_t* signature,
+                       uint32_t sig_len) {
   if (!nss_->Verify(kAlgorithm,
                     sizeof(kAlgorithm),
                     signature,

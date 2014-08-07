@@ -7,6 +7,7 @@
 
 #include "login_manager/system_utils.h"
 
+#include <stdint.h>
 #include <unistd.h>
 
 #include <string>
@@ -27,7 +28,7 @@ class MockSystemUtils : public SystemUtils {
   MockSystemUtils();
   virtual ~MockSystemUtils();
   MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
-  MOCK_METHOD1(time, time_t(time_t*)); // NOLINT
+  MOCK_METHOD1(time, time_t(time_t*));  // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
   MOCK_METHOD0(IsDevMode, int(void));
   MOCK_METHOD2(ChildIsGone, bool(pid_t child_spec, base::TimeDelta timeout));
@@ -39,7 +40,7 @@ class MockSystemUtils : public SystemUtils {
                        const std::string& data) OVERRIDE;
   bool ReadFileToString(const base::FilePath& file, std::string* out);
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                   int32* file_size_32) OVERRIDE;
+                                   int32_t* file_size_32) OVERRIDE;
   bool RemoveFile(const base::FilePath& file) OVERRIDE;
 
   bool GetUniqueFilenameInWriteOnlyTempDir(

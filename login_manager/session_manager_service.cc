@@ -5,12 +5,12 @@
 #include "login_manager/session_manager_service.h"
 
 #include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
+#include <stdint.h>
 
 #include <algorithm>
 #include <utility>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
@@ -49,17 +49,19 @@ namespace login_manager {
 
 namespace {
 
-const int kSignals[] = { SIGTERM, SIGINT, SIGHUP };
+const int kSignals[] = {SIGTERM, SIGINT, SIGHUP};
 const int kNumSignals = sizeof(kSignals) / sizeof(int);
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
-void DoNothing(int signal) {}
+void DoNothing(int signal) {
+}
 
 void FireAndForgetDBusMethodCall(dbus::ObjectProxy* proxy,
                                  const char* interface,
                                  const char* method) {
   dbus::MethodCall call(interface, method);
-  proxy->CallMethod(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+  proxy->CallMethod(&call,
+                    dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                     dbus::ObjectProxy::EmptyResponseCallback());
 }
 
@@ -86,8 +88,8 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   }
   session_manager_service_->loop_proxy_->PostTask(
       FROM_HERE,
-      base::Bind(&SessionManagerService::HandleExit,
-                 session_manager_service_, info));
+      base::Bind(
+          &SessionManagerService::HandleExit, session_manager_service_, info));
 }
 
 SessionManagerService::SessionManagerService(
@@ -127,47 +129,46 @@ bool SessionManagerService::Initialize() {
   LOG(INFO) << "SessionManagerService starting";
   InitializeDBus();
 
-  dbus::ObjectProxy* chrome_dbus_proxy = bus_->GetObjectProxy(
-      chromeos::kLibCrosServiceName,
-      dbus::ObjectPath(chromeos::kLibCrosServicePath));
+  dbus::ObjectProxy* chrome_dbus_proxy =
+      bus_->GetObjectProxy(chromeos::kLibCrosServiceName,
+                           dbus::ObjectPath(chromeos::kLibCrosServicePath));
 
   dbus::ObjectProxy* powerd_dbus_proxy = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  dbus::ObjectProxy* upstart_dbus_proxy = bus_->GetObjectProxy(
-      UpstartSignalEmitter::kServiceName,
-      dbus::ObjectPath(UpstartSignalEmitter::kPath));
+  dbus::ObjectProxy* upstart_dbus_proxy =
+      bus_->GetObjectProxy(UpstartSignalEmitter::kServiceName,
+                           dbus::ObjectPath(UpstartSignalEmitter::kPath));
 
-  liveness_checker_.reset(
-      new LivenessCheckerImpl(this,
-                              chrome_dbus_proxy,
-                              loop_proxy_,
-                              enable_browser_abort_on_hang_,
-                              liveness_checking_interval_));
+  liveness_checker_.reset(new LivenessCheckerImpl(this,
+                                                  chrome_dbus_proxy,
+                                                  loop_proxy_,
+                                                  enable_browser_abort_on_hang_,
+                                                  liveness_checking_interval_));
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
   scoped_ptr<UpstartSignalEmitter> upstart_emitter(
       new UpstartSignalEmitter(upstart_dbus_proxy));
 
-  SessionManagerImpl* impl = new SessionManagerImpl(
-      upstart_emitter.Pass(),
-      dbus_emitter_.get(),
-      base::Bind(&FireAndForgetDBusMethodCall,
-                 base::Unretained(chrome_dbus_proxy),
-                 chromeos::kLibCrosServiceInterface,
-                 chromeos::kLockScreen),
-      base::Bind(&FireAndForgetDBusMethodCall,
-                 base::Unretained(powerd_dbus_proxy),
-                 power_manager::kPowerManagerInterface,
-                 power_manager::kRequestRestartMethod),
-      &key_gen_,
-      &state_key_generator_,
-      this,
-      login_metrics_,
-      nss_.get(),
-      system_);
+  SessionManagerImpl* impl =
+      new SessionManagerImpl(upstart_emitter.Pass(),
+                             dbus_emitter_.get(),
+                             base::Bind(&FireAndForgetDBusMethodCall,
+                                        base::Unretained(chrome_dbus_proxy),
+                                        chromeos::kLibCrosServiceInterface,
+                                        chromeos::kLockScreen),
+                             base::Bind(&FireAndForgetDBusMethodCall,
+                                        base::Unretained(powerd_dbus_proxy),
+                                        power_manager::kPowerManagerInterface,
+                                        power_manager::kRequestRestartMethod),
+                             &key_gen_,
+                             &state_key_generator_,
+                             this,
+                             login_metrics_,
+                             nss_.get(),
+                             system_);
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);
@@ -205,7 +206,8 @@ void SessionManagerService::AbortBrowser(int signal,
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
-    const std::vector<std::string>& args, bool args_are_extra) {
+    const std::vector<std::string>& args,
+    bool args_are_extra) {
   // Waiting for Chrome to shutdown takes too much time.
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
@@ -231,8 +233,7 @@ void SessionManagerService::SetFlagsForUser(
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {
-  return (browser_ &&
-          browser_->CurrentPid() > 0 &&
+  return (browser_ && browser_->CurrentPid() > 0 &&
           pid == browser_->CurrentPid());
 }
 
@@ -286,9 +287,8 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
   SessionManagerService* service = static_cast<SessionManagerService*>(data);
-  if (::dbus_message_is_method_call(message,
-                                    kSessionManagerInterface,
-                                    kSessionManagerRestartJob)) {
+  if (::dbus_message_is_method_call(
+          message, kSessionManagerInterface, kSessionManagerRestartJob)) {
     const char* sender = ::dbus_message_get_sender(message);
     if (!sender) {
       LOG(ERROR) << "Call to RestartJob has no sender";
@@ -301,9 +301,8 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                        "org.freedesktop.DBus",
                                        "GetConnectionUnixProcessID");
     CHECK(get_pid);
-    ::dbus_message_append_args(get_pid,
-                               DBUS_TYPE_STRING, &sender,
-                               DBUS_TYPE_INVALID);
+    ::dbus_message_append_args(
+        get_pid, DBUS_TYPE_STRING, &sender, DBUS_TYPE_INVALID);
     DBusMessage* got_pid =
         ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, NULL);
     ::dbus_message_unref(get_pid);
@@ -311,10 +310,9 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
       LOG(ERROR) << "Could not look up sender of RestartJob";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
-    uint32 pid;
-    if (!::dbus_message_get_args(got_pid, NULL,
-                                 DBUS_TYPE_UINT32, &pid,
-                                 DBUS_TYPE_INVALID)) {
+    uint32_t pid;
+    if (!::dbus_message_get_args(
+            got_pid, NULL, DBUS_TYPE_UINT32, &pid, DBUS_TYPE_INVALID)) {
       ::dbus_message_unref(got_pid);
       LOG(ERROR) << "Could not extract pid of sender of RestartJob";
       return DBUS_HANDLER_RESULT_HANDLED;
@@ -346,8 +344,9 @@ void SessionManagerService::SetUpHandlers() {
   child_exit_handler_.Init(&signal_handler_, job_managers);
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
-        kSignals[i], base::Bind(&SessionManagerService::OnTerminationSignal,
-                                base::Unretained(this)));
+        kSignals[i],
+        base::Bind(&SessionManagerService::OnTerminationSignal,
+                   base::Unretained(this)));
   }
 }
 
@@ -391,8 +390,8 @@ void SessionManagerService::InitializeDBus() {
                          << ", message="
                          << (error.message() ? error.message() : "unknown.");
 
-  session_manager_dbus_object_ = bus_->GetExportedObject(
-      dbus::ObjectPath(kSessionManagerServicePath));
+  session_manager_dbus_object_ =
+      bus_->GetExportedObject(dbus::ObjectPath(kSessionManagerServicePath));
 
   dbus_emitter_.reset(new DBusSignalEmitter(session_manager_dbus_object_,
                                             kSessionManagerInterface));

@@ -4,11 +4,12 @@
 
 #include "login_manager/session_manager_dbus_adaptor.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/file_util.h>
@@ -25,9 +26,9 @@ namespace login_manager {
 namespace {
 
 const char kBindingsPath[] =
-  "/usr/share/dbus-1/interfaces/org.chromium.SessionManagerInterface.xml";
+    "/usr/share/dbus-1/interfaces/org.chromium.SessionManagerInterface.xml";
 const char kDBusIntrospectableInterface[] =
-  "org.freedesktop.DBus.Introspectable";
+    "org.freedesktop.DBus.Introspectable";
 const char kDBusIntrospectMethod[] = "Introspect";
 
 // Passes |method_call| to |handler| and passes the response to
@@ -46,9 +47,8 @@ void HandleSynchronousDBusMethodCall(
 scoped_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
                                        const std::string& name,
                                        const std::string& message) {
-  return dbus::ErrorResponse::FromMethodCall(call,
-                                             name,
-                                             message).PassAs<dbus::Response>();
+  return dbus::ErrorResponse::FromMethodCall(call, name, message)
+      .PassAs<dbus::Response>();
 }
 
 // Creates a new "invalid args" reply to call.
@@ -93,7 +93,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithString(
 scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
     dbus::MethodCall* call,
     const SessionManagerImpl::Error& error,
-    const std::vector<uint8>& payload) {
+    const std::vector<uint8_t>& payload) {
   scoped_ptr<dbus::Response> response;
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
@@ -110,14 +110,15 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
 void HandleGetServerBackedStateKeysCompletion(
     dbus::MethodCall* call,
     const dbus::ExportedObject::ResponseSender& sender,
-    const std::vector<std::vector<uint8> >& state_keys) {
+    const std::vector<std::vector<uint8_t> >& state_keys) {
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   dbus::MessageWriter array_writer(NULL);
   writer.OpenArray("ay", &array_writer);
-  for (std::vector<std::vector<uint8> >::const_iterator
-           state_key(state_keys.begin());
-       state_key != state_keys.end(); ++state_key) {
+  for (std::vector<std::vector<uint8_t> >::const_iterator state_key(
+           state_keys.begin());
+       state_key != state_keys.end();
+       ++state_key) {
     array_writer.AppendArrayOfBytes(state_key->data(), state_key->size());
   }
   writer.CloseContainer(&array_writer);
@@ -148,8 +149,7 @@ class DBusMethodCompletion : public PolicyService::Completion {
 DBusMethodCompletion::DBusMethodCompletion(
     dbus::MethodCall* call,
     const dbus::ExportedObject::ResponseSender& sender)
-    : call_(call),
-      sender_(sender) {
+    : call_(call), sender_(sender) {
 }
 
 DBusMethodCompletion::~DBusMethodCompletion() {
@@ -169,10 +169,9 @@ void DBusMethodCompletion::ReportSuccess() {
 }
 
 void DBusMethodCompletion::ReportFailure(const PolicyService::Error& error) {
-  sender_.Run(dbus::ErrorResponse::FromMethodCall(
-      call_,
-      error.code(),
-      error.message()).PassAs<dbus::Response>());
+  sender_.Run(
+      dbus::ErrorResponse::FromMethodCall(call_, error.code(), error.message())
+          .PassAs<dbus::Response>());
   call_ = NULL;
   delete this;
 }
@@ -182,27 +181,36 @@ SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(SessionManagerImpl* impl)
   CHECK(impl_);
 }
 
-SessionManagerDBusAdaptor::~SessionManagerDBusAdaptor() {}
+SessionManagerDBusAdaptor::~SessionManagerDBusAdaptor() {
+}
 
 void SessionManagerDBusAdaptor::ExportDBusMethods(
     dbus::ExportedObject* object) {
-  ExportSyncDBusMethod(object, kSessionManagerEmitLoginPromptVisible,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerEmitLoginPromptVisible,
                        &SessionManagerDBusAdaptor::EmitLoginPromptVisible);
-  ExportSyncDBusMethod(object, "EnableChromeTesting",
+  ExportSyncDBusMethod(object,
+                       "EnableChromeTesting",
                        &SessionManagerDBusAdaptor::EnableChromeTesting);
-  ExportSyncDBusMethod(object, kSessionManagerStartSession,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerStartSession,
                        &SessionManagerDBusAdaptor::StartSession);
-  ExportSyncDBusMethod(object, kSessionManagerStopSession,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerStopSession,
                        &SessionManagerDBusAdaptor::StopSession);
 
-  ExportAsyncDBusMethod(object, kSessionManagerStorePolicy,
+  ExportAsyncDBusMethod(object,
+                        kSessionManagerStorePolicy,
                         &SessionManagerDBusAdaptor::StorePolicy);
-  ExportSyncDBusMethod(object, kSessionManagerRetrievePolicy,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerRetrievePolicy,
                        &SessionManagerDBusAdaptor::RetrievePolicy);
 
-  ExportAsyncDBusMethod(object, kSessionManagerStorePolicyForUser,
+  ExportAsyncDBusMethod(object,
+                        kSessionManagerStorePolicyForUser,
                         &SessionManagerDBusAdaptor::StorePolicyForUser);
-  ExportSyncDBusMethod(object, kSessionManagerRetrievePolicyForUser,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerRetrievePolicyForUser,
                        &SessionManagerDBusAdaptor::RetrievePolicyForUser);
 
   ExportAsyncDBusMethod(
@@ -214,32 +222,43 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
       kSessionManagerRetrieveDeviceLocalAccountPolicy,
       &SessionManagerDBusAdaptor::RetrieveDeviceLocalAccountPolicy);
 
-  ExportSyncDBusMethod(object, kSessionManagerRetrieveSessionState,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerRetrieveSessionState,
                        &SessionManagerDBusAdaptor::RetrieveSessionState);
-  ExportSyncDBusMethod(object, kSessionManagerRetrieveActiveSessions,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerRetrieveActiveSessions,
                        &SessionManagerDBusAdaptor::RetrieveActiveSessions);
 
-  ExportSyncDBusMethod(object, kSessionManagerLockScreen,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerLockScreen,
                        &SessionManagerDBusAdaptor::LockScreen);
-  ExportSyncDBusMethod(object, kSessionManagerHandleLockScreenShown,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerHandleLockScreenShown,
                        &SessionManagerDBusAdaptor::HandleLockScreenShown);
-  ExportSyncDBusMethod(object, kSessionManagerHandleLockScreenDismissed,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerHandleLockScreenDismissed,
                        &SessionManagerDBusAdaptor::HandleLockScreenDismissed);
 
-  ExportSyncDBusMethod(object, kSessionManagerRestartJob,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerRestartJob,
                        &SessionManagerDBusAdaptor::RestartJob);
-  ExportSyncDBusMethod(object, kSessionManagerStartDeviceWipe,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerStartDeviceWipe,
                        &SessionManagerDBusAdaptor::StartDeviceWipe);
-  ExportSyncDBusMethod(object, kSessionManagerSetFlagsForUser,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerSetFlagsForUser,
                        &SessionManagerDBusAdaptor::SetFlagsForUser);
 
-  ExportAsyncDBusMethod(object, kSessionManagerGetServerBackedStateKeys,
+  ExportAsyncDBusMethod(object,
+                        kSessionManagerGetServerBackedStateKeys,
                         &SessionManagerDBusAdaptor::GetServerBackedStateKeys);
-  ExportSyncDBusMethod(object, kSessionManagerInitMachineInfo,
+  ExportSyncDBusMethod(object,
+                       kSessionManagerInitMachineInfo,
                        &SessionManagerDBusAdaptor::InitMachineInfo);
 
   CHECK(object->ExportMethodAndBlock(
-      kDBusIntrospectableInterface, kDBusIntrospectMethod,
+      kDBusIntrospectableInterface,
+      kDBusIntrospectMethod,
       base::Bind(&HandleSynchronousDBusMethodCall,
                  base::Bind(&SessionManagerDBusAdaptor::Introspect,
                             base::Unretained(this)))));
@@ -263,9 +282,8 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
     return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
-  std::string testing_path = impl_->EnableChromeTesting(relaunch,
-                                                        extra_args,
-                                                        &error);
+  std::string testing_path =
+      impl_->EnableChromeTesting(relaunch, extra_args, &error);
   return CraftAppropriateResponseWithString(call, error, testing_path);
 }
 
@@ -294,22 +312,22 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
 void SessionManagerDBusAdaptor::StorePolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  const uint8* policy_blob = NULL;
+  const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
   if (!reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
-    impl_->StorePolicy(policy_blob, policy_blob_len,
-                       new DBusMethodCompletion(call, sender));
+    impl_->StorePolicy(
+        policy_blob, policy_blob_len, new DBusMethodCompletion(call, sender));
     // Response will be sent asynchronously.
   }
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
     dbus::MethodCall* call) {
-  std::vector<uint8> policy_data;
+  std::vector<uint8_t> policy_data;
   SessionManagerImpl::Error error;
   impl_->RetrievePolicy(&policy_data, &error);
   return CraftAppropriateResponseWithBytes(call, error, policy_data);
@@ -319,7 +337,7 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
   std::string user_email;
-  const uint8* policy_blob = NULL;
+  const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
@@ -327,7 +345,9 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
-    impl_->StorePolicyForUser(user_email, policy_blob, policy_blob_len,
+    impl_->StorePolicyForUser(user_email,
+                              policy_blob,
+                              policy_blob_len,
                               new DBusMethodCompletion(call, sender));
     // Response will normally be sent asynchronously.
   }
@@ -341,7 +361,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicyForUser(
   if (!reader.PopString(&user_email))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  std::vector<uint8> policy_data;
+  std::vector<uint8_t> policy_data;
   SessionManagerImpl::Error error;
   impl_->RetrievePolicyForUser(user_email, &policy_data, &error);
   return CraftAppropriateResponseWithBytes(call, error, policy_data);
@@ -351,7 +371,7 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
   std::string account_id;
-  const uint8* policy_blob = NULL;
+  const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
@@ -360,7 +380,9 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
     impl_->StoreDeviceLocalAccountPolicy(
-        account_id, policy_blob, policy_blob_len,
+        account_id,
+        policy_blob,
+        policy_blob_len,
         new DBusMethodCompletion(call, sender));
     // Response will be sent asynchronously.
   }
@@ -375,7 +397,7 @@ SessionManagerDBusAdaptor::RetrieveDeviceLocalAccountPolicy(
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  std::vector<uint8> policy_data;
+  std::vector<uint8_t> policy_data;
   SessionManagerImpl::Error error;
   impl_->RetrieveDeviceLocalAccountPolicy(account_id, &policy_data, &error);
   return CraftAppropriateResponseWithBytes(call, error, policy_data);
@@ -427,8 +449,8 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenShown(
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 
-scoped_ptr<dbus::Response>
-SessionManagerDBusAdaptor::HandleLockScreenDismissed(dbus::MethodCall* call) {
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenDismissed(
+    dbus::MethodCall* call) {
   impl_->HandleLockScreenDismissed();
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
@@ -469,7 +491,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
 void SessionManagerDBusAdaptor::GetServerBackedStateKeys(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  std::vector<std::vector<uint8> > state_keys;
+  std::vector<std::vector<uint8_t> > state_keys;
   impl_->RequestServerBackedStateKeys(
       base::Bind(&HandleGetServerBackedStateKeysCompletion, call, sender));
 }
@@ -507,7 +529,8 @@ void SessionManagerDBusAdaptor::ExportSyncDBusMethod(
     SyncDBusMethodCallMemberFunction member) {
   DCHECK(object);
   CHECK(object->ExportMethodAndBlock(
-      kSessionManagerInterface, method_name,
+      kSessionManagerInterface,
+      method_name,
       base::Bind(&HandleSynchronousDBusMethodCall,
                  base::Bind(member, base::Unretained(this)))));
 }
@@ -517,9 +540,10 @@ void SessionManagerDBusAdaptor::ExportAsyncDBusMethod(
     const std::string& method_name,
     AsyncDBusMethodCallMemberFunction member) {
   DCHECK(object);
-  CHECK(object->ExportMethodAndBlock(
-      kSessionManagerInterface, method_name,
-      base::Bind(member, base::Unretained(this))));
+  CHECK(
+      object->ExportMethodAndBlock(kSessionManagerInterface,
+                                   method_name,
+                                   base::Bind(member, base::Unretained(this))));
 }
 
 }  // namespace login_manager

@@ -5,6 +5,7 @@
 #include "login_manager/device_policy_service.h"
 
 #include <secmodt.h>
+#include <stdint.h>
 
 #include <vector>
 
@@ -75,8 +76,7 @@ DevicePolicyService* DevicePolicyService::Create(
       base::FilePath(kSerialRecoveryFlagFile),
       base::FilePath(kPolicyPath),
       base::FilePath(kInstallAttributesPath),
-      scoped_ptr<PolicyStore>(
-          new PolicyStore(base::FilePath(kPolicyPath))),
+      scoped_ptr<PolicyStore>(new PolicyStore(base::FilePath(kPolicyPath))),
       owner_key,
       main_loop,
       metrics,
@@ -117,7 +117,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
     const std::string& current_user,
     const std::string& buf,
     PK11SlotInfo* slot) {
-  std::vector<uint8> pub_key;
+  std::vector<uint8_t> pub_key;
   NssUtil::BlobFromBuffer(buf, &pub_key);
 
   Error error;
@@ -187,12 +187,12 @@ bool DevicePolicyService::Initialize() {
     LOG(WARNING) << "Failed to load device policy data, continuing anyway.";
 
   if (!key_success && policy_success && store()->Get().has_new_public_key()) {
-      LOG(WARNING) << "Recovering missing owner key from policy blob!";
-      std::vector<uint8> pub_key;
-      NssUtil::BlobFromBuffer(store()->Get().new_public_key(), &pub_key);
-      key_success = key()->PopulateFromBuffer(pub_key);
-      if (key_success)
-        PersistKey();
+    LOG(WARNING) << "Recovering missing owner key from policy blob!";
+    std::vector<uint8_t> pub_key;
+    NssUtil::BlobFromBuffer(store()->Get().new_public_key(), &pub_key);
+    key_success = key()->PopulateFromBuffer(pub_key);
+    if (key_success)
+      PersistKey();
   }
 
   ReportPolicyFileMetrics(key_success, policy_success);
@@ -200,8 +200,8 @@ bool DevicePolicyService::Initialize() {
   return key_success;
 }
 
-bool DevicePolicyService::Store(const uint8* policy_blob,
-                                uint32 len,
+bool DevicePolicyService::Store(const uint8_t* policy_blob,
+                                uint32_t len,
                                 Completion* completion,
                                 int flags) {
   bool result = PolicyService::Store(policy_blob, len, completion, flags);
@@ -259,7 +259,8 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
     policy_args.push_back(
         std::string("--").append(chromeos::switches::kPolicySwitchesBegin));
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
-         it != flags.end(); ++it) {
+         it != flags.end();
+         ++it) {
       std::string flag(*it);
       // Ignore empty flags.
       if (flag.empty() || flag == "-" || flag == "--")
@@ -309,17 +310,15 @@ bool DevicePolicyService::PolicyAllowsNewUsers(
                              polval.allow_new_users().allow_new_users());
   // Doesn't state that new users are allowed, but also doesn't have a
   // non-empty whitelist.
-  bool not_disallowed =
-      !polval.has_allow_new_users() &&
-      !(polval.has_user_whitelist() &&
-        polval.user_whitelist().user_whitelist_size() > 0);
+  bool not_disallowed = !polval.has_allow_new_users() &&
+                        !(polval.has_user_whitelist() &&
+                          polval.user_whitelist().user_whitelist_size() > 0);
   // States that new users are not allowed, but doesn't specify a whitelist.
   // So, we fail open. Such policies are the result of a long-fixed bug, but
   // we're not certain all users ever got migrated.
-  bool failed_open =
-      polval.has_allow_new_users() &&
-      !polval.allow_new_users().allow_new_users() &&
-      !polval.has_user_whitelist();
+  bool failed_open = polval.has_allow_new_users() &&
+                     !polval.allow_new_users().allow_new_users() &&
+                     !polval.has_user_whitelist();
 
   return explicitly_allowed || not_disallowed || failed_open;
 }
@@ -336,8 +335,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
     LOG(INFO) << "Loading existing policy.";
   }
   em::ChromeDeviceSettingsProto polval;
-  if (poldata.has_policy_type() &&
-      poldata.policy_type() == kDevicePolicyType) {
+  if (poldata.has_policy_type() && poldata.policy_type() == kDevicePolicyType) {
     if (poldata.has_policy_value()) {
       polval.ParseFromString(poldata.policy_value());
       // TODO(cmasone): remove once http://crbug.com/355664 is fixed.
@@ -394,14 +392,13 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
               << polval.allow_new_users().allow_new_users();
   }
 
-
   // We have now updated the whitelist and owner setting in |polval|.
   // We need to put it into |poldata|, serialize that, sign it, and
   // write it back.
   poldata.set_policy_value(polval.SerializeAsString());
   std::string new_data = poldata.SerializeAsString();
-  std::vector<uint8> sig;
-  const uint8* data = reinterpret_cast<const uint8*>(new_data.c_str());
+  std::vector<uint8_t> sig;
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(new_data.c_str());
   if (!nss_->Sign(data, new_data.length(), &sig, signing_key)) {
     const char err_msg[] = "Could not sign policy containing new owner data.";
     if (error) {
@@ -418,7 +415,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   new_policy.set_policy_data(new_data);
   new_policy.set_policy_data_signature(
       std::string(reinterpret_cast<const char*>(&sig[0]), sig.size()));
-  const std::vector<uint8>& key_der = key()->public_key_der();
+  const std::vector<uint8_t>& key_der = key()->public_key_der();
   new_policy.set_new_public_key(
       std::string(reinterpret_cast<const char*>(&key_der[0]), key_der.size()));
   store()->Set(new_policy);
@@ -426,7 +423,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
 }
 
 RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
-    const std::vector<uint8>& key,
+    const std::vector<uint8_t>& key,
     PK11SlotInfo* slot,
     Error* error) {
   RSAPrivateKey* result = nss_->GetPrivateKeyForUser(key, slot);
@@ -447,15 +444,14 @@ bool DevicePolicyService::GivenUserIsOwner(const std::string& current_user) {
     return false;
   if (poldata.ParseFromString(policy.policy_data())) {
     return (!poldata.has_request_token() &&
-            poldata.has_username() &&
-            poldata.username() == current_user);
+            poldata.has_username() && poldata.username() == current_user);
   }
   return false;
 }
 
 void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
   bool recovery_needed = false;
-  int64 policy_size = 0;
+  int64_t policy_size = 0;
   if (!base::GetFileSize(base::FilePath(policy_file_), &policy_size) ||
       !policy_size) {
     LOG(WARNING) << "Policy file empty or missing.";
@@ -464,9 +460,8 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
 
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData policy_data;
-  bool policy_parsed =
-      policy.has_policy_data() &&
-      policy_data.ParseFromString(policy.policy_data());
+  bool policy_parsed = policy.has_policy_data() &&
+                       policy_data.ParseFromString(policy.policy_data());
 
   if (policy_parsed && !policy_data.request_token().empty() &&
       policy_data.valid_serial_number_missing()) {
@@ -482,7 +477,7 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
     cryptohome::SerializedInstallAttributes install_attributes;
     if (install_attributes.ParseFromString(contents)) {
       for (int i = 0; i < install_attributes.attributes_size(); ++i) {
-        const cryptohome::SerializedInstallAttributes_Attribute &attribute =
+        const cryptohome::SerializedInstallAttributes_Attribute& attribute =
             install_attributes.attributes(i);
         // Cast value to C string and back to remove trailing zero.
         if (attribute.name() == kAttrEnterpriseMode &&
@@ -503,8 +498,7 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
   // For more info see: http://crosbug.com/31537
   if (recovery_needed) {
     if (base::WriteFile(serial_recovery_flag_file_, NULL, 0) != 0) {
-      PLOG(WARNING) << "Failed to write "
-                    << serial_recovery_flag_file_.value();
+      PLOG(WARNING) << "Failed to write " << serial_recovery_flag_file_.value();
     }
   } else {
     if (!base::DeleteFile(serial_recovery_flag_file_, false)) {

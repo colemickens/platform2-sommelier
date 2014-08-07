@@ -7,13 +7,13 @@
 
 #include "login_manager/system_utils.h"
 
+#include <stdint.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
@@ -38,7 +38,7 @@ class SystemUtilsImpl : public SystemUtils {
   virtual bool ChildIsGone(pid_t child_spec, base::TimeDelta timeout) OVERRIDE;
 
   virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                           int32* file_size_32) OVERRIDE;
+                                           int32_t* file_size_32) OVERRIDE;
   virtual bool Exists(const base::FilePath& file) OVERRIDE;
   virtual bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file) OVERRIDE;
   virtual bool GetUniqueFilenameInWriteOnlyTempDir(

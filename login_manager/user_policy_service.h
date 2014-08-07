@@ -5,7 +5,8 @@
 #ifndef LOGIN_MANAGER_USER_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_USER_POLICY_SERVICE_H_
 
-#include <base/basictypes.h>
+#include <stdint.h>
+
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
 
@@ -35,8 +36,8 @@ class UserPolicyService : public PolicyService {
   // this override allows storage of policy blobs that indiciate the user is
   // unmanaged even if they are unsigned. If an non-signed blob gets installed,
   // we also clear the signing key.
-  virtual bool Store(const uint8* policy_blob,
-                     uint32 len,
+  virtual bool Store(const uint8_t* policy_blob,
+                     uint32_t len,
                      Completion* completion,
                      int flags);
 

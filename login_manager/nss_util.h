@@ -5,6 +5,8 @@
 #ifndef LOGIN_MANAGER_NSS_UTIL_H_
 #define LOGIN_MANAGER_NSS_UTIL_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -33,7 +35,7 @@ class NssUtil {
   // Factory (the default) this creates and returns a new NssUtil.
   static NssUtil* Create();
 
-  static void BlobFromBuffer(const std::string& buf, std::vector<uint8>* out);
+  static void BlobFromBuffer(const std::string& buf, std::vector<uint8_t>* out);
 
   // Returns empty ScopedPK11Slot in the event that the database
   // cannot be opened.
@@ -42,7 +44,7 @@ class NssUtil {
 
   // Caller takes ownership of returned key.
   virtual crypto::RSAPrivateKey* GetPrivateKeyForUser(
-      const std::vector<uint8>& public_key_der,
+      const std::vector<uint8_t>& public_key_der,
       PK11SlotInfo* user_slot) = 0;
 
   // Caller takes ownership of returned key.
@@ -55,15 +57,20 @@ class NssUtil {
   virtual base::FilePath GetNssdbSubpath() = 0;
 
   // Returns true if |blob| is a validly encoded NSS SubjectPublicKeyInfo.
-  virtual bool CheckPublicKeyBlob(const std::vector<uint8>& blob) = 0;
+  virtual bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) = 0;
 
-  virtual bool Verify(const uint8* algorithm, int algorithm_len,
-                      const uint8* signature, int signature_len,
-                      const uint8* data, int data_len,
-                      const uint8* public_key, int public_key_len) = 0;
+  virtual bool Verify(const uint8_t* algorithm,
+                      int algorithm_len,
+                      const uint8_t* signature,
+                      int signature_len,
+                      const uint8_t* data,
+                      int data_len,
+                      const uint8_t* public_key,
+                      int public_key_len) = 0;
 
-  virtual bool Sign(const uint8* data, int data_len,
-                    std::vector<uint8>* OUT_signature,
+  virtual bool Sign(const uint8_t* data,
+                    int data_len,
+                    std::vector<uint8_t>* OUT_signature,
                     crypto::RSAPrivateKey* key) = 0;
 
  private:

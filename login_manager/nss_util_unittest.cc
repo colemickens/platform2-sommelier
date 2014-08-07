@@ -4,6 +4,8 @@
 
 #include "login_manager/nss_util.h"
 
+#include <stdint.h>
+
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
@@ -23,8 +25,8 @@ class NssUtilTest : public ::testing::Test {
 
   virtual void SetUp() OVERRIDE {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::CreateDirectory(
-        tmpdir_.path().Append(util_->GetNssdbSubpath())));
+    ASSERT_TRUE(
+        base::CreateDirectory(tmpdir_.path().Append(util_->GetNssdbSubpath())));
     slot_ = util_->OpenUserDB(tmpdir_.path());
   }
 
@@ -45,7 +47,7 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
   scoped_ptr<RSAPrivateKey> pair(util_->GenerateKeyPairForUser(slot_.get()));
   ASSERT_NE(pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
 
-  std::vector<uint8> public_key;
+  std::vector<uint8_t> public_key;
   ASSERT_TRUE(pair->ExportPublicKey(&public_key));
 
   EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
@@ -56,7 +58,7 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
 }
 
 TEST_F(NssUtilTest, RejectBadPublicKey) {
-  std::vector<uint8> public_key(10, 'a');
+  std::vector<uint8_t> public_key(10, 'a');
   EXPECT_FALSE(util_->CheckPublicKeyBlob(public_key));
 }
 

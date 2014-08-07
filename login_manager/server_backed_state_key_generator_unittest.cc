@@ -4,6 +4,7 @@
 
 #include "login_manager/server_backed_state_key_generator.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #include <map>
@@ -37,9 +38,7 @@ class FakeSystemUtils : public SystemUtilsImpl {
     return time_;
   }
 
-  void forward_time(time_t offset) {
-    time_ += offset;
-  }
+  void forward_time(time_t offset) { time_ += offset; }
 
  private:
   // Current time.
@@ -64,7 +63,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
     ASSERT_TRUE(generator_.InitMachineInfo(params));
   }
 
-  void CompletionHandler(const std::vector<std::vector<uint8> >& state_keys) {
+  void CompletionHandler(const std::vector<std::vector<uint8_t> >& state_keys) {
     state_keys_received_ = true;
     state_keys_ = state_keys;
   }
@@ -83,7 +82,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
   ServerBackedStateKeyGenerator generator_;
 
   bool state_keys_received_;
-  std::vector<std::vector<uint8> > state_keys_;
+  std::vector<std::vector<uint8_t> > state_keys_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServerBackedStateKeyGeneratorTest);
@@ -104,11 +103,11 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   RequestStateKeys(true);
   ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
-  std::vector<std::vector<uint8> > initial_state_keys = state_keys_;
+  std::vector<std::vector<uint8_t> > initial_state_keys = state_keys_;
 
   // All state keys are different.
-  std::set<std::vector<uint8> > state_key_set(state_keys_.begin(),
-                                              state_keys_.end());
+  std::set<std::vector<uint8_t> > state_key_set(state_keys_.begin(),
+                                                state_keys_.end());
   EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_key_set.size());
 
@@ -118,7 +117,7 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   EXPECT_EQ(initial_state_keys, state_keys_);
 
   // Jumping to a future quantum results in the state keys rolling forward.
-  int64 step =
+  int64_t step =
       1 << ServerBackedStateKeyGenerator::kDeviceStateKeyTimeQuantumPower;
   system_utils_.forward_time(2 * step);
 

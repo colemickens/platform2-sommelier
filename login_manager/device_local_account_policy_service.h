@@ -5,11 +5,12 @@
 #ifndef LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_DEVICE_LOCAL_ACCOUNT_POLICY_SERVICE_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest.h>
@@ -47,15 +48,15 @@ class DeviceLocalAccountPolicyService {
   // Store policy for |account_id|, return false if the device-local account is
   // not defined in device policy.
   bool Store(const std::string& account_id,
-             const uint8* policy_data,
-             uint32 policy_data_size,
+             const uint8_t* policy_data,
+             uint32_t policy_data_size,
              PolicyService::Completion* completion);
 
   // Load policy for a given |account_id| and places the result in
   // |policy_data|. Returns true if the account exists and policy could be read
   // successfully, false otherwise.
   bool Retrieve(const std::string& account_id,
-                std::vector<uint8>* policy_data);
+                std::vector<uint8_t>* policy_data);
 
   // Updates device settings, i.e. what device-local accounts are available.
   // This will purge any on-disk state for accounts that are no longer defined

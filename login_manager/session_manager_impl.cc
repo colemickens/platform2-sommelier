@@ -4,9 +4,10 @@
 
 #include "login_manager/session_manager_impl.h"
 
+#include <stdint.h>
+
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
@@ -79,16 +80,16 @@ const char kCrossystemBlockDevmode[] = "block_devmode";
 
 }  // namespace
 
-SessionManagerImpl::Error::Error() : set_(false) {}
+SessionManagerImpl::Error::Error() : set_(false) {
+}
 
 SessionManagerImpl::Error::Error(const std::string& name,
                                  const std::string& message)
-    : name_(name),
-      message_(message),
-      set_(true) {
+    : name_(name), message_(message), set_(true) {
 }
 
-SessionManagerImpl::Error::~Error() {}
+SessionManagerImpl::Error::~Error() {
+}
 
 void SessionManagerImpl::Error::Set(const std::string& name,
                                     const std::string& message) {
@@ -108,8 +109,7 @@ struct SessionManagerImpl::UserSession {
         userhash(userhash),
         is_incognito(is_incognito),
         slot(slot.Pass()),
-        policy_service(policy_service.Pass()) {
-  }
+        policy_service(policy_service.Pass()) {}
   ~UserSession() {}
 
   const std::string username;
@@ -144,7 +144,8 @@ SessionManagerImpl::SessionManagerImpl(
       nss_(nss),
       system_(utils),
       owner_key_(nss->GetOwnerKeyFilePath(), nss),
-      mitigator_(key_gen) {}
+      mitigator_(key_gen) {
+}
 
 SessionManagerImpl::~SessionManagerImpl() {
   STLDeleteValues(&user_sessions_);
@@ -180,22 +181,14 @@ bool SessionManagerImpl::Initialize() {
 
   key_gen_->set_delegate(this);
 
-  device_policy_.reset(DevicePolicyService::Create(login_metrics_,
-                                                   &owner_key_,
-                                                   &mitigator_,
-                                                   nss_,
-                                                   loop_proxy));
+  device_policy_.reset(DevicePolicyService::Create(
+      login_metrics_, &owner_key_, &mitigator_, nss_, loop_proxy));
   device_policy_->set_delegate(this);
 
-  user_policy_factory_.reset(new UserPolicyServiceFactory(getuid(),
-                                                          loop_proxy,
-                                                          nss_,
-                                                          system_));
-  device_local_account_policy_.reset(
-      new DeviceLocalAccountPolicyService(
-          base::FilePath(kDeviceLocalAccountStateDir),
-          &owner_key_,
-          loop_proxy));
+  user_policy_factory_.reset(
+      new UserPolicyServiceFactory(getuid(), loop_proxy, nss_, system_));
+  device_local_account_policy_.reset(new DeviceLocalAccountPolicyService(
+      base::FilePath(kDeviceLocalAccountStateDir), &owner_key_, loop_proxy));
 
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(
@@ -209,7 +202,8 @@ bool SessionManagerImpl::Initialize() {
 void SessionManagerImpl::Finalize() {
   device_policy_->PersistPolicySync();
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
-       it != user_sessions_.end(); ++it) {
+       it != user_sessions_.end();
+       ++it) {
     if (it->second)
       it->second->policy_service->PersistPolicySync();
   }
@@ -264,8 +258,8 @@ bool SessionManagerImpl::StartSession(const std::string& email,
                                       Error* error) {
   // Validate the |email|.
   const std::string email_string(StringToLowerASCII(email));
-  const bool is_incognito = ((email_string == kGuestUserName) ||
-                             (email_string == kDemoUser));
+  const bool is_incognito =
+      ((email_string == kGuestUserName) || (email_string == kDemoUser));
   if (!is_incognito && !ValidateEmail(email_string)) {
     const char msg[] = "Provided email address is not valid.  ASCII only.";
     LOG(ERROR) << msg;
@@ -283,9 +277,8 @@ bool SessionManagerImpl::StartSession(const std::string& email,
 
   // Create a UserSession object for this user.
   std::string error_name;
-  scoped_ptr<UserSession> user_session(CreateUserSession(email_string,
-                                                         is_incognito,
-                                                         &error_name));
+  scoped_ptr<UserSession> user_session(
+      CreateUserSession(email_string, is_incognito, &error_name));
   if (!user_session.get()) {
     error->Set(error_name, "Can't create session.");
     return false;
@@ -329,8 +322,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
   dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStarted);
 
-  if (device_policy_->KeyMissing() &&
-      !device_policy_->Mitigating() &&
+  if (device_policy_->KeyMissing() && !device_policy_->Mitigating() &&
       is_first_real_user) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
     key_gen_->Start(email_string);
@@ -355,7 +347,7 @@ bool SessionManagerImpl::StopSession() {
   return true;
 }
 
-void SessionManagerImpl::StorePolicy(const uint8* policy_blob,
+void SessionManagerImpl::StorePolicy(const uint8_t* policy_blob,
                                      size_t policy_blob_len,
                                      PolicyService::Completion* completion) {
   int flags = PolicyService::KEY_ROTATE;
@@ -364,7 +356,7 @@ void SessionManagerImpl::StorePolicy(const uint8* policy_blob,
   device_policy_->Store(policy_blob, policy_blob_len, completion, flags);
 }
 
-void SessionManagerImpl::RetrievePolicy(std::vector<uint8>* policy_data,
+void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
                                         Error* error) {
   if (!device_policy_->Retrieve(policy_data)) {
     const char msg[] = "Failed to retrieve policy data.";
@@ -376,7 +368,7 @@ void SessionManagerImpl::RetrievePolicy(std::vector<uint8>* policy_data,
 
 void SessionManagerImpl::StorePolicyForUser(
     const std::string& user_email,
-    const uint8* policy_blob,
+    const uint8_t* policy_blob,
     size_t policy_blob_len,
     PolicyService::Completion* completion) {
   PolicyService* policy_service = GetPolicyService(user_email);
@@ -396,9 +388,10 @@ void SessionManagerImpl::StorePolicyForUser(
       PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE);
 }
 
-void SessionManagerImpl::RetrievePolicyForUser(const std::string& user_email,
-                                               std::vector<uint8>* policy_data,
-                                               Error* error) {
+void SessionManagerImpl::RetrievePolicyForUser(
+    const std::string& user_email,
+    std::vector<uint8_t>* policy_data,
+    Error* error) {
   PolicyService* policy_service = GetPolicyService(user_email);
   if (!policy_service) {
     const char msg[] = "Cannot retrieve user policy before session is started.";
@@ -415,18 +408,16 @@ void SessionManagerImpl::RetrievePolicyForUser(const std::string& user_email,
 
 void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     const std::string& account_id,
-    const uint8* policy_blob,
+    const uint8_t* policy_blob,
     size_t policy_blob_len,
     PolicyService::Completion* completion) {
-  device_local_account_policy_->Store(account_id,
-                                      policy_blob,
-                                      policy_blob_len,
-                                      completion);
+  device_local_account_policy_->Store(
+      account_id, policy_blob, policy_blob_len, completion);
 }
 
 void SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
     const std::string& account_id,
-    std::vector<uint8>* policy_data,
+    std::vector<uint8_t>* policy_data,
     Error* error) {
   if (!device_local_account_policy_->Retrieve(account_id, policy_data)) {
     const char msg[] = "Failed to retrieve policy data.";
@@ -496,7 +487,7 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
     return false;
   }
 
-  gchar **argv = NULL;
+  gchar** argv = NULL;
   gint argc = 0;
   GError* parse_error = NULL;
   if (!g_shell_parse_argv(arguments.c_str(), &argc, &argv, &parse_error)) {
@@ -573,9 +564,7 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
   PLOG_IF(WARNING, !base::DeleteFile(temp_key_file, false))
       << "Can't delete " << temp_key_file.value();
   device_policy_->ValidateAndStoreOwnerKey(
-      username,
-      key,
-      user_sessions_[username]->slot.get());
+      username, key, user_sessions_[username]->slot.get());
 }
 
 void SessionManagerImpl::InitiateDeviceWipe() {
@@ -595,7 +584,7 @@ bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
     return false;
 
   // it has more than one @.
-  if (email_address.find(kEmailSeparator, at+1) != std::string::npos)
+  if (email_address.find(kEmailSeparator, at + 1) != std::string::npos)
     return false;
 
   return true;
@@ -612,12 +601,11 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
   return incognito_count == user_sessions_.size();
 }
 
-SessionManagerImpl::UserSession*
-SessionManagerImpl::CreateUserSession(const std::string& username,
-                                      bool is_incognito,
-                                      std::string* error_message) {
-  scoped_ptr<PolicyService> user_policy(
-      user_policy_factory_->Create(username));
+SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
+    const std::string& username,
+    bool is_incognito,
+    std::string* error_message) {
+  scoped_ptr<PolicyService> user_policy(user_policy_factory_->Create(username));
   if (!user_policy) {
     LOG(ERROR) << "User policy failed to initialize.";
     if (error_message)

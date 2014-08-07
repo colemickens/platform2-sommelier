@@ -5,12 +5,12 @@
 #include "login_manager/key_generator.h"
 
 #include <signal.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
@@ -42,9 +42,7 @@ using ::testing::_;
 class KeyGeneratorTest : public ::testing::Test {
  public:
   KeyGeneratorTest()
-      : original_user_prefix_(GetUserPathPrefix()),
-        fake_salt_("fake salt") {
-  }
+      : original_user_prefix_(GetUserPathPrefix()), fake_salt_("fake salt") {}
 
   virtual ~KeyGeneratorTest() {}
 
@@ -80,9 +78,8 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
 
   KeyGenerator keygen(getuid(), &utils_);
   keygen.set_delegate(&handler);
-  keygen.InjectJobFactory(
-      scoped_ptr<GeneratorJobFactoryInterface>(
-          new FakeGeneratorJob::Factory(kDummyPid, "gen", fake_key_contents)));
+  keygen.InjectJobFactory(scoped_ptr<GeneratorJobFactoryInterface>(
+      new FakeGeneratorJob::Factory(kDummyPid, "gen", fake_key_contents)));
 
   ASSERT_TRUE(keygen.Start(fake_ownername));
   keygen.HandleExit(fake_info);
@@ -103,7 +100,7 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
   ASSERT_TRUE(base::PathExists(key_file_path));
 
   SystemUtilsImpl utils;
-  int32 file_size = 0;
+  int32_t file_size = 0;
   ASSERT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
   ASSERT_GT(file_size, 0);
 }

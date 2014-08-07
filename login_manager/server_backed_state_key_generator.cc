@@ -4,6 +4,8 @@
 
 #include "login_manager/server_backed_state_key_generator.h"
 
+#include <stdint.h>
+
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/stl_util.h>
@@ -61,8 +63,7 @@ const int ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta;
 
 ServerBackedStateKeyGenerator::ServerBackedStateKeyGenerator(
     SystemUtils* system_utils)
-    : system_utils_(system_utils),
-      machine_info_available_(false) {
+    : system_utils_(system_utils), machine_info_available_(false) {
 }
 
 ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {
@@ -113,18 +114,17 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
 
   LOG_IF(ERROR, machine_serial_number_.empty())
       << "Machine serial number missing!";
-  LOG_IF(ERROR, disk_serial_number_.empty())
-      << "Disk serial number missing!";
+  LOG_IF(ERROR, disk_serial_number_.empty()) << "Disk serial number missing!";
 
   // Fire all pending callbacks.
-  std::vector<std::vector<uint8> > state_keys;
+  std::vector<std::vector<uint8_t> > state_keys;
   ComputeKeys(&state_keys);
   std::vector<StateKeyCallback> callbacks;
   callbacks.swap(pending_callbacks_);
-  for (std::vector<StateKeyCallback>::const_iterator callback(
-           callbacks.begin());
-       callback != callbacks.end();
-       ++callback) {
+  for (
+      std::vector<StateKeyCallback>::const_iterator callback(callbacks.begin());
+      callback != callbacks.end();
+      ++callback) {
     callback->Run(state_keys);
   }
 
@@ -138,25 +138,25 @@ void ServerBackedStateKeyGenerator::RequestStateKeys(
     return;
   }
 
-  std::vector<std::vector<uint8> > state_keys;
+  std::vector<std::vector<uint8_t> > state_keys;
   ComputeKeys(&state_keys);
   callback.Run(state_keys);
 }
 
 void ServerBackedStateKeyGenerator::ComputeKeys(
-    std::vector<std::vector<uint8> >* state_keys) {
+    std::vector<std::vector<uint8_t> >* state_keys) {
   state_keys->clear();
 
   if (machine_serial_number_.empty() || disk_serial_number_.empty())
     return;
 
   // Get the current time in quantized form.
-  int64 quantum_size = 1 << kDeviceStateKeyTimeQuantumPower;
-  int64 quantized_time = system_utils_->time(NULL) & ~(quantum_size - 1);
+  int64_t quantum_size = 1 << kDeviceStateKeyTimeQuantumPower;
+  int64_t quantized_time = system_utils_->time(NULL) & ~(quantum_size - 1);
 
   // Compute the state keys.
   for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
-    state_keys->push_back(std::vector<uint8>(crypto::kSHA256Length));
+    state_keys->push_back(std::vector<uint8_t>(crypto::kSHA256Length));
     crypto::SHA256HashString(
         crypto::SHA256HashString(group_code_key_) +
             crypto::SHA256HashString(disk_serial_number_) +

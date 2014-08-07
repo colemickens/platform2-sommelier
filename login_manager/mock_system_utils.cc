@@ -4,6 +4,8 @@
 
 #include "login_manager/mock_system_utils.h"
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/file_util.h>
@@ -11,9 +13,11 @@
 
 namespace login_manager {
 
-MockSystemUtils::MockSystemUtils() {}
+MockSystemUtils::MockSystemUtils() {
+}
 
-MockSystemUtils::~MockSystemUtils() {}
+MockSystemUtils::~MockSystemUtils() {
+}
 
 bool MockSystemUtils::Exists(const base::FilePath& file) {
   return EnsureTempDir() && real_utils_.Exists(PutInsideTempdir(file));
@@ -38,7 +42,7 @@ bool MockSystemUtils::ReadFileToString(const base::FilePath& file,
 }
 
 bool MockSystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                                  int32* file_size_32) {
+                                                  int32_t* file_size_32) {
   return (EnsureTempDir() &&
           real_utils_.EnsureAndReturnSafeFileSize(PutInsideTempdir(file),
                                                   file_size_32));
@@ -62,8 +66,7 @@ bool MockSystemUtils::CreateReadOnlyFileInTempDir(
 base::FilePath MockSystemUtils::GetUniqueFilename() {
   if (unique_file_path_.empty()) {
     if (EnsureTempDir() &&
-        !base::CreateTemporaryFileInDir(temp_dir_.path(),
-                                        &unique_file_path_)) {
+        !base::CreateTemporaryFileInDir(temp_dir_.path(), &unique_file_path_)) {
       PLOG(ERROR) << "Could not create file in " << temp_dir_.path().value();
       unique_file_path_.clear();
     }

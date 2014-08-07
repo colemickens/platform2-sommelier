@@ -7,6 +7,7 @@
 
 #include "login_manager/policy_key.h"
 
+#include <stdint.h>
 #include <unistd.h>
 
 #include <string>
@@ -24,19 +25,20 @@ class MockPolicyKey : public PolicyKey {
   MockPolicyKey();
   virtual ~MockPolicyKey();
   MOCK_CONST_METHOD1(Equals, bool(const std::string&));
-  MOCK_CONST_METHOD1(VEquals, bool(const std::vector<uint8>&));
+  MOCK_CONST_METHOD1(VEquals, bool(const std::vector<uint8_t>&));
   MOCK_CONST_METHOD0(HaveCheckedDisk, bool());
   MOCK_CONST_METHOD0(IsPopulated, bool());
   MOCK_METHOD0(PopulateFromDiskIfPossible, bool());
-  MOCK_METHOD1(PopulateFromBuffer, bool(const std::vector<uint8>&));
+  MOCK_METHOD1(PopulateFromBuffer, bool(const std::vector<uint8_t>&));
   MOCK_METHOD1(PopulateFromKeypair, bool(crypto::RSAPrivateKey*));
   MOCK_METHOD0(Persist, bool());
-  MOCK_METHOD2(Rotate, bool(const std::vector<uint8>&,
-                            const std::vector<uint8>&));
-  MOCK_METHOD1(ClobberCompromisedKey, bool(const std::vector<uint8>&));
-  MOCK_METHOD4(Verify, bool(const uint8*, uint32, const uint8*, uint32));
-  MOCK_METHOD3(Sign, bool(const uint8*, uint32, std::vector<uint8>*));
-  MOCK_CONST_METHOD0(public_key_der, const std::vector<uint8>&());
+  MOCK_METHOD2(Rotate,
+               bool(const std::vector<uint8_t>&, const std::vector<uint8_t>&));
+  MOCK_METHOD1(ClobberCompromisedKey, bool(const std::vector<uint8_t>&));
+  MOCK_METHOD4(Verify,
+               bool(const uint8_t*, uint32_t, const uint8_t*, uint32_t));
+  MOCK_METHOD3(Sign, bool(const uint8_t*, uint32_t, std::vector<uint8_t>*));
+  MOCK_CONST_METHOD0(public_key_der, const std::vector<uint8_t>&());
 };
 }  // namespace login_manager
 

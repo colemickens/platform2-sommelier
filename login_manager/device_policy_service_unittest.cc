@@ -72,8 +72,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     serial_recovery_flag_file_ =
         tmpdir_.path().AppendASCII("serial_recovery_flag");
-    policy_file_ =
-        tmpdir_.path().AppendASCII("policy");
+    policy_file_ = tmpdir_.path().AppendASCII("policy");
     install_attributes_file_ =
         tmpdir_.path().AppendASCII("install_attributes.pb");
   }
@@ -117,16 +116,15 @@ class DevicePolicyServiceTest : public ::testing::Test {
     mitigator_.reset(new StrictMock<MockMitigator>);
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_.reset(new DevicePolicyService(
-        serial_recovery_flag_file_,
-        policy_file_,
-        install_attributes_file_,
-        scoped_ptr<PolicyStore>(store_),
-        &key_,
-        message_loop,
-        metrics_.get(),
-        mitigator_.get(),
-        nss));
+    service_.reset(new DevicePolicyService(serial_recovery_flag_file_,
+                                           policy_file_,
+                                           install_attributes_file_,
+                                           scoped_ptr<PolicyStore>(store_),
+                                           &key_,
+                                           message_loop,
+                                           metrics_.get(),
+                                           mitigator_.get(),
+                                           nss));
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der())
@@ -169,11 +167,10 @@ class DevicePolicyServiceTest : public ::testing::Test {
     std::set<std::string> old_whitelist_set(old_whitelist.begin(),
                                             old_whitelist.end());
     old_whitelist_set.insert(owner_);
-    std::set<std::string> whitelist_set(whitelist.begin(),
-                                        whitelist.end());
+    std::set<std::string> whitelist_set(whitelist.begin(), whitelist.end());
     ASSERT_EQ(old_whitelist_set.size(), whitelist_set.size());
-    ASSERT_TRUE(std::equal(whitelist_set.begin(), whitelist_set.end(),
-                           old_whitelist_set.begin()));
+    ASSERT_TRUE(std::equal(
+        whitelist_set.begin(), whitelist_set.end(), old_whitelist_set.begin()));
     ASSERT_TRUE(settings.has_allow_new_users());
 
     // Make sure no other fields have been touched.
@@ -197,29 +194,26 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   void ExpectInstallNewOwnerPolicy(Sequence sequence, MockNssUtil* nss) {
     Expectation get_policy =
-        EXPECT_CALL(*store_, Get())
-            .WillRepeatedly(ReturnRef(policy_proto_));
+        EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
     Expectation compare_keys =
-        EXPECT_CALL(key_, Equals(_))
-            .WillRepeatedly(Return(false));
+        EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
     Expectation sign =
         EXPECT_CALL(*nss, Sign(_, _, _, _))
             .After(get_policy)
             .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
                             Return(true)));
-    Expectation set_policy = EXPECT_CALL(*store_, Set(_))
-        .InSequence(sequence)
-        .After(sign, compare_keys)
-        .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
+    Expectation set_policy =
+        EXPECT_CALL(*store_, Set(_))
+            .InSequence(sequence)
+            .After(sign, compare_keys)
+            .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
   }
 
   void ExpectFailedInstallNewOwnerPolicy(Sequence sequence, MockNssUtil* nss) {
     Expectation get_policy =
-        EXPECT_CALL(*store_, Get())
-            .WillRepeatedly(ReturnRef(policy_proto_));
+        EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
     Expectation compare_keys =
-        EXPECT_CALL(key_, Equals(_))
-            .WillRepeatedly(Return(false));
+        EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
     Expectation sign =
         EXPECT_CALL(*nss, Sign(_, _, _, _))
             .After(get_policy)
@@ -231,10 +225,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&key_);
     Mock::VerifyAndClearExpectations(store_);
 
-    EXPECT_CALL(key_, Persist())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*store_, Persist())
-        .WillOnce(Return(true));
+    EXPECT_CALL(key_, Persist()).WillOnce(Return(true));
+    EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
     base::RunLoop().RunUntilIdle();
   }
 
@@ -248,15 +240,12 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void ExpectKeyPopulated(bool key_populated) {
-    EXPECT_CALL(key_, HaveCheckedDisk())
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(key_, IsPopulated())
-        .WillRepeatedly(Return(key_populated));
+    EXPECT_CALL(key_, HaveCheckedDisk()).WillRepeatedly(Return(true));
+    EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(key_populated));
   }
 
   LoginMetrics::PolicyFileState SimulateNullPolicy() {
-    EXPECT_CALL(*store_, Get())
-        .WillRepeatedly(ReturnRef(new_policy_proto_));
+    EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(new_policy_proto_));
     return LoginMetrics::NOT_PRESENT;
   }
 
@@ -308,7 +297,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::string owner_;
   std::string fake_sig_;
   std::string fake_key_;
-  std::vector<uint8> fake_key_vector_;
+  std::vector<uint8_t> fake_key_vector_;
   std::string new_fake_sig_;
 
   base::MessageLoop loop_;
@@ -345,10 +334,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_TRUE(is_owner);
   EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
@@ -371,10 +358,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_TRUE(is_owner);
   EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
@@ -399,10 +384,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_TRUE(is_owner);
   EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
@@ -420,10 +403,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
 
   PolicyService::Error error;
   bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin("regular_user@somewhere",
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      "regular_user@somewhere", nss.GetSlot(), &is_owner, &error));
   EXPECT_FALSE(is_owner);
 }
 
@@ -440,13 +421,10 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
   PolicyService::Error error;
   bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_FALSE(is_owner);
 }
-
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
   KeyFailUtil nss;
@@ -455,18 +433,15 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .InSequence(s)
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).InSequence(s).WillOnce(
+      Return(true));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_TRUE(is_owner);
 }
 
@@ -478,18 +453,15 @@ TEST_F(DevicePolicyServiceTest,
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .InSequence(s)
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).InSequence(s).WillOnce(
+      Return(true));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_TRUE(is_owner);
 }
 
@@ -507,10 +479,8 @@ TEST_F(DevicePolicyServiceTest,
 
   PolicyService::Error error;
   bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin("other@somwhere",
-                                                 nss.GetSlot(),
-                                                 &is_owner,
-                                                 &error));
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
+      "other@somwhere", nss.GetSlot(), &is_owner, &error));
   EXPECT_FALSE(is_owner);
 }
 
@@ -521,18 +491,15 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
-      .InSequence(s)
-      .WillOnce(Return(false));
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).InSequence(s).WillOnce(
+      Return(false));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                  nss.GetSlot(),
-                                                  &is_owner,
-                                                  &error));
+  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
@@ -544,15 +511,12 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
 
-  EXPECT_CALL(*store_, Get())
-      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   Expectation compare_keys =
-      EXPECT_CALL(key_, Equals(_))
-          .WillRepeatedly(Return(false));
-  Expectation sign =
-      EXPECT_CALL(nss, Sign(_, _, _, _))
-          .After(compare_keys)
-          .WillOnce(Return(false));
+      EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
+  Expectation sign = EXPECT_CALL(nss, Sign(_, _, _, _))
+                         .After(compare_keys)
+                         .WillOnce(Return(false));
 
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
@@ -561,10 +525,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
 
   PolicyService::Error error;
   bool is_owner = false;
-  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_,
-                                                  nss.GetSlot(),
-                                                  &is_owner,
-                                                  &error));
+  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(
+      owner_, nss.GetSlot(), &is_owner, &error));
 }
 
 TEST_F(DevicePolicyServiceTest, PolicyAllowsNewUsers) {
@@ -624,9 +586,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated())
-      .InSequence(s)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
@@ -646,9 +606,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated())
-      .InSequence(s)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
@@ -712,9 +670,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated())
-      .InSequence(s)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(false));
@@ -735,10 +691,8 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
   MockNssUtil nss;
   InitService(&nss);
 
-  EXPECT_CALL(key_, HaveCheckedDisk())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(key_, IsPopulated())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(key_, HaveCheckedDisk()).WillRepeatedly(Return(false));
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
 
   EXPECT_FALSE(service_->KeyMissing());
 }
@@ -857,20 +811,13 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
 
   EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_vector_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, PopulateFromDiskIfPossible())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, HaveCheckedDisk())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, IsPopulated())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, LoadOrCreate())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Get())
-      .WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(*store_, DefunctPrefsFilePresent())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_))
-      .Times(AnyNumber());
+  EXPECT_CALL(key_, PopulateFromDiskIfPossible()).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, HaveCheckedDisk()).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadOrCreate()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_)).Times(AnyNumber());
 
   // Fake the policy file existence.
   base::WriteFile(policy_file_, ".", 1);
@@ -897,24 +844,15 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
 
   EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_vector_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, PopulateFromDiskIfPossible())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(key_, PopulateFromBuffer(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, IsPopulated())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, Persist())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, LoadOrCreate())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Get())
-      .WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(*store_, DefunctPrefsFilePresent())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_))
-      .Times(AnyNumber());
+  EXPECT_CALL(key_, PopulateFromDiskIfPossible()).WillRepeatedly(Return(false));
+  EXPECT_CALL(key_, PopulateFromBuffer(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, ClobberCompromisedKey(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Persist()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadOrCreate()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_)).Times(AnyNumber());
 
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
@@ -933,11 +871,9 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   em::ChromeDeviceSettingsProto settings;
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
-  EXPECT_CALL(key_, Verify(_, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
-  EXPECT_CALL(*store_, Get())
-      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
   EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
 
@@ -945,8 +881,9 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   // owner) should not create the file.
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", true));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
@@ -954,50 +891,53 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   // flag set should create the flag file.
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Storing bad policy shouldn't remove the file.
-  EXPECT_FALSE(service_->Store(NULL, 0, &completion_,
-                               PolicyService::KEY_CLOBBER));
+  EXPECT_FALSE(
+      service_->Store(NULL, 0, &completion_, PolicyService::KEY_CLOBBER));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Clearing the flag should remove the file.
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", false));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
-
   // Create install attributes file to mock enterprise enrolled device.
   cryptohome::SerializedInstallAttributes install_attributes;
-  cryptohome::SerializedInstallAttributes_Attribute *attribute =
+  cryptohome::SerializedInstallAttributes_Attribute* attribute =
       install_attributes.add_attributes();
   attribute->set_name(DevicePolicyService::kAttrEnterpriseMode);
-  attribute->set_value(std::string(DevicePolicyService::kEnterpriseDeviceMode)
-                       + "\0");  // Sadly, values contain trailing zeroes.
+  attribute->set_value(std::string(DevicePolicyService::kEnterpriseDeviceMode) +
+                       "\0");  // Sadly, values contain trailing zeroes.
   std::string serialized;
   EXPECT_TRUE(install_attributes.SerializeToString(&serialized));
-  base::WriteFile(install_attributes_file_,
-                  serialized.c_str(), serialized.size());
+  base::WriteFile(
+      install_attributes_file_, serialized.c_str(), serialized.size());
 
   // In case DM tokens exists, the flag file should not be created.
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", false));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   // Missing DM token should lead to creation of flag file.
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 }
@@ -1016,18 +956,16 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   // Storing new policy should cause the settings to update as well.
   settings.mutable_metrics_enabled()->set_metrics_enabled(true);
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
-  EXPECT_CALL(key_, Verify(_, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Persist())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
-  EXPECT_CALL(*store_, Get())
-      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
   EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
@@ -1049,18 +987,16 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   settings.mutable_start_up_flags()->add_flags("-");
   settings.mutable_start_up_flags()->add_flags("--");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-  EXPECT_CALL(key_, Verify(_, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Persist())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
-  EXPECT_CALL(*store_, Get())
-      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
   EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
-                      policy_str_.size(), &completion_,
+      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
+                      policy_str_.size(),
+                      &completion_,
                       PolicyService::KEY_CLOBBER));
   base::RunLoop().RunUntilIdle();
 

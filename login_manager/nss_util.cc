@@ -4,10 +4,11 @@
 
 #include "login_manager/nss_util.h"
 
+#include <stdint.h>
+
 #include <string>
 #include <utility>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -41,9 +42,11 @@ namespace login_manager {
 ///////////////////////////////////////////////////////////////////////////
 // NssUtil
 
-NssUtil::NssUtil() {}
+NssUtil::NssUtil() {
+}
 
-NssUtil::~NssUtil() {}
+NssUtil::~NssUtil() {
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // NssUtilImpl
@@ -57,7 +60,7 @@ class NssUtilImpl : public NssUtil {
       const base::FilePath& user_homedir) OVERRIDE;
 
   virtual RSAPrivateKey* GetPrivateKeyForUser(
-      const std::vector<uint8>& public_key_der,
+      const std::vector<uint8_t>& public_key_der,
       PK11SlotInfo* user_slot) OVERRIDE;
 
   virtual RSAPrivateKey* GenerateKeyPairForUser(
@@ -67,19 +70,24 @@ class NssUtilImpl : public NssUtil {
 
   virtual base::FilePath GetNssdbSubpath() OVERRIDE;
 
-  virtual bool CheckPublicKeyBlob(const std::vector<uint8>& blob) OVERRIDE;
+  virtual bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) OVERRIDE;
 
-  virtual bool Verify(const uint8* algorithm, int algorithm_len,
-                      const uint8* signature, int signature_len,
-                      const uint8* data, int data_len,
-                      const uint8* public_key, int public_key_len) OVERRIDE;
+  virtual bool Verify(const uint8_t* algorithm,
+                      int algorithm_len,
+                      const uint8_t* signature,
+                      int signature_len,
+                      const uint8_t* data,
+                      int data_len,
+                      const uint8_t* public_key,
+                      int public_key_len) OVERRIDE;
 
-  virtual bool Sign(const uint8* data, int data_len,
-                    std::vector<uint8>* OUT_signature,
+  virtual bool Sign(const uint8_t* data,
+                    int data_len,
+                    std::vector<uint8_t>* OUT_signature,
                     RSAPrivateKey* key) OVERRIDE;
 
  private:
-  static const uint16 kKeySizeInBits;
+  static const uint16_t kKeySizeInBits;
   static const char kNssdbSubpath[];
 
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
@@ -92,7 +100,8 @@ NssUtil* NssUtil::Create() {
 }
 
 // static
-void NssUtil::BlobFromBuffer(const std::string& buf, std::vector<uint8>* out) {
+void NssUtil::BlobFromBuffer(const std::string& buf,
+                             std::vector<uint8_t>* out) {
   out->resize(buf.length());
   if (out->size() == 0)
     return;
@@ -101,7 +110,7 @@ void NssUtil::BlobFromBuffer(const std::string& buf, std::vector<uint8>* out) {
 
 // We're generating and using 2048-bit RSA keys.
 // static
-const uint16 NssUtilImpl::kKeySizeInBits = 2048;
+const uint16_t NssUtilImpl::kKeySizeInBits = 2048;
 // static
 const char NssUtilImpl::kNssdbSubpath[] = ".pki/nssdb";
 
@@ -109,10 +118,10 @@ NssUtilImpl::NssUtilImpl() {
   crypto::EnsureNSSInit();
 }
 
-NssUtilImpl::~NssUtilImpl() {}
+NssUtilImpl::~NssUtilImpl() {
+}
 
-ScopedPK11Slot NssUtilImpl::OpenUserDB(
-    const base::FilePath& user_homedir) {
+ScopedPK11Slot NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
   // TODO(cmasone): If we ever try to keep the session_manager alive across
   // user sessions, we'll need to close these persistent DBs.
   base::FilePath db_path(user_homedir.AppendASCII(kNssdbSubpath));
@@ -137,7 +146,7 @@ ScopedPK11Slot NssUtilImpl::OpenUserDB(
 }
 
 RSAPrivateKey* NssUtilImpl::GetPrivateKeyForUser(
-    const std::vector<uint8>& public_key_der,
+    const std::vector<uint8_t>& public_key_der,
     PK11SlotInfo* user_slot) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
@@ -177,9 +186,7 @@ RSAPrivateKey* NssUtilImpl::GetPrivateKeyForUser(
   }
 
   // Search in just the user slot for the key with the given ID.
-  ScopedSECKEYPrivateKey key(PK11_FindKeyByKeyID(user_slot,
-                                                 ck_id.get(),
-                                                 NULL));
+  ScopedSECKEYPrivateKey key(PK11_FindKeyByKeyID(user_slot, ck_id.get(), NULL));
   if (key.get())
     return RSAPrivateKey::CreateFromKey(key.get());
 
@@ -214,11 +221,11 @@ base::FilePath NssUtilImpl::GetNssdbSubpath() {
   return base::FilePath(kNssdbSubpath);
 }
 
-bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {
+bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8_t>& blob) {
   CERTSubjectPublicKeyInfo* spki = NULL;
   SECItem spki_der;
   spki_der.type = siBuffer;
-  spki_der.data = const_cast<uint8*>(&blob[0]);
+  spki_der.data = const_cast<uint8_t*>(&blob[0]);
   spki_der.len = blob.size();
   spki = SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_der);
   if (!spki)
@@ -233,15 +240,22 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Verify(const uint8* algorithm, int algorithm_len,
-                         const uint8* signature, int signature_len,
-                         const uint8* data, int data_len,
-                         const uint8* public_key, int public_key_len) {
+bool NssUtilImpl::Verify(const uint8_t* algorithm,
+                         int algorithm_len,
+                         const uint8_t* signature,
+                         int signature_len,
+                         const uint8_t* data,
+                         int data_len,
+                         const uint8_t* public_key,
+                         int public_key_len) {
   crypto::SignatureVerifier verifier_;
 
-  if (!verifier_.VerifyInit(algorithm, algorithm_len,
-                            signature, signature_len,
-                            public_key, public_key_len)) {
+  if (!verifier_.VerifyInit(algorithm,
+                            algorithm_len,
+                            signature,
+                            signature_len,
+                            public_key,
+                            public_key_len)) {
     LOG(ERROR) << "Could not initialize verifier";
     return false;
   }
@@ -252,8 +266,9 @@ bool NssUtilImpl::Verify(const uint8* algorithm, int algorithm_len,
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Sign(const uint8* data, int data_len,
-                       std::vector<uint8>* OUT_signature,
+bool NssUtilImpl::Sign(const uint8_t* data,
+                       int data_len,
+                       std::vector<uint8_t>* OUT_signature,
                        RSAPrivateKey* key) {
   scoped_ptr<crypto::SignatureCreator> signer(
       crypto::SignatureCreator::Create(key));

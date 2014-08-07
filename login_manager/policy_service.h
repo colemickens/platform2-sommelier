@@ -5,10 +5,11 @@
 #ifndef LOGIN_MANAGER_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_POLICY_SERVICE_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -88,14 +89,14 @@ class PolicyService {
   //
   // Returns false on immediate errors. Otherwise, returns true and reports the
   // status of the operation through |completion|.
-  virtual bool Store(const uint8* policy_blob,
-                     uint32 len,
+  virtual bool Store(const uint8_t* policy_blob,
+                     uint32_t len,
                      Completion* completion,
                      int flags);
 
   // Retrieves the current policy blob. Returns true if successful, false
   // otherwise.
-  virtual bool Retrieve(std::vector<uint8>* policy_blob);
+  virtual bool Retrieve(std::vector<uint8_t>* policy_blob);
 
   // Policy is persisted to disk on the IO loop. The current thread waits for
   // completion and reports back the status afterwards.

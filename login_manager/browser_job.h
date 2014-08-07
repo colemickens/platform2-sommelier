@@ -112,7 +112,7 @@ class BrowserJob : public BrowserJobInterface {
 
   // After kRestartTries in kRestartWindowSeconds, the BrowserJob will indicate
   // that it should be stopped.
-  static const uint kRestartTries;
+  static const uint32_t kRestartTries;
   static const time_t kRestartWindowSeconds;
 
  private:

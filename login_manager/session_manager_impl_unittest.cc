@@ -4,6 +4,7 @@
 
 #include "login_manager/session_manager_impl.h"
 
+#include <stdint.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -11,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
@@ -99,9 +99,8 @@ class SessionManagerImplTest : public ::testing::Test {
     SetSystemSalt(&fake_salt_);
 
     MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
-    EXPECT_CALL(*factory, Create(_))
-        .WillRepeatedly(
-            Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
+    EXPECT_CALL(*factory, Create(_)).WillRepeatedly(
+        Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
         new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL, NULL));
     impl_.InjectPolicyServices(
@@ -141,13 +140,9 @@ class SessionManagerImplTest : public ::testing::Test {
     ExpectStartSessionUnownedBoilerplate(email_string, true, false);
   }
 
-  void ExpectLockScreen() {
-    expected_locks_ = 1;
-  }
+  void ExpectLockScreen() { expected_locks_ = 1; }
 
-  void ExpectDeviceRestart() {
-    expected_restarts_ = 1;
-  }
+  void ExpectDeviceRestart() { expected_restarts_ = 1; }
 
   void ExpectStorePolicy(MockDevicePolicyService* service,
                          const string& policy,
@@ -218,21 +213,16 @@ class SessionManagerImplTest : public ::testing::Test {
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
                 CheckAndHandleOwnerLogin(StrEq(email_string), _, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(for_owner),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgumentPointee<2>(for_owner), Return(true)));
     // Confirm that the key is present.
-    EXPECT_CALL(*device_policy_service_, KeyMissing())
-        .WillOnce(Return(false));
+    EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(false));
 
-    EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner))
-        .Times(1);
-    EXPECT_CALL(dbus_emitter_,
-                EmitSignalWithString(
-                    StrEq(login_manager::kSessionStateChangedSignal),
-                    StrEq(SessionManagerImpl::kStarted)))
-        .Times(1);
-    EXPECT_CALL(utils_, IsDevMode())
-        .WillOnce(Return(false));
+    EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
+    EXPECT_CALL(
+        dbus_emitter_,
+        EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
+                             StrEq(SessionManagerImpl::kStarted))).Times(1);
+    EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
   }
 
   void ExpectStartSessionUnownedBoilerplate(const string& email_string,
@@ -246,13 +236,11 @@ class SessionManagerImplTest : public ::testing::Test {
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
                 CheckAndHandleOwnerLogin(StrEq(email_string), _, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(false),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)));
 
     // Indicate that there is no owner key in order to trigger a new one to be
     // generated.
-    EXPECT_CALL(*device_policy_service_, KeyMissing())
-        .WillOnce(Return(true));
+    EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(true));
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
     if (!mitigating && !owning_in_progress)
@@ -260,31 +248,25 @@ class SessionManagerImplTest : public ::testing::Test {
     else
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
-    EXPECT_CALL(dbus_emitter_,
-                EmitSignalWithString(
-                    StrEq(login_manager::kSessionStateChangedSignal),
-                    StrEq(SessionManagerImpl::kStarted)))
-        .Times(1);
-    EXPECT_CALL(utils_, IsDevMode())
-        .WillOnce(Return(false));
+    EXPECT_CALL(
+        dbus_emitter_,
+        EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
+                             StrEq(SessionManagerImpl::kStarted))).Times(1);
+    EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
   }
 
-  void FakeLockScreen() {
-    actual_locks_++;
-  }
+  void FakeLockScreen() { actual_locks_++; }
 
-  void FakeRestartDevice() {
-    actual_restarts_++;
-  }
+  void FakeRestartDevice() { actual_restarts_++; }
 
   string fake_salt_;
 
   // Used by fake closures that simulate calling chrome and powerd to lock
   // the screen and restart the device.
-  uint actual_locks_;
-  uint expected_locks_;
-  uint actual_restarts_;
-  uint expected_restarts_;
+  uint32_t actual_locks_;
+  uint32_t expected_locks_;
+  uint32_t actual_restarts_;
+  uint32_t expected_restarts_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImplTest);
 };
@@ -311,12 +293,11 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   ASSERT_FALSE(expected.empty());
   string expected_testing_path = expected.value();
 
-  EXPECT_CALL(manager_,
-              RestartBrowserWithArgs(
-                  ElementsAre(args[0], args[1],
-                              HasSubstr(expected_testing_path)),
-                  true))
-      .Times(1);
+  EXPECT_CALL(
+      manager_,
+      RestartBrowserWithArgs(
+          ElementsAre(args[0], args[1], HasSubstr(expected_testing_path)),
+          true)).Times(1);
 
   string testing_path = impl_.EnableChromeTesting(false, args, NULL);
   EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
@@ -330,12 +311,11 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   args[0] = "--dummy";
   args[1] = "--repeat-arg";
   testing_path.empty();
-  EXPECT_CALL(manager_,
-              RestartBrowserWithArgs(
-                  ElementsAre(args[0], args[1],
-                              HasSubstr(expected_testing_path)),
-                  true))
-      .Times(1);
+  EXPECT_CALL(
+      manager_,
+      RestartBrowserWithArgs(
+          ElementsAre(args[0], args[1], HasSubstr(expected_testing_path)),
+          true)).Times(1);
 
   testing_path = impl_.EnableChromeTesting(true, args, NULL);
   EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
@@ -429,32 +409,29 @@ TEST_F(SessionManagerImplTest, StopSession) {
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   const string fake_policy("fake policy");
-  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   ExpectStorePolicy(device_policy_service_,
                     fake_policy,
-                    PolicyService::KEY_ROTATE |
-                    PolicyService::KEY_INSTALL_NEW |
-                    PolicyService::KEY_CLOBBER);
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
+                        PolicyService::KEY_CLOBBER);
   impl_.StorePolicy(policy_blob.data(), policy_blob.size(), NULL);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
-  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
-  ExpectStorePolicy(device_policy_service_,
-                    fake_policy,
-                    PolicyService::KEY_ROTATE);
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  ExpectStorePolicy(
+      device_policy_service_, fake_policy, PolicyService::KEY_ROTATE);
   impl_.StorePolicy(policy_blob.data(), policy_blob.size(), NULL);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
   const string fake_policy("fake policy");
-  const vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
+  const vector<uint8_t> policy_data(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*device_policy_service_, Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
-                      Return(true)));
-  vector<uint8> out_blob;
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data), Return(true)));
+  vector<uint8_t> out_blob;
   impl_.RetrievePolicy(&out_blob, NULL);
 
   EXPECT_EQ(fake_policy.size(), out_blob.size());
@@ -464,29 +441,27 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const string fake_policy("fake policy");
-  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   MockPolicyServiceCompletion completion;
   EXPECT_CALL(completion,
               ReportFailure(PolicyErrorEq(dbus_error::kSessionDoesNotExist)))
       .Times(1);
-  impl_.StorePolicyForUser(kSaneEmail,
-                           policy_blob.data(), policy_blob.size(),
-                           &completion);
+  impl_.StorePolicyForUser(
+      kSaneEmail, policy_blob.data(), policy_blob.size(), &completion);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
-  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  impl_.StorePolicyForUser(kSaneEmail,
-                           policy_blob.data(), policy_blob.size(),
-                           NULL);
+  impl_.StorePolicyForUser(
+      kSaneEmail, policy_blob.data(), policy_blob.size(), NULL);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
@@ -495,16 +470,15 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   // Store policy for the signed-in user.
   const std::string fake_policy("fake policy");
-  const vector<uint8> policy_blob(fake_policy.begin(), fake_policy.end());
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
               Store(CastEq(fake_policy),
                     fake_policy.size(),
                     _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  impl_.StorePolicyForUser(kSaneEmail,
-                           policy_blob.data(), policy_blob.size(),
-                           NULL);
+  impl_.StorePolicyForUser(
+      kSaneEmail, policy_blob.data(), policy_blob.size(), NULL);
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
 
   // Storing policy for another username fails before his session starts.
@@ -513,9 +487,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   EXPECT_CALL(completion,
               ReportFailure(PolicyErrorEq(dbus_error::kSessionDoesNotExist)))
       .Times(1);
-  impl_.StorePolicyForUser(user2,
-                           policy_blob.data(), policy_blob.size(),
-                           &completion);
+  impl_.StorePolicyForUser(
+      user2, policy_blob.data(), policy_blob.size(), &completion);
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
@@ -528,14 +501,12 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
                     _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  impl_.StorePolicyForUser(user2,
-                           policy_blob.data(), policy_blob.size(),
-                           NULL);
+  impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(), NULL);
   Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
-  vector<uint8> out_blob;
+  vector<uint8_t> out_blob;
   impl_.RetrievePolicyForUser(kSaneEmail, &out_blob, &error_);
   EXPECT_EQ(out_blob.size(), 0);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
@@ -544,11 +515,10 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
-  const vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
+  const vector<uint8_t> policy_data(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
-                      Return(true)));
-  vector<uint8> out_blob;
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data), Return(true)));
+  vector<uint8_t> out_blob;
   impl_.RetrievePolicyForUser(kSaneEmail, &out_blob, &error_);
   EXPECT_EQ(fake_policy.size(), out_blob.size());
   EXPECT_TRUE(
@@ -561,11 +531,11 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
   // Retrieve policy for the signed-in user.
   const std::string fake_policy("fake policy");
-  const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
+  const std::vector<uint8_t> policy_data(fake_policy.begin(),
+                                         fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
-                      Return(true)));
-  std::vector<uint8> out_blob;
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data), Return(true)));
+  std::vector<uint8_t> out_blob;
   impl_.RetrievePolicyForUser(kSaneEmail, &out_blob, NULL);
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
   EXPECT_EQ(fake_policy.size(), out_blob.size());
@@ -584,8 +554,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
   // Retrieving policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[user2], Retrieve(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data), Return(true)));
   out_blob.clear();
   impl_.RetrievePolicyForUser(user2, &out_blob, NULL);
   Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
@@ -672,8 +641,7 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
   EXPECT_CALL(dbus_emitter_,
-              EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
-      .Times(1);
+              EmitSignal(StrEq(login_manager::kScreenIsLockedSignal))).Times(1);
   impl_.HandleLockScreenShown();
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 
@@ -703,8 +671,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe) {
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   base::FilePath key_file_path;
   string key("key_contents");
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(),
-                                             &key_file_path));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.path(), &key_file_path));
   ASSERT_EQ(base::WriteFile(key_file_path, key.c_str(), key.size()),
             key.size());
 
@@ -712,10 +679,9 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   ExpectStartOwnerSession(kSaneEmail);
   ASSERT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
 
-  EXPECT_CALL(*device_policy_service_,
-              ValidateAndStoreOwnerKey(StrEq(kSaneEmail),
-                                       StrEq(key),
-                                       nss_.GetSlot()))
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateAndStoreOwnerKey(StrEq(kSaneEmail), StrEq(key), nss_.GetSlot()))
       .WillOnce(Return(true));
 
   impl_.OnKeyGenerated(kSaneEmail, key_file_path);

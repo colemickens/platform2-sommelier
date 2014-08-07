@@ -4,6 +4,7 @@
 
 #include "login_manager/browser_job.h"
 
+#include <stdint.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -46,20 +47,18 @@ class BrowserJobTest : public ::testing::Test {
   void ExpectArgsToContainFlag(const std::vector<std::string>& argv,
                                const char name[],
                                const char value[]) {
-    std::vector<std::string>::const_iterator user_flag =
-        std::find(argv.begin(), argv.end(),
-                  base::StringPrintf("%s%s", name, value));
+    std::vector<std::string>::const_iterator user_flag = std::find(
+        argv.begin(), argv.end(), base::StringPrintf("%s%s", name, value));
     EXPECT_NE(user_flag, argv.end()) << "argv should contain " << name << value;
   }
 
   void ExpectArgsNotToContainFlag(const std::vector<std::string>& argv,
                                   const char name[],
                                   const char value[]) {
-    std::vector<std::string>::const_iterator user_flag =
-        std::find(argv.begin(), argv.end(),
-                  base::StringPrintf("%s%s", name, value));
-    EXPECT_EQ(user_flag, argv.end()) << "argv shouldn't contain "
-                                     << name << value;
+    std::vector<std::string>::const_iterator user_flag = std::find(
+        argv.begin(), argv.end(), base::StringPrintf("%s%s", name, value));
+    EXPECT_EQ(user_flag, argv.end()) << "argv shouldn't contain " << name
+                                     << value;
   }
 
   void ExpectArgsToContainAll(const std::vector<std::string>& argv,
@@ -83,23 +82,17 @@ class BrowserJobTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(BrowserJobTest);
 };
 
-
 // Default argument list for a job to use in mostly all test cases.
-const char* BrowserJobTest::kArgv[] = {
-    "zero",
-    "one",
-    "two"
-};
+const char* BrowserJobTest::kArgv[] = {"zero", "one", "two"};
 
 // Normal username to test session for.
 const char BrowserJobTest::kUser[] = "test@gmail.com";
 const char BrowserJobTest::kHash[] = "fake_hash";
 
 void BrowserJobTest::SetUp() {
-  argv_ = std::vector<std::string>(kArgv,
-                                   kArgv + arraysize(BrowserJobTest::kArgv));
-  job_.reset(
-      new BrowserJob(argv_, env_, 1, &checker_, &metrics_, &utils_));
+  argv_ =
+      std::vector<std::string>(kArgv, kArgv + arraysize(BrowserJobTest::kArgv));
+  job_.reset(new BrowserJob(argv_, env_, 1, &checker_, &metrics_, &utils_));
 }
 
 TEST_F(BrowserJobTest, InitializationTest) {
@@ -148,7 +141,7 @@ TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
 TEST_F(BrowserJobTest, ShouldStopTest) {
   EXPECT_CALL(utils_, time(NULL))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
-  for (uint i = 0; i < BrowserJob::kRestartTries - 1; ++i)
+  for (uint32_t i = 0; i < BrowserJob::kRestartTries - 1; ++i)
     job_->RecordTime();
   // We haven't yet saturated the list of start times, so...
   EXPECT_FALSE(job_->ShouldStop());
@@ -194,12 +187,12 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
   EXPECT_CALL(metrics_, RecordStats(StrEq(("chrome-exec")))).Times(2);
 
   ASSERT_TRUE(job_->RunInBackground());
-  ExpectArgsToContainFlag(job_->ExportArgv(),
-                          BrowserJob::kFirstExecAfterBootFlag, "");
+  ExpectArgsToContainFlag(
+      job_->ExportArgv(), BrowserJob::kFirstExecAfterBootFlag, "");
 
   ASSERT_TRUE(job_->RunInBackground());
-  ExpectArgsNotToContainFlag(job_->ExportArgv(),
-                             BrowserJob::kFirstExecAfterBootFlag, "");
+  ExpectArgsNotToContainFlag(
+      job_->ExportArgv(), BrowserJob::kFirstExecAfterBootFlag, "");
 }
 
 TEST_F(BrowserJobTest, RunBrowserTermMessage) {
@@ -258,7 +251,6 @@ TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
   ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
   ExpectArgsToContainFlag(job_args, BrowserJob::kLoginProfileFlag, kHash);
 
-
   // Should remove login user and login profile flags.
   job.StopSession();
   job_args = job.ExportArgv();
@@ -267,12 +259,7 @@ TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
 }
 
 TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
-  const char* kArgvWithLoginFlag[] = {
-      "zero",
-      "one",
-      "two",
-      "--login-manager"
-  };
+  const char* kArgvWithLoginFlag[] = {"zero", "one", "two", "--login-manager"};
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
   BrowserJob job(argv, env_, 1, &checker_, &metrics_, &utils_);
@@ -281,8 +268,8 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
 
   std::vector<std::string> job_args = job.ExportArgv();
   ASSERT_EQ(argv.size() + 1, job_args.size());
-  ExpectArgsToContainAll(job_args,
-                         std::vector<std::string>(argv.begin(), argv.end()-1));
+  ExpectArgsToContainAll(
+      job_args, std::vector<std::string>(argv.begin(), argv.end() - 1));
   ExpectArgsToContainFlag(job_args, BrowserJob::kLoginUserFlag, kUser);
 
   // Should remove login user/hash flags and append --login-manager flag back.
@@ -293,11 +280,7 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
 }
 
 TEST_F(BrowserJobTest, SetArguments) {
-  const char* kNewArgs[] = {
-    "--ichi",
-    "--ni dfs",
-    "--san"
-  };
+  const char* kNewArgs[] = {"--ichi", "--ni dfs", "--san"};
   std::vector<std::string> new_args(kNewArgs, kNewArgs + arraysize(kNewArgs));
   job_->SetArguments(new_args);
 
@@ -314,7 +297,7 @@ TEST_F(BrowserJobTest, SetArguments) {
 }
 
 TEST_F(BrowserJobTest, SetExtraArguments) {
-  const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
+  const char* kExtraArgs[] = {"--ichi", "--ni", "--san"};
   std::vector<std::string> extra_args(kExtraArgs,
                                       kExtraArgs + arraysize(kExtraArgs));
   job_->SetExtraArguments(extra_args);
@@ -328,7 +311,7 @@ TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
   BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
 
-  const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
+  const char* kExtraArgs[] = {"--ichi", "--ni", "--san"};
   std::vector<std::string> extra_args(kExtraArgs,
                                       kExtraArgs + arraysize(kExtraArgs));
   argv.insert(argv.end(), extra_args.begin(), extra_args.end());

@@ -5,6 +5,8 @@
 #ifndef LOGIN_MANAGER_SERVER_BACKED_STATE_KEY_GENERATOR_H_
 #define LOGIN_MANAGER_SERVER_BACKED_STATE_KEY_GENERATOR_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -37,7 +39,7 @@ class SystemUtils;
 class ServerBackedStateKeyGenerator {
  public:
   // Callback type for state key generation requests.
-  typedef base::Callback<void(const std::vector<std::vector<uint8> >&)>
+  typedef base::Callback<void(const std::vector<std::vector<uint8_t> >&)>
       StateKeyCallback;
 
   // The power of two determining the size of the time quanta for device state
@@ -78,7 +80,7 @@ class ServerBackedStateKeyGenerator {
  private:
   // Computes the keys and stores them in |state_keys|. In case of error,
   // |state_keys| will be cleared.
-  void ComputeKeys(std::vector<std::vector<uint8> >* state_keys);
+  void ComputeKeys(std::vector<std::vector<uint8_t> >* state_keys);
 
   SystemUtils* system_utils_;
 
