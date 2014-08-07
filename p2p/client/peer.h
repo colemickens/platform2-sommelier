@@ -5,9 +5,10 @@
 #ifndef P2P_CLIENT_PEER_H__
 #define P2P_CLIENT_PEER_H__
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
-#include <base/basictypes.h>
 
 namespace p2p {
 
@@ -23,7 +24,7 @@ struct Peer {
   bool is_ipv6;
 
   // The TCP port number of the HTTP server.
-  uint16 port;
+  uint16_t port;
 
   // Number of clients currently being served by the peer.
   int num_connections;

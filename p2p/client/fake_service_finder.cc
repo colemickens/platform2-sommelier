@@ -106,7 +106,7 @@ void FakeServiceFinder::SetServiceFiltered(bool filtered) {
   service_filtered_ = filtered;
 }
 
-int FakeServiceFinder::NewPeer(string address, bool is_ipv6, uint16 port) {
+int FakeServiceFinder::NewPeer(string address, bool is_ipv6, uint16_t port) {
   peers_.push_back((Peer){
       .address = address,
       .is_ipv6 = is_ipv6,

@@ -5,9 +5,10 @@
 #ifndef P2P_SERVER_HTTP_SERVER_H__
 #define P2P_SERVER_HTTP_SERVER_H__
 
+#include <stdint.h>
+
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <metrics/metrics_library.h>
@@ -52,7 +53,7 @@ class HttpServer {
   static HttpServer* Construct(MetricsLibraryInterface* metrics_lib,
                                const base::FilePath& root_dir,
                                const base::FilePath& bin_dir,
-                               uint16 port);
+                               uint16_t port);
 };
 
 }  // namespace server

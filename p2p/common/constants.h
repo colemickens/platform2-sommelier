@@ -5,7 +5,7 @@
 #ifndef P2P_COMMON_CONSTANTS_H__
 #define P2P_COMMON_CONSTANTS_H__
 
-#include <base/basictypes.h>
+#include <stdint.h>
 
 namespace p2p {
 
@@ -21,7 +21,7 @@ constexpr int kMaxSimultaneousDownloadsPollTimeSeconds = 30;
 
 // The maximum rate per download, in bytes per second. Currently set
 // to 125 kB/s.
-constexpr int64 kMaxSpeedPerDownload = 125 * 1000;
+constexpr int64_t kMaxSpeedPerDownload = 125 * 1000;
 
 // The name of p2p server binary.
 constexpr char kServerBinaryName[] = "p2p-server";
@@ -30,7 +30,7 @@ constexpr char kServerBinaryName[] = "p2p-server";
 constexpr char kHttpServerBinaryName[] = "p2p-http-server";
 
 // The default TCP port for the HTTP server ("AU").
-constexpr uint16 kHttpServerDefaultPort = 16725;
+constexpr uint16_t kHttpServerDefaultPort = 16725;
 
 // The path of the directory for peer to peer content.
 constexpr char kP2PDir[] = "/var/cache/p2p";

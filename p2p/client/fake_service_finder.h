@@ -7,6 +7,8 @@
 
 #include "p2p/client/service_finder.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -43,7 +45,7 @@ class FakeServiceFinder : public ServiceFinder {
 
   // NewPeer() creates a new Peer object with the given properties. The return
   // value is a peer_id used only in the context of the fake implementation.
-  int NewPeer(std::string address, bool is_ipv6, uint16 port);
+  int NewPeer(std::string address, bool is_ipv6, uint16_t port);
 
   // SetPeerConnections() sets the number of active connections reported by a
   // given peer. The |peer_id| argument is the numeric peer id returned by

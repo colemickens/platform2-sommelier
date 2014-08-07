@@ -21,7 +21,7 @@ class MockServer : public ServerInterface {
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(SetMaxDownloadRate, void(int64_t));
-  MOCK_METHOD0(Port, uint16());
+  MOCK_METHOD0(Port, uint16_t());
   MOCK_METHOD0(NumConnections, int());
   MOCK_METHOD0(Clock, p2p::common::ClockInterface*());
   MOCK_METHOD1(ConnectionTerminated,

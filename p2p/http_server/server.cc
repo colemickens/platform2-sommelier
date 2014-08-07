@@ -227,10 +227,10 @@ static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {
       // [1] : see RFC 4291, section 2.5.5.2 for what that means
       //       http://tools.ietf.org/html/rfc4291#section-2.5.5
       //
-      uint32* dwords = reinterpret_cast<uint32*>(&addr_in6->sin6_addr);
+      uint32_t* dwords = reinterpret_cast<uint32_t*>(&addr_in6->sin6_addr);
       if (dwords[0] == 0x00000000 && dwords[1] == 0x00000000 &&
           dwords[2] == htonl(0x0000ffff)) {
-        uint8* bytes = reinterpret_cast<uint8*>(&addr_in6->sin6_addr);
+        uint8_t* bytes = reinterpret_cast<uint8_t*>(&addr_in6->sin6_addr);
         snprintf(buf,
                  sizeof buf,
                  "%d.%d.%d.%d",

@@ -10,6 +10,7 @@
 
 #include <glib-object.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include <cassert>
@@ -117,7 +118,7 @@ int main(int argc, char* argv[]) {
     printf("%d\n", num_connections);
   } else if (cl->HasSwitch("get-url")) {
     string id = cl->GetSwitchValueNative("get-url");
-    uint64 minimum_size = 1;
+    uint64_t minimum_size = 1;
     if (cl->HasSwitch("minimum-size")) {
       string minimum_size_str = cl->GetSwitchValueNative("minimum-size");
       if (!base::StringToUint64(minimum_size_str, &minimum_size)) {

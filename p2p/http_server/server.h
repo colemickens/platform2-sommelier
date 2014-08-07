@@ -9,10 +9,11 @@
 #include "p2p/common/clock_interface.h"
 #include "p2p/http_server/server_interface.h"
 
+#include <glib.h>
+#include <stdint.h>
+
 #include <string>
 #include <map>
-
-#include <glib.h>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -33,7 +34,7 @@ class Server : public ServerInterface {
   // If |port| is 0, the kernel assigns a random free port that can be
   // retrieved with Port(). The Server will report messages as
   // P2PServerMessage strunct on the |message_fd|.
-  Server(const base::FilePath& directory, uint16 port, int message_fd,
+  Server(const base::FilePath& directory, uint16_t port, int message_fd,
          ConnectionDelegateFactory delegate_factory);
 
   virtual ~Server();
@@ -42,7 +43,7 @@ class Server : public ServerInterface {
   virtual bool Start();
   virtual void Stop();
   virtual void SetMaxDownloadRate(int64_t bytes_per_sec);
-  virtual uint16 Port();
+  virtual uint16_t Port();
   virtual int NumConnections();
   virtual p2p::common::ClockInterface* Clock();
   virtual void ConnectionTerminated(ConnectionDelegateInterface* delegate);
@@ -74,7 +75,7 @@ class Server : public ServerInterface {
   int dirfd_;
 
   // The TCP port to listen on.
-  uint16 port_;
+  uint16_t port_;
 
   // The socket where the P2PServerMessage is reported.
   int message_fd_;

@@ -13,6 +13,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <stdint.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -531,7 +532,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   ea_size =
       fgetxattr(file_fd, "user.cros-p2p-filesize", &ea_value, sizeof ea_value);
   if (ea_size > 0 && ea_value[0] != 0) {
-    int64 val;
+    int64_t val;
     if (base::StringToInt64(ea_value, &val)) {
       VLOG(1) << "Read user.cros-p2p-filesize=" << val;
       if ((size_t) val > file_size) {

@@ -8,6 +8,8 @@
 #include "p2p/client/service_finder.h"
 #include "p2p/common/clock.h"
 
+#include <stdint.h>
+
 #include <string>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -96,7 +98,7 @@ class PeerSelector {
   int num_total_peers_;
 
   // The elapsed time it took GetUrlAndWait() to return in seconds.
-  int64 url_waiting_time_sec_;
+  int64_t url_waiting_time_sec_;
 
   // A flag used to signal the request was canceled.
   volatile bool must_exit_now_;
