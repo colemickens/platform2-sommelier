@@ -310,7 +310,7 @@ TEST_F(UdevDeviceTest, IsLoopDevice) {
 TEST_F(UdevDeviceTest, GetSizeInfo) {
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
-    uint64 total_size = 0, remaining_size = 0;
+    uint64_t total_size = 0, remaining_size = 0;
     device.GetSizeInfo(&total_size, &remaining_size);
     LOG(INFO) << "GetSizeInfo: total=" << total_size
               << ", remaining=" << remaining_size;

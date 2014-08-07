@@ -5,6 +5,8 @@
 #ifndef CROS_DISKS_MOUNT_ENTRY_H_
 #define CROS_DISKS_MOUNT_ENTRY_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -14,7 +16,8 @@
 
 namespace cros_disks {
 
-typedef ::DBus::Struct<uint32, std::string, uint32, std::string> DBusMountEntry;
+typedef ::DBus::Struct<uint32_t, std::string, uint32_t, std::string>
+    DBusMountEntry;
 typedef std::vector<DBusMountEntry> DBusMountEntries;
 
 class MountEntry {

@@ -6,6 +6,7 @@
 #define CROS_DISKS_UDEV_DEVICE_H_
 
 #include <blkid/blkid.h>
+#include <stdint.h>
 
 #include <string>
 #include <vector>
@@ -48,7 +49,7 @@ class UdevDevice {
   std::string GetPropertyFromBlkId(const char *key);
 
   // Gets the total and remaining capacity of the device.
-  void GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const;
+  void GetSizeInfo(uint64_t *total_size, uint64_t *remaining_size) const;
 
   // Gets the number of partitions on the device.
   size_t GetPartitionCount() const;

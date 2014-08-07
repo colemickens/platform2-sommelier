@@ -5,6 +5,7 @@
 #include "cros-disks/glib_process.h"
 
 #include <glib.h>
+#include <stdint.h>
 
 #include <base/bind.h>
 #include <gtest/gtest.h>
@@ -34,7 +35,7 @@ class GlibProcessTest : public ::testing::Test {
 
   // Runs the Glib main loop and waits for the termination of the process
   // under test. Returns true if the process termination callback is invoked.
-  bool WaitForProcessTermination(int64 timeout_in_seconds) {
+  bool WaitForProcessTermination(int64_t timeout_in_seconds) {
     callback_invoked_ = false;
 
     main_loop_ = g_main_loop_new(g_main_context_default(), FALSE);

@@ -6,6 +6,7 @@
 #define CROS_DISKS_DISK_H_
 
 #include <dbus-c++/dbus.h>
+#include <stdint.h>
 
 #include <map>
 #include <string>
@@ -141,13 +142,13 @@ class Disk {
   DeviceMediaType media_type() const { return media_type_; }
   void set_media_type(DeviceMediaType media_type) { media_type_ = media_type; }
 
-  uint64 device_capacity() const { return device_capacity_; }
-  void set_device_capacity(uint64 device_capacity) {
+  uint64_t device_capacity() const { return device_capacity_; }
+  void set_device_capacity(uint64_t device_capacity) {
     device_capacity_ = device_capacity;
   }
 
-  uint64 bytes_remaining() const { return bytes_remaining_; }
-  void set_bytes_remaining(uint64 bytes_remaining) {
+  uint64_t bytes_remaining() const { return bytes_remaining_; }
+  void set_bytes_remaining(uint64_t bytes_remaining) {
     bytes_remaining_ = bytes_remaining;
   }
 
@@ -174,8 +175,8 @@ class Disk {
   std::string product_name_;
   std::string drive_model_;
   DeviceMediaType media_type_;
-  uint64 device_capacity_;
-  uint64 bytes_remaining_;
+  uint64_t device_capacity_;
+  uint64_t bytes_remaining_;
 };
 
 }  // namespace cros_disks

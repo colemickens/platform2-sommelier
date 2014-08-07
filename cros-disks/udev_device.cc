@@ -143,9 +143,10 @@ string UdevDevice::GetPropertyFromBlkId(const char *key) {
   return value;
 }
 
-void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
+void UdevDevice::GetSizeInfo(uint64_t *total_size,
+                             uint64_t *remaining_size) const {
   static const int kSectorSize = 512;
-  uint64 total = 0, remaining = 0;
+  uint64_t total = 0, remaining = 0;
 
   // If the device is mounted, obtain the total and remaining size in bytes
   // using statvfs.
@@ -164,7 +165,7 @@ void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
   // use that as the total size instead.
   const char *partition_size =
       udev_device_get_property_value(dev_, kPropertyPartitionSize);
-  int64 size = 0;
+  int64_t size = 0;
   if (partition_size) {
     base::StringToInt64(partition_size, &size);
     total = size;
@@ -456,7 +457,7 @@ Disk UdevDevice::ToDisk() {
   disk.set_is_mounted(!mount_paths.empty());
   disk.set_mount_paths(mount_paths);
 
-  uint64 total_size, remaining_size;
+  uint64_t total_size, remaining_size;
   GetSizeInfo(&total_size, &remaining_size);
   disk.set_device_capacity(total_size);
   disk.set_bytes_remaining(remaining_size);
