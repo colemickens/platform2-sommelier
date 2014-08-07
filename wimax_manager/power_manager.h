@@ -5,6 +5,8 @@
 #ifndef WIMAX_MANAGER_POWER_MANAGER_H_
 #define WIMAX_MANAGER_POWER_MANAGER_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -41,12 +43,12 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
 
   // Invoked when the power manager is about to attempt to suspend the system.
   // Prepares the manager for suspend and calls SendHandleSuspendReadiness().
-  void OnSuspendImminent(const std::vector<uint8> &serialized_proto);
+  void OnSuspendImminent(const std::vector<uint8_t> &serialized_proto);
 
   // Invoked when the power manager has completed a suspend attempt (possibly
   // without actually suspending and resuming if the attempt was canceled by the
   // user).
-  void OnSuspendDone(const std::vector<uint8> &serialized_proto);
+  void OnSuspendDone(const std::vector<uint8_t> &serialized_proto);
 
  private:
   // Calls the power manager's HandleSuspendReadiness method to report readiness

@@ -5,6 +5,8 @@
 #ifndef WIMAX_MANAGER_DEVICE_H_
 #define WIMAX_MANAGER_DEVICE_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -25,7 +27,7 @@ class Manager;
 
 class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
  public:
-  Device(Manager *manager, uint8 index, const std::string &name);
+  Device(Manager *manager, uint8_t index, const std::string &name);
   virtual ~Device();
 
   virtual bool Enable() = 0;
@@ -35,7 +37,7 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
                        const base::DictionaryValue &parameters) = 0;
   virtual bool Disconnect() = 0;
 
-  uint8 index() const { return index_; }
+  uint8_t index() const { return index_; }
   const std::string &name() const { return name_; }
   const ByteIdentifier &mac_address() const { return mac_address_; }
   const ByteIdentifier &base_station_id() const { return base_station_id_; }
@@ -45,15 +47,15 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   const NetworkMap &networks() const { return networks_; }
   const DeviceStatus status() const { return status_; }
 
-  uint32 network_scan_interval() const { return network_scan_interval_; }
-  void SetNetworkScanInterval(uint32 network_scan_interval);
+  uint32_t network_scan_interval() const { return network_scan_interval_; }
+  void SetNetworkScanInterval(uint32_t network_scan_interval);
 
   int status_update_interval() const { return status_update_interval_; }
-  void SetStatusUpdateInterval(uint32 status_update_interval);
+  void SetStatusUpdateInterval(uint32_t status_update_interval);
 
  protected:
-  virtual void UpdateNetworkScanInterval(uint32 network_scan_interval) = 0;
-  virtual void UpdateStatusUpdateInterval(uint32 status_update_interval) = 0;
+  virtual void UpdateNetworkScanInterval(uint32_t network_scan_interval) = 0;
+  virtual void UpdateStatusUpdateInterval(uint32_t status_update_interval) = 0;
 
   Manager *manager() const { return manager_; }
 
@@ -70,7 +72,7 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
 
  private:
   Manager *manager_;
-  uint8 index_;
+  uint8_t index_;
   std::string name_;
   ByteIdentifier mac_address_;
   ByteIdentifier base_station_id_;
@@ -78,8 +80,8 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   std::vector<int> cinr_;
   std::vector<int> rssi_;
   NetworkMap networks_;
-  uint32 network_scan_interval_;
-  uint32 status_update_interval_;
+  uint32_t network_scan_interval_;
+  uint32_t status_update_interval_;
   DeviceStatus status_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);

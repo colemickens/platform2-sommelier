@@ -43,7 +43,7 @@ string GetDeviceStatusDescription(DeviceStatus device_status) {
 
 }  // namespace
 
-Device::Device(Manager *manager, uint8 index, const string &name)
+Device::Device(Manager *manager, uint8_t index, const string &name)
     : manager_(manager),
       index_(index),
       name_(name),
@@ -66,14 +66,14 @@ void Device::UpdateRFInfo() {
   dbus_adaptor()->UpdateRFInfo();
 }
 
-void Device::SetNetworkScanInterval(uint32 network_scan_interval) {
+void Device::SetNetworkScanInterval(uint32_t network_scan_interval) {
   if (network_scan_interval_ != network_scan_interval) {
     network_scan_interval_ = network_scan_interval;
     UpdateNetworkScanInterval(network_scan_interval);
   }
 }
 
-void Device::SetStatusUpdateInterval(uint32 status_update_interval) {
+void Device::SetStatusUpdateInterval(uint32_t status_update_interval) {
   if (status_update_interval_ != status_update_interval) {
     status_update_interval_ = status_update_interval;
     UpdateStatusUpdateInterval(status_update_interval);

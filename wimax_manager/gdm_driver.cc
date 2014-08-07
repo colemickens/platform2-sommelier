@@ -208,14 +208,14 @@ bool GdmDriver::GetDevices(vector<Device *> *devices) {
   CHECK(devices);
 
   WIMAX_API_HW_DEVICE_ID device_list[kMaxNumberOfDevices];
-  uint32 num_devices = static_cast<uint32>(arraysize(device_list));
+  uint32_t num_devices = static_cast<uint32_t>(arraysize(device_list));
   GCT_API_RET ret = GAPI_GetListDevice(api_handle_, device_list, &num_devices);
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
   VLOG(1) << "Number of devices: " << num_devices;
   for (size_t i = 0; i < num_devices; ++i) {
-    uint8 device_index = device_list[i].deviceIndex;
+    uint8_t device_index = device_list[i].deviceIndex;
     string device_name;
     if (!ConvertWideCharacterArrayToUTF8String(device_list[i].deviceName,
                                                &device_name)) {
@@ -318,7 +318,7 @@ bool GdmDriver::SetDeviceEAPParameters(GdmDevice *device,
 bool GdmDriver::AutoSelectProfileForDevice(GdmDevice *device) {
   GDEV_ID device_id = GetDeviceId(device);
   WIMAX_API_PROFILE_INFO profile_list[kMaxNumberOfProfiles];
-  uint32 num_profiles = static_cast<uint32>(arraysize(profile_list));
+  uint32_t num_profiles = static_cast<uint32_t>(arraysize(profile_list));
   GCT_API_RET ret =
       GAPI_GetSelectProfileList(&device_id, profile_list, &num_profiles);
   if (ret != GCT_API_RET_SUCCESS)
@@ -355,7 +355,7 @@ bool GdmDriver::PowerOffDeviceRF(GdmDevice *device) {
   return ret == GCT_API_RET_SUCCESS;
 }
 
-bool GdmDriver::SetScanInterval(GdmDevice *device, uint32 interval) {
+bool GdmDriver::SetScanInterval(GdmDevice *device, uint32_t interval) {
   GDEV_ID device_id = GetDeviceId(device);
   GCT_API_RET ret = GAPI_SetScanInterval(&device_id, interval);
   return ret == GCT_API_RET_SUCCESS;
@@ -367,7 +367,7 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
 
   GDEV_ID device_id = GetDeviceId(device);
   WIMAX_API_NSP_INFO network_list[kMaxNumberOfNetworks];
-  uint32 num_networks = static_cast<uint32>(arraysize(network_list));
+  uint32_t num_networks = static_cast<uint32_t>(arraysize(network_list));
   GCT_API_RET ret = GAPI_GetNetworkList(&device_id, network_list,
                                         &num_networks);
   if (ret != GCT_API_RET_SUCCESS)
@@ -396,7 +396,7 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
 
   VLOG(1) << "Number of networks: " << num_networks;
   for (size_t i = 0; i < num_networks; ++i) {
-    uint32 network_id = network_list[i].NSPid;
+    uint32_t network_id = network_list[i].NSPid;
     string network_name;
     if (!ConvertWideCharacterArrayToUTF8String(network_list[i].NSPName,
                                                &network_name)) {

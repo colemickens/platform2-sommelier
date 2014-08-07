@@ -94,7 +94,7 @@ const char *MaskString(const char *value) {
 
 }  // namespace
 
-GdmDevice::GdmDevice(Manager *manager, uint8 index, const string &name,
+GdmDevice::GdmDevice(Manager *manager, uint8_t index, const string &name,
                      const base::WeakPtr<GdmDriver> &driver)
     : Device(manager, index, name),
       driver_(driver),
@@ -316,7 +316,7 @@ void GdmDevice::OnDBusAdaptorStatusUpdate() {
   dbus_adaptor()->UpdateStatus();
 }
 
-void GdmDevice::UpdateNetworkScanInterval(uint32 network_scan_interval) {
+void GdmDevice::UpdateNetworkScanInterval(uint32_t network_scan_interval) {
   if (network_scan_timer_.IsRunning()) {
     LOG(INFO) << "Update network scan interval to " << network_scan_interval
               << "s.";
@@ -332,7 +332,7 @@ void GdmDevice::UpdateNetworkScanInterval(uint32 network_scan_interval) {
   }
 }
 
-void GdmDevice::UpdateStatusUpdateInterval(uint32 status_update_interval) {
+void GdmDevice::UpdateStatusUpdateInterval(uint32_t status_update_interval) {
   if (status_update_timer_.IsRunning()) {
     LOG(INFO) << "Update status update interval to " << status_update_interval
               << "s.";

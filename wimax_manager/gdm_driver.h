@@ -9,6 +9,8 @@ extern "C" {
 #include <gct/gctapi.h>
 }  // extern "C"
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -42,7 +44,7 @@ class GdmDriver : public Driver,
   bool AutoSelectProfileForDevice(GdmDevice *device);
   bool PowerOnDeviceRF(GdmDevice *device);
   bool PowerOffDeviceRF(GdmDevice *device);
-  bool SetScanInterval(GdmDevice *device, uint32 interval);
+  bool SetScanInterval(GdmDevice *device, uint32_t interval);
   bool GetNetworksForDevice(GdmDevice *device,
                             std::vector<NetworkRefPtr> *networks);
   bool ConnectDeviceToNetwork(GdmDevice *device, const Network &network);

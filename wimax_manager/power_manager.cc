@@ -19,13 +19,13 @@ namespace wimax_manager {
 
 namespace {
 
-const uint32 kDefaultSuspendDelayInMilliSeconds = 5000;  // 5s
-const uint32 kSuspendTimeoutInSeconds = 15;  // 15s
+const uint32_t kDefaultSuspendDelayInMilliSeconds = 5000;  // 5s
+const uint32_t kSuspendTimeoutInSeconds = 15;  // 15s
 const char kSuspendDelayDescription[] = "wimax-manager";
 
 // Serializes |protobuf| to |out| and returns true on success.
 bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
-                             vector<uint8> *out) {
+                             vector<uint8_t> *out) {
   CHECK(out);
 
   out->clear();
@@ -39,7 +39,7 @@ bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
 
 // Deserializes |serialized_protobuf| to |protobuf_out| and returns true on
 // success.
-bool DeserializeProtocolBuffer(const vector<uint8> &serialized_protobuf,
+bool DeserializeProtocolBuffer(const vector<uint8_t> &serialized_protobuf,
                                google::protobuf::MessageLite *protobuf_out) {
   CHECK(protobuf_out);
 
@@ -87,10 +87,10 @@ void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
   power_manager::RegisterSuspendDelayRequest request_proto;
   request_proto.set_timeout(timeout.ToInternalValue());
   request_proto.set_description(description);
-  vector<uint8> serialized_request;
+  vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
-  vector<uint8> serialized_reply;
+  vector<uint8_t> serialized_reply;
   try {
     serialized_reply = dbus_proxy()->RegisterSuspendDelay(serialized_request);
   } catch (const DBus::Error &error) {
@@ -120,7 +120,7 @@ void PowerManager::UnregisterSuspendDelay() {
   LOG(INFO) << "Calling UnregisterSuspendDelay (" << suspend_delay_id_ << ")";
   power_manager::UnregisterSuspendDelayRequest request_proto;
   request_proto.set_delay_id(suspend_delay_id_);
-  vector<uint8> serialized_request;
+  vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
   try {
@@ -133,7 +133,7 @@ void PowerManager::UnregisterSuspendDelay() {
   }
 }
 
-void PowerManager::OnSuspendImminent(const vector<uint8> &serialized_proto) {
+void PowerManager::OnSuspendImminent(const vector<uint8_t> &serialized_proto) {
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendImminent signal.";
@@ -156,7 +156,7 @@ void PowerManager::OnSuspendImminent(const vector<uint8> &serialized_proto) {
       &PowerManager::ResumeOnSuspendTimedOut);
 }
 
-void PowerManager::OnSuspendDone(const vector<uint8> &serialized_proto) {
+void PowerManager::OnSuspendDone(const vector<uint8_t> &serialized_proto) {
   power_manager::SuspendDone proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendDone signal.";
@@ -172,7 +172,7 @@ void PowerManager::SendHandleSuspendReadiness(int suspend_id) {
   power_manager::SuspendReadinessInfo proto;
   proto.set_delay_id(suspend_delay_id_);
   proto.set_suspend_id(suspend_id);
-  vector<uint8> serialized_proto;
+  vector<uint8_t> serialized_proto;
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
   try {

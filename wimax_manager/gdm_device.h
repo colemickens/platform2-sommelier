@@ -25,7 +25,7 @@ class GdmDriver;
 
 class GdmDevice : public Device {
  public:
-  GdmDevice(Manager *manager, uint8 index, const std::string &name,
+  GdmDevice(Manager *manager, uint8_t index, const std::string &name,
             const base::WeakPtr<GdmDriver> &driver);
   virtual ~GdmDevice();
 
@@ -44,8 +44,8 @@ class GdmDevice : public Device {
   void RestoreStatusUpdateInterval();
 
  protected:
-  virtual void UpdateNetworkScanInterval(uint32 network_scan_interval);
-  virtual void UpdateStatusUpdateInterval(uint32 status_update_interval);
+  virtual void UpdateNetworkScanInterval(uint32_t network_scan_interval);
+  virtual void UpdateStatusUpdateInterval(uint32_t status_update_interval);
 
  private:
   friend class GdmDriver;

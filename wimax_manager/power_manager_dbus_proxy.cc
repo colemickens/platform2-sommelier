@@ -29,12 +29,12 @@ PowerManagerDBusProxy::~PowerManagerDBusProxy() {
 }
 
 void PowerManagerDBusProxy::SuspendImminent(
-    const vector<uint8> &serialized_proto) {
+    const vector<uint8_t> &serialized_proto) {
   power_manager_->OnSuspendImminent(serialized_proto);
 }
 
 void PowerManagerDBusProxy::SuspendDone(
-    const vector<uint8> &serialized_proto) {
+    const vector<uint8_t> &serialized_proto) {
   power_manager_->OnSuspendDone(serialized_proto);
 }
 

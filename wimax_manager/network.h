@@ -5,6 +5,8 @@
 #ifndef WIMAX_MANAGER_NETWORK_H_
 #define WIMAX_MANAGER_NETWORK_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 
@@ -27,7 +29,7 @@ class NetworkDBusAdaptor;
 class Network : public base::RefCounted<Network>,
                 public DBusAdaptable<Network, NetworkDBusAdaptor> {
  public:
-  typedef uint32 Identifier;
+  typedef uint32_t Identifier;
 
   static const int kMaxCINR;
   static const int kMinCINR;

@@ -18,7 +18,7 @@ ByteIdentifier::ByteIdentifier(size_t length)
     : data_(length, 0) {
 }
 
-ByteIdentifier::ByteIdentifier(const uint8 *data, size_t length)
+ByteIdentifier::ByteIdentifier(const uint8_t *data, size_t length)
     : data_(data, data + length) {
 }
 

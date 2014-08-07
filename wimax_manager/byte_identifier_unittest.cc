@@ -12,28 +12,28 @@ class ByteIdentifierTest : public testing::Test {
 };
 
 TEST_F(ByteIdentifierTest, ConstructorWithOnlyLength) {
-  uint8 expected[6] = { 0x00 };
+  uint8_t expected[6] = { 0x00 };
   ByteIdentifier identifier(arraysize(expected));
   EXPECT_EQ(arraysize(expected), identifier.data().size());
   EXPECT_EQ(0, memcmp(&identifier.data()[0], expected, sizeof(expected)));
 }
 
 TEST_F(ByteIdentifierTest, GetData) {
-  uint8 test_data[] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef };
+  uint8_t test_data[] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef };
   ByteIdentifier identifier(test_data, arraysize(test_data));
   EXPECT_EQ(arraysize(test_data), identifier.data().size());
   EXPECT_EQ(0, memcmp(&identifier.data()[0], test_data, sizeof(test_data)));
 }
 
 TEST_F(ByteIdentifierTest, GetHexString) {
-  uint8 test_data[] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef };
+  uint8_t test_data[] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef };
   ByteIdentifier identifier(test_data, arraysize(test_data));
   EXPECT_EQ("01:23:45:67:89:ab:cd:ef", identifier.GetHexString());
 }
 
 TEST_F(ByteIdentifierTest, CopyFrom) {
-  uint8 test_data1[] = { 0x00 };
-  uint8 test_data2[] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef };
+  uint8_t test_data1[] = { 0x00 };
+  uint8_t test_data2[] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef };
   ByteIdentifier identifier1(test_data1, arraysize(test_data1));
   ByteIdentifier identifier2(test_data2, arraysize(test_data2));
 
