@@ -5,6 +5,7 @@
 #include "lorgnette/manager.h"
 
 #include <signal.h>
+#include <stdint.h>
 
 #include <vector>
 
@@ -153,7 +154,7 @@ void Manager::RunScanImageProcess(
       scan_process->AddArg("--mode");
       scan_process->AddArg(property_value.reader().get_string());
     } else if (property_name == kScanPropertyResolution &&
-               property_value.signature() == ::DBus::type<uint32>::sig()) {
+               property_value.signature() == ::DBus::type<uint32_t>::sig()) {
       scan_process->AddArg("--resolution");
       scan_process->AddArg(base::UintToString(
           property_value.reader().get_uint32()));
