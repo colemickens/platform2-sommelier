@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/commands/command_dispatch_interface.h"
 #include "buffet/commands/command_queue.h"
 
 namespace buffet {
@@ -11,6 +12,9 @@ std::string CommandQueue::Add(std::unique_ptr<const CommandInstance> instance) {
   auto pair = map_.insert(std::make_pair(id, std::move(instance)));
   LOG_IF(FATAL, !pair.second) << "Command with ID '" << id
                               << "' is already in the queue";
+  if (dispatch_interface_)
+    dispatch_interface_->OnCommandAdded(id, pair.first->second.get());
+
   return id;
 }
 
@@ -21,6 +25,8 @@ std::unique_ptr<const CommandInstance> CommandQueue::Remove(
   if (p != map_.end()) {
     instance = std::move(p->second);
     map_.erase(p);
+    if (dispatch_interface_)
+      dispatch_interface_->OnCommandRemoved(id, instance.get());
   }
   return instance;
 }

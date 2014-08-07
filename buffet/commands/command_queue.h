@@ -15,9 +15,18 @@
 
 namespace buffet {
 
+class CommandDispachInterface;
+
 class CommandQueue final {
  public:
   CommandQueue() = default;
+
+  // Sets a command dispatch notifications for changes in command queue.
+  // |dispatch_interface| must outlive the CommandQueue object instance
+  // or be nullptr.
+  void SetCommandDispachInterface(CommandDispachInterface* dispatch_interface) {
+    dispatch_interface_ = dispatch_interface;
+  }
 
   // Checks if the command queue is empty.
   bool IsEmpty() const { return map_.empty(); }
@@ -47,6 +56,8 @@ class CommandQueue final {
   std::map<std::string, std::unique_ptr<const CommandInstance>> map_;
   // Counter for generating unique command IDs.
   int next_id_ = 0;
+  // Callback interface for command dispatch, if provided.
+  CommandDispachInterface* dispatch_interface_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(CommandQueue);
 };
