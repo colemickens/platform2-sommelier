@@ -5,8 +5,6 @@
 #ifndef BUFFET_DBUS_UTILS_H_
 #define BUFFET_DBUS_UTILS_H_
 
-#include <string>
-
 #include <base/memory/scoped_ptr.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -17,12 +15,8 @@ namespace buffet {
 
 namespace dbus_utils {
 
-scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
-                                           const std::string& message);
-
 scoped_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
                                         const Error* error);
-
 
 dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
     base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler);

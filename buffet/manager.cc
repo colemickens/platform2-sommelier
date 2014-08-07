@@ -11,6 +11,7 @@
 #include <base/bind_helpers.h>
 #include <base/json/json_writer.h>
 #include <chromeos/async_event_sequencer.h>
+#include <chromeos/dbus_utils.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -22,7 +23,7 @@
 #include "buffet/exported_object_manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
-using buffet::dbus_utils::GetBadArgsError;
+using chromeos::dbus_utils::GetBadArgsError;
 using buffet::dbus_utils::GetDBusError;
 
 namespace buffet {

@@ -60,8 +60,10 @@
         'chromeos/asynchronous_signal_handler.cc',
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
-        'chromeos/process_information.cc',
+        'chromeos/dbus_utils.cc',
+        'chromeos/exported_property_set.cc',
         'chromeos/process.cc',
+        'chromeos/process_information.cc',
         'chromeos/secure_blob.cc',
         'chromeos/syslog_logging.cc',
         'chromeos/utility.cc',
@@ -174,6 +176,11 @@
             'libchromeos-<(libbase_ver)',
             'libchromeos-ui-<(libbase_ver)',
           ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'cflags': [
             '-std=gnu++11',
@@ -194,6 +201,7 @@
           'sources': [
             'chromeos/async_event_sequencer_unittest.cc',
             'chromeos/asynchronous_signal_handler_unittest.cc',
+            'chromeos/exported_property_set_unittest.cc',
             'chromeos/glib/object_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',

@@ -4,6 +4,8 @@
 
 #include "buffet/dbus_utils.h"
 
+#include <string>
+
 #include <base/bind.h>
 #include <base/logging.h>
 
@@ -28,14 +30,6 @@ void HandleSynchronousDBusMethodCall(
 }
 
 }  // namespace
-
-scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
-                                           const std::string& message) {
-  LOG(ERROR) << "Error while handling DBus call: " << message;
-  scoped_ptr<dbus::ErrorResponse> resp(dbus::ErrorResponse::FromMethodCall(
-      method_call, "org.freedesktop.DBus.Error.InvalidArgs", message));
-  return scoped_ptr<dbus::Response>(resp.release());
-}
 
 scoped_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
                                         const Error* error) {

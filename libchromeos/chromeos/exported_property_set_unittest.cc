@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/exported_property_set.h"
+#include "chromeos/exported_property_set.h"
 
 #include <string>
 #include <vector>
@@ -22,7 +22,7 @@ using ::testing::Return;
 using ::testing::Invoke;
 using ::testing::_;
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -503,4 +503,4 @@ TEST_F(ExportedPropertySetTest, SignalsAreParsable) {
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos

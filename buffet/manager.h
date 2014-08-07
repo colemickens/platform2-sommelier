@@ -12,12 +12,13 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
+#include <chromeos/exported_property_set.h>
+#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 
 #include "buffet/dbus_constants.h"
 #include "buffet/device_registration_info.h"
-#include "buffet/exported_property_set.h"
 
 namespace buffet {
 
@@ -40,11 +41,11 @@ class Manager {
   void Init(const OnInitFinish& cb);
 
  private:
-  struct Properties: public dbus_utils::ExportedPropertySet {
+  struct Properties: public chromeos::dbus_utils::ExportedPropertySet {
    public:
-    dbus_utils::ExportedProperty<std::string> state_;
+    chromeos::dbus_utils::ExportedProperty<std::string> state_;
     explicit Properties(dbus::Bus* bus)
-        : dbus_utils::ExportedPropertySet(
+        : chromeos::dbus_utils::ExportedPropertySet(
               bus, dbus::ObjectPath(dbus_constants::kManagerServicePath)) {
       RegisterProperty(dbus_constants::kManagerInterface, "State", &state_);
     }

@@ -11,9 +11,8 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
+#include <dbus/message.h>
 #include <dbus/object_path.h>
-
-#include "buffet/exported_property_set.h"
 
 namespace buffet {
 

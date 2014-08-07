@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/exported_property_set.h"
+#include "chromeos/exported_property_set.h"
 
 #include <base/bind.h>
-#include <chromeos/async_event_sequencer.h>
 #include <dbus/bus.h>  // For kPropertyInterface
 #include <dbus/property.h>  // For kPropertyInterface
 
-#include "buffet/dbus_utils.h"
+#include "chromeos/async_event_sequencer.h"
+#include "chromeos/dbus_utils.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -337,4 +337,4 @@ template class ExportedProperty<std::vector<uint8>>;
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos

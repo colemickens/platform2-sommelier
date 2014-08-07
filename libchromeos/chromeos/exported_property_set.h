@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_EXPORTED_PROPERTY_SET_H_
-#define BUFFET_EXPORTED_PROPERTY_SET_H_
+#ifndef LIBCHROMEOS_CHROMEOS_EXPORTED_PROPERTY_SET_H_
+#define LIBCHROMEOS_CHROMEOS_EXPORTED_PROPERTY_SET_H_
 
 #include <map>
 #include <string>
@@ -13,7 +13,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -53,15 +53,16 @@ namespace dbus_utils {
 //     }
 //
 //    private:
-//     struct Properties : public buffet::dbus::ExportedPropertySet {
+//     struct Properties : public chromeos::dbus_utils::ExportedPropertySet {
 //      public:
-//       buffet::dbus::ExportedProperty<std::string> name_;
-//       buffet::dbus::ExportedProperty<uint16> version_;
-//       buffet::dbus::ExportedProperty<dbus::ObjectPath> parent_;
-//       buffet::dbus::ExportedProperty<std::vector<std::string>> children_;
+//       chromeos::dbus_utils::ExportedProperty<std::string> name_;
+//       chromeos::dbus_utils::ExportedProperty<uint16> version_;
+//       chromeos::dbus_utils::ExportedProperty<dbus::ObjectPath> parent_;
+//       chromeos::dbus_utils::ExportedProperty<std::vector<std::string>>
+//           children_;
 //
-//       Properties(dbus::ExportedObject* exported_object)
-//           : buffet::dbus::ExportedPropertySet(exported_object) {
+//       Properties(dbus_utils::ExportedObject* exported_object)
+//           : chromeos::dbus::ExportedPropertySet(exported_object) {
 //         RegisterProperty(kExampleInterfaceName, "Name", &name_);
 //         RegisterProperty(kExampleInterfaceName, "Version", &version_);
 //         RegisterProperty(kExampleInterfaceName, "Parent", &parent_);
@@ -195,6 +196,6 @@ extern template class ExportedProperty<std::vector<uint8>>;
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_EXPORTED_PROPERTY_SET_H_
+#endif  // LIBCHROMEOS_CHROMEOS_EXPORTED_PROPERTY_SET_H_
