@@ -14,23 +14,23 @@
 namespace {
 
 struct Range {
-  uint64 addr;
-  uint64 size;
-  uint64 id;
-  uint64 base_offset;
+  uint64_t addr;
+  uint64_t size;
+  uint64_t id;
+  uint64_t base_offset;
 
   Range() : addr(0), size(0), id(kuint64max), base_offset(0) {}
 
-  Range(uint64 addr, uint64 size)
+  Range(uint64_t addr, uint64_t size)
       : addr(addr), size(size), id(kuint64max), base_offset(0) {}
 
-  Range(uint64 addr, uint64 size, uint64 id)
+  Range(uint64_t addr, uint64_t size, uint64_t id)
       : addr(addr), size(size), id(id), base_offset(0) {}
 
-  Range(uint64 addr, uint64 size, uint64 id, uint64 base_offset)
+  Range(uint64_t addr, uint64_t size, uint64_t id, uint64_t base_offset)
       : addr(addr), size(size), id(id), base_offset(base_offset) {}
 
-  bool contains(const uint64 check_addr) const {
+  bool contains(const uint64_t check_addr) const {
     return (check_addr >= addr && check_addr < addr + size);
   }
 };
@@ -45,7 +45,7 @@ const Range kMapRanges[] = {
 };
 
 // List of real addresses that are not in the above ranges.
-const uint64 kAddressesNotInRanges[] = {
+const uint64_t kAddressesNotInRanges[] = {
   0x00000000,
   0x00000100,
   0x00038000,
@@ -83,15 +83,15 @@ const Range kFullRegion = Range(0, kuint64max);
 const int kNumRangeTestIntervals = 8;
 
 // The default range ID when it is not explicitly defined during a mapping.
-const uint64 kUndefinedRangeID = kuint64max;
+const uint64_t kUndefinedRangeID = kuint64max;
 
 // A simple test function to convert a real address to a mapped address.
 // Address ranges in |ranges| are mapped starting at address 0.
-uint64 GetMappedAddressFromRanges(const Range* ranges,
-                                  const unsigned int num_ranges,
-                                  const uint64 addr) {
+uint64_t GetMappedAddressFromRanges(const Range* ranges,
+                                    const unsigned int num_ranges,
+                                    const uint64_t addr) {
   unsigned int i;
-  uint64 mapped_range_addr;
+  uint64_t mapped_range_addr;
   for (i = 0, mapped_range_addr = 0;
        i < num_ranges;
        mapped_range_addr += ranges[i].size, ++i) {
@@ -99,7 +99,7 @@ uint64 GetMappedAddressFromRanges(const Range* ranges,
     if (range.contains(addr))
       return (addr - range.addr) + mapped_range_addr;
   }
-  return static_cast<uint64>(-1);
+  return static_cast<uint64_t>(-1);
 }
 
 }  // namespace
@@ -135,7 +135,8 @@ class AddressMapperTest : public ::testing::Test {
   }
 
   // Tests address mapping without checking for a particular ID.
-  void TestMappedRange(const Range& range, const uint64 expected_mapped_addr) {
+  void TestMappedRange(const Range& range,
+                       const uint64_t expected_mapped_addr) {
     TestMappedRangeWithID(range, expected_mapped_addr, kUndefinedRangeID, 0);
   }
 
@@ -144,23 +145,23 @@ class AddressMapperTest : public ::testing::Test {
   // start and end addresses of the range, as well as a bunch of addresses
   // inside it.  Also checks lookup of ID and offset.
   void TestMappedRangeWithID(const Range& range,
-                             const uint64 expected_mapped_addr,
-                             const uint64 expected_id,
-                             const uint64 expected_base_offset) {
-    uint64 mapped_addr = kuint64max;
+                             const uint64_t expected_mapped_addr,
+                             const uint64_t expected_id,
+                             const uint64_t expected_base_offset) {
+    uint64_t mapped_addr = kuint64max;
 
     LOG(INFO) << "Testing range at " << std::hex << range.addr
               << " with length of " << std::hex << range.size;
 
     // Check address at the beginning of the range and at subsequent intervals.
     for (int i = 0; i < kNumRangeTestIntervals; ++i) {
-      const uint64 offset = i * (range.size / kNumRangeTestIntervals);
-      uint64 addr = range.addr + offset;
+      const uint64_t offset = i * (range.size / kNumRangeTestIntervals);
+      uint64_t addr = range.addr + offset;
       EXPECT_TRUE(mapper_->GetMappedAddress(addr, &mapped_addr));
       EXPECT_EQ(expected_mapped_addr + offset, mapped_addr);
 
-      uint64 mapped_offset;
-      uint64 mapped_id;
+      uint64_t mapped_offset;
+      uint64_t mapped_id;
       EXPECT_TRUE(
           mapper_->GetMappedIDAndOffset(addr, &mapped_id, &mapped_offset));
       EXPECT_EQ(expected_base_offset + offset, mapped_offset);
@@ -186,7 +187,7 @@ TEST_F(AddressMapperTest, MapSingle) {
     TestMappedRange(range, 0);
 
     // Check addresses before the mapped range, should be invalid.
-    uint64 mapped_addr;
+    uint64_t mapped_addr;
     EXPECT_FALSE(mapper_->GetMappedAddress(range.addr - 1, &mapped_addr));
     EXPECT_FALSE(mapper_->GetMappedAddress(range.addr - 0x100, &mapped_addr));
     EXPECT_FALSE(mapper_->GetMappedAddress(range.addr + range.size,
@@ -200,7 +201,7 @@ TEST_F(AddressMapperTest, MapSingle) {
 // Map all the ranges at once and test looking up addresses.
 TEST_F(AddressMapperTest, MapAll) {
   unsigned int i;
-  uint64 size_mapped = 0;
+  uint64_t size_mapped = 0;
   for (i = 0; i < arraysize(kMapRanges); ++i) {
     ASSERT_TRUE(MapRange(kMapRanges[i], false));
     size_mapped += kMapRanges[i].size;
@@ -212,7 +213,7 @@ TEST_F(AddressMapperTest, MapAll) {
 
   // For each mapped range, test addresses at the start, middle, and end.
   // Also test the address right before and after each range.
-  uint64 mapped_addr;
+  uint64_t mapped_addr;
   for (i = 0; i < arraysize(kMapRanges); ++i) {
     const Range& range = kMapRanges[i];
     TestMappedRange(range,
@@ -318,8 +319,8 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // |kBigRegion| are now mapped; for the ones that are not, test that they are
   // not mapped.
   for (i = 0; i < arraysize(kAddressesNotInRanges); ++i) {
-    uint64 addr = kAddressesNotInRanges[i];
-    uint64 mapped_addr = kuint64max;
+    uint64_t addr = kAddressesNotInRanges[i];
+    uint64_t mapped_addr = kuint64max;
     bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
     if (kBigRegion.contains(addr)) {
       EXPECT_TRUE(map_success);
@@ -334,10 +335,10 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // they are not within |kBigRegion|.
   for (i = 0; i < arraysize(kMapRanges); ++i) {
     const Range& range = kMapRanges[i];
-    for (uint64 addr = range.addr;
+    for (uint64_t addr = range.addr;
          addr < range.addr + range.size;
          addr += range.size / kNumRangeTestIntervals) {
-      uint64 mapped_addr = kuint64max;
+      uint64_t mapped_addr = kuint64max;
       bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
       if (kBigRegion.contains(addr)) {
         EXPECT_TRUE(map_success);
@@ -363,7 +364,7 @@ TEST_F(AddressMapperTest, OutOfBounds) {
   ASSERT_FALSE(MapRange(kOutOfBoundsRegion, false));
   ASSERT_FALSE(MapRange(kOutOfBoundsRegion, true));
   EXPECT_EQ(0, mapper_->GetNumMappedRanges());
-  uint64 mapped_addr;
+  uint64_t mapped_addr;
   EXPECT_FALSE(
       mapper_->GetMappedAddress(kOutOfBoundsRegion.addr + 0x100, &mapped_addr));
 }

@@ -5,6 +5,8 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_PERF_READER_H_
 #define CHROMIUMOS_WIDE_PROFILING_PERF_READER_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <set>
 #include <string>
@@ -41,12 +43,12 @@ struct PerfStringMetadata {
 
 struct PerfUint32Metadata {
   u32 type;
-  std::vector<uint32> data;
+  std::vector<uint32_t> data;
 };
 
 struct PerfUint64Metadata {
   u32 type;
-  std::vector<uint64> data;
+  std::vector<uint64_t> data;
 };
 
 typedef u32 num_siblings_type;
@@ -132,7 +134,7 @@ class PerfReader {
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
-  static bool IsSupportedEventType(uint32 type);
+  static bool IsSupportedEventType(uint32_t type);
 
   // If a program using PerfReader calls events(), it could work with the
   // resulting events by importing kernel/perf_internals.h.  This would also
@@ -257,9 +259,9 @@ class PerfReader {
   std::vector<PerfUint64Metadata> uint64_metadata_;
   PerfCPUTopologyMetadata cpu_topology_;
   std::vector<PerfNodeTopologyMetadata> numa_topology_;
-  uint64 sample_type_;
-  uint64 read_format_;
-  uint64 metadata_mask_;
+  uint64_t sample_type_;
+  uint64_t read_format_;
+  uint64_t metadata_mask_;
 
   // Indicates that the perf data being read is from machine with a different
   // endianness than the current machine.

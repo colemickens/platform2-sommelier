@@ -28,7 +28,7 @@ void CheckChronologicalOrderOfEvents(const PerfReader& reader,
   // determine which sample info fields are present.
   struct perf_sample sample_info;
   CHECK(reader.ReadPerfSampleInfo(**events[0]->raw_event, &sample_info));
-  uint64 prev_time = sample_info.time;
+  uint64_t prev_time = sample_info.time;
   for (unsigned int i = 1; i < events.size(); ++i) {
     struct perf_sample sample_info;
     CHECK(reader.ReadPerfSampleInfo(**events[i]->raw_event, &sample_info));

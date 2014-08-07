@@ -4,11 +4,12 @@
 
 #include "chromiumos-wide-profiling/perf_serializer.h"
 
-#include <bitset>
-#include <utility>
-
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/time.h>
+
+#include <bitset>
+#include <utility>
 
 #include "base/logging.h"
 
@@ -462,23 +463,23 @@ bool PerfSerializer::DeserializeRecordSample(
   if (sample.has_period())
     sample_info.period = sample.period();
   if (sample.callchain_size() > 0) {
-    uint64 callchain_size = sample.callchain_size();
-    sample_info.callchain =
-        reinterpret_cast<struct ip_callchain*>(new uint64[callchain_size + 1]);
+    uint64_t callchain_size = sample.callchain_size();
+    sample_info.callchain = reinterpret_cast<struct ip_callchain*>(
+        new uint64_t[callchain_size + 1]);
     sample_info.callchain->nr = callchain_size;
     for (size_t i = 0; i < callchain_size; ++i)
       sample_info.callchain->ips[i] = sample.callchain(i);
   }
   if (sample.raw_size() > 0) {
     sample_info.raw_size = sample.raw_size();
-    sample_info.raw_data = new uint8[sample.raw_size()];
+    sample_info.raw_data = new uint8_t[sample.raw_size()];
     memset(sample_info.raw_data, 0, sample.raw_size());
   }
   if (sample.branch_stack_size() > 0) {
-    uint64 branch_stack_size = sample.branch_stack_size();
+    uint64_t branch_stack_size = sample.branch_stack_size();
     sample_info.branch_stack =
         reinterpret_cast<struct branch_stack*>(
-            new uint8[sizeof(uint64) +
+            new uint8_t[sizeof(uint64_t) +
                       branch_stack_size * sizeof(struct branch_entry)]);
     sample_info.branch_stack->nr = branch_stack_size;
     for (size_t i = 0; i < branch_stack_size; ++i) {
@@ -545,13 +546,13 @@ bool PerfSerializer::DeserializeCommSample(
   // Sometimes the command string will be modified.  e.g. if the original comm
   // string is not recoverable from the Md5sum prefix, then use the latter as a
   // replacement comm string.  However, if the original was < 8 bytes (fit into
-  // |sizeof(uint64)|), then the size is no longer correct.  This section checks
-  // for the size difference and updates the size in the header.
-  uint64 sample_fields =
+  // |sizeof(uint64_t)|), then the size is no longer correct.  This section
+  // checks for the size difference and updates the size in the header.
+  uint64_t sample_fields =
       GetSampleFieldsForEventType(comm.header.type, sample_type_);
   std::bitset<sizeof(sample_fields) * CHAR_BIT> sample_type_bits(sample_fields);
   comm.header.size = GetPerfSampleDataOffset(*event) +
-                     sample_type_bits.count() * sizeof(uint64);
+                     sample_type_bits.count() * sizeof(uint64_t);
 
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
@@ -680,19 +681,19 @@ bool PerfSerializer::DeserializeSampleInfo(
   if (sample.has_tid()) {
     sample_info.pid = sample.pid();
     sample_info.tid = sample.tid();
-    sample_info_size += sizeof(uint64);
+    sample_info_size += sizeof(uint64_t);
   }
   if (sample.has_sample_time_ns()) {
     sample_info.time = sample.sample_time_ns();
-    sample_info_size += sizeof(uint64);
+    sample_info_size += sizeof(uint64_t);
   }
   if (sample.has_id()) {
     sample_info.id = sample.id();
-    sample_info_size += sizeof(uint64);
+    sample_info_size += sizeof(uint64_t);
   }
   if (sample.has_cpu()) {
     sample_info.cpu = sample.cpu();
-    sample_info_size += sizeof(uint64);
+    sample_info_size += sizeof(uint64_t);
   }
 
   // The event info may have changed (e.g. strings replaced with Md5sum), so
@@ -736,7 +737,7 @@ bool PerfSerializer::SerializeMetadata(PerfDataProto* to) const {
   // Handle the string metadata specially.
   for (size_t i = 0; i < string_metadata_.size(); ++i) {
     StringAndMd5sumPrefix* to_metadata = NULL;
-    uint32 type = string_metadata_[i].type;
+    uint32_t type = string_metadata_[i].type;
     PerfDataProto_StringMetadata* proto_string_metadata =
         to->mutable_string_metadata();
     bool is_command_line = false;

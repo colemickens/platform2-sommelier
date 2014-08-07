@@ -5,6 +5,8 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_PERF_PARSER_H_
 #define CHROMIUMOS_WIDE_PROFILING_PERF_PARSER_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <set>
 #include <string>
@@ -45,7 +47,7 @@ struct ParsedEvent {
 
   // For mmap events, use this to count the number of samples that are in this
   // region.
-  uint32 num_samples_in_mmap_region;
+  uint32_t num_samples_in_mmap_region;
 
   // Command associated with this sample.
   const string* command_;
@@ -64,7 +66,7 @@ struct ParsedEvent {
   // A struct that contains a DSO + offset pair.
   struct DSOAndOffset {
     const DSOInfo* dso_info_;
-    uint64 offset_;
+    uint64_t offset_;
 
     // Accessor methods.
     const string dso_name() const {
@@ -77,7 +79,7 @@ struct ParsedEvent {
         return dso_info_->build_id;
       return string();
     }
-    uint64 offset() const {
+    uint64_t offset() const {
       return offset_;
     }
 
@@ -99,17 +101,17 @@ struct ParsedEvent {
 
 struct PerfEventStats {
   // Number of each type of event.
-  uint32 num_sample_events;
-  uint32 num_mmap_events;
-  uint32 num_comm_events;
-  uint32 num_fork_events;
-  uint32 num_exit_events;
+  uint32_t num_sample_events;
+  uint32_t num_mmap_events;
+  uint32_t num_comm_events;
+  uint32_t num_fork_events;
+  uint32_t num_exit_events;
 
   // Number of sample events that were successfully mapped using the address
   // mapper.  The mapping is recorded regardless of whether the address in the
   // perf sample event itself was assigned the remapped address.  The latter is
   // indicated by |did_remap|.
-  uint32 num_sample_events_mapped;
+  uint32_t num_sample_events_mapped;
 
   // Whether address remapping was enabled during event parsing.
   bool did_remap;
@@ -158,7 +160,7 @@ class PerfParser : public PerfReader {
 
  protected:
   // Defines a type for a pid:tid pair.
-  typedef std::pair<uint32, uint32> PidTid;
+  typedef std::pair<uint32_t, uint32_t> PidTid;
 
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.
@@ -166,13 +168,13 @@ class PerfParser : public PerfReader {
 
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
-  bool MapMmapEvent(struct mmap_event* event, uint64 id);
+  bool MapMmapEvent(struct mmap_event* event, uint64_t id);
   bool MapForkEvent(const struct fork_event& event);
   bool MapCommEvent(const struct comm_event& event);
 
   // Create a process mapper for a process. Optionally pass in a parent pid
   // |ppid| from which to copy mappings.
-  void CreateProcessMapper(uint32 pid, uint32 ppid = -1);
+  void CreateProcessMapper(uint32_t pid, uint32_t ppid = -1);
 
   // Does a sample event remap and then returns DSO name and offset of sample.
   bool MapSampleEvent(ParsedEvent* parsed_event);
@@ -184,7 +186,7 @@ class PerfParser : public PerfReader {
 
   Options options_;   // Store all option flags as one struct.
 
-  std::map<uint32, AddressMapper*> process_mappers_;
+  std::map<uint32_t, AddressMapper*> process_mappers_;
 
   // Maps pid/tid to commands.
   std::map<PidTid, const string*> pidtid_to_comm_map_;
@@ -200,7 +202,7 @@ class PerfParser : public PerfReader {
  private:
   // Calls MapIPAndPidAndGetNameAndOffset() on the callchain of a sample event.
   bool MapCallchain(const struct ip_event& event,
-                    uint64 original_event_addr,
+                    uint64_t original_event_addr,
                     struct ip_callchain* callchain,
                     ParsedEvent* parsed_event);
 
@@ -215,10 +217,10 @@ class PerfParser : public PerfReader {
   // change in the future, and we don't want derived classes to be stuck with an
   // obsolete API.
   bool MapIPAndPidAndGetNameAndOffset(
-      uint64 ip,
-      uint32 pid,
-      uint16 misc,
-      uint64* new_ip,
+      uint64_t ip,
+      uint32_t pid,
+      uint16_t misc,
+      uint64_t* new_ip,
       ParsedEvent::DSOAndOffset* dso_and_offset);
 
   DISALLOW_COPY_AND_ASSIGN(PerfParser);

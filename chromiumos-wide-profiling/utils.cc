@@ -55,15 +55,15 @@ build_id_event* CallocMemoryForBuildID(size_t size) {
   return event;
 }
 
-uint64 Md5Prefix(const string& input) {
-  uint64 digest_prefix = 0;
+uint64_t Md5Prefix(const string& input) {
+  uint64_t digest_prefix = 0;
   unsigned char digest[MD5_DIGEST_LENGTH + 1];
 
   MD5(reinterpret_cast<const unsigned char*>(input.c_str()), input.size(),
       digest);
   // We need 64-bits / # of bits in a byte.
   stringstream ss;
-  for (size_t i = 0; i < sizeof(uint64); i++)
+  for (size_t i = 0; i < sizeof(uint64_t); i++)
     // The setw(2) and setfill('0') calls are needed to make sure we output 2
     // hex characters for every 8-bits of the hash.
     ss << std::hex << std::setw(2) << std::setfill('0')
@@ -172,7 +172,7 @@ bool StringToHex(const string& str, u8* array, size_t length) {
   return true;
 }
 
-uint64 AlignSize(uint64 size, uint32 align_size) {
+uint64_t AlignSize(uint64_t size, uint32_t align_size) {
   return ((size + align_size - 1) / align_size) * align_size;
 }
 
@@ -188,11 +188,12 @@ uint64 AlignSize(uint64 size, uint32 align_size) {
 //
 // Returns the size of the 8-byte-aligned memory for storing |string|.
 size_t GetUint64AlignedStringLength(const string& str) {
-  return AlignSize(str.size() + 1, sizeof(uint64));
+  return AlignSize(str.size() + 1, sizeof(uint64_t));
 }
 
-uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
-  uint64 mask = kuint64max;
+uint64_t GetSampleFieldsForEventType(uint32_t event_type,
+                                     uint64_t sample_type) {
+  uint64_t mask = kuint64max;
   switch (event_type) {
   case PERF_RECORD_SAMPLE:
     // IP and pid/tid fields of sample events are read as part of event_t, so
@@ -217,8 +218,8 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   return sample_type & mask;
 }
 
-uint64 GetPerfSampleDataOffset(const event_t& event) {
-  uint64 offset = kuint64max;
+uint64_t GetPerfSampleDataOffset(const event_t& event) {
+  uint64_t offset = kuint64max;
   switch (event.header.type) {
   case PERF_RECORD_SAMPLE:
     offset = sizeof(event.ip);
@@ -251,7 +252,7 @@ uint64 GetPerfSampleDataOffset(const event_t& event) {
   }
   // Make sure the offset was valid
   CHECK_NE(offset, kuint64max);
-  CHECK_EQ(offset % sizeof(uint64), 0U);
+  CHECK_EQ(offset % sizeof(uint64_t), 0U);
   return offset;
 }
 

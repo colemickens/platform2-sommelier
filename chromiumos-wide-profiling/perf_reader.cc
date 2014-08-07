@@ -47,7 +47,7 @@ typedef u32 event_desc_num_unique_ids;
 typedef u32 numa_topology_num_nodes_type;
 
 // The first 64 bits of the perf header, used as a perf data file ID tag.
-const uint64 kPerfMagic = 0x32454c4946524550LL;
+const uint64_t kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
@@ -56,10 +56,10 @@ const uint64 kPerfMagic = 0x32454c4946524550LL;
 // branchstack.
 // The mask is computed as (1 << HEADER_BUILD_ID) |
 // (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
-const uint32 kSupportedMetadataMask = 0xfffc;
+const uint32_t kSupportedMetadataMask = 0xfffc;
 
 // By default, the build ID event has PID = -1.
-const uint32 kDefaultBuildIDEventPid = static_cast<uint32>(-1);
+const uint32_t kDefaultBuildIDEventPid = static_cast<uint32_t>(-1);
 
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
@@ -69,16 +69,16 @@ size_t BytesToBits(size_t num_bytes) {
 template <class T>
 void ByteSwap(T* input) {
   switch (sizeof(T)) {
-  case sizeof(uint8):
+  case sizeof(uint8_t):
     LOG(WARNING) << "Attempting to byte swap on a single byte.";
     break;
-  case sizeof(uint16):
+  case sizeof(uint16_t):
     *input = bswap_16(*input);
     break;
-  case sizeof(uint32):
+  case sizeof(uint32_t):
     *input = bswap_32(*input);
     break;
-  case sizeof(uint64):
+  case sizeof(uint64_t):
     *input = bswap_64(*input);
     break;
   default:
@@ -129,7 +129,7 @@ void CheckNoBuildIDEventPadding() {
 // or NULL in the case of a failure.
 build_id_event* CreateOrUpdateBuildID(const string& build_id,
                                       const string& filename,
-                                      uint16 new_misc,
+                                      uint16_t new_misc,
                                       build_id_event* event) {
   // When creating an event from scratch, build id and filename must be present.
   if (!event && (build_id.empty() || filename.empty()))
@@ -250,9 +250,9 @@ bool WriteStringToBuffer(const CStringWithLength& src,
 
 // Read read info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_READ.
-const uint64* ReadReadInfo(const uint64* array,
+const uint64_t* ReadReadInfo(const uint64_t* array,
                            bool swap_bytes,
-                           uint64 read_format,
+                           uint64_t read_format,
                            struct perf_sample* sample) {
   if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
     sample->read.time_enabled = *array++;
@@ -272,19 +272,19 @@ const uint64* ReadReadInfo(const uint64* array,
 
 // Read call chain info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_CALLCHAIN.
-const uint64* ReadCallchain(const uint64* array,
+const uint64_t* ReadCallchain(const uint64_t* array,
                             bool swap_bytes,
                             struct perf_sample* sample) {
   // Make sure there is no existing allocated memory in |sample->callchain|.
   CHECK_EQ(static_cast<void*>(NULL), sample->callchain);
 
-  // The callgraph data consists of a uint64 value |nr| followed by |nr|
+  // The callgraph data consists of a uint64_t value |nr| followed by |nr|
   // addresses.
-  uint64 callchain_size = *array++;
+  uint64_t callchain_size = *array++;
   if (swap_bytes)
     ByteSwap(&callchain_size);
   struct ip_callchain* callchain =
-      reinterpret_cast<struct ip_callchain*>(new uint64[callchain_size + 1]);
+      reinterpret_cast<struct ip_callchain*>(new uint64_t[callchain_size + 1]);
   callchain->nr = callchain_size;
   for (size_t i = 0; i < callchain_size; ++i) {
     callchain->ips[i] = *array++;
@@ -298,44 +298,44 @@ const uint64* ReadCallchain(const uint64* array,
 
 // Read raw info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_RAW.
-const uint64* ReadRawData(const uint64* array,
+const uint64_t* ReadRawData(const uint64_t* array,
                           bool swap_bytes,
                           struct perf_sample* sample) {
   // First read the size.
-  const uint32* ptr = reinterpret_cast<const uint32*>(array);
+  const uint32_t* ptr = reinterpret_cast<const uint32_t*>(array);
   sample->raw_size = *ptr++;
   if (swap_bytes)
     ByteSwap(&sample->raw_size);
 
   // Allocate space for and read the raw data bytes.
-  sample->raw_data = new uint8[sample->raw_size];
+  sample->raw_data = new uint8_t[sample->raw_size];
   memcpy(sample->raw_data, ptr, sample->raw_size);
 
   // Determine the bytes that were read, and align to the next 64 bits.
   int bytes_read = AlignSize(sizeof(sample->raw_size) + sample->raw_size,
-                             sizeof(uint64));
-  array += bytes_read / sizeof(uint64);
+                             sizeof(uint64_t));
+  array += bytes_read / sizeof(uint64_t);
 
   return array;
 }
 
 // Read call chain info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_CALLCHAIN.
-const uint64* ReadBranchStack(const uint64* array,
+const uint64_t* ReadBranchStack(const uint64_t* array,
                               bool swap_bytes,
                               struct perf_sample* sample) {
   // Make sure there is no existing allocated memory in
   // |sample->branch_stack|.
   CHECK_EQ(static_cast<void*>(NULL), sample->branch_stack);
 
-  // The branch stack data consists of a uint64 value |nr| followed by |nr|
+  // The branch stack data consists of a uint64_t value |nr| followed by |nr|
   // branch_entry structs.
-  uint64 branch_stack_size = *array++;
+  uint64_t branch_stack_size = *array++;
   if (swap_bytes)
     ByteSwap(&branch_stack_size);
   struct branch_stack* branch_stack =
       reinterpret_cast<struct branch_stack*>(
-          new uint8[sizeof(uint64) +
+          new uint8_t[sizeof(uint64_t) +
                     branch_stack_size * sizeof(struct branch_entry)]);
   branch_stack->nr = branch_stack_size;
   for (size_t i = 0; i < branch_stack_size; ++i) {
@@ -351,23 +351,23 @@ const uint64* ReadBranchStack(const uint64* array,
   return array;
 }
 
-size_t ReadPerfSampleFromData(const uint64* array,
-                              const uint64 sample_fields,
-                              const uint64 read_format,
+size_t ReadPerfSampleFromData(const uint64_t* array,
+                              const uint64_t sample_fields,
+                              const uint64_t read_format,
                               bool swap_bytes,
                               struct perf_sample* sample) {
-  const uint64* initial_array_ptr = array;
-  const uint64 k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
+  const uint64_t* initial_array_ptr = array;
+  const uint64_t k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
   bool read_read_info = false;
   bool read_raw_data = false;
   bool read_callchain = false;
   bool read_branch_stack = false;
 
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
-    uint64 sample_type = (1 << index);
+    uint64_t sample_type = (1 << index);
     union {
-      uint32 val32[sizeof(uint64) / sizeof(uint32)];
-      uint64 val64;
+      uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
+      uint64_t val64;
     };
     if (!(sample_type & sample_fields))
       continue;
@@ -467,24 +467,24 @@ size_t ReadPerfSampleFromData(const uint64* array,
     array = ReadBranchStack(array, swap_bytes, sample);
   }
 
-  return (array - initial_array_ptr) * sizeof(uint64);
+  return (array - initial_array_ptr) * sizeof(uint64_t);
 }
 
 size_t WritePerfSampleToData(const struct perf_sample& sample,
-                             const uint64 sample_fields,
-                             const uint64 read_format,
-                             uint64* array) {
-  uint64* initial_array_ptr = array;
+                             const uint64_t sample_fields,
+                             const uint64_t read_format,
+                             uint64_t* array) {
+  uint64_t* initial_array_ptr = array;
   bool write_read_info = false;
   bool write_raw_data = false;
   bool write_callchain = false;
   bool write_branch_stack = false;
 
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
-    uint64 sample_type = (1 << index);
+    uint64_t sample_type = (1 << index);
     union {
-      uint32 val32[sizeof(uint64) / sizeof(uint32)];
-      uint64 val64;
+      uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
+      uint64_t val64;
     };
     if (!(sample_type & sample_fields))
       continue;
@@ -556,14 +556,14 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
   }
 
   if (write_raw_data) {
-    uint32* ptr = reinterpret_cast<uint32*>(array);
+    uint32_t* ptr = reinterpret_cast<uint32_t*>(array);
     *ptr++ = sample.raw_size;
     memcpy(ptr, sample.raw_data, sample.raw_size);
 
     // Update the data read pointer after aligning to the next 64 bytes.
     int num_bytes = AlignSize(sizeof(sample.raw_size) + sample.raw_size,
-                              sizeof(uint64));
-    array += num_bytes / sizeof(uint64);
+                              sizeof(uint64_t));
+    array += num_bytes / sizeof(uint64_t);
   }
 
   if (write_branch_stack) {
@@ -574,11 +574,12 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
         *array++ = sample.branch_stack->entries[i].from;
         *array++ = sample.branch_stack->entries[i].to;
-        memcpy(array++, &sample.branch_stack->entries[i].flags, sizeof(uint64));
+        memcpy(array++, &sample.branch_stack->entries[i].flags,
+               sizeof(uint64_t));
       }
     }
   }
-  return (array - initial_array_ptr) * sizeof(uint64);
+  return (array - initial_array_ptr) * sizeof(uint64_t);
 }
 
 }  // namespace
@@ -788,7 +789,7 @@ bool PerfReader::InjectBuildIDs(
   // For files with no existing build ID events, create new build ID events.
   // This requires a lookup of all MMAP's to determine the |misc| field of each
   // build ID event.
-  std::map<string, uint16> filename_to_misc;
+  std::map<string, uint16_t> filename_to_misc;
   for (size_t i = 0; i < events_.size(); ++i) {
     const event_t& event = *events_[i];
     if (event.header.type != PERF_RECORD_MMAP)
@@ -805,8 +806,8 @@ bool PerfReader::InjectBuildIDs(
       continue;
 
     // Determine the misc field.
-    uint16 new_misc = PERF_RECORD_MISC_KERNEL;
-    std::map<string, uint16>::const_iterator misc_iter =
+    uint16_t new_misc = PERF_RECORD_MISC_KERNEL;
+    std::map<string, uint16_t>::const_iterator misc_iter =
         filename_to_misc.find(filename);
     if (misc_iter != filename_to_misc.end())
       new_misc = misc_iter->second;
@@ -898,7 +899,7 @@ void PerfReader::GetFilenamesToBuildIDs(
   }
 }
 
-bool PerfReader::IsSupportedEventType(uint32 type) {
+bool PerfReader::IsSupportedEventType(uint32_t type) {
   switch (type) {
   case PERF_RECORD_SAMPLE:
   case PERF_RECORD_MMAP:
@@ -927,11 +928,11 @@ bool PerfReader::ReadPerfSampleInfo(const event_t& event,
     return false;
   }
 
-  uint64 sample_format = GetSampleFieldsForEventType(event.header.type,
-                                                     sample_type_);
-  uint64 offset = GetPerfSampleDataOffset(event);
+  uint64_t sample_format = GetSampleFieldsForEventType(event.header.type,
+                                                       sample_type_);
+  uint64_t offset = GetPerfSampleDataOffset(event);
   size_t size_read = ReadPerfSampleFromData(
-      reinterpret_cast<const uint64*>(&event) + offset / sizeof(uint64),
+      reinterpret_cast<const uint64_t*>(&event) + offset / sizeof(uint64_t),
       sample_format,
       read_format_,
       is_cross_endian_,
@@ -964,17 +965,17 @@ bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
     return false;
   }
 
-  uint64 sample_format = GetSampleFieldsForEventType(event->header.type,
+  uint64_t sample_format = GetSampleFieldsForEventType(event->header.type,
                                                      sample_type_);
-  uint64 offset = GetPerfSampleDataOffset(*event);
+  uint64_t offset = GetPerfSampleDataOffset(*event);
 
   size_t expected_size = event->header.size - offset;
-  memset(reinterpret_cast<uint8*>(event) + offset, 0, expected_size);
+  memset(reinterpret_cast<uint8_t*>(event) + offset, 0, expected_size);
   size_t size_written = WritePerfSampleToData(
       sample,
       sample_format,
       read_format_,
-      reinterpret_cast<uint64*>(event) + offset / sizeof(uint64));
+      reinterpret_cast<uint64_t*>(event) + offset / sizeof(uint64_t));
   if (size_written != expected_size) {
     LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
                << expected_size << " bytes.";
@@ -1306,11 +1307,14 @@ bool PerfReader::ReadUint32Metadata(const ConstBufferWithSize& data, u32 type,
 
   size_t start_offset = offset;
   while (size > offset - start_offset) {
-    uint32 item;
-    if (!ReadDataFromBuffer(data, sizeof(item), "uint32 data", &offset, &item))
+    uint32_t item;
+    if (!ReadDataFromBuffer(data, sizeof(item), "uint32_t data", &offset,
+                            &item))
       return false;
+
     if (is_cross_endian_)
       ByteSwap(&item);
+
     uint32_data.data.push_back(item);
   }
 
@@ -1325,11 +1329,14 @@ bool PerfReader::ReadUint64Metadata(const ConstBufferWithSize& data, u32 type,
 
   size_t start_offset = offset;
   while (size > offset - start_offset) {
-    uint64 item;
-    if (!ReadDataFromBuffer(data, sizeof(item), "uint64 data", &offset, &item))
+    uint64_t item;
+    if (!ReadDataFromBuffer(data, sizeof(item), "uint64_t data", &offset,
+                            &item))
       return false;
+
     if (is_cross_endian_)
       ByteSwap(&item);
+
     uint64_data.data.push_back(item);
   }
 
@@ -1568,7 +1575,7 @@ bool PerfReader::WriteAttrs(const BufferWithSize& data) const {
     ids.size = attr.ids.size() * sizeof(attr.ids[0]);
 
     for (size_t j = 0; j < attr.ids.size(); j++) {
-      const uint64 id = attr.ids[j];
+      const uint64_t id = attr.ids[j];
       if (!WriteDataToBuffer(&id, sizeof(id), "ID info", &id_offset, data))
         return false;
     }
@@ -1715,11 +1722,11 @@ bool PerfReader::WriteUint32Metadata(u32 type, size_t* offset,
   for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
     const PerfUint32Metadata& uint32_data = uint32_metadata_[i];
     if (uint32_data.type == type) {
-      const std::vector<uint32>& int_vector = uint32_data.data;
+      const std::vector<uint32_t>& int_vector = uint32_data.data;
 
       for (size_t j = 0; j < int_vector.size(); ++j) {
         if (!WriteDataToBuffer(&int_vector[j], sizeof(int_vector[j]),
-                               "uint32 metadata", offset, data)) {
+                               "uint32_t metadata", offset, data)) {
           return false;
         }
       }
@@ -1736,11 +1743,11 @@ bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
   for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
     const PerfUint64Metadata& uint64_data = uint64_metadata_[i];
     if (uint64_data.type == type) {
-      const std::vector<uint64>& int_vector = uint64_data.data;
+      const std::vector<uint64_t>& int_vector = uint64_data.data;
 
       for (size_t j = 0; j < int_vector.size(); ++j) {
         if (!WriteDataToBuffer(&int_vector[j], sizeof(int_vector[j]),
-                               "uint64 metadata", offset, data)) {
+                               "uint64_t metadata", offset, data)) {
           return false;
         }
       }
@@ -1917,7 +1924,7 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
     ByteSwap(&event_copy->header.size);
   }
 
-  uint32 type = event_copy->header.type;
+  uint32_t type = event_copy->header.type;
   if (is_cross_endian_) {
     switch (type) {
     case PERF_RECORD_SAMPLE:
@@ -1975,7 +1982,7 @@ size_t PerfReader::GetNumMetadata() const {
   // This is just the number of 1s in the binary representation of the metadata
   // mask.  However, make sure to only use supported metadata, and don't include
   // branch stack (since it doesn't have an entry in the metadata section).
-  uint64 new_mask = metadata_mask_;
+  uint64_t new_mask = metadata_mask_;
   new_mask &= kSupportedMetadataMask & ~(1 << HEADER_BRANCH_STACK);
   std::bitset<sizeof(new_mask) * CHAR_BIT> bits(new_mask);
   return bits.count();

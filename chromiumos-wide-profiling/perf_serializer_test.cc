@@ -23,7 +23,7 @@
 namespace {
 
 // Returns a string representation of an unsigned integer |value|.
-string UintToString(uint64 value) {
+string UintToString(uint64_t value) {
   stringstream ss;
   ss << value;
   return ss.str();
@@ -36,7 +36,7 @@ namespace quipper {
 namespace {
 
 // Gets the timestamp from an event field in PerfDataProto.
-const uint64 GetSampleTimestampFromEventProto(
+const uint64_t GetSampleTimestampFromEventProto(
     const PerfDataProto_PerfEvent& event) {
   // Get SampleInfo from the correct type-specific event field for the event.
   if (event.has_mmap_event()) {
@@ -60,10 +60,10 @@ const uint64 GetSampleTimestampFromEventProto(
 // Verifies that |proto|'s events are in chronological order. No event should
 // have an earlier timestamp than a preceding event.
 void CheckChronologicalOrderOfSerializedEvents(const PerfDataProto& proto) {
-  uint64 prev_time_ns = 0;
+  uint64_t prev_time_ns = 0;
   for (int i = 0; i < proto.events_size(); ++i) {
     // Compare each timestamp against the previous event's timestamp.
-    uint64 time_ns = GetSampleTimestampFromEventProto(proto.events(i));
+    uint64_t time_ns = GetSampleTimestampFromEventProto(proto.events(i));
     if (i > 0) {
       EXPECT_GE(time_ns, prev_time_ns);
     }
