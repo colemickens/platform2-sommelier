@@ -23,7 +23,7 @@ class ObjectSchema;
 
 namespace native_types {
 // C++ representation of object values.
-using Object = std::map<std::string, std::shared_ptr<PropValue>>;
+using Object = std::map<std::string, std::shared_ptr<const PropValue>>;
 }  // namespace native_types
 // Converts an object to string.
 std::string ToString(const native_types::Object& obj);
