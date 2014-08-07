@@ -13,6 +13,8 @@
 
 namespace shill {
 
+class Metrics;
+
 class Mac80211Monitor {
  public:
   struct QueueState {
@@ -27,7 +29,8 @@ class Mac80211Monitor {
     size_t queue_length;
   };
 
-  Mac80211Monitor(const std::string &link_name, size_t queue_length_limit);
+  Mac80211Monitor(const std::string &link_name, size_t queue_length_limit,
+                  Metrics *metrics);
   virtual ~Mac80211Monitor();
 
  private:
@@ -36,6 +39,8 @@ class Mac80211Monitor {
   FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckMultipleQueues);
   FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckNotStuck);
   FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckQueueLength);
+  FRIEND_TEST(Mac80211MonitorTest,
+              CheckAreQueuesStuckQueueLengthIgnoresUnstopped);
   FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason);
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateBadInput);
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateSimple);
@@ -76,6 +81,7 @@ class Mac80211Monitor {
 
   const std::string link_name_;
   size_t queue_length_limit_;
+  Metrics *metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Mac80211Monitor);
 };

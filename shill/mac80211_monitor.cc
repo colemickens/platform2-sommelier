@@ -10,6 +10,7 @@
 #include <base/strings/string_split.h>
 
 #include "shill/logging.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -22,9 +23,11 @@ using std::vector;
 const size_t Mac80211Monitor::kMaxQueueStateSizeBytes = 2048;
 
 Mac80211Monitor::Mac80211Monitor(
-    const string &link_name, size_t queue_length_limit)
+    const string &link_name, size_t queue_length_limit, Metrics *metrics)
     : link_name_(link_name),
-      queue_length_limit_(queue_length_limit) {
+      queue_length_limit_(queue_length_limit),
+      metrics_(metrics) {
+  CHECK(metrics_);
 }
 
 Mac80211Monitor::~Mac80211Monitor() {
@@ -60,9 +63,17 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
     for (unsigned int i=0; i < kStopReasonMax; ++i) {
       auto stop_reason = static_cast<QueueStopReason>(i);
       if (stuck_flags & GetFlagForReason(stop_reason)) {
-        // TODO(quiche): report stop reason to UMA
+        metrics_->SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                stop_reason,
+                                kStopReasonMax);
       }
     }
+
+    metrics_->SendToUMA(Metrics::kMetricWifiStoppedTxQueueLength,
+                        max_stuck_queue_len,
+                        Metrics::kMetricWifiStoppedTxQueueLengthMin,
+                        Metrics::kMetricWifiStoppedTxQueueLengthMax,
+                        Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets);
   }
 
   return stuck_flags;

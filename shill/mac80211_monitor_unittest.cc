@@ -9,8 +9,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_metrics.h"
+
 using std::vector;
 using ::testing::ElementsAre;
+using ::testing::StrictMock;
 
 namespace shill {
 
@@ -23,17 +26,20 @@ typedef Mac80211Monitor::QueueState QState;
 class Mac80211MonitorTest : public testing::Test {
  public:
   Mac80211MonitorTest()
-      : mac80211_monitor_(kTestDeviceName, kQueueLengthLimit) {}
+      : metrics_(nullptr),
+        mac80211_monitor_(kTestDeviceName, kQueueLengthLimit, &metrics_) {}
   virtual ~Mac80211MonitorTest() {}
 
  protected:
   static const size_t kQueueLengthLimit = 5;
 
+  MockMetrics &metrics() { return metrics_; }
   uint32_t CheckAreQueuesStuck(const vector<QState> &queue_states) {
     return mac80211_monitor_.CheckAreQueuesStuck(queue_states);
   }
 
  private:
+  StrictMock<MockMetrics> metrics_;
   Mac80211Monitor mac80211_monitor_;
 };
 
@@ -165,6 +171,20 @@ TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckNotStuck) {
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason) {
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonDriver,
+      Mac80211Monitor::kStopReasonMax));
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonPowerSave,
+      Mac80211Monitor::kStopReasonMax));
+  EXPECT_CALL(metrics(), SendToUMA(
+      Metrics::kMetricWifiStoppedTxQueueLength,
+      kQueueLengthLimit,
+      Metrics::kMetricWifiStoppedTxQueueLengthMin,
+      Metrics::kMetricWifiStoppedTxQueueLengthMax,
+      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(2);
   EXPECT_EQ(Mac80211Monitor::kStopFlagDriver,
             CheckAreQueuesStuck({
                 QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit)}));
@@ -174,6 +194,24 @@ TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason) {
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons) {
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonPowerSave,
+      Mac80211Monitor::kStopReasonMax)).Times(2);
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonDriver,
+      Mac80211Monitor::kStopReasonMax)).Times(2);
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonChannelSwitch,
+      Mac80211Monitor::kStopReasonMax)).Times(2);
+  EXPECT_CALL(metrics(), SendToUMA(
+      Metrics::kMetricWifiStoppedTxQueueLength,
+      kQueueLengthLimit,
+      Metrics::kMetricWifiStoppedTxQueueLengthMin,
+      Metrics::kMetricWifiStoppedTxQueueLengthMax,
+      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(3);
   EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
             Mac80211Monitor::kStopFlagPowerSave,
             CheckAreQueuesStuck({
@@ -198,6 +236,20 @@ TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons) {
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleQueues) {
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonPowerSave,
+      Mac80211Monitor::kStopReasonMax)).Times(5);
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonDriver,
+      Mac80211Monitor::kStopReasonMax)).Times(2);
+  EXPECT_CALL(metrics(), SendToUMA(
+      Metrics::kMetricWifiStoppedTxQueueLength,
+      kQueueLengthLimit,
+      Metrics::kMetricWifiStoppedTxQueueLengthMin,
+      Metrics::kMetricWifiStoppedTxQueueLengthMax,
+      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(5);
   EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
             CheckAreQueuesStuck({
                 QState(0, 0, 0),
@@ -237,6 +289,16 @@ TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleQueues) {
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckQueueLength) {
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonPowerSave,
+      Mac80211Monitor::kStopReasonMax)).Times(4);
+  EXPECT_CALL(metrics(), SendToUMA(
+      Metrics::kMetricWifiStoppedTxQueueLength,
+      kQueueLengthLimit,
+      Metrics::kMetricWifiStoppedTxQueueLengthMin,
+      Metrics::kMetricWifiStoppedTxQueueLengthMax,
+      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(4);
   EXPECT_TRUE(CheckAreQueuesStuck({
         QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
   EXPECT_TRUE(CheckAreQueuesStuck({
@@ -251,6 +313,22 @@ TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckQueueLength) {
         QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
         QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
         QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2)}));
+}
+
+TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckQueueLengthIgnoresUnstopped) {
+  EXPECT_CALL(metrics(), SendEnumToUMA(
+      Metrics::kMetricWifiStoppedTxQueueReason,
+      Mac80211Monitor::kStopReasonPowerSave,
+      Mac80211Monitor::kStopReasonMax));
+  EXPECT_CALL(metrics(), SendToUMA(
+      Metrics::kMetricWifiStoppedTxQueueLength,
+      kQueueLengthLimit,
+      Metrics::kMetricWifiStoppedTxQueueLengthMin,
+      Metrics::kMetricWifiStoppedTxQueueLengthMax,
+      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets));
+  EXPECT_TRUE(CheckAreQueuesStuck({
+        QState(0, 0, kQueueLengthLimit * 10),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
 }
 
 }  // namespace shill
