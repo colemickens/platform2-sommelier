@@ -5,6 +5,8 @@
 #ifndef LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_H_
 #define LIBCHROMEOS_CHROMEOS_POLICY_DEVICE_POLICY_H_
 
+#include <stdint.h>
+
 #include <set>
 #include <string>
 #include <vector>
@@ -118,7 +120,7 @@ class DevicePolicy {
   // Writes the value of the scatter_factor_in_seconds policy in
   // |scatter_factor_in_seconds|. Returns true on success.
   virtual bool GetScatterFactorInSeconds(
-      int64* scatter_factor_in_seconds) const = 0;
+      int64_t* scatter_factor_in_seconds) const = 0;
 
   // Writes the connection types on which updates are allowed to
   // |connection_types|. The identifiers returned are intended to be consistent

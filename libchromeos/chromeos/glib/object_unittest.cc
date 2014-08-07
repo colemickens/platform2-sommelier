@@ -63,7 +63,7 @@ TEST(ResetterTest, All) {
 
 TEST(RetrieveTest, Types) {
   SetRetrieveTest(std::string("Hello!"));
-  SetRetrieveTest(static_cast<uint32>(10));
+  SetRetrieveTest(static_cast<uint32_t>(10));
   SetRetrieveTest(10.5);
   SetRetrieveTest(true);
 }

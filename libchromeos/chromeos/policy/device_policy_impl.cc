@@ -356,7 +356,7 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
 }
 
 bool DevicePolicyImpl::GetScatterFactorInSeconds(
-    int64* scatter_factor_in_seconds) const {
+    int64_t* scatter_factor_in_seconds) const {
   if (!device_policy_.has_auto_update_settings())
     return false;
 

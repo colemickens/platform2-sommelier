@@ -135,7 +135,7 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetUpdateDisabled(&bool_value));
   ASSERT_FALSE(bool_value);
 
-  int64 int64_value = -1LL;
+  int64_t int64_value = -1LL;
   ASSERT_TRUE(policy.GetScatterFactorInSeconds(&int64_value));
   ASSERT_EQ(17LL, int64_value);
 
@@ -183,7 +183,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
 
   // Check that we cannot read any fields out of the sample protobuf.
   int int_value;
-  int64 int64_value;
+  int64_t int64_value;
   std::vector<std::string> list_value;
   bool bool_value;
   std::string string_value;

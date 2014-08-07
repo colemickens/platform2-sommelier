@@ -54,7 +54,7 @@ class DevicePolicyImpl : public DevicePolicy {
   virtual bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const;
   virtual bool GetScatterFactorInSeconds(
-      int64* scatter_factor_in_seconds) const;
+      int64_t* scatter_factor_in_seconds) const;
   virtual bool GetAllowedConnectionTypesForUpdate(
       std::set<std::string>* connection_types) const;
   virtual bool GetOpenNetworkConfiguration(

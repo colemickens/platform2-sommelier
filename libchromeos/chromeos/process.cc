@@ -5,6 +5,7 @@
 #include "chromeos/process.h"
 
 #include <fcntl.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -305,7 +306,7 @@ bool ProcessImpl::ResetPidByFile(const std::string& pid_file) {
     return false;
   }
   base::TrimWhitespaceASCII(contents, base::TRIM_TRAILING, &contents);
-  int64 pid_int64 = 0;
+  int64_t pid_int64 = 0;
   if (!base::StringToInt64(contents, &pid_int64)) {
     LOG(ERROR) << "Unexpected pid file contents";
     return false;

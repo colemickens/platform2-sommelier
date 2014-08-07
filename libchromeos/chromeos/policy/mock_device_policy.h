@@ -82,7 +82,7 @@ class MockDevicePolicy : public DevicePolicy {
                      bool(bool*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetTargetVersionPrefix, bool(std::string*));
   MOCK_CONST_METHOD1(GetScatterFactorInSeconds,
-                     bool(int64*));  // NOLINT(readability/function)
+                     bool(int64_t*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetAllowedConnectionTypesForUpdate,
                      bool(std::set<std::string>*));
   MOCK_CONST_METHOD1(GetOpenNetworkConfiguration, bool(std::string*));

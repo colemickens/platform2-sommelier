@@ -5,6 +5,7 @@
 #include "chromeos/cryptohome.h"
 
 #include <openssl/sha.h>
+#include <stdint.h>
 
 #include <algorithm>
 #include <cstring>
@@ -31,12 +32,12 @@ static bool EnsureSystemSaltIsLoaded() {
   if (salt && !salt->empty())
     return true;
   FilePath salt_path(g_system_salt_path);
-  int64 file_size;
+  int64_t file_size;
   if (!base::GetFileSize(salt_path, &file_size)) {
     PLOG(ERROR) << "Could not get size of system salt: " <<  g_system_salt_path;
     return false;
   }
-  if (file_size > static_cast<int64>(std::numeric_limits<int>::max())) {
+  if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
     LOG(ERROR) << "System salt too large: " << file_size;
     return false;
   }
@@ -107,7 +108,7 @@ FilePath GetDaemonPath(const std::string& username, const std::string& daemon) {
 }
 
 bool IsSanitizedUserName(const std::string& sanitized) {
-  std::vector<uint8> bytes;
+  std::vector<uint8_t> bytes;
   return (sanitized.length() == 2 * SHA_DIGEST_LENGTH) &&
       base::HexStringToBytes(sanitized, &bytes);
 }

@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <grp.h>
 #include <signal.h>
+#include <stdint.h>
 #include <sys/resource.h>
 #include <sys/signalfd.h>
 #include <sys/wait.h>
@@ -42,7 +43,7 @@ bool WriteString(base::File* file, const std::string& data) {
 }
 
 // Writes |value| to |file| in big-endian order, returning true on success.
-bool WriteUint16(base::File* file, uint16 value) {
+bool WriteUint16(base::File* file, uint16_t value) {
   value = htons(value);
   return file->WriteAtCurrentPos(
       reinterpret_cast<const char*>(&value), sizeof(value)) ==
@@ -68,7 +69,7 @@ bool CreateXauthFile(const base::FilePath& path, uid_t uid, gid_t gid) {
   // but to make this code self-documenting, this call should be changed to
   // crypto::RandBytes() if/when that gets packaged for Chrome OS.
   const std::string kCookie(base::RandBytesAsString(kCookieSize));
-  const uint16 kFamily = 0x100;
+  const uint16_t kFamily = 0x100;
   const std::string kAddress = "localhost";
   const std::string kNumber = "0";
   const std::string kName = "MIT-MAGIC-COOKIE-1";

@@ -6,6 +6,7 @@
 #define LIBCHROMEOS_CHROMEOS_GLIB_OBJECT_H_
 
 #include <glib-object.h>
+#include <stdint.h>
 
 #include <base/basictypes.h>
 #include <base/logging.h>
@@ -89,7 +90,7 @@ inline ::GType type_to_gtypeid<char*>() {
   return G_TYPE_STRING;
 }
 template < >
-inline ::GType type_to_gtypeid< ::uint8>() {
+inline ::GType type_to_gtypeid< ::uint8_t>() {
   return G_TYPE_UCHAR;
 }
 template < >
@@ -107,7 +108,7 @@ inline ::GType type_to_gtypeid<const Value*>() {
 }
 
 template < >
-inline ::GType type_to_gtypeid< ::uint32>() {
+inline ::GType type_to_gtypeid< ::uint32_t>() {
   // REVISIT (seanparent) : There currently isn't any G_TYPE_UINT32, this code
   // assumes sizeof(guint) == sizeof(guint32). Need a static_assert to assert
   // that.
@@ -115,12 +116,12 @@ inline ::GType type_to_gtypeid< ::uint32>() {
 }
 
 template < >
-inline ::GType type_to_gtypeid< ::int64>() {
+inline ::GType type_to_gtypeid< ::int64_t>() {
   return G_TYPE_INT64;
 }
 
 template < >
-inline ::GType type_to_gtypeid< ::int32>() {
+inline ::GType type_to_gtypeid< ::int32_t>() {
   return G_TYPE_INT;
 }
 
@@ -160,20 +161,20 @@ inline bool RawCast<bool>(const ::GValue& x) {
   return static_cast<bool>(::g_value_get_boolean(&x));
 }
 template < >
-inline ::uint32 RawCast< ::uint32>(const ::GValue& x) {
-  return static_cast< ::uint32>(::g_value_get_uint(&x));
+inline ::uint32_t RawCast< ::uint32_t>(const ::GValue& x) {
+  return static_cast< ::uint32_t>(::g_value_get_uint(&x));
 }
 template < >
-inline ::uint8 RawCast< ::uint8>(const ::GValue& x) {
-  return static_cast< ::uint8>(::g_value_get_uchar(&x));
+inline ::uint8_t RawCast< ::uint8_t>(const ::GValue& x) {
+  return static_cast< ::uint8_t>(::g_value_get_uchar(&x));
 }
 template < >
-inline ::int64 RawCast< ::int64>(const ::GValue& x) {
-  return static_cast< ::int64>(::g_value_get_int64(&x));
+inline ::int64_t RawCast< ::int64_t>(const ::GValue& x) {
+  return static_cast< ::int64_t>(::g_value_get_int64(&x));
 }
 template < >
-inline ::int32 RawCast< ::int32>(const ::GValue& x) {
-  return static_cast< ::int32>(::g_value_get_int(&x));
+inline ::int32_t RawCast< ::int32_t>(const ::GValue& x) {
+  return static_cast< ::int32_t>(::g_value_get_int(&x));
 }
 
 inline void RawSet(GValue* x, const std::string& v) {
@@ -188,16 +189,16 @@ inline void RawSet(GValue* x, double v) {
 inline void RawSet(GValue* x, bool v) {
   ::g_value_set_boolean(x, v);
 }
-inline void RawSet(GValue* x, ::uint32 v) {
+inline void RawSet(GValue* x, ::uint32_t v) {
   ::g_value_set_uint(x, v);
 }
-inline void RawSet(GValue* x, ::uint8 v) {
+inline void RawSet(GValue* x, ::uint8_t v) {
   ::g_value_set_uchar(x, v);
 }
-inline void RawSet(GValue* x, ::int64 v) {
+inline void RawSet(GValue* x, ::int64_t v) {
   ::g_value_set_int64(x, v);
 }
-inline void RawSet(GValue* x, ::int32 v) {
+inline void RawSet(GValue* x, ::int32_t v) {
   ::g_value_set_int(x, v);
 }
 
