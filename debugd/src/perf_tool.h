@@ -5,6 +5,8 @@
 #ifndef DEBUGD_SRC_PERF_TOOL_H_
 #define DEBUGD_SRC_PERF_TOOL_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -23,8 +25,8 @@ class PerfTool {
   // Randomly runs the perf tool in various modes and collects various events
   // for |duration_secs| seconds and returns a protobuf containing the collected
   // data.
-  std::vector<uint8> GetRichPerfData(const uint32_t& duration_secs,
-                                     DBus::Error* error);
+  std::vector<uint8_t> GetRichPerfData(const uint32_t& duration_secs,
+                                       DBus::Error* error);
  private:
   // Helper function that runs perf for a given |duration_secs| returning the
   // collected data in |data_string|.

@@ -5,6 +5,8 @@
 #ifndef DEBUGD_SRC_DEBUG_DAEMON_H_
 #define DEBUGD_SRC_DEBUG_DAEMON_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -104,7 +106,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                       DBus::Error& error);  // NOLINT
   virtual std::string GetNetworkStatus(DBus::Error& error);  // NOLINT
   virtual std::string GetWiMaxStatus(DBus::Error& error);  // NOLINT
-  virtual std::vector<uint8> GetRichPerfData(const uint32_t& duration,
+  virtual std::vector<uint8_t> GetRichPerfData(const uint32_t& duration,
                                              DBus::Error& error);  // NOLINT
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
                             DBus::Error& error);  // NOLINT

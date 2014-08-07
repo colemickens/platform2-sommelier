@@ -117,8 +117,8 @@ std::string DebugDaemon::GetWiMaxStatus(DBus::Error& error) { // NOLINT
   return wimax_status_tool_->GetWiMaxStatus(&error);
 }
 
-std::vector<uint8> DebugDaemon::GetRichPerfData(const uint32_t& duration,
-                                                DBus::Error& error) {  // NOLINT
+std::vector<uint8_t> DebugDaemon::GetRichPerfData(
+    const uint32_t& duration, DBus::Error& error) {  // NOLINT
   return perf_tool_->GetRichPerfData(duration, &error);
 }
 
