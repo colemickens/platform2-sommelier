@@ -264,7 +264,7 @@ TEST_F(CryptoTest, SaltCreateTest) {
   salt_ptr = &salt_written;
   EXPECT_CALL(platform, FileExists(salt_path.value()))
       .WillOnce(Return(true));
-  int64 salt_size = 32;
+  int64_t salt_size = 32;
   EXPECT_CALL(platform, GetFileSize(salt_path.value(), _))
       .WillOnce(DoAll(SetArgumentPointee<1>(salt_size), Return(true)));
   EXPECT_CALL(platform, WriteFile(salt_path.value(), _))

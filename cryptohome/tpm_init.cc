@@ -6,6 +6,8 @@
 
 #include "cryptohome/tpm_init.h"
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/logging.h>
@@ -161,7 +163,7 @@ bool TpmInit::GetTpmPassword(chromeos::Blob* password) {
 void TpmInit::ClearStoredTpmPassword() {
   TpmStatus tpm_status;
   if (LoadTpmStatus(&tpm_status)) {
-    int32 dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
+    int32_t dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
                              TpmStatus::ATTESTATION_NEEDS_OWNER;
     if (tpm_status.flags() & dependency_flags) {
       // The password is still needed, do not clear.
@@ -416,7 +418,7 @@ bool TpmInit::StoreTpmStatus(const TpmStatus& serialized) {
   int old_mask = platform_->SetMask(kDefaultUmask);
   if (platform_->FileExists(kTpmStatusFile)) {
     do {
-      int64 file_size;
+      int64_t file_size;
       if (!platform_->GetFileSize(kTpmStatusFile, &file_size)) {
         break;
       }
@@ -501,7 +503,7 @@ bool TpmInit::StoreOwnerPassword(const chromeos::Blob& owner_password,
 }
 
 void TpmInit::RemoveTpmOwnerDependency(TpmOwnerDependency dependency) {
-  int32 flag_to_clear = TpmStatus::NONE;
+  int32_t flag_to_clear = TpmStatus::NONE;
   switch (dependency) {
     case kInstallAttributes:
       flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;

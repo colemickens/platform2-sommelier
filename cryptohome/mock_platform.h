@@ -106,10 +106,10 @@ class MockPlatform : public Platform {
   MOCK_CONST_METHOD1(SetMask, int(int));
   MOCK_CONST_METHOD3(GetUserId, bool(const std::string&, uid_t*, gid_t*));
   MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t*));
-  MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64(const std::string&));
+  MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64_t(const std::string&));
   MOCK_METHOD2(Symlink, bool(const std::string&, const std::string&));
   MOCK_METHOD1(FileExists, bool(const std::string&));
-  MOCK_METHOD2(GetFileSize, bool(const std::string&, int64*));
+  MOCK_METHOD2(GetFileSize, bool(const std::string&, int64_t*));
   MOCK_METHOD2(OpenFile, FILE*(const std::string&, const char*));
   MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
   MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(std::string*));

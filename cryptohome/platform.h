@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_PLATFORM_H_
 #define CRYPTOHOME_PLATFORM_H_
 
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
@@ -51,7 +52,7 @@ class FileEnumerator {
 
     bool IsDirectory() const;
     std::string GetName() const;
-    int64 GetSize() const;
+    int64_t GetSize() const;
     base::Time GetLastModifiedTime() const;
     const struct stat& stat() const;
 
@@ -255,7 +256,7 @@ class Platform {
   //
   // Parameters
   //   path - the pathname of any file within the mounted file system
-  virtual int64 AmountOfFreeDiskSpace(const std::string& path) const;
+  virtual int64_t AmountOfFreeDiskSpace(const std::string& path) const;
 
   // Returns true if the specified file exists.
   //
@@ -270,9 +271,9 @@ class Platform {
   //
   // Parameters
   //   path - Path of the file to check
-  //   size - int64* to populate with the size
+  //   size - int64_t* to populate with the size
   // Returns true if the size was acquired and false otherwise.
-  virtual bool GetFileSize(const std::string& path, int64* size);
+  virtual bool GetFileSize(const std::string& path, int64_t* size);
 
   // Opens a file, if possible, returning a FILE*. If not, returns NULL.
   //

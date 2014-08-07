@@ -80,7 +80,7 @@ const unsigned int kDefaultLegacyPasswordRounds = 1;
 const unsigned int kDefaultAesKeySize = 32;
 
 // Maximum size of the salt file.
-const int64 Crypto::kSaltMax = (1 << 20);  // 1 MB
+const int64_t Crypto::kSaltMax = (1 << 20);  // 1 MB
 
 Crypto::Crypto(Platform* platform)
     : use_tpm_(false),
@@ -152,7 +152,7 @@ bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
 
 bool Crypto::GetOrCreateSalt(const base::FilePath& path, unsigned int length,
                              bool force, SecureBlob* salt) const {
-  int64 file_len = 0;
+  int64_t file_len = 0;
   if (platform_->FileExists(path.value())) {
     if (!platform_->GetFileSize(path.value(), &file_len)) {
       LOG(ERROR) << "Can't get file len for " << path.value();

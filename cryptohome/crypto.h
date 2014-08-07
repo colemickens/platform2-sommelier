@@ -10,6 +10,8 @@
 #ifndef CRYPTOHOME_CRYPTO_H_
 #define CRYPTOHOME_CRYPTO_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -202,7 +204,7 @@ class Crypto {
     return platform_;
   }
 
-  static const int64 kSaltMax;
+  static const int64_t kSaltMax;
 
  private:
   // Converts a TPM error to a Crypto error

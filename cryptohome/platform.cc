@@ -453,7 +453,7 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
   return true;
 }
 
-int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
+int64_t Platform::AmountOfFreeDiskSpace(const string& path) const {
   return base::SysInfo::AmountOfFreeDiskSpace(FilePath(path));
 }
 
@@ -465,7 +465,7 @@ bool Platform::DirectoryExists(const std::string& path) {
   return base::DirectoryExists(FilePath(path));
 }
 
-bool Platform::GetFileSize(const std::string& path, int64* size) {
+bool Platform::GetFileSize(const std::string& path, int64_t* size) {
   return base::GetFileSize(FilePath(path), size);
 }
 
@@ -524,7 +524,7 @@ bool Platform::WriteArrayToFile(const std::string& path, const char* data,
 }
 
 bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
-  int64 file_size;
+  int64_t file_size;
   FilePath file_path(path);
   if (!base::PathExists(file_path)) {
     return false;
@@ -534,7 +534,7 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
     return false;
   }
   // Compare to the max of a signed integer.
-  if (file_size > static_cast<int64>(INT_MAX)) {
+  if (file_size > static_cast<int64_t>(INT_MAX)) {
     LOG(ERROR) << "File " << path << " is too large: "
                << file_size << " bytes.";
     return false;
@@ -932,7 +932,7 @@ std::string FileEnumerator::FileInfo::GetName() const {
   return name_;
 }
 
-int64 FileEnumerator::FileInfo::GetSize() const {
+int64_t FileEnumerator::FileInfo::GetSize() const {
   if (info_.get())
     return info_->GetSize();
   return stat_.st_size;

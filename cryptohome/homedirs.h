@@ -8,6 +8,8 @@
 #ifndef CRYPTOHOME_HOMEDIRS_H_
 #define CRYPTOHOME_HOMEDIRS_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -30,7 +32,7 @@
 
 namespace cryptohome {
 
-const int64 kEnoughFreeSpace = 1LL << 30;
+const int64_t kEnoughFreeSpace = 1LL << 30;
 
 class Credentials;
 class Platform;

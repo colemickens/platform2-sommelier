@@ -7,6 +7,7 @@
 #include "cryptohome/make_tests.h"
 
 #include <openssl/evp.h>
+#include <stdint.h>
 
 #include <algorithm>
 #include <base/file_util.h>
@@ -192,7 +193,7 @@ void TestUser::GenerateCredentials() {
   EXPECT_CALL(*device_policy, LoadPolicy())
     .WillRepeatedly(Return(true));
   std::string salt_path = StringPrintf("%s/salt", shadow_root.c_str());
-  int64 salt_size = salt.size();
+  int64_t salt_size = salt.size();
   EXPECT_CALL(platform, FileExists(salt_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetFileSize(salt_path, _))
